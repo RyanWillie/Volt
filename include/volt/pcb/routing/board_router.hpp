@@ -25,6 +25,8 @@ struct BoardRouteRequest {
     BoardLayerId start_layer;
     /** Board copper layer the end point sits on. */
     BoardLayerId end_layer;
+    /** Explicit routed track width in millimeters, when the caller needs one. */
+    std::optional<double> track_width_mm = std::nullopt;
 };
 
 /** Resolved per-route copper sizing and layer constraints from the shared rule path. */

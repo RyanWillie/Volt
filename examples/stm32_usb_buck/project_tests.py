@@ -121,12 +121,12 @@ def register_project_tests(project: volt.Project) -> None:
     @project.design.test
     def usb_debug_and_user_io_are_preserved(check) -> None:
         check.net("USB/VBUS").connects("USB/J1.VBUS", "USB/U1.VBUS")
+        check.net("USB_DP").connects("U1.PA12")
+        check.net("USB_DM").connects("U1.PA11")
         check.net("USB/USB_DP").connects("USB/J1.D+", "USB/U1.I/O1")
         check.net("USB/USB_DM").connects("USB/J1.D-", "USB/U1.I/O2")
         check.net("USB/MCU_USB_DP").connects("USB/U1.I/O4")
         check.net("USB/MCU_USB_DM").connects("USB/U1.I/O3")
-        check.net("MCU_USB_DP").connects("U1.PA12")
-        check.net("MCU_USB_DM").connects("U1.PA11")
         check.net("USB/GND").connects("USB/J1.GND", "USB/J1.Shield", "USB/U1.GND")
         check.net("SWDIO").connects("J2.SWDIO", "U1.PA13")
         check.net("SWCLK").connects("J2.SWCLK", "U1.PA14")
@@ -143,8 +143,7 @@ def register_project_tests(project: volt.Project) -> None:
         for power_net in ("+12V", "+5V", "+3V3", "VDDA"):
             check.no_connection(power_net, "GND")
         check.no_connection("+3V3", "VDDA")
-        check.no_connection("USB/USB_DP", "USB/USB_DM")
-        check.no_connection("MCU_USB_DP", "MCU_USB_DM")
+        check.no_connection("USB_DP", "USB_DM")
         check.no_connection("SWDIO", "SWCLK")
         check.no_connection("BOOT0", "GND")
         check.no_connection("STATUS_LED", "GND")

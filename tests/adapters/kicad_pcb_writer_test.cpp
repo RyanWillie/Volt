@@ -52,6 +52,23 @@ struct ResistorCircuit {
     volt::NetId right_net;
 };
 
+struct PortBoundNetCircuit {
+    volt::Circuit circuit;
+    volt::ComponentId module_component;
+    volt::ComponentId parent_component;
+    volt::NetId parent_net;
+    volt::NetId internal_net;
+};
+
+[[nodiscard]] volt::PhysicalPart passive_0603_part(volt::PinDefId first, volt::PinDefId second) {
+    return volt::PhysicalPart{
+        volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+        volt::PackageRef{"0603"},
+        volt::FootprintRef{"passives", "R_0603_1608Metric"},
+        std::vector{volt::PinPadMapping{first, "1"}, volt::PinPadMapping{second, "2"}},
+    };
+}
+
 [[nodiscard]] ResistorCircuit make_resistor_circuit() {
     auto circuit = volt::Circuit{};
     const auto first_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
@@ -89,6 +106,54 @@ struct ResistorCircuit {
 
     return ResistorCircuit{std::move(circuit),    component, first_pin_definition,
                            second_pin_definition, left_net,  right_net};
+}
+
+[[nodiscard]] PortBoundNetCircuit make_port_bound_net_circuit() {
+    auto circuit = volt::Circuit{};
+    const auto first_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto component_definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
+    const auto parent_component =
+        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R_PARENT"});
+    const auto parent_net =
+        circuit.add_net(volt::Net{volt::NetName{"DRIVE"}, volt::NetKind::Signal});
+    circuit.connect(
+        parent_net,
+        volt::queries::pin_by_definition(circuit, parent_component, first_pin_definition).value());
+
+    const auto module =
+        circuit.add_module_definition(volt::ModuleDefinition{volt::ModuleName{"Driver"}});
+    const auto template_net = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"DRIVE"}, volt::NetKind::Signal});
+    const auto port = circuit.add_port_definition(
+        module,
+        volt::PortDefinition{volt::PortName{"DRIVE"}, template_net, volt::PortRole::Bidirectional});
+    const auto module_template = circuit.add_module_component(
+        module,
+        volt::ModuleComponentTemplate{component_definition, volt::ReferenceDesignator{"R_MODULE"}});
+    static_cast<void>(
+        circuit.connect_module_pin(module, template_net, module_template, first_pin_definition));
+    const auto instance = circuit.instantiate_root_module(module, volt::ModuleInstanceName{"MOD"});
+    static_cast<void>(circuit.bind_port(instance, port, parent_net));
+    const auto module_component =
+        volt::queries::concrete_component_for(circuit, instance, module_template).value();
+    const auto internal_net =
+        volt::queries::concrete_net_for(circuit, instance, template_net).value();
+
+    circuit.select_physical_part(parent_component,
+                                 passive_0603_part(first_pin_definition, second_pin_definition));
+    circuit.select_physical_part(module_component,
+                                 passive_0603_part(first_pin_definition, second_pin_definition));
+
+    return PortBoundNetCircuit{std::move(circuit), module_component, parent_component, parent_net,
+                               internal_net};
 }
 
 [[nodiscard]] volt::Board make_routed_board(const ResistorCircuit &fixture) {
@@ -374,6 +439,33 @@ TEST_CASE("KiCad PCB writer pins a routed multi-net golden board") {
     CHECK(result.text.find("(net 3 \"GND\")") != std::string::npos);
     CHECK(result.text.find("(layer \"F.Cu\")") != std::string::npos);
     CHECK(result.text.find("(layer \"B.Cu\")") != std::string::npos);
+}
+
+TEST_CASE("KiCad PCB writer canonicalizes bound module port nets") {
+    auto fixture = make_port_bound_net_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"PortBound"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    static_cast<void>(board.place_component(
+        volt::ComponentPlacement{fixture.module_component, volt::BoardPoint{10.0, 10.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top, true}));
+    static_cast<void>(board.place_component(
+        volt::ComponentPlacement{fixture.parent_component, volt::BoardPoint{20.0, 10.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top, true}));
+    static_cast<void>(board.add_track(volt::BoardTrack{
+        fixture.internal_net,
+        front,
+        std::vector{volt::BoardPoint{10.75, 10.0}, volt::BoardPoint{19.25, 10.0}},
+        0.25,
+    }));
+
+    const auto result =
+        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+
+    CHECK(result.text.find("(net 1 \"DRIVE\")") != std::string::npos);
+    CHECK(result.text.find("MOD/DRIVE") == std::string::npos);
+    CHECK(result.text.find("(net 2") == std::string::npos);
+    CHECK(result.text.find("    (net 1)\n") != std::string::npos);
 }
 
 TEST_CASE("KiCad PCB writer reports unsupported out-of-subset board constructs") {

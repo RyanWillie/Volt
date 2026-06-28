@@ -284,69 +284,69 @@
     <polyline class="wire-run" data-net="net:4" points="156,380 156,400 172,400"/>
     <polyline class="wire-run" data-net="net:4" points="188,380 188,400 172,400"/>
     <polyline class="wire-run" data-net="net:4" points="172,380 172,400"/>
-    <polyline class="wire-run" data-net="net:19" points="218,254 228,254"/>
-    <polyline class="wire-run" data-net="net:18" points="218,270 228,270"/>
-    <polyline class="wire-run" data-net="net:40" points="218,286 228,286"/>
-    <polyline class="wire-run" data-net="net:41" points="218,302 228,302"/>
-    <polyline class="wire-run" data-net="net:42" points="218,310 228,310"/>
-    <polyline class="wire-run" data-net="net:35" points="218,342 228,342"/>
-    <polyline class="wire-run" data-net="net:43" points="122,246 106,246"/>
-    <polyline class="wire-run" data-net="net:36" points="122,270 116,270"/>
-    <polyline class="wire-run" data-net="net:37" points="122,286 116,286"/>
-    <polyline class="wire-run" data-net="net:38" points="122,358 106,358"/>
-    <polyline class="wire-run" data-net="net:34" points="122,318 114,318"/>
-    <polyline class="wire-run" data-net="net:39" points="218,358 228,358"/>
-    <polyline class="wire-run" data-net="net:26" points="56,180 56,164"/>
-    <polyline class="wire-run" data-net="net:26" points="46,356 46,350"/>
-    <polyline class="wire-run" data-net="net:26" points="260,360 248,360"/>
-    <polyline class="wire-run" data-net="net:27" points="56,200 56,218 86,218"/>
-    <polyline class="wire-run" data-net="net:27" points="86,200 86,218"/>
-    <polyline class="wire-run" data-net="net:27" points="116,200 116,218 86,218"/>
-    <polyline class="wire-run" data-net="net:27" points="70,302 70,324 82,324"/>
-    <polyline class="wire-run" data-net="net:27" points="82,302 82,324"/>
-    <polyline class="wire-run" data-net="net:27" points="32,288 32,324 82,324"/>
-    <polyline class="wire-run" data-net="net:27" points="44,304 44,324 82,324"/>
-    <polyline class="wire-run" data-net="net:27" points="312,392 312,398"/>
-    <polyline class="wire-run" data-net="net:27" points="260,380 260,386"/>
-    <polyline class="wire-run" data-net="net:28" points="46,378 56,378"/>
-    <polyline class="wire-run" data-net="net:29" points="304,370 312,370"/>
-    <polyline class="wire-run" data-net="net:29" points="312,370 312,360"/>
-    <polyline class="wire-run" data-net="net:30" points="98,268 32,268"/>
-    <polyline class="wire-run" data-net="net:31" points="98,284 44,284"/>
-    <polyline class="wire-run" data-net="net:32" points="86,180 86,168"/>
-    <polyline class="wire-run" data-net="net:32" points="86,168 98,168"/>
-    <polyline class="wire-run" data-net="net:33" points="116,180 116,168"/>
-    <polyline class="wire-run" data-net="net:33" points="116,168 128,168"/>
-    <polyline class="wire-run" data-net="net:44" points="278,210 278,190"/>
-    <polyline class="wire-run" data-net="net:46" points="298,210 304,210"/>
-    <polyline class="wire-run" data-net="net:45" points="328,210 344,210"/>
-    <polyline class="wire-run" data-net="net:20" points="430,292 474,292 474,284"/>
-    <polyline class="wire-run" data-net="net:21" points="430,308 446,308 446,318"/>
-    <polyline class="wire-run" data-net="net:22" points="430,300 446,300 446,306"/>
-    <polyline class="wire-run" data-net="net:23" points="500,318 508,318"/>
-    <polyline class="wire-run" data-net="net:24" points="500,306 508,306"/>
-    <polyline class="wire-run" data-net="net:25" points="430,324 430,348 474,348"/>
-    <polyline class="wire-run" data-net="net:25" points="430,332 430,348 474,348"/>
-    <polyline class="wire-run" data-net="net:25" points="474,334 474,348"/>
+    <polyline class="wire-run" data-net="net:17" points="218,254 228,254"/>
+    <polyline class="wire-run" data-net="net:16" points="218,270 228,270"/>
+    <polyline class="wire-run" data-net="net:38" points="218,286 228,286"/>
+    <polyline class="wire-run" data-net="net:39" points="218,302 228,302"/>
+    <polyline class="wire-run" data-net="net:40" points="218,310 228,310"/>
+    <polyline class="wire-run" data-net="net:33" points="218,342 228,342"/>
+    <polyline class="wire-run" data-net="net:41" points="122,246 106,246"/>
+    <polyline class="wire-run" data-net="net:34" points="122,270 116,270"/>
+    <polyline class="wire-run" data-net="net:35" points="122,286 116,286"/>
+    <polyline class="wire-run" data-net="net:36" points="122,358 106,358"/>
+    <polyline class="wire-run" data-net="net:32" points="122,318 114,318"/>
+    <polyline class="wire-run" data-net="net:37" points="218,358 228,358"/>
+    <polyline class="wire-run" data-net="net:24" points="56,180 56,164"/>
+    <polyline class="wire-run" data-net="net:24" points="46,356 46,350"/>
+    <polyline class="wire-run" data-net="net:24" points="260,360 248,360"/>
+    <polyline class="wire-run" data-net="net:25" points="56,200 56,218 86,218"/>
+    <polyline class="wire-run" data-net="net:25" points="86,200 86,218"/>
+    <polyline class="wire-run" data-net="net:25" points="116,200 116,218 86,218"/>
+    <polyline class="wire-run" data-net="net:25" points="70,302 70,324 82,324"/>
+    <polyline class="wire-run" data-net="net:25" points="82,302 82,324"/>
+    <polyline class="wire-run" data-net="net:25" points="32,288 32,324 82,324"/>
+    <polyline class="wire-run" data-net="net:25" points="44,304 44,324 82,324"/>
+    <polyline class="wire-run" data-net="net:25" points="312,392 312,398"/>
+    <polyline class="wire-run" data-net="net:25" points="260,380 260,386"/>
+    <polyline class="wire-run" data-net="net:26" points="46,378 56,378"/>
+    <polyline class="wire-run" data-net="net:27" points="304,370 312,370"/>
+    <polyline class="wire-run" data-net="net:27" points="312,370 312,360"/>
+    <polyline class="wire-run" data-net="net:28" points="98,268 32,268"/>
+    <polyline class="wire-run" data-net="net:29" points="98,284 44,284"/>
+    <polyline class="wire-run" data-net="net:30" points="86,180 86,168"/>
+    <polyline class="wire-run" data-net="net:30" points="86,168 98,168"/>
+    <polyline class="wire-run" data-net="net:31" points="116,180 116,168"/>
+    <polyline class="wire-run" data-net="net:31" points="116,168 128,168"/>
+    <polyline class="wire-run" data-net="net:42" points="278,210 278,190"/>
+    <polyline class="wire-run" data-net="net:44" points="298,210 304,210"/>
+    <polyline class="wire-run" data-net="net:43" points="328,210 344,210"/>
+    <polyline class="wire-run" data-net="net:18" points="430,292 474,292 474,284"/>
+    <polyline class="wire-run" data-net="net:19" points="430,308 446,308 446,318"/>
+    <polyline class="wire-run" data-net="net:20" points="430,300 446,300 446,306"/>
+    <polyline class="wire-run" data-net="net:21" points="500,318 508,318"/>
+    <polyline class="wire-run" data-net="net:22" points="500,306 508,306"/>
+    <polyline class="wire-run" data-net="net:23" points="430,324 430,348 474,348"/>
+    <polyline class="wire-run" data-net="net:23" points="430,332 430,348 474,348"/>
+    <polyline class="wire-run" data-net="net:23" points="474,334 474,348"/>
     <polyline class="wire-run" data-net="net:2" points="444,194 444,170"/>
     <polyline class="wire-run" data-net="net:2" points="528,272 528,248"/>
     <polyline class="wire-run" data-net="net:4" points="444,208 392,208"/>
     <polyline class="wire-run" data-net="net:4" points="444,222 392,222"/>
     <polyline class="wire-run" data-net="net:4" points="444,250 392,250"/>
     <polyline class="wire-run" data-net="net:4" points="528,293 528,311"/>
-    <polyline class="wire-run" data-net="net:40" points="444,201 424,201"/>
-    <polyline class="wire-run" data-net="net:41" points="444,215 424,215"/>
-    <polyline class="wire-run" data-net="net:42" points="444,229 424,229"/>
-    <polyline class="wire-run" data-net="net:34" points="444,257 424,257"/>
-    <polyline class="wire-run" data-net="net:35" points="444,243 424,243"/>
-    <polyline class="wire-run" data-net="net:35" points="528,279 518,279"/>
+    <polyline class="wire-run" data-net="net:38" points="444,201 424,201"/>
+    <polyline class="wire-run" data-net="net:39" points="444,215 424,215"/>
+    <polyline class="wire-run" data-net="net:40" points="444,229 424,229"/>
+    <polyline class="wire-run" data-net="net:32" points="444,257 424,257"/>
+    <polyline class="wire-run" data-net="net:33" points="444,243 424,243"/>
+    <polyline class="wire-run" data-net="net:33" points="528,279 518,279"/>
     </g>
     <g class="layer layer-junctions">
     <circle class="junction" data-net="net:9" cx="80" cy="118" r="0.85"/>
     <circle class="junction" data-net="net:4" cx="172" cy="400" r="0.85"/>
-    <circle class="junction" data-net="net:27" cx="86" cy="218" r="0.85"/>
-    <circle class="junction" data-net="net:27" cx="82" cy="324" r="0.85"/>
-    <circle class="junction" data-net="net:25" cx="474" cy="348" r="0.85"/>
+    <circle class="junction" data-net="net:25" cx="86" cy="218" r="0.85"/>
+    <circle class="junction" data-net="net:25" cx="82" cy="324" r="0.85"/>
+    <circle class="junction" data-net="net:23" cx="474" cy="348" r="0.85"/>
     </g>
     <g class="layer layer-ports">
     <g class="power-port power" data-net="net:0" transform="translate(74 48)">
@@ -456,61 +456,61 @@
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
     </g>
     <text class="power-port-label" data-net="net:4" x="184" y="396.2">GND</text>
-    <g class="power-port power" data-net="net:26" transform="translate(56 164)">
+    <g class="power-port power" data-net="net:24" transform="translate(56 164)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
       <text class="power-port-label" x="0" y="-9.4">+3V3</text>
     </g>
-    <g class="power-port power" data-net="net:26" transform="translate(46 350)">
+    <g class="power-port power" data-net="net:24" transform="translate(46 350)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
       <text class="power-port-label" x="0" y="-9.4">+3V3</text>
     </g>
-    <g class="power-port power" data-net="net:26" transform="translate(248 360)">
+    <g class="power-port power" data-net="net:24" transform="translate(248 360)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
       <text class="power-port-label" x="0" y="-9.4">+3V3</text>
     </g>
-    <g class="power-port ground" data-net="net:27" transform="translate(86 218)">
+    <g class="power-port ground" data-net="net:25" transform="translate(86 218)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
     </g>
-    <text class="power-port-label" data-net="net:27" x="86" y="230.2">GND</text>
-    <g class="power-port ground" data-net="net:27" transform="translate(82 324)">
+    <text class="power-port-label" data-net="net:25" x="86" y="230.2">GND</text>
+    <g class="power-port ground" data-net="net:25" transform="translate(82 324)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
     </g>
-    <text class="power-port-label" data-net="net:27" x="82" y="336.2">GND</text>
-    <g class="power-port ground" data-net="net:27" transform="translate(312 398)">
+    <text class="power-port-label" data-net="net:25" x="82" y="336.2">GND</text>
+    <g class="power-port ground" data-net="net:25" transform="translate(312 398)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
     </g>
-    <text class="power-port-label" data-net="net:27" x="320" y="398.2">GND</text>
-    <g class="power-port ground" data-net="net:27" transform="translate(260 386)">
+    <text class="power-port-label" data-net="net:25" x="320" y="398.2">GND</text>
+    <g class="power-port ground" data-net="net:25" transform="translate(260 386)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
     </g>
-    <text class="power-port-label" data-net="net:27" x="260" y="398.2">GND</text>
-    <g class="power-port power" data-net="net:44" transform="translate(278 190)">
+    <text class="power-port-label" data-net="net:25" x="260" y="398.2">GND</text>
+    <g class="power-port power" data-net="net:42" transform="translate(278 190)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
       <text class="power-port-label" x="0" y="-9.4">+3V3</text>
     </g>
-    <g class="power-port ground" data-net="net:25" transform="translate(474 348)">
+    <g class="power-port ground" data-net="net:23" transform="translate(474 348)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
     </g>
-    <text class="power-port-label" data-net="net:25" x="482" y="348.2">GND</text>
+    <text class="power-port-label" data-net="net:23" x="482" y="348.2">GND</text>
     <g class="power-port power" data-net="net:2" transform="translate(444 170)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
@@ -585,111 +585,111 @@
       <path class="sheet-port-shape" d="M 0 -2.4 L 7 -2.4 L 10.2 0 L 7 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="3.5" y="0.9" transform="rotate(-180 3.5 0.9)">FB</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:19" transform="translate(228 254) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:17" transform="translate(228 254) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 12.432 -2.4 L 15.632 0 L 12.432 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="6.216" y="0.9">USB D-</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:18" transform="translate(228 270) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:16" transform="translate(228 270) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 12.432 -2.4 L 15.632 0 L 12.432 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="6.216" y="0.9">USB D+</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:40" transform="translate(228 286) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:38" transform="translate(228 286) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 11.06 -2.4 L 14.26 0 L 11.06 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="5.53" y="0.9">SWDIO</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:41" transform="translate(228 302) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:39" transform="translate(228 302) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 11.06 -2.4 L 14.26 0 L 11.06 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="5.53" y="0.9">SWCLK</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:42" transform="translate(228 310) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:40" transform="translate(228 310) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 8.316 -2.4 L 11.516 0 L 8.316 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="4.158" y="0.9">SWO</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:35" transform="translate(228 342) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:33" transform="translate(228 342) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 11.06 -2.4 L 14.26 0 L 11.06 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="5.53" y="0.9">BOOT0</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:43" transform="translate(106 246) rotate(180)">
+    <g class="sheet-port bidirectional" data-net="net:41" transform="translate(106 246) rotate(180)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 8.316 -2.4 L 11.516 0 L 8.316 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="4.158" y="0.9" transform="rotate(-180 4.158 0.9)">LED</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:36" transform="translate(116 270) rotate(180)">
+    <g class="sheet-port bidirectional" data-net="net:34" transform="translate(116 270) rotate(180)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 12.432 -2.4 L 15.632 0 L 12.432 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="6.216" y="0.9" transform="rotate(-180 6.216 0.9)">HSE IN</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:37" transform="translate(116 286) rotate(180)">
+    <g class="sheet-port bidirectional" data-net="net:35" transform="translate(116 286) rotate(180)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 13.804 -2.4 L 17.004 0 L 13.804 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="6.902" y="0.9" transform="rotate(-180 6.902 0.9)">HSE OUT</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:38" transform="translate(106 358) rotate(180)">
+    <g class="sheet-port bidirectional" data-net="net:36" transform="translate(106 358) rotate(180)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 11.06 -2.4 L 14.26 0 L 11.06 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="5.53" y="0.9" transform="rotate(-180 5.53 0.9)">VCAP1</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:34" transform="translate(114 318) rotate(180)">
+    <g class="sheet-port bidirectional" data-net="net:32" transform="translate(114 318) rotate(180)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 9.688 -2.4 L 12.888 0 L 9.688 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="4.844" y="0.9" transform="rotate(-180 4.844 0.9)">NRST</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:39" transform="translate(228 358) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:37" transform="translate(228 358) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 11.06 -2.4 L 14.26 0 L 11.06 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="5.53" y="0.9">VCAP2</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:28" transform="translate(56 378) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:26" transform="translate(56 378) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 9.688 -2.4 L 12.888 0 L 9.688 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="4.844" y="0.9">NRST</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:29" transform="translate(312 360) rotate(270)">
+    <g class="sheet-port bidirectional" data-net="net:27" transform="translate(312 360) rotate(270)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 11.06 -2.4 L 14.26 0 L 11.06 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="5.53" y="0.9" transform="rotate(-270 5.53 0.9)">BOOT0</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:32" transform="translate(98 168) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:30" transform="translate(98 168) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 11.06 -2.4 L 14.26 0 L 11.06 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="5.53" y="0.9">VCAP1</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:33" transform="translate(128 168) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:31" transform="translate(128 168) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 11.06 -2.4 L 14.26 0 L 11.06 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="5.53" y="0.9">VCAP2</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:45" transform="translate(344 210) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:43" transform="translate(344 210) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 8.316 -2.4 L 11.516 0 L 8.316 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="4.158" y="0.9">LED</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:23" transform="translate(508 318) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:21" transform="translate(508 318) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 12.432 -2.4 L 15.632 0 L 12.432 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="6.216" y="0.9">USB D+</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:24" transform="translate(508 306) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:22" transform="translate(508 306) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 12.432 -2.4 L 15.632 0 L 12.432 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="6.216" y="0.9">USB D-</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:40" transform="translate(424 201) rotate(180)">
+    <g class="sheet-port bidirectional" data-net="net:38" transform="translate(424 201) rotate(180)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 11.06 -2.4 L 14.26 0 L 11.06 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="5.53" y="0.9" transform="rotate(-180 5.53 0.9)">SWDIO</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:41" transform="translate(424 215) rotate(180)">
+    <g class="sheet-port bidirectional" data-net="net:39" transform="translate(424 215) rotate(180)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 11.06 -2.4 L 14.26 0 L 11.06 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="5.53" y="0.9" transform="rotate(-180 5.53 0.9)">SWCLK</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:42" transform="translate(424 229) rotate(180)">
+    <g class="sheet-port bidirectional" data-net="net:40" transform="translate(424 229) rotate(180)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 8.316 -2.4 L 11.516 0 L 8.316 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="4.158" y="0.9" transform="rotate(-180 4.158 0.9)">SWO</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:34" transform="translate(424 257) rotate(180)">
+    <g class="sheet-port bidirectional" data-net="net:32" transform="translate(424 257) rotate(180)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 9.688 -2.4 L 12.888 0 L 9.688 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="4.844" y="0.9" transform="rotate(-180 4.844 0.9)">NRST</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:35" transform="translate(424 243) rotate(180)">
+    <g class="sheet-port bidirectional" data-net="net:33" transform="translate(424 243) rotate(180)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 11.06 -2.4 L 14.26 0 L 11.06 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="5.53" y="0.9" transform="rotate(-180 5.53 0.9)">BOOT0</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:35" transform="translate(518 279) rotate(180)">
+    <g class="sheet-port bidirectional" data-net="net:33" transform="translate(518 279) rotate(180)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 11.06 -2.4 L 14.26 0 L 11.06 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="5.53" y="0.9" transform="rotate(-180 5.53 0.9)">BOOT0</text>
     </g>
     </g>
     <g class="layer layer-labels">
     <text class="net-label" data-net="net:11" x="178" y="38" text-anchor="start" dominant-baseline="alphabetic" transform="rotate(0 178 38)">+12V FUSED</text>
-    <text class="net-label" data-net="net:30" x="106" y="260" text-anchor="start" dominant-baseline="alphabetic" transform="rotate(0 106 260)">HSE IN</text>
-    <text class="net-label" data-net="net:31" x="106" y="296" text-anchor="start" dominant-baseline="alphabetic" transform="rotate(0 106 296)">HSE OUT</text>
+    <text class="net-label" data-net="net:28" x="106" y="260" text-anchor="start" dominant-baseline="alphabetic" transform="rotate(0 106 260)">HSE IN</text>
+    <text class="net-label" data-net="net:29" x="106" y="296" text-anchor="start" dominant-baseline="alphabetic" transform="rotate(0 106 296)">HSE OUT</text>
     </g>
     <g class="layer layer-symbol-text">
     <g class="symbol-text-instance" data-component="component:0" data-symbol-definition="symbol_def:22" transform="translate(30 60) rotate(0)">

@@ -193,6 +193,10 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
 
     net_names = {net["name"] for net in logical["nets"]}
     assert {"+12V", "+5V", "+3V3", "VDDA", "GND", "USB_DP", "USB_DM"} <= net_names
+    assert {"MCU_USB_DP", "MCU_USB_DM"}.isdisjoint(net_names)
+    board_model = stm32_board.build_board()
+    assert board_model.nets["MCU_USB_DP"] is board_model.nets["USB_DP"]
+    assert board_model.nets["MCU_USB_DM"] is board_model.nets["USB_DM"]
     net_ids = {net["id"] for net in logical["nets"]}
     component_ids = {component["id"] for component in logical["components"]}
 
@@ -588,9 +592,9 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     }
     assert pcb["board"]["rules"] == {
         "board_outline_clearance_mm": 0.25,
-        "copper_clearance_mm": 0.127,
-        "minimum_track_width_mm": 0.2,
-        "minimum_via_annular_diameter_mm": 0.7,
+        "copper_clearance_mm": 0.1,
+        "minimum_track_width_mm": 0.15,
+        "minimum_via_annular_diameter_mm": 0.5,
         "minimum_via_drill_diameter_mm": 0.3,
         "package_assembly_clearance_mm": 0.25,
     }
@@ -609,7 +613,8 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert len(pcb["board"]["texts"]) >= 10
     assert all(_is_octilinear_track(track) for track in pcb["board"]["tracks"])
     assert {diagnostic["code"] for diagnostic in pcb["viewer"]["diagnostics"]} == {
-        "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN"
+        "PCB_RULE_AT_CAPABILITY_MINIMUM",
+        "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
     }
     assert {diagnostic["severity"] for diagnostic in pcb["viewer"]["diagnostics"]} == {
         "warning"
@@ -636,11 +641,13 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         "PWR/OUT_5V",
         "PWR/OUT_3V3",
         "PWR/VDDA",
+        "USB_DP",
+        "USB_DM",
         "USB/VBUS",
         "USB/USB_DP",
         "USB/USB_DM",
-        "MCU_USB_DP",
-        "MCU_USB_DM",
+        "USB/MCU_USB_DP",
+        "USB/MCU_USB_DM",
         "NRST",
         "BOOT0",
         "SWDIO",
@@ -743,6 +750,20 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert '(1 "In1.Cu" signal)' in first_kicad_text
     assert '(2 "In2.Cu" signal)' in first_kicad_text
     assert '(property "Reference" "C9"' in first_kicad_text
+    assert all(
+        f'"{net_name}"' not in first_kicad_text
+        for net_name in {
+            "PWR/GND",
+            "PWR/OUT_3V3",
+            "USB/USB_DP",
+            "USB/USB_DM",
+            "USB/MCU_USB_DP",
+            "USB/MCU_USB_DM",
+            "USB/VBUS",
+            "LED_STATUS/SIGNAL",
+            "LED_STATUS/SUPPLY",
+        }
+    )
     assert json.loads(first_cpl_json_text)["format"] == "volt.cpl"
     assert first_cpl_csv_text.startswith("Designator,Mid X,Mid Y,Layer,Rotation\n")
     assert [path.name for path in artifacts.schematic_svg_pages] == ["stm32_usb_buck_STM32_USB_Buck.svg"]
@@ -764,6 +785,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         for diagnostic in validation["diagnostics"]
     } == {"schematic", "board"}
     assert {item["code"] for item in validation["expected"]} == {
+        "PCB_RULE_AT_CAPABILITY_MINIMUM",
         "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
         "SCHEMATIC_DENSE_PORT_TAGS",
         "SCHEMATIC_LABEL_CROWDS_SYMBOL",
@@ -815,9 +837,17 @@ def test_stm32_usb_buck_example_writes_jlcpcb_manufacturing_package():
         manifest = json.loads(
             output.joinpath("manufacturing", "manifest.json").read_text(encoding="utf-8")
         )
+        profile = json.loads(
+            output.joinpath("manufacturing", "profile.json").read_text(encoding="utf-8")
+        )
         assert manifest["format"] == "volt.manufacturing_package"
         assert manifest["schema_version"] == 1
         assert manifest["profile"]["config"] == main.jlcpcb_manufacturing_profile_metadata()
+        assert profile["config"] == main.jlcpcb_manufacturing_profile_metadata()
+        assert manifest["profile"]["config"]["resolved_path"] == (
+            "profiles/jlcpcb_4layer.voltcap.json"
+        )
+        assert not Path(manifest["profile"]["config"]["resolved_path"]).is_absolute()
         assert manifest["profile"]["board"]["name"] == (
             "JLCPCB 4-layer FR-4 capability snapshot"
         )

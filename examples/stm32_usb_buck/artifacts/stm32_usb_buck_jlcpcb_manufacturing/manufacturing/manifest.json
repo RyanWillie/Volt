@@ -85,7 +85,7 @@
     "summary": {
       "errors": 0,
       "infos": 0,
-      "warnings": 56
+      "warnings": 57
     }
   },
   "exporter": {
@@ -10645,7 +10645,7 @@
     },
     "config": {
       "path": "profiles/jlcpcb_4layer.voltcap.json",
-      "resolved_path": "/Users/ryanwilliamson/.codex/worktrees/d8c4/Volt/examples/stm32_usb_buck/profiles/jlcpcb_4layer.voltcap.json"
+      "resolved_path": "profiles/jlcpcb_4layer.voltcap.json"
     }
   },
   "project": {

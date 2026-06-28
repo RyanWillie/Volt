@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/validation/validation.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt::adapters::kicad::detail {
@@ -41,6 +42,12 @@ struct PlacementExport {
     const ComponentPlacement *placement;
     const FootprintDefinition *definition;
     std::vector<PadResolution> pad_resolutions;
+};
+
+struct NetExportMap {
+    std::vector<NetId> canonical_nets;
+
+    [[nodiscard]] NetId canonical(NetId net) const { return canonical_nets.at(net.index()); }
 };
 
 void write_at(std::ostream &out, BoardPoint point, double rotation_degrees = 0.0) {
@@ -76,6 +83,35 @@ void write_at(std::ostream &out, BoardPoint point, double rotation_degrees = 0.0
 }
 
 [[nodiscard]] int kicad_net(NetId net) { return static_cast<int>(net.index() + 1U); }
+
+[[nodiscard]] int kicad_net(const NetExportMap &net_map, NetId net) {
+    return kicad_net(net_map.canonical(net));
+}
+
+[[nodiscard]] NetExportMap build_net_export_map(const Circuit &circuit) {
+    const auto continuity = volt::detail::NetContinuityView{circuit};
+    auto net_map = NetExportMap{};
+    net_map.canonical_nets.reserve(circuit.net_count());
+    for (std::size_t net_index = 0; net_index < circuit.net_count(); ++net_index) {
+        const auto net = NetId{net_index};
+        auto canonical = net;
+        for (std::size_t candidate_index = 0; candidate_index < circuit.net_count();
+             ++candidate_index) {
+            const auto candidate = NetId{candidate_index};
+            if (continuity.same_group(candidate, net)) {
+                canonical = candidate;
+                break;
+            }
+        }
+        net_map.canonical_nets.push_back(canonical);
+    }
+    return net_map;
+}
+
+[[nodiscard]] std::string kicad_net_name(const Circuit &circuit, const NetExportMap &net_map,
+                                         NetId net) {
+    return circuit.net(net_map.canonical(net)).name().value();
+}
 
 [[nodiscard]] std::optional<int> kicad_inner_layer_index(std::string_view name) {
     constexpr auto prefix = std::string_view{"In"};
@@ -377,10 +413,13 @@ void write_setup(std::ostream &out) {
     out << "  )\n";
 }
 
-void write_nets(std::ostream &out, const Circuit &circuit) {
+void write_nets(std::ostream &out, const Circuit &circuit, const NetExportMap &net_map) {
     out << "  (net 0 \"\")\n";
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
         const auto id = NetId{index};
+        if (net_map.canonical(id) != id) {
+            continue;
+        }
         out << "  (net " << kicad_net(id) << ' ' << sexpr_string(circuit.net(id).name().value())
             << ")\n";
     }
@@ -491,7 +530,8 @@ build_placement_exports(const Board &board, const FootprintLibrary &footprints,
 }
 
 void write_pad(std::ostream &out, const FootprintPad &pad, const PadResolution &resolution,
-               const Circuit &circuit, std::string_view uuid, LossReport &loss_report) {
+               const Circuit &circuit, const NetExportMap &net_map, std::string_view uuid,
+               LossReport &loss_report) {
     report_invalid_pad_resolution(resolution, circuit, loss_report);
 
     out << "    (pad " << sexpr_string(pad.label()) << ' ' << pad_kind_name(pad) << ' '
@@ -521,15 +561,16 @@ void write_pad(std::ostream &out, const FootprintPad &pad, const PadResolution &
     }
     if (resolution.status() == PadResolutionStatus::Connected && resolution.net().has_value()) {
         const auto net = resolution.net().value();
-        out << "      (net " << kicad_net(net) << ' '
-            << sexpr_string(circuit.net(net).name().value()) << ")\n";
+        out << "      (net " << kicad_net(net_map, net) << ' '
+            << sexpr_string(kicad_net_name(circuit, net_map, net)) << ")\n";
     }
     out << "      (uuid " << sexpr_string(uuid) << ")\n";
     out << "    )\n";
 }
 
 void write_component_footprints(std::ostream &out, const Board &board,
-                                const FootprintLibrary &footprints, LossReport &loss_report) {
+                                const FootprintLibrary &footprints, const NetExportMap &net_map,
+                                LossReport &loss_report) {
     for (const auto &placement_export : build_placement_exports(board, footprints, loss_report)) {
         const auto &placement = *placement_export.placement;
         const auto &definition = *placement_export.definition;
@@ -557,7 +598,7 @@ void write_component_footprints(std::ostream &out, const Board &board,
             const auto pad_id = FootprintPadId{pad_index};
             write_pad(
                 out, definition.pad(pad_id), placement_export.pad_resolutions.at(pad_index),
-                board.circuit(),
+                board.circuit(), net_map,
                 pcb_uuid("component-placement", placement_export.id.index(), "pad", pad_id.index()),
                 loss_report);
         }
@@ -566,7 +607,7 @@ void write_component_footprints(std::ostream &out, const Board &board,
 }
 
 void write_tracks(std::ostream &out, const Board &board, const LayerMap &layer_map,
-                  LossReport &loss_report) {
+                  const NetExportMap &net_map, LossReport &loss_report) {
     for (std::size_t track_index = 0; track_index < board.track_count(); ++track_index) {
         const auto &track = board.track(BoardTrackId{track_index});
         const auto layer = layer_map.find(track.layer());
@@ -593,7 +634,7 @@ void write_tracks(std::ostream &out, const Board &board, const LayerMap &layer_m
             write_number(out, track.width_mm());
             out << ")\n";
             out << "    (layer " << sexpr_string(layer->name) << ")\n";
-            out << "    (net " << kicad_net(track.net()) << ")\n";
+            out << "    (net " << kicad_net(net_map, track.net()) << ")\n";
             out << "    (uuid "
                 << sexpr_string(pcb_uuid("board-track", track_index, "segment", point_index - 1U))
                 << ")\n";
@@ -603,7 +644,7 @@ void write_tracks(std::ostream &out, const Board &board, const LayerMap &layer_m
 }
 
 void write_vias(std::ostream &out, const Board &board, const LayerMap &layer_map,
-                LossReport &loss_report) {
+                const NetExportMap &net_map, LossReport &loss_report) {
     for (std::size_t index = 0; index < board.via_count(); ++index) {
         const auto &via = board.via(BoardViaId{index});
         const auto start_layer = layer_map.find(via.start_layer());
@@ -628,17 +669,17 @@ void write_vias(std::ostream &out, const Board &board, const LayerMap &layer_map
         out << ")\n";
         out << "    (layers " << sexpr_string(start_layer->name) << ' '
             << sexpr_string(end_layer->name) << ")\n";
-        out << "    (net " << kicad_net(via.net()) << ")\n";
+        out << "    (net " << kicad_net(net_map, via.net()) << ")\n";
         out << "    (uuid " << sexpr_string(pcb_uuid("board-via", index)) << ")\n";
         out << "  )\n";
     }
 }
 
 void write_zone(std::ostream &out, const Board &board, BoardZoneId id, const BoardZone &zone,
-                const PcbLayer &layer) {
-    const auto net_index = zone.net().has_value() ? kicad_net(zone.net().value()) : 0;
+                const PcbLayer &layer, const NetExportMap &net_map) {
+    const auto net_index = zone.net().has_value() ? kicad_net(net_map, zone.net().value()) : 0;
     const auto net_name = zone.net().has_value()
-                              ? board.circuit().net(zone.net().value()).name().value()
+                              ? kicad_net_name(board.circuit(), net_map, zone.net().value())
                               : std::string{};
 
     out << "  (zone\n";
@@ -667,7 +708,7 @@ void write_zone(std::ostream &out, const Board &board, BoardZoneId id, const Boa
 }
 
 void write_zones(std::ostream &out, const Board &board, const LayerMap &layer_map,
-                 LossReport &loss_report) {
+                 const NetExportMap &net_map, LossReport &loss_report) {
     for (std::size_t zone_index = 0; zone_index < board.zone_count(); ++zone_index) {
         const auto zone_id = BoardZoneId{zone_index};
         const auto &zone = board.zone(zone_id);
@@ -680,7 +721,7 @@ void write_zones(std::ostream &out, const Board &board, const LayerMap &layer_ma
                     "copper layers");
                 continue;
             }
-            write_zone(out, board, zone_id, zone, layer.value());
+            write_zone(out, board, zone_id, zone, layer.value(), net_map);
         }
     }
 }
@@ -781,6 +822,7 @@ namespace volt::adapters::kicad {
     auto result = BoardExportResult{};
     detail::report_unsupported_board_constructs(board, result.loss_report);
     const auto layer_map = detail::build_layer_map(board, result.loss_report);
+    const auto net_map = detail::build_net_export_map(board.circuit());
 
     auto out = std::ostringstream{};
     out << "(kicad_pcb\n";
@@ -795,12 +837,12 @@ namespace volt::adapters::kicad {
     out << "  (paper \"A4\")\n";
     detail::write_layers(out, layer_map);
     detail::write_setup(out);
-    detail::write_nets(out, board.circuit());
+    detail::write_nets(out, board.circuit(), net_map);
     detail::write_board_features(out, board, result.loss_report);
-    detail::write_component_footprints(out, board, footprints, result.loss_report);
-    detail::write_tracks(out, board, layer_map, result.loss_report);
-    detail::write_vias(out, board, layer_map, result.loss_report);
-    detail::write_zones(out, board, layer_map, result.loss_report);
+    detail::write_component_footprints(out, board, footprints, net_map, result.loss_report);
+    detail::write_tracks(out, board, layer_map, net_map, result.loss_report);
+    detail::write_vias(out, board, layer_map, net_map, result.loss_report);
+    detail::write_zones(out, board, layer_map, net_map, result.loss_report);
     detail::write_texts(out, board, layer_map, result.loss_report);
     detail::write_outline(out, board);
     out << ")\n";

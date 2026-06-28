@@ -31,6 +31,7 @@ def build_project() -> volt.Project:
     project.expect_diagnostic(code="SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL", severity="warning")
     project.expect_diagnostic(code="SCHEMATIC_LABEL_CROWDS_SYMBOL", severity="warning")
     project.expect_diagnostic(code="SCHEMATIC_DENSE_PORT_TAGS", severity="warning")
+    project.expect_diagnostic(code="PCB_RULE_AT_CAPABILITY_MINIMUM", severity="warning")
     project.expect_diagnostic(code="PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN", severity="warning")
 
     @project.design
@@ -112,7 +113,7 @@ def _raise_if_not_ok(result: volt.ProjectResult) -> None:
 def jlcpcb_manufacturing_profile_metadata() -> dict[str, str]:
     return {
         "path": JLCPCB_PROFILE_PROJECT_PATH,
-        "resolved_path": str(JLCPCB_PROFILE_PATH),
+        "resolved_path": JLCPCB_PROFILE_PROJECT_PATH,
     }
 
 

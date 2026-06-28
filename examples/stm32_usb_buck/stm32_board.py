@@ -122,8 +122,8 @@ def build_board() -> Stm32UsbBuckBoard:
 
     usb_dp = design.net("USB_DP")
     usb_dm = design.net("USB_DM")
-    mcu_usb_dp = design.net("MCU_USB_DP")
-    mcu_usb_dm = design.net("MCU_USB_DM")
+    mcu_usb_dp = usb_dp
+    mcu_usb_dm = usb_dm
     nets.update(
         {
             "USB_DP": usb_dp,

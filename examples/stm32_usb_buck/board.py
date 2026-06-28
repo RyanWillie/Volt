@@ -14,6 +14,10 @@ JLCPCB_PROFILE_PROJECT_PATH = "profiles/jlcpcb_4layer.voltcap.json"
 JLCPCB_PROFILE_PATH = Path(__file__).resolve().parent / JLCPCB_PROFILE_PROJECT_PATH
 BOARD_SIZE = (90.0, 58.0)
 BOARD_CORNER_RADIUS = 4.0
+POWER_TRACE_MM = 0.20
+SIGNAL_TRACE_MM = 0.15
+VIA_DRILL_MM = 0.30
+VIA_DIAMETER_MM = 0.50
 
 
 def _rounded_rect_vertices(
@@ -55,10 +59,10 @@ def build_pcb(context: volt.BuildContext) -> volt.Board:
     silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
     board.set_layer_stack((front, inner1, inner2, back), thickness=1.6)
     board.set_design_rules(
-        copper_clearance=0.127,
-        min_track_width=0.20,
+        copper_clearance=0.10,
+        min_track_width=SIGNAL_TRACE_MM,
         min_via_drill=0.30,
-        min_via_annular=0.70,
+        min_via_annular=0.50,
         board_outline_clearance=0.25,
     )
     board.set_polygon_outline(_rounded_rect_vertices())
@@ -113,9 +117,10 @@ def build_pcb(context: volt.BuildContext) -> volt.Board:
         _add_silkscreen(layout, silk)
         _route_power(model, nets, placed, layout, front, inner1, inner2, back)
         _route_usb(nets, placed, layout, front, back)
-        _route_mcu_support(nets, placed, layout, front, inner2, back)
+        _route_mcu_support(nets, placed, layout, front, inner1, back)
         _route_connectors(nets, placed, layout, front, inner1)
         _route_status_led(nets, placed, layout, front)
+        _route_module_boundaries(nets, placed, layout, front, inner1, inner2, back)
         layout.zone(
             layers=(back,),
             net=nets["GND"],
@@ -168,7 +173,7 @@ def _via_drop(
         _manual_trace(layout, net, (anchor, drop), layer=front, width=width)
     else:
         _connect(layout, net, anchor, drop, layer=front, width=width)
-    layout.via(net, at=drop, start_layer=front, end_layer=back)
+    _via(layout, net, at=drop, start_layer=front, end_layer=back)
 
 
 def _connect(layout, net: volt.Net, start, end, *, layer: int, width: float) -> None:
@@ -178,6 +183,18 @@ def _connect(layout, net: volt.Net, start, end, *, layer: int, width: float) -> 
         start_layer=layer,
         end=end.point,
         end_layer=layer,
+        width=width,
+    )
+
+
+def _via(layout, net: volt.Net, *, at, start_layer: int, end_layer: int) -> None:
+    layout._board.add_via(
+        net,
+        at=_board_point(at),
+        start_layer=start_layer,
+        end_layer=end_layer,
+        drill=VIA_DRILL_MM,
+        annular=VIA_DIAMETER_MM,
     )
 
 
@@ -222,9 +239,9 @@ def _route_via_channel(
     width: float,
 ) -> None:
     _manual_trace(layout, net, (start, start_via), layer=front, width=width)
-    layout._board.add_via(net, at=_board_point(start_via), start_layer=front, end_layer=back)
+    _via(layout, net, at=start_via, start_layer=front, end_layer=back)
     _manual_trace(layout, net, (start_via, *channel, end_via), layer=back, width=width)
-    layout._board.add_via(net, at=_board_point(end_via), start_layer=back, end_layer=front)
+    _via(layout, net, at=end_via, start_layer=back, end_layer=front)
     _manual_trace(layout, net, (end_via, end), layer=front, width=width)
 
 
@@ -264,27 +281,27 @@ def _route_power(
     swd = placed["J2"]
     gpio = placed["J3"]
 
-    _connect(layout, nets["+12V"], vin["OUT"], vin["OUT"].right(3.5), layer=front, width=0.45)
+    _connect(layout, nets["+12V"], vin["OUT"], vin["OUT"].right(3.5), layer=front, width=0.20)
     _chain(
         layout,
         nets["PWR/IN_12V"],
         (pwr_j[1], f1.start),
         layer=front,
-        width=0.50,
+        width=0.20,
     )
     _chain(
         layout,
         nets["PWR/FUSED_12V"],
         (f1.end, fb1.start),
         layer=front,
-        width=0.50,
+        width=0.20,
     )
     _chain(
         layout,
         nets["PWR/BUCK_IN"],
         (fb1.end, cin.start, u5["IN"], ren_top.start),
         layer=front,
-        width=0.50,
+        width=0.20,
     )
     _chain(
         layout,
@@ -310,7 +327,7 @@ def _route_power(
         nets["PWR/BUCK_SW"],
         (u5["SW"], l1.start, dsw["K"], cboot.start),
         layer=front,
-        width=0.50,
+        width=0.20,
     )
     _chain(
         layout,
@@ -336,7 +353,7 @@ def _route_power(
         nets["PWR/OUT_5V"],
         (l1.end, c5v.start, rfb_top.start, u3v3["VI"]),
         layer=front,
-        width=0.45,
+        width=0.20,
     )
     _chain(
         layout,
@@ -362,14 +379,19 @@ def _route_power(
         nets["PWR/OUT_3V3"],
         (u3v3.pad("4"), u3v3.pad("2"), c3v3.start, fbvdda.start),
         layer=front,
-        width=0.40,
+        width=0.20,
     )
-    _chain(
+    _route_via_channel(
         layout,
         nets["PWR/VDDA"],
-        (fbvdda.end, cvdda.start),
-        layer=front,
-        width=0.25,
+        fbvdda.end,
+        fbvdda.end.right(1.0),
+        ((42.25, 27.0), (37.5, 27.0)),
+        cvdda.start.up(1.25),
+        cvdda.start,
+        front=front,
+        back=control_layer,
+        width=0.20,
     )
 
     pwr_gnd_anchors = (
@@ -408,10 +430,10 @@ def _route_power(
             drop,
             front=front,
             back=back,
-            width=0.30,
+            width=0.20,
             direct=True,
         )
-    _orthogonal_chain(layout, nets["PWR/GND"], pwr_gnd_drops, layer=back, width=0.40)
+    _orthogonal_chain(layout, nets["PWR/GND"], pwr_gnd_drops, layer=back, width=0.20)
 
     vdd_anchors = (
         mcu["VBAT"],
@@ -421,10 +443,10 @@ def _route_power(
     )
     vdd_drops = tuple(_vdd_drop(layout, anchor) for anchor in vdd_anchors)
     for anchor, drop in zip(vdd_anchors, vdd_drops):
-        _via_drop(layout, nets["+3V3"], anchor, drop, front=front, back=back, width=0.25)
-    _chain(layout, nets["+3V3"], vdd_drops, layer=back, width=0.35)
+        _via_drop(layout, nets["+3V3"], anchor, drop, front=front, back=back, width=0.20)
+    _chain(layout, nets["+3V3"], vdd_drops, layer=back, width=0.20)
 
-    _connect(layout, nets["VDDA"], mcu["VDDA"], mcu["VDDA"].left(3.0), layer=front, width=0.25)
+    _connect(layout, nets["VDDA"], mcu["VDDA"], mcu["VDDA"].left(3.0), layer=front, width=0.20)
 
     gnd_placed = (
         placed["VIN_SRC"]["GND"],
@@ -441,8 +463,8 @@ def _route_power(
     )
     gnd_drops = tuple(_gnd_drop(layout, anchor) for anchor in gnd_placed)
     for anchor, drop in zip(gnd_placed, gnd_drops):
-        _via_drop(layout, nets["GND"], anchor, drop, front=front, back=back, width=0.30)
-    _chain(layout, nets["GND"], gnd_drops, layer=back, width=0.45)
+        _via_drop(layout, nets["GND"], anchor, drop, front=front, back=back, width=0.20)
+    _chain(layout, nets["GND"], gnd_drops, layer=back, width=0.20)
 
 
 def _vdd_drop(layout, anchor):
@@ -480,8 +502,15 @@ def _route_usb(
 ) -> None:
     usb_j = placed["USB/J1"]
     esd = placed["USB/U1"]
-    _connect(layout, nets["USB/VBUS"], usb_j["VBUS"], esd["VBUS"], layer=front, width=0.25)
-    _connect(layout, nets["USB/USB_DP"], usb_j["D+"], esd["I/O1"], layer=front, width=0.20)
+    _connect(layout, nets["USB/VBUS"], usb_j["VBUS"], esd["VBUS"], layer=front, width=0.20)
+    _connect(
+        layout,
+        nets["USB/USB_DP"],
+        usb_j["D+"],
+        esd["I/O1"],
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
     d_minus_lane = usb_j["D-"].down(1.1)
     d_minus_escape = esd["I/O2"].left(1.35)
     _manual_trace(
@@ -495,13 +524,27 @@ def _route_usb(
             esd["I/O2"],
         ),
         layer=front,
-        width=0.20,
+        width=SIGNAL_TRACE_MM,
     )
-    _connect(layout, nets["USB/MCU_USB_DP"], esd["I/O4"], esd["I/O4"].left(3.0), layer=front, width=0.20)
-    _connect(layout, nets["USB/MCU_USB_DM"], esd["I/O3"], esd["I/O3"].left(3.0), layer=front, width=0.20)
-    layout._board.add_via(nets["USB/GND"], at=usb_j["GND"].point, start_layer=front, end_layer=back)
-    layout._board.add_via(nets["USB/GND"], at=usb_j["Shield"].point, start_layer=front, end_layer=back)
-    layout._board.add_via(nets["USB/GND"], at=esd["GND"].point, start_layer=front, end_layer=back)
+    _connect(
+        layout,
+        nets["USB/MCU_USB_DP"],
+        esd["I/O4"],
+        esd["I/O4"].left(3.0),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
+    _connect(
+        layout,
+        nets["USB/MCU_USB_DM"],
+        esd["I/O3"],
+        esd["I/O3"].left(3.0),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
+    _via(layout, nets["USB/GND"], at=usb_j["GND"], start_layer=front, end_layer=back)
+    _via(layout, nets["USB/GND"], at=usb_j["Shield"], start_layer=front, end_layer=back)
+    _via(layout, nets["USB/GND"], at=esd["GND"], start_layer=front, end_layer=back)
     gnd_bus_x = esd["GND"].x - 2.0
     gnd_bus_y = usb_j["GND"].y + 1.2
     _manual_trace(
@@ -514,7 +557,7 @@ def _route_usb(
             esd["GND"],
         ),
         layer=back,
-        width=0.30,
+        width=0.20,
     )
     _manual_trace(
         layout,
@@ -526,7 +569,7 @@ def _route_usb(
             (gnd_bus_x, esd["GND"].y),
         ),
         layer=back,
-        width=0.30,
+        width=0.20,
     )
 
 
@@ -548,15 +591,60 @@ def _route_mcu_support(
     chsein = placed["SUPPORT/CHSEIN"]
     chseout = placed["SUPPORT/CHSEOUT"]
 
-    _chain(layout, nets["SUPPORT/VDD"], (cvdd.start, rreset.start, swboot["A"]), layer=front, width=0.25)
-    _chain(layout, nets["SUPPORT/BOOT0"], (rboot.start, swboot["C"]), layer=front, width=0.20)
-    _chain(layout, nets["SUPPORT/HSE_IN"], (crystal[1], chsein.start), layer=front, width=0.20)
-    _chain(layout, nets["SUPPORT/HSE_OUT"], (crystal[3], chseout.start), layer=front, width=0.20)
-    _connect(layout, nets["SUPPORT/NRST"], rreset.end, rreset.end.right(3.0), layer=front, width=0.20)
-    _connect(layout, nets["SUPPORT/VCAP_1"], cvcap1.start, cvcap1.start.up(2.5), layer=front, width=0.25)
-    _connect(layout, nets["SUPPORT/VCAP_2"], cvcap2.start, cvcap2.start.up(2.5), layer=front, width=0.25)
+    _chain(
+        layout,
+        nets["SUPPORT/VDD"],
+        (cvdd.start, rreset.start, swboot["A"]),
+        layer=front,
+        width=0.20,
+    )
+    _chain(
+        layout,
+        nets["SUPPORT/BOOT0"],
+        (rboot.start, swboot["C"]),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
+    _chain(
+        layout,
+        nets["SUPPORT/HSE_IN"],
+        (crystal[1], chsein.start),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
+    _chain(
+        layout,
+        nets["SUPPORT/HSE_OUT"],
+        (crystal[3], chseout.start),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
+    _connect(
+        layout,
+        nets["SUPPORT/NRST"],
+        rreset.end,
+        rreset.end.right(3.0),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
+    _connect(
+        layout,
+        nets["SUPPORT/VCAP_1"],
+        cvcap1.start,
+        cvcap1.start.up(2.5),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
+    _connect(
+        layout,
+        nets["SUPPORT/VCAP_2"],
+        cvcap2.start,
+        cvcap2.start.up(2.5),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
 
-    _connect(layout, nets["SUPPORT/GND"], cvdd.end, cvdd.end.left(2.5), layer=front, width=0.25)
+    _connect(layout, nets["SUPPORT/GND"], cvdd.end, cvdd.end.left(2.5), layer=front, width=0.20)
     _route_support_ground(
         layout,
         nets["SUPPORT/GND"],
@@ -587,7 +675,7 @@ def _route_support_ground(
     through_layer: int,
 ) -> None:
     for pad in pads:
-        layout._board.add_via(net, at=pad.point, start_layer=front, end_layer=through_layer)
+        _via(layout, net, at=pad, start_layer=front, end_layer=through_layer)
 
     cvdd, y1_gnd_a, y1_gnd_b, chsein, chseout, cvcap1, cvcap2, rboot, swboot_gnd = pads
     _manual_trace(
@@ -599,22 +687,30 @@ def _route_support_ground(
             (31.0, cvcap1.y),
             cvcap1,
             cvcap2,
-            (60.0, cvcap2.y),
-            (60.0, rboot.y),
-            rboot,
-            (swboot_gnd.x, rboot.y),
+            (swboot_gnd.x, cvcap2.y),
             swboot_gnd,
         ),
+        layer=through_layer,
+        width=0.20,
+    )
+    _manual_trace(
+        layout,
+        net,
+        (
+            (swboot_gnd.x, 30.5),
+            (rboot.x, 30.5),
+            rboot,
+        ),
         layer=support_layer,
-        width=0.30,
+        width=0.20,
     )
     for pad in (y1_gnd_a, y1_gnd_b, chsein, chseout):
         _manual_trace(
             layout,
             net,
             (pad, (31.0, pad.y)),
-            layer=support_layer,
-            width=0.25,
+            layer=through_layer,
+            width=0.20,
         )
 
 
@@ -629,8 +725,22 @@ def _route_connectors(
     swd = placed["J2"]
     gpio = placed["J3"]
 
-    _connect(layout, nets["MCU_USB_DP"], mcu["PA12"], mcu["PA12"].right(7.0), layer=front, width=0.20)
-    _connect(layout, nets["MCU_USB_DM"], mcu["PA11"], mcu["PA11"].right(7.0), layer=front, width=0.20)
+    _connect(
+        layout,
+        nets["USB_DP"],
+        mcu["PA12"],
+        mcu["PA12"].right(7.0),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
+    _connect(
+        layout,
+        nets["USB_DM"],
+        mcu["PA11"],
+        mcu["PA11"].right(7.0),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
 
     _route_via_channel(
         layout,
@@ -642,7 +752,7 @@ def _route_connectors(
         swd["SWDIO"],
         front=front,
         back=signal_layer,
-        width=0.20,
+        width=SIGNAL_TRACE_MM,
     )
     _route_via_channel(
         layout,
@@ -654,7 +764,7 @@ def _route_connectors(
         swd["SWCLK"],
         front=front,
         back=signal_layer,
-        width=0.20,
+        width=SIGNAL_TRACE_MM,
     )
     _route_via_channel(
         layout,
@@ -666,7 +776,7 @@ def _route_connectors(
         swd["SWO"],
         front=front,
         back=signal_layer,
-        width=0.20,
+        width=SIGNAL_TRACE_MM,
     )
     _route_via_channel(
         layout,
@@ -678,7 +788,7 @@ def _route_connectors(
         swd["TDI"],
         front=front,
         back=signal_layer,
-        width=0.20,
+        width=SIGNAL_TRACE_MM,
     )
     _route_via_channel(
         layout,
@@ -690,9 +800,17 @@ def _route_connectors(
         swd["nRESET"],
         front=front,
         back=signal_layer,
-        width=0.20,
+        width=SIGNAL_TRACE_MM,
     )
-    _connect(layout, nets["BOOT0"], mcu["BOOT0"], gpio[2], layer=front, width=0.20)
+    gpio_boot_via = (88.3, gpio[2].y)
+    _manual_trace(
+        layout,
+        nets["BOOT0"],
+        (gpio[2], gpio_boot_via),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
+    _via(layout, nets["BOOT0"], at=gpio_boot_via, start_layer=front, end_layer=signal_layer)
 
 
 def _route_status_led(
@@ -709,14 +827,280 @@ def _route_status_led(
         nets["LED_STATUS/SUPPLY"],
         (resistor.start, resistor.start.left(3.0)),
         layer=front,
-        width=0.25,
+        width=0.20,
     )
-    _manual_trace(layout, nets["LED_STATUS/LED_A"], (resistor.end, led["A"]), layer=front, width=0.20)
+    _manual_trace(
+        layout,
+        nets["LED_STATUS/LED_A"],
+        (resistor.end, led["A"]),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
     _manual_trace(
         layout,
         nets["LED_STATUS/SIGNAL"],
         (led["K"], led["K"].right(2.5)),
         layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
+    _connect(
+        layout,
+        nets["STATUS_LED"],
+        mcu["PC13"],
+        mcu["PC13"].left(1.0),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
+
+
+def _route_module_boundaries(
+    nets: dict[str, volt.Net],
+    placed: dict[str, object],
+    layout,
+    front: int,
+    escape_layer: int,
+    support_layer: int,
+    back: int,
+) -> None:
+    pwr_j = placed["PWR/J"]
+    u3v3 = placed["PWR/U3V3"]
+    fbvdda = placed["PWR/FBVDDA"]
+    cvdda = placed["PWR/CVDDA"]
+    usb_j = placed["USB/J1"]
+    usb = placed["USB/U1"]
+    support_cvdd = placed["SUPPORT/CVDD"]
+    support_reset = placed["SUPPORT/RRESET"]
+    support_boot = placed["SUPPORT/SWBOOT"]
+    crystal = placed["SUPPORT/Y1"]
+    cvcap1 = placed["SUPPORT/CVCAP1"]
+    cvcap2 = placed["SUPPORT/CVCAP2"]
+    led_resistor = placed["LED_STATUS/R"]
+    led = placed["LED_STATUS/D"]
+    mcu = placed["U1"]
+    vin = placed["VIN_SRC"]
+
+    _manual_trace(
+        layout,
+        nets["PWR/IN_12V"],
+        (vin["OUT"], (9.5, vin["OUT"].y), (9.5, pwr_j[1].y), pwr_j[1]),
+        layer=front,
+        width=POWER_TRACE_MM,
+    )
+    _manual_trace(
+        layout,
+        nets["PWR/GND"],
+        (vin["GND"], (10.0, vin["GND"].y), (10.0, pwr_j[4].y), pwr_j[4]),
+        layer=back,
+        width=POWER_TRACE_MM,
+    )
+
+    pwr_usb_entry = u3v3["VI"].right(3.0)
+    pwr_usb_exit = (76.0, 44.0)
+    _manual_trace(
+        layout,
+        nets["PWR/OUT_5V"],
+        (u3v3["VI"], pwr_usb_entry),
+        layer=front,
+        width=POWER_TRACE_MM,
+    )
+    _via(layout, nets["PWR/OUT_5V"], at=pwr_usb_entry, start_layer=front, end_layer=support_layer)
+    _manual_trace(
+        layout,
+        nets["PWR/OUT_5V"],
+        (pwr_usb_entry, (88.8, pwr_usb_entry.y), (88.8, pwr_usb_exit[1]), pwr_usb_exit),
+        layer=support_layer,
+        width=POWER_TRACE_MM,
+    )
+    _via(layout, nets["PWR/OUT_5V"], at=pwr_usb_exit, start_layer=support_layer, end_layer=front)
+    _manual_trace(
+        layout,
+        nets["PWR/OUT_5V"],
+        (pwr_usb_exit, (88.8, pwr_usb_exit[1]), (88.8, usb_j["VBUS"].y), usb_j["VBUS"]),
+        layer=front,
+        width=POWER_TRACE_MM,
+    )
+    _manual_trace(
+        layout,
+        nets["PWR/OUT_3V3"],
+        ((49.71875, 23.734375), (49.71875, 25.0)),
+        layer=front,
+        width=POWER_TRACE_MM,
+    )
+    _via(layout, nets["PWR/OUT_3V3"], at=(49.71875, 25.0), start_layer=front, end_layer=back)
+    _manual_trace(
+        layout,
+        nets["PWR/OUT_3V3"],
+        ((49.71875, 25.0), (48.5, 25.0)),
+        layer=back,
+        width=POWER_TRACE_MM,
+    )
+    _manual_trace(
+        layout,
+        nets["PWR/VDDA"],
+        (fbvdda.end, (42.95, fbvdda.end.y), mcu["VDDA"]),
+        layer=front,
+        width=POWER_TRACE_MM,
+    )
+    _manual_trace(
+        layout,
+        nets["PWR/GND"],
+        ((35.5, 29.75), (35.5, 27.5)),
+        layer=back,
+        width=POWER_TRACE_MM,
+    )
+
+    _manual_trace(
+        layout,
+        nets["USB/GND"],
+        (usb["GND"], (69.75, usb["GND"].y), (69.75, 34.6875)),
+        layer=back,
+        width=POWER_TRACE_MM,
+    )
+    _route_via_channel(
+        layout,
+        nets["USB/MCU_USB_DP"],
+        usb["I/O4"],
+        usb["I/O4"].left(1.2),
+        ((66.0, usb["I/O4"].y), (66.0, 40.5), (56.6, 40.5)),
+        (56.6, mcu["PA12"].y),
+        mcu["PA12"],
+        front=front,
+        back=support_layer,
+        width=SIGNAL_TRACE_MM,
+    )
+    _route_via_channel(
+        layout,
+        nets["USB/MCU_USB_DM"],
+        usb["I/O3"],
+        usb["I/O3"].left(1.2),
+        ((64.0, usb["I/O3"].y), (64.0, 31.5), (55.8, 31.5)),
+        mcu["PA11"].right(1.0),
+        mcu["PA11"],
+        front=front,
+        back=support_layer,
+        width=SIGNAL_TRACE_MM,
+    )
+
+    _manual_trace(
+        layout,
+        nets["SUPPORT/VDD"],
+        ((49.825, 24.146875), (49.825, 25.2), (48.5, 25.2)),
+        layer=front,
         width=0.20,
     )
-    _connect(layout, nets["STATUS_LED"], mcu["PC13"], mcu["PC13"].left(3.0), layer=front, width=0.20)
+    _manual_trace(
+        layout,
+        nets["SUPPORT/GND"],
+        ((31.0, 22.0), (31.0, 27.5)),
+        layer=back,
+        width=0.20,
+    )
+    _route_via_channel(
+        layout,
+        nets["SUPPORT/NRST"],
+        support_reset.end,
+        (38.4, support_reset.end.y),
+        ((38.4, 30.75), (41.2, 30.75)),
+        mcu["NRST"].left(1.0),
+        mcu["NRST"],
+        front=front,
+        back=support_layer,
+        width=SIGNAL_TRACE_MM,
+    )
+    _manual_trace(
+        layout,
+        nets["SUPPORT/BOOT0"],
+        (support_boot["C"], (66.5, 28.5), (48.75, 28.5), (48.75, mcu["BOOT0"].y), mcu["BOOT0"]),
+        layer=front,
+        width=SIGNAL_TRACE_MM,
+    )
+    _route_via_channel(
+        layout,
+        nets["SUPPORT/HSE_IN"],
+        crystal[1],
+        (34.5, 32.3),
+        ((34.5, 33.85), (41.0, 33.85)),
+        mcu["PH0"].left(1.1),
+        mcu["PH0"],
+        front=front,
+        back=support_layer,
+        width=SIGNAL_TRACE_MM,
+    )
+    _route_via_channel(
+        layout,
+        nets["SUPPORT/HSE_OUT"],
+        crystal[3],
+        (36.3, 36.0),
+        ((42.8, 36.0),),
+        (42.8, mcu["PH1"].y),
+        mcu["PH1"],
+        front=front,
+        back=support_layer,
+        width=SIGNAL_TRACE_MM,
+    )
+    _route_via_channel(
+        layout,
+        nets["SUPPORT/VCAP_1"],
+        cvcap1.start,
+        cvcap1.start.up(2.0),
+        ((44.0, 40.25), (52.25, 32.0)),
+        mcu["VCAP_1"].down(2.0),
+        mcu["VCAP_1"],
+        front=front,
+        back=support_layer,
+        width=SIGNAL_TRACE_MM,
+    )
+    _route_via_channel(
+        layout,
+        nets["SUPPORT/VCAP_2"],
+        cvcap2.start,
+        cvcap2.start.up(2.0),
+        ((56.0, 40.25),),
+        mcu["VCAP_2"].right(1.2),
+        mcu["VCAP_2"],
+        front=front,
+        back=support_layer,
+        width=SIGNAL_TRACE_MM,
+    )
+
+    _manual_trace(
+        layout,
+        nets["LED_STATUS/SUPPLY"],
+        (
+            led_resistor.start,
+            (59.5, led_resistor.start.y),
+            (59.5, 46.0),
+            (65.0625, 46.0),
+            (65.0625, 40.0),
+        ),
+        layer=front,
+        width=0.20,
+    )
+    _via(layout, nets["LED_STATUS/SUPPLY"], at=(65.0625, 40.0), start_layer=front, end_layer=back)
+    _route_via_channel(
+        layout,
+        nets["LED_STATUS/SIGNAL"],
+        led["K"],
+        led["K"].down(2.0),
+        ((70.75, 54.0), (30.0, 54.0), (30.0, 34.25)),
+        mcu["PC13"].left(1.2),
+        mcu["PC13"],
+        front=front,
+        back=support_layer,
+        width=SIGNAL_TRACE_MM,
+    )
+
+    support_rboot = placed["SUPPORT/RBOOT"]
+    _manual_trace(
+        layout,
+        nets["GND"],
+        (
+            support_rboot.end,
+            (support_boot[3].x, support_rboot.end.y),
+            support_boot[3],
+            (75.5, support_boot[3].y),
+            (75.5, 22.5),
+        ),
+        layer=escape_layer,
+        width=POWER_TRACE_MM,
+    )

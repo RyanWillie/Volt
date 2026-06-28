@@ -143,8 +143,8 @@ def _author_mcu_region(
 
         drawing.signal_tags(
             (
-                (nets["MCU_USB_DM"], stm32.PA11, "USB D-"),
-                (nets["MCU_USB_DP"], stm32.PA12, "USB D+"),
+                (nets["USB_DM"], stm32.PA11, "USB D-"),
+                (nets["USB_DP"], stm32.PA12, "USB D+"),
                 (nets["SWDIO"], stm32.PA13, "SWDIO"),
                 (nets["SWCLK"], stm32.PA14, "SWCLK"),
                 (nets["SWO"], stm32.PB3, "SWO"),

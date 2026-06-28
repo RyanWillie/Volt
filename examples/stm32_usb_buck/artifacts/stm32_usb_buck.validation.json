@@ -1493,7 +1493,7 @@
           "kind": "component"
         },
         {
-          "index": 37,
+          "index": 35,
           "kind": "net"
         }
       ],
@@ -2441,6 +2441,31 @@
       "rule": "default-reference-designator-over-package",
       "severity": "warning",
       "source": "pcb_board"
+    },
+    {
+      "category": "drc",
+      "code": "PCB_RULE_AT_CAPABILITY_MINIMUM",
+      "entities": [
+        {
+          "index": 0,
+          "kind": "board"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_RULE_AT_CAPABILITY_MINIMUM",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Board copper clearance is at manufacturing minimum",
+      "overlays": [],
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb_board"
     }
   ],
   "expected": [
@@ -2510,6 +2535,21 @@
       "design": null,
       "expect_diagnostic_kwargs": {
         "code": "SCHEMATIC_DENSE_PORT_TAGS",
+        "severity": "warning"
+      },
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "warning",
+      "source": null,
+      "stage": null
+    },
+    {
+      "board": null,
+      "code": "PCB_RULE_AT_CAPABILITY_MINIMUM",
+      "design": null,
+      "expect_diagnostic_kwargs": {
+        "code": "PCB_RULE_AT_CAPABILITY_MINIMUM",
         "severity": "warning"
       },
       "matched": true,
@@ -3146,12 +3186,36 @@
           ],
           "rule": "default-reference-designator-over-package",
           "severity": "warning"
+        },
+        {
+          "category": "drc",
+          "code": "PCB_RULE_AT_CAPABILITY_MINIMUM",
+          "entities": [
+            {
+              "index": 0,
+              "kind": "board"
+            }
+          ],
+          "expect_diagnostic_kwargs": {
+            "board": "STM32 USB Buck PCB",
+            "code": "PCB_RULE_AT_CAPABILITY_MINIMUM",
+            "design": "stm32_usb_buck",
+            "report": "pcb.board",
+            "severity": "warning",
+            "source": "pcb:STM32 USB Buck PCB",
+            "stage": "board"
+          },
+          "measurement": null,
+          "message": "Board copper clearance is at manufacturing minimum",
+          "overlays": [],
+          "rule": null,
+          "severity": "warning"
         }
       ],
       "summary": {
         "errors": 0,
         "infos": 0,
-        "warnings": 6
+        "warnings": 7
       }
     },
     "pcb_readiness": {
@@ -3278,7 +3342,7 @@
               "kind": "component"
             },
             {
-              "index": 37,
+              "index": 35,
               "kind": "net"
             }
           ],
@@ -4971,7 +5035,7 @@
   "summary": {
     "errors": 0,
     "infos": 0,
-    "warnings": 56
+    "warnings": 57
   },
   "unexpected": []
 }
