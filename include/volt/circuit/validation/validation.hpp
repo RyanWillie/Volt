@@ -39,6 +39,9 @@ class NetContinuityView {
     /** Return whether any net in this electrical continuity group asserts power intent. */
     [[nodiscard]] bool group_has_authored_power_supply(const Circuit &circuit, NetId net) const;
 
+    /** Return whether two nets are electrically continuous through module port bindings. */
+    [[nodiscard]] bool same_group(NetId first, NetId second) const;
+
   private:
     [[nodiscard]] std::size_t find(std::size_t index) const;
 

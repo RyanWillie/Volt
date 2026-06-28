@@ -43,7 +43,11 @@ def define_power_input_and_regulator(design: volt.Design) -> volt.ModuleDefiniti
     c_in = module.instantiate(passive, ref="CIN", properties={"value": "4.7 uF"})
     c_5v = module.instantiate(passive, ref="C5V", properties={"value": "4.7 uF"})
     c_3v3 = module.instantiate(passive, ref="C3V3", properties={"value": "4.7 uF"})
-    c_vdda = module.instantiate(passive, ref="CVDDA", properties={"value": "100 nF"})
+    c_vdda = module.instantiate(
+        passive,
+        ref="CVDDA",
+        properties={"value": "100 nF", "pcb_reference": "C4"},
+    )
 
     module.connect(input_12v, j1[1], u5["VI"], c_in[1])
     module.connect(output_5v, u5["VO"], u3v3["VI"], c_5v[1])

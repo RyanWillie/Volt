@@ -1,0 +1,68 @@
+{
+  "board": {
+    "available_copper_weights_oz": [
+      1,
+      2,
+      2.5,
+      3.5,
+      4.5
+    ],
+    "board_thickness_range_mm": {
+      "maximum_mm": 2,
+      "minimum_mm": 0.4
+    },
+    "copper_weight_refinements": [
+      {
+        "copper_weight_oz": 1,
+        "minimum_clearance_mm": 0.1,
+        "minimum_track_width_mm": 0.1
+      },
+      {
+        "copper_weight_oz": 2,
+        "minimum_clearance_mm": 0.16,
+        "minimum_track_width_mm": 0.16
+      }
+    ],
+    "drill_diameter_range_mm": {
+      "maximum_mm": 6.3,
+      "minimum_mm": 0.15
+    },
+    "minimum_clearances": [
+      {
+        "clearance_mm": 0.1,
+        "first": "track",
+        "second": "track"
+      },
+      {
+        "clearance_mm": 0.1,
+        "first": "track",
+        "second": "pad"
+      },
+      {
+        "clearance_mm": 0.1,
+        "first": "track",
+        "second": "via"
+      },
+      {
+        "clearance_mm": 0.2,
+        "first": "pad",
+        "second": "board_edge"
+      }
+    ],
+    "minimum_track_width_mm": 0.1,
+    "minimum_via_annular_mm": 0.25,
+    "minimum_via_drill_mm": 0.15,
+    "name": "JLCPCB 4-layer FR-4 capability snapshot",
+    "provenance": {
+      "as_of": "2026-06-28",
+      "source": "https://jlcpcb.com/capabilities/pcb-capabilities"
+    },
+    "supported_copper_layer_counts": [
+      4
+    ]
+  },
+  "config": {
+    "path": "profiles/jlcpcb_4layer.voltcap.json",
+    "resolved_path": "/Users/ryanwilliamson/.codex/worktrees/d8c4/Volt/examples/stm32_usb_buck/profiles/jlcpcb_4layer.voltcap.json"
+  }
+}

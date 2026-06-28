@@ -16,6 +16,17 @@
 namespace volt::io::detail {
 namespace {
 
+[[nodiscard]] std::string pcb_reference_label(const ComponentInstance &component) {
+    const auto key = PropertyKey{"pcb_reference"};
+    if (component.properties().contains(key)) {
+        const auto &value = component.properties().get(key);
+        if (value.kind() == PropertyValueKind::String) {
+            return value.as_string();
+        }
+    }
+    return component.reference().value();
+}
+
 void include_local_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &placement,
                                     const ::volt::detail::FootprintVisualBounds &local_bounds) {
     include_board_point(bounds,
@@ -143,7 +154,7 @@ void write_reference_designator(std::ostream &out, ComponentPlacementId placemen
     write_pcb_svg_number(out, anchor.x_mm());
     out << "\" y=\"";
     write_pcb_svg_number(out, anchor.y_mm());
-    out << "\" text-anchor=\"middle\">" << pcb_svg_escape(component.reference().value())
+    out << "\" text-anchor=\"middle\">" << pcb_svg_escape(pcb_reference_label(component))
         << "</text>\n";
 }
 

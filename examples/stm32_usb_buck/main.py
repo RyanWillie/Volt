@@ -6,11 +6,22 @@ from pathlib import Path
 
 import volt
 
+from .board import (
+    BOARD_NAME,
+    JLCPCB_PROFILE_PATH,
+    JLCPCB_PROFILE_PROJECT_PATH,
+    build_pcb,
+)
+from .project_tests import register_project_tests
 from .schematic_connectors import _author_connectors_region
 from .schematic_mcu import _author_mcu_region
 from .schematic_output import SHEET_FILE, SHEET_OPTIONS
 from .schematic_power import _author_power_region
 from .stm32_board import Stm32UsbBuckBoard, build_board
+
+
+ARTIFACTS_DIR = Path(__file__).resolve().parent / "artifacts"
+JLCPCB_MANUFACTURING_DIRNAME = "stm32_usb_buck_jlcpcb_manufacturing"
 
 
 def build_project() -> volt.Project:
@@ -71,10 +82,11 @@ def build_project() -> volt.Project:
         _author_connectors_region(connectors_region, board, nets)
         return sheet
 
-    @project.schematic.test
-    def schematic_places_primary_components(check) -> None:
-        check.places("VIN_SRC", "U1", "J2", "J3")
+    @project.board
+    def board(context: volt.BuildContext) -> volt.Board:
+        return build_pcb(context)
 
+    register_project_tests(project)
     return project
 
 
@@ -82,28 +94,66 @@ def run_project() -> volt.ProjectResult:
     return build_project().run()
 
 
+def _raise_if_not_ok(result: volt.ProjectResult) -> None:
+    if result.ok:
+        return
+    diagnostics = [
+        f"{diagnostic.report}:{diagnostic.code}"
+        for diagnostic in result.unexpected_diagnostics
+    ]
+    diagnostics.extend(
+        f"missing:{expectation.code}"
+        for expectation in result.missing_expected_diagnostics
+    )
+    raise RuntimeError("STM32 USB buck validation failed: " + ", ".join(diagnostics))
+
+
+def jlcpcb_manufacturing_profile_metadata() -> dict[str, str]:
+    return {
+        "path": JLCPCB_PROFILE_PROJECT_PATH,
+        "resolved_path": str(JLCPCB_PROFILE_PATH),
+    }
+
+
 def write_artifacts(output_dir: Path | str | None = None) -> volt.ProjectArtifactPaths:
     if output_dir is None:
-        output_dir = Path(__file__).resolve().parent / "artifacts"
+        output_dir = ARTIFACTS_DIR
     output_path = Path(output_dir)
 
     result = run_project()
-    if not result.ok:
-        diagnostics = [
-            f"{diagnostic.report}:{diagnostic.code}"
-            for diagnostic in result.unexpected_diagnostics
-        ]
-        diagnostics.extend(
-            f"missing:{expectation.code}"
-            for expectation in result.missing_expected_diagnostics
-        )
-        raise RuntimeError("STM32 USB buck validation failed: " + ", ".join(diagnostics))
+    _raise_if_not_ok(result)
     output_path.mkdir(parents=True, exist_ok=True)
     project_bundle = output_path / "stm32_usb_buck.volt"
     result.write(project_bundle)
-    artifacts = result.write_artifacts(output_path, slug="stm32_usb_buck")
+    artifacts = result.write_artifacts(
+        output_path,
+        slug="stm32_usb_buck",
+        pcb_svg_options={
+            "diagnostic_overlays": False,
+            "pad_net_overlays": False,
+            "separate_layers": True,
+        },
+    )
     return artifacts
+
+
+def write_jlcpcb_manufacturing_package(
+    output_dir: Path | str | None = None,
+) -> volt.ManufacturingPackageResult:
+    if output_dir is None:
+        output_dir = ARTIFACTS_DIR / JLCPCB_MANUFACTURING_DIRNAME
+    output_path = Path(output_dir)
+
+    result = run_project()
+    _raise_if_not_ok(result)
+    return result.write_manufacturing_package(
+        output_path,
+        board=BOARD_NAME,
+        manufacturing_profile=jlcpcb_manufacturing_profile_metadata(),
+        archive=True,
+    )
 
 
 if __name__ == "__main__":
     write_artifacts()
+    write_jlcpcb_manufacturing_package()

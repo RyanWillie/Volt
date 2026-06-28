@@ -1,0 +1,317 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="pcb-placement-preview" viewBox="0 0 98 66" width="98mm" height="66mm" data-board="board:0" data-board-name="STM32 USB Buck PCB" data-units="mm">
+  <style>
+    .board-background{fill:#f8faf8}
+    .board-outline{fill:#d7ead0;stroke:#1f5f3a;stroke-width:0.28}
+    .board-feature{fill:none;stroke:#6b7280;stroke-width:0.24}
+    .pcb-track{fill:none;stroke:#b45309;stroke-linecap:round;stroke-linejoin:round}
+    .pcb-via-annular{fill:#b45309;stroke:#7c2d12;stroke-width:0.08}
+    .pcb-via-drill{fill:#f8faf8;stroke:#7c2d12;stroke-width:0.06}
+    .pcb-zone{fill:#b45309;fill-opacity:0.22;stroke:#92400e;stroke-width:0.12}
+    .board-text{font-family:sans-serif;fill:#172026;text-anchor:middle;dominant-baseline:middle}
+    .board-feature-label,.reference-designator,.pad-net-label,.diagnostic-label{font:1.8px sans-serif;fill:#172026}
+    .footprint-courtyard{fill:none;stroke:#64748b;stroke-width:0.12;stroke-dasharray:0.7 0.45}
+    .footprint-body.declared{fill:#fff8db;stroke:#8a6a16;stroke-width:0.18}
+    .footprint-fabrication.declared{fill:none;stroke:#475569;stroke-width:0.1}
+    .footprint-assembly.declared{fill:none;stroke:#7c3aed;stroke-width:0.1;stroke-dasharray:0.55 0.35}
+    .footprint-marking.declared{fill:#172026;fill-opacity:0.45;stroke:#172026;stroke-width:0.08}
+    .footprint-marking.kind-pin_1,.footprint-marking.kind-polarity{fill:#b42318;stroke:#7a271a}
+    .footprint-envelope.synthetic{fill:#fff8db;fill-opacity:0.24;stroke:#8a6a16;stroke-width:0.18;stroke-dasharray:0.9 0.55}
+    .footprint-pad{fill:#d99822;stroke:#5a3a08;stroke-width:0.14}
+    .pad-overlay{fill:#175cd3;stroke:#ffffff;stroke-width:0.12}
+    .ratsnest{fill:none;stroke:#175cd3;stroke-width:0.16;stroke-dasharray:0.8 0.55}
+    .diagnostic-marker{fill:none;stroke:#b42318;stroke-width:0.28;stroke-dasharray:0.9 0.55}
+    .diagnostic-label{fill:#b42318}
+  </style>
+  <rect class="board-background" x="0" y="0" width="98" height="66"/>
+  <g class="board-content" transform="translate(4 4)">
+    <polygon class="board-outline" data-board="board:0" points="0,0 90,0 90,58 0,58"/>
+    <g class="layer layer-board-features">
+    </g>
+    <g id="pcb-layer-In1_Cu" class="pcb-layer board-layer layer-In1_Cu" data-layer="board_layer:1" data-layer-name="In1.Cu" data-layer-role="copper" data-layer-side="inner">
+    <g class="layer layer-zones">
+    </g>
+    <g class="layer layer-copper">
+      <polyline id="pcb-track-173" class="pcb-track" data-track="board_track:173" data-layer="board_layer:1" data-net="net:34" points="62.5,33.75 62.5,35.5 85.6,35.5 85.6,14.46" stroke-width="0.2"/>
+      <polyline id="pcb-track-176" class="pcb-track" data-track="board_track:176" data-layer="board_layer:1" data-net="net:35" points="52.75,39.5 86.5,39.5 86.5,15.73" stroke-width="0.2"/>
+      <polyline id="pcb-track-179" class="pcb-track" data-track="board_track:179" data-layer="board_layer:1" data-net="net:36" points="49.75,42 87.4,42 87.4,17" stroke-width="0.2"/>
+      <polyline id="pcb-track-182" class="pcb-track" data-track="board_track:182" data-layer="board_layer:1" data-net="net:29" points="47.25,45 88.3,45 88.3,18.27" stroke-width="0.2"/>
+      <polyline id="pcb-track-185" class="pcb-track" data-track="board_track:185" data-layer="board_layer:1" data-net="net:28" points="41,31.75 41,47 89.2,47 89.2,19.54" stroke-width="0.2"/>
+      <g id="pcb-via-0-layer-In1_Cu" class="pcb-via" data-via="board_via:0" data-net="net:9" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="6" cy="17.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="6" cy="17.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-1-layer-In1_Cu" class="pcb-via" data-via="board_via:1" data-net="net:9" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="6" cy="20.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="6" cy="20.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-2-layer-In1_Cu" class="pcb-via" data-via="board_via:2" data-net="net:9" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="6" cy="23" r="0.35"/>
+        <circle class="pcb-via-drill" cx="6" cy="23" r="0.15"/>
+      </g>
+      <g id="pcb-via-3-layer-In1_Cu" class="pcb-via" data-via="board_via:3" data-net="net:9" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="18" cy="25" r="0.35"/>
+        <circle class="pcb-via-drill" cx="18" cy="25" r="0.15"/>
+      </g>
+      <g id="pcb-via-4-layer-In1_Cu" class="pcb-via" data-via="board_via:4" data-net="net:9" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="20.5" cy="17.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="20.5" cy="17.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-5-layer-In1_Cu" class="pcb-via" data-via="board_via:5" data-net="net:9" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="32" cy="25" r="0.35"/>
+        <circle class="pcb-via-drill" cx="32" cy="25" r="0.15"/>
+      </g>
+      <g id="pcb-via-6-layer-In1_Cu" class="pcb-via" data-via="board_via:6" data-net="net:9" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="35.5" cy="17.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="35.5" cy="17.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-7-layer-In1_Cu" class="pcb-via" data-via="board_via:7" data-net="net:9" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="47" cy="25" r="0.35"/>
+        <circle class="pcb-via-drill" cx="47" cy="25" r="0.15"/>
+      </g>
+      <g id="pcb-via-8-layer-In1_Cu" class="pcb-via" data-via="board_via:8" data-net="net:9" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="33" cy="33" r="0.35"/>
+        <circle class="pcb-via-drill" cx="33" cy="33" r="0.15"/>
+      </g>
+      <g id="pcb-via-9-layer-In1_Cu" class="pcb-via" data-via="board_via:9" data-net="net:2" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="43" cy="38" r="0.35"/>
+        <circle class="pcb-via-drill" cx="43" cy="38" r="0.15"/>
+      </g>
+      <g id="pcb-via-10-layer-In1_Cu" class="pcb-via" data-via="board_via:10" data-net="net:2" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="48.5" cy="25" r="0.35"/>
+        <circle class="pcb-via-drill" cx="48.5" cy="25" r="0.15"/>
+      </g>
+      <g id="pcb-via-11-layer-In1_Cu" class="pcb-via" data-via="board_via:11" data-net="net:2" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="51" cy="25" r="0.35"/>
+        <circle class="pcb-via-drill" cx="51" cy="25" r="0.15"/>
+      </g>
+      <g id="pcb-via-12-layer-In1_Cu" class="pcb-via" data-via="board_via:12" data-net="net:2" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="55" cy="38" r="0.35"/>
+        <circle class="pcb-via-drill" cx="55" cy="38" r="0.15"/>
+      </g>
+      <g id="pcb-via-13-layer-In1_Cu" class="pcb-via" data-via="board_via:13" data-net="net:2" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="45.5" cy="40" r="0.35"/>
+        <circle class="pcb-via-drill" cx="45.5" cy="40" r="0.15"/>
+      </g>
+      <g id="pcb-via-14-layer-In1_Cu" class="pcb-via" data-via="board_via:14" data-net="net:2" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="77.5" cy="11.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="77.5" cy="11.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-15-layer-In1_Cu" class="pcb-via" data-via="board_via:15" data-net="net:2" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="80" cy="34" r="0.35"/>
+        <circle class="pcb-via-drill" cx="80" cy="34" r="0.15"/>
+      </g>
+      <g id="pcb-via-16-layer-In1_Cu" class="pcb-via" data-via="board_via:16" data-net="net:4" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="7.5" cy="27.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="7.5" cy="27.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-17-layer-In1_Cu" class="pcb-via" data-via="board_via:17" data-net="net:4" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="47" cy="28" r="0.35"/>
+        <circle class="pcb-via-drill" cx="47" cy="28" r="0.15"/>
+      </g>
+      <g id="pcb-via-18-layer-In1_Cu" class="pcb-via" data-via="board_via:18" data-net="net:4" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="47" cy="33" r="0.35"/>
+        <circle class="pcb-via-drill" cx="47" cy="33" r="0.15"/>
+      </g>
+      <g id="pcb-via-19-layer-In1_Cu" class="pcb-via" data-via="board_via:19" data-net="net:4" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="44.5" cy="32.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="44.5" cy="32.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-20-layer-In1_Cu" class="pcb-via" data-via="board_via:20" data-net="net:4" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="75.5" cy="18.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="75.5" cy="18.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-21-layer-In1_Cu" class="pcb-via" data-via="board_via:21" data-net="net:4" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="75.5" cy="20" r="0.35"/>
+        <circle class="pcb-via-drill" cx="75.5" cy="20" r="0.15"/>
+      </g>
+      <g id="pcb-via-22-layer-In1_Cu" class="pcb-via" data-via="board_via:22" data-net="net:4" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="75.5" cy="22.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="75.5" cy="22.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-23-layer-In1_Cu" class="pcb-via" data-via="board_via:23" data-net="net:4" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="82" cy="29" r="0.35"/>
+        <circle class="pcb-via-drill" cx="82" cy="29" r="0.15"/>
+      </g>
+      <g id="pcb-via-24-layer-In1_Cu" class="pcb-via" data-via="board_via:24" data-net="net:4" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="6.5" cy="8" r="0.35"/>
+        <circle class="pcb-via-drill" cx="6.5" cy="8" r="0.15"/>
+      </g>
+      <g id="pcb-via-25-layer-In1_Cu" class="pcb-via" data-via="board_via:25" data-net="net:4" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="83" cy="8" r="0.35"/>
+        <circle class="pcb-via-drill" cx="83" cy="8" r="0.15"/>
+      </g>
+      <g id="pcb-via-26-layer-In1_Cu" class="pcb-via" data-via="board_via:26" data-net="net:4" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="6.5" cy="49" r="0.35"/>
+        <circle class="pcb-via-drill" cx="6.5" cy="49" r="0.15"/>
+      </g>
+      <g id="pcb-via-27-layer-In1_Cu" class="pcb-via" data-via="board_via:27" data-net="net:4" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="83" cy="49" r="0.35"/>
+        <circle class="pcb-via-drill" cx="83" cy="49" r="0.15"/>
+      </g>
+      <g id="pcb-via-28-layer-In1_Cu" class="pcb-via" data-via="board_via:28" data-net="net:19" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="82.7" cy="40.7" r="0.35"/>
+        <circle class="pcb-via-drill" cx="82.7" cy="40.7" r="0.15"/>
+      </g>
+      <g id="pcb-via-29-layer-In1_Cu" class="pcb-via" data-via="board_via:29" data-net="net:19" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="84" cy="37.3" r="0.35"/>
+        <circle class="pcb-via-drill" cx="84" cy="37.3" r="0.15"/>
+      </g>
+      <g id="pcb-via-30-layer-In1_Cu" class="pcb-via" data-via="board_via:30" data-net="net:19" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="71.75" cy="37.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="71.75" cy="37.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-31-layer-In1_Cu" class="pcb-via" data-via="board_via:31" data-net="net:21" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="38.75" cy="22" r="0.35"/>
+        <circle class="pcb-via-drill" cx="38.75" cy="22" r="0.15"/>
+      </g>
+      <g id="pcb-via-32-layer-In1_Cu" class="pcb-via" data-via="board_via:32" data-net="net:21" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="38.55" cy="32.25" r="0.35"/>
+        <circle class="pcb-via-drill" cx="38.55" cy="32.25" r="0.15"/>
+      </g>
+      <g id="pcb-via-33-layer-In1_Cu" class="pcb-via" data-via="board_via:33" data-net="net:21" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="36.45" cy="33.75" r="0.35"/>
+        <circle class="pcb-via-drill" cx="36.45" cy="33.75" r="0.15"/>
+      </g>
+      <g id="pcb-via-34-layer-In1_Cu" class="pcb-via" data-via="board_via:34" data-net="net:21" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="33.75" cy="36" r="0.35"/>
+        <circle class="pcb-via-drill" cx="33.75" cy="36" r="0.15"/>
+      </g>
+      <g id="pcb-via-35-layer-In1_Cu" class="pcb-via" data-via="board_via:35" data-net="net:21" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="41.75" cy="39" r="0.35"/>
+        <circle class="pcb-via-drill" cx="41.75" cy="39" r="0.15"/>
+      </g>
+      <g id="pcb-via-36-layer-In1_Cu" class="pcb-via" data-via="board_via:36" data-net="net:21" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="42" cy="43.75" r="0.35"/>
+        <circle class="pcb-via-drill" cx="42" cy="43.75" r="0.15"/>
+      </g>
+      <g id="pcb-via-37-layer-In1_Cu" class="pcb-via" data-via="board_via:37" data-net="net:21" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="54" cy="43.75" r="0.35"/>
+        <circle class="pcb-via-drill" cx="54" cy="43.75" r="0.15"/>
+      </g>
+      <g id="pcb-via-38-layer-In1_Cu" class="pcb-via" data-via="board_via:38" data-net="net:21" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="60" cy="25.75" r="0.35"/>
+        <circle class="pcb-via-drill" cx="60" cy="25.75" r="0.15"/>
+      </g>
+      <g id="pcb-via-39-layer-In1_Cu" class="pcb-via" data-via="board_via:39" data-net="net:21" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="68.1" cy="24.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="68.1" cy="24.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-40-layer-In1_Cu" class="pcb-via" data-via="board_via:40" data-net="net:34" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="62.5" cy="33.75" r="0.35"/>
+        <circle class="pcb-via-drill" cx="62.5" cy="33.75" r="0.15"/>
+      </g>
+      <g id="pcb-via-41-layer-In1_Cu" class="pcb-via" data-via="board_via:41" data-net="net:34" data-layer="board_layer:1" data-start-layer="board_layer:1" data-end-layer="board_layer:0">
+        <circle class="pcb-via-annular" cx="85.6" cy="14.46" r="0.35"/>
+        <circle class="pcb-via-drill" cx="85.6" cy="14.46" r="0.15"/>
+      </g>
+      <g id="pcb-via-42-layer-In1_Cu" class="pcb-via" data-via="board_via:42" data-net="net:35" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="52.75" cy="39.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="52.75" cy="39.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-43-layer-In1_Cu" class="pcb-via" data-via="board_via:43" data-net="net:35" data-layer="board_layer:1" data-start-layer="board_layer:1" data-end-layer="board_layer:0">
+        <circle class="pcb-via-annular" cx="86.5" cy="15.73" r="0.35"/>
+        <circle class="pcb-via-drill" cx="86.5" cy="15.73" r="0.15"/>
+      </g>
+      <g id="pcb-via-44-layer-In1_Cu" class="pcb-via" data-via="board_via:44" data-net="net:36" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="49.75" cy="42" r="0.35"/>
+        <circle class="pcb-via-drill" cx="49.75" cy="42" r="0.15"/>
+      </g>
+      <g id="pcb-via-45-layer-In1_Cu" class="pcb-via" data-via="board_via:45" data-net="net:36" data-layer="board_layer:1" data-start-layer="board_layer:1" data-end-layer="board_layer:0">
+        <circle class="pcb-via-annular" cx="87.4" cy="17" r="0.35"/>
+        <circle class="pcb-via-drill" cx="87.4" cy="17" r="0.15"/>
+      </g>
+      <g id="pcb-via-46-layer-In1_Cu" class="pcb-via" data-via="board_via:46" data-net="net:29" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="47.25" cy="45" r="0.35"/>
+        <circle class="pcb-via-drill" cx="47.25" cy="45" r="0.15"/>
+      </g>
+      <g id="pcb-via-47-layer-In1_Cu" class="pcb-via" data-via="board_via:47" data-net="net:29" data-layer="board_layer:1" data-start-layer="board_layer:1" data-end-layer="board_layer:0">
+        <circle class="pcb-via-annular" cx="88.3" cy="18.27" r="0.35"/>
+        <circle class="pcb-via-drill" cx="88.3" cy="18.27" r="0.15"/>
+      </g>
+      <g id="pcb-via-48-layer-In1_Cu" class="pcb-via" data-via="board_via:48" data-net="net:28" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="41" cy="31.75" r="0.35"/>
+        <circle class="pcb-via-drill" cx="41" cy="31.75" r="0.15"/>
+      </g>
+      <g id="pcb-via-49-layer-In1_Cu" class="pcb-via" data-via="board_via:49" data-net="net:28" data-layer="board_layer:1" data-start-layer="board_layer:1" data-end-layer="board_layer:0">
+        <circle class="pcb-via-annular" cx="89.2" cy="19.54" r="0.35"/>
+        <circle class="pcb-via-drill" cx="89.2" cy="19.54" r="0.15"/>
+      </g>
+    </g>
+    <g class="layer layer-board-text">
+    </g>
+    </g>
+    <g class="layer layer-footprints">
+      <g class="layer layer-package-courtyards">
+      </g>
+      <g class="layer layer-package-bodies">
+      </g>
+      <g class="layer layer-package-fabrication">
+      </g>
+      <g class="layer layer-package-assembly">
+      </g>
+      <g class="layer layer-silkscreen">
+      </g>
+      <g class="layer layer-pads">
+      <g class="component-placement top" data-placement="component_placement:0" data-component="component:0" data-footprint-def="footprint_def:0" data-footprint="connectors:PinHeader_1x02_P2.54mm_Vertical" transform="translate(6 30) rotate(0)">
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:0:0" data-pad="footprint_pad:0" data-pin="pin:0" data-net="net:0" cx="0" cy="-1.27" r="0.85"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:0:1" data-pad="footprint_pad:1" data-pin="pin:1" data-net="net:4" cx="0" cy="1.27" r="0.85"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:1" data-component="component:1" data-footprint-def="footprint_def:1" data-footprint="connectors:PinHeader_1x04_P2.54mm_Vertical" transform="translate(6 17) rotate(0)">
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:1:0" data-pad="footprint_pad:0" data-pin="pin:2" data-net="net:5" cx="0" cy="-3.81" r="0.85"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:1:1" data-pad="footprint_pad:1" data-pin="pin:3" data-net="net:9" cx="0" cy="-1.27" r="0.85"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:1:2" data-pad="footprint_pad:2" data-pin="pin:4" data-net="net:9" cx="0" cy="1.27" r="0.85"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:1:3" data-pad="footprint_pad:3" data-pin="pin:5" data-net="net:9" cx="0" cy="3.81" r="0.85"/>
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:22" data-component="component:19" data-footprint-def="footprint_def:11" data-footprint="connectors:PinHeader_2x05_P1.27mm_Vertical_SmallPads" transform="translate(78 17) rotate(0)">
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:0" data-pad="footprint_pad:0" data-pin="pin:53" data-net="net:2" cx="-0.635" cy="-2.54" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:1" data-pad="footprint_pad:1" data-pin="pin:54" data-net="net:34" cx="0.635" cy="-2.54" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:2" data-pad="footprint_pad:2" data-pin="pin:55" data-net="net:4" cx="-0.635" cy="-1.27" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:3" data-pad="footprint_pad:3" data-pin="pin:56" data-net="net:35" cx="0.635" cy="-1.27" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:4" data-pad="footprint_pad:4" data-pin="pin:57" data-net="net:4" cx="-0.635" cy="0" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:5" data-pad="footprint_pad:5" data-pin="pin:58" data-net="net:36" cx="0.635" cy="0" r="0.425"/>
+        <circle class="footprint-pad circle unconnected" data-pad-projection="pcb_pad:22:6" data-pad="footprint_pad:6" data-pin="pin:59" cx="-0.635" cy="1.27" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:7" data-pad="footprint_pad:7" data-pin="pin:60" data-net="net:29" cx="0.635" cy="1.27" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:8" data-pad="footprint_pad:8" data-pin="pin:61" data-net="net:4" cx="-0.635" cy="2.54" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:9" data-pad="footprint_pad:9" data-pin="pin:62" data-net="net:28" cx="0.635" cy="2.54" r="0.425"/>
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:23" data-component="component:20" data-footprint-def="footprint_def:1" data-footprint="connectors:PinHeader_1x04_P2.54mm_Vertical" transform="translate(84 30) rotate(180)">
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:23:0" data-pad="footprint_pad:0" data-pin="pin:63" data-net="net:2" cx="0" cy="-3.81" r="0.85"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:23:1" data-pad="footprint_pad:1" data-pin="pin:64" data-net="net:29" cx="0" cy="-1.27" r="0.85"/>
+        <circle class="footprint-pad circle unconnected" data-pad-projection="pcb_pad:23:2" data-pad="footprint_pad:2" data-pin="pin:65" cx="0" cy="1.27" r="0.85"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:23:3" data-pad="footprint_pad:3" data-pin="pin:66" data-net="net:4" cx="0" cy="3.81" r="0.85"/>
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:24" data-component="component:24" data-footprint-def="footprint_def:12" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(5 5) rotate(0)">
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:24:0" data-pad="footprint_pad:0" data-pin="pin:135" data-net="net:4" cx="0" cy="0" r="3"/>
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:25" data-component="component:25" data-footprint-def="footprint_def:12" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(85 5) rotate(0)">
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:25:0" data-pad="footprint_pad:0" data-pin="pin:136" data-net="net:4" cx="0" cy="0" r="3"/>
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:26" data-component="component:26" data-footprint-def="footprint_def:12" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(5 53) rotate(0)">
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:26:0" data-pad="footprint_pad:0" data-pin="pin:137" data-net="net:4" cx="0" cy="0" r="3"/>
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:27" data-component="component:27" data-footprint-def="footprint_def:12" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(85 53) rotate(0)">
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:27:0" data-pad="footprint_pad:0" data-pin="pin:138" data-net="net:4" cx="0" cy="0" r="3"/>
+      </g>
+      </g>
+      <g class="layer layer-reference-designators">
+      </g>
+    </g>
+    <g class="layer layer-ratsnest">
+      <line id="ratsnest-edge-net-2-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:2:0" data-net="net:2" data-from-pad="pcb_pad:22:0" data-to-pad="pcb_pad:23:0" x1="77.365" y1="14.46" x2="84" y2="33.81"/>
+      <line id="ratsnest-edge-net-4-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:0" data-net="net:4" data-from-pad="pcb_pad:22:2" data-to-pad="pcb_pad:22:4" x1="77.365" y1="15.73" x2="77.365" y2="17"/>
+      <line id="ratsnest-edge-net-4-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:1" data-net="net:4" data-from-pad="pcb_pad:22:4" data-to-pad="pcb_pad:22:8" x1="77.365" y1="17" x2="77.365" y2="19.54"/>
+      <line id="ratsnest-edge-net-4-2" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:2" data-net="net:4" data-from-pad="pcb_pad:22:8" data-to-pad="pcb_pad:23:3" x1="77.365" y1="19.54" x2="84" y2="26.19"/>
+      <line id="ratsnest-edge-net-4-3" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:3" data-net="net:4" data-from-pad="pcb_pad:22:2" data-to-pad="pcb_pad:25:0" x1="77.365" y1="15.73" x2="85" y2="5"/>
+      <line id="ratsnest-edge-net-4-4" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:4" data-net="net:4" data-from-pad="pcb_pad:0:1" data-to-pad="pcb_pad:26:0" x1="6" y1="31.27" x2="5" y2="53"/>
+      <line id="ratsnest-edge-net-4-5" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:5" data-net="net:4" data-from-pad="pcb_pad:0:1" data-to-pad="pcb_pad:24:0" x1="6" y1="31.27" x2="5" y2="5"/>
+      <line id="ratsnest-edge-net-4-6" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:6" data-net="net:4" data-from-pad="pcb_pad:23:3" data-to-pad="pcb_pad:27:0" x1="84" y1="26.19" x2="85" y2="53"/>
+      <line id="ratsnest-edge-net-9-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:9:0" data-net="net:9" data-from-pad="pcb_pad:1:1" data-to-pad="pcb_pad:1:2" x1="6" y1="15.73" x2="6" y2="18.27"/>
+      <line id="ratsnest-edge-net-9-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:9:1" data-net="net:9" data-from-pad="pcb_pad:1:2" data-to-pad="pcb_pad:1:3" x1="6" y1="18.27" x2="6" y2="20.81"/>
+      <line id="ratsnest-edge-net-29-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:29:0" data-net="net:29" data-from-pad="pcb_pad:22:7" data-to-pad="pcb_pad:23:1" x1="78.635" y1="18.27" x2="84" y2="31.27"/>
+    </g>
+    <g class="layer layer-pad-overlays">
+    </g>
+    <g class="layer layer-diagnostics">
+    </g>
+  </g>
+</svg>

@@ -58,6 +58,7 @@ def add_usb_interface(
     mcu_dp += instance["MCU_USB_DP"]
     mcu_dm += instance["MCU_USB_DM"]
     ground += instance["GND"]
+    instance.component("J1")["ID"].mark_no_connect()
     return instance
 
 

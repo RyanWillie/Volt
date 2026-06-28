@@ -121,6 +121,10 @@ NetContinuityView::NetContinuityView(const Circuit &circuit) {
     return false;
 }
 
+[[nodiscard]] bool NetContinuityView::same_group(NetId first, NetId second) const {
+    return find(first.index()) == find(second.index());
+}
+
 [[nodiscard]] std::size_t NetContinuityView::find(std::size_t index) const {
     while (parent_.at(index) != index) {
         index = parent_.at(index);

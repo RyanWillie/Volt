@@ -525,7 +525,7 @@ void validate_board_visual(const Board &board, const FootprintLibrary &footprint
 shape_index_for_pad(const std::vector<BoardCopperShape> &shapes, ComponentPlacementId placement,
                     FootprintPadId pad);
 
-void validate_unrouted_nets(const std::vector<PadResolution> &resolutions,
+void validate_unrouted_nets(const Board &board, const std::vector<PadResolution> &resolutions,
                             const std::vector<BoardCopperShape> &shapes, DiagnosticReport &report);
 
 void validate_board_drc(const Board &board, const FootprintLibrary &footprints,

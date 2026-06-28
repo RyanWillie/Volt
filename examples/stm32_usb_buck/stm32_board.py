@@ -17,6 +17,42 @@ from .power_nets import PowerNets, create_power_nets
 from .utility_blocks import add_led_indicator, define_external_supply, define_led_indicator
 
 
+STUB_NET_NAMES = ("SWDIO", "SWCLK", "SWO", "STATUS_LED")
+
+STM32_USED_PIN_NAMES = frozenset(
+    {
+        "VBAT",
+        "VDD",
+        "VSS",
+        "VDDA",
+        "VSSA",
+        "VCAP_1",
+        "VCAP_2",
+        "PA11",
+        "PA12",
+        "NRST",
+        "BOOT0",
+        "PH0",
+        "PH1",
+        "PA13",
+        "PA14",
+        "PB3",
+        "PC13",
+    }
+)
+STM32_UNUSED_PIN_NO_CONNECTS = tuple(
+    f"U1.{pin.name}"
+    for pin in lib.STM32F405RGTx_PINS
+    if pin.name not in STM32_USED_PIN_NAMES
+)
+NO_CONNECT_PIN_LABELS = (
+    "USB/J1.ID",
+    "J2.NC",
+    "J3.3",
+    *STM32_UNUSED_PIN_NO_CONNECTS,
+)
+
+
 @dataclass(frozen=True)
 class Stm32UsbBuckBoard:
     design: volt.Design
@@ -41,12 +77,13 @@ def build_board() -> Stm32UsbBuckBoard:
 
     external_supply = define_external_supply(design)
     source_12v = design.instantiate(external_supply, ref="VIN_SRC", properties={"value": "12 V input"})
+    _select_external_supply_part(source_12v)
     components["VIN_SRC"] = source_12v
     power.input_12v += source_12v["OUT"]
     power.ground += source_12v["GND"]
 
     power_module = define_power_input_and_regulator(design)
-    modules["PWR"] = add_power_input_and_regulator(
+    power_instance = add_power_input_and_regulator(
         design,
         power_module,
         input_12v=power.input_12v,
@@ -55,6 +92,19 @@ def build_board() -> Stm32UsbBuckBoard:
         analog_3v3=power.analog_3v3,
         ground=power.ground,
     )
+    _select_module_library_parts(
+        power_instance,
+        {
+            "J": lib.CONNECTOR_1X04,
+            "U5": lib.AP1117_15,
+            "U3V3": lib.AP1117_15,
+            "CIN": lib.CAPACITOR,
+            "C5V": lib.CAPACITOR,
+            "C3V3": lib.CAPACITOR,
+            "CVDDA": lib.CAPACITOR,
+        },
+    )
+    modules["PWR"] = power_instance
 
     usb_dp = design.net("USB_DP")
     usb_dm = design.net("USB_DM")
@@ -69,7 +119,7 @@ def build_board() -> Stm32UsbBuckBoard:
         }
     )
     usb_module = define_usb_interface(design)
-    modules["USB"] = add_usb_interface(
+    usb_instance = add_usb_interface(
         design,
         usb_module,
         vbus=power.usb_5v,
@@ -79,8 +129,30 @@ def build_board() -> Stm32UsbBuckBoard:
         mcu_dm=mcu_usb_dm,
         ground=power.ground,
     )
+    _select_module_library_parts(
+        usb_instance,
+        {
+            "J1": lib.USB_B_MICRO,
+            "U1": lib.USBLC6_4SC6,
+        },
+    )
+    modules["USB"] = usb_instance
     mcu_support = define_mcu_support(design)
     support = design.instantiate(mcu_support, ref="SUPPORT")
+    _select_module_library_parts(
+        support,
+        {
+            "CVDD": lib.CAPACITOR,
+            "CVCAP1": lib.CAPACITOR,
+            "CVCAP2": lib.CAPACITOR,
+            "RRESET": lib.RESISTOR,
+            "RBOOT": lib.RESISTOR,
+            "SWBOOT": lib.SPDT_SWITCH,
+            "Y1": lib.CRYSTAL_GND24,
+            "CHSEIN": lib.CAPACITOR,
+            "CHSEOUT": lib.CAPACITOR,
+        },
+    )
     modules["SUPPORT"] = support
     reset = design.net("NRST")
     boot0 = design.net("BOOT0")
@@ -127,7 +199,7 @@ def build_board() -> Stm32UsbBuckBoard:
     status_led = design.net("STATUS_LED").mark_stub()
     nets["STATUS_LED"] = status_led
     led_module = define_led_indicator(design)
-    modules["LED_STATUS"] = add_led_indicator(
+    led_instance = add_led_indicator(
         design,
         led_module,
         ref="LED_STATUS",
@@ -135,6 +207,9 @@ def build_board() -> Stm32UsbBuckBoard:
         signal=status_led,
         ground=power.ground,
     )
+    _select_module_library_parts(led_instance, {"R": lib.RESISTOR})
+    _select_indicator_led_part(led_instance.component("D"))
+    modules["LED_STATUS"] = led_instance
 
     mcu = design.instantiate(lib.STM32F405RGTx, ref="U1", properties={"value": "STM32F405RGT6"})
     components["U1"] = mcu
@@ -159,7 +234,10 @@ def build_board() -> Stm32UsbBuckBoard:
         components[f"H{index}"] = hole
 
     for component in design.components():
-        component.dnp(True)
+        component.dnp(False)
+    source_12v.dnp(True)
+    for hole in mount_holes:
+        hole.dnp(True)
 
     return Stm32UsbBuckBoard(
         design=design,
@@ -172,6 +250,55 @@ def build_board() -> Stm32UsbBuckBoard:
 
 def build_design() -> volt.Design:
     return build_board().design
+
+
+def _select_module_library_parts(
+    instance: volt.ModuleInstance,
+    parts_by_ref: dict[str, volt.LibraryComponent],
+) -> None:
+    for reference, library_component in parts_by_ref.items():
+        _select_library_physical_part(instance.component(reference), library_component)
+
+
+def _select_library_physical_part(
+    component: volt.Component,
+    library_component: volt.LibraryComponent,
+) -> None:
+    physical_part = library_component.physical_part
+    if physical_part is None:
+        raise ValueError(f"{library_component.name} does not define a physical part")
+    component.select_part(
+        manufacturer=physical_part.manufacturer,
+        part_number=physical_part.part_number,
+        package=physical_part.package,
+        footprint=physical_part.footprint,
+        pin_pads=physical_part.pin_pads_for(library_component),
+        properties=physical_part.properties,
+        voltage_rating=physical_part.voltage_rating,
+        power_rating=physical_part.power_rating,
+        model_3d=physical_part.model_3d,
+        approved_alternate_mpns=physical_part.approved_alternate_mpns,
+    )
+
+
+def _select_external_supply_part(component: volt.Component) -> None:
+    component.select_part(
+        manufacturer="Generic",
+        part_number="HDR-1x02-2.54mm",
+        package="1x02 2.54mm header",
+        footprint=lib.HEADER_1X02_FOOTPRINT,
+        pin_pads={1: "1", 2: "2"},
+    )
+
+
+def _select_indicator_led_part(component: volt.Component) -> None:
+    component.select_part(
+        manufacturer="Lite-On",
+        part_number="LTST-C190KGKT",
+        package="0603 LED",
+        footprint=lib.LED_0603_FOOTPRINT,
+        pin_pads={"A": "1", "K": "2"},
+    )
 
 
 def define_mcu_support(design: volt.Design) -> volt.ModuleDefinition:
@@ -210,15 +337,47 @@ def define_mcu_support(design: volt.Design) -> volt.ModuleDefinition:
     vcap1 = module.port("VCAP_1", kind="power", role="power_input")
     vcap2 = module.port("VCAP_2", kind="power", role="power_input")
 
-    c_vdd = module.instantiate(capacitor, ref="CVDD", properties={"value": "100 nF"})
-    c_vcap1 = module.instantiate(capacitor, ref="CVCAP1", properties={"value": "2.2 uF"})
-    c_vcap2 = module.instantiate(capacitor, ref="CVCAP2", properties={"value": "2.2 uF"})
-    r_reset = module.instantiate(resistor, ref="RRESET", properties={"value": "10 kOhm"})
-    r_boot = module.instantiate(resistor, ref="RBOOT", properties={"value": "100 kOhm"})
-    sw_boot = module.instantiate(switch, ref="SWBOOT", properties={"value": "BOOT0"})
-    y1 = module.instantiate(crystal, ref="Y1", properties={"value": "8 MHz"})
-    c_hse_in = module.instantiate(capacitor, ref="CHSEIN", properties={"value": "18 pF"})
-    c_hse_out = module.instantiate(capacitor, ref="CHSEOUT", properties={"value": "18 pF"})
+    c_vdd = module.instantiate(
+        capacitor,
+        ref="CVDD",
+        properties={"value": "100 nF", "pcb_reference": "C5"},
+    )
+    c_vcap1 = module.instantiate(
+        capacitor,
+        ref="CVCAP1",
+        properties={"value": "2.2 uF", "pcb_reference": "C6"},
+    )
+    c_vcap2 = module.instantiate(
+        capacitor,
+        ref="CVCAP2",
+        properties={"value": "2.2 uF", "pcb_reference": "C7"},
+    )
+    r_reset = module.instantiate(
+        resistor,
+        ref="RRESET",
+        properties={"value": "10 kOhm", "pcb_reference": "R1"},
+    )
+    r_boot = module.instantiate(
+        resistor,
+        ref="RBOOT",
+        properties={"value": "100 kOhm", "pcb_reference": "R2"},
+    )
+    sw_boot = module.instantiate(
+        switch,
+        ref="SWBOOT",
+        properties={"value": "BOOT0", "pcb_reference": "SW1"},
+    )
+    y1 = module.instantiate(crystal, ref="Y1", properties={"value": "8 MHz", "pcb_reference": "Y1"})
+    c_hse_in = module.instantiate(
+        capacitor,
+        ref="CHSEIN",
+        properties={"value": "18 pF", "pcb_reference": "C8"},
+    )
+    c_hse_out = module.instantiate(
+        capacitor,
+        ref="CHSEOUT",
+        properties={"value": "18 pF", "pcb_reference": "C9"},
+    )
 
     module.connect(vdd, c_vdd[1], r_reset[1], sw_boot["A"])
     module.connect(
@@ -256,27 +415,8 @@ def connect_mcu_power(
 
 
 def mark_unused_mcu_pins_no_connect(mcu: volt.Component) -> None:
-    used = {
-        "VBAT",
-        "VDD",
-        "VSS",
-        "VDDA",
-        "VSSA",
-        "VCAP_1",
-        "VCAP_2",
-        "PA11",
-        "PA12",
-        "NRST",
-        "BOOT0",
-        "PH0",
-        "PH1",
-        "PA13",
-        "PA14",
-        "PB3",
-        "PC13",
-    }
     for pin_number in range(1, 65):
         pin = mcu[pin_number]
         pin_name = lib.STM32F405RGTx_PINS[pin_number - 1].name
-        if pin_name not in used:
+        if pin_name not in STM32_USED_PIN_NAMES:
             pin.mark_no_connect()
