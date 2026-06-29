@@ -525,7 +525,14 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
 [[nodiscard]] BoardRouteResult BoardRouter::connect(const BoardRouteRequest &request) {
     require_routable_layer(request.start_layer);
     require_routable_layer(request.end_layer);
-    const auto params = resolve_parameters(request.net);
+    auto params = resolve_parameters(request.net);
+    if (request.track_width_mm.has_value()) {
+        if (!std::isfinite(request.track_width_mm.value()) ||
+            request.track_width_mm.value() <= 0.0) {
+            throw std::invalid_argument{"Board route request track width must be positive"};
+        }
+        params.track_width_mm = std::max(params.track_width_mm, request.track_width_mm.value());
+    }
 
     auto result = BoardRouteResult{};
     // A route on a class-disallowed layer would only trade a clearance failure for a

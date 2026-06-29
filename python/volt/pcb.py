@@ -902,6 +902,7 @@ class Board:
         start_layer: int,
         end: Point,
         end_layer: int,
+        width: float | None = None,
     ) -> dict:
         """Route a net between two points using the kernel assisted-connection solver.
 
@@ -925,6 +926,7 @@ class Board:
             end_x,
             end_y,
             _layer_index(end_layer),
+            None if width is None else float(width),
         )
 
     def escape(self, component: Component | int) -> dict:

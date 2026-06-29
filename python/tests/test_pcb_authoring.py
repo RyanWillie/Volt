@@ -964,6 +964,7 @@ def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
         start_layer=front,
         end=(18.0, 6.0),
         end_layer=front,
+        width=0.45,
     )
 
     assert result == {"routed": True, "tracks": [0], "vias": [], "blockers": []}
@@ -971,6 +972,7 @@ def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
     assert document["board"]["tracks"][0]["net"] == "net:0"
     assert document["board"]["tracks"][0]["layer"] == "board_layer:0"
     assert document["board"]["tracks"][0]["points"] == [[2.0, 6.0], [18.0, 6.0]]
+    assert document["board"]["tracks"][0]["width_mm"] == pytest.approx(0.45)
 
     blocked = volt.Design("blocked-assisted-connect")
     blocked_net = blocked.net("ROUTE")
