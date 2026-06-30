@@ -1730,6 +1730,49 @@ def test_python_board_drc_treats_bound_module_port_copper_as_routed_connectivity
     assert "PCB_NET_UNROUTED" not in codes
 
 
+def test_python_board_drc_reports_bound_module_port_stub_only_copper_as_unrouted():
+    design = volt.Design("bound-net-stub-ratsnest")
+    one_pin = design.define_component("OnePinPad", pins=[volt.PinSpec("1", 1)])
+    module = design.define_module("Child")
+    internal = module.port("N")
+    child_pad = module.instantiate(one_pin, ref="P2")
+    internal += child_pad[1]
+
+    parent = design.net("N")
+    p1 = design.instantiate(one_pin, ref="P1")
+    instance = design.instantiate(module, ref="M")
+    parent += p1[1], instance["N"]
+    module_pad = instance.component("P2")
+    nets = {net.name: net for net in design.nets()}
+
+    for component in (p1, module_pad):
+        component.select_part(
+            manufacturer="Volt",
+            part_number="ONE-PIN-0603",
+            package="0603",
+            footprint=("passives", "R_0603_1608Metric"),
+            pin_pads={1: "1"},
+        )
+
+    board = design.board()
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(12.0, 6.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    board.place(p1, at=(3.0, 3.0))
+    board.place(module_pad, at=(9.0, 3.0))
+    board.add_track(parent, layer=front, points=((2.25, 3.0), (4.5, 3.0)), width=0.40)
+    board.add_track(nets["M/N"], layer=front, points=((7.5, 3.0), (8.25, 3.0)), width=0.40)
+
+    unrouted = [
+        diagnostic for diagnostic in board.validate() if diagnostic.code == "PCB_NET_UNROUTED"
+    ]
+
+    assert len(unrouted) == 1
+    assert any(entity.kind == "net" for entity in unrouted[0].entities)
+    assert sum(entity.kind == "component_placement" for entity in unrouted[0].entities) == 2
+    assert sum(entity.kind == "footprint_pad" for entity in unrouted[0].entities) == 2
+
+
 def test_python_board_add_via_defaults_respect_board_rule_floor():
     design = volt.Design("via-rule-floor")
     route = design.net("ROUTE")

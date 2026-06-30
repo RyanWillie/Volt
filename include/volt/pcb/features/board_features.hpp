@@ -14,6 +14,8 @@
 
 namespace volt {
 
+class Circuit;
+
 /** Physical board feature kind for placement-only PCB models. */
 enum class BoardFeatureKind {
     Hole,
@@ -467,6 +469,10 @@ namespace detail {
 /** Derive deterministic unrouted ratsnest edges from resolved placed pads. */
 [[nodiscard]] std::vector<RatsnestEdge>
 derive_ratsnest_edges(const std::vector<PadResolution> &resolutions);
+
+/** Derive deterministic unrouted ratsnest edges across circuit continuity groups. */
+[[nodiscard]] std::vector<RatsnestEdge>
+derive_ratsnest_edges(const Circuit &circuit, const std::vector<PadResolution> &resolutions);
 
 namespace detail {
 

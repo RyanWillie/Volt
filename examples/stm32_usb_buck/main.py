@@ -31,6 +31,13 @@ def build_project() -> volt.Project:
     project.expect_diagnostic(code="SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL", severity="warning")
     project.expect_diagnostic(code="SCHEMATIC_LABEL_CROWDS_SYMBOL", severity="warning")
     project.expect_diagnostic(code="SCHEMATIC_DENSE_PORT_TAGS", severity="warning")
+    project.expect_diagnostic(
+        code="PCB_NET_UNROUTED",
+        severity="warning",
+        stage="board",
+        report="pcb.board",
+        board=BOARD_NAME,
+    )
 
     @project.design
     def design():
