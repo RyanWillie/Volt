@@ -881,6 +881,64 @@ TEST_CASE("Board derives a ratsnest edge for a simple two-component net") {
     CHECK(edges[0].to().position() == volt::BoardPoint{19.25, 10.0});
 }
 
+TEST_CASE("Board derives ratsnest edges across bound module port nets") {
+    auto circuit = volt::Circuit{};
+    const auto pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto component_definition =
+        circuit.add_component_definition(volt::ComponentDefinition{"OnePinPad", {pin_definition}});
+    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"Child"},
+    });
+    const auto template_net = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"N"}, volt::NetKind::Signal});
+    const auto port = circuit.add_port_definition(
+        module, volt::PortDefinition{volt::PortName{"N"}, template_net, volt::PortRole::Passive});
+    const auto module_component = circuit.add_module_component(
+        module,
+        volt::ModuleComponentTemplate{component_definition, volt::ReferenceDesignator{"P2"}});
+    CHECK(circuit.connect_module_pin(module, template_net, module_component, pin_definition));
+    const auto instance = circuit.instantiate_root_module(module, volt::ModuleInstanceName{"M"});
+    const auto internal_component =
+        volt::queries::concrete_component_for(circuit, instance, module_component).value();
+    const auto parent_component =
+        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"P1"});
+    const auto parent_net = circuit.add_net(volt::Net{volt::NetName{"N"}, volt::NetKind::Signal});
+
+    circuit.connect(
+        parent_net,
+        volt::queries::pin_by_definition(circuit, parent_component, pin_definition).value());
+    [[maybe_unused]] const auto binding = circuit.bind_port(instance, port, parent_net);
+    for (const auto component : std::vector{parent_component, internal_component}) {
+        circuit.select_physical_part(component,
+                                     volt::PhysicalPart{
+                                         volt::ManufacturerPart{"Volt", "ONE-PIN-0603"},
+                                         volt::PackageRef{"0603"},
+                                         volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                                         std::vector{volt::PinPadMapping{pin_definition, "1"}},
+                                     });
+    }
+
+    auto board = volt::Board{circuit};
+    const auto parent_placement = board.place_component(volt::ComponentPlacement{
+        parent_component, volt::BoardPoint{3.0, 3.0}, volt::BoardRotation::degrees(0.0)});
+    const auto internal_placement = board.place_component(volt::ComponentPlacement{
+        internal_component, volt::BoardPoint{9.0, 3.0}, volt::BoardRotation::degrees(0.0)});
+
+    const auto edges = board.ratsnest_edges(volt::builtin_footprint_library());
+
+    REQUIRE(edges.size() == 1);
+    CHECK(edges[0].net() == parent_net);
+    CHECK(edges[0].from().placement() == parent_placement);
+    CHECK(edges[0].from().component() == parent_component);
+    CHECK(edges[0].from().pad() == volt::FootprintPadId{0});
+    CHECK(edges[0].to().placement() == internal_placement);
+    CHECK(edges[0].to().component() == internal_component);
+    CHECK(edges[0].to().pad() == volt::FootprintPadId{0});
+}
+
 TEST_CASE("Board derives deterministic nearest ratsnest edges for a multi-pad net") {
     auto fixture = make_multi_component_net(3);
     auto board = volt::Board{fixture.circuit};
