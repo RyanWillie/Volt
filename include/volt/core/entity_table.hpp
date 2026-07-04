@@ -1,9 +1,10 @@
 #pragma once
 
 #include <cstddef>
-#include <stdexcept>
 #include <utility>
 #include <vector>
+
+#include <volt/core/errors.hpp>
 
 namespace volt {
 
@@ -26,7 +27,7 @@ template <typename T, typename Id> class EntityTable {
     /** Return a mutable entity reference for an existing ID. */
     [[nodiscard]] T &get(Id id) {
         if (!contains(id)) {
-            throw std::out_of_range{"Volt entity id is out of range"};
+            throw KernelRangeError{ErrorCode::UnknownEntity, "Volt entity id is out of range"};
         }
 
         return items_[id.index()];
@@ -35,7 +36,7 @@ template <typename T, typename Id> class EntityTable {
     /** Return a const entity reference for an existing ID. */
     [[nodiscard]] const T &get(Id id) const {
         if (!contains(id)) {
-            throw std::out_of_range{"Volt entity id is out of range"};
+            throw KernelRangeError{ErrorCode::UnknownEntity, "Volt entity id is out of range"};
         }
 
         return items_[id.index()];

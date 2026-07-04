@@ -1,7 +1,8 @@
 #include <volt/circuit/connectivity/nets.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include <algorithm>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -10,7 +11,7 @@ namespace volt {
 
 NetName::NetName(std::string value) : value_{std::move(value)} {
     if (value_.empty()) {
-        throw std::invalid_argument{"Net name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Net name must not be empty"};
     }
 }
 

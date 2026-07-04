@@ -20,6 +20,7 @@
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/entity_table.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 #include <volt/core/quantities.hpp>

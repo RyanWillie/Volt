@@ -1,5 +1,7 @@
 #include <volt/circuit/connectivity/definitions.hpp>
 
+#include <volt/core/errors.hpp>
+
 namespace volt {
 
 PinDefinition::PinDefinition(std::string name, std::string number,
@@ -12,10 +14,12 @@ PinDefinition::PinDefinition(std::string name, std::string number,
       direction_{direction}, signal_domain_{signal_domain}, drive_kind_{drive_kind},
       polarity_{polarity} {
     if (name_.empty()) {
-        throw std::invalid_argument{"Pin definition name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Pin definition name must not be empty"};
     }
     if (number_.empty()) {
-        throw std::invalid_argument{"Pin definition number must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Pin definition number must not be empty"};
     }
 }
 
@@ -27,23 +31,28 @@ DefinitionSource::DefinitionSource(std::string namespace_name, std::string name,
                                    std::string version)
     : namespace_{std::move(namespace_name)}, name_{std::move(name)}, version_{std::move(version)} {
     if (namespace_.empty()) {
-        throw std::invalid_argument{"Definition source namespace must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Definition source namespace must not be empty"};
     }
     if (name_.empty()) {
-        throw std::invalid_argument{"Definition source name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Definition source name must not be empty"};
     }
     if (version_.empty()) {
-        throw std::invalid_argument{"Definition source version must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Definition source version must not be empty"};
     }
 }
 
 SchematicSymbolReference::SchematicSymbolReference(std::string name, std::string variant)
     : name_{std::move(name)}, variant_{std::move(variant)} {
     if (name_.empty()) {
-        throw std::invalid_argument{"Schematic symbol name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Schematic symbol name must not be empty"};
     }
     if (variant_.empty()) {
-        throw std::invalid_argument{"Schematic symbol variant must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Schematic symbol variant must not be empty"};
     }
 }
 
@@ -54,10 +63,12 @@ ComponentDefinition::ComponentDefinition(std::string name, std::vector<PinDefId>
     : name_{std::move(name)}, pins_{std::move(pins)}, properties_{std::move(properties)},
       source_{std::move(source)}, schematic_symbols_{std::move(schematic_symbols)} {
     if (name_.empty()) {
-        throw std::invalid_argument{"Component definition name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Component definition name must not be empty"};
     }
     if (pins_.empty()) {
-        throw std::invalid_argument{"Component definition must contain at least one pin"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Component definition must contain at least one pin"};
     }
     require_unique_schematic_symbol_variants();
 }
@@ -75,7 +86,8 @@ void ComponentDefinition::require_unique_schematic_symbol_variants() const {
                             return candidate.variant() == schematic_symbols_[index].variant();
                         });
         if (duplicate) {
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
                 "Component definition schematic symbol variants must be unique"};
         }
     }

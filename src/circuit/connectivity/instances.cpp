@@ -1,6 +1,7 @@
 #include <volt/circuit/connectivity/instances.hpp>
 
-#include <stdexcept>
+#include <volt/core/errors.hpp>
+
 #include <string>
 #include <utility>
 
@@ -8,7 +9,8 @@ namespace volt {
 
 ReferenceDesignator::ReferenceDesignator(std::string value) : value_{std::move(value)} {
     if (value_.empty()) {
-        throw std::invalid_argument{"Reference designator must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Reference designator must not be empty"};
     }
 }
 
