@@ -704,3 +704,45 @@ TEST_CASE("Circuit copies keep name lookups independent and uniqueness enforced"
     CHECK(circuit.component_count() == 1);
     CHECK(circuit.net_count() == 1);
 }
+
+TEST_CASE("Moved-from circuits reset to empty and stay safely usable") {
+    volt::Circuit circuit;
+    const auto pin_def = circuit.add_pin_definition(
+        volt::PinDefinition{"VDD", "1", volt::ConnectionRequirement::Required,
+                            volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Regulator", std::vector{pin_def}});
+    [[maybe_unused]] const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+    [[maybe_unused]] const auto net =
+        circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    const auto moved = std::move(circuit);
+
+    CHECK(moved.component_count() == 1);
+    CHECK(moved.net_count() == 1);
+    CHECK(circuit.component_count() == 0);
+    CHECK(circuit.pin_count() == 0);
+    CHECK(circuit.net_count() == 0);
+    CHECK_FALSE(volt::queries::component_by_reference(circuit, volt::ReferenceDesignator{"U1"})
+                    .has_value());
+
+    const auto reused_pin_def = circuit.add_pin_definition(
+        volt::PinDefinition{"VDD", "1", volt::ConnectionRequirement::Required,
+                            volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto reused_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Regulator", std::vector{reused_pin_def}});
+    [[maybe_unused]] const auto reused =
+        circuit.instantiate_component(reused_def, volt::ReferenceDesignator{"U1"});
+    CHECK(circuit.component_count() == 1);
+    CHECK(moved.component_count() == 1);
+
+    volt::Circuit assigned;
+    assigned = std::move(circuit);
+    CHECK(assigned.component_count() == 1);
+    CHECK(circuit.component_count() == 0);
+    [[maybe_unused]] const auto after_move_assign =
+        circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    CHECK(circuit.net_count() == 1);
+    CHECK(assigned.net_count() == 0);
+}

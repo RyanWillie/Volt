@@ -35,34 +35,6 @@ ConnectivityModel &ConnectivityModel::operator=(ConnectivityModel &&other) noexc
 
 ConnectivityModel::~ConnectivityModel() = default;
 
-Circuit::ConnectivityStorage::ConnectivityStorage()
-    : ConnectivityStorage{std::make_shared<detail::ConnectivityState>()} {}
-
-Circuit::ConnectivityStorage::ConnectivityStorage(std::shared_ptr<detail::ConnectivityState> state)
-    : ConnectivityModel{state}, state_{std::move(state)} {}
-
-Circuit::ConnectivityStorage::ConnectivityStorage(const ConnectivityStorage &other)
-    : ConnectivityStorage{std::make_shared<detail::ConnectivityState>(other.state())} {}
-
-Circuit::ConnectivityStorage &
-Circuit::ConnectivityStorage::operator=(const ConnectivityStorage &other) {
-    if (this != &other) {
-        auto replacement =
-            ConnectivityStorage{std::make_shared<detail::ConnectivityState>(other.state())};
-        *this = std::move(replacement);
-    }
-    return *this;
-}
-
-[[nodiscard]] detail::ConnectivityState &Circuit::ConnectivityStorage::mutable_state() noexcept {
-    return *state_;
-}
-
-[[nodiscard]] const detail::ConnectivityState &
-Circuit::ConnectivityStorage::state() const noexcept {
-    return *state_;
-}
-
 [[nodiscard]] PinDefId Circuit::ConnectivityStorage::add_pin_definition(PinDefinition definition) {
     return mutable_state().pin_definitions.insert(std::move(definition));
 }

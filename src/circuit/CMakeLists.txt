@@ -15,6 +15,7 @@ add_library(
     intent/design_intent.cpp
     parts/part_definition.cpp
     parts/parts.cpp
+    subsystem_storage.cpp
     validation/validation.cpp
 )
 add_library(Volt::Circuit ALIAS volt_circuit)
