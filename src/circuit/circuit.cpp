@@ -1,11 +1,11 @@
 #include <volt/circuit/circuit.hpp>
 
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/core/errors.hpp>
 
 #include <algorithm>
 #include <cstddef>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -58,7 +58,7 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
                                                                 ModuleInstanceName name) {
     require_module_definition(definition);
     if (queries::module_instance_by_name(*this, name).has_value()) {
-        throw std::logic_error{"Module instance name already exists"};
+        throw KernelLogicError{ErrorCode::DuplicateName, "Module instance name already exists"};
     }
 
     std::vector<Net> concrete_nets;
@@ -66,7 +66,8 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
         const auto &template_net_definition = hierarchy_.template_net_definition(template_net);
         auto concrete_name = NetName{name.value() + "/" + template_net_definition.name().value()};
         if (queries::net_by_name(*this, concrete_name).has_value()) {
-            throw std::logic_error{"Module instance concrete net name already exists"};
+            throw KernelLogicError{ErrorCode::DuplicateName,
+                                   "Module instance concrete net name already exists"};
         }
         concrete_nets.emplace_back(std::move(concrete_name), template_net_definition.kind());
     }
@@ -77,7 +78,8 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
         auto concrete_reference =
             ReferenceDesignator{name.value() + "/" + component_template.reference().value()};
         if (queries::component_by_reference(*this, concrete_reference).has_value()) {
-            throw std::logic_error{"Module instance concrete component reference exists"};
+            throw KernelLogicError{ErrorCode::DuplicateName,
+                                   "Module instance concrete component reference exists"};
         }
         concrete_components.emplace_back(component_template.definition(),
                                          std::move(concrete_reference),
@@ -108,12 +110,14 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
             queries::concrete_component_for(*this, instance, connection.component());
         const auto concrete_net = queries::concrete_net_for(*this, instance, connection.net());
         if (!concrete_component.has_value() || !concrete_net.has_value()) {
-            throw std::logic_error{"Module instance origin metadata is incomplete"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Module instance origin metadata is incomplete"};
         }
         const auto concrete_pin =
             queries::pin_by_definition(*this, concrete_component.value(), connection.pin());
         if (!concrete_pin.has_value()) {
-            throw std::logic_error{"Concrete module component pin is missing"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Concrete module component pin is missing"};
         }
         [[maybe_unused]] const auto changed = connect(concrete_net.value(), concrete_pin.value());
     }
@@ -125,13 +129,15 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
                                                NetId parent_net) {
     require_net(parent_net);
     if (queries::is_module_origin_net(*this, parent_net)) {
-        throw std::logic_error{"Module instance port parent net must be outside module origins"};
+        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                               "Module instance port parent net must be outside module origins"};
     }
 
     const auto internal_net =
         queries::concrete_net_for(*this, instance, hierarchy_.port_definition(port).internal_net());
     if (!internal_net.has_value()) {
-        throw std::logic_error{"Port internal net has no concrete module instance net"};
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Port internal net has no concrete module instance net"};
     }
 
     return hierarchy_.bind_port(instance, port, internal_net.value(), parent_net);
@@ -143,12 +149,13 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
     const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins) {
     require_module_definition(definition);
     if (queries::module_instance_by_name(*this, name).has_value()) {
-        throw std::logic_error{"Module instance name already exists"};
+        throw KernelLogicError{ErrorCode::DuplicateName, "Module instance name already exists"};
     }
 
     const auto &template_nets = hierarchy_.module_definition(definition).template_nets();
     if (origins.size() != template_nets.size()) {
-        throw std::logic_error{"Module instance origin net count does not match definition"};
+        throw KernelLogicError{ErrorCode::InvalidArgument,
+                               "Module instance origin net count does not match definition"};
     }
 
     auto seen_template_nets = std::vector<TemplateNetDefId>{};
@@ -158,14 +165,17 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
         require_net(concrete_net);
         if (std::find(seen_template_nets.begin(), seen_template_nets.end(), template_net) !=
             seen_template_nets.end()) {
-            throw std::logic_error{"Duplicate module instance template-net origin"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Duplicate module instance template-net origin"};
         }
         if (std::find(seen_concrete_nets.begin(), seen_concrete_nets.end(), concrete_net) !=
             seen_concrete_nets.end()) {
-            throw std::logic_error{"Duplicate module instance concrete-net origin"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Duplicate module instance concrete-net origin"};
         }
         if (queries::is_module_origin_net(*this, concrete_net)) {
-            throw std::logic_error{"Concrete net already has module origin metadata"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Concrete net already has module origin metadata"};
         }
         seen_template_nets.push_back(template_net);
         seen_concrete_nets.push_back(concrete_net);
@@ -174,13 +184,15 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
     for (const auto template_net : template_nets) {
         if (std::find(seen_template_nets.begin(), seen_template_nets.end(), template_net) ==
             seen_template_nets.end()) {
-            throw std::logic_error{"Missing module instance template-net origin"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Missing module instance template-net origin"};
         }
     }
 
     const auto &module_components = hierarchy_.module_definition(definition).components();
     if (component_origins.size() != module_components.size()) {
-        throw std::logic_error{"Module instance component origin count does not match definition"};
+        throw KernelLogicError{ErrorCode::InvalidArgument,
+                               "Module instance component origin count does not match definition"};
     }
 
     auto seen_template_components = std::vector<ModuleComponentId>{};
@@ -190,18 +202,22 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
         require_component(concrete_component);
         if (std::find(seen_template_components.begin(), seen_template_components.end(),
                       template_component) != seen_template_components.end()) {
-            throw std::logic_error{"Duplicate module instance template-component origin"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Duplicate module instance template-component origin"};
         }
         if (std::find(seen_concrete_components.begin(), seen_concrete_components.end(),
                       concrete_component) != seen_concrete_components.end()) {
-            throw std::logic_error{"Duplicate module instance concrete-component origin"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Duplicate module instance concrete-component origin"};
         }
         if (queries::is_module_origin_component(*this, concrete_component)) {
-            throw std::logic_error{"Concrete component already has module origin metadata"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Concrete component already has module origin metadata"};
         }
         if (connectivity_.component(concrete_component).definition() !=
             hierarchy_.module_component_template(template_component).definition()) {
-            throw std::logic_error{
+            throw KernelLogicError{
+                ErrorCode::CrossReferenceViolation,
                 "Module instance concrete component definition does not match template"};
         }
         seen_template_components.push_back(template_component);
@@ -211,7 +227,8 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
     for (const auto template_component : module_components) {
         if (std::find(seen_template_components.begin(), seen_template_components.end(),
                       template_component) == seen_template_components.end()) {
-            throw std::logic_error{"Missing module instance template-component origin"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Missing module instance template-component origin"};
         }
     }
     require_restored_module_connectivity_matches_template(definition, origins, component_origins);
@@ -500,7 +517,8 @@ void Circuit::require_pin_in_module_component(ModuleComponentId component, PinDe
         hierarchy_.module_component_template(component).definition());
     const auto &pins = definition.pins();
     if (std::find(pins.begin(), pins.end(), pin) == pins.end()) {
-        throw std::logic_error{"Pin definition does not belong to module component definition"};
+        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                               "Pin definition does not belong to module component definition"};
     }
 }
 
@@ -517,17 +535,20 @@ void Circuit::require_restored_module_connectivity_matches_template(
                 return origin.first == connection.net();
             });
         if (concrete_component == component_origins.end() || concrete_net == origins.end()) {
-            throw std::logic_error{"Module instance origin metadata is incomplete"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Module instance origin metadata is incomplete"};
         }
 
         const auto concrete_pin =
             queries::pin_by_definition(*this, concrete_component->second, connection.pin());
         if (!concrete_pin.has_value()) {
-            throw std::logic_error{"Concrete module component pin is missing"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Concrete module component pin is missing"};
         }
 
         if (connectivity_.net_of(concrete_pin.value()) != concrete_net->second) {
-            throw std::logic_error{"Module instance concrete connectivity does not match template"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Module instance concrete connectivity does not match template"};
         }
     }
 }

@@ -1,12 +1,13 @@
 #include <volt/circuit/connectivity/connectivity_model.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "../circuit_storage.hpp"
 
 #include <algorithm>
 #include <cstddef>
 #include <memory>
 #include <optional>
-#include <stdexcept>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -51,7 +52,8 @@ Circuit::ConnectivityStorage::add_component_definition(ComponentDefinition defin
 [[nodiscard]] ComponentId Circuit::ConnectivityStorage::add_component(ComponentInstance component) {
     require_component_definition(component.definition());
     if (component_by_reference(component.reference()).has_value()) {
-        throw std::logic_error{"Component reference designator already exists"};
+        throw KernelLogicError{ErrorCode::DuplicateName,
+                               "Component reference designator already exists"};
     }
 
     auto reference = component.reference().value();
@@ -69,7 +71,8 @@ Circuit::ConnectivityStorage::add_component_definition(ComponentDefinition defin
     const auto &definition_pins = component_definition.pins();
     if (std::find(definition_pins.begin(), definition_pins.end(), pin.definition()) ==
         definition_pins.end()) {
-        throw std::logic_error{"Pin definition does not belong to component definition"};
+        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                               "Pin definition does not belong to component definition"};
     }
 
     const auto id = mutable_state().pins.insert(pin);
@@ -80,13 +83,14 @@ Circuit::ConnectivityStorage::add_component_definition(ComponentDefinition defin
 
 [[nodiscard]] NetId Circuit::ConnectivityStorage::add_net(Net net) {
     if (net_by_name(net.name()).has_value()) {
-        throw std::logic_error{"Net name already exists"};
+        throw KernelLogicError{ErrorCode::DuplicateName, "Net name already exists"};
     }
 
     for (const auto pin : net.pins()) {
         require_pin(pin);
         if (net_of(pin).has_value()) {
-            throw std::logic_error{"Pin is already connected to another net"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Pin is already connected to another net"};
         }
     }
 
@@ -122,7 +126,7 @@ bool Circuit::ConnectivityStorage::connect(NetId net, PinId pin) {
             return false;
         }
 
-        throw std::logic_error{"Pin is already connected to another net"};
+        throw KernelLogicError{ErrorCode::InvalidState, "Pin is already connected to another net"};
     }
 
     const auto changed = mutable_state().nets.get(net).connect(pin);
@@ -260,31 +264,39 @@ ConnectivityModel::component_definition(ComponentDefId id) const {
 
 void ConnectivityModel::require_pin_definition(PinDefId pin_definition) const {
     if (!state().pin_definitions.contains(pin_definition)) {
-        throw std::out_of_range{"Pin definition ID does not belong to this circuit"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Pin definition ID does not belong to this circuit",
+                               EntityRef::pin_def(pin_definition)};
     }
 }
 
 void ConnectivityModel::require_component_definition(ComponentDefId component_definition) const {
     if (!state().component_definitions.contains(component_definition)) {
-        throw std::out_of_range{"Component definition ID does not belong to this circuit"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Component definition ID does not belong to this circuit",
+                               EntityRef::component_def(component_definition)};
     }
 }
 
 void ConnectivityModel::require_component(ComponentId component) const {
     if (!state().components.contains(component)) {
-        throw std::out_of_range{"Component ID does not belong to this circuit"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Component ID does not belong to this circuit",
+                               EntityRef::component(component)};
     }
 }
 
 void ConnectivityModel::require_pin(PinId pin) const {
     if (!state().pins.contains(pin)) {
-        throw std::out_of_range{"Pin ID does not belong to this circuit"};
+        throw KernelRangeError{ErrorCode::UnknownEntity, "Pin ID does not belong to this circuit",
+                               EntityRef::pin(pin)};
     }
 }
 
 void ConnectivityModel::require_net(NetId net) const {
     if (!state().nets.contains(net)) {
-        throw std::out_of_range{"Net ID does not belong to this circuit"};
+        throw KernelRangeError{ErrorCode::UnknownEntity, "Net ID does not belong to this circuit",
+                               EntityRef::net(net)};
     }
 }
 

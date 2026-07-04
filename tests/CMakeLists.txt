@@ -40,6 +40,7 @@ add_executable(
     core/content_hash_test.cpp
     core/electrical_attributes_test.cpp
     core/entity_table_test.cpp
+    core/errors_test.cpp
     core/ids_test.cpp
     core/properties_test.cpp
     core/quantities_test.cpp

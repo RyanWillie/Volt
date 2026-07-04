@@ -512,3 +512,35 @@ Kernel data should be mutated through explicit operations:
 
 This preserves invariants and gives future undo/redo, serialization, and Python bindings
 a narrow API surface.
+
+## Structural Error Taxonomy
+
+Structural rejections at migrated mutation boundaries throw typed kernel errors declared
+in `volt/core/errors.hpp`. A typed kernel error derives from `volt::KernelError`, which
+carries a machine-readable `volt::ErrorCode` and, when one is naturally at hand, an
+`EntityRef` identifying the rejected entity. Callers branch on `code()` instead of
+parsing message strings.
+
+The migration is incremental. Core entity storage, the connectivity subsystem, and the
+`Circuit` aggregate root throw typed kernel errors today; the remaining subsystems
+(hierarchy, electrical, intent, net classes, schematic, PCB, IO, adapters, authoring)
+still throw raw `std::logic_error`, `std::invalid_argument`, or `std::out_of_range` until
+their migration lands. Until then, catching `volt::KernelError` alone does not cover
+every mutation-boundary failure.
+
+Each error also derives from the std exception type its throw site historically used:
+
+- `KernelLogicError` derives from `std::logic_error`
+- `KernelArgumentError` derives from `std::invalid_argument`
+- `KernelRangeError` derives from `std::out_of_range`
+
+so pre-existing `catch` sites and test assertions keep working during the incremental
+migration.
+
+`ErrorCode` values are families, not per-message identifiers: `UnknownEntity`,
+`DuplicateName`, `CrossReferenceViolation`, `InvalidArgument`, and `InvalidState`. Add a
+new code only when callers need to distinguish a failure kind, and keep existing message
+text stable when migrating a throw site.
+
+This taxonomy classifies structural errors only. Design-quality findings still flow
+through diagnostics and validation, never through exceptions.

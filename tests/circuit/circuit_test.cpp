@@ -10,6 +10,7 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/parts/parts.hpp>
 #include <volt/core/electrical_attributes.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/core/ids.hpp>
 
 namespace {
@@ -745,4 +746,41 @@ TEST_CASE("Moved-from circuits reset to empty and stay safely usable") {
         circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
     CHECK(circuit.net_count() == 1);
     CHECK(assigned.net_count() == 0);
+}
+
+TEST_CASE("Structural rejections carry machine-readable error codes") {
+    volt::Circuit circuit;
+    const auto pin_def = circuit.add_pin_definition(
+        volt::PinDefinition{"VDD", "1", volt::ConnectionRequirement::Required,
+                            volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Regulator", std::vector{pin_def}});
+    [[maybe_unused]] const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+
+    try {
+        [[maybe_unused]] const auto duplicate =
+            circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+        FAIL("Duplicate reference designator must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::DuplicateName);
+    }
+
+    try {
+        circuit.set_component_property(volt::ComponentId{42}, volt::PropertyKey{"k"},
+                                       volt::PropertyValue{"v"});
+        FAIL("Unknown component ID must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::Component);
+        CHECK(error.entity()->index() == 42);
+    }
+
+    try {
+        [[maybe_unused]] const auto empty_name = volt::NetName{""};
+        FAIL("Empty net name must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+    }
 }
