@@ -1,8 +1,9 @@
 #include <volt/circuit/hierarchy/hierarchy.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "../circuit_storage.hpp"
 
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -11,19 +12,20 @@ namespace volt {
 
 ModuleName::ModuleName(std::string value) : value_{std::move(value)} {
     if (value_.empty()) {
-        throw std::invalid_argument{"Module name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Module name must not be empty"};
     }
 }
 
 ModuleInstanceName::ModuleInstanceName(std::string value) : value_{std::move(value)} {
     if (value_.empty()) {
-        throw std::invalid_argument{"Module instance name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Module instance name must not be empty"};
     }
 }
 
 PortName::PortName(std::string value) : value_{std::move(value)} {
     if (value_.empty()) {
-        throw std::invalid_argument{"Port name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Port name must not be empty"};
     }
 }
 

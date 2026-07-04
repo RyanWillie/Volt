@@ -1,12 +1,13 @@
 #include <volt/circuit/hierarchy/hierarchy_model.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "../circuit_storage.hpp"
 
 #include <algorithm>
 #include <cstddef>
 #include <memory>
 #include <optional>
-#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -36,7 +37,7 @@ HierarchyModel::~HierarchyModel() = default;
 [[nodiscard]] ModuleDefId
 Circuit::HierarchyStorage::add_module_definition(ModuleDefinition definition) {
     if (module_definition_by_name(definition.name()).has_value()) {
-        throw std::logic_error{"Module definition name already exists"};
+        throw KernelLogicError{ErrorCode::DuplicateName, "Module definition name already exists"};
     }
 
     return mutable_state().module_definitions.insert(
@@ -47,7 +48,8 @@ Circuit::HierarchyStorage::add_module_definition(ModuleDefinition definition) {
 Circuit::HierarchyStorage::add_template_net(ModuleDefId module, TemplateNetDefinition net) {
     require_module_definition(module);
     if (template_net_by_name(module, net.name()).has_value()) {
-        throw std::logic_error{"Template net name already exists in module definition"};
+        throw KernelLogicError{ErrorCode::DuplicateName,
+                               "Template net name already exists in module definition"};
     }
 
     const auto id = mutable_state().template_net_definitions.insert(std::move(net));
@@ -59,7 +61,8 @@ Circuit::HierarchyStorage::add_template_net(ModuleDefId module, TemplateNetDefin
                                                                        PortDefinition port) {
     require_template_net_in_module(module, port.internal_net());
     if (port_by_name(module, port.name()).has_value()) {
-        throw std::logic_error{"Port name already exists in module definition"};
+        throw KernelLogicError{ErrorCode::DuplicateName,
+                               "Port name already exists in module definition"};
     }
 
     const auto id = mutable_state().port_definitions.insert(std::move(port));
@@ -72,7 +75,8 @@ Circuit::HierarchyStorage::add_module_component(ModuleDefId module,
                                                 ModuleComponentTemplate component) {
     require_module_definition(module);
     if (module_component_by_reference(module, component.reference()).has_value()) {
-        throw std::logic_error{"Module component reference designator already exists"};
+        throw KernelLogicError{ErrorCode::DuplicateName,
+                               "Module component reference designator already exists"};
     }
 
     const auto id = mutable_state().module_component_templates.insert(std::move(component));
@@ -91,7 +95,8 @@ bool Circuit::HierarchyStorage::connect_module_pin(ModuleDefId module, TemplateN
             return false;
         }
 
-        throw std::logic_error{"Module component pin is already connected"};
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Module component pin is already connected"};
     }
 
     mutable_state().module_pin_connections.push_back(ModulePinConnection{net, component, pin});
@@ -103,7 +108,7 @@ Circuit::HierarchyStorage::instantiate_root_module(ModuleDefId definition,
                                                    ModuleInstanceName name) {
     require_module_definition(definition);
     if (module_instance_by_name(name).has_value()) {
-        throw std::logic_error{"Module instance name already exists"};
+        throw KernelLogicError{ErrorCode::DuplicateName, "Module instance name already exists"};
     }
 
     auto instance_name = name.value();
@@ -119,12 +124,13 @@ Circuit::HierarchyStorage::instantiate_root_module(ModuleDefId definition,
     const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins) {
     require_module_definition(definition);
     if (module_instance_by_name(name).has_value()) {
-        throw std::logic_error{"Module instance name already exists"};
+        throw KernelLogicError{ErrorCode::DuplicateName, "Module instance name already exists"};
     }
 
     const auto &template_nets = state().module_definitions.get(definition).template_nets();
     if (origins.size() != template_nets.size()) {
-        throw std::logic_error{"Module instance origin net count does not match definition"};
+        throw KernelLogicError{ErrorCode::InvalidArgument,
+                               "Module instance origin net count does not match definition"};
     }
 
     auto seen_template_nets = std::vector<TemplateNetDefId>{};
@@ -133,14 +139,17 @@ Circuit::HierarchyStorage::instantiate_root_module(ModuleDefId definition,
         require_template_net_in_module(definition, template_net);
         if (std::find(seen_template_nets.begin(), seen_template_nets.end(), template_net) !=
             seen_template_nets.end()) {
-            throw std::logic_error{"Duplicate module instance template-net origin"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Duplicate module instance template-net origin"};
         }
         if (std::find(seen_concrete_nets.begin(), seen_concrete_nets.end(), concrete_net) !=
             seen_concrete_nets.end()) {
-            throw std::logic_error{"Duplicate module instance concrete-net origin"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Duplicate module instance concrete-net origin"};
         }
         if (is_module_origin_net(concrete_net)) {
-            throw std::logic_error{"Concrete net already has module origin metadata"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Concrete net already has module origin metadata"};
         }
         seen_template_nets.push_back(template_net);
         seen_concrete_nets.push_back(concrete_net);
@@ -149,13 +158,15 @@ Circuit::HierarchyStorage::instantiate_root_module(ModuleDefId definition,
     for (const auto template_net : template_nets) {
         if (std::find(seen_template_nets.begin(), seen_template_nets.end(), template_net) ==
             seen_template_nets.end()) {
-            throw std::logic_error{"Missing module instance template-net origin"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Missing module instance template-net origin"};
         }
     }
 
     const auto &module_components = state().module_definitions.get(definition).components();
     if (component_origins.size() != module_components.size()) {
-        throw std::logic_error{"Module instance component origin count does not match definition"};
+        throw KernelLogicError{ErrorCode::InvalidArgument,
+                               "Module instance component origin count does not match definition"};
     }
 
     auto seen_template_components = std::vector<ModuleComponentId>{};
@@ -164,14 +175,17 @@ Circuit::HierarchyStorage::instantiate_root_module(ModuleDefId definition,
         require_module_component_in_module(definition, template_component);
         if (std::find(seen_template_components.begin(), seen_template_components.end(),
                       template_component) != seen_template_components.end()) {
-            throw std::logic_error{"Duplicate module instance template-component origin"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Duplicate module instance template-component origin"};
         }
         if (std::find(seen_concrete_components.begin(), seen_concrete_components.end(),
                       concrete_component) != seen_concrete_components.end()) {
-            throw std::logic_error{"Duplicate module instance concrete-component origin"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Duplicate module instance concrete-component origin"};
         }
         if (is_module_origin_component(concrete_component)) {
-            throw std::logic_error{"Concrete component already has module origin metadata"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Concrete component already has module origin metadata"};
         }
         seen_template_components.push_back(template_component);
         seen_concrete_components.push_back(concrete_component);
@@ -180,7 +194,8 @@ Circuit::HierarchyStorage::instantiate_root_module(ModuleDefId definition,
     for (const auto template_component : module_components) {
         if (std::find(seen_template_components.begin(), seen_template_components.end(),
                       template_component) == seen_template_components.end()) {
-            throw std::logic_error{"Missing module instance template-component origin"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Missing module instance template-component origin"};
         }
     }
 
@@ -201,10 +216,12 @@ void Circuit::HierarchyStorage::record_module_net_origin(ModuleInstanceId instan
     require_template_net_in_module(state().module_instances.get(instance).definition(),
                                    template_net);
     if (is_module_origin_net(concrete_net)) {
-        throw std::logic_error{"Concrete net already has module origin metadata"};
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Concrete net already has module origin metadata"};
     }
     if (concrete_net_for(instance, template_net).has_value()) {
-        throw std::logic_error{"Module instance template net already has origin metadata"};
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Module instance template net already has origin metadata"};
     }
 
     mutable_state().module_net_origins.push_back(ModuleNetOrigin{instance, template_net});
@@ -218,10 +235,12 @@ void Circuit::HierarchyStorage::record_module_component_origin(ModuleInstanceId 
     require_module_component_in_module(state().module_instances.get(instance).definition(),
                                        component);
     if (is_module_origin_component(concrete_component)) {
-        throw std::logic_error{"Concrete component already has module origin metadata"};
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Concrete component already has module origin metadata"};
     }
     if (concrete_component_for(instance, component).has_value()) {
-        throw std::logic_error{"Module instance component already has origin metadata"};
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Module instance component already has origin metadata"};
     }
 
     mutable_state().module_component_origins.push_back(ModuleComponentOrigin{instance, component});
@@ -234,19 +253,22 @@ void Circuit::HierarchyStorage::record_module_component_origin(ModuleInstanceId 
     require_module_instance(instance);
     require_port_in_module(state().module_instances.get(instance).definition(), port);
     if (port_binding_for(instance, port).has_value()) {
-        throw std::logic_error{"Module instance port is already bound"};
+        throw KernelLogicError{ErrorCode::InvalidState, "Module instance port is already bound"};
     }
     if (is_module_origin_net(parent_net)) {
-        throw std::logic_error{"Module instance port parent net must be outside module origins"};
+        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                               "Module instance port parent net must be outside module origins"};
     }
 
     const auto expected_internal =
         concrete_net_for(instance, state().port_definitions.get(port).internal_net());
     if (!expected_internal.has_value() || expected_internal.value() != internal_net) {
-        throw std::logic_error{"Port internal net has no concrete module instance net"};
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Port internal net has no concrete module instance net"};
     }
     if (internal_net == parent_net) {
-        throw std::logic_error{"Module instance port cannot bind to its own internal net"};
+        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                               "Module instance port cannot bind to its own internal net"};
     }
 
     return mutable_state().port_bindings.insert(
@@ -500,31 +522,39 @@ HierarchyModel::module_component_template(ModuleComponentId id) const {
 
 void HierarchyModel::require_module_definition(ModuleDefId module) const {
     if (!state().module_definitions.contains(module)) {
-        throw std::out_of_range{"Module definition ID does not belong to this circuit"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Module definition ID does not belong to this circuit",
+                               EntityRef::module_def(module)};
     }
 }
 
 void HierarchyModel::require_template_net(TemplateNetDefId net) const {
     if (!state().template_net_definitions.contains(net)) {
-        throw std::out_of_range{"Template net definition ID does not belong to this circuit"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Template net definition ID does not belong to this circuit"};
     }
 }
 
 void HierarchyModel::require_port(PortDefId port) const {
     if (!state().port_definitions.contains(port)) {
-        throw std::out_of_range{"Port definition ID does not belong to this circuit"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Port definition ID does not belong to this circuit",
+                               EntityRef::port_def(port)};
     }
 }
 
 void HierarchyModel::require_module_component(ModuleComponentId component) const {
     if (!state().module_component_templates.contains(component)) {
-        throw std::out_of_range{"Module component ID does not belong to this circuit"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Module component ID does not belong to this circuit"};
     }
 }
 
 void HierarchyModel::require_module_instance(ModuleInstanceId instance) const {
     if (!state().module_instances.contains(instance)) {
-        throw std::out_of_range{"Module instance ID does not belong to this circuit"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Module instance ID does not belong to this circuit",
+                               EntityRef::module_instance(instance)};
     }
 }
 
@@ -533,7 +563,8 @@ void HierarchyModel::require_template_net_in_module(ModuleDefId module,
     require_module_definition(module);
     require_template_net(net);
     if (!template_net_belongs_to_module(module, net)) {
-        throw std::logic_error{"Template net does not belong to module definition"};
+        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                               "Template net does not belong to module definition"};
     }
 }
 
@@ -542,7 +573,8 @@ void HierarchyModel::require_port_in_module(ModuleDefId module, PortDefId port) 
     require_port(port);
     const auto &ports = state().module_definitions.get(module).ports();
     if (std::find(ports.begin(), ports.end(), port) == ports.end()) {
-        throw std::logic_error{"Port does not belong to module definition"};
+        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                               "Port does not belong to module definition"};
     }
 }
 
@@ -551,7 +583,8 @@ void HierarchyModel::require_module_component_in_module(ModuleDefId module,
     require_module_definition(module);
     require_module_component(component);
     if (!module_component_belongs_to_module(module, component)) {
-        throw std::logic_error{"Module component does not belong to module definition"};
+        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                               "Module component does not belong to module definition"};
     }
 }
 
