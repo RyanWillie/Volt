@@ -569,3 +569,53 @@ TEST_CASE("Restoring a module instance over a pin-less component reports invalid
         CHECK(error.code() == volt::ErrorCode::InvalidState);
     }
 }
+
+TEST_CASE("Hierarchy structural rejections carry machine-readable error codes") {
+    volt::Circuit circuit;
+
+    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"BuckConverter"},
+    });
+
+    try {
+        [[maybe_unused]] const auto duplicate = circuit.add_module_definition(
+            volt::ModuleDefinition{volt::ModuleName{"BuckConverter"}});
+        FAIL("Duplicate module definition name must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::DuplicateName);
+    }
+
+    const auto other_module = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"LdoRegulator"},
+    });
+    const auto vin = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
+
+    try {
+        [[maybe_unused]] const auto port = circuit.add_port_definition(
+            other_module,
+            volt::PortDefinition{volt::PortName{"VIN"}, vin, volt::PortRole::PowerInput});
+        FAIL("Port over another module's template net must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+    }
+
+    try {
+        [[maybe_unused]] const auto net = circuit.add_template_net(
+            volt::ModuleDefId{42},
+            volt::TemplateNetDefinition{volt::NetName{"SW"}, volt::NetKind::Signal});
+        FAIL("Unknown module definition ID must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::ModuleDef);
+        CHECK(error.entity()->index() == 42);
+    }
+
+    try {
+        [[maybe_unused]] const auto name = volt::ModuleName{""};
+        FAIL("Empty module name must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+    }
+}

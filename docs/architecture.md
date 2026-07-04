@@ -1,4 +1,4 @@
-# Volt Kernel Architecture
+#Volt Kernel Architecture
 
 Volt is organized as a layered kernel. Each layer should be testable without requiring
 the layers above it.
@@ -90,8 +90,9 @@ Prefer general primitives over use-case-specific kernel objects. For example:
 - a reusable power stage, sensor channel, or motor driver should be built from module,
   port, component, net, and constraint primitives rather than special-purpose kernel
   classes for each circuit pattern;
-- SPI, I2C, UART, memory, or connector helpers should build on generic net bundles,
-  interfaces, ports, and nets rather than requiring protocol-specific kernel concepts;
+- SPI,
+    I2C, UART, memory, or connector helpers should build on generic net bundles, interfaces, ports,
+    and nets rather than requiring protocol - specific kernel concepts;
 - USB, clock, analog, high-current, or power-rail behavior should be expressed through
   reusable net classes or constraints rather than one-off APIs for every case.
 
@@ -132,9 +133,9 @@ The current thinking is:
 
 - Schematics should support multiple sheets.
 - Schematic entities should reference existing logical entities.
-- A schematic wire or visual run should represent an existing `NetId`; it should not be
-  the source of electrical connectivity.
-- PCB routes and copper should implement existing `NetId` values; they should not define
+- A schematic wire or visual run should represent an existing `NetId`;
+it should not be the source of electrical connectivity.- PCB routes and
+    copper should implement existing `NetId` values; they should not define
   the netlist.
 - Schematic and PCB validators should report projection consistency issues, such as a
   missing symbol for a component, an unrouted net, or visual geometry that references the
@@ -185,20 +186,21 @@ Volt::Core
   lowest-level primitives and version API
 
 Volt::Circuit
-  logical circuit model; depends on Volt::Core
+  logical circuit model;
+depends on Volt::Core
 
-Volt::Authoring
-  component library, reference allocation, and ergonomic connection helpers;
-  depends on Volt::Circuit
+    Volt::Authoring component library,
+    reference allocation, and ergonomic connection helpers;
+depends on Volt::Circuit
 
-Volt::Schematic
-  schematic projection model; depends on Volt::Circuit
+    Volt::Schematic schematic projection model;
+depends on Volt::Circuit
 
-Volt::PCB
-  PCB projection model; depends on Volt::Circuit
+    Volt::PCB PCB projection model;
+depends on Volt::Circuit
 
-Volt::IO
-  deterministic logical circuit, schematic, and PCB projection persistence; depends on
+    Volt::IO deterministic logical circuit,
+    schematic, and PCB projection persistence; depends on
   Volt::Circuit, Volt::Schematic, Volt::PCB, and owns JSON dependencies
 
 Volt::Volt
@@ -336,51 +338,53 @@ PhysicalPart
   package
   footprint
   pin_pad_mappings
-  properties: {"tolerance": "1%"}
+  properties: {
+    "tolerance" : "1%"
+}
 ```
 
-This layer keeps the distinction between:
+    This layer keeps the distinction between :
 
-- the reusable logical device definition
-- the selected manufacturer part
-- the selected physical package
-- the referenced footprint definition
-- the logical-pin to physical-pad mapping
+    -the reusable logical device definition -
+    the selected manufacturer part - the selected physical package -
+    the referenced footprint definition - the logical - pin to physical -
+    pad mapping
 
-`FootprintRef` is only a reference. Footprint geometry, pads, courtyards, layers, and
-board placement remain outside the current circuit-kernel scope.
+`FootprintRef` is only a reference.Footprint geometry,
+    pads, courtyards, layers,
+    and board placement remain outside the current circuit -
+        kernel scope
+            .
 
-Selected physical parts are assigned to component instances through `Circuit`. The
-component stores the selected value, but the mutation boundary validates that the
-`PhysicalPart` pin/pad mappings cover the component's logical pin definitions and do not
-reuse a physical pad label. A logical pin may map to more than one physical pad when the
-selected package exposes tied pads.
-This keeps invalid selected-part state out of the owning circuit database.
+        Selected physical parts are assigned to component instances through `Circuit`.The component
+            stores the selected value,
+    but the mutation boundary validates that the
+`PhysicalPart` pin / pad mappings cover the component's logical pin definitions and do not reuse a
+                          physical pad label
+                              .A logical pin may map to more than one physical pad when the selected
+                                  package exposes tied pads.This keeps invalid selected -
+            part state out of the owning circuit database
+                .
 
-## Circuit Definitions
+            ##Circuit Definitions
 
-`PinDefinition` and `ComponentDefinition` describe reusable part shapes. They do not
-represent actual design instances such as `R1` or `U1`; those come in a later layer.
+`PinDefinition` and `ComponentDefinition` describe reusable part
+                shapes.They do not represent actual design instances such as `R1` or `U1`;
+those come in a later layer
+    .
 
-Definition objects do not store their own IDs. Their IDs are table keys assigned by
-`EntityTable`, which avoids duplicated identity state inside the entity payload. The
-definition payload stores electronics meaning:
+    Definition objects do not store their own IDs.Their IDs are table keys assigned by
+`EntityTable`,
+    which avoids duplicated identity state inside the entity payload.The definition payload stores
+        electronics meaning :
 
-```text
-PinDefinition
-  name: "VDD"
-  number: "17"
-  connection_requirement: Required
-  terminal_kind: Power
-  direction: Input
-  signal_domain: Unspecified
-  drive_kind: Unspecified
-  polarity: None
+```text PinDefinition name : "VDD" number : "17" connection_requirement : Required terminal_kind
+    : Power direction : Input signal_domain : Unspecified drive_kind : Unspecified polarity
+    : None
 
-ComponentDefinition
-  name: "Resistor"
-  pins: [PinDefId(0), PinDefId(1)]
-  properties: {"category": "passive"}
+          ComponentDefinition name : "Resistor" pins : [ PinDefId(0), PinDefId(1) ] properties : {
+    "category" : "passive"
+}
 ```
 
 Actual component instances, concrete pin instances, and net connections are separate
@@ -473,74 +477,85 @@ net_by_name("GND") -> NetId(2)
 
 `instantiate_component` creates one `ComponentInstance` and concrete `PinInstance` values
 for each ordered pin definition in the component definition. This is still logical model
-authoring; it does not create schematic symbols, wires, footprints, or PCB objects.
+authoring;
+it does not create schematic symbols, wires, footprints,
+    or PCB objects
+                .
 
-The first implementation uses deterministic table scans instead of cached lookup indexes.
-Secondary indexes can be introduced later if profiling shows the circuit authoring path
-needs them.
+            The first implementation uses deterministic table scans instead of cached lookup indexes
+                .Secondary indexes can be introduced later if profiling shows the circuit authoring
+                    path needs them.
 
-## Logical Validation
+            ##Logical Validation
 
-Logical validation is the first electrical-rule-checking layer over the canonical circuit
-model. It returns a `DiagnosticReport`; it does not mutate the circuit and it does not
-make structurally invalid states valid.
+                Logical validation is the first electrical -
+            rule - checking layer over the canonical circuit model.It returns a `DiagnosticReport`;
+it does not mutate the circuit and
+        it does not make structurally invalid states valid.
 
-The initial `validate_circuit` pass intentionally checks only facts represented by the
-current model:
+            The initial `validate_circuit` pass
+                intentionally checks only facts represented by the current model :
 
-- required pins that are not connected
-- pins marked no-connect or must-not-connect that are connected
-- empty nets
-- single-pin nets
-- multiple output-like pins connected to one net
+    -required pins that are not connected -
+            pins marked no - connect or
+    must - not -connect that are connected - empty nets - single - pin nets - multiple output -
+        like pins connected to one net
 
-These findings are bad circuit design, not invalid kernel state. More domain-specific
-ERC, such as voltage compatibility, missing pull-ups, current limiting, power-domain
-checking, and component-specific rules, should be added only after the model contains the
-typed kernel-owned data needed to express those checks.
+            These findings are bad circuit design,
+    not invalid kernel state.More domain - specific ERC, such as voltage compatibility,
+    missing pull - ups, current limiting, power - domain checking, and component - specific rules,
+    should be added only after the model contains the typed kernel -
+        owned data needed to express those checks.
 
-## Mutation Boundary
+        ##Mutation Boundary
 
-Kernel data should be mutated through explicit operations:
+            Kernel data should be mutated through explicit operations :
 
-- define component
-- instantiate component
-- create net
-- connect pin to net
-- disconnect pin
-- validate circuit
+    -define component -
+        instantiate component - create net - connect pin to net - disconnect pin -
+        validate circuit
 
-This preserves invariants and gives future undo/redo, serialization, and Python bindings
-a narrow API surface.
+                This preserves invariants and gives future undo /
+            redo,
+    serialization,
+    and Python bindings a narrow API surface.
 
-## Structural Error Taxonomy
+        ##Structural Error Taxonomy
 
-Structural rejections at migrated mutation boundaries throw typed kernel errors declared
-in `volt/core/errors.hpp`. A typed kernel error derives from `volt::KernelError`, which
-carries a machine-readable `volt::ErrorCode` and, when one is naturally at hand, an
-`EntityRef` identifying the rejected entity. Callers branch on `code()` instead of
-parsing message strings.
+            Structural rejections at migrated mutation boundaries throw typed
+                kernel errors declared in `volt /
+        core / errors.hpp`.A typed kernel error derives from `volt::KernelError`,
+    which carries a machine - readable `volt::ErrorCode` and, when one is naturally at hand,
+    an
+`EntityRef` identifying
+        the rejected entity.Callers branch on `code()` instead of parsing message strings
+            .
 
-The migration is incremental. Core entity storage, the connectivity subsystem, and the
-`Circuit` aggregate root throw typed kernel errors today; the remaining subsystems
-(hierarchy, electrical, intent, net classes, schematic, PCB, IO, adapters, authoring)
-still throw raw `std::logic_error`, `std::invalid_argument`, or `std::out_of_range` until
-their migration lands. Until then, catching `volt::KernelError` alone does not cover
-every mutation-boundary failure.
+    The migration is incremental.Core entity storage,
+    the connectivity and hierarchy subsystems,
+    and the `Circuit` aggregate root throw typed kernel errors today;
+the remaining subsystems(electrical, intent, net classes, schematic, PCB, IO, adapters, authoring)
+still throw raw `std::logic_error`, `std::invalid_argument`, or
+`std::out_of_range` until their migration lands.Until then,
+    catching `volt::KernelError` alone does not cover every mutation -
+            boundary failure.
 
-Each error also derives from the std exception type its throw site historically used:
+            Each error also derives from the std exception type its throw site historically used :
 
-- `KernelLogicError` derives from `std::logic_error`
-- `KernelArgumentError` derives from `std::invalid_argument`
-- `KernelRangeError` derives from `std::out_of_range`
+    - `KernelLogicError` derives from `std::logic_error` - `KernelArgumentError` derives
+                from `std::invalid_argument` - `KernelRangeError` derives from `std::out_of_range`
 
-so pre-existing `catch` sites and test assertions keep working during the incremental
-migration.
+            so pre -
+            existing `catch` sites and
+        test assertions keep working during the incremental migration.
 
-`ErrorCode` values are families, not per-message identifiers: `UnknownEntity`,
-`DuplicateName`, `CrossReferenceViolation`, `InvalidArgument`, and `InvalidState`. Add a
-new code only when callers need to distinguish a failure kind, and keep existing message
-text stable when migrating a throw site.
+`ErrorCode` values are families,
+    not per - message identifiers : `UnknownEntity`,
+`DuplicateName`, `CrossReferenceViolation`, `InvalidArgument`,
+    and `InvalidState`.Add a new code only when callers need to distinguish a failure kind,
+    and keep existing message text stable when migrating a throw site
+            .
 
-This taxonomy classifies structural errors only. Design-quality findings still flow
-through diagnostics and validation, never through exceptions.
+        This taxonomy classifies structural errors only.Design -
+        quality findings still flow through diagnostics and validation,
+    never through exceptions.
