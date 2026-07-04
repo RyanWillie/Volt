@@ -465,6 +465,14 @@ TEST_CASE("Circuit rejects incompatible component electrical attributes") {
             component, resistance,
             volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}}),
         std::invalid_argument);
+    try {
+        circuit.set_component_electrical_attribute(
+            component, resistance,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}});
+        FAIL("Electrical attribute dimension mismatch must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+    }
     CHECK_THROWS_AS(
         circuit.set_component_electrical_attribute(
             component, selected_part_rating,

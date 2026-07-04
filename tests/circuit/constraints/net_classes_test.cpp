@@ -145,6 +145,9 @@ TEST_CASE("Net-class structural rejections carry machine-readable error codes") 
     } catch (const volt::KernelError &error) {
         CHECK(error.code() == volt::ErrorCode::UnknownEntity);
         CHECK(std::string{error.what()} == "Net class ID is out of range");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::NetClass);
+        CHECK(error.entity()->index() == 99);
     }
 }
 

@@ -377,7 +377,8 @@ NetClasses::net_class_assignments() const noexcept {
 
 void NetClasses::require_net_class(NetClassId net_class) const {
     if (!state().net_classes.contains(net_class)) {
-        throw KernelRangeError{ErrorCode::UnknownEntity, "Net class ID is out of range"};
+        throw KernelRangeError{ErrorCode::UnknownEntity, "Net class ID is out of range",
+                               EntityRef::net_class(net_class)};
     }
 }
 

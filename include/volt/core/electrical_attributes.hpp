@@ -4,11 +4,11 @@
 #include <cstddef>
 #include <map>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <variant>
 
+#include <volt/core/errors.hpp>
 #include <volt/core/quantities.hpp>
 
 namespace volt {
@@ -19,7 +19,8 @@ class ElectricalAttributeName {
     /** Construct a non-empty electrical attribute name. */
     explicit ElectricalAttributeName(std::string value) : value_{std::move(value)} {
         if (value_.empty()) {
-            throw std::invalid_argument{"Electrical attribute name must not be empty"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Electrical attribute name must not be empty"};
         }
     }
 
@@ -66,10 +67,12 @@ class AuthoringUnit {
         : dimension_{dimension}, scale_to_canonical_{scale_to_canonical},
           symbol_{std::move(symbol)} {
         if (!std::isfinite(scale_to_canonical_) || scale_to_canonical_ <= 0.0) {
-            throw std::invalid_argument{"Authoring unit scale must be finite and positive"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Authoring unit scale must be finite and positive"};
         }
         if (symbol_.empty()) {
-            throw std::invalid_argument{"Authoring unit symbol must not be empty"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Authoring unit symbol must not be empty"};
         }
     }
 
@@ -160,7 +163,8 @@ class ElectricalAttributeSpec {
           default_authoring_unit_{std::move(default_authoring_unit)} {
         if (default_authoring_unit_.has_value() &&
             default_authoring_unit_.value().dimension() != dimension_) {
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
                 "Electrical attribute default authoring unit dimension must match the spec"};
         }
     }
@@ -185,7 +189,8 @@ class ElectricalAttributeSpec {
     /** Throw when a value is not compatible with the spec dimension. */
     void require_compatible(const ElectricalAttributeValue &value) const {
         if (value.dimension() != dimension_) {
-            throw std::invalid_argument{"Electrical attribute value dimension does not match spec"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Electrical attribute value dimension does not match spec"};
         }
     }
 
@@ -213,7 +218,7 @@ class ElectricalAttributeMap {
     [[nodiscard]] const ElectricalAttributeValue &get(const ElectricalAttributeName &name) const {
         const auto it = entries_.find(name);
         if (it == entries_.end()) {
-            throw std::out_of_range{"Electrical attribute is not present"};
+            throw KernelRangeError{ErrorCode::UnknownEntity, "Electrical attribute is not present"};
         }
 
         return it->second;

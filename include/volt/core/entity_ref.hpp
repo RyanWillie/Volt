@@ -15,6 +15,7 @@ enum class EntityKind {
     PinDef,
     Pin,
     Net,
+    NetClass,
     ModuleDef,
     TemplateNetDef,
     ModuleComponent,
@@ -82,6 +83,11 @@ class EntityRef {
     /** Create a reference to a net. */
     [[nodiscard]] static EntityRef net(NetId id) noexcept {
         return EntityRef{EntityKind::Net, id.index()};
+    }
+
+    /** Create a reference to a net class. */
+    [[nodiscard]] static EntityRef net_class(NetClassId id) noexcept {
+        return EntityRef{EntityKind::NetClass, id.index()};
     }
 
     /** Create a reference to a module definition. */
