@@ -20,6 +20,11 @@ When deciding where a check belongs:
 - Reporting references such as `EntityRef` must not become normal traversal or mutation
   handles.
 
+Kernel state is a compiled build artifact, not the editable source document. Kernel
+entities are append-only within a build; do not add entity removal, erasure, or deletion
+APIs to kernel aggregates unless `docs/design/adr-append-only-kernel.md` is explicitly
+revisited.
+
 ## Kernel-Owned EDA Semantics
 
 Python, UI, importers, schematic tools, and PCB tools are authoring or projection

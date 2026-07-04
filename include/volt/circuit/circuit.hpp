@@ -34,7 +34,8 @@ namespace volt {
  *   partial operation cannot leave invalid kernel state; structural violations throw.
  * Collaborators: composes the *Model subsystems; consumed read-only (const Circuit&) by
  *   validation/ERC, IO, and the Schematic/Board projections. See
- *   docs/superpowers/specs/2026-06-02-volt-kernel-architecture-design.md.
+ *   docs/superpowers/specs/2026-06-02-volt-kernel-architecture-design.md and
+ *   docs/design/adr-append-only-kernel.md.
  */
 class Circuit {
   public:

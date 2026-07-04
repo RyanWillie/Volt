@@ -43,6 +43,8 @@ include:
 - Reporting references such as `EntityRef` become normal traversal or mutation handles.
 - A public API addition lacks a kernel-owned data model, mutation API, constraint, or
   validation story for the EDA meaning it introduces.
+- A kernel aggregate adds entity removal, erasure, or deletion APIs, contradicting
+  `docs/design/adr-append-only-kernel.md`, without linking a decision to revisit it.
 - Serialization or parsing becomes nondeterministic, lossy, silently accepts malformed
   structural data, or emits unstable output.
 - Tests fail to cover a new invariant, bug fix, file-format behavior, diagnostic, or
