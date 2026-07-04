@@ -33,32 +33,6 @@ HierarchyModel &HierarchyModel::operator=(HierarchyModel &&other) noexcept = def
 
 HierarchyModel::~HierarchyModel() = default;
 
-Circuit::HierarchyStorage::HierarchyStorage()
-    : HierarchyStorage{std::make_shared<detail::HierarchyState>()} {}
-
-Circuit::HierarchyStorage::HierarchyStorage(std::shared_ptr<detail::HierarchyState> state)
-    : HierarchyModel{state}, state_{std::move(state)} {}
-
-Circuit::HierarchyStorage::HierarchyStorage(const HierarchyStorage &other)
-    : HierarchyStorage{std::make_shared<detail::HierarchyState>(other.state())} {}
-
-Circuit::HierarchyStorage &Circuit::HierarchyStorage::operator=(const HierarchyStorage &other) {
-    if (this != &other) {
-        auto replacement =
-            HierarchyStorage{std::make_shared<detail::HierarchyState>(other.state())};
-        *this = std::move(replacement);
-    }
-    return *this;
-}
-
-[[nodiscard]] detail::HierarchyState &Circuit::HierarchyStorage::mutable_state() noexcept {
-    return *state_;
-}
-
-[[nodiscard]] const detail::HierarchyState &Circuit::HierarchyStorage::state() const noexcept {
-    return *state_;
-}
-
 [[nodiscard]] ModuleDefId
 Circuit::HierarchyStorage::add_module_definition(ModuleDefinition definition) {
     if (module_definition_by_name(definition.name()).has_value()) {

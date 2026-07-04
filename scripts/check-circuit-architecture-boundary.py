@@ -248,6 +248,7 @@ SUBMODEL_DERIVATION_ALLOWLIST = {
 
 PRIVATE_STORAGE_HEADER_ALLOWLIST = {
     "src/circuit/circuit_storage.hpp": ("src/circuit/",),
+    "src/circuit/subsystem_storage_impl.hpp": ("src/circuit/",),
     "src/pcb/board_storage.hpp": ("src/pcb/",),
     "src/pcb/routing/board_spatial_index_storage.hpp": ("src/pcb/routing/",),
     "src/schematic/schematic_storage.hpp": ("src/schematic/",),
@@ -506,13 +507,15 @@ def submodel_derivations(path: Path, text: str) -> list[SubmodelDerivation]:
     for match in pattern.finditer(stripped):
         derived = match.group(1)
         base_clause = match.group(2)
-        for base_match in re.finditer(
-            r"(?:^|,)\s*(?:public|protected|private)?\s*(?:volt::)?([A-Za-z_]\w*)",
-            base_clause,
-        ):
+        # Scan every identifier in the base clause, including template arguments, so
+        # indirect derivations such as SubsystemStorage<ConnectivityModel, State> still
+        # count as deriving from the mutating submodel facade.
+        seen_bases: set[str] = set()
+        for base_match in re.finditer(r"\b([A-Za-z_]\w*)\b", base_clause):
             base = base_match.group(1)
-            if base not in SUBMODEL_MUTATORS:
+            if base not in SUBMODEL_MUTATORS or base in seen_bases:
                 continue
+            seen_bases.add(base)
             derivations.append(
                 SubmodelDerivation(
                     path=path,

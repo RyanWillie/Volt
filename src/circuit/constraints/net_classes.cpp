@@ -300,32 +300,6 @@ NetClasses &NetClasses::operator=(NetClasses &&other) noexcept = default;
 
 NetClasses::~NetClasses() = default;
 
-Circuit::NetClassStorage::NetClassStorage()
-    : NetClassStorage{std::make_shared<detail::NetClassesState>()} {}
-
-Circuit::NetClassStorage::NetClassStorage(std::shared_ptr<detail::NetClassesState> state)
-    : NetClasses{state}, state_{std::move(state)} {}
-
-Circuit::NetClassStorage::NetClassStorage(const NetClassStorage &other)
-    : NetClassStorage{std::make_shared<detail::NetClassesState>(other.state())} {}
-
-Circuit::NetClassStorage &Circuit::NetClassStorage::operator=(const NetClassStorage &other) {
-    if (this != &other) {
-        auto replacement =
-            NetClassStorage{std::make_shared<detail::NetClassesState>(other.state())};
-        *this = std::move(replacement);
-    }
-    return *this;
-}
-
-[[nodiscard]] detail::NetClassesState &Circuit::NetClassStorage::mutable_state() noexcept {
-    return *state_;
-}
-
-[[nodiscard]] const detail::NetClassesState &Circuit::NetClassStorage::state() const noexcept {
-    return *state_;
-}
-
 [[nodiscard]] NetClassId Circuit::NetClassStorage::add_net_class(NetClass net_class) {
     if (net_class_by_name(net_class.name()).has_value()) {
         throw std::logic_error{"Net class name already exists"};

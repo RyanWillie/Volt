@@ -46,32 +46,6 @@ ElectricalModel &ElectricalModel::operator=(ElectricalModel &&other) noexcept = 
 
 ElectricalModel::~ElectricalModel() = default;
 
-Circuit::ElectricalStorage::ElectricalStorage()
-    : ElectricalStorage{std::make_shared<detail::ElectricalState>()} {}
-
-Circuit::ElectricalStorage::ElectricalStorage(std::shared_ptr<detail::ElectricalState> state)
-    : ElectricalModel{state}, state_{std::move(state)} {}
-
-Circuit::ElectricalStorage::ElectricalStorage(const ElectricalStorage &other)
-    : ElectricalStorage{std::make_shared<detail::ElectricalState>(other.state())} {}
-
-Circuit::ElectricalStorage &Circuit::ElectricalStorage::operator=(const ElectricalStorage &other) {
-    if (this != &other) {
-        auto replacement =
-            ElectricalStorage{std::make_shared<detail::ElectricalState>(other.state())};
-        *this = std::move(replacement);
-    }
-    return *this;
-}
-
-[[nodiscard]] detail::ElectricalState &Circuit::ElectricalStorage::mutable_state() noexcept {
-    return *state_;
-}
-
-[[nodiscard]] const detail::ElectricalState &Circuit::ElectricalStorage::state() const noexcept {
-    return *state_;
-}
-
 void Circuit::ElectricalStorage::set_component_attribute(ComponentId component,
                                                          const ElectricalAttributeSpec &spec,
                                                          ElectricalAttributeValue value) {

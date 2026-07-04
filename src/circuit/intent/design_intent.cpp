@@ -34,34 +34,6 @@ DesignIntent &DesignIntent::operator=(DesignIntent &&other) noexcept = default;
 
 DesignIntent::~DesignIntent() = default;
 
-Circuit::DesignIntentStorage::DesignIntentStorage()
-    : DesignIntentStorage{std::make_shared<detail::DesignIntentState>()} {}
-
-Circuit::DesignIntentStorage::DesignIntentStorage(std::shared_ptr<detail::DesignIntentState> state)
-    : DesignIntent{state}, state_{std::move(state)} {}
-
-Circuit::DesignIntentStorage::DesignIntentStorage(const DesignIntentStorage &other)
-    : DesignIntentStorage{std::make_shared<detail::DesignIntentState>(other.state())} {}
-
-Circuit::DesignIntentStorage &
-Circuit::DesignIntentStorage::operator=(const DesignIntentStorage &other) {
-    if (this != &other) {
-        auto replacement =
-            DesignIntentStorage{std::make_shared<detail::DesignIntentState>(other.state())};
-        *this = std::move(replacement);
-    }
-    return *this;
-}
-
-[[nodiscard]] detail::DesignIntentState &Circuit::DesignIntentStorage::mutable_state() noexcept {
-    return *state_;
-}
-
-[[nodiscard]] const detail::DesignIntentState &
-Circuit::DesignIntentStorage::state() const noexcept {
-    return *state_;
-}
-
 bool Circuit::DesignIntentStorage::mark_intentional_stub_net(NetId net) {
     if (is_intentional_stub_net(net)) {
         return false;
