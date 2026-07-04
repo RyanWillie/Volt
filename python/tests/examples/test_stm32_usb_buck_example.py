@@ -573,7 +573,10 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert len(pcb["board"]["zones"]) >= 1
     assert len(pcb["board"]["texts"]) >= 10
     assert all(_is_octilinear_track(track) for track in pcb["board"]["tracks"])
-    assert pcb["viewer"]["diagnostics"] == []
+    assert len(pcb["viewer"]["diagnostics"]) == 28
+    assert {diagnostic["code"] for diagnostic in pcb["viewer"]["diagnostics"]} == {
+        "PCB_NET_UNROUTED"
+    }
     assert len(pcb["viewer"]["pad_resolutions"]) >= 90
     pcb_net_names = {
         net_names_by_id[track["net"]] for track in pcb["board"]["tracks"]
@@ -706,6 +709,18 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "POWER_INPUT_WITHOUT_SOURCE" not in codes
     assert "SINGLE_PIN_NET" not in codes
     assert "UNCONNECTED_REQUIRED_PIN" not in codes
+    unrouted = [
+        diagnostic
+        for diagnostic in validation["diagnostics"]
+        if diagnostic["code"] == "PCB_NET_UNROUTED"
+    ]
+    assert len(unrouted) == 28
+    assert {
+        diagnostic["expect_diagnostic_kwargs"]["stage"] for diagnostic in unrouted
+    } == {"board"}
+    assert {
+        diagnostic["expect_diagnostic_kwargs"]["board"] for diagnostic in unrouted
+    } == {"STM32 USB Buck PCB"}
     assert validation["status"] == "expected-diagnostics"
     assert validation["unexpected"] == []
     assert validation["missing_expected"] == []
@@ -714,8 +729,9 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert {
         diagnostic["expect_diagnostic_kwargs"]["stage"]
         for diagnostic in validation["diagnostics"]
-    } == {"schematic"}
+    } == {"board", "schematic"}
     assert {item["code"] for item in validation["expected"]} == {
+        "PCB_NET_UNROUTED",
         "SCHEMATIC_DENSE_PORT_TAGS",
         "SCHEMATIC_LABEL_CROWDS_SYMBOL",
         "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",

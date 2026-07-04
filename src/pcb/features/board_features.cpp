@@ -9,7 +9,150 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/connectivity/queries.hpp>
+#include <volt/circuit/validation/validation.hpp>
+
 namespace volt {
+
+namespace {
+
+struct RatsnestEndpointWithNet {
+    NetId net;
+    NetId group_net;
+    RatsnestEndpoint endpoint;
+};
+
+[[nodiscard]] NetId
+canonical_ratsnest_group_net(const Circuit &circuit, const detail::NetContinuityView &continuity,
+                             NetId net, const std::vector<RatsnestEndpointWithNet> &endpoints) {
+    auto first_group_net = std::optional<NetId>{};
+    auto first_parent_net = std::optional<NetId>{};
+    for (const auto &endpoint : endpoints) {
+        if (!continuity.same_group(net, endpoint.net)) {
+            continue;
+        }
+        if (!first_group_net.has_value() || endpoint.net.index() < first_group_net->index()) {
+            first_group_net = endpoint.net;
+        }
+        if (!queries::is_module_origin_net(circuit, endpoint.net) &&
+            (!first_parent_net.has_value() || endpoint.net.index() < first_parent_net->index())) {
+            first_parent_net = endpoint.net;
+        }
+    }
+    return first_parent_net.value_or(first_group_net.value_or(net));
+}
+
+[[nodiscard]] std::vector<RatsnestEdge>
+derive_grouped_ratsnest_edges(std::vector<RatsnestEndpointWithNet> endpoints) {
+    std::sort(endpoints.begin(), endpoints.end(),
+              [](const RatsnestEndpointWithNet &lhs, const RatsnestEndpointWithNet &rhs) {
+                  if (lhs.group_net.index() != rhs.group_net.index()) {
+                      return lhs.group_net.index() < rhs.group_net.index();
+                  }
+                  if (lhs.net.index() != rhs.net.index()) {
+                      return lhs.net.index() < rhs.net.index();
+                  }
+                  return detail::ratsnest_endpoint_less(lhs.endpoint, rhs.endpoint);
+              });
+
+    auto edges = std::vector<RatsnestEdge>{};
+    std::size_t group_begin = 0;
+    while (group_begin < endpoints.size()) {
+        std::size_t group_end = group_begin + 1U;
+        while (group_end < endpoints.size() &&
+               endpoints[group_end].group_net == endpoints[group_begin].group_net) {
+            ++group_end;
+        }
+
+        const auto group_size = group_end - group_begin;
+        if (group_size >= 2U) {
+            const auto edges_before_group = edges.size();
+
+            struct CandidateEdge {
+                std::size_t from;
+                std::size_t to;
+                double distance_squared;
+            };
+
+            auto candidates = std::vector<CandidateEdge>{};
+            candidates.reserve((group_size * (group_size - 1U)) / 2U);
+            for (std::size_t from = 0; from < group_size; ++from) {
+                for (std::size_t to = from + 1U; to < group_size; ++to) {
+                    candidates.push_back(CandidateEdge{
+                        from,
+                        to,
+                        detail::ratsnest_distance_squared(endpoints[group_begin + from].endpoint,
+                                                          endpoints[group_begin + to].endpoint),
+                    });
+                }
+            }
+
+            std::sort(candidates.begin(), candidates.end(),
+                      [&](const CandidateEdge &lhs, const CandidateEdge &rhs) {
+                          if (lhs.distance_squared != rhs.distance_squared) {
+                              return lhs.distance_squared < rhs.distance_squared;
+                          }
+                          const auto &lhs_from = endpoints[group_begin + lhs.from].endpoint;
+                          const auto &rhs_from = endpoints[group_begin + rhs.from].endpoint;
+                          if (!detail::same_ratsnest_endpoint(lhs_from, rhs_from)) {
+                              return detail::ratsnest_endpoint_less(lhs_from, rhs_from);
+                          }
+                          return detail::ratsnest_endpoint_less(
+                              endpoints[group_begin + lhs.to].endpoint,
+                              endpoints[group_begin + rhs.to].endpoint);
+                      });
+
+            auto parents = std::vector<std::size_t>{};
+            parents.reserve(group_size);
+            for (std::size_t index = 0; index < group_size; ++index) {
+                parents.push_back(index);
+            }
+
+            for (const auto candidate : candidates) {
+                const auto from_root = detail::ratsnest_root(parents, candidate.from);
+                const auto to_root = detail::ratsnest_root(parents, candidate.to);
+                if (from_root == to_root) {
+                    continue;
+                }
+
+                parents[to_root] = from_root;
+                edges.push_back(
+                    detail::make_ratsnest_edge(endpoints[group_begin].group_net,
+                                               endpoints[group_begin + candidate.from].endpoint,
+                                               endpoints[group_begin + candidate.to].endpoint));
+                if (edges.size() - edges_before_group >= group_size - 1U) {
+                    break;
+                }
+            }
+        }
+
+        group_begin = group_end;
+    }
+
+    return edges;
+}
+
+[[nodiscard]] std::vector<RatsnestEndpointWithNet>
+collect_connected_ratsnest_endpoints(const std::vector<PadResolution> &resolutions) {
+    auto endpoints = std::vector<RatsnestEndpointWithNet>{};
+    endpoints.reserve(resolutions.size());
+    for (const auto &resolution : resolutions) {
+        if (resolution.status() != PadResolutionStatus::Connected ||
+            !resolution.net().has_value()) {
+            continue;
+        }
+        const auto net = resolution.net().value();
+        endpoints.push_back(RatsnestEndpointWithNet{
+            net,
+            net,
+            RatsnestEndpoint{resolution.placement(), resolution.component(), resolution.pad(),
+                             resolution.position()},
+        });
+    }
+    return endpoints;
+}
+
+} // namespace
 
 BoardHole::BoardHole(BoardPoint center, double drill_diameter_mm, bool plated,
                      std::optional<double> finished_diameter_mm)
@@ -148,108 +291,18 @@ RatsnestEdge::RatsnestEdge(NetId net, RatsnestEndpoint from, RatsnestEndpoint to
 
 [[nodiscard]] std::vector<RatsnestEdge>
 derive_ratsnest_edges(const std::vector<PadResolution> &resolutions) {
-    struct EndpointWithNet {
-        NetId net;
-        RatsnestEndpoint endpoint;
-    };
+    return derive_grouped_ratsnest_edges(collect_connected_ratsnest_endpoints(resolutions));
+}
 
-    auto endpoints = std::vector<EndpointWithNet>{};
-    endpoints.reserve(resolutions.size());
-    for (const auto &resolution : resolutions) {
-        if (resolution.status() != PadResolutionStatus::Connected ||
-            !resolution.net().has_value()) {
-            continue;
-        }
-        const auto net = resolution.net().value();
-        endpoints.push_back(EndpointWithNet{
-            net,
-            RatsnestEndpoint{resolution.placement(), resolution.component(), resolution.pad(),
-                             resolution.position()},
-        });
+[[nodiscard]] std::vector<RatsnestEdge>
+derive_ratsnest_edges(const Circuit &circuit, const std::vector<PadResolution> &resolutions) {
+    auto endpoints = collect_connected_ratsnest_endpoints(resolutions);
+    const auto continuity = detail::NetContinuityView{circuit};
+    for (auto &endpoint : endpoints) {
+        endpoint.group_net =
+            canonical_ratsnest_group_net(circuit, continuity, endpoint.net, endpoints);
     }
-
-    std::sort(endpoints.begin(), endpoints.end(),
-              [](const EndpointWithNet &lhs, const EndpointWithNet &rhs) {
-                  if (lhs.net.index() != rhs.net.index()) {
-                      return lhs.net.index() < rhs.net.index();
-                  }
-                  return detail::ratsnest_endpoint_less(lhs.endpoint, rhs.endpoint);
-              });
-
-    auto edges = std::vector<RatsnestEdge>{};
-    std::size_t group_begin = 0;
-    while (group_begin < endpoints.size()) {
-        std::size_t group_end = group_begin + 1U;
-        while (group_end < endpoints.size() &&
-               endpoints[group_end].net == endpoints[group_begin].net) {
-            ++group_end;
-        }
-
-        const auto group_size = group_end - group_begin;
-        if (group_size >= 2U) {
-            const auto edges_before_group = edges.size();
-
-            struct CandidateEdge {
-                std::size_t from;
-                std::size_t to;
-                double distance_squared;
-            };
-
-            auto candidates = std::vector<CandidateEdge>{};
-            candidates.reserve((group_size * (group_size - 1U)) / 2U);
-            for (std::size_t from = 0; from < group_size; ++from) {
-                for (std::size_t to = from + 1U; to < group_size; ++to) {
-                    candidates.push_back(CandidateEdge{
-                        from,
-                        to,
-                        detail::ratsnest_distance_squared(endpoints[group_begin + from].endpoint,
-                                                          endpoints[group_begin + to].endpoint),
-                    });
-                }
-            }
-
-            std::sort(candidates.begin(), candidates.end(),
-                      [&](const CandidateEdge &lhs, const CandidateEdge &rhs) {
-                          if (lhs.distance_squared != rhs.distance_squared) {
-                              return lhs.distance_squared < rhs.distance_squared;
-                          }
-                          const auto &lhs_from = endpoints[group_begin + lhs.from].endpoint;
-                          const auto &rhs_from = endpoints[group_begin + rhs.from].endpoint;
-                          if (!detail::same_ratsnest_endpoint(lhs_from, rhs_from)) {
-                              return detail::ratsnest_endpoint_less(lhs_from, rhs_from);
-                          }
-                          return detail::ratsnest_endpoint_less(
-                              endpoints[group_begin + lhs.to].endpoint,
-                              endpoints[group_begin + rhs.to].endpoint);
-                      });
-
-            auto parents = std::vector<std::size_t>{};
-            parents.reserve(group_size);
-            for (std::size_t index = 0; index < group_size; ++index) {
-                parents.push_back(index);
-            }
-
-            for (const auto candidate : candidates) {
-                const auto from_root = detail::ratsnest_root(parents, candidate.from);
-                const auto to_root = detail::ratsnest_root(parents, candidate.to);
-                if (from_root == to_root) {
-                    continue;
-                }
-
-                parents[to_root] = from_root;
-                edges.push_back(detail::make_ratsnest_edge(
-                    endpoints[group_begin].net, endpoints[group_begin + candidate.from].endpoint,
-                    endpoints[group_begin + candidate.to].endpoint));
-                if (edges.size() - edges_before_group >= group_size - 1U) {
-                    break;
-                }
-            }
-        }
-
-        group_begin = group_end;
-    }
-
-    return edges;
+    return derive_grouped_ratsnest_edges(std::move(endpoints));
 }
 
 } // namespace volt

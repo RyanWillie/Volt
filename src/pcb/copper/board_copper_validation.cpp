@@ -421,7 +421,7 @@ void validate_unrouted_nets(const Board &board, const std::vector<PadResolution>
         }
     }
 
-    for (const auto &edge : derive_ratsnest_edges(resolutions)) {
+    for (const auto &edge : derive_ratsnest_edges(board.circuit(), resolutions)) {
         const auto from_index =
             shape_index_for_pad(shapes, edge.from().placement(), edge.from().pad());
         const auto to_index = shape_index_for_pad(shapes, edge.to().placement(), edge.to().pad());

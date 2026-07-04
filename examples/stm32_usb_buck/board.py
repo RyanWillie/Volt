@@ -521,4 +521,4 @@ def _route_status_led(
     _connect(layout, nets["LED_STATUS/SUPPLY"], resistor.start, resistor.start.left(3.0), layer=front, width=0.25)
     _connect(layout, nets["LED_STATUS/SIGNAL"], resistor.end, led["A"], layer=front, width=0.20)
     _connect(layout, nets["LED_STATUS/GND"], led["K"], led["K"].right(2.5), layer=front, width=0.25)
-    _connect(layout, nets["STATUS_LED"], mcu["PC13"], mcu["PC13"].left(3.0), layer=front, width=0.20)
+    _connect(layout, nets["STATUS_LED"], mcu["PC13"], resistor.end, layer=front, width=0.20)

@@ -779,7 +779,7 @@ void write_pcb_placement_svg(std::ostream &out, const Board &board,
     const auto translate_x = detail::pcb_svg_margin_mm - bounds.min_x;
     const auto translate_y = detail::pcb_svg_margin_mm - bounds.min_y;
     const auto resolutions = board.resolve_pads(preview_footprints);
-    const auto ratsnest_edges = derive_ratsnest_edges(resolutions);
+    const auto ratsnest_edges = derive_ratsnest_edges(board.circuit(), resolutions);
     const auto has_copper = board.track_count() != 0U || board.via_count() != 0U;
     const auto has_zones = board.zone_count() != 0U;
     const auto has_keepouts = board.keepout_count() != 0U;
