@@ -94,9 +94,49 @@ void require_valid_round_trip(const volt::Circuit &circuit, std::string_view jso
     }
 }
 
+std::size_t lookup_all_components_and_nets(const volt::Circuit &circuit,
+                                           std::size_t component_count) {
+    std::size_t found = 0;
+    for (std::size_t index = 0; index < component_count; ++index) {
+        if (volt::queries::component_by_reference(
+                circuit, volt::ReferenceDesignator{"R" + std::to_string(index + 1)})
+                .has_value()) {
+            ++found;
+        }
+        if (volt::queries::net_by_name(circuit, volt::NetName{"N" + std::to_string(index)})
+                .has_value()) {
+            ++found;
+        }
+    }
+
+    if (found != component_count * 2) {
+        throw std::runtime_error{"Benchmark name lookups missed known entities"};
+    }
+    return found;
+}
+
+std::size_t enumerate_all_component_pins(const volt::Circuit &circuit) {
+    std::size_t pin_total = 0;
+    for (std::size_t index = 0; index < circuit.component_count(); ++index) {
+        pin_total += circuit.connectivity_model().pins_for(volt::ComponentId{index}).size();
+    }
+
+    if (pin_total != circuit.pin_count()) {
+        throw std::runtime_error{"Benchmark pin enumeration missed known pins"};
+    }
+    return pin_total;
+}
+
 void run_size(BenchmarkSink &sink, std::size_t component_count) {
     auto circuit = measure(sink, "build_resistor_chain", component_count,
                            [component_count] { return build_resistor_chain(component_count); });
+
+    measure(sink, "lookup_by_name", component_count, [&circuit, component_count] {
+        return lookup_all_components_and_nets(circuit, component_count);
+    });
+
+    measure(sink, "pins_for_all_components", component_count,
+            [&circuit] { return enumerate_all_component_pins(circuit); });
 
     const auto report = measure(sink, "validate_circuit", component_count,
                                 [&circuit] { return volt::validate_circuit(circuit); });
@@ -117,7 +157,7 @@ void run_size(BenchmarkSink &sink, std::size_t component_count) {
 
 int main() {
     auto sink = BenchmarkSink{};
-    for (const auto component_count : {100U, 1000U, 5000U}) {
+    for (const auto component_count : {100U, 1000U, 5000U, 10000U}) {
         run_size(sink, component_count);
     }
 

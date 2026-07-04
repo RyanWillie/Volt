@@ -132,7 +132,11 @@ Circuit::HierarchyStorage::instantiate_root_module(ModuleDefId definition,
         throw std::logic_error{"Module instance name already exists"};
     }
 
-    return mutable_state().module_instances.insert(ModuleInstance{definition, std::move(name)});
+    auto instance_name = name.value();
+    const auto id =
+        mutable_state().module_instances.insert(ModuleInstance{definition, std::move(name)});
+    mutable_state().module_instances_by_name.emplace(std::move(instance_name), id);
+    return id;
 }
 
 [[nodiscard]] ModuleInstanceId Circuit::HierarchyStorage::restore_root_module_instance(
@@ -289,14 +293,12 @@ HierarchyModel::module_definition_by_name(const ModuleName &name) const {
 
 [[nodiscard]] std::optional<ModuleInstanceId>
 HierarchyModel::module_instance_by_name(const ModuleInstanceName &name) const {
-    for (std::size_t index = 0; index < state().module_instances.size(); ++index) {
-        const auto id = ModuleInstanceId{index};
-        if (state().module_instances.get(id).name() == name) {
-            return id;
-        }
+    const auto found = state().module_instances_by_name.find(name.value());
+    if (found == state().module_instances_by_name.end()) {
+        return std::nullopt;
     }
 
-    return std::nullopt;
+    return found->second;
 }
 
 [[nodiscard]] std::optional<TemplateNetDefId>

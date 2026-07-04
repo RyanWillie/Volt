@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <memory>
 #include <optional>
+#include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -17,6 +19,13 @@ struct ConnectivityState {
     EntityTable<ComponentInstance, ComponentId> components;
     EntityTable<PinInstance, PinId> pins;
     EntityTable<Net, NetId> nets;
+
+    // Derived lookup indexes over the tables above. Every ConnectivityStorage mutation must
+    // keep them in sync; queries rely on them instead of scanning the tables.
+    std::unordered_map<std::string, ComponentId> components_by_reference;
+    std::unordered_map<std::string, NetId> nets_by_name;
+    std::vector<std::vector<PinId>> pins_by_component;
+    std::vector<std::optional<NetId>> net_by_pin;
 };
 
 struct ModuleDefinitionState {
@@ -64,6 +73,9 @@ struct HierarchyState {
     std::vector<NetId> module_origin_nets;
     std::vector<ModuleComponentOrigin> module_component_origins;
     std::vector<ComponentId> module_origin_components;
+
+    // Derived lookup index over module_instances; HierarchyStorage keeps it in sync on insert.
+    std::unordered_map<std::string, ModuleInstanceId> module_instances_by_name;
 };
 
 struct ElectricalState {
