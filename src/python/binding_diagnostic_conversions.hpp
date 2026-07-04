@@ -24,6 +24,10 @@ namespace {
         return "net";
     case volt::EntityKind::ModuleDef:
         return "module_definition";
+    case volt::EntityKind::TemplateNetDef:
+        return "template_net_definition";
+    case volt::EntityKind::ModuleComponent:
+        return "module_component";
     case volt::EntityKind::ModuleInstance:
         return "module_instance";
     case volt::EntityKind::PortDef:

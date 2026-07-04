@@ -1,11 +1,12 @@
 #include <volt/circuit/electrical/electrical_model.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "../circuit_storage.hpp"
 
 #include <algorithm>
 #include <memory>
 #include <optional>
-#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -93,7 +94,8 @@ void Circuit::ElectricalStorage::set_selected_part_attribute(ComponentId compone
                      mutable_state().selected_physical_parts.end(),
                      [component](const auto &entry) { return entry.first == component; });
     if (existing == mutable_state().selected_physical_parts.end()) {
-        throw std::logic_error{"Component has no selected physical part"};
+        throw KernelLogicError{ErrorCode::InvalidState, "Component has no selected physical part",
+                               EntityRef::component(component)};
     }
 
     existing->second = existing->second->with_electrical_attribute(spec, value);
@@ -146,7 +148,8 @@ ElectricalModel::attributes(const std::vector<std::pair<Id, ElectricalAttributeM
 void detail::require_attribute_owner(const ElectricalAttributeSpec &spec,
                                      ElectricalAttributeOwner expected) {
     if (spec.owner() != expected) {
-        throw std::logic_error{"Electrical attribute spec owner is not valid here"};
+        throw KernelLogicError{ErrorCode::InvalidArgument,
+                               "Electrical attribute spec owner is not valid here"};
     }
 }
 
@@ -155,7 +158,9 @@ void detail::require_physical_part_matches_component_definition(
     for (const auto &mapping : physical_part.pin_pad_mappings()) {
         if (std::find(component_pins.begin(), component_pins.end(), mapping.pin()) ==
             component_pins.end()) {
-            throw std::logic_error{"Physical part maps a pin outside the component definition"};
+            throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                                   "Physical part maps a pin outside the component definition",
+                                   EntityRef::pin_def(mapping.pin())};
         }
     }
 
@@ -164,7 +169,9 @@ void detail::require_physical_part_matches_component_definition(
             physical_part.pin_pad_mappings().begin(), physical_part.pin_pad_mappings().end(),
             [pin](const PinPadMapping &mapping) { return mapping.pin() == pin; });
         if (!mapped) {
-            throw std::logic_error{"Physical part must map every pin in the component definition"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Physical part must map every pin in the component definition",
+                                   EntityRef::pin_def(pin)};
         }
     }
 }

@@ -2,11 +2,13 @@
 
 #include <concepts>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/electrical/electrical_model.hpp>
+#include <volt/core/errors.hpp>
 
 namespace {
 
@@ -144,6 +146,16 @@ TEST_CASE("Circuit rejects electrical attributes for the wrong owner kind") {
             component, net_voltage,
             volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}}),
         std::logic_error);
+
+    try {
+        circuit.set_component_electrical_attribute(
+            component, net_voltage,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}});
+        FAIL("Wrong electrical attribute owner must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+        CHECK(std::string{error.what()} == "Electrical attribute spec owner is not valid here");
+    }
 }
 
 TEST_CASE("Circuit owns selected physical parts and selected-part attributes") {
@@ -201,4 +213,64 @@ TEST_CASE("Circuit rejects selected parts that do not match component pins") {
     CHECK_THROWS_AS(
         circuit.select_physical_part(component, make_resistor_physical_part(first_pin, extra_pin)),
         std::logic_error);
+
+    try {
+        circuit.select_physical_part(component, make_resistor_physical_part(first_pin, extra_pin));
+        FAIL("Physical part pin mappings outside the component definition must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+        CHECK(std::string{error.what()} ==
+              "Physical part maps a pin outside the component definition");
+    }
+
+    const auto incomplete_part = volt::PhysicalPart{
+        volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+        volt::PackageRef{"0603"},
+        volt::FootprintRef{"passives", "R_0603_1608Metric"},
+        std::vector{
+            volt::PinPadMapping{first_pin, "1"},
+        },
+    };
+    try {
+        circuit.select_physical_part(component, incomplete_part);
+        FAIL("Physical part pin mappings must cover every component pin definition");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+        CHECK(std::string{error.what()} ==
+              "Physical part must map every pin in the component definition");
+    }
+}
+
+TEST_CASE("Circuit rejects selected-part attributes without selected-part metadata") {
+    volt::Circuit circuit;
+    const auto pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto component_definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{pin_definition}});
+    const auto component =
+        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
+    const auto voltage_rating = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"voltage_rating"},
+        volt::ElectricalAttributeOwner::SelectedPart,
+        volt::ElectricalAttributeKind::DesignInput,
+        volt::UnitDimension::Voltage,
+    };
+
+    CHECK_THROWS_AS(
+        circuit.set_selected_part_electrical_attribute(
+            component, voltage_rating,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 75.0}}),
+        std::logic_error);
+
+    try {
+        circuit.set_selected_part_electrical_attribute(
+            component, voltage_rating,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 75.0}});
+        FAIL("Selected-part attributes require selected-part metadata first");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidState);
+        CHECK(std::string{error.what()} == "Component has no selected physical part");
+    }
 }

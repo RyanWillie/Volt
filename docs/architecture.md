@@ -521,12 +521,13 @@ carries a machine-readable `volt::ErrorCode` and, when one is naturally at hand,
 `EntityRef` identifying the rejected entity. Callers branch on `code()` instead of
 parsing message strings.
 
-The migration is incremental. Core entity storage, the connectivity and hierarchy
-subsystems, and the `Circuit` aggregate root throw typed kernel errors today; the
-remaining subsystems (electrical, intent, net classes, schematic, PCB, IO, adapters,
-authoring) still throw raw `std::logic_error`, `std::invalid_argument`, or
-`std::out_of_range` until their migration lands. Until then, catching `volt::KernelError`
-alone does not cover every mutation-boundary failure.
+The migration is incremental. Core entity storage, the connectivity, hierarchy,
+electrical, and net-class subsystems, and the `Circuit` aggregate root throw typed kernel
+errors today; design intent has no subsystem-local structural throw sites beyond the
+root preflights. The remaining subsystems (schematic, PCB, IO, adapters, authoring) still
+throw raw `std::logic_error`, `std::invalid_argument`, or `std::out_of_range` until their
+migration lands. Until then, catching `volt::KernelError` alone does not cover every
+mutation-boundary failure.
 
 Each error also derives from the std exception type its throw site historically used:
 
