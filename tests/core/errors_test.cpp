@@ -52,10 +52,11 @@ TEST_CASE("Kernel errors are reachable from std exception catch sites") {
 }
 
 TEST_CASE("Error code names are stable identifiers") {
-    CHECK(volt::error_code_name(volt::ErrorCode::UnknownEntity) == "UnknownEntity");
-    CHECK(volt::error_code_name(volt::ErrorCode::DuplicateName) == "DuplicateName");
-    CHECK(volt::error_code_name(volt::ErrorCode::CrossReferenceViolation) ==
+    CHECK(std::string{volt::error_code_name(volt::ErrorCode::UnknownEntity)} == "UnknownEntity");
+    CHECK(std::string{volt::error_code_name(volt::ErrorCode::DuplicateName)} == "DuplicateName");
+    CHECK(std::string{volt::error_code_name(volt::ErrorCode::CrossReferenceViolation)} ==
           "CrossReferenceViolation");
-    CHECK(volt::error_code_name(volt::ErrorCode::InvalidArgument) == "InvalidArgument");
-    CHECK(volt::error_code_name(volt::ErrorCode::InvalidState) == "InvalidState");
+    CHECK(std::string{volt::error_code_name(volt::ErrorCode::InvalidArgument)} ==
+          "InvalidArgument");
+    CHECK(std::string{volt::error_code_name(volt::ErrorCode::InvalidState)} == "InvalidState");
 }
