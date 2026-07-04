@@ -661,3 +661,46 @@ TEST_CASE("Circuit rejects selected parts that do not map every component-defini
                     std::logic_error);
     CHECK_FALSE(circuit.selected_physical_part(component).has_value());
 }
+
+TEST_CASE("Circuit copies keep name lookups independent and uniqueness enforced") {
+    volt::Circuit circuit;
+    const auto pin_def = circuit.add_pin_definition(
+        volt::PinDefinition{"VDD", "1", volt::ConnectionRequirement::Required,
+                            volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Regulator", std::vector{pin_def}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto pin = volt::queries::pin_by_number(circuit, component, "1").value();
+    CHECK(circuit.connect(net, pin));
+
+    auto copy = circuit;
+
+    CHECK(volt::queries::component_by_reference(copy, volt::ReferenceDesignator{"U1"}) ==
+          component);
+    CHECK(volt::queries::net_by_name(copy, volt::NetName{"VCC"}) == net);
+    CHECK(volt::queries::net_of(copy, pin) == net);
+    CHECK_THROWS_AS(
+        copy.add_component(volt::ComponentInstance{component_def, volt::ReferenceDesignator{"U1"}}),
+        std::logic_error);
+    CHECK_THROWS_AS(copy.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power}),
+                    std::logic_error);
+
+    const auto copy_only =
+        copy.instantiate_component(component_def, volt::ReferenceDesignator{"U2"});
+    const auto copy_only_net = copy.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    CHECK(copy.disconnect(pin));
+
+    CHECK(volt::queries::component_by_reference(copy, volt::ReferenceDesignator{"U2"}) ==
+          copy_only);
+    CHECK(volt::queries::net_by_name(copy, volt::NetName{"GND"}) == copy_only_net);
+    CHECK_FALSE(volt::queries::net_of(copy, pin).has_value());
+
+    CHECK_FALSE(volt::queries::component_by_reference(circuit, volt::ReferenceDesignator{"U2"})
+                    .has_value());
+    CHECK_FALSE(volt::queries::net_by_name(circuit, volt::NetName{"GND"}).has_value());
+    CHECK(volt::queries::net_of(circuit, pin) == net);
+    CHECK(circuit.component_count() == 1);
+    CHECK(circuit.net_count() == 1);
+}

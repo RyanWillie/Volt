@@ -82,7 +82,11 @@ Circuit::ConnectivityStorage::add_component_definition(ComponentDefinition defin
         throw std::logic_error{"Component reference designator already exists"};
     }
 
-    return mutable_state().components.insert(std::move(component));
+    auto reference = component.reference().value();
+    const auto id = mutable_state().components.insert(std::move(component));
+    mutable_state().components_by_reference.emplace(std::move(reference), id);
+    mutable_state().pins_by_component.emplace_back();
+    return id;
 }
 
 [[nodiscard]] PinId Circuit::ConnectivityStorage::add_pin(PinInstance pin) {
@@ -96,7 +100,10 @@ Circuit::ConnectivityStorage::add_component_definition(ComponentDefinition defin
         throw std::logic_error{"Pin definition does not belong to component definition"};
     }
 
-    return mutable_state().pins.insert(pin);
+    const auto id = mutable_state().pins.insert(pin);
+    mutable_state().pins_by_component[pin.component().index()].push_back(id);
+    mutable_state().net_by_pin.emplace_back();
+    return id;
 }
 
 [[nodiscard]] NetId Circuit::ConnectivityStorage::add_net(Net net) {
@@ -111,7 +118,13 @@ Circuit::ConnectivityStorage::add_component_definition(ComponentDefinition defin
         }
     }
 
-    return mutable_state().nets.insert(std::move(net));
+    auto name = net.name().value();
+    const auto id = mutable_state().nets.insert(std::move(net));
+    mutable_state().nets_by_name.emplace(std::move(name), id);
+    for (const auto pin : mutable_state().nets.get(id).pins()) {
+        mutable_state().net_by_pin[pin.index()] = id;
+    }
+    return id;
 }
 
 [[nodiscard]] ComponentId Circuit::ConnectivityStorage::instantiate_component(
@@ -140,7 +153,11 @@ bool Circuit::ConnectivityStorage::connect(NetId net, PinId pin) {
         throw std::logic_error{"Pin is already connected to another net"};
     }
 
-    return mutable_state().nets.get(net).connect(pin);
+    const auto changed = mutable_state().nets.get(net).connect(pin);
+    if (changed) {
+        mutable_state().net_by_pin[pin.index()] = net;
+    }
+    return changed;
 }
 
 bool Circuit::ConnectivityStorage::disconnect(PinId pin) {
@@ -151,7 +168,11 @@ bool Circuit::ConnectivityStorage::disconnect(PinId pin) {
         return false;
     }
 
-    return mutable_state().nets.get(existing_net.value()).disconnect(pin);
+    const auto changed = mutable_state().nets.get(existing_net.value()).disconnect(pin);
+    if (changed) {
+        mutable_state().net_by_pin[pin.index()] = std::nullopt;
+    }
+    return changed;
 }
 
 void Circuit::ConnectivityStorage::set_component_property(ComponentId component, PropertyKey key,
@@ -168,39 +189,27 @@ void Circuit::ConnectivityStorage::set_component_property(ComponentId component,
 
 [[nodiscard]] std::optional<ComponentId>
 ConnectivityModel::component_by_reference(const ReferenceDesignator &reference) const {
-    for (std::size_t index = 0; index < state().components.size(); ++index) {
-        const auto component_id = ComponentId{index};
-        if (state().components.get(component_id).reference() == reference) {
-            return component_id;
-        }
+    const auto found = state().components_by_reference.find(reference.value());
+    if (found == state().components_by_reference.end()) {
+        return std::nullopt;
     }
 
-    return std::nullopt;
+    return found->second;
 }
 
 [[nodiscard]] std::optional<NetId> ConnectivityModel::net_by_name(const NetName &name) const {
-    for (std::size_t index = 0; index < state().nets.size(); ++index) {
-        const auto net_id = NetId{index};
-        if (state().nets.get(net_id).name() == name) {
-            return net_id;
-        }
+    const auto found = state().nets_by_name.find(name.value());
+    if (found == state().nets_by_name.end()) {
+        return std::nullopt;
     }
 
-    return std::nullopt;
+    return found->second;
 }
 
 [[nodiscard]] std::vector<PinId> ConnectivityModel::pins_for(ComponentId component) const {
     require_component(component);
 
-    auto result = std::vector<PinId>{};
-    for (std::size_t index = 0; index < state().pins.size(); ++index) {
-        const auto pin_id = PinId{index};
-        if (state().pins.get(pin_id).component() == component) {
-            result.push_back(pin_id);
-        }
-    }
-
-    return result;
+    return state().pins_by_component[component.index()];
 }
 
 [[nodiscard]] std::optional<PinId> ConnectivityModel::pin_by_name(ComponentId component,
@@ -312,14 +321,7 @@ void ConnectivityModel::require_net(NetId net) const {
 }
 
 [[nodiscard]] std::optional<NetId> ConnectivityModel::net_of_existing_pin(PinId pin) const {
-    for (std::size_t index = 0; index < state().nets.size(); ++index) {
-        const auto net = NetId{index};
-        if (state().nets.get(net).contains(pin)) {
-            return net;
-        }
-    }
-
-    return std::nullopt;
+    return state().net_by_pin[pin.index()];
 }
 
 } // namespace volt
