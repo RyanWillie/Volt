@@ -6,7 +6,7 @@
 #include <string_view>
 #include <utility>
 
-#include <volt/core/diagnostics.hpp>
+#include <volt/core/entity_ref.hpp>
 
 namespace volt {
 

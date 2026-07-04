@@ -116,7 +116,7 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
         const auto concrete_pin =
             queries::pin_by_definition(*this, concrete_component.value(), connection.pin());
         if (!concrete_pin.has_value()) {
-            throw KernelLogicError{ErrorCode::UnknownEntity,
+            throw KernelLogicError{ErrorCode::InvalidState,
                                    "Concrete module component pin is missing"};
         }
         [[maybe_unused]] const auto changed = connect(concrete_net.value(), concrete_pin.value());
@@ -136,7 +136,7 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
     const auto internal_net =
         queries::concrete_net_for(*this, instance, hierarchy_.port_definition(port).internal_net());
     if (!internal_net.has_value()) {
-        throw KernelLogicError{ErrorCode::UnknownEntity,
+        throw KernelLogicError{ErrorCode::InvalidState,
                                "Port internal net has no concrete module instance net"};
     }
 
@@ -542,7 +542,7 @@ void Circuit::require_restored_module_connectivity_matches_template(
         const auto concrete_pin =
             queries::pin_by_definition(*this, concrete_component->second, connection.pin());
         if (!concrete_pin.has_value()) {
-            throw KernelLogicError{ErrorCode::UnknownEntity,
+            throw KernelLogicError{ErrorCode::InvalidState,
                                    "Concrete module component pin is missing"};
         }
 

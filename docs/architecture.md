@@ -515,11 +515,18 @@ a narrow API surface.
 
 ## Structural Error Taxonomy
 
-Structural rejections at mutation boundaries throw typed kernel errors declared in
-`volt/core/errors.hpp`. Every thrown error derives from `volt::KernelError`, which carries
-a machine-readable `volt::ErrorCode` and, when one is naturally at hand, an `EntityRef`
-identifying the rejected entity. Callers branch on `code()` instead of parsing message
-strings.
+Structural rejections at migrated mutation boundaries throw typed kernel errors declared
+in `volt/core/errors.hpp`. A typed kernel error derives from `volt::KernelError`, which
+carries a machine-readable `volt::ErrorCode` and, when one is naturally at hand, an
+`EntityRef` identifying the rejected entity. Callers branch on `code()` instead of
+parsing message strings.
+
+The migration is incremental. Core entity storage, the connectivity subsystem, and the
+`Circuit` aggregate root throw typed kernel errors today; the remaining subsystems
+(hierarchy, electrical, intent, net classes, schematic, PCB, IO, adapters, authoring)
+still throw raw `std::logic_error`, `std::invalid_argument`, or `std::out_of_range` until
+their migration lands. Until then, catching `volt::KernelError` alone does not cover
+every mutation-boundary failure.
 
 Each error also derives from the std exception type its throw site historically used:
 

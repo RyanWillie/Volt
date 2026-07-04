@@ -19,6 +19,7 @@
 #include <volt/core/content_hash.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/electrical_attributes.hpp>
+#include <volt/core/entity_ref.hpp>
 #include <volt/core/entity_table.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/core/ids.hpp>
