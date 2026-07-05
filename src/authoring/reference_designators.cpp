@@ -1,18 +1,19 @@
 #include <volt/authoring/reference_designators.hpp>
 
 #include <cstddef>
-#include <stdexcept>
 #include <string>
 #include <utility>
 
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/core/errors.hpp>
 
 namespace volt::authoring {
 
 [[nodiscard]] ReferenceDesignator allocate_reference(const Circuit &circuit,
                                                      std::string_view prefix) {
     if (prefix.empty()) {
-        throw std::invalid_argument{"Reference designator prefix must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Reference designator prefix must not be empty"};
     }
 
     for (std::size_t index = 1;; ++index) {
