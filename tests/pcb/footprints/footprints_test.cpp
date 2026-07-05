@@ -215,6 +215,14 @@ TEST_CASE("FootprintDefinition stores complete package geometry") {
 TEST_CASE("Footprint polygons reject structurally invalid geometry") {
     CHECK_THROWS_AS(volt::FootprintPolygon(std::vector<volt::FootprintPoint>{}),
                     std::invalid_argument);
+    try {
+        static_cast<void>(volt::FootprintPolygon(std::vector<volt::FootprintPoint>{}));
+        FAIL("Invalid footprint polygon geometry must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+        CHECK(std::string{error.what()} ==
+              "Footprint polygon must contain at least three vertices");
+    }
     CHECK_THROWS_AS(volt::FootprintPolygon(std::vector{
                         volt::FootprintPoint{0.0, 0.0},
                         volt::FootprintPoint{1.0, 0.0},

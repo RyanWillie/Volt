@@ -323,6 +323,19 @@ TEST_CASE("BoardSpatialIndex shape-scope rejections carry machine-readable error
     const auto silk = board.add_layer(
         volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
     const auto index = volt::BoardSpatialIndex{board, volt::builtin_footprint_library()};
+    const auto front = volt::BoardLayerId{0};
+
+    try {
+        static_cast<void>(index.query_legality(track_candidate(volt::NetId{99}, front, 1.0)));
+        FAIL("Unknown spatial-index nets must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        CHECK(std::string{error.what()} ==
+              "Board spatial index shape net must belong to the board");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::Net);
+        CHECK(error.entity()->index() == 99);
+    }
 
     try {
         static_cast<void>(index.query_legality(track_candidate(fixture.first_net, silk, 1.0)));

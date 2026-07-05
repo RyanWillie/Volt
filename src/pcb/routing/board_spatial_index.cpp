@@ -243,7 +243,7 @@ void BoardSpatialIndex::ensure_geometry_current() const {
 
 void BoardSpatialIndex::validate_shape(const detail::BoardCopperShape &shape) const {
     if (shape.net.index() >= state().board->circuit().net_count()) {
-        throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
+        throw KernelArgumentError{ErrorCode::UnknownEntity,
                                   "Board spatial index shape net must belong to the board",
                                   EntityRef::net(shape.net)};
     }
