@@ -10,7 +10,6 @@
 #include <optional>
 #include <set>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -18,6 +17,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <volt/core/errors.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 
 namespace volt::io::detail {
@@ -25,7 +25,7 @@ namespace {
 
 void require(bool condition, const std::string &message) {
     if (!condition) {
-        throw std::logic_error{message};
+        throw KernelLogicError{ErrorCode::InvalidArgument, message};
     }
 }
 
@@ -207,8 +207,10 @@ read_clearance_entries(const nlohmann::json &profile_json) {
         const auto second = capability_clearance_kind_from_name(string_field(entry, "second"));
         const auto low = std::min(static_cast<int>(first), static_cast<int>(second));
         const auto high = std::max(static_cast<int>(first), static_cast<int>(second));
-        require(seen_pairs.emplace(low, high).second,
-                "Duplicate capability profile clearance pair");
+        if (!seen_pairs.emplace(low, high).second) {
+            throw KernelLogicError{ErrorCode::DuplicateName,
+                                   "Duplicate capability profile clearance pair"};
+        }
         clearances.push_back(
             BoardClearancePair{first, second, number_field(entry, "clearance_mm")});
     }
@@ -250,7 +252,7 @@ read_copper_weight_refinements(const nlohmann::json &profile_json) {
     case BoardClearanceKind::BoardEdge:
         return "board_edge";
     }
-    throw std::logic_error{"Unhandled capability clearance kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled capability clearance kind"};
 }
 
 [[nodiscard]] BoardClearanceKind capability_clearance_kind_from_name(const std::string &value) {
@@ -269,7 +271,8 @@ read_copper_weight_refinements(const nlohmann::json &profile_json) {
     if (value == "board_edge") {
         return BoardClearanceKind::BoardEdge;
     }
-    throw std::logic_error{"Unknown capability profile clearance kind: " + value};
+    throw KernelLogicError{ErrorCode::InvalidArgument,
+                           "Unknown capability profile clearance kind: " + value};
 }
 
 void write_capability_profile_payload(std::ostream &out, const BoardCapabilityProfile &profile) {
@@ -360,7 +363,8 @@ void write_capability_profile(std::ostream &out, const BoardCapabilityProfile &p
     try {
         document = nlohmann::json::parse(text.begin(), text.end());
     } catch (const nlohmann::json::parse_error &error) {
-        throw std::logic_error{std::string{"Invalid capability profile JSON: "} + error.what()};
+        throw KernelLogicError{ErrorCode::InvalidArgument,
+                               std::string{"Invalid capability profile JSON: "} + error.what()};
     }
     return detail::read_capability_profile_document(document);
 }

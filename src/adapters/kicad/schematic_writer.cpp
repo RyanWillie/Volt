@@ -2,6 +2,8 @@
 
 #include "format.hpp"
 
+#include <volt/core/errors.hpp>
+
 namespace volt::adapters::kicad::detail {
 
 void write_xy(std::ostream &out, Point point) {
@@ -29,7 +31,7 @@ void write_at(std::ostream &out, Point point, SchematicOrientation orientation) 
         case SchematicOrientation::Up:
             return 270.0;
         }
-        throw std::logic_error{"Unhandled schematic orientation"};
+        throw KernelLogicError{ErrorCode::InvalidArgument, "Unhandled schematic orientation"};
     }());
     out << ')';
 }

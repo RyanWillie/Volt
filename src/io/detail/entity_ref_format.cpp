@@ -1,7 +1,6 @@
 #include "entity_ref_format.hpp"
 
-#include <stdexcept>
-
+#include <volt/core/errors.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/schematic/schematic.hpp>
@@ -79,7 +78,7 @@ namespace volt::io::detail {
     case EntityKind::ComponentPlacement:
         return encode_local_id(ComponentPlacementId{entity.index()});
     }
-    throw std::logic_error{"Unhandled diagnostic entity kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled diagnostic entity kind"};
 }
 
 } // namespace volt::io::detail

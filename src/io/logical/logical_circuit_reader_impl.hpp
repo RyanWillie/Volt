@@ -10,6 +10,7 @@
 #include <nlohmann/json.hpp>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
 
 namespace volt::io::detail {
@@ -46,7 +47,9 @@ class LogicalCircuitReader {
     static std::string local_id(const nlohmann::json &object, std::set<std::string> &seen) {
         const auto id = string_field(object, "id");
         static_cast<void>(decode_local_id<Id>(id));
-        require(seen.insert(id).second, "Duplicate local ID");
+        if (!seen.insert(id).second) {
+            throw KernelLogicError{ErrorCode::DuplicateName, "Duplicate local ID"};
+        }
         return id;
     }
 

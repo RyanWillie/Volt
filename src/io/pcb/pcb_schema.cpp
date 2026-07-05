@@ -1,5 +1,7 @@
 #include <volt/io/pcb/pcb_schema.hpp>
 
+#include <volt/core/errors.hpp>
+
 namespace volt::io::detail {
 
 [[nodiscard]] std::string pcb_pad_projection_id(ComponentPlacementId placement,
@@ -16,14 +18,14 @@ namespace volt::io::detail {
     case BoardUnits::Millimeters:
         return "mm";
     }
-    throw std::logic_error{"Unhandled board units"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled board units"};
 }
 
 [[nodiscard]] BoardUnits board_units_from_name(const std::string &value) {
     if (value == "mm") {
         return BoardUnits::Millimeters;
     }
-    throw std::logic_error{"Invalid PCB board units"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB board units"};
 }
 
 [[nodiscard]] std::string board_side_name(BoardSide side) {
@@ -33,7 +35,7 @@ namespace volt::io::detail {
     case BoardSide::Bottom:
         return "bottom";
     }
-    throw std::logic_error{"Unhandled board side"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled board side"};
 }
 
 [[nodiscard]] BoardSide board_side_from_name(const std::string &value) {
@@ -43,7 +45,7 @@ namespace volt::io::detail {
     if (value == "bottom") {
         return BoardSide::Bottom;
     }
-    throw std::logic_error{"Invalid PCB board side"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB board side"};
 }
 
 [[nodiscard]] std::string board_layer_role_name(BoardLayerRole role) {
@@ -69,7 +71,7 @@ namespace volt::io::detail {
     case BoardLayerRole::Keepout:
         return "keepout";
     }
-    throw std::logic_error{"Unhandled PCB board layer role"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB board layer role"};
 }
 
 [[nodiscard]] BoardLayerRole board_layer_role_from_name(const std::string &value) {
@@ -103,7 +105,7 @@ namespace volt::io::detail {
     if (value == "keepout") {
         return BoardLayerRole::Keepout;
     }
-    throw std::logic_error{"Invalid PCB board layer role"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB board layer role"};
 }
 
 [[nodiscard]] std::string board_layer_side_name(BoardLayerSide side) {
@@ -119,7 +121,7 @@ namespace volt::io::detail {
     case BoardLayerSide::None:
         return "none";
     }
-    throw std::logic_error{"Unhandled PCB board layer side"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB board layer side"};
 }
 
 [[nodiscard]] BoardLayerSide board_layer_side_from_name(const std::string &value) {
@@ -138,7 +140,7 @@ namespace volt::io::detail {
     if (value == "none") {
         return BoardLayerSide::None;
     }
-    throw std::logic_error{"Invalid PCB board layer side"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB board layer side"};
 }
 
 [[nodiscard]] std::string board_feature_kind_name(BoardFeatureKind kind) {
@@ -152,7 +154,7 @@ namespace volt::io::detail {
     case BoardFeatureKind::Circle:
         return "circle";
     }
-    throw std::logic_error{"Unhandled PCB board feature kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB board feature kind"};
 }
 
 [[nodiscard]] BoardFeatureKind board_feature_kind_from_name(const std::string &value) {
@@ -168,7 +170,7 @@ namespace volt::io::detail {
     if (value == "circle") {
         return BoardFeatureKind::Circle;
     }
-    throw std::logic_error{"Invalid PCB board feature kind"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB board feature kind"};
 }
 
 [[nodiscard]] std::string board_zone_fill_name(BoardZoneFill fill) {
@@ -176,14 +178,14 @@ namespace volt::io::detail {
     case BoardZoneFill::Solid:
         return "solid";
     }
-    throw std::logic_error{"Unhandled PCB board zone fill"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB board zone fill"};
 }
 
 [[nodiscard]] BoardZoneFill board_zone_fill_from_name(const std::string &value) {
     if (value == "solid") {
         return BoardZoneFill::Solid;
     }
-    throw std::logic_error{"Invalid PCB board zone fill"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB board zone fill"};
 }
 
 [[nodiscard]] std::string board_keepout_restriction_name(BoardKeepoutRestriction restriction) {
@@ -197,7 +199,7 @@ namespace volt::io::detail {
     case BoardKeepoutRestriction::All:
         return "all";
     }
-    throw std::logic_error{"Unhandled PCB board keepout restriction"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB board keepout restriction"};
 }
 
 [[nodiscard]] BoardKeepoutRestriction
@@ -214,7 +216,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     if (value == "all") {
         return BoardKeepoutRestriction::All;
     }
-    throw std::logic_error{"Invalid PCB board keepout restriction"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB board keepout restriction"};
 }
 
 [[nodiscard]] std::string footprint_layer_name(FootprintLayer layer) {
@@ -232,7 +234,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     case FootprintLayer::BackPaste:
         return "back_paste";
     }
-    throw std::logic_error{"Unhandled PCB footprint layer"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB footprint layer"};
 }
 
 [[nodiscard]] FootprintLayer footprint_layer_from_name(const std::string &value) {
@@ -254,7 +256,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     if (value == "back_paste") {
         return FootprintLayer::BackPaste;
     }
-    throw std::logic_error{"Invalid PCB footprint layer"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB footprint layer"};
 }
 
 [[nodiscard]] std::string footprint_pad_kind_name(FootprintPadKind kind) {
@@ -264,7 +266,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     case FootprintPadKind::ThroughHole:
         return "through_hole";
     }
-    throw std::logic_error{"Unhandled PCB footprint pad kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB footprint pad kind"};
 }
 
 [[nodiscard]] FootprintPadKind footprint_pad_kind_from_name(const std::string &value) {
@@ -274,7 +276,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     if (value == "through_hole") {
         return FootprintPadKind::ThroughHole;
     }
-    throw std::logic_error{"Invalid PCB footprint pad kind"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB footprint pad kind"};
 }
 
 [[nodiscard]] std::string footprint_pad_shape_name(FootprintPadShape shape) {
@@ -288,7 +290,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     case FootprintPadShape::Oval:
         return "oval";
     }
-    throw std::logic_error{"Unhandled PCB footprint pad shape"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB footprint pad shape"};
 }
 
 [[nodiscard]] FootprintPadShape footprint_pad_shape_from_name(const std::string &value) {
@@ -304,7 +306,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     if (value == "oval") {
         return FootprintPadShape::Oval;
     }
-    throw std::logic_error{"Invalid PCB footprint pad shape"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB footprint pad shape"};
 }
 
 [[nodiscard]] std::string footprint_pad_plating_name(FootprintPadPlating plating) {
@@ -314,7 +316,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     case FootprintPadPlating::NonPlated:
         return "non_plated";
     }
-    throw std::logic_error{"Unhandled PCB footprint pad plating"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB footprint pad plating"};
 }
 
 [[nodiscard]] FootprintPadPlating footprint_pad_plating_from_name(const std::string &value) {
@@ -324,7 +326,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     if (value == "non_plated") {
         return FootprintPadPlating::NonPlated;
     }
-    throw std::logic_error{"Invalid PCB footprint pad plating"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB footprint pad plating"};
 }
 
 [[nodiscard]] std::string footprint_pad_mechanical_role_name(FootprintPadMechanicalRole role) {
@@ -336,7 +338,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     case FootprintPadMechanicalRole::MechanicalSupport:
         return "mechanical_support";
     }
-    throw std::logic_error{"Unhandled PCB footprint pad mechanical role"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB footprint pad mechanical role"};
 }
 
 [[nodiscard]] FootprintPadMechanicalRole
@@ -350,7 +352,7 @@ footprint_pad_mechanical_role_from_name(const std::string &value) {
     if (value == "mechanical_support") {
         return FootprintPadMechanicalRole::MechanicalSupport;
     }
-    throw std::logic_error{"Invalid PCB footprint pad mechanical role"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB footprint pad mechanical role"};
 }
 
 [[nodiscard]] std::string footprint_marking_kind_name(FootprintMarkingKind kind) {
@@ -362,7 +364,7 @@ footprint_pad_mechanical_role_from_name(const std::string &value) {
     case FootprintMarkingKind::PinOne:
         return "pin_1";
     }
-    throw std::logic_error{"Unhandled PCB footprint marking kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB footprint marking kind"};
 }
 
 [[nodiscard]] FootprintMarkingKind footprint_marking_kind_from_name(const std::string &value) {
@@ -375,7 +377,7 @@ footprint_pad_mechanical_role_from_name(const std::string &value) {
     if (value == "pin_1") {
         return FootprintMarkingKind::PinOne;
     }
-    throw std::logic_error{"Invalid PCB footprint marking kind"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB footprint marking kind"};
 }
 
 [[nodiscard]] std::string pad_resolution_status_name(PadResolutionStatus status) {
@@ -389,7 +391,7 @@ footprint_pad_mechanical_role_from_name(const std::string &value) {
     case PadResolutionStatus::Invalid:
         return "invalid";
     }
-    throw std::logic_error{"Unhandled PCB pad resolution status"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB pad resolution status"};
 }
 
 [[nodiscard]] PadResolutionStatus pad_resolution_status_from_name(const std::string &value) {
@@ -405,7 +407,7 @@ footprint_pad_mechanical_role_from_name(const std::string &value) {
     if (value == "invalid") {
         return PadResolutionStatus::Invalid;
     }
-    throw std::logic_error{"Invalid PCB pad resolution status"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB pad resolution status"};
 }
 
 } // namespace volt::io::detail

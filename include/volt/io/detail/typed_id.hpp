@@ -3,10 +3,10 @@
 #include <cctype>
 #include <cstddef>
 #include <limits>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 
+#include <volt/core/errors.hpp>
 #include <volt/core/ids.hpp>
 
 namespace volt::io::detail {
@@ -164,20 +164,20 @@ template <typename Id> [[nodiscard]] inline std::string encode_local_id(Id id) {
 [[nodiscard]] inline std::size_t decode_local_id_index(std::string_view id,
                                                        std::string_view prefix) {
     if (id.rfind(prefix, 0) != 0) {
-        throw std::logic_error{"Local ID has the wrong typed prefix"};
+        throw KernelLogicError{ErrorCode::InvalidArgument, "Local ID has the wrong typed prefix"};
     }
     const auto suffix = id.substr(prefix.size());
     if (suffix.empty()) {
-        throw std::logic_error{"Local ID must contain an index"};
+        throw KernelLogicError{ErrorCode::InvalidArgument, "Local ID must contain an index"};
     }
     auto index = std::size_t{0};
     for (const auto character : suffix) {
         if (std::isdigit(static_cast<unsigned char>(character)) == 0) {
-            throw std::logic_error{"Local ID index must be numeric"};
+            throw KernelLogicError{ErrorCode::InvalidArgument, "Local ID index must be numeric"};
         }
         const auto digit = static_cast<std::size_t>(character - '0');
         if (index > (std::numeric_limits<std::size_t>::max() - digit) / std::size_t{10}) {
-            throw std::logic_error{"Local ID index is too large"};
+            throw KernelLogicError{ErrorCode::InvalidArgument, "Local ID index is too large"};
         }
         index = (index * std::size_t{10}) + digit;
     }

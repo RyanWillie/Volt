@@ -7,6 +7,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <volt/core/errors.hpp>
 #include <volt/io/capabilities/board_capability_profile.hpp>
 
 namespace {
@@ -63,6 +64,13 @@ TEST_CASE("Capability profile reader rejects malformed documents") {
     auto wrong_format = nlohmann::json::parse(text);
     wrong_format["format"] = "volt.pcb";
     CHECK_THROWS_AS(volt::io::read_capability_profile_text(wrong_format.dump()), std::logic_error);
+    try {
+        static_cast<void>(volt::io::read_capability_profile_text(wrong_format.dump()));
+        FAIL("Expected typed kernel error");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+        CHECK(std::string{error.what()} == "Unsupported capability profile format: volt.pcb");
+    }
 
     auto wrong_version = nlohmann::json::parse(text);
     wrong_version["version"] = 2;
@@ -87,6 +95,13 @@ TEST_CASE("Capability profile reader rejects malformed documents") {
     duplicate_pair["profile"]["minimum_clearances"].push_back(
         {{"first", "pad"}, {"second", "track"}, {"clearance_mm", 0.25}});
     CHECK_THROWS(volt::io::read_capability_profile_text(duplicate_pair.dump()));
+    try {
+        static_cast<void>(volt::io::read_capability_profile_text(duplicate_pair.dump()));
+        FAIL("Expected typed kernel error");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::DuplicateName);
+        CHECK(std::string{error.what()} == "Duplicate capability profile clearance pair");
+    }
 
     auto reversed_range = nlohmann::json::parse(text);
     reversed_range["profile"]["drill_diameter_range_mm"] =

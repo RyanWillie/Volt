@@ -1,6 +1,7 @@
 #include <volt/io/logical/logical_circuit_writer.hpp>
 
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/core/errors.hpp>
 
 #include "logical_net_class_format.hpp"
 
@@ -57,7 +58,7 @@ namespace volt::io::detail {
     case ConnectionRequirement::MustNotConnect:
         return "MustNotConnect";
     }
-    throw std::logic_error{"Unhandled connection requirement"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled connection requirement"};
 }
 
 [[nodiscard]] std::string electrical_terminal_kind_name(ElectricalTerminalKind kind) {
@@ -75,7 +76,7 @@ namespace volt::io::detail {
     case ElectricalTerminalKind::NoConnect:
         return "NoConnect";
     }
-    throw std::logic_error{"Unhandled electrical terminal kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled electrical terminal kind"};
 }
 
 [[nodiscard]] std::string electrical_direction_name(ElectricalDirection direction) {
@@ -91,7 +92,7 @@ namespace volt::io::detail {
     case ElectricalDirection::Passive:
         return "Passive";
     }
-    throw std::logic_error{"Unhandled electrical direction"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled electrical direction"};
 }
 
 [[nodiscard]] std::string electrical_signal_domain_name(ElectricalSignalDomain domain) {
@@ -105,7 +106,7 @@ namespace volt::io::detail {
     case ElectricalSignalDomain::Mixed:
         return "Mixed";
     }
-    throw std::logic_error{"Unhandled electrical signal domain"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled electrical signal domain"};
 }
 
 [[nodiscard]] std::string electrical_drive_kind_name(ElectricalDriveKind kind) {
@@ -123,7 +124,7 @@ namespace volt::io::detail {
     case ElectricalDriveKind::Passive:
         return "Passive";
     }
-    throw std::logic_error{"Unhandled electrical drive kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled electrical drive kind"};
 }
 
 [[nodiscard]] std::string electrical_polarity_name(ElectricalPolarity polarity) {
@@ -135,7 +136,7 @@ namespace volt::io::detail {
     case ElectricalPolarity::ActiveLow:
         return "ActiveLow";
     }
-    throw std::logic_error{"Unhandled electrical polarity"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled electrical polarity"};
 }
 
 [[nodiscard]] std::string net_kind_name(NetKind kind) {
@@ -153,7 +154,7 @@ namespace volt::io::detail {
     case NetKind::HighCurrent:
         return "HighCurrent";
     }
-    throw std::logic_error{"Unhandled net kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled net kind"};
 }
 
 [[nodiscard]] std::string port_role_name(PortRole role) {
@@ -173,7 +174,7 @@ namespace volt::io::detail {
     case PortRole::Ground:
         return "Ground";
     }
-    throw std::logic_error{"Unhandled port role"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled port role"};
 }
 
 [[nodiscard]] std::string unit_dimension_name(UnitDimension dimension) {
@@ -199,7 +200,7 @@ namespace volt::io::detail {
     case UnitDimension::Ratio:
         return "ratio";
     }
-    throw std::logic_error{"Unhandled unit dimension"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled unit dimension"};
 }
 
 [[nodiscard]] std::string tolerance_mode_name(ToleranceMode mode) {
@@ -209,12 +210,12 @@ namespace volt::io::detail {
     case ToleranceMode::Percent:
         return "percent";
     }
-    throw std::logic_error{"Unhandled tolerance mode"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled tolerance mode"};
 }
 
 void write_json_number(std::ostream &out, double value) {
     if (!std::isfinite(value)) {
-        throw std::logic_error{"Cannot write non-finite JSON number"};
+        throw KernelLogicError{ErrorCode::InvalidArgument, "Cannot write non-finite JSON number"};
     }
     out << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
 }
@@ -233,7 +234,8 @@ void write_property_value(std::ostream &out, const PropertyValue &value) {
         break;
     case PropertyValueKind::Number:
         if (!std::isfinite(value.as_number())) {
-            throw std::logic_error{"Cannot write non-finite JSON number"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Cannot write non-finite JSON number"};
         }
         out << "\"number\", \"value\": "
             << std::setprecision(std::numeric_limits<double>::max_digits10) << value.as_number();
@@ -790,7 +792,8 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             const auto template_net_id = definition.template_nets()[net_index];
             const auto concrete_net = queries::concrete_net_for(circuit, id, template_net_id);
             if (!concrete_net.has_value()) {
-                throw std::logic_error{"Module instance is missing concrete net origin"};
+                throw KernelLogicError{ErrorCode::InvalidState,
+                                       "Module instance is missing concrete net origin"};
             }
             if (net_index != 0) {
                 out << ", ";
@@ -807,7 +810,8 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             const auto concrete_component =
                 queries::concrete_component_for(circuit, id, template_component_id);
             if (!concrete_component.has_value()) {
-                throw std::logic_error{"Module instance is missing concrete component origin"};
+                throw KernelLogicError{ErrorCode::InvalidState,
+                                       "Module instance is missing concrete component origin"};
             }
             if (component_index != 0) {
                 out << ", ";

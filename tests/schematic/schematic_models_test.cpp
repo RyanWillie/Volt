@@ -126,6 +126,9 @@ TEST_CASE("SchematicLibraryModel owns unique symbol definitions") {
     CHECK(schematic.symbol_definition_by_name("Resistor") == symbol);
     CHECK_FALSE(schematic.symbol_definition_by_name("Missing").has_value());
     CHECK_THROWS_AS(schematic.add_symbol_definition(make_resistor_symbol()), std::logic_error);
+    check_kernel_error(
+        [&] { static_cast<void>(schematic.add_symbol_definition(make_resistor_symbol())); },
+        volt::ErrorCode::DuplicateName, "Symbol definition name already exists");
 }
 
 TEST_CASE("SchematicSheetModel owns sheets and authored regions") {
@@ -143,4 +146,13 @@ TEST_CASE("SchematicSheetModel owns sheets and authored regions") {
                         sheet, volt::SheetRegion{"power", "Power",
                                                  volt::SheetRegionBounds{0.0, 0.0, 20.0, 10.0}}),
                     std::logic_error);
+    check_kernel_error([&] { static_cast<void>(schematic.add_sheet(volt::Sheet{"Main"})); },
+                       volt::ErrorCode::DuplicateName, "Sheet name already exists");
+    check_kernel_error(
+        [&] {
+            static_cast<void>(schematic.add_sheet_region(
+                sheet, volt::SheetRegion{"power", "Power",
+                                         volt::SheetRegionBounds{0.0, 0.0, 20.0, 10.0}}));
+        },
+        volt::ErrorCode::DuplicateName, "Sheet region name already exists");
 }
