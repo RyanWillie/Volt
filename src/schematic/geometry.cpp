@@ -1,13 +1,15 @@
 #include <volt/schematic/geometry.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include <cmath>
-#include <stdexcept>
 
 namespace volt {
 
 Point::Point(double x, double y) : x_{x}, y_{y} {
     if (!std::isfinite(x_) || !std::isfinite(y_)) {
-        throw std::invalid_argument{"Schematic point coordinates must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Schematic point coordinates must be finite"};
     }
 }
 

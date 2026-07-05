@@ -2,12 +2,15 @@
 
 #include <fstream>
 #include <iterator>
+#include <limits>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 #include <volt/adapters/kicad/schematic_writer.hpp>
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/connectivity/definitions.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
 
@@ -121,4 +124,24 @@ TEST_CASE("KiCad schematic writer preserves canonical net label names") {
 
     CHECK(result.text.find("(label \"SUPPORT/SWDIO\"") != std::string::npos);
     CHECK(result.text.find("(label \"SWDIO\"") == std::string::npos);
+}
+
+TEST_CASE("KiCad schematic writer rejects non-finite numeric property values") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    circuit.set_component_property(component, volt::PropertyKey{"Value"},
+                                   volt::PropertyValue{std::numeric_limits<double>::infinity()});
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto schematic = make_flat_schematic(circuit, component, net);
+
+    CHECK_THROWS_AS(volt::adapters::kicad::write_flat_schematic(schematic), std::invalid_argument);
+
+    try {
+        [[maybe_unused]] const auto result = volt::adapters::kicad::write_flat_schematic(schematic);
+        FAIL("expected KiCad finite-number rejection");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+        CHECK(std::string{error.what()} == "KiCad numeric values must be finite");
+        CHECK_FALSE(error.entity().has_value());
+    }
 }

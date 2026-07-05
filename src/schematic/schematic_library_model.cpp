@@ -1,10 +1,11 @@
 #include <volt/schematic/schematic_library_model.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "schematic_storage.hpp"
 
 #include <cstddef>
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -63,8 +64,10 @@ Schematic::LibraryStorage::state() const noexcept {
 
 [[nodiscard]] SymbolDefId
 Schematic::LibraryStorage::add_symbol_definition(SymbolDefinition definition) {
-    if (symbol_definition_by_name(definition.name()).has_value()) {
-        throw std::logic_error{"Symbol definition name already exists"};
+    const auto existing = symbol_definition_by_name(definition.name());
+    if (existing.has_value()) {
+        throw KernelLogicError{ErrorCode::DuplicateName, "Symbol definition name already exists",
+                               EntityRef::symbol_def(existing.value())};
     }
 
     return mutable_state().symbol_definitions.insert(std::move(definition));
@@ -93,7 +96,9 @@ SchematicLibraryModel::symbol_definition(SymbolDefId id) const {
 
 void SchematicLibraryModel::require_symbol_definition(SymbolDefId symbol_definition) const {
     if (!state().symbol_definitions.contains(symbol_definition)) {
-        throw std::out_of_range{"Symbol definition ID does not belong to this schematic"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Symbol definition ID does not belong to this schematic",
+                               EntityRef::symbol_def(symbol_definition)};
     }
 }
 
