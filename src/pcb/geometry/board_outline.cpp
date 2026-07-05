@@ -1,8 +1,9 @@
 #include <volt/pcb/geometry/board_outline.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include <cmath>
 #include <cstddef>
-#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -11,13 +12,16 @@ namespace volt {
 BoardOutline::BoardOutline(std::vector<BoardPoint> vertices) : vertices_{std::move(vertices)} {
     drop_duplicate_closing_vertex();
     if (vertices_.size() < 3) {
-        throw std::invalid_argument{"Board outline must contain at least three vertices"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board outline must contain at least three vertices"};
     }
     if (std::abs(signed_area_twice(vertices_)) <= kGeometryEpsilon) {
-        throw std::invalid_argument{"Board outline area must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board outline area must be positive"};
     }
     if (has_self_intersection(vertices_)) {
-        throw std::invalid_argument{"Board outline must not self-intersect"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board outline must not self-intersect"};
     }
 }
 
@@ -144,13 +148,16 @@ void BoardOutline::drop_duplicate_closing_vertex() {
 BoardPolygon::BoardPolygon(std::vector<BoardPoint> vertices) : vertices_{std::move(vertices)} {
     drop_duplicate_closing_vertex();
     if (vertices_.size() < 3) {
-        throw std::invalid_argument{"Board polygon must contain at least three vertices"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board polygon must contain at least three vertices"};
     }
     if (std::abs(signed_area_twice(vertices_)) <= kGeometryEpsilon) {
-        throw std::invalid_argument{"Board polygon area must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board polygon area must be positive"};
     }
     if (has_self_intersection(vertices_)) {
-        throw std::invalid_argument{"Board polygon must not self-intersect"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board polygon must not self-intersect"};
     }
 }
 

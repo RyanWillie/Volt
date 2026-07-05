@@ -1,10 +1,11 @@
 #include <volt/pcb/copper/board_copper_model.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "../board_storage.hpp"
 
 #include <cstddef>
 #include <memory>
-#include <stdexcept>
 #include <utility>
 
 namespace volt {
@@ -75,7 +76,7 @@ Board::CopperStorage &Board::CopperStorage::operator=(const CopperStorage &other
 [[nodiscard]] BoardRoomId Board::CopperStorage::add_room(BoardRoom room) {
     for (std::size_t index = 0; index < state().rooms.size(); ++index) {
         if (state().rooms.get(BoardRoomId{index}).name() == room.name()) {
-            throw std::logic_error{"Board room name already exists"};
+            throw KernelLogicError{ErrorCode::DuplicateName, "Board room name already exists"};
         }
     }
     return mutable_state().rooms.insert(std::move(room));

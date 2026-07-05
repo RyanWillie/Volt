@@ -5,10 +5,12 @@
 #include <limits>
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/copper/board_copper_model.hpp>
 #include <volt/pcb/footprints/board_footprint_model.hpp>
@@ -87,6 +89,48 @@ TEST_CASE("BoardStructureModel owns layers, stack, outline, rules, and features"
                     std::logic_error);
     CHECK_THROWS_AS(board.set_layer_stack(volt::LayerStack{{front, volt::BoardLayerId{99}}, 1.6}),
                     std::out_of_range);
+}
+
+TEST_CASE("PCB board model structural rejections carry machine-readable error codes") {
+    auto circuit = volt::Circuit{};
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"N1"}, volt::NetKind::Signal});
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto silk = board.add_layer(
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
+
+    try {
+        [[maybe_unused]] const auto duplicate = board.add_layer(
+            volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+        FAIL("Duplicate board layer names must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::DuplicateName);
+        CHECK(std::string{error.what()} == "Board layer name already exists");
+    }
+
+    try {
+        board.set_layer_stack(volt::LayerStack{{front, volt::BoardLayerId{99}}, 1.6});
+        FAIL("Unknown board layer IDs must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        CHECK(std::string{error.what()} == "Board layer ID does not belong to this board");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::BoardLayer);
+        CHECK(error.entity()->index() == 99);
+    }
+
+    try {
+        [[maybe_unused]] const auto track = board.add_track(volt::BoardTrack{
+            net, silk, std::vector{volt::BoardPoint{0.0, 0.0}, volt::BoardPoint{1.0, 0.0}}, 0.20});
+        FAIL("Non-copper board layers must not accept copper primitives");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+        CHECK(std::string{error.what()} == "Board copper primitives require copper layers");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::BoardLayer);
+        CHECK(error.entity()->index() == silk.index());
+    }
 }
 
 TEST_CASE("BoardFootprintModel dedupes identical cached definitions and rejects conflicts") {

@@ -4,13 +4,14 @@
 #include <cmath>
 #include <cstddef>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
 #include <volt/pcb/board.hpp>
+
+#include <volt/core/errors.hpp>
 
 namespace volt::detail {
 namespace {
@@ -28,7 +29,7 @@ namespace {
     case BoardClearanceKind::BoardEdge:
         return "board-edge";
     }
-    throw std::logic_error{"Unhandled board clearance kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled board clearance kind"};
 }
 
 [[nodiscard]] std::string capability_clearance_label(BoardClearanceKind first,

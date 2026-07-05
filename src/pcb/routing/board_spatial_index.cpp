@@ -1,4 +1,6 @@
 #include <volt/pcb/routing/board_router.hpp>
+
+#include <volt/core/errors.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
 
 #include "board_spatial_index_storage.hpp"
@@ -9,7 +11,6 @@
 #include <limits>
 #include <memory>
 #include <optional>
-#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -226,46 +227,56 @@ BoardSpatialIndex::BoardSpatialIndex(const Board &board,
 void BoardSpatialIndex::ensure_conservative_bound_current() const {
     const auto current = detail::maximum_required_copper_clearance(*state().board);
     if (current > state().conservative_clearance_mm + detail::board_drc_epsilon) {
-        throw std::logic_error{
+        throw KernelLogicError{
+            ErrorCode::InvalidState,
             "Board spatial index clearance bound is stale; rebuild after board rule changes"};
     }
 }
 
 void BoardSpatialIndex::ensure_geometry_current() const {
     if (state().board->geometry_mutation_count() != state().expected_geometry_mutation_count) {
-        throw std::logic_error{
+        throw KernelLogicError{
+            ErrorCode::InvalidState,
             "Board spatial index is stale; board geometry changed outside the index"};
     }
 }
 
 void BoardSpatialIndex::validate_shape(const detail::BoardCopperShape &shape) const {
     if (shape.net.index() >= state().board->circuit().net_count()) {
-        throw std::invalid_argument{"Board spatial index shape net must belong to the board"};
+        throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
+                                  "Board spatial index shape net must belong to the board",
+                                  EntityRef::net(shape.net)};
     }
     if (shape.layers.empty()) {
-        throw std::invalid_argument{"Board spatial index shape layers must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board spatial index shape layers must not be empty"};
     }
     if (!std::isfinite(shape.radius_mm) || shape.radius_mm < 0.0) {
-        throw std::invalid_argument{
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
             "Board spatial index shape radius must be finite and non-negative"};
     }
     if ((shape.kind == detail::BoardCopperShapeKind::Disc && shape.points.size() != 1U) ||
         (shape.kind == detail::BoardCopperShapeKind::Segment && shape.points.size() != 2U) ||
         (shape.kind == detail::BoardCopperShapeKind::Polygon && shape.points.size() < 3U)) {
-        throw std::invalid_argument{"Board spatial index shape has invalid geometry"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board spatial index shape has invalid geometry"};
     }
 
     auto sorted_layers = shape.layers;
     std::sort(sorted_layers.begin(), sorted_layers.end(),
               [](BoardLayerId lhs, BoardLayerId rhs) { return lhs.index() < rhs.index(); });
     if (std::adjacent_find(sorted_layers.begin(), sorted_layers.end()) != sorted_layers.end()) {
-        throw std::invalid_argument{"Board spatial index shape layers must be unique"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board spatial index shape layers must be unique"};
     }
     for (const auto layer : shape.layers) {
         if (layer.index() >= state().board->layer_count() ||
             state().board->layer(layer).role() != BoardLayerRole::Copper) {
-            throw std::invalid_argument{
-                "Board spatial index shape layers must be board copper layers"};
+            throw KernelArgumentError{
+                ErrorCode::CrossReferenceViolation,
+                "Board spatial index shape layers must be board copper layers",
+                EntityRef::board_layer(layer)};
         }
     }
 }
@@ -340,7 +351,8 @@ void insert_after_board_mutation(BoardSpatialIndex &index, BoardSpatialQueryShap
                                  std::size_t previous_geometry_mutation_count) {
     if (index.state().expected_geometry_mutation_count != previous_geometry_mutation_count ||
         index.state().board->geometry_mutation_count() != previous_geometry_mutation_count + 1U) {
-        throw std::logic_error{
+        throw KernelLogicError{
+            ErrorCode::InvalidState,
             "Board spatial index mirror insert must follow exactly one board geometry mutation"};
     }
 

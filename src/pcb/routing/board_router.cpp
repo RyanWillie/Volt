@@ -1,5 +1,7 @@
 #include <volt/pcb/routing/board_router.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -8,7 +10,6 @@
 #include <limits>
 #include <optional>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -298,7 +299,9 @@ BoardRouter::BoardRouter(Board &board, const FootprintLibrary &footprints)
 
 void BoardRouter::require_routable_layer(BoardLayerId layer) const {
     if (board_->layer(layer).role() != BoardLayerRole::Copper) {
-        throw std::invalid_argument{"Board router endpoint layer must be a copper layer"};
+        throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
+                                  "Board router endpoint layer must be a copper layer",
+                                  EntityRef::board_layer(layer)};
     }
 }
 
@@ -497,7 +500,8 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
             continue;
         }
         if (!octilinear_segment(segment.start, segment.end)) {
-            throw std::logic_error{
+            throw KernelLogicError{
+                ErrorCode::InvalidState,
                 "BoardRouter cannot commit a non-octilinear assisted route segment"};
         }
         const auto width_mm =
@@ -568,14 +572,18 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
     result.component = component;
     const auto placement_id = board_->placement_for_component(component);
     if (!placement_id.has_value()) {
-        throw std::invalid_argument{"Cannot escape component without a board placement"};
+        throw KernelArgumentError{ErrorCode::InvalidState,
+                                  "Cannot escape component without a board placement",
+                                  EntityRef::component(component)};
     }
     result.placement = placement_id;
     const auto &placement = board_->placement(placement_id.value());
 
     const auto &selected_part = board_->circuit().selected_physical_part(component);
     if (!selected_part.has_value()) {
-        throw std::invalid_argument{"Cannot escape component without a selected physical part"};
+        throw KernelArgumentError{ErrorCode::InvalidState,
+                                  "Cannot escape component without a selected physical part",
+                                  EntityRef::component(component)};
     }
 
     const auto resolution_footprints = detail::board_resolution_footprints(*board_, footprints_);
@@ -583,7 +591,9 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         resolve_footprint(selected_part.value(), resolution_footprints);
     const auto *definition = footprint_resolution.definition();
     if (definition == nullptr) {
-        throw std::invalid_argument{"Cannot escape component with an unresolved footprint"};
+        throw KernelArgumentError{ErrorCode::InvalidState,
+                                  "Cannot escape component with an unresolved footprint",
+                                  EntityRef::component(component)};
     }
 
     const auto pad_resolutions = board_->resolve_pads(resolution_footprints);

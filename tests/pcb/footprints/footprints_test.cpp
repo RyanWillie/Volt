@@ -9,6 +9,7 @@
 
 #include <volt/circuit/parts/parts.hpp>
 #include <volt/core/diagnostics.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
 
@@ -262,6 +263,47 @@ TEST_CASE("FootprintDefinition rejects duplicate pad labels") {
                     volt::FootprintSize{0.80, 0.95}, volt::FootprintLayerSet::front_smd()),
             }),
         std::invalid_argument);
+}
+
+TEST_CASE("Footprint structural rejections carry machine-readable error codes") {
+    try {
+        [[maybe_unused]] const auto footprint = volt::FootprintDefinition(
+            volt::FootprintRef{"passives", "R_0603_1608Metric"},
+            std::vector{
+                volt::FootprintPad::surface_mount(
+                    "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{-0.75, 0.0},
+                    volt::FootprintSize{0.80, 0.95}, volt::FootprintLayerSet::front_smd()),
+                volt::FootprintPad::surface_mount(
+                    "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.75, 0.0},
+                    volt::FootprintSize{0.80, 0.95}, volt::FootprintLayerSet::front_smd()),
+            });
+        FAIL("Duplicate footprint pad labels must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::DuplicateName);
+        CHECK(std::string{error.what()} == "Footprint definition contains duplicate pad labels");
+    }
+
+    const auto footprint = volt::passive_0603_footprint();
+    try {
+        static_cast<void>(footprint.pad(volt::FootprintPadId{99}));
+        FAIL("Unknown footprint pad IDs must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        CHECK(std::string{error.what()} == "Footprint pad id is out of range");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::FootprintPad);
+        CHECK(error.entity()->index() == 99);
+    }
+
+    auto library = volt::FootprintLibrary{};
+    library.add(volt::passive_0603_footprint());
+    try {
+        library.add(volt::passive_0603_footprint());
+        FAIL("Duplicate footprint references must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::DuplicateName);
+        CHECK(std::string{error.what()} == "Footprint library already contains this footprint");
+    }
 }
 
 TEST_CASE("Built-in footprint library provides first board fixtures") {

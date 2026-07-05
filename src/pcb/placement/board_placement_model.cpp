@@ -1,11 +1,12 @@
 #include <volt/pcb/placement/board_placement_model.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "../board_storage.hpp"
 
 #include <cstddef>
 #include <memory>
 #include <optional>
-#include <stdexcept>
 
 namespace volt {
 
@@ -60,7 +61,7 @@ Board::PlacementStorage &Board::PlacementStorage::operator=(const PlacementStora
 [[nodiscard]] ComponentPlacementId
 Board::PlacementStorage::place_component(ComponentPlacement placement) {
     if (placement_for_component(placement.component()).has_value()) {
-        throw std::logic_error{"Component already has a board placement"};
+        throw KernelLogicError{ErrorCode::InvalidState, "Component already has a board placement"};
     }
 
     return mutable_state().placements.insert(placement);

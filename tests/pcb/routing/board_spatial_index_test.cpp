@@ -10,6 +10,7 @@
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/core/diagnostics.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
@@ -305,6 +306,35 @@ TEST_CASE("BoardSpatialIndex rejects queries after the board clearance bound gro
 
     CHECK_THROWS_AS(index.query_legality(track_candidate(fixture.second_net, front, 1.40)),
                     std::logic_error);
+
+    try {
+        static_cast<void>(index.query_legality(track_candidate(fixture.second_net, front, 1.40)));
+        FAIL("Stale board spatial indexes must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidState);
+        CHECK(std::string{error.what()} ==
+              "Board spatial index clearance bound is stale; rebuild after board rule changes");
+    }
+}
+
+TEST_CASE("BoardSpatialIndex shape-scope rejections carry machine-readable error codes") {
+    auto fixture = make_board_fixture();
+    auto board = make_two_layer_board(fixture);
+    const auto silk = board.add_layer(
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
+    const auto index = volt::BoardSpatialIndex{board, volt::builtin_footprint_library()};
+
+    try {
+        static_cast<void>(index.query_legality(track_candidate(fixture.first_net, silk, 1.0)));
+        FAIL("Non-copper spatial-index layers must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+        CHECK(std::string{error.what()} ==
+              "Board spatial index shape layers must be board copper layers");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::BoardLayer);
+        CHECK(error.entity()->index() == silk.index());
+    }
 }
 
 TEST_CASE("BoardSpatialIndex clearance pair queries reject stale board geometry") {

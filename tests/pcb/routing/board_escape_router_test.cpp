@@ -10,6 +10,7 @@
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/io/pcb/pcb_reader.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/pcb/board.hpp>
@@ -459,6 +460,16 @@ TEST_CASE("Escape router rejects component requests that cannot be attempted", "
     CHECK_THROWS_MATCHES(
         router.escape(other), std::invalid_argument,
         Catch::Matchers::Message("Cannot escape component without a board placement"));
+    try {
+        static_cast<void>(router.escape(other));
+        FAIL("Escape requests without board placement must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidState);
+        CHECK(std::string{error.what()} == "Cannot escape component without a board placement");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::Component);
+        CHECK(error.entity()->index() == other.index());
+    }
 
     auto no_part_circuit = volt::Circuit{};
     const auto pin = no_part_circuit.add_pin_definition(volt::PinDefinition{

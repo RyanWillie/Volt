@@ -1,11 +1,12 @@
 #include <volt/pcb/footprints/footprints.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "../../detail/footprint_polygon_validation.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -14,17 +15,20 @@ namespace volt {
 
 FootprintPoint::FootprintPoint(double x_mm, double y_mm) : x_mm_{x_mm}, y_mm_{y_mm} {
     if (!std::isfinite(x_mm_) || !std::isfinite(y_mm_)) {
-        throw std::invalid_argument{"Footprint point coordinates must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Footprint point coordinates must be finite"};
     }
 }
 
 FootprintSize::FootprintSize(double width_mm, double height_mm)
     : width_mm_{width_mm}, height_mm_{height_mm} {
     if (!std::isfinite(width_mm_) || !std::isfinite(height_mm_)) {
-        throw std::invalid_argument{"Footprint size dimensions must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Footprint size dimensions must be finite"};
     }
     if (width_mm_ <= 0.0 || height_mm_ <= 0.0) {
-        throw std::invalid_argument{"Footprint size dimensions must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Footprint size dimensions must be positive"};
     }
 }
 
@@ -47,13 +51,15 @@ FootprintPackageGeometry::FootprintPackageGeometry(
 FootprintLayerSet::FootprintLayerSet(std::vector<FootprintLayer> layers)
     : layers_{std::move(layers)} {
     if (layers_.empty()) {
-        throw std::invalid_argument{"Footprint layer set must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Footprint layer set must not be empty"};
     }
 
     std::sort(layers_.begin(), layers_.end());
     const auto duplicate = std::adjacent_find(layers_.begin(), layers_.end());
     if (duplicate != layers_.end()) {
-        throw std::invalid_argument{"Footprint layer set must not contain duplicate layers"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Footprint layer set must not contain duplicate layers"};
     }
 }
 
@@ -108,10 +114,12 @@ FootprintLayerSet::FootprintLayerSet(std::vector<FootprintLayer> layers)
 FootprintDrill::FootprintDrill(double diameter_mm, FootprintPadPlating plating)
     : diameter_mm_{diameter_mm}, plating_{plating} {
     if (!std::isfinite(diameter_mm_)) {
-        throw std::invalid_argument{"Footprint drill diameter must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Footprint drill diameter must be finite"};
     }
     if (diameter_mm_ <= 0.0) {
-        throw std::invalid_argument{"Footprint drill diameter must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Footprint drill diameter must be positive"};
     }
 }
 
@@ -159,31 +167,38 @@ FootprintPad::FootprintPad(std::string label, FootprintPadKind kind, FootprintPa
     : label_{std::move(label)}, kind_{kind}, shape_{shape}, position_{position}, size_{size},
       layers_{std::move(layers)}, drill_{drill}, mechanical_role_{mechanical_role} {
     if (label_.empty()) {
-        throw std::invalid_argument{"Footprint pad label must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Footprint pad label must not be empty"};
     }
     if (shape_ == FootprintPadShape::Circle && size_.width_mm() != size_.height_mm()) {
-        throw std::invalid_argument{"Circle footprint pads must use equal width and height"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Circle footprint pads must use equal width and height"};
     }
     if (kind_ == FootprintPadKind::SurfaceMount && !layers_.is_surface_mount()) {
-        throw std::invalid_argument{"Surface-mount footprint pads must use SMD layers"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Surface-mount footprint pads must use SMD layers"};
     }
     if (kind_ == FootprintPadKind::ThroughHole && !drill_.has_value()) {
-        throw std::invalid_argument{"Through-hole footprint pads must include drill data"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Through-hole footprint pads must include drill data"};
     }
     if (kind_ == FootprintPadKind::ThroughHole &&
         drill_->plating() == FootprintPadPlating::NonPlated && !mechanical_role_.has_value()) {
-        throw std::invalid_argument{
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
             "Non-plated through-hole footprint pads must declare a mechanical role"};
     }
     if (kind_ == FootprintPadKind::ThroughHole &&
         drill_->plating() == FootprintPadPlating::NonPlated && !layers_.is_mechanical_hole()) {
-        throw std::invalid_argument{
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
             "Non-plated mechanical through-hole footprint pads must use mechanical-hole "
             "layers"};
     }
     if (kind_ == FootprintPadKind::ThroughHole &&
         drill_->plating() == FootprintPadPlating::Plated && !layers_.is_through_hole()) {
-        throw std::invalid_argument{"Through-hole footprint pads must use through-hole layers"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Through-hole footprint pads must use through-hole layers"};
     }
 }
 
@@ -197,7 +212,8 @@ FootprintDefinition::FootprintDefinition(FootprintRef ref, std::vector<Footprint
                                          FootprintPackageGeometry package_geometry)
     : ref_{std::move(ref)}, pads_{std::move(pads)}, package_geometry_{std::move(package_geometry)} {
     if (pads_.empty()) {
-        throw std::invalid_argument{"Footprint definition must contain at least one pad"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Footprint definition must contain at least one pad"};
     }
 
     for (auto current = pads_.begin(); current != pads_.end(); ++current) {
@@ -206,14 +222,16 @@ FootprintDefinition::FootprintDefinition(FootprintRef ref, std::vector<Footprint
                 return pad.label() == current->label();
             });
         if (duplicate) {
-            throw std::invalid_argument{"Footprint definition contains duplicate pad labels"};
+            throw KernelArgumentError{ErrorCode::DuplicateName,
+                                      "Footprint definition contains duplicate pad labels"};
         }
     }
 }
 
 [[nodiscard]] const FootprintPad &FootprintDefinition::pad(FootprintPadId id) const {
     if (id.index() >= pads_.size()) {
-        throw std::out_of_range{"Footprint pad id is out of range"};
+        throw KernelRangeError{ErrorCode::UnknownEntity, "Footprint pad id is out of range",
+                               EntityRef::footprint_pad(id)};
     }
     return pads_[id.index()];
 }
@@ -230,7 +248,8 @@ FootprintDefinition::pad_id(std::string_view label) const noexcept {
 
 void FootprintLibrary::add(FootprintDefinition definition) {
     if (find(definition.ref()) != nullptr) {
-        throw std::invalid_argument{"Footprint library already contains this footprint"};
+        throw KernelArgumentError{ErrorCode::DuplicateName,
+                                  "Footprint library already contains this footprint"};
     }
     definitions_.push_back(std::move(definition));
 }
@@ -635,7 +654,8 @@ single_row_header_footprint(FootprintRef ref, std::size_t pin_count, double pitc
                                                        double row_center_x_mm, double pitch_mm,
                                                        double pad_width_mm, double pad_height_mm) {
     if (pin_count == 0U || pin_count % 2U != 0U) {
-        throw std::invalid_argument{"Two-side SMD package footprints need an even pin count"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Two-side SMD package footprints need an even pin count"};
     }
 
     auto pads = std::vector<FootprintPad>{};
@@ -659,7 +679,8 @@ single_row_header_footprint(FootprintRef ref, std::size_t pin_count, double pitc
                                                 double side_center_mm, double pitch_mm,
                                                 double pad_length_mm, double pad_width_mm) {
     if (pin_count == 0U || pin_count % 4U != 0U) {
-        throw std::invalid_argument{"QFP footprints need a pin count divisible by four"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "QFP footprints need a pin count divisible by four"};
     }
 
     auto pads = std::vector<FootprintPad>{};

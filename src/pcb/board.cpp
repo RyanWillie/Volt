@@ -1,9 +1,10 @@
 #include <volt/pcb/board.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include <algorithm>
 #include <cstddef>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -158,7 +159,9 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
     for (const auto layer_id : zone.layers()) {
         require_layer(layer_id);
         if (layer(layer_id).role() != BoardLayerRole::Copper) {
-            throw std::logic_error{"Board copper zones require copper layers"};
+            throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                                   "Board copper zones require copper layers",
+                                   EntityRef::board_layer(layer_id)};
         }
     }
     const auto id = copper_.add_zone(std::move(zone));
@@ -270,7 +273,9 @@ void Board::require_net(NetId net) const { static_cast<void>(circuit().net(net))
 void Board::require_copper_layer(BoardLayerId layer_id) const {
     require_layer(layer_id);
     if (layer(layer_id).role() != BoardLayerRole::Copper) {
-        throw std::logic_error{"Board copper primitives require copper layers"};
+        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                               "Board copper primitives require copper layers",
+                               EntityRef::board_layer(layer_id)};
     }
 }
 
@@ -281,13 +286,16 @@ Board::route_endpoint_net(const BoardRouteEndpoint &endpoint,
         return std::nullopt;
     }
     if (!endpoint.placement.has_value() || !endpoint.pad.has_value()) {
-        throw std::invalid_argument{"Board route pad endpoints require placement and pad IDs"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board route pad endpoints require placement and pad IDs"};
     }
 
     const auto &component_placement = placement(endpoint.placement.value());
     const auto &selected_part = circuit().selected_physical_part(component_placement.component());
     if (!selected_part.has_value()) {
-        throw std::invalid_argument{"Board route endpoint component has no selected physical part"};
+        throw KernelArgumentError{ErrorCode::InvalidState,
+                                  "Board route endpoint component has no selected physical part",
+                                  EntityRef::component(component_placement.component())};
     }
 
     const auto resolution_footprints = detail::board_resolution_footprints(*this, footprints);
@@ -295,7 +303,9 @@ Board::route_endpoint_net(const BoardRouteEndpoint &endpoint,
         resolve_footprint(selected_part.value(), resolution_footprints);
     const auto *definition = footprint_resolution.definition();
     if (definition == nullptr) {
-        throw std::invalid_argument{"Board route endpoint footprint cannot be resolved"};
+        throw KernelArgumentError{ErrorCode::InvalidState,
+                                  "Board route endpoint footprint cannot be resolved",
+                                  EntityRef::component(component_placement.component())};
     }
 
     static_cast<void>(definition->pad(endpoint.pad.value()));
@@ -305,7 +315,9 @@ Board::route_endpoint_net(const BoardRouteEndpoint &endpoint,
         pad_resolutions, endpoint.placement.value(), endpoint.pad.value());
     if (resolution == nullptr || resolution->status() != PadResolutionStatus::Connected ||
         !resolution->net().has_value()) {
-        throw std::invalid_argument{"Board route endpoint pad is not connected to a logical net"};
+        throw KernelArgumentError{ErrorCode::InvalidState,
+                                  "Board route endpoint pad is not connected to a logical net",
+                                  EntityRef::footprint_pad(endpoint.pad.value())};
     }
     return resolution->net().value();
 }
@@ -329,15 +341,18 @@ Board::route_endpoint_net(const BoardRouteEndpoint &endpoint,
         }
         if (resolved_net.value() != endpoint_net.value()) {
             if (request.net.has_value()) {
-                throw std::logic_error{
+                throw KernelLogicError{
+                    ErrorCode::InvalidState,
                     "Board route endpoint net does not match explicit route net"};
             }
-            throw std::logic_error{"Board route endpoints resolve to different nets"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Board route endpoints resolve to different nets"};
         }
     }
 
     if (!resolved_net.has_value()) {
-        throw std::invalid_argument{
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
             "Board routed track requires an explicit net or a pad endpoint with a net"};
     }
     return resolved_net.value();
@@ -410,7 +425,7 @@ namespace {
         return detail::outline_contains_disc(outline, feature.circle().center(),
                                              feature.circle().diameter_mm() / 2.0, 0.0);
     }
-    throw std::logic_error{"Unhandled board feature kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled board feature kind"};
 }
 
 [[nodiscard]] std::vector<BoardLayerId> layer_stack_side_order_conflicts(const Board &board) {
@@ -604,7 +619,8 @@ footprint_library_definition_conflicts(const FootprintDefinition &board_definiti
             continue;
         }
         if (footprint_library_definition_conflicts(*existing, definition)) {
-            throw std::logic_error{
+            throw KernelLogicError{
+                ErrorCode::DuplicateName,
                 "Board footprint definition conflicts with footprint library definition"};
         }
     }

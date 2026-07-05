@@ -1,10 +1,11 @@
 #include <volt/pcb/structure/board_structure_model.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "../board_storage.hpp"
 
 #include <cstddef>
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -60,7 +61,7 @@ Board::StructureStorage &Board::StructureStorage::operator=(const StructureStora
 
 [[nodiscard]] BoardLayerId Board::StructureStorage::add_layer(BoardLayer layer) {
     if (layer_by_name(layer.name()).has_value()) {
-        throw std::logic_error{"Board layer name already exists"};
+        throw KernelLogicError{ErrorCode::DuplicateName, "Board layer name already exists"};
     }
 
     return mutable_state().layers.insert(std::move(layer));
@@ -75,7 +76,8 @@ void Board::StructureStorage::set_layer_stack(LayerStack stack) {
         }
     }
     if (!stack.dielectrics().empty() && stack.dielectrics().size() + 1 != copper_count) {
-        throw std::invalid_argument{
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
             "Layer stack dielectrics must sit between adjacent copper layers"};
     }
     mutable_state().layer_stack = std::move(stack);
@@ -132,7 +134,9 @@ BoardStructureModel::capability_profile() const noexcept {
 
 void BoardStructureModel::require_layer(BoardLayerId layer_id) const {
     if (!state().layers.contains(layer_id)) {
-        throw std::out_of_range{"Board layer ID does not belong to this board"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Board layer ID does not belong to this board",
+                               EntityRef::board_layer(layer_id)};
     }
 }
 
