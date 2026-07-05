@@ -2,9 +2,9 @@
 
 #include <algorithm>
 #include <sstream>
-#include <stdexcept>
 #include <vector>
 
+#include <volt/core/errors.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 
 namespace volt::io {
@@ -89,7 +89,7 @@ void write_component(std::ostream &out, const BomComponent &component) {
         detail::write_json_number(out, value.as_number());
         return out.str();
     }
-    throw std::logic_error{"Unhandled property value kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled property value kind"};
 }
 
 void write_sourcing_property_value(std::ostream &out, const PropertyValue &value) {
@@ -107,7 +107,7 @@ void write_sourcing_property_value(std::ostream &out, const PropertyValue &value
         detail::write_json_number(out, value.as_number());
         return;
     }
-    throw std::logic_error{"Unhandled property value kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled property value kind"};
 }
 
 [[nodiscard]] std::vector<std::pair<PropertyKey, PropertyValue>>

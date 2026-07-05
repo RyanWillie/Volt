@@ -9,11 +9,12 @@
 #include <optional>
 #include <ostream>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
+
+#include <volt/core/errors.hpp>
 
 namespace volt::io {
 namespace {
@@ -88,7 +89,8 @@ void add_fab_critical_warning(
 
 [[nodiscard]] double normalized_number(double value) {
     if (!std::isfinite(value)) {
-        throw std::invalid_argument{"Fabrication writer numeric values must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Fabrication writer numeric values must be finite"};
     }
     const auto rounded = std::round(value * 1.0e12) / 1.0e12;
     if (std::abs(value - rounded) < 1.0e-12) {
@@ -592,7 +594,8 @@ build_placement_exports(const Board &board, const FootprintLibrary &footprints,
             const auto pad_id = FootprintPadId{pad_index};
             const auto *resolution = pad_resolution_for(resolutions, id, pad_id);
             if (resolution == nullptr) {
-                throw std::logic_error{
+                throw KernelLogicError{
+                    ErrorCode::InvalidState,
                     "Native fabrication export requires a pad resolution for every pad"};
             }
             report_invalid_pad_resolution(board, *resolution, id, pad_id, loss_report);
@@ -1054,10 +1057,12 @@ void PcbFabricationLossReport::add_warning(PcbFabricationLossKind kind, std::str
                                            PcbFabricationLossImpact fabrication_impact,
                                            std::vector<EntityRef> entities) {
     if (construct.empty()) {
-        throw std::invalid_argument{"Fabrication loss warning construct must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Fabrication loss warning construct must not be empty"};
     }
     if (message.empty()) {
-        throw std::invalid_argument{"Fabrication loss warning message must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Fabrication loss warning message must not be empty"};
     }
     warnings_.push_back(PcbFabricationLossWarning{kind, std::move(construct), std::move(message),
                                                   severity, fabrication_impact,

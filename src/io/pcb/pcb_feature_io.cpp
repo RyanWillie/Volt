@@ -3,12 +3,12 @@
 #include <cstddef>
 #include <optional>
 #include <ostream>
-#include <stdexcept>
 #include <string>
 #include <vector>
 
 #include <nlohmann/json.hpp>
 
+#include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/pcb/pcb_schema.hpp>
@@ -19,7 +19,7 @@ namespace {
 
 void require(bool condition, const std::string &message) {
     if (!condition) {
-        throw std::logic_error{message};
+        throw KernelLogicError{ErrorCode::InvalidArgument, message};
     }
 }
 
@@ -143,7 +143,7 @@ void require_sequential_id(const nlohmann::json &object, const char *name, Board
                                         : board_side_from_name(string_field(feature, "side")),
                                     role);
     }
-    throw std::logic_error{"Unhandled PCB board feature kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB board feature kind"};
 }
 
 } // namespace

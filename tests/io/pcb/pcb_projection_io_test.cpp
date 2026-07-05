@@ -11,6 +11,7 @@
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/io/pcb/pcb_reader.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/pcb/board.hpp>
@@ -1049,6 +1050,13 @@ TEST_CASE("PCB projection reader rejects dangling references") {
         CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
                              std::logic_error,
                              Catch::Matchers::Message("PCB track references missing net"));
+        try {
+            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            FAIL("Expected typed kernel error");
+        } catch (const volt::KernelError &error) {
+            CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+            CHECK(std::string{error.what()} == "PCB track references missing net");
+        }
     }
 
     SECTION("via layer references") {
@@ -1254,6 +1262,14 @@ TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
         CHECK_THROWS_MATCHES(
             volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB viewer pad resolutions must match resolved pads"));
+        try {
+            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            FAIL("Expected typed kernel error");
+        } catch (const volt::KernelError &error) {
+            CHECK(error.code() == volt::ErrorCode::InvalidState);
+            CHECK(std::string{error.what()} ==
+                  "PCB viewer pad resolutions must match resolved pads");
+        }
     }
 
     SECTION("duplicate resolved pads") {
@@ -1264,6 +1280,14 @@ TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
                              std::logic_error,
                              Catch::Matchers::Message(
                                  "PCB viewer pad resolution order does not match resolved pads"));
+        try {
+            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            FAIL("Expected typed kernel error");
+        } catch (const volt::KernelError &error) {
+            CHECK(error.code() == volt::ErrorCode::InvalidState);
+            CHECK(std::string{error.what()} ==
+                  "PCB viewer pad resolution order does not match resolved pads");
+        }
     }
 
     SECTION("stale pad labels") {
@@ -1274,6 +1298,33 @@ TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
                              std::logic_error,
                              Catch::Matchers::Message(
                                  "PCB viewer pad resolution label does not match footprint pad"));
+        try {
+            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            FAIL("Expected typed kernel error");
+        } catch (const volt::KernelError &error) {
+            CHECK(error.code() == volt::ErrorCode::InvalidState);
+            CHECK(std::string{error.what()} ==
+                  "PCB viewer pad resolution label does not match footprint pad");
+        }
+    }
+
+    SECTION("stale pin mapping") {
+        auto document = make_board_json(fixture);
+        document["viewer"]["pad_resolutions"][0]["pin"] =
+            document["viewer"]["pad_resolutions"][1]["pin"];
+
+        CHECK_THROWS_MATCHES(
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            Catch::Matchers::Message(
+                "PCB viewer pad resolution pin does not match selected-part data"));
+        try {
+            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            FAIL("Expected typed kernel error");
+        } catch (const volt::KernelError &error) {
+            CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+            CHECK(std::string{error.what()} ==
+                  "PCB viewer pad resolution pin does not match selected-part data");
+        }
     }
 
     SECTION("stale pad geometry") {
@@ -1285,6 +1336,14 @@ TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
             volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message(
                 "PCB viewer pad resolution geometry does not match footprint pad"));
+        try {
+            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            FAIL("Expected typed kernel error");
+        } catch (const volt::KernelError &error) {
+            CHECK(error.code() == volt::ErrorCode::InvalidState);
+            CHECK(std::string{error.what()} ==
+                  "PCB viewer pad resolution geometry does not match footprint pad");
+        }
     }
 }
 
@@ -1337,6 +1396,48 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
         CHECK_THROWS_MATCHES(
             volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB viewer diagnostic has unsupported entity reference"));
+    }
+
+    SECTION("empty diagnostic code") {
+        auto document = make_board_json(fixture);
+        document["viewer"]["diagnostics"] =
+            nlohmann::json::array({{{"severity", "error"},
+                                    {"category", "drc"},
+                                    {"code", ""},
+                                    {"message", "fixture"},
+                                    {"entities", nlohmann::json::array({"board:0"})}}});
+
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                             std::invalid_argument,
+                             Catch::Matchers::Message("Diagnostic code must not be empty"));
+        try {
+            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            FAIL("Expected typed kernel error");
+        } catch (const volt::KernelError &error) {
+            CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+            CHECK(std::string{error.what()} == "Diagnostic code must not be empty");
+        }
+    }
+
+    SECTION("empty diagnostic category") {
+        auto document = make_board_json(fixture);
+        document["viewer"]["diagnostics"] =
+            nlohmann::json::array({{{"severity", "error"},
+                                    {"category", ""},
+                                    {"code", "PCB_FIXTURE"},
+                                    {"message", "fixture"},
+                                    {"entities", nlohmann::json::array({"board:0"})}}});
+
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                             std::invalid_argument,
+                             Catch::Matchers::Message("Diagnostic category must not be empty"));
+        try {
+            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            FAIL("Expected typed kernel error");
+        } catch (const volt::KernelError &error) {
+            CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+            CHECK(std::string{error.what()} == "Diagnostic category must not be empty");
+        }
     }
 
     SECTION("dangling diagnostic overlay layer refs") {
@@ -1461,6 +1562,13 @@ TEST_CASE("PCB projection reader rejects malformed clearance matrices") {
                                {{"first", "track"}, {"second", "pad"}, {"clearance_mm", 0.30}}});
     CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, duplicate_pair.dump()),
                     std::logic_error);
+    try {
+        static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, duplicate_pair.dump()));
+        FAIL("Expected typed kernel error");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::DuplicateName);
+        CHECK(std::string{error.what()} == "Duplicate PCB clearance matrix pair");
+    }
 
     auto reversed_pair = nlohmann::json::parse(text);
     reversed_pair["board"]["rules"]["clearance_matrix"] =
@@ -1468,6 +1576,13 @@ TEST_CASE("PCB projection reader rejects malformed clearance matrices") {
                                {{"first", "pad"}, {"second", "track"}, {"clearance_mm", 0.30}}});
     CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, reversed_pair.dump()),
                     std::logic_error);
+    try {
+        static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, reversed_pair.dump()));
+        FAIL("Expected typed kernel error");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::DuplicateName);
+        CHECK(std::string{error.what()} == "Duplicate PCB clearance matrix pair");
+    }
 }
 
 TEST_CASE("PCB projection round-trips stackup copper weight and dielectrics") {

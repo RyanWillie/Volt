@@ -1,5 +1,7 @@
 #include <volt/io/schematic/schematic_svg_writer.hpp>
 
+#include <volt/core/errors.hpp>
+
 namespace volt::io::detail {
 
 [[nodiscard]] SvgBounds symbol_primitive_bounds(const SymbolPrimitive &primitive,
@@ -50,7 +52,7 @@ namespace volt::io::detail {
     case PowerPortKind::Ground:
         return orientation_from_quarter_turns(orientation_quarter_turns(orientation) - 1);
     }
-    throw std::logic_error{"Unhandled power port kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled power port kind"};
 }
 
 [[nodiscard]] Point transformed_power_port_anchor(const PowerPort &port, Point local_anchor) {
@@ -154,7 +156,8 @@ namespace volt::io::detail {
 [[nodiscard]] SvgBounds expanded_body_bounds(const Schematic &schematic, SheetId sheet_id,
                                              SchematicSvgBodyOptions options) {
     if (!std::isfinite(options.margin) || options.margin < 0.0) {
-        throw std::invalid_argument{"Schematic SVG body margin must be finite and non-negative"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Schematic SVG body margin must be finite and non-negative"};
     }
     auto bounds =
         sheet_content_bounds(schematic, sheet_id, options).value_or(SvgBounds{0.0, 0.0, 1.0, 1.0});

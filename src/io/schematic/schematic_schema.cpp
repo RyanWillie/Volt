@@ -1,5 +1,7 @@
 #include <volt/io/schematic/schematic_schema.hpp>
 
+#include <volt/core/errors.hpp>
+
 namespace volt::io {
 
 [[nodiscard]] std::string_view schematic_orientation_name(SchematicOrientation orientation) {
@@ -13,7 +15,7 @@ namespace volt::io {
     case SchematicOrientation::Up:
         return "Up";
     }
-    throw std::logic_error{"Unhandled schematic orientation"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled schematic orientation"};
 }
 
 [[nodiscard]] std::optional<SchematicOrientation>
@@ -42,7 +44,7 @@ schematic_orientation_from_name(std::string_view value) noexcept {
     case SymbolLineRole::TerminalLeadEnd:
         return "TerminalLeadEnd";
     }
-    throw std::logic_error{"Unhandled symbol line role"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled symbol line role"};
 }
 
 [[nodiscard]] std::optional<SymbolLineRole>
@@ -68,7 +70,7 @@ symbol_line_role_from_name(std::string_view value) noexcept {
     case TextHorizontalAlignment::End:
         return "End";
     }
-    throw std::logic_error{"Unhandled text horizontal alignment"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled text horizontal alignment"};
 }
 
 [[nodiscard]] std::optional<TextHorizontalAlignment>
@@ -96,7 +98,7 @@ text_horizontal_alignment_from_name(std::string_view value) noexcept {
     case TextVerticalAlignment::Baseline:
         return "Baseline";
     }
-    throw std::logic_error{"Unhandled text vertical alignment"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled text vertical alignment"};
 }
 
 [[nodiscard]] std::optional<TextVerticalAlignment>
@@ -123,7 +125,7 @@ text_vertical_alignment_from_name(std::string_view value) noexcept {
     case SheetOrientation::Landscape:
         return "Landscape";
     }
-    throw std::logic_error{"Unhandled sheet orientation"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled sheet orientation"};
 }
 
 [[nodiscard]] std::optional<SheetOrientation>
@@ -144,7 +146,7 @@ sheet_orientation_from_name(std::string_view value) noexcept {
     case RouteIntent::Orthogonal:
         return "Orthogonal";
     }
-    throw std::logic_error{"Unhandled route intent"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled route intent"};
 }
 
 [[nodiscard]] std::optional<RouteIntent> route_intent_from_name(std::string_view value) noexcept {
@@ -164,7 +166,7 @@ sheet_orientation_from_name(std::string_view value) noexcept {
     case PowerPortKind::Ground:
         return "Ground";
     }
-    throw std::logic_error{"Unhandled power port kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled power port kind"};
 }
 
 [[nodiscard]] std::optional<PowerPortKind>
@@ -189,7 +191,7 @@ power_port_kind_from_name(std::string_view value) noexcept {
     case SheetPortKind::OffPage:
         return "OffPage";
     }
-    throw std::logic_error{"Unhandled sheet port kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled sheet port kind"};
 }
 
 [[nodiscard]] std::optional<SheetPortKind>

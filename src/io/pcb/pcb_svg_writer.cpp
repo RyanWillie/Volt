@@ -2,6 +2,8 @@
 
 #include "../detail/entity_ref_format.hpp"
 
+#include <volt/core/errors.hpp>
+
 namespace volt::io::detail {
 
 [[nodiscard]] std::string pcb_svg_escape(std::string_view value) {
@@ -33,7 +35,8 @@ namespace volt::io::detail {
 
 void write_pcb_svg_number(std::ostream &out, double value) {
     if (!std::isfinite(value)) {
-        throw std::invalid_argument{"PCB SVG numeric values must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "PCB SVG numeric values must be finite"};
     }
     const auto rounded = std::round(value * 1.0e12) / 1.0e12;
     if (std::abs(value - rounded) < 1.0e-12) {
@@ -113,7 +116,7 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     case Severity::Error:
         return "error";
     }
-    throw std::logic_error{"Unhandled diagnostic severity"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled diagnostic severity"};
 }
 
 [[nodiscard]] std::string overlay_kind_class(DiagnosticOverlayKind kind) {
@@ -127,7 +130,7 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     case DiagnosticOverlayKind::Segment:
         return "segment";
     }
-    throw std::logic_error{"Unhandled diagnostic overlay kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled diagnostic overlay kind"};
 }
 
 [[nodiscard]] std::string footprint_ref_token(const FootprintRef &ref) {
@@ -147,7 +150,8 @@ void write_pcb_svg_number(std::ostream &out, double value) {
             continue;
         }
         if (::volt::detail::footprint_library_definition_conflicts(*existing, definition)) {
-            throw std::logic_error{
+            throw KernelLogicError{
+                ErrorCode::InvalidState,
                 "Board footprint definition conflicts with footprint library definition"};
         }
     }
@@ -610,7 +614,7 @@ void write_diagnostic_overlay(std::ostream &out, const Diagnostic &diagnostic,
         out << "\"/>\n";
         return;
     }
-    throw std::logic_error{"Unhandled diagnostic overlay kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled diagnostic overlay kind"};
 }
 
 void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticReport &diagnostics,

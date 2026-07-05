@@ -20,6 +20,7 @@
 #include "../capabilities/board_capability_profile_io.hpp"
 #include "pcb_feature_io.hpp"
 
+#include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/pcb/pcb_schema.hpp>
 #include <volt/pcb/board.hpp>
@@ -39,6 +40,10 @@ class PcbBoardReader {
 
   private:
     static void require(bool condition, const std::string &message);
+
+    static void require_valid_state(bool condition, const std::string &message);
+
+    static void require_cross_reference(bool condition, const std::string &message);
 
     static const nlohmann::json &field(const nlohmann::json &object, const char *name);
 
@@ -167,6 +172,10 @@ class PcbBoardReader {
 
     static void validate_diagnostic_severity(const std::string &severity);
 
+    [[nodiscard]] static DiagnosticCode diagnostic_code(std::string value);
+
+    [[nodiscard]] static DiagnosticCategory diagnostic_category(std::string value);
+
     static void validate_diagnostic_category(const nlohmann::json &diagnostic);
 
     void validate_diagnostic_overlays(const Board &board, const nlohmann::json &diagnostic) const;
@@ -223,7 +232,19 @@ class PcbBoardReader {
 
 void PcbBoardReader::require(bool condition, const std::string &message) {
     if (!condition) {
-        throw std::logic_error{message};
+        throw KernelLogicError{ErrorCode::InvalidArgument, message};
+    }
+}
+
+void PcbBoardReader::require_valid_state(bool condition, const std::string &message) {
+    if (!condition) {
+        throw KernelLogicError{ErrorCode::InvalidState, message};
+    }
+}
+
+void PcbBoardReader::require_cross_reference(bool condition, const std::string &message) {
+    if (!condition) {
+        throw KernelLogicError{ErrorCode::CrossReferenceViolation, message};
     }
 }
 
@@ -490,7 +511,8 @@ void PcbBoardReader::read_layer_stack(Board &board, const nlohmann::json &board_
         require(layer_json.is_string(), "PCB layer stack layer must be a string");
         const auto layer = decode_local_id<BoardLayerId>(layer_json.get<std::string>());
         if (layer.index() >= board.layer_count()) {
-            throw std::logic_error{"PCB layer stack references missing board layer"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB layer stack references missing board layer"};
         }
         layers.push_back(layer);
     }
@@ -539,7 +561,7 @@ void PcbBoardReader::read_outline(Board &board, const nlohmann::json &board_json
     if (value == "board_edge") {
         return BoardClearanceKind::BoardEdge;
     }
-    throw std::logic_error{"Unknown PCB clearance kind: " + value};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Unknown PCB clearance kind: " + value};
 }
 
 void PcbBoardReader::read_rules(Board &board, const nlohmann::json &board_json) const {
@@ -569,7 +591,10 @@ void PcbBoardReader::read_rules(Board &board, const nlohmann::json &board_json) 
             const auto second = clearance_kind(string_field(entry, "second"));
             const auto low = std::min(static_cast<int>(first), static_cast<int>(second));
             const auto high = std::max(static_cast<int>(first), static_cast<int>(second));
-            require(seen_pairs.emplace(low, high).second, "Duplicate PCB clearance matrix pair");
+            if (!seen_pairs.emplace(low, high).second) {
+                throw KernelLogicError{ErrorCode::DuplicateName,
+                                       "Duplicate PCB clearance matrix pair"};
+            }
             design_rules.set_clearance_mm(first, second, number_field(entry, "clearance_mm"));
         }
     }
@@ -623,7 +648,8 @@ void PcbBoardReader::read_placements(Board &board, const nlohmann::json &board_j
                               "PCB component placement IDs must be sequential");
         const auto component = typed_id<ComponentId>(placement_json, "component");
         if (component.index() >= circuit_.component_count()) {
-            throw std::logic_error{"PCB placement references missing component"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB placement references missing component"};
         }
         validate_placement_footprint(board, component, placement_json);
         const auto id = board.place_component(ComponentPlacement{
@@ -651,11 +677,12 @@ void PcbBoardReader::read_tracks(Board &board, const nlohmann::json &board_json)
 
         const auto net = typed_id<NetId>(track_json, "net");
         if (net.index() >= circuit_.net_count()) {
-            throw std::logic_error{"PCB track references missing net"};
+            throw KernelLogicError{ErrorCode::UnknownEntity, "PCB track references missing net"};
         }
         const auto layer = typed_id<BoardLayerId>(track_json, "layer");
         if (layer.index() >= board.layer_count()) {
-            throw std::logic_error{"PCB track references missing board layer"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB track references missing board layer"};
         }
 
         const auto &points_json = array_field(track_json, "points");
@@ -685,13 +712,14 @@ void PcbBoardReader::read_vias(Board &board, const nlohmann::json &board_json) c
 
         const auto net = typed_id<NetId>(via_json, "net");
         if (net.index() >= circuit_.net_count()) {
-            throw std::logic_error{"PCB via references missing net"};
+            throw KernelLogicError{ErrorCode::UnknownEntity, "PCB via references missing net"};
         }
         const auto start_layer = typed_id<BoardLayerId>(via_json, "start_layer");
         const auto end_layer = typed_id<BoardLayerId>(via_json, "end_layer");
         if (start_layer.index() >= board.layer_count() ||
             end_layer.index() >= board.layer_count()) {
-            throw std::logic_error{"PCB via references missing board layer"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB via references missing board layer"};
         }
 
         const auto id = board.add_via(BoardVia{
@@ -716,7 +744,7 @@ PcbBoardReader::read_board_layers(const Board &board, const nlohmann::json &obje
         require(layer_json.is_string(), "PCB board primitive layer must be a string");
         const auto layer = decode_local_id<BoardLayerId>(layer_json.get<std::string>());
         if (layer.index() >= board.layer_count()) {
-            throw std::logic_error{missing_message};
+            throw KernelLogicError{ErrorCode::UnknownEntity, missing_message};
         }
         layers.push_back(layer);
     }
@@ -740,7 +768,7 @@ void PcbBoardReader::read_zones(Board &board, const nlohmann::json &board_json) 
         if (net_value.has_value()) {
             net = decode_local_id<NetId>(net_value.value());
             if (net->index() >= circuit_.net_count()) {
-                throw std::logic_error{"PCB zone references missing net"};
+                throw KernelLogicError{ErrorCode::UnknownEntity, "PCB zone references missing net"};
             }
         }
 
@@ -836,7 +864,8 @@ void PcbBoardReader::read_texts(Board &board, const nlohmann::json &board_json) 
         require_sequential_id(text_json, "id", expected, "PCB text IDs must be sequential");
         const auto layer = typed_id<BoardLayerId>(text_json, "layer");
         if (layer.index() >= board.layer_count()) {
-            throw std::logic_error{"PCB text references missing board layer"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB text references missing board layer"};
         }
 
         const auto id = board.add_text(BoardText{
@@ -859,12 +888,15 @@ void PcbBoardReader::validate_placement_footprint(const Board &board, ComponentI
     }
     const auto footprint_id = decode_local_id<FootprintDefId>(footprint.value());
     if (footprint_id.index() >= board.footprint_definition_count()) {
-        throw std::logic_error{"PCB placement references missing footprint definition"};
+        throw KernelLogicError{ErrorCode::UnknownEntity,
+                               "PCB placement references missing footprint definition"};
     }
     const auto &selected_part = circuit_.selected_physical_part(component);
-    require(selected_part.has_value(), "PCB placement footprint requires selected physical part");
-    require(board.footprint_definition(footprint_id).ref() == selected_part->footprint(),
-            "PCB placement footprint does not match selected physical part");
+    require_valid_state(selected_part.has_value(),
+                        "PCB placement footprint requires selected physical part");
+    require_cross_reference(board.footprint_definition(footprint_id).ref() ==
+                                selected_part->footprint(),
+                            "PCB placement footprint does not match selected physical part");
 }
 
 [[nodiscard]] FootprintLibrary PcbBoardReader::cached_footprint_library(const Board &board) const {
@@ -884,8 +916,8 @@ void PcbBoardReader::validate_viewer_cache(const Board &board) const {
     const auto &pad_resolutions = array_field(*viewer, "pad_resolutions");
     const auto footprint_library = cached_footprint_library(board);
     const auto expected_resolutions = board.resolve_pads(footprint_library);
-    require(pad_resolutions.size() == expected_resolutions.size(),
-            "PCB viewer pad resolutions must match resolved pads");
+    require_valid_state(pad_resolutions.size() == expected_resolutions.size(),
+                        "PCB viewer pad resolutions must match resolved pads");
 
     for (std::size_t index = 0; index < pad_resolutions.size(); ++index) {
         const auto &pad_resolution = pad_resolutions[index];
@@ -904,85 +936,96 @@ void PcbBoardReader::validate_viewer_pad_resolution(const Board &board,
                                                     const nlohmann::json &pad_resolution) const {
     const auto placement = typed_id<ComponentPlacementId>(pad_resolution, "placement");
     if (placement.index() >= board.placement_count()) {
-        throw std::logic_error{"PCB viewer pad resolution references missing placement"};
+        throw KernelLogicError{ErrorCode::UnknownEntity,
+                               "PCB viewer pad resolution references missing placement"};
     }
     const auto component = typed_id<ComponentId>(pad_resolution, "component");
     if (component.index() >= circuit_.component_count()) {
-        throw std::logic_error{"PCB viewer pad resolution references missing component"};
+        throw KernelLogicError{ErrorCode::UnknownEntity,
+                               "PCB viewer pad resolution references missing component"};
     }
-    require(component == board.placement(placement).component(),
-            "PCB viewer pad resolution component does not match placement");
+    require_cross_reference(component == board.placement(placement).component(),
+                            "PCB viewer pad resolution component does not match placement");
 
     const auto footprint = nullable_string_field(pad_resolution, "footprint");
-    require(footprint.has_value(), "PCB viewer pad resolution requires a footprint definition");
+    require_valid_state(footprint.has_value(),
+                        "PCB viewer pad resolution requires a footprint definition");
     const auto footprint_id = decode_local_id<FootprintDefId>(footprint.value());
     if (footprint_id.index() >= board.footprint_definition_count()) {
-        throw std::logic_error{"PCB viewer pad resolution references missing footprint definition"};
+        throw KernelLogicError{ErrorCode::UnknownEntity,
+                               "PCB viewer pad resolution references missing footprint definition"};
     }
     const auto &selected_part = circuit_.selected_physical_part(component);
-    require(selected_part.has_value(),
-            "PCB viewer pad resolution footprint requires selected physical part");
-    require(board.footprint_definition(footprint_id).ref() == selected_part->footprint(),
-            "PCB viewer pad resolution footprint does not match selected physical part");
+    require_valid_state(selected_part.has_value(),
+                        "PCB viewer pad resolution footprint requires selected physical part");
+    require_cross_reference(
+        board.footprint_definition(footprint_id).ref() == selected_part->footprint(),
+        "PCB viewer pad resolution footprint does not match selected physical part");
 
     const auto pad = typed_id<FootprintPadId>(pad_resolution, "pad");
     if (pad.index() >= board.footprint_definition(footprint_id).pad_count()) {
-        throw std::logic_error{"PCB viewer pad resolution references missing footprint pad"};
+        throw KernelLogicError{ErrorCode::UnknownEntity,
+                               "PCB viewer pad resolution references missing footprint pad"};
     }
-    require(placement == expected.placement() && pad == expected.pad(),
-            "PCB viewer pad resolution order does not match resolved pads");
-    require(string_field(pad_resolution, "id") == pcb_pad_projection_id(placement, pad),
-            "PCB viewer pad resolution id does not match placement and pad");
-    require(string_field(pad_resolution, "label") == expected.pad_label(),
-            "PCB viewer pad resolution label does not match footprint pad");
-    require(board_point(field(pad_resolution, "position")) == expected.position(),
-            "PCB viewer pad resolution position does not match resolved pad");
+    require_valid_state(placement == expected.placement() && pad == expected.pad(),
+                        "PCB viewer pad resolution order does not match resolved pads");
+    require_valid_state(string_field(pad_resolution, "id") == pcb_pad_projection_id(placement, pad),
+                        "PCB viewer pad resolution id does not match placement and pad");
+    require_valid_state(string_field(pad_resolution, "label") == expected.pad_label(),
+                        "PCB viewer pad resolution label does not match footprint pad");
+    require_valid_state(board_point(field(pad_resolution, "position")) == expected.position(),
+                        "PCB viewer pad resolution position does not match resolved pad");
 
     const auto pin = nullable_string_field(pad_resolution, "pin");
     if (pin.has_value()) {
         const auto pin_id = decode_local_id<PinId>(pin.value());
         if (pin_id.index() >= circuit_.pin_count()) {
-            throw std::logic_error{"PCB viewer pad resolution references missing pin"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer pad resolution references missing pin"};
         }
-        require(circuit_.pin(pin_id).component() == component,
-                "PCB viewer pad resolution pin does not belong to component");
+        require_cross_reference(circuit_.pin(pin_id).component() == component,
+                                "PCB viewer pad resolution pin does not belong to component");
     }
 
     const auto net = nullable_string_field(pad_resolution, "net");
     if (net.has_value()) {
         const auto net_id = decode_local_id<NetId>(net.value());
         if (net_id.index() >= circuit_.net_count()) {
-            throw std::logic_error{"PCB viewer pad resolution references missing net"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer pad resolution references missing net"};
         }
     }
 
-    require(expected.component() == component,
-            "PCB viewer pad resolution component does not match selected-part data");
-    require(optional_pin(pin) == expected.pin(),
-            "PCB viewer pad resolution pin does not match selected-part data");
-    require(optional_net(net) == expected.net(),
-            "PCB viewer pad resolution net does not match logical circuit");
-    require(pad_resolution_status_from_name(string_field(pad_resolution, "status")) ==
-                expected.status(),
-            "PCB viewer pad resolution status does not match selected-part data");
+    require_cross_reference(
+        expected.component() == component,
+        "PCB viewer pad resolution component does not match selected-part data");
+    require_cross_reference(optional_pin(pin) == expected.pin(),
+                            "PCB viewer pad resolution pin does not match selected-part data");
+    require_cross_reference(optional_net(net) == expected.net(),
+                            "PCB viewer pad resolution net does not match logical circuit");
+    require_valid_state(pad_resolution_status_from_name(string_field(pad_resolution, "status")) ==
+                            expected.status(),
+                        "PCB viewer pad resolution status does not match selected-part data");
     validate_viewer_pad_geometry(board.footprint_definition(footprint_id).pad(pad),
                                  object_field(pad_resolution, "geometry"));
 }
 
 void PcbBoardReader::validate_viewer_pad_geometry(const FootprintPad &pad,
                                                   const nlohmann::json &geometry) {
-    require(footprint_pad_kind_from_name(string_field(geometry, "kind")) == pad.kind(),
-            "PCB viewer pad resolution geometry does not match footprint pad");
-    require(footprint_pad_shape_from_name(string_field(geometry, "shape")) == pad.shape(),
-            "PCB viewer pad resolution geometry does not match footprint pad");
-    require(footprint_size(field(geometry, "size")) == pad.size(),
-            "PCB viewer pad resolution geometry does not match footprint pad");
-    require(footprint_layers(field(geometry, "layers")) == pad.layers(),
-            "PCB viewer pad resolution geometry does not match footprint pad");
-    require(drill_value(field(geometry, "drill")) == pad.drill(),
-            "PCB viewer pad resolution geometry does not match footprint pad");
-    require(mechanical_role_value(field(geometry, "mechanical_role")) == pad.mechanical_role(),
-            "PCB viewer pad resolution geometry does not match footprint pad");
+    require_valid_state(footprint_pad_kind_from_name(string_field(geometry, "kind")) == pad.kind(),
+                        "PCB viewer pad resolution geometry does not match footprint pad");
+    require_valid_state(footprint_pad_shape_from_name(string_field(geometry, "shape")) ==
+                            pad.shape(),
+                        "PCB viewer pad resolution geometry does not match footprint pad");
+    require_valid_state(footprint_size(field(geometry, "size")) == pad.size(),
+                        "PCB viewer pad resolution geometry does not match footprint pad");
+    require_valid_state(footprint_layers(field(geometry, "layers")) == pad.layers(),
+                        "PCB viewer pad resolution geometry does not match footprint pad");
+    require_valid_state(drill_value(field(geometry, "drill")) == pad.drill(),
+                        "PCB viewer pad resolution geometry does not match footprint pad");
+    require_valid_state(mechanical_role_value(field(geometry, "mechanical_role")) ==
+                            pad.mechanical_role(),
+                        "PCB viewer pad resolution geometry does not match footprint pad");
 }
 
 void PcbBoardReader::validate_viewer_diagnostics(const Board &board,
@@ -992,7 +1035,7 @@ void PcbBoardReader::validate_viewer_diagnostics(const Board &board,
         require(diagnostic.is_object(), "PCB viewer diagnostic must be an object");
         validate_diagnostic_severity(string_field(diagnostic, "severity"));
         validate_diagnostic_category(diagnostic);
-        static_cast<void>(DiagnosticCode{string_field(diagnostic, "code")});
+        static_cast<void>(diagnostic_code(string_field(diagnostic, "code")));
         static_cast<void>(string_field(diagnostic, "message"));
         const auto &entities = array_field(diagnostic, "entities");
         auto footprint_definitions = std::vector<FootprintDefId>{};
@@ -1011,7 +1054,8 @@ void PcbBoardReader::validate_viewer_diagnostics(const Board &board,
         for (const auto pad : footprint_pads) {
             if (!footprint_definitions.empty() &&
                 !footprint_pad_exists(board, footprint_definitions, pad)) {
-                throw std::logic_error{"PCB viewer diagnostic references missing footprint pad"};
+                throw KernelLogicError{ErrorCode::UnknownEntity,
+                                       "PCB viewer diagnostic references missing footprint pad"};
             }
         }
         validate_diagnostic_overlays(board, diagnostic);
@@ -1030,7 +1074,23 @@ void PcbBoardReader::validate_diagnostic_severity(const std::string &severity) {
     if (severity == "info" || severity == "warning" || severity == "error") {
         return;
     }
-    throw std::logic_error{"Invalid PCB viewer diagnostic severity"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB viewer diagnostic severity"};
+}
+
+DiagnosticCode PcbBoardReader::diagnostic_code(std::string value) {
+    try {
+        return DiagnosticCode{std::move(value)};
+    } catch (const std::invalid_argument &error) {
+        throw KernelArgumentError{ErrorCode::InvalidArgument, error.what()};
+    }
+}
+
+DiagnosticCategory PcbBoardReader::diagnostic_category(std::string value) {
+    try {
+        return DiagnosticCategory{std::move(value)};
+    } catch (const std::invalid_argument &error) {
+        throw KernelArgumentError{ErrorCode::InvalidArgument, error.what()};
+    }
 }
 
 void PcbBoardReader::validate_diagnostic_category(const nlohmann::json &diagnostic) {
@@ -1039,7 +1099,7 @@ void PcbBoardReader::validate_diagnostic_category(const nlohmann::json &diagnost
         return;
     }
     require(category->is_string(), "PCB viewer diagnostic category must be a string");
-    static_cast<void>(DiagnosticCategory{category->get<std::string>()});
+    static_cast<void>(diagnostic_category(category->get<std::string>()));
 }
 
 void PcbBoardReader::validate_diagnostic_overlays(const Board &board,
@@ -1081,7 +1141,8 @@ void PcbBoardReader::validate_diagnostic_overlay_shape(const std::string &kind,
         require(points.size() >= 3U, "PCB viewer diagnostic overlay point count is invalid");
         return;
     }
-    throw std::logic_error{"PCB viewer diagnostic overlay has unsupported kind"};
+    throw KernelLogicError{ErrorCode::InvalidArgument,
+                           "PCB viewer diagnostic overlay has unsupported kind"};
 }
 
 void PcbBoardReader::validate_diagnostic_ref_array(const Board &board, const nlohmann::json &object,
@@ -1101,10 +1162,12 @@ void PcbBoardReader::validate_diagnostic_layer_array(const Board &board,
         const auto layer_text = layer_json.get<std::string>();
         const auto layer = decode_if_prefixed<BoardLayerId>(layer_text);
         if (!layer.has_value()) {
-            throw std::logic_error{"PCB viewer diagnostic overlay layer must be a board layer"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "PCB viewer diagnostic overlay layer must be a board layer"};
         }
         if (layer->index() >= board.layer_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing board layer"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing board layer"};
         }
     }
 }
@@ -1125,107 +1188,125 @@ void PcbBoardReader::validate_viewer_diagnostic_ref(const Board &board,
         return;
     }
     if (ref.rfind("board:", 0) == 0) {
-        throw std::logic_error{"PCB viewer diagnostic references missing board"};
+        throw KernelLogicError{ErrorCode::UnknownEntity,
+                               "PCB viewer diagnostic references missing board"};
     }
     if (const auto id = decode_if_prefixed<ComponentDefId>(ref)) {
         if (id->index() >= circuit_.component_definition_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing component definition"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing component definition"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<ComponentId>(ref)) {
         if (id->index() >= circuit_.component_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing component"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing component"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<PinDefId>(ref)) {
         if (id->index() >= circuit_.pin_definition_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing pin definition"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing pin definition"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<PinId>(ref)) {
         if (id->index() >= circuit_.pin_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing pin"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing pin"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<NetId>(ref)) {
         if (id->index() >= circuit_.net_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing net"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing net"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<ModuleDefId>(ref)) {
         if (id->index() >= circuit_.module_definition_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing module definition"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing module definition"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<ModuleInstanceId>(ref)) {
         if (id->index() >= circuit_.module_instance_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing module instance"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing module instance"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<PortDefId>(ref)) {
         if (id->index() >= circuit_.port_definition_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing port definition"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing port definition"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<BoardLayerId>(ref)) {
         if (id->index() >= board.layer_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing board layer"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing board layer"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<BoardFeatureId>(ref)) {
         if (id->index() >= board.feature_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing board feature"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing board feature"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<BoardTrackId>(ref)) {
         if (id->index() >= board.track_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing track"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing track"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<BoardViaId>(ref)) {
         if (id->index() >= board.via_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing via"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing via"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<BoardZoneId>(ref)) {
         if (id->index() >= board.zone_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing zone"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing zone"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<BoardKeepoutId>(ref)) {
         if (id->index() >= board.keepout_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing keepout"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing keepout"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<BoardRoomId>(ref)) {
         if (id->index() >= board.room_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing room"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing room"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<BoardTextId>(ref)) {
         if (id->index() >= board.text_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing text"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing text"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<FootprintDefId>(ref)) {
         if (id->index() >= board.footprint_definition_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing footprint definition"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing footprint definition"};
         }
         return;
     }
@@ -1238,17 +1319,20 @@ void PcbBoardReader::validate_viewer_diagnostic_ref(const Board &board,
             }
         }
         if (!found) {
-            throw std::logic_error{"PCB viewer diagnostic references missing footprint pad"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing footprint pad"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<ComponentPlacementId>(ref)) {
         if (id->index() >= board.placement_count()) {
-            throw std::logic_error{"PCB viewer diagnostic references missing placement"};
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "PCB viewer diagnostic references missing placement"};
         }
         return;
     }
-    throw std::logic_error{"PCB viewer diagnostic has unsupported entity reference"};
+    throw KernelLogicError{ErrorCode::InvalidArgument,
+                           "PCB viewer diagnostic has unsupported entity reference"};
 }
 
 [[nodiscard]] std::optional<PinId>

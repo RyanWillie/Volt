@@ -11,6 +11,7 @@
 
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/electrical_attributes.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/io/logical/logical_circuit_reader.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 
@@ -66,6 +67,13 @@ TEST_CASE("Logical circuit writer preserves double precision and rejects non-fin
                                    volt::PropertyValue{std::numeric_limits<double>::infinity()});
 
     CHECK_THROWS_AS(volt::io::write_logical_circuit(circuit), std::logic_error);
+    try {
+        static_cast<void>(volt::io::write_logical_circuit(circuit));
+        FAIL("Expected typed kernel error");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+        CHECK(std::string{error.what()} == "Cannot write non-finite JSON number");
+    }
     circuit.set_component_property(component, volt::PropertyKey{"invalid"},
                                    volt::PropertyValue{1.0});
 

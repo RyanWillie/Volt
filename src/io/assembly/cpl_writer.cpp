@@ -4,9 +4,9 @@
 
 #include <optional>
 #include <sstream>
-#include <stdexcept>
 #include <string_view>
 
+#include <volt/core/errors.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 
@@ -37,7 +37,7 @@ void write_csv_field(std::ostream &out, std::string_view value) {
     case BoardSide::Bottom:
         return "bottom";
     }
-    throw std::logic_error{"Unhandled board side"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled board side"};
 }
 
 [[nodiscard]] std::string jlcpcb_layer_name(BoardSide side) {
@@ -47,7 +47,7 @@ void write_csv_field(std::ostream &out, std::string_view value) {
     case BoardSide::Bottom:
         return "Bottom";
     }
-    throw std::logic_error{"Unhandled board side"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled board side"};
 }
 
 void write_number(std::ostream &out, double value) { detail::write_json_number(out, value); }
