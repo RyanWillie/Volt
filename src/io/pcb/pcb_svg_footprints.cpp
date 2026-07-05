@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <cstddef>
 #include <ostream>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/pcb/pcb_schema.hpp>
 #include <volt/pcb/board.hpp>
@@ -229,7 +229,7 @@ void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &pl
     case FootprintPadShape::Oval:
         return "oval";
     }
-    throw std::logic_error{"Unhandled PCB footprint pad shape"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB footprint pad shape"};
 }
 
 void write_pad(std::ostream &out, const FootprintPad &pad, FootprintPadId pad_id,

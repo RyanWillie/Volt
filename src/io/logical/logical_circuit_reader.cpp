@@ -10,13 +10,13 @@
 #include <optional>
 #include <set>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <nlohmann/json.hpp>
 
+#include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 
@@ -46,7 +46,7 @@ namespace volt::io::detail {
 
 void LogicalCircuitReader::require(bool condition, const std::string &message) {
     if (!condition) {
-        throw std::logic_error{message};
+        throw KernelLogicError{ErrorCode::InvalidArgument, message};
     }
 }
 
@@ -113,7 +113,7 @@ LogicalCircuitReader::connection_requirement(const std::string &value) {
         return ConnectionRequirement::Required;
     if (value == "MustNotConnect")
         return ConnectionRequirement::MustNotConnect;
-    throw std::logic_error{"Invalid ConnectionRequirement value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid ConnectionRequirement value"};
 }
 
 [[nodiscard]] ElectricalTerminalKind
@@ -130,7 +130,7 @@ LogicalCircuitReader::electrical_terminal_kind(const std::string &value) {
         return ElectricalTerminalKind::Ground;
     if (value == "NoConnect")
         return ElectricalTerminalKind::NoConnect;
-    throw std::logic_error{"Invalid ElectricalTerminalKind value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid ElectricalTerminalKind value"};
 }
 
 [[nodiscard]] ElectricalDirection
@@ -145,7 +145,7 @@ LogicalCircuitReader::electrical_direction(const std::string &value) {
         return ElectricalDirection::Bidirectional;
     if (value == "Passive")
         return ElectricalDirection::Passive;
-    throw std::logic_error{"Invalid ElectricalDirection value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid ElectricalDirection value"};
 }
 
 [[nodiscard]] ElectricalSignalDomain
@@ -158,7 +158,7 @@ LogicalCircuitReader::electrical_signal_domain(const std::string &value) {
         return ElectricalSignalDomain::Analog;
     if (value == "Mixed")
         return ElectricalSignalDomain::Mixed;
-    throw std::logic_error{"Invalid ElectricalSignalDomain value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid ElectricalSignalDomain value"};
 }
 
 [[nodiscard]] ElectricalDriveKind
@@ -175,7 +175,7 @@ LogicalCircuitReader::electrical_drive_kind(const std::string &value) {
         return ElectricalDriveKind::HighImpedance;
     if (value == "Passive")
         return ElectricalDriveKind::Passive;
-    throw std::logic_error{"Invalid ElectricalDriveKind value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid ElectricalDriveKind value"};
 }
 
 [[nodiscard]] ElectricalPolarity
@@ -186,7 +186,7 @@ LogicalCircuitReader::electrical_polarity(const std::string &value) {
         return ElectricalPolarity::ActiveHigh;
     if (value == "ActiveLow")
         return ElectricalPolarity::ActiveLow;
-    throw std::logic_error{"Invalid ElectricalPolarity value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid ElectricalPolarity value"};
 }
 
 [[nodiscard]] NetKind LogicalCircuitReader::net_kind(const std::string &value) {
@@ -202,7 +202,7 @@ LogicalCircuitReader::electrical_polarity(const std::string &value) {
         return NetKind::Analog;
     if (value == "HighCurrent")
         return NetKind::HighCurrent;
-    throw std::logic_error{"Invalid NetKind value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid NetKind value"};
 }
 
 [[nodiscard]] PortRole LogicalCircuitReader::port_role(const std::string &value) {
@@ -220,7 +220,7 @@ LogicalCircuitReader::electrical_polarity(const std::string &value) {
         return PortRole::PowerOutput;
     if (value == "Ground")
         return PortRole::Ground;
-    throw std::logic_error{"Invalid PortRole value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PortRole value"};
 }
 
 [[nodiscard]] UnitDimension LogicalCircuitReader::unit_dimension(const std::string &value) {
@@ -244,7 +244,7 @@ LogicalCircuitReader::electrical_polarity(const std::string &value) {
         return UnitDimension::Temperature;
     if (value == "ratio")
         return UnitDimension::Ratio;
-    throw std::logic_error{"Invalid unit dimension value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid unit dimension value"};
 }
 
 [[nodiscard]] ToleranceMode LogicalCircuitReader::tolerance_mode(const std::string &value) {
@@ -252,7 +252,7 @@ LogicalCircuitReader::electrical_polarity(const std::string &value) {
         return ToleranceMode::Absolute;
     if (value == "percent")
         return ToleranceMode::Percent;
-    throw std::logic_error{"Invalid tolerance mode value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid tolerance mode value"};
 }
 
 [[nodiscard]] double LogicalCircuitReader::number_field(const nlohmann::json &object,
@@ -282,7 +282,7 @@ LogicalCircuitReader::electrical_polarity(const std::string &value) {
         require(value.is_number(), "Number property value must be a number");
         return PropertyValue{value.get<double>()};
     }
-    throw std::logic_error{"Invalid property value type"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid property value type"};
 }
 
 [[nodiscard]] PropertyMap LogicalCircuitReader::properties(const nlohmann::json &object) {
@@ -337,7 +337,7 @@ LogicalCircuitReader::electrical_attribute_value(const nlohmann::json &object) {
         return ElectricalAttributeValue{
             QuantityRange::maximum(Quantity{dimension, maximum->get<double>()})};
     }
-    throw std::logic_error{"Invalid electrical attribute value type"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid electrical attribute value type"};
 }
 
 void LogicalCircuitReader::read_component_electrical_attributes(const nlohmann::json &object,
@@ -358,7 +358,8 @@ void LogicalCircuitReader::read_component_electrical_attributes(const nlohmann::
         } else if (owner == ElectricalAttributeOwner::SelectedPart) {
             circuit_.set_selected_part_electrical_attribute(component, spec, attribute);
         } else {
-            throw std::logic_error{"Unsupported electrical attribute owner while reading"};
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Unsupported electrical attribute owner while reading"};
         }
     }
 }
@@ -531,7 +532,7 @@ void LogicalCircuitReader::read_nets() {
     if (value == "BottomOnly") {
         return NetClassLayerScope::BottomOnly;
     }
-    throw std::logic_error{"Unknown net class layer scope: " + value};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Unknown net class layer scope: " + value};
 }
 
 void LogicalCircuitReader::read_net_classes() {
@@ -621,7 +622,9 @@ void LogicalCircuitReader::read_net_classes() {
     for (const auto &assignment : *assignments) {
         require(assignment.is_object(), "Net class net assignment must be an object");
         const auto net = string_field(assignment, "net");
-        require(seen_assignment_nets.insert(net).second, "Duplicate net-class net assignment");
+        if (!seen_assignment_nets.insert(net).second) {
+            throw KernelLogicError{ErrorCode::DuplicateName, "Duplicate net-class net assignment"};
+        }
         [[maybe_unused]] const auto changed = circuit_.assign_net_class(
             resolve(net_ids_, net), resolve(net_class_ids_, string_field(assignment, "net_class")));
     }
@@ -638,7 +641,9 @@ void LogicalCircuitReader::read_design_intent() {
     for (const auto &net : array_field(*it, "stub_nets")) {
         require(net.is_string(), "Stub-net design intent reference must be a string");
         const auto id = net.get<std::string>();
-        require(seen_stub_nets.insert(id).second, "Duplicate stub-net design intent");
+        if (!seen_stub_nets.insert(id).second) {
+            throw KernelLogicError{ErrorCode::DuplicateName, "Duplicate stub-net design intent"};
+        }
         [[maybe_unused]] const auto changed =
             circuit_.mark_intentional_stub_net(resolve(net_ids_, id));
     }
@@ -647,7 +652,10 @@ void LogicalCircuitReader::read_design_intent() {
     for (const auto &pin : array_field(*it, "no_connect_pins")) {
         require(pin.is_string(), "No-connect design intent reference must be a string");
         const auto id = pin.get<std::string>();
-        require(seen_no_connect_pins.insert(id).second, "Duplicate no-connect pin design intent");
+        if (!seen_no_connect_pins.insert(id).second) {
+            throw KernelLogicError{ErrorCode::DuplicateName,
+                                   "Duplicate no-connect pin design intent"};
+        }
         [[maybe_unused]] const auto changed =
             circuit_.mark_intentional_no_connect_pin(resolve(pin_ids_, id));
     }
@@ -660,7 +668,9 @@ void LogicalCircuitReader::read_design_intent() {
     for (const auto &intent : *component_assembly) {
         require(intent.is_object(), "Component assembly intent must be an object");
         const auto component_id = string_field(intent, "component");
-        require(seen_components.insert(component_id).second, "Duplicate component assembly intent");
+        if (!seen_components.insert(component_id).second) {
+            throw KernelLogicError{ErrorCode::DuplicateName, "Duplicate component assembly intent"};
+        }
         const auto dnp = intent.find("dnp");
         const auto &selection_override = field(intent, "selection_override");
         if (dnp != intent.end()) {

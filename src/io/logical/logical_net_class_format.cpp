@@ -4,18 +4,19 @@
 #include <iomanip>
 #include <limits>
 #include <ostream>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
+
+#include <volt/core/errors.hpp>
 
 namespace volt::io::detail {
 namespace {
 
 void require(bool condition, const std::string &message) {
     if (!condition) {
-        throw std::logic_error{message};
+        throw KernelLogicError{ErrorCode::InvalidArgument, message};
     }
 }
 
@@ -88,7 +89,7 @@ const nlohmann::json &array_field(const nlohmann::json &object, const char *name
 
 void write_json_number(std::ostream &out, double value) {
     if (!std::isfinite(value)) {
-        throw std::logic_error{"Cannot write non-finite JSON number"};
+        throw KernelLogicError{ErrorCode::InvalidArgument, "Cannot write non-finite JSON number"};
     }
     out << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
 }

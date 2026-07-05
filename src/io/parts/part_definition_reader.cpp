@@ -13,6 +13,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <volt/core/errors.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
 
 namespace volt::io {
@@ -127,7 +128,7 @@ class PartDefinitionReader {
 
 void PartDefinitionReader::require(bool condition, const std::string &message) {
     if (!condition) {
-        throw std::logic_error{message};
+        throw KernelLogicError{ErrorCode::InvalidArgument, message};
     }
 }
 
@@ -198,7 +199,7 @@ PartDefinitionReader::connection_requirement(const std::string &value) {
         return ConnectionRequirement::Required;
     if (value == "MustNotConnect")
         return ConnectionRequirement::MustNotConnect;
-    throw std::logic_error{"Invalid ConnectionRequirement value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid ConnectionRequirement value"};
 }
 
 [[nodiscard]] ElectricalTerminalKind
@@ -215,7 +216,7 @@ PartDefinitionReader::electrical_terminal_kind(const std::string &value) {
         return ElectricalTerminalKind::Ground;
     if (value == "NoConnect")
         return ElectricalTerminalKind::NoConnect;
-    throw std::logic_error{"Invalid ElectricalTerminalKind value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid ElectricalTerminalKind value"};
 }
 
 [[nodiscard]] ElectricalDirection
@@ -230,7 +231,7 @@ PartDefinitionReader::electrical_direction(const std::string &value) {
         return ElectricalDirection::Bidirectional;
     if (value == "Passive")
         return ElectricalDirection::Passive;
-    throw std::logic_error{"Invalid ElectricalDirection value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid ElectricalDirection value"};
 }
 
 [[nodiscard]] ElectricalSignalDomain
@@ -243,7 +244,7 @@ PartDefinitionReader::electrical_signal_domain(const std::string &value) {
         return ElectricalSignalDomain::Analog;
     if (value == "Mixed")
         return ElectricalSignalDomain::Mixed;
-    throw std::logic_error{"Invalid ElectricalSignalDomain value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid ElectricalSignalDomain value"};
 }
 
 [[nodiscard]] ElectricalDriveKind
@@ -260,7 +261,7 @@ PartDefinitionReader::electrical_drive_kind(const std::string &value) {
         return ElectricalDriveKind::HighImpedance;
     if (value == "Passive")
         return ElectricalDriveKind::Passive;
-    throw std::logic_error{"Invalid ElectricalDriveKind value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid ElectricalDriveKind value"};
 }
 
 [[nodiscard]] ElectricalPolarity
@@ -271,7 +272,7 @@ PartDefinitionReader::electrical_polarity(const std::string &value) {
         return ElectricalPolarity::ActiveHigh;
     if (value == "ActiveLow")
         return ElectricalPolarity::ActiveLow;
-    throw std::logic_error{"Invalid ElectricalPolarity value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid ElectricalPolarity value"};
 }
 
 [[nodiscard]] UnitDimension PartDefinitionReader::unit_dimension(const std::string &value) {
@@ -295,7 +296,7 @@ PartDefinitionReader::electrical_polarity(const std::string &value) {
         return UnitDimension::Temperature;
     if (value == "ratio")
         return UnitDimension::Ratio;
-    throw std::logic_error{"Invalid unit dimension value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid unit dimension value"};
 }
 
 [[nodiscard]] ToleranceMode PartDefinitionReader::tolerance_mode(const std::string &value) {
@@ -303,7 +304,7 @@ PartDefinitionReader::electrical_polarity(const std::string &value) {
         return ToleranceMode::Absolute;
     if (value == "percent")
         return ToleranceMode::Percent;
-    throw std::logic_error{"Invalid tolerance mode value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid tolerance mode value"};
 }
 
 [[nodiscard]] ElectricalAttributeValue
@@ -348,7 +349,7 @@ PartDefinitionReader::electrical_attribute_value(const nlohmann::json &object) {
         return ElectricalAttributeValue{
             QuantityRange::maximum(Quantity{dimension, maximum->get<double>()})};
     }
-    throw std::logic_error{"Invalid electrical attribute value type"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid electrical attribute value type"};
 }
 
 [[nodiscard]] ElectricalAttributeMap PartDefinitionReader::electrical_attributes(
@@ -448,7 +449,7 @@ PartDefinitionReader::part_footprint_pad_role(const nlohmann::json &object) {
     if (value == "thermal") {
         return PartFootprintPadRole::Thermal;
     }
-    throw std::logic_error{"Invalid footprint pad role"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid footprint pad role"};
 }
 
 [[nodiscard]] PartFootprintPad
@@ -514,7 +515,7 @@ PartDefinitionReader::part_footprint_marking_kind(const std::string &value) {
     if (value == "pin_1") {
         return PartFootprintMarkingKind::PinOne;
     }
-    throw std::logic_error{"Invalid footprint marking kind"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid footprint marking kind"};
 }
 
 [[nodiscard]] PartFootprintMarking
@@ -592,9 +593,9 @@ PartDefinitionReader::part_footprint_markings(const nlohmann::json &object) {
     try {
         return PartDefinitionReader{document}.read();
     } catch (const std::invalid_argument &error) {
-        throw std::logic_error{error.what()};
+        throw KernelLogicError{ErrorCode::InvalidArgument, error.what()};
     } catch (const std::out_of_range &error) {
-        throw std::logic_error{error.what()};
+        throw KernelLogicError{ErrorCode::InvalidArgument, error.what()};
     }
 }
 

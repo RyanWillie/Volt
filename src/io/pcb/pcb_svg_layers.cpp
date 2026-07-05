@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <ostream>
 
+#include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/pcb/pcb_schema.hpp>
 #include <volt/pcb/board.hpp>
@@ -24,7 +25,7 @@ namespace {
     case BoardLayerSide::None:
         return false;
     }
-    throw std::logic_error{"Unhandled PCB board layer side"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB board layer side"};
 }
 
 [[nodiscard]] std::size_t layer_token_collision_index(const Board &board, BoardLayerId layer_id) {

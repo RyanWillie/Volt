@@ -523,12 +523,12 @@ carries a machine-readable `volt::ErrorCode` and, when one is naturally at hand,
 parsing message strings.
 
 The migration is incremental. Core entity storage, the `Circuit` aggregate root, and the
-connectivity, hierarchy, electrical, net-class, parts, BOM sourcing, schematic, assembly
-CPL option, KiCad adapter, and authoring boundaries throw typed kernel errors today;
-validation reports design-quality findings through diagnostics, and design intent has no
-subsystem-local structural throw sites beyond the root preflights. The remaining
-subsystems (PCB outside the assembly CPL option boundary and IO) still throw raw
-`std::logic_error`, `std::invalid_argument`, or `std::out_of_range` until their migration
+connectivity, hierarchy, electrical, net-class, parts, BOM sourcing, schematic, IO
+serialization, assembly CPL option, KiCad adapter, and authoring boundaries throw typed
+kernel errors today; validation reports design-quality findings through diagnostics, and
+design intent has no subsystem-local structural throw sites beyond the root preflights.
+The remaining subsystem (PCB outside the assembly CPL option boundary) still throws raw
+`std::logic_error`, `std::invalid_argument`, or `std::out_of_range` until its migration
 lands. Until then, catching `volt::KernelError` alone does not cover every
 mutation-boundary failure.
 

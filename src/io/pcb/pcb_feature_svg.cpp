@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <cstddef>
 #include <ostream>
-#include <stdexcept>
 
+#include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/pcb/pcb_schema.hpp>
 
@@ -28,7 +28,8 @@ namespace {
                           feature.circle().center().y_mm() +
                               (feature.circle().diameter_mm() / 2.0) + 2.0};
     }
-    throw std::logic_error{"Board feature kind has no SVG feature label anchor"};
+    throw KernelLogicError{ErrorCode::InvalidState,
+                           "Board feature kind has no SVG feature label anchor"};
 }
 
 } // namespace

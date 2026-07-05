@@ -10,7 +10,6 @@
 #include <optional>
 #include <set>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -18,6 +17,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/schematic/schematic_schema.hpp>
 #include <volt/schematic/schematic_document.hpp>
@@ -71,14 +71,19 @@ class SchematicReader {
     static std::string local_id(const nlohmann::json &object, std::set<std::string> &seen) {
         const auto id = string_field(object, "id");
         static_cast<void>(decode_local_id<Id>(id));
-        require(seen.insert(id).second, "Duplicate local ID");
+        if (!seen.insert(id).second) {
+            throw KernelLogicError{ErrorCode::DuplicateName, "Duplicate local ID"};
+        }
         return id;
     }
 
     template <typename Id>
     [[nodiscard]] static Id resolve(const std::map<std::string, Id> &ids, const std::string &id) {
         const auto it = ids.find(id);
-        require(it != ids.end(), "Reference points to a missing local ID");
+        if (it == ids.end()) {
+            throw KernelLogicError{ErrorCode::UnknownEntity,
+                                   "Reference points to a missing local ID"};
+        }
         return it->second;
     }
 
@@ -249,7 +254,7 @@ class SchematicReader {
 
 void SchematicReader::require(bool condition, const std::string &message) {
     if (!condition) {
-        throw std::logic_error{message};
+        throw KernelLogicError{ErrorCode::InvalidArgument, message};
     }
 }
 
@@ -392,14 +397,14 @@ SchematicReader::optional_point_field(const nlohmann::json &object, const char *
     if (const auto parsed = schematic_orientation_from_name(value)) {
         return *parsed;
     }
-    throw std::logic_error{"Invalid schematic orientation value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid schematic orientation value"};
 }
 
 [[nodiscard]] SymbolLineRole SchematicReader::symbol_line_role(const std::string &value) {
     if (const auto parsed = symbol_line_role_from_name(value)) {
         return *parsed;
     }
-    throw std::logic_error{"Invalid symbol line role"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid symbol line role"};
 }
 
 [[nodiscard]] TextHorizontalAlignment
@@ -407,7 +412,7 @@ SchematicReader::text_horizontal_alignment(const std::string &value) {
     if (const auto parsed = text_horizontal_alignment_from_name(value)) {
         return *parsed;
     }
-    throw std::logic_error{"Invalid text horizontal alignment"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid text horizontal alignment"};
 }
 
 [[nodiscard]] TextVerticalAlignment
@@ -415,7 +420,7 @@ SchematicReader::text_vertical_alignment(const std::string &value) {
     if (const auto parsed = text_vertical_alignment_from_name(value)) {
         return *parsed;
     }
-    throw std::logic_error{"Invalid text vertical alignment"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid text vertical alignment"};
 }
 
 [[nodiscard]] SchematicTextStyle SchematicReader::text_style(const nlohmann::json &object,
@@ -438,48 +443,54 @@ SchematicReader::text_vertical_alignment(const std::string &value) {
     if (const auto parsed = sheet_orientation_from_name(value)) {
         return *parsed;
     }
-    throw std::logic_error{"Invalid schematic sheet orientation value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid schematic sheet orientation value"};
 }
 
 [[nodiscard]] RouteIntent SchematicReader::route_intent(const std::string &value) {
     if (const auto parsed = route_intent_from_name(value)) {
         return *parsed;
     }
-    throw std::logic_error{"Invalid schematic route intent value"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid schematic route intent value"};
 }
 
 [[nodiscard]] PowerPortKind SchematicReader::power_port_kind(const std::string &value) {
     if (const auto parsed = power_port_kind_from_name(value)) {
         return *parsed;
     }
-    throw std::logic_error{"Invalid schematic power port kind"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid schematic power port kind"};
 }
 
 [[nodiscard]] SheetPortKind SchematicReader::sheet_port_kind(const std::string &value) {
     if (const auto parsed = sheet_port_kind_from_name(value)) {
         return *parsed;
     }
-    throw std::logic_error{"Invalid schematic sheet port kind"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid schematic sheet port kind"};
 }
 
 [[nodiscard]] ComponentId SchematicReader::component_id(const std::string &id) const {
     const auto component = decode_local_id<ComponentId>(id);
-    require(component.index() < circuit_.component_count(),
-            "Component reference points to a missing logical component: " + id);
+    if (component.index() >= circuit_.component_count()) {
+        throw KernelLogicError{ErrorCode::UnknownEntity,
+                               "Component reference points to a missing logical component: " + id};
+    }
     return component;
 }
 
 [[nodiscard]] NetId SchematicReader::net_id(const std::string &id) const {
     const auto net = decode_local_id<NetId>(id);
-    require(net.index() < circuit_.net_count(),
-            "Net reference points to a missing logical net: " + id);
+    if (net.index() >= circuit_.net_count()) {
+        throw KernelLogicError{ErrorCode::UnknownEntity,
+                               "Net reference points to a missing logical net: " + id};
+    }
     return net;
 }
 
 [[nodiscard]] PinId SchematicReader::pin_id(const std::string &id) const {
     const auto pin = decode_local_id<PinId>(id);
-    require(pin.index() < circuit_.pin_count(),
-            "Pin reference points to a missing logical pin: " + id);
+    if (pin.index() >= circuit_.pin_count()) {
+        throw KernelLogicError{ErrorCode::UnknownEntity,
+                               "Pin reference points to a missing logical pin: " + id};
+    }
     return pin;
 }
 
@@ -517,7 +528,7 @@ SchematicReader::text_vertical_alignment(const std::string &value) {
                           orientation(string_field(object, "orientation")),
                           text_style(object, SchematicTextStyle{})};
     }
-    throw std::logic_error{"Invalid symbol primitive type"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid symbol primitive type"};
 }
 
 [[nodiscard]] SheetMargins SchematicReader::sheet_margins(const nlohmann::json &object) {
@@ -632,7 +643,10 @@ SchematicReader::authored_region(SheetId sheet, const nlohmann::json &object) co
         return std::nullopt;
     }
     const auto region = schematic_.sheet_region_by_name(sheet, name);
-    require(region.has_value(), "Authored region reference points to a missing sheet region");
+    if (!region.has_value()) {
+        throw KernelLogicError{ErrorCode::UnknownEntity,
+                               "Authored region reference points to a missing sheet region"};
+    }
     return region.value();
 }
 

@@ -1,5 +1,7 @@
 #include <volt/io/schematic/detail/schematic_svg_common.hpp>
 
+#include <volt/core/errors.hpp>
+
 namespace volt::io::detail {
 
 [[nodiscard]] std::string svg_escape(std::string_view value) {
@@ -31,7 +33,7 @@ namespace volt::io::detail {
 
 void write_svg_number(std::ostream &out, double value) {
     if (!std::isfinite(value)) {
-        throw std::invalid_argument{"SVG numeric values must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "SVG numeric values must be finite"};
     }
     if (std::abs(value) < 1e-12) {
         value = 0.0;
@@ -57,7 +59,7 @@ void write_svg_number(std::ostream &out, double value) {
     case PowerPortKind::Ground:
         return "ground";
     }
-    throw std::logic_error{"Unhandled power port kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled power port kind"};
 }
 
 [[nodiscard]] std::string sheet_port_class(SheetPortKind kind) {
@@ -71,7 +73,7 @@ void write_svg_number(std::ostream &out, double value) {
     case SheetPortKind::OffPage:
         return "off-page";
     }
-    throw std::logic_error{"Unhandled sheet port kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled sheet port kind"};
 }
 
 [[nodiscard]] double orientation_degrees(SchematicOrientation orientation) {
@@ -85,7 +87,7 @@ void write_svg_number(std::ostream &out, double value) {
     case SchematicOrientation::Up:
         return 270.0;
     }
-    throw std::logic_error{"Unhandled schematic orientation"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled schematic orientation"};
 }
 
 [[nodiscard]] double power_port_glyph_degrees(PowerPortKind kind,
@@ -97,7 +99,7 @@ void write_svg_number(std::ostream &out, double value) {
     case PowerPortKind::Ground:
         return std::fmod(degrees + 270.0, 360.0);
     }
-    throw std::logic_error{"Unhandled power port kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled power port kind"};
 }
 
 void write_upright_text_transform_degrees(std::ostream &out, double parent_degrees, Point anchor) {
@@ -140,7 +142,7 @@ void write_css_font(std::ostream &out, double size) {
     case TextHorizontalAlignment::End:
         return "end";
     }
-    throw std::logic_error{"Unhandled text horizontal alignment"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled text horizontal alignment"};
 }
 
 [[nodiscard]] std::string_view svg_dominant_baseline(TextVerticalAlignment alignment) {
@@ -154,7 +156,7 @@ void write_css_font(std::ostream &out, double size) {
     case TextVerticalAlignment::Baseline:
         return "alphabetic";
     }
-    throw std::logic_error{"Unhandled text vertical alignment"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled text vertical alignment"};
 }
 
 void write_text_presentation_attributes(std::ostream &out, SchematicTextStyle style) {

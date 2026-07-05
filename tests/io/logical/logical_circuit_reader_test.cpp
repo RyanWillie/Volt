@@ -9,6 +9,7 @@
 
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/validation/validation.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/io/logical/logical_circuit_reader.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 
@@ -326,6 +327,23 @@ TEST_CASE("Logical circuit reader rejects malformed net-class references") {
     };
 
     CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
+
+    auto duplicate_assignment = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    duplicate_assignment["net_classes"] = {
+        {"classes", nlohmann::json::array({{{"id", "net_class:0"}, {"name", "Logic"}}})},
+        {"net_assignments",
+         nlohmann::json::array({{{"net", "net:0"}, {"net_class", "net_class:0"}},
+                                {{"net", "net:0"}, {"net_class", "net_class:0"}}})},
+    };
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(duplicate_assignment.dump()),
+                    std::logic_error);
+    try {
+        static_cast<void>(volt::io::read_logical_circuit_text(duplicate_assignment.dump()));
+        FAIL("Expected typed kernel error");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::DuplicateName);
+        CHECK(std::string{error.what()} == "Duplicate net-class net assignment");
+    }
 }
 
 TEST_CASE("Logical circuit reader rejects malformed design intent references") {

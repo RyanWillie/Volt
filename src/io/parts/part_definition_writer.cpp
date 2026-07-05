@@ -1,8 +1,8 @@
 #include <volt/io/parts/part_definition_writer.hpp>
 
 #include <sstream>
-#include <stdexcept>
 
+#include <volt/core/errors.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 
 namespace volt::io {
@@ -94,7 +94,7 @@ void write_symbols(std::ostream &out, const std::vector<HashedSchematicSymbolRef
     case PartFootprintPadRole::Thermal:
         return "thermal";
     }
-    throw std::logic_error{"Unhandled part footprint pad role"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled part footprint pad role"};
 }
 
 void write_footprint_pad(std::ostream &out, const PartFootprintPad &pad) {
@@ -152,7 +152,7 @@ void write_footprint_polygon(std::ostream &out, std::string_view name,
     case PartFootprintMarkingKind::PinOne:
         return "pin_1";
     }
-    throw std::logic_error{"Unhandled part footprint marking kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled part footprint marking kind"};
 }
 
 void write_footprint_marking(std::ostream &out, const PartFootprintMarking &marking) {

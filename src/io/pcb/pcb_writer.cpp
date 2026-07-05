@@ -7,6 +7,7 @@
 #include <string_view>
 #include <variant>
 
+#include <volt/core/errors.hpp>
 #include <volt/pcb/projection/board_geometry_projection.hpp>
 
 namespace volt::io::detail {
@@ -20,7 +21,7 @@ namespace volt::io::detail {
     case Severity::Error:
         return "error";
     }
-    throw std::logic_error{"Unhandled diagnostic severity"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled diagnostic severity"};
 }
 
 [[nodiscard]] std::string entity_ref_id(EntityRef entity) {
@@ -38,7 +39,7 @@ namespace volt::io::detail {
     case DiagnosticOverlayKind::Segment:
         return "segment";
     }
-    throw std::logic_error{"Unhandled diagnostic overlay kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled diagnostic overlay kind"};
 }
 
 [[nodiscard]] std::optional<FootprintDefId>
@@ -64,7 +65,8 @@ collect_footprint_definitions(const Board &board, const FootprintLibrary &footpr
         const auto existing = find_footprint_definition(definitions, definition.ref());
         if (existing.has_value() && ::volt::detail::footprint_library_definition_conflicts(
                                         definitions[existing->index()], definition)) {
-            throw std::logic_error{
+            throw KernelLogicError{
+                ErrorCode::InvalidState,
                 "Board footprint definition conflicts with footprint library definition"};
         }
     }
@@ -770,7 +772,8 @@ void write_viewer(std::ostream &out, const Board &board,
                 ? find_footprint_definition(definitions, selected_part->footprint())
                 : std::nullopt;
         if (!footprint_id.has_value()) {
-            throw std::logic_error{"Resolved PCB pad references missing footprint definition"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Resolved PCB pad references missing footprint definition"};
         }
         write_pad_resolution(out, board, definitions, resolution,
                              definitions[footprint_id->index()]);

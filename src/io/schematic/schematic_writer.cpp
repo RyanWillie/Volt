@@ -1,5 +1,7 @@
 #include <volt/io/schematic/schematic_writer.hpp>
 
+#include <volt/core/errors.hpp>
+
 namespace volt::io::detail {
 
 [[nodiscard]] std::string symbol_instance_id(SymbolInstanceId id) { return encode_local_id(id); }
@@ -185,7 +187,8 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
             return sheet;
         }
     }
-    throw std::logic_error{"Symbol instance is not placed on a schematic sheet"};
+    throw KernelLogicError{ErrorCode::InvalidState,
+                           "Symbol instance is not placed on a schematic sheet"};
 }
 
 [[nodiscard]] SheetId sheet_for_wire_run(const Schematic &schematic, WireRunId wire) {
@@ -196,7 +199,7 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
             return sheet;
         }
     }
-    throw std::logic_error{"Wire run is not placed on a schematic sheet"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Wire run is not placed on a schematic sheet"};
 }
 
 [[nodiscard]] SheetId sheet_for_net_label(const Schematic &schematic, NetLabelId label) {
@@ -207,7 +210,7 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
             return sheet;
         }
     }
-    throw std::logic_error{"Net label is not placed on a schematic sheet"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Net label is not placed on a schematic sheet"};
 }
 
 [[nodiscard]] SheetId sheet_for_junction(const Schematic &schematic, JunctionId junction) {
@@ -218,7 +221,7 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
             return sheet;
         }
     }
-    throw std::logic_error{"Junction is not placed on a schematic sheet"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Junction is not placed on a schematic sheet"};
 }
 
 [[nodiscard]] SheetId sheet_for_power_port(const Schematic &schematic, PowerPortId port) {
@@ -229,7 +232,8 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
             return sheet;
         }
     }
-    throw std::logic_error{"Power port is not placed on a schematic sheet"};
+    throw KernelLogicError{ErrorCode::InvalidState,
+                           "Power port is not placed on a schematic sheet"};
 }
 
 [[nodiscard]] SheetId sheet_for_no_connect_marker(const Schematic &schematic,
@@ -241,7 +245,8 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
             return sheet;
         }
     }
-    throw std::logic_error{"No-connect marker is not placed on a schematic sheet"};
+    throw KernelLogicError{ErrorCode::InvalidState,
+                           "No-connect marker is not placed on a schematic sheet"};
 }
 
 [[nodiscard]] SheetId sheet_for_sheet_port(const Schematic &schematic, SheetPortId port) {
@@ -252,7 +257,8 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
             return sheet;
         }
     }
-    throw std::logic_error{"Sheet port is not placed on a schematic sheet"};
+    throw KernelLogicError{ErrorCode::InvalidState,
+                           "Sheet port is not placed on a schematic sheet"};
 }
 
 [[nodiscard]] SheetId sheet_for_symbol_field(const Schematic &schematic, SymbolFieldId field) {
@@ -263,7 +269,8 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
             return sheet;
         }
     }
-    throw std::logic_error{"Symbol field is not placed on a schematic sheet"};
+    throw KernelLogicError{ErrorCode::InvalidState,
+                           "Symbol field is not placed on a schematic sheet"};
 }
 
 } // namespace volt::io::detail
