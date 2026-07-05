@@ -1,12 +1,14 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <stdexcept>
+#include <string>
 
 #include <volt/authoring/component_library.hpp>
 #include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/connectivity/instances.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/core/properties.hpp>
 
 namespace {
@@ -39,6 +41,13 @@ TEST_CASE("Reference allocation rejects empty prefixes") {
     auto circuit = volt::Circuit{};
 
     CHECK_THROWS_AS(volt::authoring::allocate_reference(circuit, ""), std::invalid_argument);
+    try {
+        [[maybe_unused]] const auto reference = volt::authoring::allocate_reference(circuit, "");
+        FAIL("Empty reference designator prefixes must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+        CHECK(std::string{error.what()} == "Reference designator prefix must not be empty");
+    }
 }
 
 TEST_CASE("Authoring instantiate helper preserves explicit references") {
