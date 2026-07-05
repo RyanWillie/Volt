@@ -49,6 +49,7 @@ def test_python_kernel_error_translator_exposes_typed_structural_failures():
     assert issubclass(volt.UnknownEntityError, volt.VoltError)
     assert issubclass(volt.DuplicateNameError, volt.VoltError)
     assert issubclass(volt.CrossReferenceError, volt.VoltError)
+    assert issubclass(volt.InvalidArgumentError, volt.VoltError)
     assert issubclass(volt.InvalidStateError, volt.VoltError)
 
     circuit = volt._volt.Circuit()
@@ -95,7 +96,8 @@ def test_python_kernel_error_translator_exposes_typed_structural_failures():
     with pytest.raises(ValueError, match="^Net name must not be empty$") as invalid_argument:
         design.net("")
     assert str(invalid_argument.value) == "Net name must not be empty"
-    assert not isinstance(invalid_argument.value, volt.VoltError)
+    assert isinstance(invalid_argument.value, volt.InvalidArgumentError)
+    assert isinstance(invalid_argument.value, volt.VoltError)
 
 def test_natural_electrical_values_serialize_as_kernel_attributes():
     design = volt.Design("typed")

@@ -17,6 +17,7 @@ struct PythonKernelExceptions {
     py::object unknown_entity_error;
     py::object duplicate_name_error;
     py::object cross_reference_error;
+    py::object invalid_argument_error;
     py::object invalid_state_error;
 };
 
@@ -63,6 +64,9 @@ register_kernel_exceptions(py::module_ &module) {
         "A Volt kernel operation crossed model, scope, or ownership boundaries.",
         py::make_tuple(exceptions->volt_error, builtins_exception(PyExc_RuntimeError),
                        builtins_exception(PyExc_ValueError)));
+    exceptions->invalid_argument_error = create_exception_class(
+        module, "InvalidArgumentError", "A Volt kernel operation received an invalid argument.",
+        py::make_tuple(exceptions->volt_error, builtins_exception(PyExc_ValueError)));
     exceptions->invalid_state_error = create_exception_class(
         module, "InvalidStateError",
         "A Volt kernel operation is invalid for the current model state.",
@@ -82,7 +86,7 @@ register_kernel_exceptions(py::module_ &module) {
     case volt::ErrorCode::CrossReferenceViolation:
         return exceptions.cross_reference_error;
     case volt::ErrorCode::InvalidArgument:
-        return builtins_exception(PyExc_ValueError);
+        return exceptions.invalid_argument_error;
     case volt::ErrorCode::InvalidState:
         return exceptions.invalid_state_error;
     }

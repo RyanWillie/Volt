@@ -12,6 +12,7 @@ from .diagnostics import (
     DRC_DIAGNOSTIC_CODES,
     DuplicateNameError,
     ERC_DIAGNOSTIC_CODES,
+    InvalidArgumentError,
     InvalidStateError,
     PART_LINEUP_DIAGNOSTIC_CODES,
     PCB_FABRICATION_DIAGNOSTIC_CODES,
@@ -248,5 +249,6 @@ __all__ = [
     "UnknownEntityError",
     "DuplicateNameError",
     "CrossReferenceError",
+    "InvalidArgumentError",
     "InvalidStateError",
 ]

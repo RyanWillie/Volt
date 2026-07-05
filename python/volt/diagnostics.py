@@ -12,6 +12,7 @@ VoltError = _volt.VoltError
 UnknownEntityError = _volt.UnknownEntityError
 DuplicateNameError = _volt.DuplicateNameError
 CrossReferenceError = _volt.CrossReferenceError
+InvalidArgumentError = _volt.InvalidArgumentError
 InvalidStateError = _volt.InvalidStateError
 
 DIAGNOSTIC_CATEGORIES: tuple[str, ...] = tuple(_volt.diagnostic_categories())
