@@ -1,3 +1,4 @@
+#include "binding_diagnostic_conversions.hpp"
 #include "circuit_bindings.hpp"
 
 #include <volt/core/errors.hpp>
@@ -66,7 +67,8 @@ register_kernel_exceptions(py::module_ &module) {
                        builtins_exception(PyExc_ValueError)));
     exceptions->invalid_argument_error = create_exception_class(
         module, "InvalidArgumentError", "A Volt kernel operation received an invalid argument.",
-        py::make_tuple(exceptions->volt_error, builtins_exception(PyExc_ValueError)));
+        py::make_tuple(exceptions->volt_error, builtins_exception(PyExc_ValueError),
+                       builtins_exception(PyExc_RuntimeError)));
     exceptions->invalid_state_error = create_exception_class(
         module, "InvalidStateError",
         "A Volt kernel operation is invalid for the current model state.",
@@ -93,6 +95,30 @@ register_kernel_exceptions(py::module_ &module) {
     return exceptions.volt_error;
 }
 
+[[nodiscard]] py::dict python_entity_ref(const volt::EntityRef &entity) {
+    auto result = py::dict{};
+    result["kind"] = volt::python::entity_kind_name(entity.kind());
+    result["index"] = entity.index();
+    return result;
+}
+
+void set_kernel_error_metadata(py::object &exception, const volt::KernelError &error) {
+    exception.attr("code") = std::string{volt::error_code_name(error.code())};
+    if (error.entity().has_value()) {
+        exception.attr("entity") = python_entity_ref(*error.entity());
+    } else {
+        exception.attr("entity") = py::none{};
+    }
+}
+
+void raise_python_kernel_error(const volt::KernelError &error,
+                               const PythonKernelExceptions &exceptions) {
+    const auto type = python_error_type(error, exceptions);
+    auto exception = type(error.what());
+    set_kernel_error_metadata(exception, error);
+    PyErr_SetObject(type.ptr(), exception.ptr());
+}
+
 void translate_kernel_error(std::exception_ptr pointer) {
     try {
         if (pointer != nullptr) {
@@ -103,8 +129,7 @@ void translate_kernel_error(std::exception_ptr pointer) {
             PyErr_SetString(PyExc_RuntimeError, error.what());
             return;
         }
-        PyErr_SetString(python_error_type(error, *registered_kernel_exceptions).ptr(),
-                        error.what());
+        raise_python_kernel_error(error, *registered_kernel_exceptions);
     }
 }
 
