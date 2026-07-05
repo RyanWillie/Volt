@@ -3,7 +3,6 @@
 #include <cmath>
 #include <cstddef>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -67,7 +66,7 @@ drc_warning(std::string_view code, std::string message, std::vector<EntityRef> e
     case BoardLayerSide::None:
         return false;
     }
-    throw std::logic_error{"Unhandled PCB board layer side"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB board layer side"};
 }
 
 [[nodiscard]] std::vector<BoardLayerId> placement_side_layers(const Board &board,

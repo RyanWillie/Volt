@@ -1,10 +1,11 @@
 #include <volt/pcb/board.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -159,29 +160,34 @@ BoardHole::BoardHole(BoardPoint center, double drill_diameter_mm, bool plated,
     : center_{center}, drill_diameter_mm_{drill_diameter_mm}, plated_{plated},
       finished_diameter_mm_{finished_diameter_mm} {
     if (!std::isfinite(drill_diameter_mm_)) {
-        throw std::invalid_argument{"Board hole drill diameter must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board hole drill diameter must be finite"};
     }
     if (drill_diameter_mm_ <= 0.0) {
-        throw std::invalid_argument{"Board hole drill diameter must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board hole drill diameter must be positive"};
     }
     if (finished_diameter_mm_.has_value() && !std::isfinite(finished_diameter_mm_.value())) {
-        throw std::invalid_argument{"Board hole finished diameter must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board hole finished diameter must be finite"};
     }
     if (finished_diameter_mm_.has_value() && finished_diameter_mm_.value() <= 0.0) {
-        throw std::invalid_argument{"Board hole finished diameter must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board hole finished diameter must be positive"};
     }
 }
 
 BoardSlot::BoardSlot(BoardPoint start, BoardPoint end, double width_mm, bool plated)
     : start_{start}, end_{end}, width_mm_{width_mm}, plated_{plated} {
     if (start_ == end_) {
-        throw std::invalid_argument{"Board slot endpoints must be distinct"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board slot endpoints must be distinct"};
     }
     if (!std::isfinite(width_mm_)) {
-        throw std::invalid_argument{"Board slot width must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Board slot width must be finite"};
     }
     if (width_mm_ <= 0.0) {
-        throw std::invalid_argument{"Board slot width must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Board slot width must be positive"};
     }
 }
 
@@ -194,10 +200,12 @@ BoardCutout::BoardCutout(std::vector<BoardPoint> outline) : outline_{std::move(o
 BoardCircle::BoardCircle(BoardPoint center, double diameter_mm, BoardSide side)
     : center_{center}, diameter_mm_{diameter_mm}, side_{side} {
     if (!std::isfinite(diameter_mm_)) {
-        throw std::invalid_argument{"Board circle diameter must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board circle diameter must be finite"};
     }
     if (diameter_mm_ <= 0.0) {
-        throw std::invalid_argument{"Board circle diameter must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board circle diameter must be positive"};
     }
 }
 

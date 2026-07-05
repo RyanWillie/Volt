@@ -1,9 +1,10 @@
 #include <volt/pcb/copper/board_copper.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <optional>
-#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -58,28 +59,34 @@ BoardCapabilityProfile::BoardCapabilityProfile(
       available_copper_weights_oz_{std::move(available_copper_weights_oz)},
       drill_diameter_range_mm_{drill_diameter_range_mm} {
     if (name_.empty()) {
-        throw std::invalid_argument{"Board capability profile name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board capability profile name must not be empty"};
     }
     if (provenance_.source.empty() || provenance_.as_of.empty()) {
-        throw std::invalid_argument{"Board capability profile provenance must be complete"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board capability profile provenance must be complete"};
     }
     if (!finite_positive(minimum_track_width_mm_) || !finite_positive(minimum_via_drill_mm_) ||
         !finite_positive(minimum_via_annular_mm_)) {
-        throw std::invalid_argument{"Board capability profile minimum dimensions must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board capability profile minimum dimensions must be positive"};
     }
     if (minimum_via_annular_mm_ <= minimum_via_drill_mm_) {
-        throw std::invalid_argument{
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
             "Board capability profile via annular minimum must exceed drill minimum"};
     }
 
     for (auto &entry : minimum_clearances_) {
         if (entry.first == BoardClearanceKind::BoardEdge &&
             entry.second == BoardClearanceKind::BoardEdge) {
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
                 "Board capability profile cannot pair the board edge with itself"};
         }
         if (!finite_non_negative(entry.clearance_mm)) {
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
                 "Board capability profile clearances must be finite and non-negative"};
         }
         const auto pair = canonical_clearance_pair(entry.first, entry.second);
@@ -93,7 +100,8 @@ BoardCapabilityProfile::BoardCapabilityProfile(
                                return lhs.first == rhs.first && lhs.second == rhs.second;
                            });
     if (duplicate_clearance != minimum_clearances_.end()) {
-        throw std::invalid_argument{
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
             "Board capability profile minimum clearances must not duplicate pairs"};
     }
 
@@ -102,11 +110,13 @@ BoardCapabilityProfile::BoardCapabilityProfile(
         if (!finite_positive(refinement.copper_weight_oz) ||
             !finite_positive(refinement.minimum_track_width_mm) ||
             !finite_non_negative(refinement.minimum_clearance_mm)) {
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
                 "Board capability profile copper-weight refinements must be finite and positive"};
         }
         if (previous_weight.has_value() && refinement.copper_weight_oz <= previous_weight.value()) {
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
                 "Board capability profile copper weights must be unique and ascending"};
         }
         previous_weight = refinement.copper_weight_oz;
@@ -115,11 +125,13 @@ BoardCapabilityProfile::BoardCapabilityProfile(
     auto previous_layer_count = std::optional<int>{};
     for (const auto count : supported_copper_layer_counts_) {
         if (count <= 0) {
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
                 "Board capability profile supported copper layer counts must be positive"};
         }
         if (previous_layer_count.has_value() && count <= previous_layer_count.value()) {
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
                 "Board capability profile supported copper layer counts must be unique and "
                 "ascending"};
         }
@@ -127,25 +139,29 @@ BoardCapabilityProfile::BoardCapabilityProfile(
     }
 
     if (board_thickness_range_mm_.has_value() && !valid_range(board_thickness_range_mm_.value())) {
-        throw std::invalid_argument{
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
             "Board capability profile board thickness range must be positive and ordered"};
     }
 
     auto previous_available_weight = std::optional<double>{};
     for (const auto weight : available_copper_weights_oz_) {
         if (!finite_positive(weight)) {
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
                 "Board capability profile available copper weights must be positive"};
         }
         if (previous_available_weight.has_value() && weight <= previous_available_weight.value()) {
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
                 "Board capability profile available copper weights must be unique and ascending"};
         }
         previous_available_weight = weight;
     }
 
     if (drill_diameter_range_mm_.has_value() && !valid_range(drill_diameter_range_mm_.value())) {
-        throw std::invalid_argument{
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
             "Board capability profile drill diameter range must be positive and ordered"};
     }
 }

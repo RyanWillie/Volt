@@ -1,8 +1,9 @@
 #pragma once
 
+#include <volt/core/errors.hpp>
+
 #include <cmath>
 #include <cstddef>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -110,16 +111,20 @@ template <typename Point>
 void validate_footprint_polygon_vertices(const std::vector<Point> &vertices,
                                          std::string_view label) {
     if (vertices.size() < 3U) {
-        throw std::invalid_argument{std::string{label} + " must contain at least three vertices"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  std::string{label} + " must contain at least three vertices"};
     }
     if (footprint_polygon_has_duplicate_vertices(vertices)) {
-        throw std::invalid_argument{std::string{label} + " must not repeat vertices"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  std::string{label} + " must not repeat vertices"};
     }
     if (std::abs(footprint_polygon_area_twice(vertices)) <= kFootprintPolygonEpsilon) {
-        throw std::invalid_argument{std::string{label} + " area must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  std::string{label} + " area must be positive"};
     }
     if (footprint_polygon_has_self_intersection(vertices)) {
-        throw std::invalid_argument{std::string{label} + " must not self-intersect"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  std::string{label} + " must not self-intersect"};
     }
 }
 

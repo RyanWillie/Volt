@@ -1,10 +1,11 @@
 #include <volt/pcb/board.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <limits>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -13,29 +14,32 @@ namespace volt {
 
 BoardName::BoardName(std::string value) : value_{std::move(value)} {
     if (value_.empty()) {
-        throw std::invalid_argument{"Board name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Board name must not be empty"};
     }
 }
 
 BoardPoint::BoardPoint(double x_mm, double y_mm) : x_mm_{x_mm}, y_mm_{y_mm} {
     if (!std::isfinite(x_mm_) || !std::isfinite(y_mm_)) {
-        throw std::invalid_argument{"Board point coordinates must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board point coordinates must be finite"};
     }
 }
 
 BoardSize::BoardSize(double width_mm, double height_mm)
     : width_mm_{width_mm}, height_mm_{height_mm} {
     if (!std::isfinite(width_mm_) || !std::isfinite(height_mm_)) {
-        throw std::invalid_argument{"Board size dimensions must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board size dimensions must be finite"};
     }
     if (width_mm_ <= 0.0 || height_mm_ <= 0.0) {
-        throw std::invalid_argument{"Board size dimensions must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board size dimensions must be positive"};
     }
 }
 
 BoardRotation::BoardRotation(double degrees) : degrees_{degrees} {
     if (!std::isfinite(degrees_)) {
-        throw std::invalid_argument{"Board rotation must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Board rotation must be finite"};
     }
 }
 

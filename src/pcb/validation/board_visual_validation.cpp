@@ -1,10 +1,11 @@
 #include <volt/pcb/board.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -238,7 +239,7 @@ reference_label_overlay(const ReferenceDesignatorVisualExtent &extent, const Boa
     case BoardLayerSide::None:
         return false;
     }
-    throw std::logic_error{"Unhandled PCB board layer side"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB board layer side"};
 }
 
 [[nodiscard]] bool text_shares_side(const TextVisualExtent &text, BoardSide side) {

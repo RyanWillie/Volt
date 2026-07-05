@@ -1,8 +1,9 @@
 #include <volt/pcb/projection/board_geometry_projection.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include <cstddef>
 #include <optional>
-#include <stdexcept>
 #include <vector>
 
 namespace volt {
@@ -108,7 +109,7 @@ void append_feature(BoardGeometryProjection &projection, BoardFeatureId id,
         });
         return;
     }
-    throw std::logic_error{"Unhandled board feature kind"};
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled board feature kind"};
 }
 
 void append_features(const Board &board, BoardGeometryProjection &projection) {

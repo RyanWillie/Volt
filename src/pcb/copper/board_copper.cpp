@@ -1,4 +1,6 @@
 #include <volt/pcb/board.hpp>
+
+#include <volt/core/errors.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
 
 #include "../validation/board_capability_validation.hpp"
@@ -11,7 +13,6 @@
 #include <limits>
 #include <numeric>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -35,14 +36,16 @@ BoardZone::BoardZone(std::vector<BoardPoint> outline, std::vector<BoardLayerId> 
 
 void BoardZone::validate_layers() const {
     if (layers_.empty()) {
-        throw std::invalid_argument{"Board zone layers must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board zone layers must not be empty"};
     }
     auto sorted = layers_;
     std::sort(sorted.begin(), sorted.end(),
               [](BoardLayerId lhs, BoardLayerId rhs) { return lhs.index() < rhs.index(); });
     const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
     if (duplicate != sorted.end()) {
-        throw std::invalid_argument{"Board zone layers must not contain duplicates"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board zone layers must not contain duplicates"};
     }
 }
 
@@ -51,41 +54,47 @@ BoardRoom::BoardRoom(std::string name, BoardOutline outline, std::vector<BoardLa
     : name_{std::move(name)}, outline_{std::move(outline)}, layers_{std::move(layers)},
       priority_{priority} {
     if (name_.empty()) {
-        throw std::invalid_argument{"Board room name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Board room name must not be empty"};
     }
     validate_layers();
 }
 
 void BoardRoom::set_copper_clearance_mm(double value) {
     if (!std::isfinite(value)) {
-        throw std::invalid_argument{"Board room copper clearance must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board room copper clearance must be finite"};
     }
     if (value < 0.0) {
-        throw std::invalid_argument{"Board room copper clearance must not be negative"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board room copper clearance must not be negative"};
     }
     copper_clearance_mm_ = value;
 }
 
 void BoardRoom::set_track_width_mm(double value) {
     if (!std::isfinite(value)) {
-        throw std::invalid_argument{"Board room track width must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board room track width must be finite"};
     }
     if (value <= 0.0) {
-        throw std::invalid_argument{"Board room track width must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board room track width must be positive"};
     }
     track_width_mm_ = value;
 }
 
 void BoardRoom::validate_layers() const {
     if (layers_.empty()) {
-        throw std::invalid_argument{"Board room layers must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board room layers must not be empty"};
     }
     auto sorted = layers_;
     std::sort(sorted.begin(), sorted.end(),
               [](BoardLayerId lhs, BoardLayerId rhs) { return lhs.index() < rhs.index(); });
     const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
     if (duplicate != sorted.end()) {
-        throw std::invalid_argument{"Board room layers must not contain duplicates"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board room layers must not contain duplicates"};
     }
 }
 
@@ -108,26 +117,30 @@ BoardKeepout::restrictions() const noexcept {
 
 void BoardKeepout::validate_layers() const {
     if (layers_.empty()) {
-        throw std::invalid_argument{"Board keepout layers must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board keepout layers must not be empty"};
     }
     auto sorted = layers_;
     std::sort(sorted.begin(), sorted.end(),
               [](BoardLayerId lhs, BoardLayerId rhs) { return lhs.index() < rhs.index(); });
     const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
     if (duplicate != sorted.end()) {
-        throw std::invalid_argument{"Board keepout layers must not contain duplicates"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board keepout layers must not contain duplicates"};
     }
 }
 
 void BoardKeepout::validate_restrictions() const {
     if (restrictions_.empty()) {
-        throw std::invalid_argument{"Board keepout restrictions must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board keepout restrictions must not be empty"};
     }
     auto sorted = restrictions_;
     std::sort(sorted.begin(), sorted.end());
     const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
     if (duplicate != sorted.end()) {
-        throw std::invalid_argument{"Board keepout restrictions must not contain duplicates"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board keepout restrictions must not contain duplicates"};
     }
 }
 
@@ -136,13 +149,13 @@ BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotati
     : text_{std::move(text)}, position_{position}, rotation_{rotation}, layer_{layer},
       size_mm_{size_mm}, locked_{locked} {
     if (text_.empty()) {
-        throw std::invalid_argument{"Board text must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Board text must not be empty"};
     }
     if (!std::isfinite(size_mm_)) {
-        throw std::invalid_argument{"Board text size must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Board text size must be finite"};
     }
     if (size_mm_ <= 0.0) {
-        throw std::invalid_argument{"Board text size must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Board text size must be positive"};
     }
 }
 
@@ -150,17 +163,19 @@ BoardTrack::BoardTrack(NetId net, BoardLayerId layer, std::vector<BoardPoint> po
                        double width_mm)
     : net_{net}, layer_{layer}, points_{std::move(points)}, width_mm_{width_mm} {
     if (points_.size() < 2U) {
-        throw std::invalid_argument{"Board track must contain at least two points"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board track must contain at least two points"};
     }
     if (!std::isfinite(width_mm_)) {
-        throw std::invalid_argument{"Board track width must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Board track width must be finite"};
     }
     if (width_mm_ <= 0.0) {
-        throw std::invalid_argument{"Board track width must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Board track width must be positive"};
     }
     for (std::size_t index = 1; index < points_.size(); ++index) {
         if (points_[index - 1U] == points_[index]) {
-            throw std::invalid_argument{"Board track points must not repeat adjacent vertices"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Board track points must not repeat adjacent vertices"};
         }
     }
 }
@@ -170,17 +185,19 @@ BoardVia::BoardVia(NetId net, BoardPoint position, BoardLayerId start_layer, Boa
     : net_{net}, position_{position}, start_layer_{start_layer}, end_layer_{end_layer},
       drill_diameter_mm_{drill_diameter_mm}, annular_diameter_mm_{annular_diameter_mm} {
     if (start_layer_ == end_layer_) {
-        throw std::invalid_argument{"Board via layer span must reference distinct layers"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board via layer span must reference distinct layers"};
     }
     if (!std::isfinite(drill_diameter_mm_) || !std::isfinite(annular_diameter_mm_)) {
-        throw std::invalid_argument{"Board via diameters must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Board via diameters must be finite"};
     }
     if (drill_diameter_mm_ <= 0.0 || annular_diameter_mm_ <= 0.0) {
-        throw std::invalid_argument{"Board via diameters must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board via diameters must be positive"};
     }
     if (annular_diameter_mm_ <= drill_diameter_mm_) {
-        throw std::invalid_argument{
-            "Board via annular diameter must be greater than drill diameter"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board via annular diameter must be greater than drill diameter"};
     }
 }
 
@@ -196,22 +213,27 @@ BoardDesignRules::BoardDesignRules(double copper_clearance_mm, double minimum_tr
       package_assembly_clearance_mm_{package_assembly_clearance_mm} {
     if (!std::isfinite(copper_clearance_mm_) || !std::isfinite(board_outline_clearance_mm_) ||
         !std::isfinite(package_assembly_clearance_mm_)) {
-        throw std::invalid_argument{"Board design rule clearances must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board design rule clearances must be finite"};
     }
     if (copper_clearance_mm_ < 0.0 || board_outline_clearance_mm_ < 0.0 ||
         package_assembly_clearance_mm_ < 0.0) {
-        throw std::invalid_argument{"Board design rule clearances must not be negative"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board design rule clearances must not be negative"};
     }
     if (!std::isfinite(minimum_track_width_mm_) || !std::isfinite(minimum_via_drill_diameter_mm_) ||
         !std::isfinite(minimum_via_annular_diameter_mm_)) {
-        throw std::invalid_argument{"Board design rule minimum dimensions must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board design rule minimum dimensions must be finite"};
     }
     if (minimum_track_width_mm_ <= 0.0 || minimum_via_drill_diameter_mm_ <= 0.0 ||
         minimum_via_annular_diameter_mm_ <= 0.0) {
-        throw std::invalid_argument{"Board design rule minimum dimensions must be positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board design rule minimum dimensions must be positive"};
     }
     if (minimum_via_annular_diameter_mm_ <= minimum_via_drill_diameter_mm_) {
-        throw std::invalid_argument{
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
             "Board design rule via annular diameter must be greater than drill diameter"};
     }
 }
@@ -247,10 +269,12 @@ canonical_clearance_pair(BoardClearanceKind first, BoardClearanceKind second) {
 void BoardDesignRules::set_clearance_mm(BoardClearanceKind first, BoardClearanceKind second,
                                         double clearance_mm) {
     if (first == BoardClearanceKind::BoardEdge && second == BoardClearanceKind::BoardEdge) {
-        throw std::invalid_argument{"Clearance matrix cannot pair the board edge with itself"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Clearance matrix cannot pair the board edge with itself"};
     }
     if (!std::isfinite(clearance_mm) || clearance_mm < 0.0) {
-        throw std::invalid_argument{"Clearance matrix values must be finite and non-negative"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Clearance matrix values must be finite and non-negative"};
     }
 
     const auto pair = canonical_clearance_pair(first, second);

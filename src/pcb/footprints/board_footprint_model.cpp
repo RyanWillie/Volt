@@ -1,11 +1,12 @@
 #include <volt/pcb/footprints/board_footprint_model.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "../board_storage.hpp"
 
 #include <cstddef>
 #include <memory>
 #include <optional>
-#include <stdexcept>
 #include <utility>
 
 namespace volt {
@@ -65,7 +66,8 @@ Board::FootprintStorage::cache_footprint_definition(FootprintDefinition footprin
         if (footprint_definition(existing.value()) == footprint) {
             return existing.value();
         }
-        throw std::logic_error{"Board footprint definition conflicts with existing definition"};
+        throw KernelLogicError{ErrorCode::DuplicateName,
+                               "Board footprint definition conflicts with existing definition"};
     }
 
     return mutable_state().footprint_definitions.insert(std::move(footprint));
