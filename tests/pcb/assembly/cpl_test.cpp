@@ -2,9 +2,11 @@
 
 #include <nlohmann/json.hpp>
 
+#include <limits>
 #include <string>
 #include <vector>
 
+#include <volt/core/errors.hpp>
 #include <volt/io/assembly/cpl_writer.hpp>
 #include <volt/pcb/assembly/cpl.hpp>
 #include <volt/pcb/board.hpp>
@@ -198,6 +200,22 @@ TEST_CASE("CPL projection diagnoses ambiguous rotation-offset data") {
     CHECK(diagnostic_codes(cpl.diagnostics()) ==
           std::vector<std::string>{"ASSEMBLY_COMPONENT_UNPLACED", "ASSEMBLY_COMPONENT_UNPLACED",
                                    "ASSEMBLY_ORIENTATION_AMBIGUOUS"});
+}
+
+TEST_CASE("CPL rotation offsets reject non-finite values with a typed kernel error") {
+    CHECK_THROWS_AS((volt::CplRotationOffset{volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                                             std::numeric_limits<double>::infinity()}),
+                    std::invalid_argument);
+
+    try {
+        static_cast<void>(
+            volt::CplRotationOffset{volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                                    std::numeric_limits<double>::infinity()});
+        FAIL("Expected non-finite CPL rotation offset to throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+        CHECK(std::string{error.what()} == "CPL rotation offset must be finite");
+    }
 }
 
 TEST_CASE("Assembly diagnostic codes are stable catalog entries") {

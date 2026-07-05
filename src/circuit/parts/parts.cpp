@@ -1,5 +1,7 @@
 #include <volt/circuit/parts/parts.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include <cmath>
 
 namespace volt {
@@ -20,32 +22,36 @@ namespace {
 ManufacturerPart::ManufacturerPart(std::string manufacturer, std::string part_number)
     : manufacturer_{std::move(manufacturer)}, part_number_{std::move(part_number)} {
     if (manufacturer_.empty()) {
-        throw std::invalid_argument{"Manufacturer name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Manufacturer name must not be empty"};
     }
     if (part_number_.empty()) {
-        throw std::invalid_argument{"Manufacturer part number must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Manufacturer part number must not be empty"};
     }
 }
 
 PackageRef::PackageRef(std::string value) : value_{std::move(value)} {
     if (value_.empty()) {
-        throw std::invalid_argument{"Package reference must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Package reference must not be empty"};
     }
 }
 
 FootprintRef::FootprintRef(std::string library, std::string name)
     : library_{std::move(library)}, name_{std::move(name)} {
     if (library_.empty()) {
-        throw std::invalid_argument{"Footprint library must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Footprint library must not be empty"};
     }
     if (name_.empty()) {
-        throw std::invalid_argument{"Footprint name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Footprint name must not be empty"};
     }
 }
 
 PinPadMapping::PinPadMapping(PinDefId pin, std::string pad) : pin_{pin}, pad_{std::move(pad)} {
     if (pad_.empty()) {
-        throw std::invalid_argument{"Pad label must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Pad label must not be empty"};
     }
 }
 
@@ -54,17 +60,20 @@ PartModel3D::PartModel3D(std::string format, std::string file_name,
     : format_{std::move(format)}, file_name_{std::move(file_name)}, translation_mm_{translation_mm},
       rotation_deg_{rotation_deg} {
     if (!is_supported_part_model_3d_format(format_)) {
-        throw std::invalid_argument{"3D model format must be glb or step"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "3D model format must be glb or step"};
     }
     if (!is_part_model_3d_file_name(file_name_)) {
-        throw std::invalid_argument{"3D model file name must be a basename"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "3D model file name must be a basename"};
     }
     if (!std::isfinite(rotation_deg_)) {
-        throw std::invalid_argument{"3D model rotation must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "3D model rotation must be finite"};
     }
     for (const auto value : translation_mm_) {
         if (!std::isfinite(value)) {
-            throw std::invalid_argument{"3D model translation must be finite"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "3D model translation must be finite"};
         }
     }
 }
@@ -79,7 +88,8 @@ PhysicalPart::PhysicalPart(ManufacturerPart manufacturer_part, PackageRef packag
       properties_{std::move(properties)}, electrical_attributes_{std::move(electrical_attributes)},
       model_3d_{std::move(model_3d)}, approved_alternate_mpns_{std::move(approved_alternate_mpns)} {
     if (pin_pad_mappings_.empty()) {
-        throw std::invalid_argument{"Physical part must contain at least one pin-pad mapping"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Physical part must contain at least one pin-pad mapping"};
     }
 
     for (auto current = pin_pad_mappings_.begin(); current != pin_pad_mappings_.end(); ++current) {
@@ -87,18 +97,21 @@ PhysicalPart::PhysicalPart(ManufacturerPart manufacturer_part, PackageRef packag
             std::next(current), pin_pad_mappings_.end(),
             [current](const PinPadMapping &mapping) { return mapping.pad() == current->pad(); });
         if (duplicate_pad) {
-            throw std::invalid_argument{"Physical part contains duplicate physical pad mapping"};
+            throw KernelArgumentError{ErrorCode::DuplicateName,
+                                      "Physical part contains duplicate physical pad mapping"};
         }
     }
     for (auto current = approved_alternate_mpns_.begin(); current != approved_alternate_mpns_.end();
          ++current) {
         if (current->empty()) {
-            throw std::invalid_argument{"Approved alternate MPN must not be empty"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Approved alternate MPN must not be empty"};
         }
         const auto duplicate = std::find(std::next(current), approved_alternate_mpns_.end(),
                                          *current) != approved_alternate_mpns_.end();
         if (duplicate) {
-            throw std::invalid_argument{"Approved alternate MPNs must be unique"};
+            throw KernelArgumentError{ErrorCode::DuplicateName,
+                                      "Approved alternate MPNs must be unique"};
         }
     }
 }

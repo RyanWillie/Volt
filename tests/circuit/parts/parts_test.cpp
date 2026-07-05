@@ -8,6 +8,7 @@
 
 #include <volt/circuit/parts/parts.hpp>
 #include <volt/core/electrical_attributes.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
@@ -32,6 +33,16 @@ TEST_CASE("ManufacturerPart stores selected manufacturer identity") {
 TEST_CASE("ManufacturerPart rejects empty structural labels") {
     CHECK_THROWS_AS(volt::ManufacturerPart("", "RC0603FR-07330RL"), std::invalid_argument);
     CHECK_THROWS_AS(volt::ManufacturerPart("Yageo", ""), std::invalid_argument);
+}
+
+TEST_CASE("ManufacturerPart empty labels expose typed kernel error codes") {
+    try {
+        static_cast<void>(volt::ManufacturerPart{"", "RC0603FR-07330RL"});
+        FAIL("Expected empty manufacturer to throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+        CHECK(std::string{error.what()} == "Manufacturer name must not be empty");
+    }
 }
 
 TEST_CASE("PackageRef stores a selected physical package label") {
@@ -128,6 +139,24 @@ TEST_CASE("PhysicalPart rejects empty and ambiguous pin-pad mappings") {
                                            volt::PinPadMapping{volt::PinDefId{1}, "1"},
                                        }),
                     std::invalid_argument);
+}
+
+TEST_CASE("PhysicalPart unique mapping keys expose typed duplicate error codes") {
+    try {
+        static_cast<void>(volt::PhysicalPart{
+            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+            volt::PackageRef{"0603"},
+            volt::FootprintRef{"passives", "R_0603_1608Metric"},
+            std::vector{
+                volt::PinPadMapping{volt::PinDefId{0}, "1"},
+                volt::PinPadMapping{volt::PinDefId{1}, "1"},
+            },
+        });
+        FAIL("Expected duplicate physical pad mapping to throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::DuplicateName);
+        CHECK(std::string{error.what()} == "Physical part contains duplicate physical pad mapping");
+    }
 }
 
 TEST_CASE("PhysicalPart allows one logical pin to own multiple physical pads") {

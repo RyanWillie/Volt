@@ -1,5 +1,7 @@
 #include <volt/circuit/parts/part_definition.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "../../detail/footprint_polygon_validation.hpp"
 
 #include <algorithm>
@@ -86,18 +88,26 @@ namespace {
                       std::vector{EntityRef::part_definition()}};
 }
 
+void validate_part_footprint_polygon_vertices(const std::vector<PartFootprintPoint> &vertices) {
+    try {
+        detail::validate_footprint_polygon_vertices(vertices, "Part footprint polygon");
+    } catch (const std::invalid_argument &error) {
+        throw KernelArgumentError{ErrorCode::InvalidArgument, error.what()};
+    }
+}
+
 } // namespace
 
 PartIdentity::PartIdentity(std::string namespace_name, std::string name, std::string version)
     : namespace_{std::move(namespace_name)}, name_{std::move(name)}, version_{std::move(version)} {
     if (namespace_.empty()) {
-        throw std::invalid_argument{"Part namespace must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Part namespace must not be empty"};
     }
     if (name_.empty()) {
-        throw std::invalid_argument{"Part name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Part name must not be empty"};
     }
     if (version_.empty()) {
-        throw std::invalid_argument{"Part version must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Part version must not be empty"};
     }
 }
 
@@ -117,10 +127,12 @@ PartProvenance::PartProvenance(std::string datasheet, std::string authored_by,
 PartSymbolPin::PartSymbolPin(std::string name, std::string number)
     : name_{std::move(name)}, number_{std::move(number)} {
     if (name_.empty()) {
-        throw std::invalid_argument{"Schematic symbol pin name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Schematic symbol pin name must not be empty"};
     }
     if (number_.empty()) {
-        throw std::invalid_argument{"Schematic symbol pin number must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Schematic symbol pin number must not be empty"};
     }
 }
 
@@ -131,13 +143,16 @@ HashedSchematicSymbolReference::HashedSchematicSymbolReference(std::string name,
     : name_{std::move(name)}, variant_{std::move(variant)}, hash_{std::move(hash)},
       pins_{std::move(pins)} {
     if (name_.empty()) {
-        throw std::invalid_argument{"Schematic symbol reference name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Schematic symbol reference name must not be empty"};
     }
     if (variant_.empty()) {
-        throw std::invalid_argument{"Schematic symbol reference variant must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Schematic symbol reference variant must not be empty"};
     }
     if (pins_.empty()) {
-        throw std::invalid_argument{"Schematic symbol reference must contain pin lineup"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Schematic symbol reference must contain pin lineup"};
     }
 }
 
@@ -155,25 +170,29 @@ PartFootprintPad::PartFootprintPad(std::string label, double x_mm, double y_mm, 
     : label_{std::move(label)}, x_mm_{x_mm}, y_mm_{y_mm}, width_mm_{width_mm},
       height_mm_{height_mm}, role_{role} {
     if (label_.empty()) {
-        throw std::invalid_argument{"Footprint pad label must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Footprint pad label must not be empty"};
     }
     if (!std::isfinite(x_mm_) || !std::isfinite(y_mm_)) {
-        throw std::invalid_argument{"Footprint pad position must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Footprint pad position must be finite"};
     }
     if (!is_positive_finite(width_mm_) || !is_positive_finite(height_mm_)) {
-        throw std::invalid_argument{"Footprint pad size must be positive and finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Footprint pad size must be positive and finite"};
     }
 }
 
 PartFootprintPoint::PartFootprintPoint(double x_mm, double y_mm) : x_mm_{x_mm}, y_mm_{y_mm} {
     if (!std::isfinite(x_mm_) || !std::isfinite(y_mm_)) {
-        throw std::invalid_argument{"Part footprint polygon coordinates must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Part footprint polygon coordinates must be finite"};
     }
 }
 
 PartFootprintPolygon::PartFootprintPolygon(std::vector<PartFootprintPoint> vertices)
     : vertices_{std::move(vertices)} {
-    detail::validate_footprint_polygon_vertices(vertices_, "Part footprint polygon");
+    validate_part_footprint_polygon_vertices(vertices_);
 }
 
 PartFootprintMarking::PartFootprintMarking(PartFootprintMarkingKind kind,
@@ -186,10 +205,12 @@ HashedFootprintReference::HashedFootprintReference(FootprintRef footprint, Conte
 OrderablePinPadMapping::OrderablePinPadMapping(std::string pin_number, std::string pad)
     : pin_number_{std::move(pin_number)}, pad_{std::move(pad)} {
     if (pin_number_.empty()) {
-        throw std::invalid_argument{"Orderable pin-pad mapping pin number must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Orderable pin-pad mapping pin number must not be empty"};
     }
     if (pad_.empty()) {
-        throw std::invalid_argument{"Orderable pin-pad mapping pad must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Orderable pin-pad mapping pad must not be empty"};
     }
 }
 
@@ -199,17 +220,21 @@ PartModel3DReference::PartModel3DReference(std::string format, std::string file_
     : format_{std::move(format)}, file_name_{std::move(file_name)}, hash_{std::move(hash)},
       translation_mm_{translation_mm}, rotation_deg_{rotation_deg} {
     if (!is_supported_model_format(format_)) {
-        throw std::invalid_argument{"3D model reference format must be glb or step"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "3D model reference format must be glb or step"};
     }
     if (!is_artifact_file_name(file_name_)) {
-        throw std::invalid_argument{"3D model reference file name must be a basename"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "3D model reference file name must be a basename"};
     }
     if (!std::isfinite(rotation_deg_)) {
-        throw std::invalid_argument{"3D model reference rotation must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "3D model reference rotation must be finite"};
     }
     for (const auto value : translation_mm_) {
         if (!std::isfinite(value)) {
-            throw std::invalid_argument{"3D model reference translation must be finite"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "3D model reference translation must be finite"};
         }
     }
 }
@@ -235,14 +260,16 @@ OrderablePart::OrderablePart(ManufacturerPart manufacturer_part, PackageRef pack
       pin_pad_mappings_{std::move(pin_pad_mappings)},
       approved_alternate_mpns_{std::move(approved_alternate_mpns)}, model_3d_{std::move(model_3d)} {
     if (footprint_pads_.empty()) {
-        throw std::invalid_argument{"Orderable part footprint projection must contain pads"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Orderable part footprint projection must contain pads"};
     }
     for (auto current = footprint_pads_.begin(); current != footprint_pads_.end(); ++current) {
         const auto duplicate_label =
             std::any_of(std::next(current), footprint_pads_.end(),
                         [current](const auto &pad) { return pad.label() == current->label(); });
         if (duplicate_label) {
-            throw std::invalid_argument{"Orderable part footprint pads must have unique labels"};
+            throw KernelArgumentError{ErrorCode::DuplicateName,
+                                      "Orderable part footprint pads must have unique labels"};
         }
     }
     for (auto current = pin_pad_mappings_.begin(); current != pin_pad_mappings_.end(); ++current) {
@@ -250,18 +277,21 @@ OrderablePart::OrderablePart(ManufacturerPart manufacturer_part, PackageRef pack
             std::any_of(std::next(current), pin_pad_mappings_.end(),
                         [current](const auto &mapping) { return mapping.pad() == current->pad(); });
         if (duplicate_pad) {
-            throw std::invalid_argument{"Orderable part contains duplicate pad mappings"};
+            throw KernelArgumentError{ErrorCode::DuplicateName,
+                                      "Orderable part contains duplicate pad mappings"};
         }
     }
     for (auto current = approved_alternate_mpns_.begin(); current != approved_alternate_mpns_.end();
          ++current) {
         if (current->empty()) {
-            throw std::invalid_argument{"Approved alternate MPN must not be empty"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Approved alternate MPN must not be empty"};
         }
         const auto duplicate = std::find(std::next(current), approved_alternate_mpns_.end(),
                                          *current) != approved_alternate_mpns_.end();
         if (duplicate) {
-            throw std::invalid_argument{"Approved alternate MPNs must be unique"};
+            throw KernelArgumentError{ErrorCode::DuplicateName,
+                                      "Approved alternate MPNs must be unique"};
         }
     }
 }
@@ -275,7 +305,8 @@ PartDefinition::PartDefinition(PartIdentity identity, std::vector<PartPin> pins,
       electrical_attributes_{std::move(electrical_attributes)}, provenance_{std::move(provenance)},
       symbols_{std::move(symbols)}, orderable_part_{std::move(orderable_part)} {
     if (pins_.empty()) {
-        throw std::invalid_argument{"Part definition must contain at least one pin"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Part definition must contain at least one pin"};
     }
     for (auto current = pins_.begin(); current != pins_.end(); ++current) {
         const auto duplicate_number =
@@ -283,7 +314,8 @@ PartDefinition::PartDefinition(PartIdentity identity, std::vector<PartPin> pins,
                 return candidate.definition().number() == current->definition().number();
             });
         if (duplicate_number) {
-            throw std::invalid_argument{"Part definition pin numbers must be unique"};
+            throw KernelArgumentError{ErrorCode::DuplicateName,
+                                      "Part definition pin numbers must be unique"};
         }
     }
     require_symbol_lineup_matches_pins();
@@ -292,7 +324,8 @@ PartDefinition::PartDefinition(PartIdentity identity, std::vector<PartPin> pins,
 
 void PartDefinition::require_symbol_lineup_matches_pins() const {
     if (symbols_.empty()) {
-        throw std::invalid_argument{
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
             "Part definition must contain at least one schematic symbol projection"};
     }
     for (const auto &symbol : symbols_) {
@@ -300,7 +333,8 @@ void PartDefinition::require_symbol_lineup_matches_pins() const {
         for (const auto &symbol_pin : symbol.pins()) {
             const auto pin = find_pin_by_number(pins_, symbol_pin.number());
             if (pin == nullptr || pin->definition().name() != symbol_pin.name()) {
-                throw std::invalid_argument{
+                throw KernelArgumentError{
+                    ErrorCode::CrossReferenceViolation,
                     "Schematic symbol pin is outside the part definition pin map"};
             }
             const auto index = static_cast<std::size_t>(pin - pins_.data());
@@ -309,7 +343,8 @@ void PartDefinition::require_symbol_lineup_matches_pins() const {
         const auto exact =
             std::all_of(counts.begin(), counts.end(), [](const auto count) { return count == 1U; });
         if (!exact) {
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
                 "Schematic symbol must reference every part definition pin exactly once"};
         }
     }
@@ -318,15 +353,17 @@ void PartDefinition::require_symbol_lineup_matches_pins() const {
 void PartDefinition::require_orderable_mappings_match_pins() const {
     for (const auto &mapping : orderable_part_.pin_pad_mappings()) {
         if (find_pin_by_number(pins_, mapping.pin_number()) == nullptr) {
-            throw std::invalid_argument{"Orderable part maps a pin outside the part definition"};
+            throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
+                                      "Orderable part maps a pin outside the part definition"};
         }
         if (mapping.pad().find(',') != std::string::npos) {
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
                 "Orderable part multi-pad mappings must use one explicit pad entry per pad"};
         }
         if (find_pad_by_label(orderable_part_.footprint_pads(), mapping.pad()) == nullptr) {
-            throw std::invalid_argument{
-                "Orderable part maps a pad outside the footprint projection"};
+            throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
+                                      "Orderable part maps a pad outside the footprint projection"};
         }
     }
 }
