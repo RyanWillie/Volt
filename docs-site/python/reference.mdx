@@ -21,6 +21,16 @@ This page is the human-readable index for the public names exported by `volt.__a
 
 Common methods: `net`, `nets`, `R`, `C`, `CP`, `L`, `LED`, `diode`, `switch`, `crystal`, `test_point`, `connector_1x01`, `connector_1x02`, `connector_1x03`, `regulator`, `op_amp`, `define_component`, `define_module`, `instantiate`, `schematic`, `board`, `validate`, `validate_for_pcb`, `validate_bom_readiness`, `set_sourcing_snapshot`, `bom`, `bom_csv`, `to_json`, and `write`.
 
+## Kernel exceptions
+
+| Export | Purpose |
+| --- | --- |
+| `volt.VoltError` | Base class for typed kernel structural failures. |
+| `volt.UnknownEntityError` | Raised when a kernel operation references an entity that is not present in the target model. |
+| `volt.DuplicateNameError` | Raised when a kernel operation would violate a unique-name or unique-reference invariant. |
+| `volt.CrossReferenceError` | Raised when a kernel operation crosses model, scope, or ownership boundaries. |
+| `volt.InvalidStateError` | Raised when a structurally valid operation is not valid for the model's current state. |
+
 ## Project framework
 
 | Export | Purpose |
