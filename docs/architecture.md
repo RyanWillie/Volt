@@ -232,7 +232,8 @@ and insertion ordered. IDs are typed indexes into their owning table.
 
 The table intentionally does not support deletion, generations, tombstones, sparse
 storage, or custom allocation yet. Those features only become justified when the kernel
-has concrete mutation and undo/redo requirements.
+has concrete mutation and undo/redo requirements. The append-only decision is recorded in
+[Append-only kernel state](design/adr-append-only-kernel.md).
 
 This gives the logical model stable internal identity while keeping electronics meaning
 in domain data:
