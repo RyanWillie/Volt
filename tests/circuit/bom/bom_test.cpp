@@ -9,6 +9,7 @@
 #include <volt/circuit/bom/bom.hpp>
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/validation/validation.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/io/bom/bom_writer.hpp>
 
 namespace {
@@ -155,6 +156,20 @@ TEST_CASE("BOM sourcing snapshot output is deterministic") {
     CHECK(payload["entries"][0]["sourcing"] ==
           nlohmann::json({{"supplier", "Vendor A"}, {"unit_price", 123}}));
     CHECK(payload["entries"][1]["mpn"] == "ZZZ");
+}
+
+TEST_CASE("BOM sourcing snapshot rejects empty MPNs with a typed kernel error") {
+    auto sourcing = volt::BomSourcingSnapshot{};
+
+    CHECK_THROWS_AS(sourcing.set_mpn_properties("", {}), std::invalid_argument);
+
+    try {
+        sourcing.set_mpn_properties("", {});
+        FAIL("Expected empty BOM sourcing MPN to throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+        CHECK(std::string{error.what()} == "BOM sourcing MPN must not be empty");
+    }
 }
 
 TEST_CASE("BOM readiness reports stable diagnostics on offending instances") {

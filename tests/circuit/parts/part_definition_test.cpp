@@ -6,6 +6,7 @@
 
 #include <volt/circuit/parts/part_definition.hpp>
 #include <volt/core/diagnostics.hpp>
+#include <volt/core/errors.hpp>
 
 namespace {
 
@@ -97,6 +98,35 @@ TEST_CASE("Part definition assembly rejects symbol pins outside the pin map") {
                                               volt::PartSymbolPin{"ENABLE", "9"},
                                           })}),
                     std::invalid_argument);
+}
+
+TEST_CASE("Part definition structural assembly exposes typed kernel error codes") {
+    try {
+        static_cast<void>(part(three_pin_map(), std::vector{symbol(std::vector{
+                                                    volt::PartSymbolPin{"GND", "1"},
+                                                    volt::PartSymbolPin{"VO", "2"},
+                                                    volt::PartSymbolPin{"ENABLE", "9"},
+                                                })}));
+        FAIL("Expected symbol pin outside the pin map to throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+        CHECK(std::string{error.what()} ==
+              "Schematic symbol pin is outside the part definition pin map");
+    }
+}
+
+TEST_CASE("Part definition unique keys expose typed duplicate error codes") {
+    try {
+        static_cast<void>(part(std::vector{
+            pin("GND", "1"),
+            pin("VO", "1"),
+            pin("VI", "3"),
+        }));
+        FAIL("Expected duplicate part pin numbers to throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::DuplicateName);
+        CHECK(std::string{error.what()} == "Part definition pin numbers must be unique");
+    }
 }
 
 TEST_CASE("Part footprint polygons reject structurally invalid geometry") {

@@ -1,7 +1,8 @@
 #include <volt/circuit/bom/bom.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include <algorithm>
-#include <stdexcept>
 #include <tuple>
 #include <utility>
 
@@ -52,7 +53,7 @@ struct LineAccumulator {
 
 void BomSourcingSnapshot::set_mpn_properties(std::string mpn, PropertyMap properties) {
     if (mpn.empty()) {
-        throw std::invalid_argument{"BOM sourcing MPN must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "BOM sourcing MPN must not be empty"};
     }
     const auto existing = std::find_if(entries_.begin(), entries_.end(),
                                        [&mpn](const auto &entry) { return entry.first == mpn; });

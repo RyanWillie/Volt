@@ -1,8 +1,9 @@
 #include <volt/pcb/assembly/cpl.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include <algorithm>
 #include <cmath>
-#include <stdexcept>
 #include <string_view>
 #include <utility>
 
@@ -130,7 +131,7 @@ void append_orientation_diagnostic(const ComponentPlacement &placement,
 CplRotationOffset::CplRotationOffset(FootprintRef footprint, double rotation_deg)
     : footprint_{std::move(footprint)}, rotation_deg_{rotation_deg} {
     if (!std::isfinite(rotation_deg_)) {
-        throw std::invalid_argument{"CPL rotation offset must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "CPL rotation offset must be finite"};
     }
 }
 
