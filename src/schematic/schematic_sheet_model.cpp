@@ -1,10 +1,11 @@
 #include <volt/schematic/schematic_sheet_model.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "schematic_storage.hpp"
 
 #include <cstddef>
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -59,8 +60,10 @@ Schematic::SheetStorage &Schematic::SheetStorage::operator=(const SheetStorage &
 }
 
 [[nodiscard]] SheetId Schematic::SheetStorage::add_sheet(Sheet sheet) {
-    if (sheet_by_name(sheet.name()).has_value()) {
-        throw std::logic_error{"Sheet name already exists"};
+    const auto existing = sheet_by_name(sheet.name());
+    if (existing.has_value()) {
+        throw KernelLogicError{ErrorCode::DuplicateName, "Sheet name already exists",
+                               EntityRef::sheet(existing.value())};
     }
 
     return mutable_state().sheets.insert(detail::SheetStorage{std::move(sheet)});
@@ -71,7 +74,7 @@ Schematic::SheetStorage &Schematic::SheetStorage::operator=(const SheetStorage &
     require_sheet(sheet_id);
     auto &sheet_ref = mutable_state().sheets.get(sheet_id);
     if (sheet_ref.region_by_name(region.name()).has_value()) {
-        throw std::logic_error{"Sheet region name already exists"};
+        throw KernelLogicError{ErrorCode::DuplicateName, "Sheet region name already exists"};
     }
 
     return sheet_ref.add_region(std::move(region));
@@ -143,7 +146,9 @@ SchematicSheetModel::sheet_region_by_name(SheetId sheet_id, const std::string &n
 
 void SchematicSheetModel::require_sheet(SheetId sheet_id) const {
     if (!state().sheets.contains(sheet_id)) {
-        throw std::out_of_range{"Sheet ID does not belong to this schematic"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Sheet ID does not belong to this schematic",
+                               EntityRef::sheet(sheet_id)};
     }
 }
 

@@ -1,12 +1,13 @@
 #include <volt/schematic/schematic.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "schematic_storage.hpp"
 
 #include <cmath>
 #include <cstddef>
 #include <memory>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -18,7 +19,8 @@ namespace volt {
 
 SheetSize::SheetSize(double width, double height) : width_{width}, height_{height} {
     if (!std::isfinite(width_) || !std::isfinite(height_) || width_ <= 0.0 || height_ <= 0.0) {
-        throw std::invalid_argument{"Sheet size dimensions must be finite and positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Sheet size dimensions must be finite and positive"};
     }
 }
 
@@ -26,7 +28,8 @@ SheetMargins::SheetMargins(double left, double top, double right, double bottom)
     : left_{left}, top_{top}, right_{right}, bottom_{bottom} {
     if (!std::isfinite(left_) || !std::isfinite(top_) || !std::isfinite(right_) ||
         !std::isfinite(bottom_) || left_ < 0.0 || top_ < 0.0 || right_ < 0.0 || bottom_ < 0.0) {
-        throw std::invalid_argument{"Sheet margins must be finite and non-negative"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Sheet margins must be finite and non-negative"};
     }
 }
 
@@ -35,33 +38,39 @@ SheetFrame::SheetFrame(bool visible, SheetMargins margins) : visible_{visible}, 
 SheetCoordinateZones::SheetCoordinateZones(std::size_t columns, std::size_t rows, bool visible)
     : columns_{columns}, rows_{rows}, visible_{visible} {
     if (columns_ == 0U || rows_ == 0U) {
-        throw std::invalid_argument{"Sheet coordinate zones must have positive counts"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Sheet coordinate zones must have positive counts"};
     }
 }
 
 SheetGrid::SheetGrid(double spacing, bool visible) : spacing_{spacing}, visible_{visible} {
     if (!std::isfinite(spacing_) || spacing_ <= 0.0) {
-        throw std::invalid_argument{"Sheet grid spacing must be finite and positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Sheet grid spacing must be finite and positive"};
     }
 }
 
 TitleBlockField::TitleBlockField(std::string key, std::string value)
     : key_{std::move(key)}, value_{std::move(value)} {
     if (key_.empty()) {
-        throw std::invalid_argument{"Title block field key must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Title block field key must not be empty"};
     }
     if (value_.empty()) {
-        throw std::invalid_argument{"Title block field value must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Title block field value must not be empty"};
     }
 }
 
 SheetRegionStyleField::SheetRegionStyleField(std::string key, std::string value)
     : key_{std::move(key)}, value_{std::move(value)} {
     if (key_.empty()) {
-        throw std::invalid_argument{"Region style field key must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Region style field key must not be empty"};
     }
     if (value_.empty()) {
-        throw std::invalid_argument{"Region style field value must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Region style field value must not be empty"};
     }
 }
 
@@ -69,7 +78,8 @@ SheetRegionBounds::SheetRegionBounds(double x, double y, double width, double he
     : x_{x}, y_{y}, width_{width}, height_{height} {
     if (!std::isfinite(x_) || !std::isfinite(y_) || !std::isfinite(width_) ||
         !std::isfinite(height_) || width_ <= 0.0 || height_ <= 0.0) {
-        throw std::invalid_argument{
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
             "Sheet region bounds must be finite with positive width and height"};
     }
 }
@@ -78,10 +88,12 @@ SheetRegion::SheetRegion(std::string name, std::string title, SheetRegionBounds 
                          std::vector<SheetRegionStyleField> style)
     : name_{std::move(name)}, title_{std::move(title)}, bounds_{bounds}, style_{std::move(style)} {
     if (name_.empty()) {
-        throw std::invalid_argument{"Sheet region name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Sheet region name must not be empty"};
     }
     if (title_.empty()) {
-        throw std::invalid_argument{"Sheet region title must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Sheet region title must not be empty"};
     }
 }
 
@@ -97,7 +109,7 @@ SheetMetadata::SheetMetadata(std::string title, SheetSize size,
       title_block_{std::move(title_block)}, frame_{frame}, coordinate_zones_{coordinate_zones},
       grid_{grid} {
     if (title_.empty()) {
-        throw std::invalid_argument{"Sheet title must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Sheet title must not be empty"};
     }
 }
 
@@ -115,7 +127,7 @@ Sheet::Sheet(std::string name) : Sheet{name, SheetMetadata{name}} {}
 Sheet::Sheet(std::string name, SheetMetadata metadata)
     : Sheet{std::make_shared<detail::SheetState>(std::move(name), std::move(metadata))} {
     if (state().name.empty()) {
-        throw std::invalid_argument{"Sheet name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Sheet name must not be empty"};
     }
 }
 
@@ -187,7 +199,8 @@ Sheet::~Sheet() = default;
 
 [[nodiscard]] const SheetRegion &Sheet::region(std::size_t index) const {
     if (index >= state().regions.size()) {
-        throw std::out_of_range{"Sheet region index does not belong to this sheet"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Sheet region index does not belong to this sheet"};
     }
     return state().regions[index];
 }
@@ -201,7 +214,7 @@ SheetStorage::SheetStorage(std::string name) : SheetStorage{name, SheetMetadata{
 SheetStorage::SheetStorage(std::string name, SheetMetadata metadata)
     : SheetStorage{std::make_shared<SheetState>(std::move(name), std::move(metadata))} {
     if (state_->name.empty()) {
-        throw std::invalid_argument{"Sheet name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Sheet name must not be empty"};
     }
 }
 
@@ -250,7 +263,8 @@ WireRun::WireRun(NetId net, std::vector<Point> points, RouteIntent route_intent,
     : net_{net}, points_{std::move(points)}, route_intent_{route_intent},
       authored_region_{authored_region} {
     if (points_.size() < 2U) {
-        throw std::invalid_argument{"Schematic wire run must contain at least two points"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Schematic wire run must contain at least two points"};
     }
 }
 
@@ -270,7 +284,8 @@ NetLabel::NetLabel(NetId net, Point position, SchematicOrientation orientation,
     : net_{net}, position_{position}, orientation_{orientation}, authored_region_{authored_region},
       label_{std::move(label)}, style_{style}, text_position_{text_position} {
     if (label_ && label_->empty()) {
-        throw std::invalid_argument{"Net label display text must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Net label display text must not be empty"};
     }
 }
 
@@ -300,7 +315,8 @@ PowerPort::PowerPort(NetId net, PowerPortKind kind, Point position,
     : net_{net}, kind_{kind}, position_{position}, orientation_{orientation},
       authored_region_{authored_region}, label_{std::move(label)}, label_position_{label_position} {
     if (label_.has_value() && label_->empty()) {
-        throw std::invalid_argument{"Schematic power port label must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Schematic power port label must not be empty"};
     }
 }
 
@@ -330,7 +346,7 @@ SheetPort::SheetPort(NetId net, std::string name, SheetPortKind kind, Point posi
     : net_{net}, name_{std::move(name)}, kind_{kind}, position_{position},
       orientation_{orientation}, authored_region_{authored_region} {
     if (name_.empty()) {
-        throw std::invalid_argument{"Sheet port name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Sheet port name must not be empty"};
     }
 }
 
@@ -345,10 +361,12 @@ SymbolField::SymbolField(SymbolInstanceId symbol_instance, std::string name, std
       position_{position}, orientation_{orientation}, authored_region_{authored_region},
       style_{style} {
     if (name_.empty()) {
-        throw std::invalid_argument{"Symbol field name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Symbol field name must not be empty"};
     }
     if (value_.empty()) {
-        throw std::invalid_argument{"Symbol field value must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Symbol field value must not be empty"};
     }
 }
 
@@ -365,7 +383,8 @@ Schematic::Schematic(const Circuit &circuit) : circuit_{circuit} {}
 
 void Schematic::replace_with(Schematic replacement) {
     if (&replacement.circuit() != &circuit_) {
-        throw std::logic_error{"Schematic replacement must reference the same logical circuit"};
+        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                               "Schematic replacement must reference the same logical circuit"};
     }
 
     library_ = std::move(replacement.library_);
@@ -478,7 +497,9 @@ Schematic::add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
     require_symbol_instance(field.symbol_instance());
     require_authored_region(sheet, field.authored_region());
     if (!sheet_contains_symbol_instance(sheet, field.symbol_instance())) {
-        throw std::logic_error{"Symbol field must be placed on the symbol instance sheet"};
+        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                               "Symbol field must be placed on the symbol instance sheet",
+                               EntityRef::symbol_instance(field.symbol_instance())};
     }
 
     const auto id = items_.add_symbol_field(std::move(field));
@@ -605,7 +626,8 @@ void Schematic::require_symbol_instance(SymbolInstanceId instance) const {
 void Schematic::require_authored_region(SheetId sheet,
                                         const std::optional<std::size_t> &region) const {
     if (region.has_value() && region.value() >= sheets_.sheet(sheet).regions().size()) {
-        throw std::out_of_range{"Authored schematic region does not belong to this sheet"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Authored schematic region does not belong to this sheet"};
     }
 }
 
@@ -614,7 +636,9 @@ void Schematic::require_symbol_matches_component(SymbolDefId symbol_definition,
     const auto &symbol = library_.symbol_definition(symbol_definition);
     for (const auto &pin : symbol.pins()) {
         if (!queries::pin_by_number(circuit_, component, pin.number()).has_value()) {
-            throw std::logic_error{"Schematic symbol pin does not match component pin"};
+            throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                                   "Schematic symbol pin does not match component pin",
+                                   EntityRef::symbol_def(symbol_definition)};
         }
     }
 }
@@ -656,7 +680,9 @@ void Schematic::require_junction_does_not_touch_different_net(SheetId sheet,
     for (const auto wire_id : sheets_.sheet(sheet).wire_runs()) {
         const auto &wire = items_.wire_run(wire_id);
         if (wire.net() != junction.net() && wire_contains_point(wire, junction.position())) {
-            throw std::logic_error{"Schematic junction collides with a different logical net"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Schematic junction collides with a different logical net",
+                                   EntityRef::wire_run(wire_id)};
         }
     }
 }
@@ -675,7 +701,9 @@ void Schematic::require_wire_run_does_not_collide_with_different_net(SheetId she
                                                                       : SchematicJunction::Absent;
             });
         if (topology.has_visual_contact()) {
-            throw std::logic_error{"Schematic wire run collides with a different logical net"};
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Schematic wire run collides with a different logical net",
+                                   EntityRef::wire_run(existing_id)};
         }
     }
 }
@@ -709,8 +737,10 @@ Schematic::infer_endpoint_net(const SchematicEndpoint &endpoint) const {
         static_cast<void>(circuit_.pin(endpoint.pin().value()));
         const auto pin_net = queries::net_of(circuit_, endpoint.pin().value());
         if (!pin_net.has_value()) {
-            throw std::invalid_argument{"Schematic endpoint " + pin_label(endpoint.pin().value()) +
-                                        " is not connected to any logical net"};
+            throw KernelArgumentError{ErrorCode::InvalidState,
+                                      "Schematic endpoint " + pin_label(endpoint.pin().value()) +
+                                          " is not connected to any logical net",
+                                      EntityRef::pin(endpoint.pin().value())};
         }
         return pin_net.value();
     }
@@ -726,13 +756,18 @@ void Schematic::require_endpoint_matches_net(const SchematicEndpoint &endpoint, 
     const auto endpoint_net = infer_endpoint_net(endpoint);
     if (endpoint_net.has_value() && endpoint_net.value() != net) {
         if (endpoint.pin().has_value()) {
-            throw std::invalid_argument{"Schematic endpoint " + pin_label(endpoint.pin().value()) +
-                                        ": the pin belongs to " + net_label(endpoint_net.value()) +
-                                        " instead of " + net_label(net)};
+            throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
+                                      "Schematic endpoint " + pin_label(endpoint.pin().value()) +
+                                          ": the pin belongs to " +
+                                          net_label(endpoint_net.value()) + " instead of " +
+                                          net_label(net),
+                                      EntityRef::pin(endpoint.pin().value())};
         }
-        throw std::invalid_argument{"Schematic endpoint port belongs to " +
-                                    net_label(endpoint_net.value()) + " instead of " +
-                                    net_label(net)};
+        throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
+                                  "Schematic endpoint port belongs to " +
+                                      net_label(endpoint_net.value()) + " instead of " +
+                                      net_label(net),
+                                  EntityRef::net(endpoint_net.value())};
     }
 }
 
@@ -746,9 +781,10 @@ void Schematic::require_endpoint_matches_net(const SchematicEndpoint &endpoint, 
 
     const auto inferred = infer_endpoint_net(endpoint);
     if (!inferred.has_value()) {
-        throw std::invalid_argument{std::string{"Cannot infer logical net for "} +
-                                    std::string{action} +
-                                    " from a non-pin anchor; pass explicit net"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  std::string{"Cannot infer logical net for "} +
+                                      std::string{action} +
+                                      " from a non-pin anchor; pass explicit net"};
     }
     return inferred.value();
 }
@@ -763,12 +799,13 @@ Schematic::resolve_wire_endpoint_net(std::optional<NetId> net,
         return net.value();
     }
     if (endpoints.size() < 2U) {
-        throw std::invalid_argument{
-            "Cannot infer schematic wire net without at least two endpoints"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Cannot infer schematic wire net without at least two endpoints"};
     }
     if (endpoints.size() != 2U || !endpoints.front().pin().has_value() ||
         !endpoints.back().pin().has_value()) {
-        throw std::invalid_argument{
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
             "Cannot infer schematic wire net unless both endpoints are placed pin anchors; "
             "pass explicit net"};
     }
@@ -779,16 +816,19 @@ Schematic::resolve_wire_endpoint_net(std::optional<NetId> net,
         const auto &endpoint = endpoints[endpoint_index];
         const auto endpoint_net = infer_endpoint_net(endpoint);
         if (!endpoint_net.has_value()) {
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
                 "Cannot infer schematic wire net from a plain schematic point"};
         }
         if (resolved.has_value() && resolved.value() != endpoint_net.value()) {
             const auto &first = endpoints[resolved_endpoint.value()];
-            throw std::invalid_argument{
+            throw KernelArgumentError{
+                ErrorCode::CrossReferenceViolation,
                 "Cannot infer schematic wire net because endpoints belong to different "
                 "logical nets: " +
-                endpoint_label(first) + " is on " + net_label(resolved.value()) + ", but " +
-                endpoint_label(endpoint) + " is on " + net_label(endpoint_net.value())};
+                    endpoint_label(first) + " is on " + net_label(resolved.value()) + ", but " +
+                    endpoint_label(endpoint) + " is on " + net_label(endpoint_net.value()),
+                EntityRef::pin(endpoint.pin().value())};
         }
         resolved = endpoint_net.value();
         resolved_endpoint = endpoint_index;

@@ -1,10 +1,11 @@
 #include <volt/schematic/schematic_items_model.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "schematic_storage.hpp"
 
 #include <cstddef>
 #include <memory>
-#include <stdexcept>
 #include <utility>
 
 namespace volt {
@@ -175,7 +176,9 @@ void Schematic::ItemStorage::move_symbol_field(SymbolFieldId id, Point position)
 
 void SchematicItemsModel::require_symbol_instance(SymbolInstanceId instance) const {
     if (!state().symbol_instances.contains(instance)) {
-        throw std::out_of_range{"Symbol instance ID does not belong to this schematic"};
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Symbol instance ID does not belong to this schematic",
+                               EntityRef::symbol_instance(instance)};
     }
 }
 

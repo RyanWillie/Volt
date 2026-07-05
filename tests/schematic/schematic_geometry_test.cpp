@@ -78,6 +78,13 @@ TEST_CASE("Schematic allows same-net joins but rejects different-net wire collis
         schematic.add_wire_run(
             sheet, volt::WireRun{gnd, std::vector{volt::Point{0.0, 0.0}, volt::Point{5.0, 0.0}}}),
         std::logic_error);
+    check_kernel_error(
+        [&] {
+            static_cast<void>(schematic.add_wire_run(
+                sheet,
+                volt::WireRun{gnd, std::vector{volt::Point{0.0, 0.0}, volt::Point{5.0, 0.0}}}));
+        },
+        volt::ErrorCode::InvalidState, "Schematic wire run collides with a different logical net");
     CHECK(schematic.wire_run_count() == 4U);
 }
 
@@ -89,4 +96,7 @@ TEST_CASE("Schematic geometry rejects non-finite coordinates") {
         volt::SymbolArc(volt::Point{0.0, 0.0}, 1.0, std::numeric_limits<double>::infinity(), 90.0),
         std::invalid_argument);
     CHECK_THROWS_AS(volt::SymbolText("", volt::Point{0.0, 0.0}), std::invalid_argument);
+    check_kernel_error(
+        [] { static_cast<void>(volt::Point(0.0, std::numeric_limits<double>::infinity())); },
+        volt::ErrorCode::InvalidArgument, "Schematic point coordinates must be finite");
 }

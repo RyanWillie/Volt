@@ -1,6 +1,7 @@
 #include <volt/schematic/presentation_geometry.hpp>
 
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/core/errors.hpp>
 
 namespace volt::detail {
 
@@ -163,7 +164,7 @@ void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexcept {
     case 3:
         return SchematicOrientation::Up;
     }
-    throw std::logic_error{"Unhandled schematic orientation"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Unhandled schematic orientation"};
 }
 
 [[nodiscard]] SchematicOrientation combined_text_orientation(SchematicOrientation parent,
@@ -461,7 +462,7 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
         }
         break;
     }
-    throw std::logic_error{"Unhandled power port orientation"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Unhandled power port orientation"};
 }
 
 [[nodiscard]] Point transformed_port_anchor(const PowerPort &port, Point local_anchor) {

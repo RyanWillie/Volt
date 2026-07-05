@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -15,6 +16,7 @@
 #include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/circuit/connectivity/instances.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/schematic/geometry.hpp>
 #include <volt/schematic/layout.hpp>
 #include <volt/schematic/schematic.hpp>
@@ -155,6 +157,18 @@ namespace {
         [&code](const volt::Diagnostic &diagnostic) { return diagnostic.code().value() == code; });
     REQUIRE(it != report.diagnostics().end());
     return *it;
+}
+
+template <typename Callable>
+[[maybe_unused]] void check_kernel_error(Callable &&callable, volt::ErrorCode code,
+                                         std::string_view message) {
+    try {
+        std::forward<Callable>(callable)();
+        FAIL("expected typed kernel error");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == code);
+        CHECK(std::string{error.what()} == std::string{message});
+    }
 }
 
 } // namespace
