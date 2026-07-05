@@ -145,6 +145,23 @@ TEST_CASE("Schematic authoring mutations reject unconnected and mismatched endpo
         CHECK(message.find("belongs to SIG") != std::string::npos);
         CHECK(message.find("instead of ALT") != std::string::npos);
     }
+
+    check_kernel_error(
+        [&] {
+            static_cast<void>(schematic.add_net_label_for_endpoint(
+                sheet, std::nullopt,
+                volt::SchematicEndpoint{volt::Point{0.0, 0.0}, unconnected_pin}));
+        },
+        volt::ErrorCode::InvalidState,
+        "Schematic endpoint R1 pin 2 (2) is not connected to any logical net");
+    check_kernel_error(
+        [&] {
+            static_cast<void>(schematic.add_net_label_for_endpoint(
+                sheet, second_net, volt::SchematicEndpoint{volt::Point{0.0, 0.0}, connected_pin}));
+        },
+        volt::ErrorCode::CrossReferenceViolation,
+        "Schematic endpoint R1 pin 1 (1): the pin belongs to SIG (net:0) instead of ALT "
+        "(net:1)");
 }
 
 TEST_CASE("Schematic stores professional primitives without changing logical connectivity") {
@@ -250,6 +267,12 @@ TEST_CASE("Schematic rejects empty presentation names") {
         (volt::PowerPort{volt::NetId{0}, volt::PowerPortKind::Power, volt::Point{0.0, 0.0},
                          volt::SchematicOrientation::Up, std::nullopt, std::string{""}}),
         std::invalid_argument);
+
+    check_kernel_error([] { static_cast<void>(volt::SymbolDefinition{""}); },
+                       volt::ErrorCode::InvalidArgument,
+                       "Symbol definition name must not be empty");
+    check_kernel_error([] { static_cast<void>(volt::Sheet{""}); }, volt::ErrorCode::InvalidArgument,
+                       "Sheet title must not be empty");
 }
 
 TEST_CASE("Symbol definitions reject duplicate pin numbers") {
@@ -260,6 +283,12 @@ TEST_CASE("Symbol definitions reject duplicate pin numbers") {
     CHECK_THROWS_AS(symbol.add_pin(volt::SymbolPin{"B", "1", volt::Point{10.0, 0.0},
                                                    volt::SchematicOrientation::Right}),
                     std::logic_error);
+    check_kernel_error(
+        [&] {
+            symbol.add_pin(volt::SymbolPin{"B", "1", volt::Point{10.0, 0.0},
+                                           volt::SchematicOrientation::Right});
+        },
+        volt::ErrorCode::DuplicateName, "Symbol pin number already exists");
 }
 
 TEST_CASE("Schematic rejects symbol placements with missing references") {
@@ -282,6 +311,17 @@ TEST_CASE("Schematic rejects symbol placements with missing references") {
         schematic.place_symbol(
             sheet, volt::SymbolInstance{symbol, volt::ComponentId{99}, volt::Point{0.0, 0.0}}),
         std::out_of_range);
+
+    try {
+        static_cast<void>(schematic.place_symbol(
+            volt::SheetId{99}, volt::SymbolInstance{symbol, component, volt::Point{0.0, 0.0}}));
+        FAIL("missing schematic sheet must throw a typed kernel error");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        CHECK(std::string{error.what()} == "Sheet ID does not belong to this schematic");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity().value() == volt::EntityRef::sheet(volt::SheetId{99}));
+    }
 }
 
 TEST_CASE("Schematic rejects wire and label projections with missing references") {
@@ -344,6 +384,25 @@ TEST_CASE("Schematic rejects professional primitives with missing references") {
         schematic.add_symbol_field(
             other_sheet, volt::SymbolField{instance, "reference", "R1", volt::Point{0.0, 0.0}}),
         std::logic_error);
+    check_kernel_error(
+        [&] {
+            static_cast<void>(schematic.add_symbol_field(
+                other_sheet,
+                volt::SymbolField{instance, "reference", "R1", volt::Point{0.0, 0.0}}));
+        },
+        volt::ErrorCode::CrossReferenceViolation,
+        "Symbol field must be placed on the symbol instance sheet");
     CHECK_NOTHROW(
         schematic.add_no_connect_marker(sheet, volt::NoConnectMarker{pin, volt::Point{0.0, 0.0}}));
+}
+
+TEST_CASE("Schematic replacement must reference the same logical circuit") {
+    auto circuit = volt::Circuit{};
+    auto other_circuit = volt::Circuit{};
+    auto schematic = volt::Schematic{circuit};
+
+    CHECK_THROWS_AS(schematic.replace_with(volt::Schematic{other_circuit}), std::logic_error);
+    check_kernel_error([&] { schematic.replace_with(volt::Schematic{other_circuit}); },
+                       volt::ErrorCode::CrossReferenceViolation,
+                       "Schematic replacement must reference the same logical circuit");
 }
