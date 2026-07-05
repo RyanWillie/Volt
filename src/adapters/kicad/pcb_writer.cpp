@@ -10,13 +10,13 @@
 #include <optional>
 #include <ostream>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <system_error>
 #include <utility>
 #include <vector>
 
+#include <volt/core/errors.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt::adapters::kicad::detail {
@@ -141,7 +141,7 @@ void write_at(std::ostream &out, BoardPoint point, double rotation_degrees = 0.0
     case BoardLayerRole::Keepout:
         return std::nullopt;
     }
-    throw std::logic_error{"Unhandled board layer role"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Unhandled board layer role"};
 }
 
 [[nodiscard]] bool contains_layer(const std::vector<PcbLayer> &layers, int index) {
@@ -272,7 +272,7 @@ definition_for_placement(const Board &board, const ComponentPlacement &placement
     case FootprintPadShape::Oval:
         return "oval";
     }
-    throw std::logic_error{"Unhandled footprint pad shape"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Unhandled footprint pad shape"};
 }
 
 [[nodiscard]] bool all_surface_mount(const FootprintDefinition &definition) {
@@ -479,7 +479,8 @@ build_placement_exports(const Board &board, const FootprintLibrary &footprints,
             const auto pad_id = FootprintPadId{pad_index};
             const auto *resolution = pad_resolution_for(resolutions, id, pad_id);
             if (resolution == nullptr) {
-                throw std::logic_error{
+                throw KernelLogicError{
+                    ErrorCode::InvalidState,
                     "KiCad placement export requires an explicit pad resolution for every pad"};
             }
             placement_export.pad_resolutions.push_back(*resolution);
@@ -700,7 +701,7 @@ void write_zones(std::ostream &out, const Board &board, const LayerMap &layer_ma
     case BoardLayerRole::Keepout:
         return false;
     }
-    throw std::logic_error{"Unhandled board layer role"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Unhandled board layer role"};
 }
 
 void report_unmapped_text_layer(const BoardLayer &layer, LossReport &loss_report) {
