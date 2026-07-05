@@ -2,11 +2,11 @@
 
 #include "binding_diagnostic_conversions.hpp"
 
-#include <stdexcept>
 #include <string>
 #include <utility>
 
 #include <volt/adapters/kicad/pcb_writer.hpp>
+#include <volt/core/errors.hpp>
 
 namespace volt::python {
 namespace {
@@ -20,7 +20,7 @@ namespace {
     case volt::adapters::kicad::LossKind::LossyConstruct:
         return "lossy";
     }
-    throw std::logic_error{"Unhandled KiCad loss kind"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Unhandled KiCad loss kind"};
 }
 
 [[nodiscard]] std::string kicad_loss_severity_name(volt::adapters::kicad::LossSeverity severity) {
@@ -32,7 +32,7 @@ namespace {
     case volt::adapters::kicad::LossSeverity::Error:
         return "error";
     }
-    throw std::logic_error{"Unhandled KiCad loss severity"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Unhandled KiCad loss severity"};
 }
 
 [[nodiscard]] std::string
@@ -43,7 +43,7 @@ kicad_loss_fabrication_impact_name(volt::adapters::kicad::LossFabricationImpact 
     case volt::adapters::kicad::LossFabricationImpact::FabCritical:
         return "fab-critical";
     }
-    throw std::logic_error{"Unhandled KiCad loss fabrication impact"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Unhandled KiCad loss fabrication impact"};
 }
 
 [[nodiscard]] py::dict

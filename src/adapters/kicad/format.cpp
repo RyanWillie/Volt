@@ -5,7 +5,8 @@
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
-#include <stdexcept>
+
+#include <volt/core/errors.hpp>
 
 namespace volt::adapters::kicad::detail {
 
@@ -59,7 +60,8 @@ void write_uuid_byte(std::ostream &out, std::uint8_t byte) {
 
 void write_number(std::ostream &out, double value) {
     if (!std::isfinite(value)) {
-        throw std::invalid_argument{"KiCad numeric values must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "KiCad numeric values must be finite"};
     }
     if (std::abs(value) < 1.0e-12) {
         value = 0.0;
@@ -84,7 +86,7 @@ void write_number(std::ostream &out, double value) {
         return out.str();
     }
     }
-    throw std::logic_error{"Unhandled property value kind"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Unhandled property value kind"};
 }
 
 [[nodiscard]] std::string uuid_from_path(std::string_view path) {

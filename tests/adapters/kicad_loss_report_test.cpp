@@ -1,6 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <stdexcept>
+#include <string>
+
 #include <volt/adapters/kicad/loss_report.hpp>
+#include <volt/core/errors.hpp>
 
 TEST_CASE("KiCad adapter reports structured unsupported incomplete and lossy warnings") {
     volt::adapters::kicad::LossReport report;
@@ -94,6 +98,25 @@ TEST_CASE("KiCad LossReport rejects empty construct or message") {
     CHECK_THROWS_AS(
         report.add_warning(volt::adapters::kicad::LossKind::UnsupportedConstruct, "construct", ""),
         std::invalid_argument);
+
+    try {
+        report.add_warning(volt::adapters::kicad::LossKind::UnsupportedConstruct, "",
+                           "some message");
+        FAIL("expected KiCad loss warning construct rejection");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+        CHECK(std::string{error.what()} == "KiCad loss warning construct must not be empty");
+        CHECK_FALSE(error.entity().has_value());
+    }
+
+    try {
+        report.add_warning(volt::adapters::kicad::LossKind::UnsupportedConstruct, "construct", "");
+        FAIL("expected KiCad loss warning message rejection");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+        CHECK(std::string{error.what()} == "KiCad loss warning message must not be empty");
+        CHECK_FALSE(error.entity().has_value());
+    }
 
     CHECK_FALSE(report.has_warnings());
 }
