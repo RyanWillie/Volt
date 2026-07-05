@@ -531,7 +531,8 @@ void HierarchyModel::require_module_definition(ModuleDefId module) const {
 void HierarchyModel::require_template_net(TemplateNetDefId net) const {
     if (!state().template_net_definitions.contains(net)) {
         throw KernelRangeError{ErrorCode::UnknownEntity,
-                               "Template net definition ID does not belong to this circuit"};
+                               "Template net definition ID does not belong to this circuit",
+                               EntityRef::template_net_def(net)};
     }
 }
 
@@ -546,7 +547,8 @@ void HierarchyModel::require_port(PortDefId port) const {
 void HierarchyModel::require_module_component(ModuleComponentId component) const {
     if (!state().module_component_templates.contains(component)) {
         throw KernelRangeError{ErrorCode::UnknownEntity,
-                               "Module component ID does not belong to this circuit"};
+                               "Module component ID does not belong to this circuit",
+                               EntityRef::module_component(component)};
     }
 }
 
@@ -564,7 +566,8 @@ void HierarchyModel::require_template_net_in_module(ModuleDefId module,
     require_template_net(net);
     if (!template_net_belongs_to_module(module, net)) {
         throw KernelLogicError{ErrorCode::CrossReferenceViolation,
-                               "Template net does not belong to module definition"};
+                               "Template net does not belong to module definition",
+                               EntityRef::template_net_def(net)};
     }
 }
 
@@ -574,7 +577,8 @@ void HierarchyModel::require_port_in_module(ModuleDefId module, PortDefId port) 
     const auto &ports = state().module_definitions.get(module).ports();
     if (std::find(ports.begin(), ports.end(), port) == ports.end()) {
         throw KernelLogicError{ErrorCode::CrossReferenceViolation,
-                               "Port does not belong to module definition"};
+                               "Port does not belong to module definition",
+                               EntityRef::port_def(port)};
     }
 }
 
@@ -584,7 +588,8 @@ void HierarchyModel::require_module_component_in_module(ModuleDefId module,
     require_module_component(component);
     if (!module_component_belongs_to_module(module, component)) {
         throw KernelLogicError{ErrorCode::CrossReferenceViolation,
-                               "Module component does not belong to module definition"};
+                               "Module component does not belong to module definition",
+                               EntityRef::module_component(component)};
     }
 }
 

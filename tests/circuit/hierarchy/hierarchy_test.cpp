@@ -598,6 +598,21 @@ TEST_CASE("Hierarchy structural rejections carry machine-readable error codes") 
         FAIL("Port over another module's template net must throw");
     } catch (const volt::KernelError &error) {
         CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::TemplateNetDef);
+        CHECK(error.entity()->index() == vin.index());
+    }
+
+    try {
+        [[maybe_unused]] const auto port = circuit.add_port_definition(
+            module, volt::PortDefinition{volt::PortName{"SW"}, volt::TemplateNetDefId{42},
+                                         volt::PortRole::Output});
+        FAIL("Unknown template net IDs must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::TemplateNetDef);
+        CHECK(error.entity()->index() == 42);
     }
 
     try {
@@ -617,5 +632,48 @@ TEST_CASE("Hierarchy structural rejections carry machine-readable error codes") 
         FAIL("Empty module name must throw");
     } catch (const volt::KernelError &error) {
         CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+    }
+}
+
+TEST_CASE("Hierarchy module-component rejections carry entity payloads") {
+    volt::Circuit circuit;
+
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
+    const auto first_module = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"Divider"},
+    });
+    const auto second_module = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"Filter"},
+    });
+    const auto second_net = circuit.add_template_net(
+        second_module, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
+    const auto first_component = circuit.add_module_component(
+        first_module,
+        volt::ModuleComponentTemplate{component_def, volt::ReferenceDesignator{"R1"}});
+
+    try {
+        [[maybe_unused]] const auto changed =
+            circuit.connect_module_pin(second_module, second_net, first_component, pin_def);
+        FAIL("Module components from another module must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::ModuleComponent);
+        CHECK(error.entity()->index() == first_component.index());
+    }
+
+    try {
+        [[maybe_unused]] const auto changed = circuit.connect_module_pin(
+            second_module, second_net, volt::ModuleComponentId{42}, pin_def);
+        FAIL("Unknown module component IDs must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::ModuleComponent);
+        CHECK(error.entity()->index() == 42);
     }
 }

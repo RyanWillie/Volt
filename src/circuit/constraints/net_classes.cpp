@@ -1,12 +1,13 @@
 #include <volt/circuit/constraints/net_classes.hpp>
 
+#include <volt/core/errors.hpp>
+
 #include "../circuit_storage.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,7 +20,7 @@ constexpr double millimeters_per_mil = 0.0254;
 
 void require_finite_positive(double value, const char *message) {
     if (!std::isfinite(value) || value <= 0.0) {
-        throw std::invalid_argument{message};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, message};
     }
 }
 
@@ -27,19 +28,21 @@ void require_valid_derivation(const DerivedNetClassRuleValue &value, bool allow_
                               const char *value_message) {
     if (!std::isfinite(value.value_mm) || (!allow_zero && value.value_mm <= 0.0) ||
         (allow_zero && value.value_mm < 0.0)) {
-        throw std::invalid_argument{value_message};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, value_message};
     }
     if (value.derivation.calculator_id.empty() || value.derivation.calculator_name.empty() ||
         value.derivation.standard.empty() || value.derivation.reference.empty()) {
-        throw std::invalid_argument{"Net class derivation provenance must be complete"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Net class derivation provenance must be complete"};
     }
     for (const auto &input : value.derivation.inputs) {
         if (input.name.empty() || input.unit.empty()) {
-            throw std::invalid_argument{
-                "Net class derivation inputs must be named and unit-tagged"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Net class derivation inputs must be named and unit-tagged"};
         }
         if (input.text_value.empty() && !std::isfinite(input.value)) {
-            throw std::invalid_argument{"Net class derivation numeric inputs must be finite"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Net class derivation numeric inputs must be finite"};
         }
     }
 }
@@ -51,7 +54,7 @@ void require_valid_derivation(const DerivedNetClassRuleValue &value, bool allow_
     case NetClassTraceEnvironment::Internal:
         return "internal";
     }
-    throw std::logic_error{"Unhandled trace environment"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Unhandled trace environment"};
 }
 
 [[nodiscard]] double ipc2221_trace_width_coefficient(NetClassTraceEnvironment environment) {
@@ -61,7 +64,7 @@ void require_valid_derivation(const DerivedNetClassRuleValue &value, bool allow_
     case NetClassTraceEnvironment::Internal:
         return 0.024;
     }
-    throw std::logic_error{"Unhandled trace environment"};
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Unhandled trace environment"};
 }
 
 [[nodiscard]] NetClassDerivationInput numeric_input(std::string name, double value,
@@ -78,7 +81,7 @@ void require_valid_derivation(const DerivedNetClassRuleValue &value, bool allow_
 
 NetClassName::NetClassName(std::string value) : value_{std::move(value)} {
     if (value_.empty()) {
-        throw std::invalid_argument{"Net class name must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument, "Net class name must not be empty"};
     }
 }
 
@@ -177,10 +180,12 @@ NetClass::NetClass(NetClassName name) : name_{std::move(name)} {}
 
 void NetClass::set_maximum_net_voltage(Quantity voltage) {
     if (voltage.dimension() != UnitDimension::Voltage) {
-        throw std::invalid_argument{"Net class maximum net voltage must use voltage units"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Net class maximum net voltage must use voltage units"};
     }
     if (voltage.value() < 0.0) {
-        throw std::invalid_argument{"Net class maximum net voltage must not be negative"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Net class maximum net voltage must not be negative"};
     }
 
     maximum_net_voltage_ = voltage;
@@ -188,10 +193,12 @@ void NetClass::set_maximum_net_voltage(Quantity voltage) {
 
 void NetClass::set_copper_clearance_mm(double clearance_mm) {
     if (!std::isfinite(clearance_mm)) {
-        throw std::invalid_argument{"Net class copper clearance must be finite"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Net class copper clearance must be finite"};
     }
     if (clearance_mm < 0.0) {
-        throw std::invalid_argument{"Net class copper clearance must not be negative"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Net class copper clearance must not be negative"};
     }
 
     copper_clearance_mm_ = clearance_mm;
@@ -205,7 +212,8 @@ void NetClass::derive_copper_clearance(DerivedNetClassRuleValue clearance) {
 
 void NetClass::set_track_width_mm(double width_mm) {
     if (!std::isfinite(width_mm) || width_mm <= 0.0) {
-        throw std::invalid_argument{"Net class track width must be finite and positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Net class track width must be finite and positive"};
     }
 
     track_width_mm_ = width_mm;
@@ -220,11 +228,12 @@ void NetClass::derive_track_width(DerivedNetClassRuleValue width) {
 void NetClass::set_via_size_mm(double drill_mm, double diameter_mm) {
     if (!std::isfinite(drill_mm) || drill_mm <= 0.0 || !std::isfinite(diameter_mm) ||
         diameter_mm <= 0.0) {
-        throw std::invalid_argument{"Net class via sizes must be finite and positive"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Net class via sizes must be finite and positive"};
     }
     if (diameter_mm <= drill_mm) {
-        throw std::invalid_argument{
-            "Net class via diameter must be larger than the drill diameter"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Net class via diameter must be larger than the drill diameter"};
     }
 
     via_drill_mm_ = drill_mm;
@@ -233,7 +242,8 @@ void NetClass::set_via_size_mm(double drill_mm, double diameter_mm) {
 
 void NetClass::set_layer_scope(NetClassLayerScope scope) {
     if (scope != NetClassLayerScope::AnyCopper && !allowed_layer_names_.empty()) {
-        throw std::logic_error{"Net class layer scope conflicts with explicit layer names"};
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Net class layer scope conflicts with explicit layer names"};
     }
 
     layer_scope_ = scope;
@@ -241,18 +251,22 @@ void NetClass::set_layer_scope(NetClassLayerScope scope) {
 
 void NetClass::set_allowed_layer_names(std::vector<std::string> names) {
     if (layer_scope_ != NetClassLayerScope::AnyCopper) {
-        throw std::logic_error{"Net class layer names conflict with a semantic layer scope"};
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Net class layer names conflict with a semantic layer scope"};
     }
     if (names.empty()) {
-        throw std::invalid_argument{"Net class allowed layers must not be empty"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Net class allowed layers must not be empty"};
     }
     for (std::size_t index = 0; index < names.size(); ++index) {
         if (names[index].empty()) {
-            throw std::invalid_argument{"Net class allowed layer names must not be empty"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Net class allowed layer names must not be empty"};
         }
         if (std::find(names.begin(), names.begin() + static_cast<std::ptrdiff_t>(index),
                       names[index]) != names.begin() + static_cast<std::ptrdiff_t>(index)) {
-            throw std::invalid_argument{"Net class allowed layer names must be unique"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Net class allowed layer names must be unique"};
         }
     }
 
@@ -302,7 +316,7 @@ NetClasses::~NetClasses() = default;
 
 [[nodiscard]] NetClassId Circuit::NetClassStorage::add_net_class(NetClass net_class) {
     if (net_class_by_name(net_class.name()).has_value()) {
-        throw std::logic_error{"Net class name already exists"};
+        throw KernelLogicError{ErrorCode::DuplicateName, "Net class name already exists"};
     }
 
     return mutable_state().net_classes.insert(std::move(net_class));
@@ -363,7 +377,8 @@ NetClasses::net_class_assignments() const noexcept {
 
 void NetClasses::require_net_class(NetClassId net_class) const {
     if (!state().net_classes.contains(net_class)) {
-        throw std::out_of_range{"Net class ID is out of range"};
+        throw KernelRangeError{ErrorCode::UnknownEntity, "Net class ID is out of range",
+                               EntityRef::net_class(net_class)};
     }
 }
 

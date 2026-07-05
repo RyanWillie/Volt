@@ -24,8 +24,14 @@ namespace volt::io::detail {
         return encode_local_id(PinId{entity.index()});
     case EntityKind::Net:
         return encode_local_id(NetId{entity.index()});
+    case EntityKind::NetClass:
+        return encode_local_id(NetClassId{entity.index()});
     case EntityKind::ModuleDef:
         return encode_local_id(ModuleDefId{entity.index()});
+    case EntityKind::TemplateNetDef:
+        return encode_local_id(TemplateNetDefId{entity.index()});
+    case EntityKind::ModuleComponent:
+        return encode_local_id(ModuleComponentId{entity.index()});
     case EntityKind::ModuleInstance:
         return encode_local_id(ModuleInstanceId{entity.index()});
     case EntityKind::PortDef:

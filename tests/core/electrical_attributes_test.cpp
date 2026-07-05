@@ -11,6 +11,12 @@ TEST_CASE("ElectricalAttributeName stores comparable non-empty names") {
     CHECK(name == volt::ElectricalAttributeName{"resistance"});
     CHECK(name < volt::ElectricalAttributeName{"voltage_rating"});
     CHECK_THROWS_AS(volt::ElectricalAttributeName{""}, std::invalid_argument);
+    try {
+        (void)volt::ElectricalAttributeName{""};
+        FAIL("Empty electrical attribute name must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+    }
 }
 
 TEST_CASE("AuthoringUnit records explicit plain-number scaling metadata") {
@@ -124,6 +130,12 @@ TEST_CASE("ElectricalAttributeMap stores compatible values by attribute name") {
     CHECK(attributes.get(volt::ElectricalAttributeName{"resistance"}).as_quantity() ==
           volt::Quantity{volt::UnitDimension::Resistance, 470.0});
     CHECK_THROWS_AS(attributes.get(volt::ElectricalAttributeName{"missing"}), std::out_of_range);
+    try {
+        (void)attributes.get(volt::ElectricalAttributeName{"missing"});
+        FAIL("Missing electrical attribute lookup must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+    }
     CHECK_THROWS_AS(attributes.set(resistance, volt::ElectricalAttributeValue{volt::Quantity{
                                                    volt::UnitDimension::Voltage, 3.3}}),
                     std::invalid_argument);

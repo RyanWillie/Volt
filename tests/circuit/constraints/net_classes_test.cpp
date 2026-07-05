@@ -15,6 +15,7 @@
 #include <volt/circuit/constraints/net_classes.hpp>
 #include <volt/circuit/validation/validation.hpp>
 #include <volt/core/electrical_attributes.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/quantities.hpp>
 #include <volt/pcb/board.hpp>
@@ -104,6 +105,50 @@ TEST_CASE("Circuit owns net-class intent and rejects dangling assignments") {
 
     CHECK_THROWS_AS(circuit.assign_net_class(volt::NetId{99}, net_class), std::out_of_range);
     CHECK_THROWS_AS(circuit.assign_net_class(net, volt::NetClassId{99}), std::out_of_range);
+}
+
+TEST_CASE("Net-class structural rejections carry machine-readable error codes") {
+    try {
+        [[maybe_unused]] const auto name = volt::NetClassName{""};
+        FAIL("Empty net-class names must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidArgument);
+        CHECK(std::string{error.what()} == "Net class name must not be empty");
+    }
+
+    auto scoped = volt::NetClass{volt::NetClassName{"Scoped"}};
+    scoped.set_layer_scope(volt::NetClassLayerScope::OuterOnly);
+    try {
+        scoped.set_allowed_layer_names({"F.Cu"});
+        FAIL("Layer scope and explicit layer names must remain mutually exclusive");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidState);
+        CHECK(std::string{error.what()} ==
+              "Net class layer names conflict with a semantic layer scope");
+    }
+
+    auto circuit = volt::Circuit{};
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
+    static_cast<void>(circuit.add_net_class(volt::NetClass{volt::NetClassName{"PowerRails"}}));
+    try {
+        [[maybe_unused]] const auto duplicate =
+            circuit.add_net_class(volt::NetClass{volt::NetClassName{"PowerRails"}});
+        FAIL("Duplicate net-class names must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::DuplicateName);
+        CHECK(std::string{error.what()} == "Net class name already exists");
+    }
+
+    try {
+        [[maybe_unused]] const auto changed = circuit.assign_net_class(net, volt::NetClassId{99});
+        FAIL("Unknown net-class IDs must throw");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        CHECK(std::string{error.what()} == "Net class ID is out of range");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::NetClass);
+        CHECK(error.entity()->index() == 99);
+    }
 }
 
 TEST_CASE("Circuit electrical validation applies assigned net-class voltage limits") {
