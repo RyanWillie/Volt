@@ -107,8 +107,9 @@ def test_python_schematic_wire_shortcuts_use_existing_collision_rules():
 
     try:
         schematic.connect((10, 0), (30, 10), net=gnd, shape="-|")
-    except RuntimeError as error:
-        assert "collides with a different logical net" in str(error)
+    except volt.InvalidStateError as error:
+        assert str(error) == "Schematic wire run collides with a different logical net"
+        assert isinstance(error, RuntimeError)
     else:
         raise AssertionError("shape shortcuts must keep schematic collision checks")
 

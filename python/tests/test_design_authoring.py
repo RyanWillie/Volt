@@ -44,6 +44,72 @@ def test_design_returns_component_handles_by_reference():
     with pytest.raises(KeyError, match="R404"):
         design.component("R404")
 
+def test_python_kernel_error_translator_exposes_typed_structural_failures():
+    assert volt.VoltError is volt._volt.VoltError
+    assert issubclass(volt.UnknownEntityError, volt.VoltError)
+    assert issubclass(volt.DuplicateNameError, volt.VoltError)
+    assert issubclass(volt.CrossReferenceError, volt.VoltError)
+    assert issubclass(volt.InvalidArgumentError, volt.VoltError)
+    assert issubclass(volt.InvalidStateError, volt.VoltError)
+
+    circuit = volt._volt.Circuit()
+    sig = circuit.add_net("SIG")
+    with pytest.raises(volt.DuplicateNameError, match="^Net name already exists$") as duplicate:
+        circuit.add_net("SIG")
+    assert str(duplicate.value) == "Net name already exists"
+    assert duplicate.value.code == "DuplicateName"
+    assert duplicate.value.entity is None
+    assert isinstance(duplicate.value, RuntimeError)
+
+    with pytest.raises(
+        volt.UnknownEntityError, match="^Volt entity id is out of range$"
+    ) as unknown:
+        circuit.net_pins(99)
+    assert str(unknown.value) == "Volt entity id is out of range"
+    assert unknown.value.code == "UnknownEntity"
+    assert unknown.value.entity is None
+    assert isinstance(unknown.value, IndexError)
+
+    definition = circuit.define_resistor()
+    component = circuit.instantiate_ref(definition, "R1", {})
+    pin = circuit.pin_by_number(component, "1")
+    alt = circuit.add_net("ALT")
+    circuit.connect(sig, pin)
+    with pytest.raises(
+        volt.InvalidStateError, match="^Pin is already connected to another net$"
+    ) as invalid_state:
+        circuit.connect(alt, pin)
+    assert str(invalid_state.value) == "Pin is already connected to another net"
+    assert invalid_state.value.code == "InvalidState"
+    assert invalid_state.value.entity is None
+    assert isinstance(invalid_state.value, RuntimeError)
+
+    design = volt.Design("cross-reference-error")
+    board = design.board()
+    silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
+    net = design.net("ZONE")
+    with pytest.raises(
+        volt.CrossReferenceError, match="^Board copper zones require copper layers$"
+    ) as cross_reference:
+        board.add_zone(
+            outline=((0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 2.0)),
+            layers=(silk,),
+            net=net,
+        )
+    assert str(cross_reference.value) == "Board copper zones require copper layers"
+    assert cross_reference.value.code == "CrossReferenceViolation"
+    assert cross_reference.value.entity == {"kind": "board_layer", "index": silk}
+    assert isinstance(cross_reference.value, RuntimeError)
+
+    with pytest.raises(ValueError, match="^Net name must not be empty$") as invalid_argument:
+        design.net("")
+    assert str(invalid_argument.value) == "Net name must not be empty"
+    assert invalid_argument.value.code == "InvalidArgument"
+    assert invalid_argument.value.entity is None
+    assert isinstance(invalid_argument.value, volt.InvalidArgumentError)
+    assert isinstance(invalid_argument.value, volt.VoltError)
+    assert isinstance(invalid_argument.value, RuntimeError)
+
 def test_natural_electrical_values_serialize_as_kernel_attributes():
     design = volt.Design("typed")
 

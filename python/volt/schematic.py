@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterable
 
+from . import _volt
 from ._schematic_authoring import _ScopedSchematicAuthoring
 from ._schematic_handles import (
     PlacedSchematicElement,
@@ -1905,6 +1906,8 @@ class Schematic:
                 route_intent,
                 _authored_region,
             )
+        except _volt.VoltError:
+            raise
         except ValueError as error:
             raise ValueError(
                 _with_schematic_context(str(error), self, action)
@@ -2021,6 +2024,8 @@ class Schematic:
                 _text_vertical_alignment(baseline),
                 _optional_text_font_size(font_size),
             )
+        except _volt.VoltError:
+            raise
         except ValueError as error:
             raise ValueError(_with_schematic_context(str(error), self, action)) from error
         return SchematicNetLabel(self, label, orientation)
@@ -2366,6 +2371,8 @@ class Schematic:
                     self._sheet_index, net.index, endpoint, _authored_region
                 )
             )
+        except _volt.VoltError:
+            raise
         except ValueError as error:
             raise ValueError(_with_schematic_context(str(error), self, "junction")) from error
         return SchematicJunction(self, junction)
@@ -2667,6 +2674,8 @@ class Schematic:
                     name,
                 )
             )
+        except _volt.VoltError:
+            raise
         except ValueError as error:
             raise ValueError(_with_schematic_context(str(error), self, action)) from error
         resolved_net = (
@@ -2764,6 +2773,8 @@ class Schematic:
                 orientation,
                 _authored_region,
             )
+        except _volt.VoltError:
+            raise
         except ValueError as error:
             raise ValueError(_with_schematic_context(str(error), self, "sheet port")) from error
         resolved_net = (
@@ -3525,6 +3536,8 @@ def _add_schematic_junction_dot(
                 _authored_region,
             )
         )
+    except _volt.VoltError:
+        raise
     except ValueError as error:
         raise ValueError(_with_schematic_context(str(error), schematic, action)) from error
     return SchematicJunction(schematic, junction)

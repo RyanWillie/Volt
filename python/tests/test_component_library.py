@@ -1800,8 +1800,10 @@ def test_selected_part_mapping_errors_are_rejected():
             footprint=("Resistor_SMD", "R_0603_1608Metric"),
             pin_pads={1: "1"},
         )
-    except RuntimeError:
-        pass
+    except ValueError as error:
+        assert str(error) == "Physical part must map every pin in the component definition"
+        assert isinstance(error, volt.InvalidArgumentError)
+        assert isinstance(error, RuntimeError)
     else:
         raise AssertionError("missing pin mapping should be rejected")
 

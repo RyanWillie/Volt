@@ -8,6 +8,13 @@ from typing import Iterable, Iterator
 
 from . import _volt
 
+VoltError = _volt.VoltError
+UnknownEntityError = _volt.UnknownEntityError
+DuplicateNameError = _volt.DuplicateNameError
+CrossReferenceError = _volt.CrossReferenceError
+InvalidArgumentError = _volt.InvalidArgumentError
+InvalidStateError = _volt.InvalidStateError
+
 DIAGNOSTIC_CATEGORIES: tuple[str, ...] = tuple(_volt.diagnostic_categories())
 ERC_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.erc_diagnostic_codes())
 DRC_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.drc_diagnostic_codes())
