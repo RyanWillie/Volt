@@ -1,11 +1,11 @@
 #include <volt/core/content_hash.hpp>
+#include <volt/core/errors.hpp>
 
 #include <array>
 #include <cstdint>
 #include <iomanip>
 #include <limits>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -51,7 +51,8 @@ constexpr auto kSha256HexLength = std::size_t{64};
 
 [[nodiscard]] std::vector<std::uint8_t> padded_sha256_message(std::string_view bytes) {
     if (bytes.size() > std::numeric_limits<std::uint64_t>::max() / 8U) {
-        throw std::invalid_argument{"Content is too large to hash with SHA-256"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Content is too large to hash with SHA-256"};
     }
 
     auto message = std::vector<std::uint8_t>{};
@@ -145,11 +146,13 @@ constexpr auto kSha256HexLength = std::size_t{64};
 ContentHash::ContentHash(std::string value) : value_{std::move(value)} {
     if (value_.size() != kSha256Prefix.size() + kSha256HexLength ||
         value_.compare(0U, kSha256Prefix.size(), kSha256Prefix) != 0) {
-        throw std::invalid_argument{"Content hash must use sha256:<64 lowercase hex digits>"};
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Content hash must use sha256:<64 lowercase hex digits>"};
     }
     for (auto index = kSha256Prefix.size(); index < value_.size(); ++index) {
         if (!is_lower_hex(value_[index])) {
-            throw std::invalid_argument{"Content hash must use lowercase hexadecimal digits"};
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Content hash must use lowercase hexadecimal digits"};
         }
     }
 }

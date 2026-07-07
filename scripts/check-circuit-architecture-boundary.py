@@ -59,6 +59,12 @@ ENTITY_REF_KERNEL_ALLOWLIST = {
 }
 
 KERNEL_MUTATION_ACCESS_TOKENS = ("KernelMutationAccess", "kernel_mutation_access")
+# These std surfaces are the structural taxonomy covered by volt/core/errors.hpp.
+# std::runtime_error is not a Volt structural kernel-error surface.
+RAW_STRUCTURAL_THROW_PATTERN = re.compile(
+    r"\bthrow\s+(?:::)?std::(?:logic_error|invalid_argument|out_of_range)\b"
+)
+PYTHON_BINDING_SOURCE_DIR = ROOT / "src" / "python"
 SUBMODEL_STORAGE_ACCESSORS = {"mutable_state", "state"}
 
 SUBMODEL_MUTATORS = {
@@ -296,6 +302,67 @@ def strip_comments_preserve_lines(text: str) -> str:
     return re.sub(r"//.*", "", text)
 
 
+def _blank_preserve_newlines(text: str) -> str:
+    return "".join("\n" if char == "\n" else " " for char in text)
+
+
+def strip_cpp_comments_and_strings_preserve_lines(text: str) -> str:
+    output: list[str] = []
+    index = 0
+    while index < len(text):
+        char = text[index]
+        next_char = text[index + 1] if index + 1 < len(text) else ""
+
+        if char == "/" and next_char == "/":
+            end = text.find("\n", index)
+            if end == -1:
+                output.append(" " * (len(text) - index))
+                break
+            output.append(" " * (end - index))
+            output.append("\n")
+            index = end + 1
+            continue
+
+        if char == "/" and next_char == "*":
+            end = text.find("*/", index + 2)
+            end = len(text) if end == -1 else end + 2
+            output.append(_blank_preserve_newlines(text[index:end]))
+            index = end
+            continue
+
+        if char == "R" and next_char == '"':
+            delimiter_end = text.find("(", index + 2)
+            if delimiter_end != -1:
+                delimiter = text[index + 2 : delimiter_end]
+                terminator = ")" + delimiter + '"'
+                end = text.find(terminator, delimiter_end + 1)
+                if end != -1:
+                    end += len(terminator)
+                    output.append(_blank_preserve_newlines(text[index:end]))
+                    index = end
+                    continue
+
+        if char in {'"', "'"}:
+            quote = char
+            start = index
+            index += 1
+            while index < len(text):
+                if text[index] == "\\":
+                    index += 2
+                    continue
+                if text[index] == quote:
+                    index += 1
+                    break
+                index += 1
+            output.append(_blank_preserve_newlines(text[start:index]))
+            continue
+
+        output.append(char)
+        index += 1
+
+    return "".join(output)
+
+
 def code_files() -> list[Path]:
     files: list[Path] = []
     for directory in CODE_DIRS:
@@ -316,6 +383,25 @@ def architecture_code_files() -> list[Path]:
             if path.suffix in {".cpp", ".hpp", ".h"}:
                 files.append(path)
     return sorted(files)
+
+
+def is_python_binding_source(path: Path) -> bool:
+    try:
+        path.relative_to(PYTHON_BINDING_SOURCE_DIR)
+    except ValueError:
+        return False
+    return True
+
+
+def source_code_files() -> list[Path]:
+    source_dir = ROOT / "src"
+    if not source_dir.exists():
+        return []
+    return sorted(
+        path
+        for path in source_dir.rglob("*")
+        if path.suffix in {".cpp", ".hpp", ".h"} and not is_python_binding_source(path)
+    )
 
 
 def relative(path: Path) -> str:
@@ -727,6 +813,16 @@ def entity_ref_traversal_lines(text: str) -> list[tuple[int, str]]:
     return lines
 
 
+def raw_structural_throw_lines(text: str) -> list[tuple[int, str]]:
+    stripped = strip_cpp_comments_and_strings_preserve_lines(text)
+    original_lines = text.splitlines()
+    lines: list[tuple[int, str]] = []
+    for match in RAW_STRUCTURAL_THROW_PATTERN.finditer(stripped):
+        line_number = stripped.count("\n", 0, match.start()) + 1
+        lines.append((line_number, original_lines[line_number - 1].strip()))
+    return lines
+
+
 def check_rejected_tokens(failures: list[str]) -> None:
     for path in code_files():
         text = read(path)
@@ -853,6 +949,16 @@ def check_entity_ref_not_kernel_traversal_handle(failures: list[str]) -> None:
             fail(f"EntityRef kernel allowlist entry {key!r} must document a reason", failures)
         if key not in found_allowlisted:
             fail(f"EntityRef kernel allowlist entry {key!r} no longer matches source", failures)
+
+
+def check_no_raw_structural_throws(failures: list[str]) -> None:
+    for path in source_code_files():
+        for line_number, line in raw_structural_throw_lines(read(path)):
+            fail(
+                f"{relative(path)}:{line_number} throws raw structural std exception; "
+                f"use a typed volt::Kernel*Error with an ErrorCode: {line}",
+                failures,
+            )
 
 
 def subsystem_root_name(path: Path) -> str | None:
@@ -1225,6 +1331,55 @@ def run_self_tests() -> int:
         "Python presentation helpers must not be reported as connectivity ownership",
     )
 
+    raw_structural_throw_sample = textwrap.dedent(
+        """
+        void reject_bad_state() {
+            throw std::logic_error{"raw structural failure"};
+        }
+        """
+    )
+    raw_structural_throws = raw_structural_throw_lines(raw_structural_throw_sample)
+    require_self_test(
+        raw_structural_throws == [(3, "throw std::logic_error{\"raw structural failure\"};")],
+        "raw structural std throws in source code must be reported",
+    )
+    raw_structural_throw_multiline_sample = textwrap.dedent(
+        """
+        void reject_bad_argument() {
+            throw
+                ::std::invalid_argument{"raw structural failure"};
+        }
+        """
+    )
+    raw_structural_multiline_throws = raw_structural_throw_lines(
+        raw_structural_throw_multiline_sample
+    )
+    require_self_test(
+        raw_structural_multiline_throws == [(3, "throw")],
+        "raw structural std throw scanner must report multiline and ::std spellings",
+    )
+    raw_structural_throw_false_positive_sample = textwrap.dedent(
+        """
+        void document_policy() {
+            // throw std::invalid_argument{"documented but not executable"};
+            const char *text = "throw std::out_of_range{not executable}";
+            const char *raw = R"(throw std::logic_error{not executable})";
+        }
+        """
+    )
+    require_self_test(
+        not raw_structural_throw_lines(raw_structural_throw_false_positive_sample),
+        "raw structural throw scanner must ignore comments and string literals",
+    )
+    require_self_test(
+        is_python_binding_source(ROOT / "src" / "python" / "bindings.cpp"),
+        "raw structural throw checker must identify Python binding source",
+    )
+    require_self_test(
+        not is_python_binding_source(ROOT / "src" / "circuit" / "circuit.cpp"),
+        "raw structural throw checker must keep non-Python source in scope",
+    )
+
     entity_ref_bad = textwrap.dedent(
         """
         void mutate_from_ref(Circuit &circuit, EntityRef ref) {
@@ -1301,6 +1456,7 @@ def run_checks() -> int:
     check_public_api_snapshots(failures)
     check_python_connectivity_semantics(failures)
     check_entity_ref_not_kernel_traversal_handle(failures)
+    check_no_raw_structural_throws(failures)
     check_subsystem_back_references(failures)
     check_subsystem_sources_have_real_logic(failures)
     check_no_public_submodel_mutators(failures)

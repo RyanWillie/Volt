@@ -522,15 +522,17 @@ carries a machine-readable `volt::ErrorCode` and, when one is naturally at hand,
 `EntityRef` identifying the rejected entity. Callers branch on `code()` instead of
 parsing message strings.
 
-The migration is incremental. Core entity storage, the `Circuit` aggregate root, and the
-connectivity, hierarchy, electrical, net-class, parts, BOM sourcing, schematic, IO
-serialization, assembly CPL option, KiCad adapter, authoring, and PCB projection
-boundaries throw typed kernel errors today; validation reports design-quality findings
-through diagnostics, and design intent has no subsystem-local structural throw sites
-beyond the root preflights. The remaining VOL-267 work is Python exception translation
-and the final checker rule that will forbid raw structural std throws under `src/`.
-Until then, catching `volt::KernelError` alone does not cover every mutation-boundary
-failure.
+The `src/` implementation migration is complete when the architecture checker passes
+with zero raw structural `std::logic_error`, `std::invalid_argument`, or
+`std::out_of_range` throws in its kernel/adapter scan. Core entity storage, the `Circuit`
+aggregate root, and the connectivity, hierarchy, electrical, net-class, parts, BOM
+sourcing, schematic, IO serialization, assembly CPL option, KiCad adapter, authoring, PCB
+projection, and Python exception-translation boundaries throw typed kernel errors today;
+validation reports design-quality findings through diagnostics, and design intent has no
+subsystem-local structural throw sites beyond the root preflights. The checker
+intentionally excludes `src/python/`, where the binding layer translates kernel-originated
+`volt::KernelError` instances and may reject Python-facing input shapes before lowering
+them into kernel APIs.
 
 Each error also derives from the std exception type its throw site historically used:
 
