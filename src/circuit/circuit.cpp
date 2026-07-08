@@ -13,24 +13,38 @@
 
 namespace volt {
 
+Circuit::ConnectivityMutator::ConnectivityMutator(Circuit &circuit, MutatorKey) noexcept
+    : circuit_{circuit} {}
+
+Circuit::HierarchyMutator::HierarchyMutator(Circuit &circuit, MutatorKey) noexcept
+    : circuit_{circuit} {}
+
+Circuit::ElectricalMutator::ElectricalMutator(Circuit &circuit, MutatorKey) noexcept
+    : circuit_{circuit} {}
+
+Circuit::IntentMutator::IntentMutator(Circuit &circuit, MutatorKey) noexcept : circuit_{circuit} {}
+
+Circuit::NetClassMutator::NetClassMutator(Circuit &circuit, MutatorKey) noexcept
+    : circuit_{circuit} {}
+
 [[nodiscard]] Circuit::ConnectivityMutator Circuit::connectivity() noexcept {
-    return ConnectivityMutator{*this, MutatorKey{}};
+    return ConnectivityMutator{*this, MutatorKey::make()};
 }
 
 [[nodiscard]] Circuit::HierarchyMutator Circuit::hierarchy() noexcept {
-    return HierarchyMutator{*this, MutatorKey{}};
+    return HierarchyMutator{*this, MutatorKey::make()};
 }
 
 [[nodiscard]] Circuit::ElectricalMutator Circuit::electrical() noexcept {
-    return ElectricalMutator{*this, MutatorKey{}};
+    return ElectricalMutator{*this, MutatorKey::make()};
 }
 
 [[nodiscard]] Circuit::IntentMutator Circuit::intent() noexcept {
-    return IntentMutator{*this, MutatorKey{}};
+    return IntentMutator{*this, MutatorKey::make()};
 }
 
 [[nodiscard]] Circuit::NetClassMutator Circuit::net_classes() noexcept {
-    return NetClassMutator{*this, MutatorKey{}};
+    return NetClassMutator{*this, MutatorKey::make()};
 }
 
 [[nodiscard]] PinDefId Circuit::ConnectivityMutator::add_pin_definition(PinDefinition definition) {

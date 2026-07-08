@@ -39,18 +39,24 @@ namespace volt {
  */
 class Circuit {
   private:
-    struct MutatorKey {};
+    struct MutatorKey {
+      public:
+        [[nodiscard]] static MutatorKey make() noexcept { return MutatorKey{}; }
+
+      private:
+        MutatorKey() = default;
+    };
 
   public:
     /**
      * Borrow-only facade for connectivity-owned mutations.
      *
-     * Returned by value from Circuit::connectivity(); construct one at the call site and do not
-     * store it. Root-owned or cross-subsystem mutations stay on Circuit.
+     * Returned by value from Circuit::connectivity(); obtain one at the call site and do not store
+     * it. Root-owned or cross-subsystem mutations stay on Circuit.
      */
     class ConnectivityMutator {
       public:
-        ConnectivityMutator(Circuit &circuit, MutatorKey) noexcept : circuit_{circuit} {}
+        ConnectivityMutator(Circuit &circuit, MutatorKey) noexcept;
 
         ConnectivityMutator(const ConnectivityMutator &) = delete;
         ConnectivityMutator(ConnectivityMutator &&) = delete;
@@ -82,12 +88,12 @@ class Circuit {
     /**
      * Borrow-only facade for hierarchy-owned mutations.
      *
-     * Returned by value from Circuit::hierarchy(); construct one at the call site and do not store
-     * it. Root-owned or cross-subsystem mutations stay on Circuit.
+     * Returned by value from Circuit::hierarchy(); obtain one at the call site and do not store it.
+     * Root-owned or cross-subsystem mutations stay on Circuit.
      */
     class HierarchyMutator {
       public:
-        HierarchyMutator(Circuit &circuit, MutatorKey) noexcept : circuit_{circuit} {}
+        HierarchyMutator(Circuit &circuit, MutatorKey) noexcept;
 
         HierarchyMutator(const HierarchyMutator &) = delete;
         HierarchyMutator(HierarchyMutator &&) = delete;
@@ -119,12 +125,12 @@ class Circuit {
     /**
      * Borrow-only facade for electrical-owned mutations.
      *
-     * Returned by value from Circuit::electrical(); construct one at the call site and do not store
+     * Returned by value from Circuit::electrical(); obtain one at the call site and do not store
      * it. Root-owned or cross-subsystem mutations stay on Circuit.
      */
     class ElectricalMutator {
       public:
-        ElectricalMutator(Circuit &circuit, MutatorKey) noexcept : circuit_{circuit} {}
+        ElectricalMutator(Circuit &circuit, MutatorKey) noexcept;
 
         ElectricalMutator(const ElectricalMutator &) = delete;
         ElectricalMutator(ElectricalMutator &&) = delete;
@@ -160,12 +166,12 @@ class Circuit {
     /**
      * Borrow-only facade for design-intent mutations.
      *
-     * Returned by value from Circuit::intent(); construct one at the call site and do not store it.
+     * Returned by value from Circuit::intent(); obtain one at the call site and do not store it.
      * Root-owned or cross-subsystem mutations stay on Circuit.
      */
     class IntentMutator {
       public:
-        IntentMutator(Circuit &circuit, MutatorKey) noexcept : circuit_{circuit} {}
+        IntentMutator(Circuit &circuit, MutatorKey) noexcept;
 
         IntentMutator(const IntentMutator &) = delete;
         IntentMutator(IntentMutator &&) = delete;
@@ -191,12 +197,12 @@ class Circuit {
     /**
      * Borrow-only facade for net-class mutations.
      *
-     * Returned by value from Circuit::net_classes(); construct one at the call site and do not
-     * store it. Root-owned or cross-subsystem mutations stay on Circuit.
+     * Returned by value from Circuit::net_classes(); obtain one at the call site and do not store
+     * it. Root-owned or cross-subsystem mutations stay on Circuit.
      */
     class NetClassMutator {
       public:
-        NetClassMutator(Circuit &circuit, MutatorKey) noexcept : circuit_{circuit} {}
+        NetClassMutator(Circuit &circuit, MutatorKey) noexcept;
 
         NetClassMutator(const NetClassMutator &) = delete;
         NetClassMutator(NetClassMutator &&) = delete;

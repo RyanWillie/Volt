@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
@@ -14,6 +15,18 @@
 #include <volt/core/ids.hpp>
 
 namespace {
+
+template <typename Facade>
+constexpr bool is_borrow_only_mutator_facade =
+    !std::is_default_constructible_v<Facade> && !std::is_constructible_v<Facade, volt::Circuit &> &&
+    !std::is_copy_constructible_v<Facade> && !std::is_move_constructible_v<Facade> &&
+    !std::is_copy_assignable_v<Facade> && !std::is_move_assignable_v<Facade>;
+
+static_assert(is_borrow_only_mutator_facade<volt::Circuit::ConnectivityMutator>);
+static_assert(is_borrow_only_mutator_facade<volt::Circuit::HierarchyMutator>);
+static_assert(is_borrow_only_mutator_facade<volt::Circuit::ElectricalMutator>);
+static_assert(is_borrow_only_mutator_facade<volt::Circuit::IntentMutator>);
+static_assert(is_borrow_only_mutator_facade<volt::Circuit::NetClassMutator>);
 
 volt::PhysicalPart make_resistor_physical_part(volt::PinDefId first_pin,
                                                volt::PinDefId second_pin) {

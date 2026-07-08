@@ -1,0 +1,31 @@
+include <algorithm>
+include <cstddef>
+include <memory>
+include <optional>
+include <stdexcept>
+include <string_view>
+include <utility>
+include <vector>
+include <volt/circuit/connectivity/connectivity_model.hpp>
+include <volt/circuit/connectivity/definitions.hpp>
+include <volt/circuit/connectivity/instances.hpp>
+include <volt/circuit/connectivity/nets.hpp>
+include <volt/circuit/constraints/net_classes.hpp>
+include <volt/circuit/detail/subsystem_storage.hpp>
+include <volt/circuit/electrical/electrical_model.hpp>
+include <volt/circuit/hierarchy/hierarchy.hpp>
+include <volt/circuit/hierarchy/hierarchy_model.hpp>
+include <volt/circuit/intent/design_intent.hpp>
+include <volt/circuit/parts/parts.hpp>
+include <volt/core/ids.hpp>
+
+HierarchyMutator(Circuit &circuit, MutatorKey) noexcept
+HierarchyMutator(const HierarchyMutator &) = delete
+HierarchyMutator(HierarchyMutator &&) = delete
+HierarchyMutator &operator=(const HierarchyMutator &) = delete
+HierarchyMutator &operator=(HierarchyMutator &&) = delete
+[[nodiscard]] ModuleDefId add_module_definition(ModuleDefinition definition)
+[[nodiscard]] TemplateNetDefId add_template_net(ModuleDefId module, TemplateNetDefinition net)
+[[nodiscard]] PortDefId add_port_definition(ModuleDefId module, PortDefinition port)
+[[nodiscard]] ModuleComponentId add_module_component(ModuleDefId module, ModuleComponentTemplate component)
+bool connect_module_pin(ModuleDefId module, TemplateNetDefId net, ModuleComponentId component, PinDefId pin)

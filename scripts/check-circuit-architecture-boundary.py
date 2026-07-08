@@ -49,6 +49,29 @@ PRIVILEGED_FRIEND_ALLOWLIST = {
     ): "BoardRouter mirrors an accepted board mutation into its private runtime spatial index.",
 }
 
+CIRCUIT_MUTATOR_PUBLIC_API_SNAPSHOTS = {
+    "circuit_connectivity_mutator": (
+        "ConnectivityMutator",
+        ROOT / "include" / "volt" / "circuit" / "circuit.hpp",
+    ),
+    "circuit_hierarchy_mutator": (
+        "HierarchyMutator",
+        ROOT / "include" / "volt" / "circuit" / "circuit.hpp",
+    ),
+    "circuit_electrical_mutator": (
+        "ElectricalMutator",
+        ROOT / "include" / "volt" / "circuit" / "circuit.hpp",
+    ),
+    "circuit_intent_mutator": (
+        "IntentMutator",
+        ROOT / "include" / "volt" / "circuit" / "circuit.hpp",
+    ),
+    "circuit_net_class_mutator": (
+        "NetClassMutator",
+        ROOT / "include" / "volt" / "circuit" / "circuit.hpp",
+    ),
+}
+
 PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {}
 
 ENTITY_REF_KERNEL_ALLOWLIST = {
@@ -928,8 +951,13 @@ def check_privileged_friends_are_allowlisted(failures: list[str]) -> None:
 
 
 def check_public_api_snapshots(failures: list[str]) -> None:
-    for class_name, header_path in ROOT_TYPES.items():
-        allowlist = ALLOWLIST_DIR / f"{class_name.lower()}_public_api.txt"
+    snapshots = {
+        **{class_name.lower(): (class_name, header_path)
+           for class_name, header_path in ROOT_TYPES.items()},
+        **CIRCUIT_MUTATOR_PUBLIC_API_SNAPSHOTS,
+    }
+    for snapshot_name, (class_name, header_path) in snapshots.items():
+        allowlist = ALLOWLIST_DIR / f"{snapshot_name}_public_api.txt"
         if not allowlist.exists():
             fail(f"{relative(allowlist)} is missing", failures)
             continue
@@ -1280,6 +1308,10 @@ def run_self_tests() -> int:
         public_declarations_from_header("SampleRoot", nested_public_sample)
         == ["int read_value() const"],
         "public API parser must ignore nested facade methods in the root surface",
+    )
+    require_self_test(
+        public_declarations_from_header("Mutator", nested_public_sample) == ["void mutate()"],
+        "nested facade methods must remain observable for dedicated facade snapshots",
     )
     # public_or_protected_declarations reads from disk, so exercise the parser directly instead.
     sample_body = class_body(strip_comments(submodel_mutator_sample), "SampleModel")
