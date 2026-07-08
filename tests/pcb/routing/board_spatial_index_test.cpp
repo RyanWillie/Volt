@@ -34,9 +34,12 @@ struct ClearanceDiagnosticSignature {
 
 [[nodiscard]] BoardFixture make_board_fixture() {
     auto circuit = volt::Circuit{};
-    const auto first_net = circuit.add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
-    const auto second_net = circuit.add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
-    const auto third_net = circuit.add_net(volt::Net{volt::NetName{"C"}, volt::NetKind::Signal});
+    const auto first_net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+    const auto second_net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
+    const auto third_net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"C"}, volt::NetKind::Signal});
     return BoardFixture{std::move(circuit), first_net, second_net, third_net};
 }
 
@@ -142,12 +145,12 @@ TEST_CASE("BoardSpatialIndex reports net-class pair clearance using the larger c
     auto fixture = make_board_fixture();
     auto first_class = volt::NetClass{volt::NetClassName{"A rules"}};
     first_class.set_copper_clearance_mm(0.30);
-    fixture.circuit.assign_net_class(fixture.first_net,
-                                     fixture.circuit.add_net_class(std::move(first_class)));
+    fixture.circuit.net_classes().assign_net_class(
+        fixture.first_net, fixture.circuit.net_classes().add_net_class(std::move(first_class)));
     auto second_class = volt::NetClass{volt::NetClassName{"B rules"}};
     second_class.set_copper_clearance_mm(0.50);
-    fixture.circuit.assign_net_class(fixture.second_net,
-                                     fixture.circuit.add_net_class(std::move(second_class)));
+    fixture.circuit.net_classes().assign_net_class(
+        fixture.second_net, fixture.circuit.net_classes().add_net_class(std::move(second_class)));
 
     auto board = make_two_layer_board(fixture);
     const auto front = volt::BoardLayerId{0};
@@ -171,8 +174,8 @@ TEST_CASE("BoardSpatialIndex lets a room override replace larger class and matri
     auto fixture = make_board_fixture();
     auto net_class = volt::NetClass{volt::NetClassName{"Wide"}};
     net_class.set_copper_clearance_mm(0.50);
-    fixture.circuit.assign_net_class(fixture.first_net,
-                                     fixture.circuit.add_net_class(std::move(net_class)));
+    fixture.circuit.net_classes().assign_net_class(
+        fixture.first_net, fixture.circuit.net_classes().add_net_class(std::move(net_class)));
 
     auto board = make_two_layer_board(fixture);
     const auto front = volt::BoardLayerId{0};
@@ -272,8 +275,8 @@ TEST_CASE("BoardSpatialIndex includes derived net-class clearances in the conser
     auto fixture = make_board_fixture();
     auto net_class = volt::NetClass{volt::NetClassName{"HV"}};
     net_class.derive_copper_clearance(volt::ipc2221_external_voltage_clearance_mm(600.0));
-    fixture.circuit.assign_net_class(fixture.first_net,
-                                     fixture.circuit.add_net_class(std::move(net_class)));
+    fixture.circuit.net_classes().assign_net_class(
+        fixture.first_net, fixture.circuit.net_classes().add_net_class(std::move(net_class)));
 
     auto board = make_two_layer_board(fixture);
     const auto front = volt::BoardLayerId{0};

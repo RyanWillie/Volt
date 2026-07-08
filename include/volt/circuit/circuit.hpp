@@ -38,38 +38,195 @@ namespace volt {
  *   docs/design/adr-append-only-kernel.md.
  */
 class Circuit {
+  private:
+    struct MutatorKey {};
+
   public:
-    /** Store a reusable pin definition and return its stable ID. */
-    [[nodiscard]] PinDefId add_pin_definition(PinDefinition definition);
+    /**
+     * Borrow-only facade for connectivity-owned mutations.
+     *
+     * Returned by value from Circuit::connectivity(); construct one at the call site and do not
+     * store it. Root-owned or cross-subsystem mutations stay on Circuit.
+     */
+    class ConnectivityMutator {
+      public:
+        ConnectivityMutator(Circuit &circuit, MutatorKey) noexcept : circuit_{circuit} {}
 
-    /** Store a reusable component definition and return its stable ID. */
-    [[nodiscard]] ComponentDefId add_component_definition(ComponentDefinition definition);
+        ConnectivityMutator(const ConnectivityMutator &) = delete;
+        ConnectivityMutator(ConnectivityMutator &&) = delete;
+        ConnectivityMutator &operator=(const ConnectivityMutator &) = delete;
+        ConnectivityMutator &operator=(ConnectivityMutator &&) = delete;
 
-    /** Store a component instance and return its stable ID. */
-    [[nodiscard]] ComponentId add_component(ComponentInstance component);
+        /** Store a reusable pin definition and return its stable ID. */
+        [[nodiscard]] PinDefId add_pin_definition(PinDefinition definition);
 
-    /** Store a concrete pin instance and return its stable ID. */
-    [[nodiscard]] PinId add_pin(PinInstance pin);
+        /** Store a reusable component definition and return its stable ID. */
+        [[nodiscard]] ComponentDefId add_component_definition(ComponentDefinition definition);
 
-    /** Store a canonical net and return its stable ID. */
-    [[nodiscard]] NetId add_net(Net net);
+        /** Store a component instance and return its stable ID. */
+        [[nodiscard]] ComponentId add_component(ComponentInstance component);
 
-    /** Store a reusable logical module definition and return its stable ID. */
-    [[nodiscard]] ModuleDefId add_module_definition(ModuleDefinition definition);
+        /** Store a concrete pin instance and return its stable ID. */
+        [[nodiscard]] PinId add_pin(PinInstance pin);
 
-    /** Add a template-local net to a reusable module definition. */
-    [[nodiscard]] TemplateNetDefId add_template_net(ModuleDefId module, TemplateNetDefinition net);
+        /** Store a canonical net and return its stable ID. */
+        [[nodiscard]] NetId add_net(Net net);
 
-    /** Add a boundary port to a reusable module definition. */
-    [[nodiscard]] PortDefId add_port_definition(ModuleDefId module, PortDefinition port);
+        /** Set or replace a metadata property on an existing component instance. */
+        void set_component_property(ComponentId component, PropertyKey key, PropertyValue value);
 
-    /** Add a component occurrence to a reusable module definition. */
-    [[nodiscard]] ModuleComponentId add_module_component(ModuleDefId module,
-                                                         ModuleComponentTemplate component);
+      private:
+        Circuit &circuit_;
+    };
 
-    /** Connect a module component template pin to a template-local net. */
-    bool connect_module_pin(ModuleDefId module, TemplateNetDefId net, ModuleComponentId component,
-                            PinDefId pin);
+    /**
+     * Borrow-only facade for hierarchy-owned mutations.
+     *
+     * Returned by value from Circuit::hierarchy(); construct one at the call site and do not store
+     * it. Root-owned or cross-subsystem mutations stay on Circuit.
+     */
+    class HierarchyMutator {
+      public:
+        HierarchyMutator(Circuit &circuit, MutatorKey) noexcept : circuit_{circuit} {}
+
+        HierarchyMutator(const HierarchyMutator &) = delete;
+        HierarchyMutator(HierarchyMutator &&) = delete;
+        HierarchyMutator &operator=(const HierarchyMutator &) = delete;
+        HierarchyMutator &operator=(HierarchyMutator &&) = delete;
+
+        /** Store a reusable logical module definition and return its stable ID. */
+        [[nodiscard]] ModuleDefId add_module_definition(ModuleDefinition definition);
+
+        /** Add a template-local net to a reusable module definition. */
+        [[nodiscard]] TemplateNetDefId add_template_net(ModuleDefId module,
+                                                        TemplateNetDefinition net);
+
+        /** Add a boundary port to a reusable module definition. */
+        [[nodiscard]] PortDefId add_port_definition(ModuleDefId module, PortDefinition port);
+
+        /** Add a component occurrence to a reusable module definition. */
+        [[nodiscard]] ModuleComponentId add_module_component(ModuleDefId module,
+                                                             ModuleComponentTemplate component);
+
+        /** Connect a module component template pin to a template-local net. */
+        bool connect_module_pin(ModuleDefId module, TemplateNetDefId net,
+                                ModuleComponentId component, PinDefId pin);
+
+      private:
+        Circuit &circuit_;
+    };
+
+    /**
+     * Borrow-only facade for electrical-owned mutations.
+     *
+     * Returned by value from Circuit::electrical(); construct one at the call site and do not store
+     * it. Root-owned or cross-subsystem mutations stay on Circuit.
+     */
+    class ElectricalMutator {
+      public:
+        ElectricalMutator(Circuit &circuit, MutatorKey) noexcept : circuit_{circuit} {}
+
+        ElectricalMutator(const ElectricalMutator &) = delete;
+        ElectricalMutator(ElectricalMutator &&) = delete;
+        ElectricalMutator &operator=(const ElectricalMutator &) = delete;
+        ElectricalMutator &operator=(ElectricalMutator &&) = delete;
+
+        /** Set or replace a typed electrical attribute on an existing component instance. */
+        void set_component_electrical_attribute(ComponentId component,
+                                                const ElectricalAttributeSpec &spec,
+                                                ElectricalAttributeValue value);
+
+        /** Set or replace a typed electrical attribute on an existing reusable pin definition. */
+        void set_pin_definition_electrical_attribute(PinDefId pin_definition,
+                                                     const ElectricalAttributeSpec &spec,
+                                                     ElectricalAttributeValue value);
+
+        /** Set or replace a typed electrical attribute on an existing net. */
+        void set_net_electrical_attribute(NetId net, const ElectricalAttributeSpec &spec,
+                                          ElectricalAttributeValue value);
+
+        /** Assign a selected physical implementation to an existing component instance. */
+        void select_physical_part(ComponentId component, PhysicalPart physical_part);
+
+        /** Set or replace a typed electrical attribute on a component's selected physical part. */
+        void set_selected_part_electrical_attribute(ComponentId component,
+                                                    const ElectricalAttributeSpec &spec,
+                                                    ElectricalAttributeValue value);
+
+      private:
+        Circuit &circuit_;
+    };
+
+    /**
+     * Borrow-only facade for design-intent mutations.
+     *
+     * Returned by value from Circuit::intent(); construct one at the call site and do not store it.
+     * Root-owned or cross-subsystem mutations stay on Circuit.
+     */
+    class IntentMutator {
+      public:
+        IntentMutator(Circuit &circuit, MutatorKey) noexcept : circuit_{circuit} {}
+
+        IntentMutator(const IntentMutator &) = delete;
+        IntentMutator(IntentMutator &&) = delete;
+        IntentMutator &operator=(const IntentMutator &) = delete;
+        IntentMutator &operator=(IntentMutator &&) = delete;
+
+        /** Record that an otherwise empty or single-ended named net is intentionally exported. */
+        bool mark_intentional_stub_net(NetId net);
+
+        /** Record that an otherwise connectable concrete pin is intentionally left open. */
+        bool mark_intentional_no_connect_pin(PinId pin);
+
+        /** Set explicit do-not-populate assembly intent for an existing component. */
+        void set_component_dnp(ComponentId component, bool dnp);
+
+        /** Set or clear selected-part override assembly intent for an existing component. */
+        void set_component_selection_override(ComponentId component, bool override);
+
+      private:
+        Circuit &circuit_;
+    };
+
+    /**
+     * Borrow-only facade for net-class mutations.
+     *
+     * Returned by value from Circuit::net_classes(); construct one at the call site and do not
+     * store it. Root-owned or cross-subsystem mutations stay on Circuit.
+     */
+    class NetClassMutator {
+      public:
+        NetClassMutator(Circuit &circuit, MutatorKey) noexcept : circuit_{circuit} {}
+
+        NetClassMutator(const NetClassMutator &) = delete;
+        NetClassMutator(NetClassMutator &&) = delete;
+        NetClassMutator &operator=(const NetClassMutator &) = delete;
+        NetClassMutator &operator=(NetClassMutator &&) = delete;
+
+        /** Store a reusable net class intent definition. */
+        [[nodiscard]] NetClassId add_net_class(NetClass net_class);
+
+        /** Assign an existing net class to an existing logical net. */
+        bool assign_net_class(NetId net, NetClassId net_class);
+
+      private:
+        Circuit &circuit_;
+    };
+
+    /** Return the borrow-only connectivity mutation facade. */
+    [[nodiscard]] ConnectivityMutator connectivity() noexcept;
+
+    /** Return the borrow-only hierarchy mutation facade. */
+    [[nodiscard]] HierarchyMutator hierarchy() noexcept;
+
+    /** Return the borrow-only electrical mutation facade. */
+    [[nodiscard]] ElectricalMutator electrical() noexcept;
+
+    /** Return the borrow-only design-intent mutation facade. */
+    [[nodiscard]] IntentMutator intent() noexcept;
+
+    /** Return the borrow-only net-class mutation facade. */
+    [[nodiscard]] NetClassMutator net_classes() noexcept;
 
     /** Instantiate a module at the root and create concrete nets for its template-local nets. */
     [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition,
@@ -98,49 +255,6 @@ class Circuit {
 
     /** Disconnect an existing pin from its current net; returns true when the circuit changed. */
     bool disconnect(PinId pin);
-
-    /** Set or replace a metadata property on an existing component instance. */
-    void set_component_property(ComponentId component, PropertyKey key, PropertyValue value);
-
-    /** Set or replace a typed electrical attribute on an existing component instance. */
-    void set_component_electrical_attribute(ComponentId component,
-                                            const ElectricalAttributeSpec &spec,
-                                            ElectricalAttributeValue value);
-
-    /** Set or replace a typed electrical attribute on an existing reusable pin definition. */
-    void set_pin_definition_electrical_attribute(PinDefId pin_definition,
-                                                 const ElectricalAttributeSpec &spec,
-                                                 ElectricalAttributeValue value);
-
-    /** Assign a selected physical implementation to an existing component instance. */
-    void select_physical_part(ComponentId component, PhysicalPart physical_part);
-
-    /** Set or replace a typed electrical attribute on a component's selected physical part. */
-    void set_selected_part_electrical_attribute(ComponentId component,
-                                                const ElectricalAttributeSpec &spec,
-                                                ElectricalAttributeValue value);
-
-    /** Set or replace a typed electrical attribute on an existing net. */
-    void set_net_electrical_attribute(NetId net, const ElectricalAttributeSpec &spec,
-                                      ElectricalAttributeValue value);
-
-    /** Record that an otherwise empty or single-ended named net is intentionally exported. */
-    bool mark_intentional_stub_net(NetId net);
-
-    /** Record that an otherwise connectable concrete pin is intentionally left open. */
-    bool mark_intentional_no_connect_pin(PinId pin);
-
-    /** Set explicit do-not-populate assembly intent for an existing component. */
-    void set_component_dnp(ComponentId component, bool dnp);
-
-    /** Set or clear selected-part override assembly intent for an existing component. */
-    void set_component_selection_override(ComponentId component, bool override);
-
-    /** Store a reusable net class intent definition. */
-    [[nodiscard]] NetClassId add_net_class(NetClass net_class);
-
-    /** Assign an existing net class to an existing logical net. */
-    bool assign_net_class(NetId net, NetClassId net_class);
 
     /** Return the selected physical implementation for a component, if one has been assigned. */
     [[nodiscard]] const std::optional<PhysicalPart> &

@@ -19,21 +19,21 @@
 namespace {
 
 volt::ComponentId add_resistor(volt::Circuit &circuit) {
-    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto definition = circuit.add_component_definition(
+    const auto definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
     return circuit.instantiate_component(definition, volt::ReferenceDesignator{"R1"});
 }
 
 volt::NetId add_net(volt::Circuit &circuit) {
-    return circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    return circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 }
 
 nlohmann::json schematic_json() {
@@ -127,8 +127,8 @@ TEST_CASE("Schematic reader loads projection JSON over a logical circuit") {
 TEST_CASE("Schematic reader loads optional net label display text") {
     volt::Circuit circuit;
     [[maybe_unused]] const auto component = add_resistor(circuit);
-    [[maybe_unused]] const auto net =
-        circuit.add_net(volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
+    [[maybe_unused]] const auto net = circuit.connectivity().add_net(
+        volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
 
     auto fixture = schematic_json();
     fixture["net_labels"][0]["label"] = "SWDIO";
@@ -144,8 +144,8 @@ TEST_CASE("Schematic reader loads optional net label display text") {
 TEST_CASE("Schematic reader loads explicit text presentation metadata") {
     volt::Circuit circuit;
     [[maybe_unused]] const auto component = add_resistor(circuit);
-    [[maybe_unused]] const auto net =
-        circuit.add_net(volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
+    [[maybe_unused]] const auto net = circuit.connectivity().add_net(
+        volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
 
     auto fixture = schematic_json();
     fixture["symbol_definitions"][0]["primitives"][4]["horizontal_alignment"] = "Start";
@@ -223,9 +223,10 @@ TEST_CASE("Schematic reader loads professional primitives over logical IDs") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
     const auto vcc = add_net(circuit);
-    const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto gnd =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
     const auto no_connect_pin = volt::queries::pin_by_number(circuit, component, "2").value();
-    circuit.mark_intentional_no_connect_pin(no_connect_pin);
+    circuit.intent().mark_intentional_no_connect_pin(no_connect_pin);
 
     auto fixture = schematic_json();
     fixture["sheets"][0]["metadata"] = {
@@ -487,7 +488,7 @@ TEST_CASE("Schematic reader rejects wire runs that collide with different logica
     add_resistor(circuit);
     add_net(circuit);
     [[maybe_unused]] const auto ground =
-        circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
 
     auto fixture = schematic_json();
     fixture["sheets"][0]["wire_runs"].push_back("wire_run:1");

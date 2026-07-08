@@ -91,7 +91,9 @@ std::size_t PyCircuit::define_component(const std::string &name, const py::list 
 }
 
 std::size_t PyCircuit::add_net(const std::string &name, const std::string &kind) {
-    return circuit_.add_net(volt::Net{volt::NetName{name}, parse_net_kind(kind)}).index();
+    return circuit_.connectivity()
+        .add_net(volt::Net{volt::NetName{name}, parse_net_kind(kind)})
+        .index();
 }
 
 std::size_t PyCircuit::add_net_class(const std::string &name, const py::dict &options) {
@@ -146,11 +148,12 @@ std::size_t PyCircuit::add_net_class(const std::string &name, const py::dict &op
         net_class.set_layer_scope(parse_net_class_layer_scope(layer_scope.value()));
     }
 
-    return circuit_.add_net_class(std::move(net_class)).index();
+    return circuit_.net_classes().add_net_class(std::move(net_class)).index();
 }
 
 void PyCircuit::assign_net_class(std::size_t net, std::size_t net_class) {
-    static_cast<void>(circuit_.assign_net_class(net_id(net), volt::NetClassId{net_class}));
+    static_cast<void>(
+        circuit_.net_classes().assign_net_class(net_id(net), volt::NetClassId{net_class}));
 }
 
 py::dict PyCircuit::net_class_info(std::size_t net_class) const {
@@ -251,7 +254,7 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
         }
     }
 
-    circuit_.select_physical_part(
+    circuit_.electrical().select_physical_part(
         component_handle,
         volt::PhysicalPart{
             volt::ManufacturerPart{manufacturer, part_number}, volt::PackageRef{package},
@@ -265,14 +268,14 @@ void PyCircuit::set_component_quantity(std::size_t component, const std::string 
                                        const std::string &dimension_name, double value) {
     require_finite(value, "Electrical attribute quantities must be finite");
     const auto dimension = parse_dimension(dimension_name);
-    circuit_.set_component_electrical_attribute(
+    circuit_.electrical().set_component_electrical_attribute(
         component_id(component), component_quantity_spec(name, dimension),
         volt::ElectricalAttributeValue{volt::Quantity{dimension, value}});
 }
 
 void PyCircuit::set_component_percent_tolerance(std::size_t component, double value) {
     require_finite(value, "Tolerance values must be finite");
-    circuit_.set_component_electrical_attribute(
+    circuit_.electrical().set_component_electrical_attribute(
         component_id(component), component_quantity_spec("tolerance", volt::UnitDimension::Ratio),
         volt::ElectricalAttributeValue{volt::Tolerance::percent(value)});
 }
@@ -281,7 +284,7 @@ void PyCircuit::set_net_quantity(std::size_t net, const std::string &name,
                                  const std::string &dimension_name, double value) {
     require_finite(value, "Electrical attribute quantities must be finite");
     const auto dimension = parse_dimension(dimension_name);
-    circuit_.set_net_electrical_attribute(
+    circuit_.electrical().set_net_electrical_attribute(
         net_id(net), net_quantity_spec(name, dimension),
         volt::ElectricalAttributeValue{volt::Quantity{dimension, value}});
 }
@@ -295,7 +298,7 @@ void PyCircuit::select_generic_physical_part(std::size_t component) {
     for (std::size_t index = 0; index < definition.pins().size(); ++index) {
         mappings.emplace_back(definition.pins()[index], std::to_string(index + 1));
     }
-    circuit_.select_physical_part(
+    circuit_.electrical().select_physical_part(
         component_handle,
         volt::PhysicalPart{volt::ManufacturerPart{"Volt", "generic"},
                            volt::PackageRef{"unspecified"},
@@ -306,7 +309,7 @@ void PyCircuit::set_selected_part_quantity(std::size_t component, const std::str
                                            const std::string &dimension_name, double value) {
     require_finite(value, "Electrical attribute quantities must be finite");
     const auto dimension = parse_dimension(dimension_name);
-    circuit_.set_selected_part_electrical_attribute(
+    circuit_.electrical().set_selected_part_electrical_attribute(
         component_id(component), selected_part_quantity_spec(name, dimension),
         volt::ElectricalAttributeValue{volt::Quantity{dimension, value}});
 }
@@ -402,19 +405,19 @@ py::list PyCircuit::net_pins(std::size_t net) const {
 }
 
 void PyCircuit::mark_intentional_stub_net(std::size_t net) {
-    static_cast<void>(circuit_.mark_intentional_stub_net(net_id(net)));
+    static_cast<void>(circuit_.intent().mark_intentional_stub_net(net_id(net)));
 }
 
 void PyCircuit::mark_intentional_no_connect_pin(std::size_t pin) {
-    static_cast<void>(circuit_.mark_intentional_no_connect_pin(pin_id(pin)));
+    static_cast<void>(circuit_.intent().mark_intentional_no_connect_pin(pin_id(pin)));
 }
 
 void PyCircuit::set_component_dnp(std::size_t component, bool dnp) {
-    circuit_.set_component_dnp(component_id(component), dnp);
+    circuit_.intent().set_component_dnp(component_id(component), dnp);
 }
 
 void PyCircuit::set_component_selection_override(std::size_t component, bool selection_override) {
-    circuit_.set_component_selection_override(component_id(component), selection_override);
+    circuit_.intent().set_component_selection_override(component_id(component), selection_override);
 }
 
 std::vector<volt::PinId> PyCircuit::pins_by_name(volt::ComponentId component,

@@ -14,20 +14,20 @@
 TEST_CASE("Circuit rejects component definitions with missing pin definitions") {
     volt::Circuit circuit;
 
-    CHECK_THROWS_AS(circuit.add_component_definition(
+    CHECK_THROWS_AS(circuit.connectivity().add_component_definition(
                         volt::ComponentDefinition{"Broken", std::vector{volt::PinDefId{7}}}),
                     std::out_of_range);
 }
 
 TEST_CASE("Circuit finds components by reference designator") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+    const auto pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.add_component_definition(
+    const auto component_def = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
-    const auto component = circuit.add_component(
+    const auto component = circuit.connectivity().add_component(
         volt::ComponentInstance{component_def, volt::ReferenceDesignator{"R1"}});
 
     const auto found =
@@ -41,18 +41,18 @@ TEST_CASE("Circuit finds components by reference designator") {
 
 TEST_CASE("Circuit rejects duplicate component reference designators") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+    const auto pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.add_component_definition(
+    const auto component_def = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
 
-    const auto first = circuit.add_component(
+    const auto first = circuit.connectivity().add_component(
         volt::ComponentInstance{component_def, volt::ReferenceDesignator{"R1"}});
     CHECK(first == volt::ComponentId{0});
 
-    CHECK_THROWS_AS(circuit.add_component(
+    CHECK_THROWS_AS(circuit.connectivity().add_component(
                         volt::ComponentInstance{component_def, volt::ReferenceDesignator{"R1"}}),
                     std::logic_error);
 }
@@ -60,28 +60,30 @@ TEST_CASE("Circuit rejects duplicate component reference designators") {
 TEST_CASE("Circuit finds nets by name and rejects duplicate net names") {
     volt::Circuit circuit;
 
-    const auto net = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
 
     const auto found = volt::queries::net_by_name(circuit, volt::NetName{"GND"});
 
     REQUIRE(found.has_value());
     CHECK(found.value() == net);
     CHECK_FALSE(volt::queries::net_by_name(circuit, volt::NetName{"LED_A"}).has_value());
-    CHECK_THROWS_AS(circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground}),
-                    std::logic_error);
+    CHECK_THROWS_AS(
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground}),
+        std::logic_error);
 }
 
 TEST_CASE("Circuit instantiates component pins from the component definition") {
     volt::Circuit circuit;
-    const auto anode = circuit.add_pin_definition(volt::PinDefinition{
+    const auto anode = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto cathode = circuit.add_pin_definition(volt::PinDefinition{
+    const auto cathode = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "K", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto led = circuit.add_component_definition(
+    const auto led = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"LED", std::vector{anode, cathode}});
 
     const auto component = circuit.instantiate_component(led, volt::ReferenceDesignator{"D1"});
@@ -102,12 +104,12 @@ TEST_CASE("Circuit instantiates component pins from the component definition") {
 
 TEST_CASE("Circuit instantiates components with instance properties") {
     volt::Circuit circuit;
-    const auto pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto resistor =
-        circuit.add_component_definition(volt::ComponentDefinition{"Resistor", std::vector{pin}});
+    const auto resistor = circuit.connectivity().add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{pin}});
 
     const auto component = circuit.instantiate_component(
         resistor, volt::ReferenceDesignator{"R1"},
@@ -119,15 +121,15 @@ TEST_CASE("Circuit instantiates components with instance properties") {
 
 TEST_CASE("Circuit finds component pins by definition name and number") {
     volt::Circuit circuit;
-    const auto anode = circuit.add_pin_definition(volt::PinDefinition{
+    const auto anode = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto cathode = circuit.add_pin_definition(volt::PinDefinition{
+    const auto cathode = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "K", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto led = circuit.add_component_definition(
+    const auto led = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"LED", std::vector{anode, cathode}});
     const auto component = circuit.instantiate_component(led, volt::ReferenceDesignator{"D1"});
     const auto pins = volt::queries::pins_for(circuit, component);

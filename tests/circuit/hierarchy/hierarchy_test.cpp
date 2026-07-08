@@ -14,12 +14,12 @@
 TEST_CASE("Circuit stores module definitions and template-local nets") {
     volt::Circuit circuit;
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"BuckConverter"},
     });
-    const auto vin = circuit.add_template_net(
+    const auto vin = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
-    const auto fb = circuit.add_template_net(
+    const auto fb = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"FB"}, volt::NetKind::Signal});
 
     CHECK(module == volt::ModuleDefId{0});
@@ -36,19 +36,19 @@ TEST_CASE("Circuit stores module definitions and template-local nets") {
 TEST_CASE("Circuit rejects duplicate module and template-local net names") {
     volt::Circuit circuit;
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"BuckConverter"},
     });
 
-    CHECK_THROWS_AS(circuit.add_module_definition(volt::ModuleDefinition{
+    CHECK_THROWS_AS(circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
                         volt::ModuleName{"BuckConverter"},
                     }),
                     std::logic_error);
 
-    [[maybe_unused]] const auto fb = circuit.add_template_net(
+    [[maybe_unused]] const auto fb = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"FB"}, volt::NetKind::Signal});
     CHECK_THROWS_AS(
-        circuit.add_template_net(
+        circuit.hierarchy().add_template_net(
             module, volt::TemplateNetDefinition{volt::NetName{"FB"}, volt::NetKind::Signal}),
         std::logic_error);
 }
@@ -56,12 +56,12 @@ TEST_CASE("Circuit rejects duplicate module and template-local net names") {
 TEST_CASE("Circuit stores ports that reference one internal template net") {
     volt::Circuit circuit;
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"BuckConverter"},
     });
-    const auto vin = circuit.add_template_net(
+    const auto vin = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
-    const auto port = circuit.add_port_definition(
+    const auto port = circuit.hierarchy().add_port_definition(
         module, volt::PortDefinition{volt::PortName{"VIN"}, vin, volt::PortRole::PowerInput});
 
     CHECK(port == volt::PortDefId{0});
@@ -76,52 +76,52 @@ TEST_CASE("Circuit stores ports that reference one internal template net") {
 TEST_CASE("Circuit rejects ports with invalid internal nets or duplicate names") {
     volt::Circuit circuit;
 
-    const auto first = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto first = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"First"},
     });
-    const auto second = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto second = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"Second"},
     });
-    const auto first_net = circuit.add_template_net(
+    const auto first_net = circuit.hierarchy().add_template_net(
         first, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
-    const auto second_net = circuit.add_template_net(
+    const auto second_net = circuit.hierarchy().add_template_net(
         second, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
 
-    [[maybe_unused]] const auto first_port = circuit.add_port_definition(
+    [[maybe_unused]] const auto first_port = circuit.hierarchy().add_port_definition(
         first, volt::PortDefinition{volt::PortName{"VIN"}, first_net, volt::PortRole::PowerInput});
+    CHECK_THROWS_AS(circuit.hierarchy().add_port_definition(
+                        first, volt::PortDefinition{volt::PortName{"VIN"}, first_net}),
+                    std::logic_error);
+    CHECK_THROWS_AS(circuit.hierarchy().add_port_definition(
+                        first, volt::PortDefinition{volt::PortName{"BAD"}, second_net}),
+                    std::logic_error);
     CHECK_THROWS_AS(
-        circuit.add_port_definition(first, volt::PortDefinition{volt::PortName{"VIN"}, first_net}),
-        std::logic_error);
-    CHECK_THROWS_AS(
-        circuit.add_port_definition(first, volt::PortDefinition{volt::PortName{"BAD"}, second_net}),
-        std::logic_error);
-    CHECK_THROWS_AS(
-        circuit.add_port_definition(
+        circuit.hierarchy().add_port_definition(
             first, volt::PortDefinition{volt::PortName{"MISSING"}, volt::TemplateNetDefId{99}}),
         std::out_of_range);
 }
 
 TEST_CASE("Circuit stores module component templates and template pin connectivity") {
     volt::Circuit circuit;
-    const auto left = circuit.add_pin_definition(volt::PinDefinition{
+    const auto left = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto right = circuit.add_pin_definition(volt::PinDefinition{
+    const auto right = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto resistor = circuit.add_component_definition(
+    const auto resistor = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"Divider"},
     });
-    const auto input = circuit.add_template_net(
+    const auto input = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
-    const auto output = circuit.add_template_net(
+    const auto output = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
-    const auto component = circuit.add_module_component(
+    const auto component = circuit.hierarchy().add_module_component(
         module, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
 
     CHECK(component == volt::ModuleComponentId{0});
@@ -130,9 +130,9 @@ TEST_CASE("Circuit stores module component templates and template pin connectivi
     CHECK(circuit.module_component_template(component).reference() ==
           volt::ReferenceDesignator{"R1"});
 
-    CHECK(circuit.connect_module_pin(module, input, component, left));
-    CHECK(circuit.connect_module_pin(module, output, component, right));
-    CHECK_FALSE(circuit.connect_module_pin(module, input, component, left));
+    CHECK(circuit.hierarchy().connect_module_pin(module, input, component, left));
+    CHECK(circuit.hierarchy().connect_module_pin(module, output, component, right));
+    CHECK_FALSE(circuit.hierarchy().connect_module_pin(module, input, component, left));
     CHECK(volt::queries::template_net_for(circuit, module, component, left) == input);
     CHECK(volt::queries::template_net_for(circuit, module, component, right) == output);
     CHECK(circuit.module_component_count() == 1);
@@ -141,28 +141,28 @@ TEST_CASE("Circuit stores module component templates and template pin connectivi
 
 TEST_CASE("Root module instantiation materializes module component templates") {
     volt::Circuit circuit;
-    const auto left = circuit.add_pin_definition(volt::PinDefinition{
+    const auto left = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto right = circuit.add_pin_definition(volt::PinDefinition{
+    const auto right = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto resistor = circuit.add_component_definition(
+    const auto resistor = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"Divider"},
     });
-    const auto input = circuit.add_template_net(
+    const auto input = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
-    const auto output = circuit.add_template_net(
+    const auto output = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
-    const auto component = circuit.add_module_component(
+    const auto component = circuit.hierarchy().add_module_component(
         module, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
-    CHECK(circuit.connect_module_pin(module, input, component, left));
-    CHECK(circuit.connect_module_pin(module, output, component, right));
+    CHECK(circuit.hierarchy().connect_module_pin(module, input, component, left));
+    CHECK(circuit.hierarchy().connect_module_pin(module, output, component, right));
 
     const auto instance =
         circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"});
@@ -189,32 +189,33 @@ TEST_CASE("Root module instantiation materializes module component templates") {
 
 TEST_CASE("Circuit exposes hierarchy inspection views") {
     volt::Circuit circuit;
-    const auto left = circuit.add_pin_definition(volt::PinDefinition{
+    const auto left = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto right = circuit.add_pin_definition(volt::PinDefinition{
+    const auto right = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto resistor = circuit.add_component_definition(
+    const auto resistor = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"Divider"},
     });
-    const auto input = circuit.add_template_net(
+    const auto input = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Power});
-    const auto output = circuit.add_template_net(
+    const auto output = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
-    const auto port = circuit.add_port_definition(
+    const auto port = circuit.hierarchy().add_port_definition(
         module, volt::PortDefinition{volt::PortName{"IN"}, input, volt::PortRole::PowerInput});
-    const auto component = circuit.add_module_component(
+    const auto component = circuit.hierarchy().add_module_component(
         module, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
-    CHECK(circuit.connect_module_pin(module, input, component, left));
-    CHECK(circuit.connect_module_pin(module, output, component, right));
+    CHECK(circuit.hierarchy().connect_module_pin(module, input, component, left));
+    CHECK(circuit.hierarchy().connect_module_pin(module, output, component, right));
 
-    const auto parent = circuit.add_net(volt::Net{volt::NetName{"VIN"}, volt::NetKind::Power});
+    const auto parent =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VIN"}, volt::NetKind::Power});
     const auto instance =
         circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"});
     const auto binding = circuit.bind_port(instance, port, parent);
@@ -230,21 +231,21 @@ TEST_CASE("Circuit exposes hierarchy inspection views") {
 
 TEST_CASE("Circuit restore rejects mismatched module connectivity before mutating") {
     volt::Circuit circuit;
-    const auto left = circuit.add_pin_definition(volt::PinDefinition{
+    const auto left = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto right = circuit.add_pin_definition(volt::PinDefinition{
+    const auto right = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto resistor = circuit.add_component_definition(
+    const auto resistor = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
     const auto concrete_component =
         circuit.instantiate_component(resistor, volt::ReferenceDesignator{"DIV_A/R1"});
 
     const auto first_net =
-        circuit.add_net(volt::Net{volt::NetName{"DIV_A/IN"}, volt::NetKind::Signal});
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"DIV_A/IN"}, volt::NetKind::Signal});
     auto second = volt::Net{volt::NetName{"DIV_A/OUT"}, volt::NetKind::Signal};
     REQUIRE(volt::queries::pin_by_definition(circuit, concrete_component, left).has_value());
     REQUIRE(volt::queries::pin_by_definition(circuit, concrete_component, right).has_value());
@@ -252,19 +253,19 @@ TEST_CASE("Circuit restore rejects mismatched module connectivity before mutatin
         volt::queries::pin_by_definition(circuit, concrete_component, left).value()));
     CHECK(second.connect(
         volt::queries::pin_by_definition(circuit, concrete_component, right).value()));
-    const auto second_net = circuit.add_net(std::move(second));
+    const auto second_net = circuit.connectivity().add_net(std::move(second));
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"Divider"},
     });
-    const auto input = circuit.add_template_net(
+    const auto input = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
-    const auto output = circuit.add_template_net(
+    const auto output = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
-    const auto component = circuit.add_module_component(
+    const auto component = circuit.hierarchy().add_module_component(
         module, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
-    CHECK(circuit.connect_module_pin(module, input, component, left));
-    CHECK(circuit.connect_module_pin(module, output, component, right));
+    CHECK(circuit.hierarchy().connect_module_pin(module, input, component, left));
+    CHECK(circuit.hierarchy().connect_module_pin(module, output, component, right));
 
     CHECK_THROWS_AS(circuit.restore_root_module_instance(module, volt::ModuleInstanceName{"DIV_A"},
                                                          {{input, first_net}, {output, second_net}},
@@ -275,62 +276,66 @@ TEST_CASE("Circuit restore rejects mismatched module connectivity before mutatin
 
 TEST_CASE("Circuit rejects structurally invalid module component templates") {
     volt::Circuit circuit;
-    const auto left = circuit.add_pin_definition(volt::PinDefinition{
+    const auto left = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto right = circuit.add_pin_definition(volt::PinDefinition{
+    const auto right = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto extra = circuit.add_pin_definition(volt::PinDefinition{
+    const auto extra = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "3", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto resistor = circuit.add_component_definition(
+    const auto resistor = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
-    const auto first = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto first = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"First"},
     });
-    const auto second = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto second = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"Second"},
     });
-    const auto first_net = circuit.add_template_net(
+    const auto first_net = circuit.hierarchy().add_template_net(
         first, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
-    const auto first_output = circuit.add_template_net(
+    const auto first_output = circuit.hierarchy().add_template_net(
         first, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
-    const auto second_net = circuit.add_template_net(
+    const auto second_net = circuit.hierarchy().add_template_net(
         second, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
-    const auto first_component = circuit.add_module_component(
+    const auto first_component = circuit.hierarchy().add_module_component(
         first, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
-    const auto second_component = circuit.add_module_component(
+    const auto second_component = circuit.hierarchy().add_module_component(
         second, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
 
     CHECK_THROWS_AS(
-        circuit.add_module_component(
+        circuit.hierarchy().add_module_component(
             first, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}}),
         std::logic_error);
-    CHECK_THROWS_AS(circuit.connect_module_pin(first, second_net, first_component, left),
-                    std::logic_error);
-    CHECK_THROWS_AS(circuit.connect_module_pin(first, first_net, second_component, left),
-                    std::logic_error);
-    CHECK_THROWS_AS(circuit.connect_module_pin(first, first_net, first_component, extra),
-                    std::logic_error);
+    CHECK_THROWS_AS(
+        circuit.hierarchy().connect_module_pin(first, second_net, first_component, left),
+        std::logic_error);
+    CHECK_THROWS_AS(
+        circuit.hierarchy().connect_module_pin(first, first_net, second_component, left),
+        std::logic_error);
+    CHECK_THROWS_AS(
+        circuit.hierarchy().connect_module_pin(first, first_net, first_component, extra),
+        std::logic_error);
 
-    CHECK(circuit.connect_module_pin(first, first_net, first_component, left));
-    CHECK_THROWS_AS(circuit.connect_module_pin(first, first_output, first_component, left),
-                    std::logic_error);
+    CHECK(circuit.hierarchy().connect_module_pin(first, first_net, first_component, left));
+    CHECK_THROWS_AS(
+        circuit.hierarchy().connect_module_pin(first, first_output, first_component, left),
+        std::logic_error);
 }
 
 TEST_CASE("Root module instantiation creates concrete nets for template-local nets") {
     volt::Circuit circuit;
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"BuckConverter"},
     });
-    const auto vin = circuit.add_template_net(
+    const auto vin = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
-    const auto fb = circuit.add_template_net(
+    const auto fb = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"FB"}, volt::NetKind::Signal});
 
     const auto first = circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
@@ -358,16 +363,17 @@ TEST_CASE("Root module instantiation creates concrete nets for template-local ne
 TEST_CASE("Circuit records port bindings as explicit edges without merging nets") {
     volt::Circuit circuit;
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"BuckConverter"},
     });
-    const auto vin = circuit.add_template_net(
+    const auto vin = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
-    const auto port = circuit.add_port_definition(
+    const auto port = circuit.hierarchy().add_port_definition(
         module, volt::PortDefinition{volt::PortName{"VIN"}, vin, volt::PortRole::PowerInput});
     const auto instance =
         circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
-    const auto parent_net = circuit.add_net(volt::Net{volt::NetName{"VIN"}, volt::NetKind::Power});
+    const auto parent_net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VIN"}, volt::NetKind::Power});
 
     const auto binding = circuit.bind_port(instance, port, parent_net);
 
@@ -385,19 +391,19 @@ TEST_CASE("Circuit records port bindings as explicit edges without merging nets"
 TEST_CASE("Circuit rejects duplicate port bindings for one module instance port") {
     volt::Circuit circuit;
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"BuckConverter"},
     });
-    const auto vin = circuit.add_template_net(
+    const auto vin = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
-    const auto port = circuit.add_port_definition(
+    const auto port = circuit.hierarchy().add_port_definition(
         module, volt::PortDefinition{volt::PortName{"VIN"}, vin, volt::PortRole::PowerInput});
     const auto instance =
         circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
     const auto first_parent =
-        circuit.add_net(volt::Net{volt::NetName{"VIN"}, volt::NetKind::Power});
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VIN"}, volt::NetKind::Power});
     const auto second_parent =
-        circuit.add_net(volt::Net{volt::NetName{"VIN_ALT"}, volt::NetKind::Power});
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VIN_ALT"}, volt::NetKind::Power});
 
     [[maybe_unused]] const auto binding = circuit.bind_port(instance, port, first_parent);
 
@@ -408,12 +414,12 @@ TEST_CASE("Circuit rejects duplicate port bindings for one module instance port"
 TEST_CASE("Circuit rejects binding a module port to its own internal net") {
     volt::Circuit circuit;
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"BuckConverter"},
     });
-    const auto vin = circuit.add_template_net(
+    const auto vin = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
-    const auto port = circuit.add_port_definition(
+    const auto port = circuit.hierarchy().add_port_definition(
         module, volt::PortDefinition{volt::PortName{"VIN"}, vin, volt::PortRole::PowerInput});
     const auto instance =
         circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
@@ -427,13 +433,13 @@ TEST_CASE("Circuit rejects binding a module port to its own internal net") {
 TEST_CASE("Root module instantiation preflights concrete net names before mutating") {
     volt::Circuit circuit;
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"BuckConverter"},
     });
-    [[maybe_unused]] const auto vin = circuit.add_template_net(
+    [[maybe_unused]] const auto vin = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
-    [[maybe_unused]] const auto existing_net =
-        circuit.add_net(volt::Net{volt::NetName{"BUCK_A/VIN"}, volt::NetKind::Power});
+    [[maybe_unused]] const auto existing_net = circuit.connectivity().add_net(
+        volt::Net{volt::NetName{"BUCK_A/VIN"}, volt::NetKind::Power});
 
     CHECK_THROWS_AS(circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"}),
                     std::logic_error);
@@ -443,20 +449,20 @@ TEST_CASE("Root module instantiation preflights concrete net names before mutati
 
 TEST_CASE("Root module instantiation preflights concrete component references before mutating") {
     volt::Circuit circuit;
-    const auto pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
     const auto definition =
-        circuit.add_component_definition(volt::ComponentDefinition{"Thing", {pin}});
+        circuit.connectivity().add_component_definition(volt::ComponentDefinition{"Thing", {pin}});
     [[maybe_unused]] const auto existing =
         circuit.instantiate_component(definition, volt::ReferenceDesignator{"DIV_A/R1"});
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"Divider"},
     });
-    [[maybe_unused]] const auto template_net = circuit.add_template_net(
+    [[maybe_unused]] const auto template_net = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
-    [[maybe_unused]] const auto component = circuit.add_module_component(
+    [[maybe_unused]] const auto component = circuit.hierarchy().add_module_component(
         module, volt::ModuleComponentTemplate{definition, volt::ReferenceDesignator{"R1"}});
 
     CHECK_THROWS_AS(circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"}),
@@ -469,12 +475,12 @@ TEST_CASE("Root module instantiation preflights concrete component references be
 TEST_CASE("Circuit validation reports unbound required module ports") {
     volt::Circuit circuit;
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"BuckConverter"},
     });
-    const auto vin = circuit.add_template_net(
+    const auto vin = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
-    const auto port = circuit.add_port_definition(
+    const auto port = circuit.hierarchy().add_port_definition(
         module, volt::PortDefinition{volt::PortName{"VIN"}, vin, volt::PortRole::PowerInput});
     const auto instance =
         circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
@@ -492,16 +498,17 @@ TEST_CASE("Circuit validation reports unbound required module ports") {
 TEST_CASE("Circuit validation accepts bound required module ports") {
     volt::Circuit circuit;
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"BuckConverter"},
     });
-    const auto vin = circuit.add_template_net(
+    const auto vin = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
-    const auto port = circuit.add_port_definition(
+    const auto port = circuit.hierarchy().add_port_definition(
         module, volt::PortDefinition{volt::PortName{"VIN"}, vin, volt::PortRole::PowerInput});
     const auto instance =
         circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
-    const auto parent_net = circuit.add_net(volt::Net{volt::NetName{"VIN"}, volt::NetKind::Power});
+    const auto parent_net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VIN"}, volt::NetKind::Power});
     [[maybe_unused]] const auto binding = circuit.bind_port(instance, port, parent_net);
 
     const auto report = volt::validate_connectivity(circuit);
@@ -514,20 +521,20 @@ TEST_CASE("Circuit validation accepts bound required module ports") {
 TEST_CASE("Binding a port whose template net has no concrete origin reports invalid state") {
     volt::Circuit circuit;
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"BuckConverter"},
     });
-    [[maybe_unused]] const auto vin = circuit.add_template_net(
+    [[maybe_unused]] const auto vin = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
     const auto instance =
         circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
 
-    const auto late_net = circuit.add_template_net(
+    const auto late_net = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"LATE"}, volt::NetKind::Signal});
-    const auto late_port = circuit.add_port_definition(
+    const auto late_port = circuit.hierarchy().add_port_definition(
         module, volt::PortDefinition{volt::PortName{"LATE"}, late_net, volt::PortRole::Input});
     const auto parent_net =
-        circuit.add_net(volt::Net{volt::NetName{"PARENT"}, volt::NetKind::Signal});
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"PARENT"}, volt::NetKind::Signal});
 
     try {
         [[maybe_unused]] const auto binding = circuit.bind_port(instance, late_port, parent_net);
@@ -540,24 +547,25 @@ TEST_CASE("Binding a port whose template net has no concrete origin reports inva
 TEST_CASE("Restoring a module instance over a pin-less component reports invalid state") {
     volt::Circuit circuit;
 
-    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+    const auto pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive});
-    const auto component_def = circuit.add_component_definition(
+    const auto component_def = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"Divider"},
     });
-    const auto template_net = circuit.add_template_net(
+    const auto template_net = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"MID"}, volt::NetKind::Signal});
-    const auto module_component = circuit.add_module_component(
+    const auto module_component = circuit.hierarchy().add_module_component(
         module, volt::ModuleComponentTemplate{component_def, volt::ReferenceDesignator{"R1"}});
-    REQUIRE(circuit.connect_module_pin(module, template_net, module_component, pin_def));
+    REQUIRE(
+        circuit.hierarchy().connect_module_pin(module, template_net, module_component, pin_def));
 
-    const auto concrete_net =
-        circuit.add_net(volt::Net{volt::NetName{"DIV_A/MID"}, volt::NetKind::Signal});
-    const auto pin_less_component = circuit.add_component(
+    const auto concrete_net = circuit.connectivity().add_net(
+        volt::Net{volt::NetName{"DIV_A/MID"}, volt::NetKind::Signal});
+    const auto pin_less_component = circuit.connectivity().add_component(
         volt::ComponentInstance{component_def, volt::ReferenceDesignator{"DIV_A/R1"}});
 
     try {
@@ -573,26 +581,26 @@ TEST_CASE("Restoring a module instance over a pin-less component reports invalid
 TEST_CASE("Hierarchy structural rejections carry machine-readable error codes") {
     volt::Circuit circuit;
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"BuckConverter"},
     });
 
     try {
-        [[maybe_unused]] const auto duplicate = circuit.add_module_definition(
+        [[maybe_unused]] const auto duplicate = circuit.hierarchy().add_module_definition(
             volt::ModuleDefinition{volt::ModuleName{"BuckConverter"}});
         FAIL("Duplicate module definition name must throw");
     } catch (const volt::KernelError &error) {
         CHECK(error.code() == volt::ErrorCode::DuplicateName);
     }
 
-    const auto other_module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto other_module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"LdoRegulator"},
     });
-    const auto vin = circuit.add_template_net(
+    const auto vin = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
 
     try {
-        [[maybe_unused]] const auto port = circuit.add_port_definition(
+        [[maybe_unused]] const auto port = circuit.hierarchy().add_port_definition(
             other_module,
             volt::PortDefinition{volt::PortName{"VIN"}, vin, volt::PortRole::PowerInput});
         FAIL("Port over another module's template net must throw");
@@ -604,7 +612,7 @@ TEST_CASE("Hierarchy structural rejections carry machine-readable error codes") 
     }
 
     try {
-        [[maybe_unused]] const auto port = circuit.add_port_definition(
+        [[maybe_unused]] const auto port = circuit.hierarchy().add_port_definition(
             module, volt::PortDefinition{volt::PortName{"SW"}, volt::TemplateNetDefId{42},
                                          volt::PortRole::Output});
         FAIL("Unknown template net IDs must throw");
@@ -616,7 +624,7 @@ TEST_CASE("Hierarchy structural rejections carry machine-readable error codes") 
     }
 
     try {
-        [[maybe_unused]] const auto net = circuit.add_template_net(
+        [[maybe_unused]] const auto net = circuit.hierarchy().add_template_net(
             volt::ModuleDefId{42},
             volt::TemplateNetDefinition{volt::NetName{"SW"}, volt::NetKind::Signal});
         FAIL("Unknown module definition ID must throw");
@@ -638,26 +646,26 @@ TEST_CASE("Hierarchy structural rejections carry machine-readable error codes") 
 TEST_CASE("Hierarchy module-component rejections carry entity payloads") {
     volt::Circuit circuit;
 
-    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+    const auto pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive});
-    const auto component_def = circuit.add_component_definition(
+    const auto component_def = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
-    const auto first_module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto first_module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"Divider"},
     });
-    const auto second_module = circuit.add_module_definition(volt::ModuleDefinition{
+    const auto second_module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
         volt::ModuleName{"Filter"},
     });
-    const auto second_net = circuit.add_template_net(
+    const auto second_net = circuit.hierarchy().add_template_net(
         second_module, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
-    const auto first_component = circuit.add_module_component(
+    const auto first_component = circuit.hierarchy().add_module_component(
         first_module,
         volt::ModuleComponentTemplate{component_def, volt::ReferenceDesignator{"R1"}});
 
     try {
-        [[maybe_unused]] const auto changed =
-            circuit.connect_module_pin(second_module, second_net, first_component, pin_def);
+        [[maybe_unused]] const auto changed = circuit.hierarchy().connect_module_pin(
+            second_module, second_net, first_component, pin_def);
         FAIL("Module components from another module must throw");
     } catch (const volt::KernelError &error) {
         CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
@@ -667,7 +675,7 @@ TEST_CASE("Hierarchy module-component rejections carry entity payloads") {
     }
 
     try {
-        [[maybe_unused]] const auto changed = circuit.connect_module_pin(
+        [[maybe_unused]] const auto changed = circuit.hierarchy().connect_module_pin(
             second_module, second_net, volt::ModuleComponentId{42}, pin_def);
         FAIL("Unknown module component IDs must throw");
     } catch (const volt::KernelError &error) {

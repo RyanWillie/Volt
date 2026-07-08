@@ -25,9 +25,10 @@ struct RouterFixture {
 
 [[nodiscard]] RouterFixture make_router_fixture() {
     auto circuit = volt::Circuit{};
-    const auto signal_net = circuit.add_net(volt::Net{volt::NetName{"SIG"}, volt::NetKind::Signal});
+    const auto signal_net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"SIG"}, volt::NetKind::Signal});
     const auto other_net =
-        circuit.add_net(volt::Net{volt::NetName{"OBSTACLE"}, volt::NetKind::Signal});
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"OBSTACLE"}, volt::NetKind::Signal});
     return RouterFixture{std::move(circuit), signal_net, other_net};
 }
 
@@ -341,8 +342,8 @@ TEST_CASE("Router respects net-class width, via size, and allowed layers", "[pcb
     net_class.set_track_width_mm(0.6);
     net_class.set_via_size_mm(0.4, 0.8);
     net_class.set_layer_scope(volt::NetClassLayerScope::TopOnly);
-    const auto class_id = fixture.circuit.add_net_class(std::move(net_class));
-    REQUIRE(fixture.circuit.assign_net_class(fixture.signal_net, class_id));
+    const auto class_id = fixture.circuit.net_classes().add_net_class(std::move(net_class));
+    REQUIRE(fixture.circuit.net_classes().assign_net_class(fixture.signal_net, class_id));
 
     auto layout = make_two_layer_board(fixture.circuit);
     auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
@@ -377,8 +378,8 @@ TEST_CASE("Router refuses vias whose copper span crosses a disallowed layer", "[
 
     auto net_class = volt::NetClass{volt::NetClassName{"SURFACE_ONLY"}};
     net_class.set_allowed_layer_names({"F.Cu", "B.Cu"});
-    const auto class_id = fixture.circuit.add_net_class(std::move(net_class));
-    REQUIRE(fixture.circuit.assign_net_class(fixture.signal_net, class_id));
+    const auto class_id = fixture.circuit.net_classes().add_net_class(std::move(net_class));
+    REQUIRE(fixture.circuit.net_classes().assign_net_class(fixture.signal_net, class_id));
 
     auto layout = make_four_layer_board(fixture.circuit);
     auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
@@ -403,8 +404,8 @@ TEST_CASE("Router floors net-class sizes at board design minima", "[pcb][router]
     auto net_class = volt::NetClass{volt::NetClassName{"TOO_SMALL"}};
     net_class.set_track_width_mm(0.10);
     net_class.set_via_size_mm(0.20, 0.40);
-    const auto class_id = fixture.circuit.add_net_class(std::move(net_class));
-    REQUIRE(fixture.circuit.assign_net_class(fixture.signal_net, class_id));
+    const auto class_id = fixture.circuit.net_classes().add_net_class(std::move(net_class));
+    REQUIRE(fixture.circuit.net_classes().assign_net_class(fixture.signal_net, class_id));
 
     auto layout = make_two_layer_board(fixture.circuit);
     layout.board.set_design_rules(volt::BoardDesignRules{0.10, 0.35, 0.30, 0.70, 0.0});

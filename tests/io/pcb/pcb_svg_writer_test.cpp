@@ -35,15 +35,16 @@ struct MultiComponentNetCircuit {
 
 [[nodiscard]] ResistorCircuit make_resistor_circuit(bool select_physical_part = true) {
     auto circuit = volt::Circuit{};
-    const auto first_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+    const auto first_pin_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto second_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.add_component_definition(
+    const auto second_pin_definition =
+        circuit.connectivity().add_pin_definition(volt::PinDefinition{
+            "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+            volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+            volt::ElectricalDriveKind::Passive});
+    const auto component_definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
@@ -51,15 +52,16 @@ struct MultiComponentNetCircuit {
         volt::queries::pin_by_definition(circuit, component, first_pin_definition).value();
     const auto second_pin =
         volt::queries::pin_by_definition(circuit, component, second_pin_definition).value();
-    const auto first_net = circuit.add_net(volt::Net{volt::NetName{"LEFT"}, volt::NetKind::Signal});
+    const auto first_net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"LEFT"}, volt::NetKind::Signal});
     const auto second_net =
-        circuit.add_net(volt::Net{volt::NetName{"RIGHT"}, volt::NetKind::Signal});
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"RIGHT"}, volt::NetKind::Signal});
 
     circuit.connect(first_net, first_pin);
     circuit.connect(second_net, second_pin);
 
     if (select_physical_part) {
-        circuit.select_physical_part(
+        circuit.electrical().select_physical_part(
             component, volt::PhysicalPart{
                            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
                            volt::PackageRef{"0603"},
@@ -83,25 +85,26 @@ struct MultiComponentNetCircuit {
     std::size_t component_count,
     volt::FootprintRef footprint = volt::FootprintRef{"passives", "R_0603_1608Metric"}) {
     auto circuit = volt::Circuit{};
-    const auto first_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+    const auto first_pin_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto second_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.add_component_definition(
+    const auto second_pin_definition =
+        circuit.connectivity().add_pin_definition(volt::PinDefinition{
+            "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+            volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+            volt::ElectricalDriveKind::Passive});
+    const auto component_definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
     const auto shared_net =
-        circuit.add_net(volt::Net{volt::NetName{"SHARED"}, volt::NetKind::Signal});
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"SHARED"}, volt::NetKind::Signal});
 
     auto components = std::vector<volt::ComponentId>{};
     components.reserve(component_count);
     for (std::size_t index = 0; index < component_count; ++index) {
         const auto component = circuit.instantiate_component(
             component_definition, volt::ReferenceDesignator{"R" + std::to_string(index + 1U)});
-        circuit.select_physical_part(
+        circuit.electrical().select_physical_part(
             component, volt::PhysicalPart{
                            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
                            volt::PackageRef{"0603"},
@@ -225,7 +228,7 @@ TEST_CASE("PCB SVG writer exposes stable selectors matching PCB JSON entities") 
 
 TEST_CASE("PCB SVG writer renders declared footprint body and courtyard polygons") {
     auto fixture = make_resistor_circuit(false);
-    fixture.circuit.select_physical_part(
+    fixture.circuit.electrical().select_physical_part(
         fixture.component, volt::PhysicalPart{
                                volt::ManufacturerPart{"Volt", "DeclaredGeometry"},
                                volt::PackageRef{"DeclaredGeometry"},
@@ -260,7 +263,7 @@ TEST_CASE("PCB SVG writer renders declared footprint body and courtyard polygons
 
 TEST_CASE("PCB SVG writer marks pad-derived footprint envelopes as synthetic") {
     auto fixture = make_resistor_circuit(false);
-    fixture.circuit.select_physical_part(
+    fixture.circuit.electrical().select_physical_part(
         fixture.component, volt::PhysicalPart{
                                volt::ManufacturerPart{"Volt", "PadOnly"},
                                volt::PackageRef{"PadOnly"},
@@ -479,7 +482,7 @@ TEST_CASE("PCB SVG writer filters layer-owned content for a selected layer") {
 
 TEST_CASE("PCB SVG writer preserves through-hole pad copper on non-placement-side layers") {
     auto fixture = make_resistor_circuit(false);
-    fixture.circuit.select_physical_part(
+    fixture.circuit.electrical().select_physical_part(
         fixture.component, volt::PhysicalPart{
                                volt::ManufacturerPart{"Generic", "PinHeader_1x02"},
                                volt::PackageRef{"1x02"},

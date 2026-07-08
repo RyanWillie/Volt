@@ -45,47 +45,51 @@ class ScopedLocale {
 
 [[nodiscard]] FabricationCircuit make_fabrication_circuit() {
     auto circuit = volt::Circuit{};
-    const auto passive_a = circuit.add_pin_definition(volt::PinDefinition{
+    const auto passive_a = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto passive_b = circuit.add_pin_definition(volt::PinDefinition{
+    const auto passive_b = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto header_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto header_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
 
-    const auto resistor_definition = circuit.add_component_definition(
+    const auto resistor_definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", {passive_a, passive_b}});
-    const auto header_definition =
-        circuit.add_component_definition(volt::ComponentDefinition{"Header", {header_pin}});
+    const auto header_definition = circuit.connectivity().add_component_definition(
+        volt::ComponentDefinition{"Header", {header_pin}});
     const auto resistor =
         circuit.instantiate_component(resistor_definition, volt::ReferenceDesignator{"R1"});
     const auto header =
         circuit.instantiate_component(header_definition, volt::ReferenceDesignator{"J1"});
 
-    const auto signal = circuit.add_net(volt::Net{volt::NetName{"SIGNAL"}, volt::NetKind::Signal});
-    const auto ground = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto signal =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"SIGNAL"}, volt::NetKind::Signal});
+    const auto ground =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
     circuit.connect(signal, volt::queries::pin_by_definition(circuit, resistor, passive_a).value());
     circuit.connect(signal, volt::queries::pin_by_definition(circuit, header, header_pin).value());
     circuit.connect(ground, volt::queries::pin_by_definition(circuit, resistor, passive_b).value());
 
-    circuit.select_physical_part(resistor, volt::PhysicalPart{
-                                               volt::ManufacturerPart{"Volt", "RECT-0603"},
-                                               volt::PackageRef{"0603"},
-                                               volt::FootprintRef{"test", "RectSmd"},
-                                               std::vector{volt::PinPadMapping{passive_a, "1"},
-                                                           volt::PinPadMapping{passive_b, "2"}},
-                                           });
-    circuit.select_physical_part(header, volt::PhysicalPart{
-                                             volt::ManufacturerPart{"Volt", "TH-1"},
-                                             volt::PackageRef{"TH"},
-                                             volt::FootprintRef{"test", "OnePinThroughHole"},
-                                             std::vector{volt::PinPadMapping{header_pin, "1"}},
-                                         });
+    circuit.electrical().select_physical_part(
+        resistor,
+        volt::PhysicalPart{
+            volt::ManufacturerPart{"Volt", "RECT-0603"},
+            volt::PackageRef{"0603"},
+            volt::FootprintRef{"test", "RectSmd"},
+            std::vector{volt::PinPadMapping{passive_a, "1"}, volt::PinPadMapping{passive_b, "2"}},
+        });
+    circuit.electrical().select_physical_part(header,
+                                              volt::PhysicalPart{
+                                                  volt::ManufacturerPart{"Volt", "TH-1"},
+                                                  volt::PackageRef{"TH"},
+                                                  volt::FootprintRef{"test", "OnePinThroughHole"},
+                                                  std::vector{volt::PinPadMapping{header_pin, "1"}},
+                                              });
 
     return FabricationCircuit{std::move(circuit), resistor, header, signal, ground};
 }
@@ -502,20 +506,21 @@ TEST_CASE("PCB fabrication writer exports ordered inner copper Gerbers") {
 
 TEST_CASE("PCB fabrication writer emits unconnected mapped pads without fabrication loss") {
     auto circuit = volt::Circuit{};
-    const auto passive = circuit.add_pin_definition(volt::PinDefinition{
+    const auto passive = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Optional, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto definition =
-        circuit.add_component_definition(volt::ComponentDefinition{"TestPoint", {passive}});
+    const auto definition = circuit.connectivity().add_component_definition(
+        volt::ComponentDefinition{"TestPoint", {passive}});
     const auto component =
         circuit.instantiate_component(definition, volt::ReferenceDesignator{"TP1"});
-    circuit.select_physical_part(component, volt::PhysicalPart{
-                                                volt::ManufacturerPart{"Volt", "TP-SMD"},
-                                                volt::PackageRef{"TH"},
-                                                volt::FootprintRef{"test", "OnePinThroughHole"},
-                                                std::vector{volt::PinPadMapping{passive, "1"}},
-                                            });
+    circuit.electrical().select_physical_part(component,
+                                              volt::PhysicalPart{
+                                                  volt::ManufacturerPart{"Volt", "TP-SMD"},
+                                                  volt::PackageRef{"TH"},
+                                                  volt::FootprintRef{"test", "OnePinThroughHole"},
+                                                  std::vector{volt::PinPadMapping{passive, "1"}},
+                                              });
 
     auto board = volt::Board{circuit, volt::BoardName{"Control"}};
     const auto front = board.add_layer(

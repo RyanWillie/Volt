@@ -137,19 +137,19 @@ They are not connected unless a future explicit mechanism ties or aliases them.
 ## Illustrative C++ API shape
 
 ```cpp
-auto buck = circuit.add_module_definition(ModuleDefinition{"BuckConverter"});
+auto buck = circuit.hierarchy().add_module_definition(ModuleDefinition{"BuckConverter"});
 
-auto vinInternal = circuit.add_template_net(buck, NetName{"VIN"});
-auto voutInternal = circuit.add_template_net(buck, NetName{"VOUT"});
-auto gndInternal = circuit.add_template_net(buck, NetName{"GND"});
-auto sw = circuit.add_template_net(buck, NetName{"SW"});
-auto fb = circuit.add_template_net(buck, NetName{"FB"});
+auto vinInternal = circuit.hierarchy().add_template_net(buck, NetName{"VIN"});
+auto voutInternal = circuit.hierarchy().add_template_net(buck, NetName{"VOUT"});
+auto gndInternal = circuit.hierarchy().add_template_net(buck, NetName{"GND"});
+auto sw = circuit.hierarchy().add_template_net(buck, NetName{"SW"});
+auto fb = circuit.hierarchy().add_template_net(buck, NetName{"FB"});
 
-auto vinPort = circuit.add_port_definition(
+auto vinPort = circuit.hierarchy().add_port_definition(
     buck, PortDefinition{"VIN", vinInternal, PortRole::PowerInput});
-auto voutPort = circuit.add_port_definition(
+auto voutPort = circuit.hierarchy().add_port_definition(
     buck, PortDefinition{"VOUT", voutInternal, PortRole::PowerOutput});
-auto gndPort = circuit.add_port_definition(
+auto gndPort = circuit.hierarchy().add_port_definition(
     buck, PortDefinition{"GND", gndInternal, PortRole::Ground});
 
 auto reg = circuit.instantiate_template_component(

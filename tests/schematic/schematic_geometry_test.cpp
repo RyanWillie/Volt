@@ -54,8 +54,10 @@ TEST_CASE("Schematic geometry classifies segment relationships and junction sema
 
 TEST_CASE("Schematic allows same-net joins but rejects different-net wire collisions") {
     volt::Circuit circuit;
-    const auto vcc = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
-    const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto vcc =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto gnd =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});

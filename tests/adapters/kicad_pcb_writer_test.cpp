@@ -54,38 +54,40 @@ struct ResistorCircuit {
 
 [[nodiscard]] ResistorCircuit make_resistor_circuit() {
     auto circuit = volt::Circuit{};
-    const auto first_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+    const auto first_pin_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto second_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.add_component_definition(
+    const auto second_pin_definition =
+        circuit.connectivity().add_pin_definition(volt::PinDefinition{
+            "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+            volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+            volt::ElectricalDriveKind::Passive});
+    const auto component_definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
-    circuit.set_component_property(component, volt::PropertyKey{"Value"},
-                                   volt::PropertyValue{"330R"});
+    circuit.connectivity().set_component_property(component, volt::PropertyKey{"Value"},
+                                                  volt::PropertyValue{"330R"});
 
     const auto first_pin =
         volt::queries::pin_by_definition(circuit, component, first_pin_definition).value();
     const auto second_pin =
         volt::queries::pin_by_definition(circuit, component, second_pin_definition).value();
-    const auto left_net = circuit.add_net(volt::Net{volt::NetName{"LEFT"}, volt::NetKind::Signal});
+    const auto left_net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"LEFT"}, volt::NetKind::Signal});
     const auto right_net =
-        circuit.add_net(volt::Net{volt::NetName{"RIGHT"}, volt::NetKind::Signal});
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"RIGHT"}, volt::NetKind::Signal});
     circuit.connect(left_net, first_pin);
     circuit.connect(right_net, second_pin);
-    circuit.select_physical_part(component,
-                                 volt::PhysicalPart{
-                                     volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                     volt::PackageRef{"0603"},
-                                     volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                     std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                                 volt::PinPadMapping{second_pin_definition, "2"}},
-                                 });
+    circuit.electrical().select_physical_part(
+        component, volt::PhysicalPart{
+                       volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                       volt::PackageRef{"0603"},
+                       volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                       std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                   volt::PinPadMapping{second_pin_definition, "2"}},
+                   });
 
     return ResistorCircuit{std::move(circuit),    component, first_pin_definition,
                            second_pin_definition, left_net,  right_net};
@@ -137,36 +139,36 @@ struct LedBadgeCircuit {
 
 [[nodiscard]] LedBadgeCircuit make_led_badge_circuit() {
     auto circuit = volt::Circuit{};
-    const auto header_one = circuit.add_pin_definition(volt::PinDefinition{
+    const auto header_one = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto header_two = circuit.add_pin_definition(volt::PinDefinition{
+    const auto header_two = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto passive_one = circuit.add_pin_definition(volt::PinDefinition{
+    const auto passive_one = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto passive_two = circuit.add_pin_definition(volt::PinDefinition{
+    const auto passive_two = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto led_anode = circuit.add_pin_definition(volt::PinDefinition{
+    const auto led_anode = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto led_cathode = circuit.add_pin_definition(volt::PinDefinition{
+    const auto led_cathode = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "K", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
 
-    const auto header_definition = circuit.add_component_definition(
+    const auto header_definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Header", {header_one, header_two}});
-    const auto passive_definition = circuit.add_component_definition(
+    const auto passive_definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", {passive_one, passive_two}});
-    const auto led_definition = circuit.add_component_definition(
+    const auto led_definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"LED", {led_anode, led_cathode}});
 
     const auto header =
@@ -174,13 +176,17 @@ struct LedBadgeCircuit {
     const auto resistor =
         circuit.instantiate_component(passive_definition, volt::ReferenceDesignator{"R1"});
     const auto led = circuit.instantiate_component(led_definition, volt::ReferenceDesignator{"D1"});
-    circuit.set_component_property(resistor, volt::PropertyKey{"Value"},
-                                   volt::PropertyValue{"330R"});
-    circuit.set_component_property(led, volt::PropertyKey{"Value"}, volt::PropertyValue{"RED"});
+    circuit.connectivity().set_component_property(resistor, volt::PropertyKey{"Value"},
+                                                  volt::PropertyValue{"330R"});
+    circuit.connectivity().set_component_property(led, volt::PropertyKey{"Value"},
+                                                  volt::PropertyValue{"RED"});
 
-    const auto vcc = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
-    const auto led_a = circuit.add_net(volt::Net{volt::NetName{"LED_A"}, volt::NetKind::Signal});
-    const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto vcc =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto led_a =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"LED_A"}, volt::NetKind::Signal});
+    const auto gnd =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
 
     circuit.connect(vcc, volt::queries::pin_by_definition(circuit, header, header_one).value());
     circuit.connect(vcc, volt::queries::pin_by_definition(circuit, resistor, passive_one).value());
@@ -190,7 +196,7 @@ struct LedBadgeCircuit {
     circuit.connect(gnd, volt::queries::pin_by_definition(circuit, led, led_cathode).value());
     circuit.connect(gnd, volt::queries::pin_by_definition(circuit, header, header_two).value());
 
-    circuit.select_physical_part(
+    circuit.electrical().select_physical_part(
         header,
         volt::PhysicalPart{
             volt::ManufacturerPart{"Generic", "HDR-1x02"},
@@ -198,20 +204,22 @@ struct LedBadgeCircuit {
             volt::FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
             std::vector{volt::PinPadMapping{header_one, "1"}, volt::PinPadMapping{header_two, "2"}},
         });
-    circuit.select_physical_part(resistor, volt::PhysicalPart{
-                                               volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                               volt::PackageRef{"0603"},
-                                               volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                               std::vector{volt::PinPadMapping{passive_one, "1"},
-                                                           volt::PinPadMapping{passive_two, "2"}},
-                                           });
-    circuit.select_physical_part(led, volt::PhysicalPart{
-                                          volt::ManufacturerPart{"Lite-On", "LTST-C190KRKT"},
-                                          volt::PackageRef{"0603"},
-                                          volt::FootprintRef{"leds", "LED_0603_1608Metric"},
-                                          std::vector{volt::PinPadMapping{led_anode, "1"},
-                                                      volt::PinPadMapping{led_cathode, "2"}},
-                                      });
+    circuit.electrical().select_physical_part(
+        resistor, volt::PhysicalPart{
+                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                      volt::PackageRef{"0603"},
+                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                      std::vector{volt::PinPadMapping{passive_one, "1"},
+                                  volt::PinPadMapping{passive_two, "2"}},
+                  });
+    circuit.electrical().select_physical_part(
+        led,
+        volt::PhysicalPart{
+            volt::ManufacturerPart{"Lite-On", "LTST-C190KRKT"},
+            volt::PackageRef{"0603"},
+            volt::FootprintRef{"leds", "LED_0603_1608Metric"},
+            std::vector{volt::PinPadMapping{led_anode, "1"}, volt::PinPadMapping{led_cathode, "2"}},
+        });
 
     return LedBadgeCircuit{std::move(circuit), header, resistor, led, vcc, led_a, gnd};
 }
@@ -308,15 +316,16 @@ struct TwoLargeFootprintComponents {
 
 [[nodiscard]] TwoLargeFootprintComponents make_two_large_footprint_components() {
     auto circuit = volt::Circuit{};
-    const auto first_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+    const auto first_pin_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto second_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.add_component_definition(
+    const auto second_pin_definition =
+        circuit.connectivity().add_pin_definition(volt::PinDefinition{
+            "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+            volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+            volt::ElectricalDriveKind::Passive});
+    const auto component_definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"LargePackage", {first_pin_definition, second_pin_definition}});
     const auto first_component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"U1"});
@@ -324,7 +333,7 @@ struct TwoLargeFootprintComponents {
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"U2"});
 
     for (const auto component : {first_component, second_component}) {
-        circuit.select_physical_part(
+        circuit.electrical().select_physical_part(
             component, volt::PhysicalPart{
                            volt::ManufacturerPart{"Test", "LargePadArray"},
                            volt::PackageRef{"LARGE"},
@@ -521,7 +530,7 @@ TEST_CASE("KiCad PCB writer generates unique UUIDs without footprint pad range c
 
 TEST_CASE("KiCad PCB writer reports invalid pad resolutions before omitting pad nets") {
     auto fixture = make_resistor_circuit();
-    fixture.circuit.select_physical_part(
+    fixture.circuit.electrical().select_physical_part(
         fixture.component, volt::PhysicalPart{
                                volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
                                volt::PackageRef{"0603"},

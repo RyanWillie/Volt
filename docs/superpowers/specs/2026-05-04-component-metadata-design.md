@@ -188,7 +188,7 @@ Validation for this slice:
 Expected usage after the first two slices:
 
 ```cpp
-auto resistor = circuit.add_component_definition(ComponentDefinition{
+auto resistor = circuit.connectivity().add_component_definition(ComponentDefinition{
     "Resistor",
     std::vector{pin_1, pin_2},
     PropertyMap{{PropertyKey{"category"}, PropertyValue{"passive"}}},

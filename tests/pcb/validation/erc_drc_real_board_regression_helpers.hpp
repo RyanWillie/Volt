@@ -56,14 +56,14 @@ struct ExpectedDiagnostic {
 }
 
 [[maybe_unused]] void set_net_voltage(volt::Circuit &circuit, volt::NetId net, double voltage) {
-    circuit.set_net_electrical_attribute(
+    circuit.electrical().set_net_electrical_attribute(
         net, net_voltage_spec(),
         volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, voltage}});
 }
 
 [[maybe_unused]] void set_pin_voltage_range(volt::Circuit &circuit, volt::PinDefId pin, double low,
                                             double high) {
-    circuit.set_pin_definition_electrical_attribute(
+    circuit.electrical().set_pin_definition_electrical_attribute(
         pin, pin_voltage_range_spec(),
         volt::ElectricalAttributeValue{
             volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, low},
@@ -73,7 +73,7 @@ struct ExpectedDiagnostic {
 [[maybe_unused]] void set_selected_part_voltage_rating(volt::Circuit &circuit,
                                                        volt::ComponentId component,
                                                        double voltage) {
-    circuit.set_selected_part_electrical_attribute(
+    circuit.electrical().set_selected_part_electrical_attribute(
         component, selected_part_voltage_rating_spec(),
         volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, voltage}});
 }
@@ -250,7 +250,7 @@ struct RealBoardFixture {
                                   std::string_view mpn, volt::PackageRef package,
                                   volt::FootprintRef footprint,
                                   std::vector<volt::PinPadMapping> mappings) {
-    circuit.select_physical_part(
+    circuit.electrical().select_physical_part(
         component,
         volt::PhysicalPart{volt::ManufacturerPart{"Volt Regression", std::string{mpn}},
                            std::move(package), std::move(footprint), std::move(mappings)});
@@ -268,9 +268,9 @@ struct AddedPin {
     volt::ElectricalDirection direction,
     volt::ElectricalSignalDomain domain = volt::ElectricalSignalDomain::Unspecified,
     volt::ElectricalDriveKind drive = volt::ElectricalDriveKind::Unspecified) {
-    const auto pin_definition = circuit.add_pin_definition(
+    const auto pin_definition = circuit.connectivity().add_pin_definition(
         volt::PinDefinition{pin_name, "1", requirement, terminal, direction, domain, drive});
-    const auto definition = circuit.add_component_definition(
+    const auto definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"RealBoardEdgeCaseOnePin", std::vector{pin_definition}});
     const auto component =
         circuit.instantiate_component(definition, volt::ReferenceDesignator{std::move(reference)});
@@ -280,77 +280,79 @@ struct AddedPin {
 
 [[maybe_unused]] void assign_net_class(volt::Circuit &circuit, volt::NetId net,
                                        volt::NetClass net_class) {
-    const auto id = circuit.add_net_class(std::move(net_class));
-    REQUIRE(circuit.assign_net_class(net, id));
+    const auto id = circuit.net_classes().add_net_class(std::move(net_class));
+    REQUIRE(circuit.net_classes().assign_net_class(net, id));
 }
 
 [[nodiscard, maybe_unused]] RealBoardFixture make_real_board_fixture(bool select_led_part = true) {
     auto circuit = volt::Circuit{};
 
-    const auto header_gnd_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto header_gnd_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "GND", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Ground,
         volt::ElectricalDirection::Passive});
-    const auto header_vbus_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto header_vbus_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "VBUS", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Power,
         volt::ElectricalDirection::Output});
-    const auto header_vdd_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto header_vdd_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "3V3", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto header_reset_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto header_reset_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "RESET", "4", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital});
-    const auto regulator_vin_pin = circuit.add_pin_definition(
+    const auto regulator_vin_pin = circuit.connectivity().add_pin_definition(
         volt::PinDefinition{"VIN", "1", volt::ConnectionRequirement::Required,
                             volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
-    const auto regulator_gnd_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto regulator_gnd_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "GND", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Ground,
         volt::ElectricalDirection::Passive});
-    const auto regulator_vout_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto regulator_vout_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "VOUT", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Power,
         volt::ElectricalDirection::Output});
-    const auto mcu_gnd_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto mcu_gnd_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "VSS", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Ground,
         volt::ElectricalDirection::Passive});
-    const auto mcu_vdd_pin = circuit.add_pin_definition(
+    const auto mcu_vdd_pin = circuit.connectivity().add_pin_definition(
         volt::PinDefinition{"VDD", "2", volt::ConnectionRequirement::Required,
                             volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
-    const auto mcu_gpio_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto mcu_gpio_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "PA5", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Output, volt::ElectricalSignalDomain::Digital});
-    const auto mcu_reset_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto mcu_reset_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "NRST", "4", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital});
-    const auto mcu_boot_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto mcu_boot_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "BOOT0", "5", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital});
-    const auto resistor_a_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto resistor_a_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto resistor_b_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto resistor_b_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto led_a_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto led_a_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto led_k_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto led_k_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "K", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
 
-    const auto header_def = circuit.add_component_definition(volt::ComponentDefinition{
-        "PowerAndDebugHeader",
-        std::vector{header_gnd_pin, header_vbus_pin, header_vdd_pin, header_reset_pin}});
-    const auto regulator_def = circuit.add_component_definition(volt::ComponentDefinition{
-        "LDO", std::vector{regulator_vin_pin, regulator_gnd_pin, regulator_vout_pin}});
-    const auto mcu_def = circuit.add_component_definition(volt::ComponentDefinition{
+    const auto header_def =
+        circuit.connectivity().add_component_definition(volt::ComponentDefinition{
+            "PowerAndDebugHeader",
+            std::vector{header_gnd_pin, header_vbus_pin, header_vdd_pin, header_reset_pin}});
+    const auto regulator_def =
+        circuit.connectivity().add_component_definition(volt::ComponentDefinition{
+            "LDO", std::vector{regulator_vin_pin, regulator_gnd_pin, regulator_vout_pin}});
+    const auto mcu_def = circuit.connectivity().add_component_definition(volt::ComponentDefinition{
         "MCU", std::vector{mcu_gnd_pin, mcu_vdd_pin, mcu_gpio_pin, mcu_reset_pin, mcu_boot_pin}});
-    const auto resistor_def = circuit.add_component_definition(
+    const auto resistor_def = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"LedResistor", std::vector{resistor_a_pin, resistor_b_pin}});
-    const auto led_def = circuit.add_component_definition(
+    const auto led_def = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"StatusLed", std::vector{led_a_pin, led_k_pin}});
 
     const auto header = circuit.instantiate_component(header_def, volt::ReferenceDesignator{"J1"});
@@ -361,14 +363,18 @@ struct AddedPin {
         circuit.instantiate_component(resistor_def, volt::ReferenceDesignator{"R1"});
     const auto led = circuit.instantiate_component(led_def, volt::ReferenceDesignator{"D1"});
 
-    const auto ground = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
-    const auto vbus = circuit.add_net(volt::Net{volt::NetName{"VBUS"}, volt::NetKind::Power});
-    const auto vdd = circuit.add_net(volt::Net{volt::NetName{"+3V3"}, volt::NetKind::Power});
+    const auto ground =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto vbus =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VBUS"}, volt::NetKind::Power});
+    const auto vdd =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"+3V3"}, volt::NetKind::Power});
     const auto led_drive =
-        circuit.add_net(volt::Net{volt::NetName{"LED_DRV"}, volt::NetKind::Signal});
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"LED_DRV"}, volt::NetKind::Signal});
     const auto led_anode =
-        circuit.add_net(volt::Net{volt::NetName{"LED_A"}, volt::NetKind::Signal});
-    const auto reset = circuit.add_net(volt::Net{volt::NetName{"RESET"}, volt::NetKind::Signal});
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"LED_A"}, volt::NetKind::Signal});
+    const auto reset =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"RESET"}, volt::NetKind::Signal});
 
     const auto header_gnd = volt::queries::pin_by_name(circuit, header, "GND").value();
     const auto header_vbus = volt::queries::pin_by_name(circuit, header, "VBUS").value();
@@ -402,7 +408,7 @@ struct AddedPin {
     circuit.connect(led_anode, led_a);
     circuit.connect(reset, header_reset);
     circuit.connect(reset, mcu_reset);
-    circuit.mark_intentional_no_connect_pin(mcu_boot);
+    circuit.intent().mark_intentional_no_connect_pin(mcu_boot);
 
     set_net_voltage(circuit, vbus, 5.0);
     set_net_voltage(circuit, vdd, 3.3);

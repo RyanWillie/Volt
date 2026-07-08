@@ -11,23 +11,24 @@
 
 TEST_CASE("Circuit validation reports mixed input signal domains without a driver") {
     volt::Circuit circuit;
-    const auto input_a = circuit.add_pin_definition(volt::PinDefinition{
+    const auto input_a = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "IN_A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital});
-    const auto input_b = circuit.add_pin_definition(volt::PinDefinition{
+    const auto input_b = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "IN_B", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Analog});
-    const auto receiver_a =
-        circuit.add_component_definition(volt::ComponentDefinition{"ReceiverA", {input_a}});
-    const auto receiver_b =
-        circuit.add_component_definition(volt::ComponentDefinition{"ReceiverB", {input_b}});
+    const auto receiver_a = circuit.connectivity().add_component_definition(
+        volt::ComponentDefinition{"ReceiverA", {input_a}});
+    const auto receiver_b = circuit.connectivity().add_component_definition(
+        volt::ComponentDefinition{"ReceiverB", {input_b}});
     const auto component_a =
         circuit.instantiate_component(receiver_a, volt::ReferenceDesignator{"U1"});
     const auto component_b =
         circuit.instantiate_component(receiver_b, volt::ReferenceDesignator{"U2"});
     const auto pin_a = volt::queries::pin_by_name(circuit, component_a, "IN_A").value();
     const auto pin_b = volt::queries::pin_by_name(circuit, component_b, "IN_B").value();
-    const auto net = circuit.add_net(volt::Net{volt::NetName{"SENSE"}, volt::NetKind::Signal});
+    const auto net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"SENSE"}, volt::NetKind::Signal});
 
     circuit.connect(net, pin_a);
     circuit.connect(net, pin_b);
@@ -47,25 +48,26 @@ TEST_CASE("Circuit validation reports mixed input signal domains without a drive
 
 TEST_CASE("Circuit validation ignores non-signal and untyped pins as signal-domain drivers") {
     volt::Circuit circuit;
-    const auto input_a = circuit.add_pin_definition(volt::PinDefinition{
+    const auto input_a = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "IN_A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital});
-    const auto input_b = circuit.add_pin_definition(volt::PinDefinition{
+    const auto input_b = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "IN_B", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Analog});
-    const auto power_output = circuit.add_pin_definition(volt::PinDefinition{
+    const auto power_output = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "PWR_OUT", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Power,
         volt::ElectricalDirection::Output});
-    const auto untyped_bidirectional = circuit.add_pin_definition(volt::PinDefinition{
-        "IO", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
-        volt::ElectricalDirection::Bidirectional});
-    const auto receiver_a =
-        circuit.add_component_definition(volt::ComponentDefinition{"ReceiverA", {input_a}});
-    const auto receiver_b =
-        circuit.add_component_definition(volt::ComponentDefinition{"ReceiverB", {input_b}});
-    const auto supply =
-        circuit.add_component_definition(volt::ComponentDefinition{"Supply", {power_output}});
-    const auto header = circuit.add_component_definition(
+    const auto untyped_bidirectional =
+        circuit.connectivity().add_pin_definition(volt::PinDefinition{
+            "IO", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
+            volt::ElectricalDirection::Bidirectional});
+    const auto receiver_a = circuit.connectivity().add_component_definition(
+        volt::ComponentDefinition{"ReceiverA", {input_a}});
+    const auto receiver_b = circuit.connectivity().add_component_definition(
+        volt::ComponentDefinition{"ReceiverB", {input_b}});
+    const auto supply = circuit.connectivity().add_component_definition(
+        volt::ComponentDefinition{"Supply", {power_output}});
+    const auto header = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Header", {untyped_bidirectional}});
     const auto component_a =
         circuit.instantiate_component(receiver_a, volt::ReferenceDesignator{"U1"});
@@ -79,7 +81,8 @@ TEST_CASE("Circuit validation ignores non-signal and untyped pins as signal-doma
     const auto pin_b = volt::queries::pin_by_name(circuit, component_b, "IN_B").value();
     const auto pwr_pin = volt::queries::pin_by_name(circuit, supply_component, "PWR_OUT").value();
     const auto io_pin = volt::queries::pin_by_name(circuit, header_component, "IO").value();
-    const auto net = circuit.add_net(volt::Net{volt::NetName{"SENSE"}, volt::NetKind::Signal});
+    const auto net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"SENSE"}, volt::NetKind::Signal});
 
     circuit.connect(net, pin_a);
     circuit.connect(net, pin_b);
@@ -98,23 +101,24 @@ TEST_CASE("Circuit validation ignores non-signal and untyped pins as signal-doma
 
 TEST_CASE("Circuit validation accepts signal inputs driven by outputs") {
     volt::Circuit circuit;
-    const auto input = circuit.add_pin_definition(volt::PinDefinition{
+    const auto input = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "IN", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital});
-    const auto output = circuit.add_pin_definition(volt::PinDefinition{
+    const auto output = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "OUT", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Output, volt::ElectricalSignalDomain::Digital});
-    const auto receiver =
-        circuit.add_component_definition(volt::ComponentDefinition{"Receiver", {input}});
-    const auto driver =
-        circuit.add_component_definition(volt::ComponentDefinition{"Driver", {output}});
+    const auto receiver = circuit.connectivity().add_component_definition(
+        volt::ComponentDefinition{"Receiver", {input}});
+    const auto driver = circuit.connectivity().add_component_definition(
+        volt::ComponentDefinition{"Driver", {output}});
     const auto receiver_component =
         circuit.instantiate_component(receiver, volt::ReferenceDesignator{"U1"});
     const auto driver_component =
         circuit.instantiate_component(driver, volt::ReferenceDesignator{"U2"});
     const auto input_pin = volt::queries::pin_by_name(circuit, receiver_component, "IN").value();
     const auto output_pin = volt::queries::pin_by_name(circuit, driver_component, "OUT").value();
-    const auto net = circuit.add_net(volt::Net{volt::NetName{"GPIO"}, volt::NetKind::Signal});
+    const auto net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"GPIO"}, volt::NetKind::Signal});
 
     circuit.connect(net, input_pin);
     circuit.connect(net, output_pin);
@@ -124,23 +128,24 @@ TEST_CASE("Circuit validation accepts signal inputs driven by outputs") {
 
 TEST_CASE("Circuit validation accepts same-domain input-only signal nets") {
     volt::Circuit circuit;
-    const auto input_a = circuit.add_pin_definition(volt::PinDefinition{
+    const auto input_a = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "IN_A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital});
-    const auto input_b = circuit.add_pin_definition(volt::PinDefinition{
+    const auto input_b = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "IN_B", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital});
-    const auto receiver_a =
-        circuit.add_component_definition(volt::ComponentDefinition{"ReceiverA", {input_a}});
-    const auto receiver_b =
-        circuit.add_component_definition(volt::ComponentDefinition{"ReceiverB", {input_b}});
+    const auto receiver_a = circuit.connectivity().add_component_definition(
+        volt::ComponentDefinition{"ReceiverA", {input_a}});
+    const auto receiver_b = circuit.connectivity().add_component_definition(
+        volt::ComponentDefinition{"ReceiverB", {input_b}});
     const auto component_a =
         circuit.instantiate_component(receiver_a, volt::ReferenceDesignator{"U1"});
     const auto component_b =
         circuit.instantiate_component(receiver_b, volt::ReferenceDesignator{"U2"});
     const auto pin_a = volt::queries::pin_by_name(circuit, component_a, "IN_A").value();
     const auto pin_b = volt::queries::pin_by_name(circuit, component_b, "IN_B").value();
-    const auto net = circuit.add_net(volt::Net{volt::NetName{"RESET"}, volt::NetKind::Signal});
+    const auto net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"RESET"}, volt::NetKind::Signal});
 
     circuit.connect(net, pin_a);
     circuit.connect(net, pin_b);
