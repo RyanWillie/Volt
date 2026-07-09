@@ -351,8 +351,9 @@ This layer keeps the distinction between:
 `FootprintRef` is only a reference. Footprint geometry, pads, courtyards, layers, and
 board placement remain outside the current circuit-kernel scope.
 
-Selected physical parts are assigned to component instances through `Circuit`. The
-component stores the selected value, but the mutation boundary validates that the
+Selected physical parts are assigned to component instances through
+`Circuit::electrical()`. The component stores the selected value, but the mutation boundary
+validates that the
 `PhysicalPart` pin/pad mappings cover the component's logical pin definitions and do not
 reuse a physical pad label. A logical pin may map to more than one physical pad when the
 selected package exposes tied pads.
@@ -440,9 +441,16 @@ pins are visible at once.
 - nets
 
 This layer assigns typed IDs, owns entity payloads, and returns references by ID. Explicit
-mutation operations on `Circuit` preserve structural integrity. Operations reject missing
-definitions, missing component instances, missing pin instances, nets that reference
-unknown pins, and attempts to connect IDs that do not belong to the circuit.
+mutation operations on `Circuit` and its subsystem mutator facades preserve structural
+integrity. Operations reject missing definitions, missing component instances, missing pin
+instances, nets that reference unknown pins, and attempts to connect IDs that do not
+belong to the circuit.
+
+`Circuit` root methods are reserved for root-owned or cross-subsystem mutations such as
+component instantiation, root module instantiation, port binding, and pin/net
+connect-disconnect operations. Single-subsystem mutations are exposed through borrow-only
+facades returned by value: `connectivity()`, `hierarchy()`, `electrical()`, `intent()`,
+and `net_classes()`. New public mutation APIs should follow that split.
 
 `Circuit` also enforces the core connectivity invariant that a concrete pin belongs to
 zero or one net. Deeper design-quality checks are reported by validation layers. Examples
@@ -454,7 +462,8 @@ issues.
 Authoring helpers make the logical kernel usable without changing the source of truth. The
 programmatic authoring facade is specified separately in
 [authoring-api.md](authoring-api.md).
-They return typed IDs and route structural mutation through `Circuit`.
+They return typed IDs and route structural mutation through `Circuit` root operations or
+the appropriate subsystem mutator facade.
 
 The first authoring helpers are deliberately small:
 

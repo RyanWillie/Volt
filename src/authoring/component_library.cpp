@@ -71,11 +71,11 @@ namespace {
     pin_definitions.reserve(spec.pins.size());
 
     for (const auto &pin : spec.pins) {
-        const auto pin_definition = circuit.add_pin_definition(
+        const auto pin_definition = circuit.connectivity().add_pin_definition(
             PinDefinition{pin.name, pin.number, pin.requirement, pin.terminal_kind, pin.direction,
                           pin.signal_domain, pin.drive_kind, pin.polarity});
         if (pin.voltage_range.has_value()) {
-            circuit.set_pin_definition_electrical_attribute(
+            circuit.electrical().set_pin_definition_electrical_attribute(
                 pin_definition,
                 ElectricalAttributeSpec{
                     ElectricalAttributeName{"voltage_range"}, ElectricalAttributeOwner::PinSpec,
@@ -85,7 +85,7 @@ namespace {
         pin_definitions.push_back(pin_definition);
     }
 
-    return circuit.add_component_definition(
+    return circuit.connectivity().add_component_definition(
         ComponentDefinition{spec.name, std::move(pin_definitions), spec.properties, spec.source,
                             spec.schematic_symbols});
 }

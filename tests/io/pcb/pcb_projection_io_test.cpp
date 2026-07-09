@@ -33,15 +33,16 @@ struct ResistorCircuit {
 
 [[nodiscard]] ResistorCircuit make_resistor_circuit() {
     auto circuit = volt::Circuit{};
-    const auto first_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+    const auto first_pin_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto second_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.add_component_definition(
+    const auto second_pin_definition =
+        circuit.connectivity().add_pin_definition(volt::PinDefinition{
+            "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+            volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+            volt::ElectricalDriveKind::Passive});
+    const auto component_definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
@@ -49,20 +50,21 @@ struct ResistorCircuit {
         volt::queries::pin_by_definition(circuit, component, first_pin_definition).value();
     const auto second_pin =
         volt::queries::pin_by_definition(circuit, component, second_pin_definition).value();
-    const auto first_net = circuit.add_net(volt::Net{volt::NetName{"LEFT"}, volt::NetKind::Signal});
+    const auto first_net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"LEFT"}, volt::NetKind::Signal});
     const auto second_net =
-        circuit.add_net(volt::Net{volt::NetName{"RIGHT"}, volt::NetKind::Signal});
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"RIGHT"}, volt::NetKind::Signal});
 
     circuit.connect(first_net, first_pin);
     circuit.connect(second_net, second_pin);
-    circuit.select_physical_part(component,
-                                 volt::PhysicalPart{
-                                     volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                     volt::PackageRef{"0603"},
-                                     volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                     std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                                 volt::PinPadMapping{second_pin_definition, "2"}},
-                                 });
+    circuit.electrical().select_physical_part(
+        component, volt::PhysicalPart{
+                       volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                       volt::PackageRef{"0603"},
+                       volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                       std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                   volt::PinPadMapping{second_pin_definition, "2"}},
+                   });
 
     return ResistorCircuit{std::move(circuit),
                            component_definition,
@@ -846,7 +848,7 @@ TEST_CASE("PCB projection writer serializes emitted PCB visual placement diagnos
     auto fixture = make_resistor_circuit();
     const auto second_component = fixture.circuit.instantiate_component(
         fixture.component_definition, volt::ReferenceDesignator{"R2"});
-    fixture.circuit.select_physical_part(
+    fixture.circuit.electrical().select_physical_part(
         second_component,
         volt::PhysicalPart{volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
                            volt::PackageRef{"0603"},
@@ -943,7 +945,7 @@ TEST_CASE("PCB projection JSON orders emitted PCB visual diagnostics determinist
     auto fixture = make_resistor_circuit();
     const auto second_component = fixture.circuit.instantiate_component(
         fixture.component_definition, volt::ReferenceDesignator{"R2"});
-    fixture.circuit.select_physical_part(
+    fixture.circuit.electrical().select_physical_part(
         second_component,
         volt::PhysicalPart{volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
                            volt::PackageRef{"0603"},

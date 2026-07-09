@@ -19,34 +19,17 @@ include <volt/circuit/intent/design_intent.hpp>
 include <volt/circuit/parts/parts.hpp>
 include <volt/core/ids.hpp>
 
-[[nodiscard]] PinDefId add_pin_definition(PinDefinition definition)
-[[nodiscard]] ComponentDefId add_component_definition(ComponentDefinition definition)
-[[nodiscard]] ComponentId add_component(ComponentInstance component)
-[[nodiscard]] PinId add_pin(PinInstance pin)
-[[nodiscard]] NetId add_net(Net net)
-[[nodiscard]] ModuleDefId add_module_definition(ModuleDefinition definition)
-[[nodiscard]] TemplateNetDefId add_template_net(ModuleDefId module, TemplateNetDefinition net)
-[[nodiscard]] PortDefId add_port_definition(ModuleDefId module, PortDefinition port)
-[[nodiscard]] ModuleComponentId add_module_component(ModuleDefId module, ModuleComponentTemplate component)
-bool connect_module_pin(ModuleDefId module, TemplateNetDefId net, ModuleComponentId component, PinDefId pin)
+[[nodiscard]] ConnectivityMutator connectivity() noexcept
+[[nodiscard]] HierarchyMutator hierarchy() noexcept
+[[nodiscard]] ElectricalMutator electrical() noexcept
+[[nodiscard]] IntentMutator intent() noexcept
+[[nodiscard]] NetClassMutator net_classes() noexcept
 [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition, ModuleInstanceName name)
 [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port, NetId parent_net)
 [[nodiscard]] ModuleInstanceId restore_root_module_instance(ModuleDefId definition, ModuleInstanceName name, const std::vector<std::pair<TemplateNetDefId, NetId>> &origins, const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins = {})
 [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ReferenceDesignator reference, PropertyMap properties = {})
 bool connect(NetId net, PinId pin)
 bool disconnect(PinId pin)
-void set_component_property(ComponentId component, PropertyKey key, PropertyValue value)
-void set_component_electrical_attribute(ComponentId component, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value)
-void set_pin_definition_electrical_attribute(PinDefId pin_definition, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value)
-void select_physical_part(ComponentId component, PhysicalPart physical_part)
-void set_selected_part_electrical_attribute(ComponentId component, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value)
-void set_net_electrical_attribute(NetId net, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value)
-bool mark_intentional_stub_net(NetId net)
-bool mark_intentional_no_connect_pin(PinId pin)
-void set_component_dnp(ComponentId component, bool dnp)
-void set_component_selection_override(ComponentId component, bool override)
-[[nodiscard]] NetClassId add_net_class(NetClass net_class)
-bool assign_net_class(NetId net, NetClassId net_class)
 [[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part(ComponentId component) const
 [[nodiscard]] const ElectricalAttributeMap &component_electrical_attributes(ComponentId component) const
 [[nodiscard]] const ElectricalAttributeMap &pin_definition_electrical_attributes(PinDefId pin_definition) const

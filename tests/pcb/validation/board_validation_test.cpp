@@ -110,15 +110,16 @@ find_diagnostics(const volt::DiagnosticReport &report, const std::string &code) 
 make_placed_resistors(std::size_t count, volt::FootprintRef footprint = volt::FootprintRef{
                                              "passives", "R_0603_1608Metric"}) {
     auto circuit = volt::Circuit{};
-    const auto first_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+    const auto first_pin_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto second_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.add_component_definition(
+    const auto second_pin_definition =
+        circuit.connectivity().add_pin_definition(volt::PinDefinition{
+            "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+            volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+            volt::ElectricalDriveKind::Passive});
+    const auto component_definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
 
     auto components = std::vector<volt::ComponentId>{};
@@ -126,7 +127,7 @@ make_placed_resistors(std::size_t count, volt::FootprintRef footprint = volt::Fo
     for (std::size_t index = 0; index < count; ++index) {
         const auto component = circuit.instantiate_component(
             component_definition, volt::ReferenceDesignator{"R" + std::to_string(index + 1U)});
-        circuit.select_physical_part(
+        circuit.electrical().select_physical_part(
             component, volt::PhysicalPart{
                            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
                            volt::PackageRef{"0603"},
@@ -642,7 +643,7 @@ TEST_CASE(
     "Board visual validation uses shared default reference geometry for pad-only footprints") {
     const auto library = mixed_package_library();
     auto fixture = make_placed_resistors(2, square_package_ref());
-    fixture.circuit.select_physical_part(
+    fixture.circuit.electrical().select_physical_part(
         fixture.components[1],
         volt::PhysicalPart{
             volt::ManufacturerPart{"Volt", "PAD-ONLY"},

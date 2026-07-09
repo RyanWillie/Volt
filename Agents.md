@@ -45,6 +45,12 @@ Layer ownership is strict:
   Python-only EDA semantics that cannot be loaded, validated, serialized, or inspected by
   the kernel.
 
+`Circuit` root methods are reserved for root-owned or cross-subsystem mutations such as
+component/module instantiation, port binding, and pin/net connect-disconnect operations.
+Single-subsystem logical mutations belong on the borrow-only `Circuit` mutator facades
+(`connectivity()`, `hierarchy()`, `electrical()`, `intent()`, and `net_classes()`), not as
+new root `Circuit` methods.
+
 ## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**

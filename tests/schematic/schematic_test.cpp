@@ -168,9 +168,10 @@ TEST_CASE("Schematic stores professional primitives without changing logical con
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
     const auto vcc = add_net(circuit);
-    const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto gnd =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
     const auto no_connect_pin = volt::queries::pin_by_number(circuit, component, "2").value();
-    circuit.mark_intentional_no_connect_pin(no_connect_pin);
+    circuit.intent().mark_intentional_no_connect_pin(no_connect_pin);
 
     auto metadata = volt::SheetMetadata{
         "Power sheet",

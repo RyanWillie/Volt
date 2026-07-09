@@ -354,9 +354,10 @@ void LogicalCircuitReader::read_component_electrical_attributes(const nlohmann::
             ElectricalAttributeSpec{ElectricalAttributeName{name}, owner,
                                     ElectricalAttributeKind::DesignInput, attribute.dimension()};
         if (owner == ElectricalAttributeOwner::ComponentInstance) {
-            circuit_.set_component_electrical_attribute(component, spec, attribute);
+            circuit_.electrical().set_component_electrical_attribute(component, spec, attribute);
         } else if (owner == ElectricalAttributeOwner::SelectedPart) {
-            circuit_.set_selected_part_electrical_attribute(component, spec, attribute);
+            circuit_.electrical().set_selected_part_electrical_attribute(component, spec,
+                                                                         attribute);
         } else {
             throw KernelLogicError{ErrorCode::InvalidArgument,
                                    "Unsupported electrical attribute owner while reading"};
@@ -372,7 +373,7 @@ void LogicalCircuitReader::read_net_electrical_attributes(const nlohmann::json &
     require(it->is_object(), "Electrical attributes must be an object");
     for (const auto &[name, value] : it->items()) {
         const auto attribute = electrical_attribute_value(value);
-        circuit_.set_net_electrical_attribute(
+        circuit_.electrical().set_net_electrical_attribute(
             net,
             ElectricalAttributeSpec{ElectricalAttributeName{name}, ElectricalAttributeOwner::Net,
                                     ElectricalAttributeKind::DesignInput, attribute.dimension()},
@@ -389,7 +390,7 @@ void LogicalCircuitReader::read_pin_definition_electrical_attributes(const nlohm
     require(it->is_object(), "Electrical attributes must be an object");
     for (const auto &[name, value] : it->items()) {
         const auto attribute = electrical_attribute_value(value);
-        circuit_.set_pin_definition_electrical_attribute(
+        circuit_.electrical().set_pin_definition_electrical_attribute(
             pin_definition,
             ElectricalAttributeSpec{ElectricalAttributeName{name},
                                     ElectricalAttributeOwner::PinSpec,
@@ -442,7 +443,7 @@ void LogicalCircuitReader::read_pin_definitions() {
         const auto drive =
             electrical_drive_kind(optional_string_field(pin, "drive_kind", "Unspecified"));
         const auto polarity = electrical_polarity(optional_string_field(pin, "polarity", "None"));
-        const auto pin_definition_id = circuit_.add_pin_definition(
+        const auto pin_definition_id = circuit_.connectivity().add_pin_definition(
             PinDefinition{string_field(pin, "name"), string_field(pin, "number"), connection,
                           terminal, direction, signal_domain, drive, polarity});
         pin_def_ids_.emplace(id, pin_definition_id);
@@ -460,7 +461,7 @@ void LogicalCircuitReader::read_component_definitions() {
             pins.push_back(resolve(pin_def_ids_, pin.get<std::string>()));
         }
         component_def_ids_.emplace(
-            id, circuit_.add_component_definition(ComponentDefinition{
+            id, circuit_.connectivity().add_component_definition(ComponentDefinition{
                     string_field(definition, "name"), std::move(pins),
                     properties(field(definition, "properties")), definition_source(definition),
                     schematic_symbol_references(definition)}));
@@ -472,7 +473,7 @@ void LogicalCircuitReader::read_components() {
     for (const auto &component : array_field(document_, "components")) {
         const auto id = local_id<ComponentId>(component, seen);
         const auto definition = resolve(component_def_ids_, string_field(component, "definition"));
-        const auto component_id = circuit_.add_component(
+        const auto component_id = circuit_.connectivity().add_component(
             ComponentInstance{definition, ReferenceDesignator{string_field(component, "reference")},
                               properties(field(component, "properties"))});
         component_ids_.emplace(id, component_id);
@@ -495,7 +496,7 @@ void LogicalCircuitReader::read_pins() {
         require(std::find(definition_pins.begin(), definition_pins.end(), definition) !=
                     definition_pins.end(),
                 "Concrete pin definition is not part of its component definition");
-        pin_ids_.emplace(id, circuit_.add_pin(PinInstance{component, definition}));
+        pin_ids_.emplace(id, circuit_.connectivity().add_pin(PinInstance{component, definition}));
     }
 }
 
@@ -510,7 +511,7 @@ void LogicalCircuitReader::read_nets() {
             require(net.connect(resolve(pin_ids_, pin.get<std::string>())),
                     "Net contains a duplicate pin reference");
         }
-        const auto net_id = circuit_.add_net(std::move(net));
+        const auto net_id = circuit_.connectivity().add_net(std::move(net));
         net_ids_.emplace(id, net_id);
         read_net_electrical_attributes(net_object, net_id);
     }
@@ -610,7 +611,7 @@ void LogicalCircuitReader::read_net_classes() {
             net_class.set_default_for_net_kind(net_kind(default_kind->get<std::string>()));
         }
 
-        net_class_ids_.emplace(id, circuit_.add_net_class(std::move(net_class)));
+        net_class_ids_.emplace(id, circuit_.net_classes().add_net_class(std::move(net_class)));
     }
 
     const auto assignments = optional_array_field(*it, "net_assignments");
@@ -625,7 +626,7 @@ void LogicalCircuitReader::read_net_classes() {
         if (!seen_assignment_nets.insert(net).second) {
             throw KernelLogicError{ErrorCode::DuplicateName, "Duplicate net-class net assignment"};
         }
-        [[maybe_unused]] const auto changed = circuit_.assign_net_class(
+        [[maybe_unused]] const auto changed = circuit_.net_classes().assign_net_class(
             resolve(net_ids_, net), resolve(net_class_ids_, string_field(assignment, "net_class")));
     }
 }
@@ -645,7 +646,7 @@ void LogicalCircuitReader::read_design_intent() {
             throw KernelLogicError{ErrorCode::DuplicateName, "Duplicate stub-net design intent"};
         }
         [[maybe_unused]] const auto changed =
-            circuit_.mark_intentional_stub_net(resolve(net_ids_, id));
+            circuit_.intent().mark_intentional_stub_net(resolve(net_ids_, id));
     }
 
     auto seen_no_connect_pins = std::set<std::string>{};
@@ -657,7 +658,7 @@ void LogicalCircuitReader::read_design_intent() {
                                    "Duplicate no-connect pin design intent"};
         }
         [[maybe_unused]] const auto changed =
-            circuit_.mark_intentional_no_connect_pin(resolve(pin_ids_, id));
+            circuit_.intent().mark_intentional_no_connect_pin(resolve(pin_ids_, id));
     }
 
     const auto component_assembly = optional_array_field(*it, "component_assembly");
@@ -682,9 +683,10 @@ void LogicalCircuitReader::read_design_intent() {
                 "Component assembly intent must include DNP or selection override intent");
         const auto component = resolve(component_ids_, component_id);
         if (dnp != intent.end()) {
-            circuit_.set_component_dnp(component, dnp->get<bool>());
+            circuit_.intent().set_component_dnp(component, dnp->get<bool>());
         }
-        circuit_.set_component_selection_override(component, selection_override.get<bool>());
+        circuit_.intent().set_component_selection_override(component,
+                                                           selection_override.get<bool>());
     }
 }
 
@@ -700,13 +702,13 @@ void LogicalCircuitReader::read_module_definitions() {
     auto seen_ports = std::set<std::string>{};
     for (const auto &module_object : *modules) {
         const auto id = local_id<ModuleDefId>(module_object, seen);
-        const auto module = circuit_.add_module_definition(
+        const auto module = circuit_.hierarchy().add_module_definition(
             ModuleDefinition{ModuleName{string_field(module_object, "name")}});
         module_def_ids_.emplace(id, module);
 
         for (const auto &net_object : array_field(module_object, "local_nets")) {
             const auto net_id = local_id<TemplateNetDefId>(net_object, seen_template_nets);
-            const auto template_net = circuit_.add_template_net(
+            const auto template_net = circuit_.hierarchy().add_template_net(
                 module, TemplateNetDefinition{NetName{string_field(net_object, "name")},
                                               net_kind(string_field(net_object, "kind"))});
             template_net_ids_.emplace(net_id, template_net);
@@ -716,7 +718,7 @@ void LogicalCircuitReader::read_module_definitions() {
             for (const auto &component_object : *components) {
                 const auto component_id =
                     local_id<ModuleComponentId>(component_object, seen_module_components);
-                const auto component = circuit_.add_module_component(
+                const auto component = circuit_.hierarchy().add_module_component(
                     module,
                     ModuleComponentTemplate{
                         resolve(component_def_ids_, string_field(component_object, "definition")),
@@ -728,7 +730,7 @@ void LogicalCircuitReader::read_module_definitions() {
 
         if (const auto connections = optional_array_field(module_object, "connections")) {
             for (const auto &connection_object : *connections) {
-                [[maybe_unused]] const auto changed = circuit_.connect_module_pin(
+                [[maybe_unused]] const auto changed = circuit_.hierarchy().connect_module_pin(
                     module, resolve(template_net_ids_, string_field(connection_object, "net")),
                     resolve(module_component_ids_, string_field(connection_object, "component")),
                     resolve(pin_def_ids_, string_field(connection_object, "pin")));
@@ -745,7 +747,7 @@ void LogicalCircuitReader::read_module_definitions() {
                 require(required_it->is_boolean(), "Expected boolean field: required");
                 required = required_it->get<bool>();
             }
-            const auto port = circuit_.add_port_definition(
+            const auto port = circuit_.hierarchy().add_port_definition(
                 module,
                 PortDefinition{PortName{string_field(port_object, "name")}, internal_net,
                                port_role(optional_string_field(port_object, "role", "Passive")),
@@ -859,7 +861,7 @@ LogicalCircuitReader::infer_component_origins(ModuleDefId definition,
 void LogicalCircuitReader::read_selected_physical_parts() {
     for (const auto &[component_id, part] : selected_parts_) {
         const auto component = resolve(component_ids_, component_id);
-        circuit_.select_physical_part(component, physical_part(part));
+        circuit_.electrical().select_physical_part(component, physical_part(part));
         read_component_electrical_attributes(part, component,
                                              ElectricalAttributeOwner::SelectedPart);
     }

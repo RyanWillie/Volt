@@ -49,6 +49,29 @@ PRIVILEGED_FRIEND_ALLOWLIST = {
     ): "BoardRouter mirrors an accepted board mutation into its private runtime spatial index.",
 }
 
+CIRCUIT_MUTATOR_PUBLIC_API_SNAPSHOTS = {
+    "circuit_connectivity_mutator": (
+        "ConnectivityMutator",
+        ROOT / "include" / "volt" / "circuit" / "circuit.hpp",
+    ),
+    "circuit_hierarchy_mutator": (
+        "HierarchyMutator",
+        ROOT / "include" / "volt" / "circuit" / "circuit.hpp",
+    ),
+    "circuit_electrical_mutator": (
+        "ElectricalMutator",
+        ROOT / "include" / "volt" / "circuit" / "circuit.hpp",
+    ),
+    "circuit_intent_mutator": (
+        "IntentMutator",
+        ROOT / "include" / "volt" / "circuit" / "circuit.hpp",
+    ),
+    "circuit_net_class_mutator": (
+        "NetClassMutator",
+        ROOT / "include" / "volt" / "circuit" / "circuit.hpp",
+    ),
+}
+
 PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {}
 
 ENTITY_REF_KERNEL_ALLOWLIST = {
@@ -472,6 +495,44 @@ def access_sections(body: str) -> list[tuple[str, str]]:
     return sections
 
 
+def strip_nested_type_definitions(section: str) -> str:
+    output = list(section)
+    pattern = re.compile(r"\b(?:class|struct)\s+[A-Za-z_]\w*\b")
+    index = 0
+    while True:
+        match = pattern.search(section, index)
+        if match is None:
+            break
+
+        brace = section.find("{", match.end())
+        semicolon = section.find(";", match.end())
+        if brace == -1 or (semicolon != -1 and semicolon < brace):
+            index = match.end()
+            continue
+
+        depth = 1
+        cursor = brace + 1
+        while cursor < len(section) and depth > 0:
+            if section[cursor] == "{":
+                depth += 1
+            elif section[cursor] == "}":
+                depth -= 1
+            cursor += 1
+        if depth != 0:
+            index = match.end()
+            continue
+        while cursor < len(section) and section[cursor].isspace():
+            cursor += 1
+        if cursor < len(section) and section[cursor] == ";":
+            cursor += 1
+
+        for replace_index in range(match.start(), cursor):
+            output[replace_index] = "\n" if section[replace_index] == "\n" else " "
+        index = cursor
+
+    return "".join(output)
+
+
 def normalize_declaration(declaration: str) -> str:
     declaration = re.sub(r"\{.*\}\s*$", "", declaration, flags=re.DOTALL)
     declaration = declaration.rstrip(";")
@@ -547,7 +608,7 @@ def declarations_from_accesses(body: str, access_names: set[str]) -> list[str]:
     for access, section in access_sections(body):
         if access not in access_names:
             continue
-        for chunk in declaration_chunks(section):
+        for chunk in declaration_chunks(strip_nested_type_definitions(section)):
             if "(" not in chunk or ")" not in chunk:
                 continue
             name = declaration_function_name(chunk)
@@ -890,8 +951,13 @@ def check_privileged_friends_are_allowlisted(failures: list[str]) -> None:
 
 
 def check_public_api_snapshots(failures: list[str]) -> None:
-    for class_name, header_path in ROOT_TYPES.items():
-        allowlist = ALLOWLIST_DIR / f"{class_name.lower()}_public_api.txt"
+    snapshots = {
+        **{class_name.lower(): (class_name, header_path)
+           for class_name, header_path in ROOT_TYPES.items()},
+        **CIRCUIT_MUTATOR_PUBLIC_API_SNAPSHOTS,
+    }
+    for snapshot_name, (class_name, header_path) in snapshots.items():
+        allowlist = ALLOWLIST_DIR / f"{snapshot_name}_public_api.txt"
         if not allowlist.exists():
             fail(f"{relative(allowlist)} is missing", failures)
             continue
@@ -1224,6 +1290,28 @@ def run_self_tests() -> int:
         public_declarations_from_header("SampleModel", forward_decl_sample)
         == ["int read_value() const"],
         "public API parser must ignore forward declarations before the real class body",
+    )
+    nested_public_sample = textwrap.dedent(
+        """
+        class SampleRoot {
+          public:
+            class Mutator {
+              public:
+                void mutate();
+            };
+
+            int read_value() const;
+        };
+        """
+    )
+    require_self_test(
+        public_declarations_from_header("SampleRoot", nested_public_sample)
+        == ["int read_value() const"],
+        "public API parser must ignore nested facade methods in the root surface",
+    )
+    require_self_test(
+        public_declarations_from_header("Mutator", nested_public_sample) == ["void mutate()"],
+        "nested facade methods must remain observable for dedicated facade snapshots",
     )
     # public_or_protected_declarations reads from disk, so exercise the parser directly instead.
     sample_body = class_body(strip_comments(submodel_mutator_sample), "SampleModel")

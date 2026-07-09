@@ -99,11 +99,11 @@ TEST_CASE("Real-board foundation supports selective diagnostic assertions") {
 
 TEST_CASE("Real-board ERC matrix covers hierarchy and module-port boundaries") {
     auto fixture = make_real_board_fixture();
-    const auto module = fixture.circuit.add_module_definition(
+    const auto module = fixture.circuit.hierarchy().add_module_definition(
         volt::ModuleDefinition{volt::ModuleName{"RemoteSensorBlock"}});
-    const auto template_power = fixture.circuit.add_template_net(
+    const auto template_power = fixture.circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VCC"}, volt::NetKind::Power});
-    const auto port = fixture.circuit.add_port_definition(
+    const auto port = fixture.circuit.hierarchy().add_port_definition(
         module,
         volt::PortDefinition{volt::PortName{"VCC"}, template_power, volt::PortRole::PowerInput});
     const auto instance =
@@ -155,8 +155,8 @@ TEST_CASE("Real-board PCB readiness matrix covers mapping and unplaced-pad bound
             volt::ElectricalSignalDomain::Unspecified, volt::ElectricalDriveKind::Passive);
         select_testpoint(fixture.circuit, first.component, first.definition, "TP-1MM-A");
         select_testpoint(fixture.circuit, second.component, second.definition, "TP-1MM-B");
-        const auto debug_net =
-            fixture.circuit.add_net(volt::Net{volt::NetName{"DEBUG_PAIR"}, volt::NetKind::Signal});
+        const auto debug_net = fixture.circuit.connectivity().add_net(
+            volt::Net{volt::NetName{"DEBUG_PAIR"}, volt::NetKind::Signal});
         fixture.circuit.connect(debug_net, first.pin);
         fixture.circuit.connect(debug_net, second.pin);
         const auto layout = make_real_board_layout(fixture);

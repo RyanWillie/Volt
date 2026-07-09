@@ -17,15 +17,15 @@
 namespace {
 
 volt::ComponentId add_resistor(volt::Circuit &circuit) {
-    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto definition = circuit.add_component_definition(
+    const auto definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
     return circuit.instantiate_component(definition, volt::ReferenceDesignator{"R1"});
 }
@@ -35,7 +35,8 @@ volt::ComponentId add_resistor(volt::Circuit &circuit) {
 TEST_CASE("Schematic JSON round-trips deterministically") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
     auto schematic = volt::Schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -58,7 +59,7 @@ TEST_CASE("Schematic JSON round-trips deterministically") {
     [[maybe_unused]] const auto port = schematic.add_power_port(
         sheet, volt::PowerPort{net, volt::PowerPortKind::Power, volt::Point{20.0, 12.0}});
     const auto no_connect_pin = volt::queries::pin_by_number(circuit, component, "2").value();
-    circuit.mark_intentional_no_connect_pin(no_connect_pin);
+    circuit.intent().mark_intentional_no_connect_pin(no_connect_pin);
     [[maybe_unused]] const auto marker = schematic.add_no_connect_marker(
         sheet, volt::NoConnectMarker{no_connect_pin, volt::Point{64.0, 20.0}});
     [[maybe_unused]] const auto sheet_port = schematic.add_sheet_port(
@@ -105,7 +106,8 @@ TEST_CASE("Schematic JSON round-trips terminal lead line roles") {
 TEST_CASE("Schematic document round-trips as a project artifact") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
     auto document = volt::SchematicDocument{circuit};
     auto &schematic = document.schematic();

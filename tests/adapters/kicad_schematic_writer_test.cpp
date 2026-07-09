@@ -35,22 +35,22 @@ volt::SymbolDefinition make_resistor_symbol() {
 }
 
 volt::ComponentId add_resistor(volt::Circuit &circuit) {
-    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto definition = circuit.add_component_definition(
+    const auto definition = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
     const auto component =
         circuit.instantiate_component(definition, volt::ReferenceDesignator{"R1"});
-    circuit.set_component_property(component, volt::PropertyKey{"Value"},
-                                   volt::PropertyValue{"10k"});
-    circuit.set_component_property(component, volt::PropertyKey{"tolerance"},
-                                   volt::PropertyValue{"1%"});
+    circuit.connectivity().set_component_property(component, volt::PropertyKey{"Value"},
+                                                  volt::PropertyValue{"10k"});
+    circuit.connectivity().set_component_property(component, volt::PropertyKey{"tolerance"},
+                                                  volt::PropertyValue{"1%"});
     return component;
 }
 
@@ -74,7 +74,8 @@ volt::Schematic make_flat_schematic(const volt::Circuit &circuit, volt::Componen
 TEST_CASE("KiCad schematic writer exports a deterministic flat schematic subset") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
     const auto schematic = make_flat_schematic(circuit, component, net);
 
     const auto result = volt::adapters::kicad::write_flat_schematic(schematic);
@@ -87,7 +88,8 @@ TEST_CASE("KiCad schematic writer exports a deterministic flat schematic subset"
 TEST_CASE("KiCad schematic writer reports unsupported out-of-subset constructs") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
     auto schematic = make_flat_schematic(circuit, component, net);
     [[maybe_unused]] const auto extra_sheet = schematic.add_sheet(volt::Sheet{"Second"});
 
@@ -112,8 +114,8 @@ TEST_CASE("KiCad schematic writer reports unsupported out-of-subset constructs")
 TEST_CASE("KiCad schematic writer preserves canonical net label names") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto net =
-        circuit.add_net(volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
+    const auto net = circuit.connectivity().add_net(
+        volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
     auto schematic = make_flat_schematic(circuit, component, net);
     [[maybe_unused]] const auto label = schematic.add_net_label(
         volt::SheetId{0},
@@ -129,9 +131,11 @@ TEST_CASE("KiCad schematic writer preserves canonical net label names") {
 TEST_CASE("KiCad schematic writer rejects non-finite numeric property values") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    circuit.set_component_property(component, volt::PropertyKey{"Value"},
-                                   volt::PropertyValue{std::numeric_limits<double>::infinity()});
-    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    circuit.connectivity().set_component_property(
+        component, volt::PropertyKey{"Value"},
+        volt::PropertyValue{std::numeric_limits<double>::infinity()});
+    const auto net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
     const auto schematic = make_flat_schematic(circuit, component, net);
 
     CHECK_THROWS_AS(volt::adapters::kicad::write_flat_schematic(schematic), std::invalid_argument);

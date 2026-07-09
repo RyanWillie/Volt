@@ -13,14 +13,15 @@ namespace {
 template <typename Model>
 concept CanAddModuleComponent =
     requires(Model model, volt::ModuleDefId module, volt::ModuleComponentTemplate component) {
-        model.add_module_component(module, component);
+        model.hierarchy().add_module_component(module, component);
     };
 
 template <typename Model>
 concept CanConnectModulePin =
     requires(Model model, volt::ModuleDefId module, volt::TemplateNetDefId net,
-             volt::ModuleComponentId component,
-             volt::PinDefId pin) { model.connect_module_pin(module, net, component, pin); };
+             volt::ModuleComponentId component, volt::PinDefId pin) {
+        model.hierarchy().connect_module_pin(module, net, component, pin);
+    };
 
 template <typename Model>
 concept CanRestoreRootModuleInstance = requires(
@@ -66,11 +67,11 @@ struct HierarchyFixture {
 
 HierarchyFixture make_hierarchy_fixture() {
     auto circuit = volt::Circuit{};
-    const auto module =
-        circuit.add_module_definition(volt::ModuleDefinition{volt::ModuleName{"Divider"}});
-    const auto input = circuit.add_template_net(
+    const auto module = circuit.hierarchy().add_module_definition(
+        volt::ModuleDefinition{volt::ModuleName{"Divider"}});
+    const auto input = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
-    const auto output = circuit.add_template_net(
+    const auto output = circuit.hierarchy().add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
     return HierarchyFixture{std::move(circuit), module, input, output};
 }
@@ -79,7 +80,7 @@ HierarchyFixture make_hierarchy_fixture() {
 
 TEST_CASE("HierarchyModel stores module definitions and local child entities deterministically") {
     auto fixture = make_hierarchy_fixture();
-    const auto port = fixture.circuit.add_port_definition(
+    const auto port = fixture.circuit.hierarchy().add_port_definition(
         fixture.module,
         volt::PortDefinition{volt::PortName{"IN"}, fixture.input, volt::PortRole::Input});
     const auto &model = fixture.circuit.hierarchy_model();
@@ -96,17 +97,17 @@ TEST_CASE("HierarchyModel stores module definitions and local child entities det
 TEST_CASE("HierarchyModel rejects duplicate names within local hierarchy scopes") {
     auto fixture = make_hierarchy_fixture();
 
-    CHECK_THROWS_AS(
-        fixture.circuit.add_module_definition(volt::ModuleDefinition{volt::ModuleName{"Divider"}}),
-        std::logic_error);
-    CHECK_THROWS_AS(fixture.circuit.add_template_net(
+    CHECK_THROWS_AS(fixture.circuit.hierarchy().add_module_definition(
+                        volt::ModuleDefinition{volt::ModuleName{"Divider"}}),
+                    std::logic_error);
+    CHECK_THROWS_AS(fixture.circuit.hierarchy().add_template_net(
                         fixture.module,
                         volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal}),
                     std::logic_error);
-    [[maybe_unused]] const auto port = fixture.circuit.add_port_definition(
+    [[maybe_unused]] const auto port = fixture.circuit.hierarchy().add_port_definition(
         fixture.module,
         volt::PortDefinition{volt::PortName{"IN"}, fixture.input, volt::PortRole::Input});
-    CHECK_THROWS_AS(fixture.circuit.add_port_definition(
+    CHECK_THROWS_AS(fixture.circuit.hierarchy().add_port_definition(
                         fixture.module, volt::PortDefinition{volt::PortName{"IN"}, fixture.input,
                                                              volt::PortRole::Input}),
                     std::logic_error);
@@ -114,12 +115,12 @@ TEST_CASE("HierarchyModel rejects duplicate names within local hierarchy scopes"
 
 TEST_CASE("HierarchyModel rejects local child entities outside their owning module") {
     auto fixture = make_hierarchy_fixture();
-    const auto other_module =
-        fixture.circuit.add_module_definition(volt::ModuleDefinition{volt::ModuleName{"Other"}});
-    const auto other_net = fixture.circuit.add_template_net(
+    const auto other_module = fixture.circuit.hierarchy().add_module_definition(
+        volt::ModuleDefinition{volt::ModuleName{"Other"}});
+    const auto other_net = fixture.circuit.hierarchy().add_template_net(
         other_module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
 
-    CHECK_THROWS_AS(fixture.circuit.add_port_definition(
+    CHECK_THROWS_AS(fixture.circuit.hierarchy().add_port_definition(
                         fixture.module, volt::PortDefinition{volt::PortName{"BAD"}, other_net}),
                     std::logic_error);
 }

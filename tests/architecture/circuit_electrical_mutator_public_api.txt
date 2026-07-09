@@ -1,0 +1,31 @@
+include <algorithm>
+include <cstddef>
+include <memory>
+include <optional>
+include <stdexcept>
+include <string_view>
+include <utility>
+include <vector>
+include <volt/circuit/connectivity/connectivity_model.hpp>
+include <volt/circuit/connectivity/definitions.hpp>
+include <volt/circuit/connectivity/instances.hpp>
+include <volt/circuit/connectivity/nets.hpp>
+include <volt/circuit/constraints/net_classes.hpp>
+include <volt/circuit/detail/subsystem_storage.hpp>
+include <volt/circuit/electrical/electrical_model.hpp>
+include <volt/circuit/hierarchy/hierarchy.hpp>
+include <volt/circuit/hierarchy/hierarchy_model.hpp>
+include <volt/circuit/intent/design_intent.hpp>
+include <volt/circuit/parts/parts.hpp>
+include <volt/core/ids.hpp>
+
+ElectricalMutator(Circuit &circuit, MutatorKey) noexcept
+ElectricalMutator(const ElectricalMutator &) = delete
+ElectricalMutator(ElectricalMutator &&) = delete
+ElectricalMutator &operator=(const ElectricalMutator &) = delete
+ElectricalMutator &operator=(ElectricalMutator &&) = delete
+void set_component_electrical_attribute(ComponentId component, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value)
+void set_pin_definition_electrical_attribute(PinDefId pin_definition, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value)
+void set_net_electrical_attribute(NetId net, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value)
+void select_physical_part(ComponentId component, PhysicalPart physical_part)
+void set_selected_part_electrical_attribute(ComponentId component, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value)

@@ -5,12 +5,14 @@
 namespace volt::python {
 
 std::size_t PyCircuit::define_module(const std::string &name) {
-    return circuit_.add_module_definition(volt::ModuleDefinition{volt::ModuleName{name}}).index();
+    return circuit_.hierarchy()
+        .add_module_definition(volt::ModuleDefinition{volt::ModuleName{name}})
+        .index();
 }
 
 std::size_t PyCircuit::add_template_net(std::size_t module, const std::string &name,
                                         const std::string &kind) {
-    return circuit_
+    return circuit_.hierarchy()
         .add_template_net(module_def_id(module),
                           volt::TemplateNetDefinition{volt::NetName{name}, parse_net_kind(kind)})
         .index();
@@ -18,7 +20,7 @@ std::size_t PyCircuit::add_template_net(std::size_t module, const std::string &n
 
 std::size_t PyCircuit::add_port(std::size_t module, const std::string &name,
                                 std::size_t internal_net, const std::string &role, bool required) {
-    return circuit_
+    return circuit_.hierarchy()
         .add_port_definition(module_def_id(module),
                              volt::PortDefinition{volt::PortName{name},
                                                   template_net_def_id(internal_net),
@@ -29,7 +31,7 @@ std::size_t PyCircuit::add_port(std::size_t module, const std::string &name,
 std::size_t PyCircuit::add_module_component(std::size_t module, std::size_t definition,
                                             const std::string &reference,
                                             const py::dict &properties) {
-    return circuit_
+    return circuit_.hierarchy()
         .add_module_component(module_def_id(module),
                               volt::ModuleComponentTemplate{component_def_id(definition),
                                                             volt::ReferenceDesignator{reference},
@@ -82,8 +84,8 @@ py::list PyCircuit::module_component_pin_refs(std::size_t component) const {
 
 void PyCircuit::connect_module_pin(std::size_t module, std::size_t net, std::size_t component,
                                    std::size_t pin) {
-    circuit_.connect_module_pin(module_def_id(module), template_net_def_id(net),
-                                module_component_id(component), volt::PinDefId{pin});
+    circuit_.hierarchy().connect_module_pin(module_def_id(module), template_net_def_id(net),
+                                            module_component_id(component), volt::PinDefId{pin});
 }
 
 std::size_t PyCircuit::instantiate_root_module(std::size_t definition, const std::string &name) {
