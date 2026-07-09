@@ -56,6 +56,7 @@ class Circuit {
      */
     class ConnectivityMutator {
       public:
+        /** Constructed only by Circuit::connectivity(); callers obtain this facade by value. */
         ConnectivityMutator(Circuit &circuit, MutatorKey) noexcept;
 
         ConnectivityMutator(const ConnectivityMutator &) = delete;
@@ -93,6 +94,7 @@ class Circuit {
      */
     class HierarchyMutator {
       public:
+        /** Constructed only by Circuit::hierarchy(); callers obtain this facade by value. */
         HierarchyMutator(Circuit &circuit, MutatorKey) noexcept;
 
         HierarchyMutator(const HierarchyMutator &) = delete;
@@ -130,6 +132,7 @@ class Circuit {
      */
     class ElectricalMutator {
       public:
+        /** Constructed only by Circuit::electrical(); callers obtain this facade by value. */
         ElectricalMutator(Circuit &circuit, MutatorKey) noexcept;
 
         ElectricalMutator(const ElectricalMutator &) = delete;
@@ -171,6 +174,7 @@ class Circuit {
      */
     class IntentMutator {
       public:
+        /** Constructed only by Circuit::intent(); callers obtain this facade by value. */
         IntentMutator(Circuit &circuit, MutatorKey) noexcept;
 
         IntentMutator(const IntentMutator &) = delete;
@@ -202,6 +206,7 @@ class Circuit {
      */
     class NetClassMutator {
       public:
+        /** Constructed only by Circuit::net_classes(); callers obtain this facade by value. */
         NetClassMutator(Circuit &circuit, MutatorKey) noexcept;
 
         NetClassMutator(const NetClassMutator &) = delete;
