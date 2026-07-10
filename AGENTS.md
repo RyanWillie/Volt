@@ -125,10 +125,15 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 GitHub Issues is the source of truth for planned work.
 
-The maintainer-curated delivery queue is exactly the set of open issues carrying the
-`roadmap` label. Unlabelled issues are public intake, not approved roadmap work. Agents
-must not select, prioritize, start, or dispatch work from an unlabelled issue unless the
-maintainer explicitly directs them to do so.
+The `roadmap` label admits an open issue to the maintainer-approved backlog. It does not
+by itself make the issue ready for execution. Unlabelled issues are public intake, not
+approved roadmap work.
+
+Agents may autonomously select, prioritize, start, or dispatch only open issues that
+carry both `roadmap` and `ready` and have no open native GitHub blockers. An issue with
+only `roadmap`, or with an uncleared blocked-by relationship, stays in refinement. The
+maintainer may explicitly direct work on a named issue as an override; agents must not
+infer that override or change issue metadata unless directed.
 
 Applying `roadmap` is an admission decision reserved for the maintainer or an agent
 explicitly acting on the maintainer's behalf. Do not use Linear or Pebble (`pb`) for

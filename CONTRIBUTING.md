@@ -79,14 +79,19 @@ errors.
 
 ## Issue Workflow
 
-Anyone may submit a GitHub issue, but submission does not schedule work. Volt's planned
-delivery queue is exactly the set of open issues carrying the maintainer-controlled
-`roadmap` label.
+Anyone may submit a GitHub issue, but submission does not schedule work. Open issues
+carrying the maintainer-controlled `roadmap` label form Volt's approved backlog; that
+label alone does not make an issue ready to start.
 
-Before starting non-trivial planned work:
+Unless the maintainer explicitly directs work on a named issue, an agent may
+autonomously select or start non-trivial planned work only when the issue is open,
+carries both `roadmap` and `ready`, and has no open native GitHub blockers.
 
-- Confirm that the GitHub issue has the `roadmap` label and read its acceptance criteria.
-- Check its native parent/sub-issue and blocked-by/blocking relationships.
+Before starting that work:
+
+- Confirm the issue has both `roadmap` and `ready`, then read its acceptance criteria.
+- Check its native parent/sub-issue and blocked-by/blocking relationships and confirm no
+  open blockers remain before dispatch.
 - Create a focused branch that includes the GitHub issue number, such as
   `feat/234-short-description` or `fix/234-short-description`.
 - Keep the issue and pull request state current while work is in progress.
@@ -95,7 +100,9 @@ Before starting non-trivial planned work:
 
 Contributors may propose work without having it automatically admitted to the roadmap.
 Only the maintainer, or an agent explicitly acting on the maintainer's behalf, applies
-`roadmap`. Unlabelled issues are public intake and must not be selected as planned work.
+`roadmap`. Unlabelled issues are public intake; `roadmap` issues without `ready`, or with
+open blockers, remain in refinement. Explicit maintainer direction is the only override
+to this autonomous dispatch gate.
 
 When finished, record what changed, what was verified, and any follow-up work on the
 pull request or GitHub issue.
