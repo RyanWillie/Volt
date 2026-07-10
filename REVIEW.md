@@ -212,7 +212,7 @@ Flag PRs that:
   kernel model and validation path exist.
 - Add speculative extension points without a current caller.
 - Make a large refactor without a clear acceptance criterion and verification path.
-- Solve a Linear issue in a way that conflicts with documented architecture or roadmap
+- Solve a GitHub issue in a way that conflicts with documented architecture or roadmap
   direction.
 - Mix unrelated feature, refactor, formatting, and documentation changes in one PR.
 

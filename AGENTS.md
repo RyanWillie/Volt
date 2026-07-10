@@ -123,9 +123,18 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Issue Tracking
 
-This project uses Linear for issue tracking, backlog refinement, sprint planning, and
-status updates.
+GitHub Issues is the source of truth for planned work.
 
-Use Linear as the source of truth for current backlog state. Do not use Pebble (`pb`) for
-active planning or refinement unless the user explicitly asks for historical local issue
-data.
+The `roadmap` label admits an open issue to the maintainer-approved backlog. It does not
+by itself make the issue ready for execution. Unlabelled issues are public intake, not
+approved roadmap work.
+
+Agents may autonomously select, prioritize, start, or dispatch only open issues that
+carry both `roadmap` and `ready` and have no open native GitHub blockers. An issue with
+only `roadmap`, or with an uncleared blocked-by relationship, stays in refinement. The
+maintainer may explicitly direct work on a named issue as an override; agents must not
+infer that override or change issue metadata unless directed.
+
+Applying `roadmap` is an admission decision reserved for the maintainer or an agent
+explicitly acting on the maintainer's behalf. Do not use Linear or Pebble (`pb`) for
+active planning.

@@ -179,7 +179,7 @@
   <main>
     <header>
       <h1>Codex Scrum for Volt</h1>
-      <p class="lede">A lightweight operating model for using Codex as a Scrum system around Linear, GitHub, and repo-local skills. The model instantiates Product Owner, Developer/Tech Lead, and Scrum Master responsibilities on demand while keeping durable state in Linear, GitHub, docs, and skills.</p>
+      <p class="lede">A lightweight operating model for using Codex as a Scrum system around GitHub Issues, GitHub Projects, pull requests, and repo-local skills. The model instantiates Product Owner, Developer/Tech Lead, and Scrum Master responsibilities on demand while keeping durable state in GitHub, docs, and skills.</p>
     </header>
 
     <section>
@@ -220,15 +220,15 @@
       <div class="flow">
         <article class="step">
           <h3>Backlog Refinement</h3>
-          <p>Use <code>volt-backlog-refinement</code>. Codex reads Linear, docs, recent PRs, and architecture notes. The PO clarifies value and priority. The Developer tightens technical shape. The Scrum Master produces ready/not-ready outcomes and proposed Linear edits.</p>
+          <p>Review open GitHub issues carrying <code>roadmap</code>. For each candidate, read the acceptance criteria, native parent/sub-issue and blocked-by/blocking relationships, relevant docs, and recent PRs. Clarify value and technical shape, then record the ready/not-ready outcome in the issue or Project. <code>roadmap</code> admits work to the backlog; apply <code>ready</code> only when the Definition of Ready is met and native blockers are clear.</p>
         </article>
         <article class="step">
           <h3>Sprint Planning</h3>
-          <p>Use <code>volt-sprint-planning</code>. Codex selects a coherent sprint goal and candidate tickets, checks dependencies, and defines branch strategy, expected verification, and capacity risks.</p>
+          <p>Query open issues carrying both <code>roadmap</code> and <code>ready</code>, then exclude any issue with an open native blocker. Select a coherent sprint goal and candidate tickets, check dependencies, and record branch strategy, expected verification, and capacity risks in the existing issues or Project.</p>
         </article>
         <article class="step">
           <h3>Sprint Kickoff</h3>
-          <p>Use <code>volt-sprint-kickoff</code>. Codex creates isolated branches or worktrees, dispatches developer agents only for independent work, and keeps Linear and GitHub state synchronized.</p>
+          <p>Immediately before kickoff, recheck that every issue is open, carries both <code>roadmap</code> and <code>ready</code>, and has no open native blockers. Create isolated branches or worktrees, dispatch developer agents only for independent work, link each branch and pull request to its issue, and keep the existing Project state synchronized.</p>
         </article>
         <article class="step">
           <h3>PR Thermonuclear Review</h3>
@@ -236,11 +236,11 @@
         </article>
         <article class="step">
           <h3>Sprint Review</h3>
-          <p>Use <code>volt-sprint-review</code>. Codex summarizes what shipped, what changed architecturally, open PR or CI state, unfinished work, and the resulting product capability.</p>
+          <p>Read the merged pull requests and linked GitHub issues for the sprint. Summarize what shipped, what changed architecturally, open PR or CI state, unfinished work, and the resulting product capability; then record any authorized status or follow-up updates in the existing issues or Project.</p>
         </article>
         <article class="step">
           <h3>Retrospective</h3>
-          <p>Use <code>volt-retrospective</code>. Codex reviews tickets, PRs, CI, and conversation friction. It proposes updates to skills, AGENTS.md, docs, or ceremony checklists when the same problem repeats.</p>
+          <p>Review the sprint's GitHub issues, pull requests, CI results, and conversation friction. Record concrete follow-up actions in GitHub Issues or repository docs, and update AGENTS.md, skills, or ceremony guidance only when evidence shows the same problem is repeating.</p>
         </article>
       </div>
     </section>
@@ -260,22 +260,22 @@
         </article>
         <article class="panel role tech">
           <h3>Definition of Ready</h3>
-          <p>A ticket is ready when it can enter a sprint without hidden product decisions or undefined technical ownership. Not-ready work stays in refinement, even if it is important.</p>
+          <p>The <code>ready</code> label means a <code>roadmap</code> issue can enter a sprint without hidden product decisions, undefined technical ownership, or open native blockers. Not-ready work stays in refinement, even if it is important.</p>
           <ul>
             <li>Value, priority, and sprint-goal fit are clear.</li>
             <li>Acceptance criteria and non-goals are testable.</li>
-            <li>Dependencies and blockers are named.</li>
+            <li>Dependencies are named and native blocked-by relationships are cleared.</li>
             <li>Scope is small enough for one PR or an explicit sequence.</li>
           </ul>
         </article>
         <article class="panel role scrum">
           <h3>Definition of Done</h3>
-          <p>Done means the increment is usable, reviewed, and traceable. A merged PR alone is not enough if acceptance, verification, Linear hygiene, or follow-up capture is missing.</p>
+          <p>Done means the increment is usable, reviewed, and traceable. A merged PR alone is not enough if acceptance, verification, GitHub issue hygiene, or follow-up capture is missing.</p>
           <ul>
             <li>Acceptance criteria are met and out-of-scope work is captured separately.</li>
             <li>Volt architecture boundaries and kernel-owned semantics are preserved.</li>
             <li>Relevant tests, docs, local checks, and CI are passing or explicitly waived.</li>
-            <li>PR, thermonuclear review comment, author resolution evidence, Linear status, and follow-up tickets are complete.</li>
+            <li>PR, thermonuclear review comment, author resolution evidence, GitHub issue status, and follow-up issues are complete.</li>
           </ul>
         </article>
       </div>
@@ -286,11 +286,11 @@
       <div class="commands">
         <article class="panel command">
           <h3>Refine</h3>
-          <p><code>Run Volt backlog refinement for VOL-7.</code></p>
+          <p><code>Run Volt backlog refinement for GitHub #234.</code></p>
         </article>
         <article class="panel command">
           <h3>Plan</h3>
-          <p><code>Plan the next Volt sprint from ready tickets under VOL-7.</code></p>
+          <p><code>Plan the next Volt sprint from open issues labelled roadmap and ready with no open blockers.</code></p>
         </article>
         <article class="panel command">
           <h3>Kick Off</h3>
@@ -311,7 +311,8 @@
       <h2>Guardrails</h2>
       <article class="panel warning">
         <p>The Product Owner does not decide architecture. The Developer does not reorder product priorities without explaining the technical constraint. The Scrum Master does not invent product scope. Codex may orchestrate all three roles, but every output must preserve these boundaries.</p>
-        <p>Durable memory belongs in Linear, GitHub, repo docs, and skills. Subagents are temporary workers; they should receive scoped prompts and report back with evidence.</p>
+        <p><code>roadmap</code> is backlog admission. Autonomous selection, start, or dispatch additionally requires <code>ready</code> and cleared native blockers. Explicit maintainer direction for a named issue is the override; do not infer it or mutate issue metadata without authorization.</p>
+        <p>Durable memory belongs in GitHub Issues, GitHub Projects, pull requests, repo docs, and skills. Subagents are temporary workers; they should receive scoped prompts and report back with evidence.</p>
       </article>
     </section>
   </main>

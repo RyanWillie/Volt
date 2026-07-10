@@ -1,8 +1,12 @@
 # Volt Roadmap
 
 Volt is building a modern electronics design kernel from the logical model outward. The
-roadmap is tracked in Pebble; this document summarizes the current milestone structure for
-contributors.
+maintainer-approved backlog is the set of open GitHub issues carrying the
+[`roadmap` label](https://github.com/RyanWillie/Volt/issues?q=is%3Aissue%20state%3Aopen%20label%3Aroadmap).
+Autonomous agents may select or start only issues that also carry `ready` and have no
+open native GitHub blockers, unless the maintainer explicitly directs otherwise. This
+document explains product direction; labelled issues own current scope, status,
+dependencies, and acceptance criteria.
 
 ## Recently Completed Foundation
 
@@ -24,6 +28,7 @@ The current kernel foundation includes:
 - LED logical circuit example with selected physical parts
 - logical hierarchy primitives: module definitions, module instances, ports, and template
   nets
+- explicit no-connect assertions as stored logical design intent
 - net classes for reusable net design intent
 - schematic projection layer: kernel-owned sheets, symbols, wires, and labels over
   canonical nets, schematic readability/consistency validation, and deterministic SVG
@@ -94,9 +99,7 @@ Completed foundation:
 Remaining work:
 
 - current limits and power capability attributes/checks
-- no-connect assertions as explicit stored design intent
 - selected-part compatibility diagnostics beyond voltage-rating checks
-- net classes for reusable logical/electrical constraints
 - richer drive/domain compatibility after the general constraint model is clearer
 
 This is the foundation for richer ERC and future simulation readiness. See
@@ -110,13 +113,10 @@ feature-specific checks that cannot compose.
 
 Planned work:
 
-- add no-connect assertions as stored design intent, distinct from no-connect pin roles
 - validate selected part compatibility beyond voltage rating as diagnostics where
   appropriate
 - validate scoped-net and hierarchy issues once those primitives exist
 - add typed-semantics-aware current, power, domain, and drive-compatibility checks
-- add net-class validation, limited at first to
-  logical/electrical constraints Volt can validate without PCB architecture
 
 Do not expand ERC as ad hoc checks over today's broad `PinRole` model. Prefer typed
 attributes, net classes, constraints, and explicit design-intent entities that can be
