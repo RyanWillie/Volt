@@ -79,23 +79,28 @@ errors.
 
 ## Issue Workflow
 
-Volt uses Linear as the source of truth for planned work. Before starting non-trivial
-changes:
+Anyone may submit a GitHub issue, but submission does not schedule work. Volt's planned
+delivery queue is exactly the set of open issues carrying the maintainer-controlled
+`roadmap` label.
 
-- Read the Linear issue and confirm the acceptance criteria.
-- Create a focused branch that includes the issue key, such as
-  `feat/vol-123-short-description` or `fix/vol-123-short-description`.
-- Keep the issue status current while work is in progress.
-- Include the verification commands and results in the pull request or Linear update.
+Before starting non-trivial planned work:
 
-The `VOL-123` portion is the Linear issue key. If you do not have Linear access, ask the
-maintainer for the relevant issue context before starting planned work.
+- Confirm that the GitHub issue has the `roadmap` label and read its acceptance criteria.
+- Check its native parent/sub-issue and blocked-by/blocking relationships.
+- Create a focused branch that includes the GitHub issue number, such as
+  `feat/234-short-description` or `fix/234-short-description`.
+- Keep the issue and pull request state current while work is in progress.
+- Include verification commands and results in the pull request or issue update.
+- Use `Closes #234` in the pull request when merging it should complete the issue.
 
-When finished, update Linear with what changed, what was verified, and any follow-up
-work that should stay visible.
+Contributors may propose work without having it automatically admitted to the roadmap.
+Only the maintainer, or an agent explicitly acting on the maintainer's behalf, applies
+`roadmap`. Unlabelled issues are public intake and must not be selected as planned work.
 
-Do not use Pebble (`pb`) for active planning or refinement unless the task explicitly
-asks for historical local issue data.
+When finished, record what changed, what was verified, and any follow-up work on the
+pull request or GitHub issue.
+
+Do not use Linear or Pebble (`pb`) for active planning.
 
 Keep changes surgical. Avoid unrelated refactors or cleanup in feature branches.
 

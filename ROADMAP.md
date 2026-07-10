@@ -1,8 +1,10 @@
 # Volt Roadmap
 
 Volt is building a modern electronics design kernel from the logical model outward. The
-roadmap is tracked in Pebble; this document summarizes the current milestone structure for
-contributors.
+maintainer-curated delivery queue is the set of open GitHub issues carrying the
+[`roadmap` label](https://github.com/RyanWillie/Volt/issues?q=is%3Aissue%20state%3Aopen%20label%3Aroadmap).
+This document explains product direction; labelled issues own current scope, status,
+dependencies, and acceptance criteria.
 
 ## Recently Completed Foundation
 

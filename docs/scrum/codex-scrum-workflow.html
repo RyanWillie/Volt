@@ -179,7 +179,7 @@
   <main>
     <header>
       <h1>Codex Scrum for Volt</h1>
-      <p class="lede">A lightweight operating model for using Codex as a Scrum system around Linear, GitHub, and repo-local skills. The model instantiates Product Owner, Developer/Tech Lead, and Scrum Master responsibilities on demand while keeping durable state in Linear, GitHub, docs, and skills.</p>
+      <p class="lede">A lightweight operating model for using Codex as a Scrum system around GitHub Issues, GitHub Projects, pull requests, and repo-local skills. The model instantiates Product Owner, Developer/Tech Lead, and Scrum Master responsibilities on demand while keeping durable state in GitHub, docs, and skills.</p>
     </header>
 
     <section>
@@ -220,7 +220,7 @@
       <div class="flow">
         <article class="step">
           <h3>Backlog Refinement</h3>
-          <p>Use <code>volt-backlog-refinement</code>. Codex reads Linear, docs, recent PRs, and architecture notes. The PO clarifies value and priority. The Developer tightens technical shape. The Scrum Master produces ready/not-ready outcomes and proposed Linear edits.</p>
+          <p>Use <code>volt-backlog-refinement</code>. Codex reads open GitHub issues carrying <code>roadmap</code>, docs, recent PRs, and architecture notes. The PO clarifies value and priority. The Developer tightens technical shape. The Scrum Master produces ready/not-ready outcomes and proposed issue or Project edits.</p>
         </article>
         <article class="step">
           <h3>Sprint Planning</h3>
@@ -228,7 +228,7 @@
         </article>
         <article class="step">
           <h3>Sprint Kickoff</h3>
-          <p>Use <code>volt-sprint-kickoff</code>. Codex creates isolated branches or worktrees, dispatches developer agents only for independent work, and keeps Linear and GitHub state synchronized.</p>
+          <p>Use <code>volt-sprint-kickoff</code>. Codex creates isolated branches or worktrees, dispatches developer agents only for independent work, and keeps GitHub issue, Project, branch, and pull request state synchronized.</p>
         </article>
         <article class="step">
           <h3>PR Thermonuclear Review</h3>
@@ -270,12 +270,12 @@
         </article>
         <article class="panel role scrum">
           <h3>Definition of Done</h3>
-          <p>Done means the increment is usable, reviewed, and traceable. A merged PR alone is not enough if acceptance, verification, Linear hygiene, or follow-up capture is missing.</p>
+          <p>Done means the increment is usable, reviewed, and traceable. A merged PR alone is not enough if acceptance, verification, GitHub issue hygiene, or follow-up capture is missing.</p>
           <ul>
             <li>Acceptance criteria are met and out-of-scope work is captured separately.</li>
             <li>Volt architecture boundaries and kernel-owned semantics are preserved.</li>
             <li>Relevant tests, docs, local checks, and CI are passing or explicitly waived.</li>
-            <li>PR, thermonuclear review comment, author resolution evidence, Linear status, and follow-up tickets are complete.</li>
+            <li>PR, thermonuclear review comment, author resolution evidence, GitHub issue status, and follow-up issues are complete.</li>
           </ul>
         </article>
       </div>
@@ -286,11 +286,11 @@
       <div class="commands">
         <article class="panel command">
           <h3>Refine</h3>
-          <p><code>Run Volt backlog refinement for VOL-7.</code></p>
+          <p><code>Run Volt backlog refinement for GitHub #234.</code></p>
         </article>
         <article class="panel command">
           <h3>Plan</h3>
-          <p><code>Plan the next Volt sprint from ready tickets under VOL-7.</code></p>
+          <p><code>Plan the next Volt sprint from open issues labelled roadmap.</code></p>
         </article>
         <article class="panel command">
           <h3>Kick Off</h3>
@@ -311,7 +311,7 @@
       <h2>Guardrails</h2>
       <article class="panel warning">
         <p>The Product Owner does not decide architecture. The Developer does not reorder product priorities without explaining the technical constraint. The Scrum Master does not invent product scope. Codex may orchestrate all three roles, but every output must preserve these boundaries.</p>
-        <p>Durable memory belongs in Linear, GitHub, repo docs, and skills. Subagents are temporary workers; they should receive scoped prompts and report back with evidence.</p>
+        <p>Durable memory belongs in GitHub Issues, GitHub Projects, pull requests, repo docs, and skills. Subagents are temporary workers; they should receive scoped prompts and report back with evidence.</p>
       </article>
     </section>
   </main>
