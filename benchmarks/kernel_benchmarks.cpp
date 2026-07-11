@@ -69,8 +69,8 @@ volt::Circuit build_resistor_chain(std::size_t component_count) {
     }
 
     for (std::size_t index = 0; index <= component_count; ++index) {
-        [[maybe_unused]] const auto net = circuit.connectivity().add_net(
-            volt::Net{volt::NetName{"N" + std::to_string(index)}, volt::NetKind::Signal});
+        [[maybe_unused]] const auto net = circuit.add_net(volt::NetSpec{
+            .name = volt::NetName{"N" + std::to_string(index)}, .kind = volt::NetKind::Signal});
     }
 
     for (std::size_t index = 0; index < component_count; ++index) {
