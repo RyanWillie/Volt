@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt Circuit Aggregate API Decision</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f7f7f5;
+      --panel: #ffffff;
+      --panel-soft: #eeeeea;
+      --text: #1c1d1f;
+      --muted: #60646c;
+      --line: #d4d5d1;
+      --accent: #3157a4;
+      --accent-soft: #e4ebfb;
+      --good: #237a52;
+      --warn: #9a5b12;
+      --code: #202226;
+      --code-text: #f3f4f6;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #101215;
+        --panel: #171a1f;
+        --panel-soft: #20242a;
+        --text: #eef0f3;
+        --muted: #a8afb9;
+        --line: #313741;
+        --accent: #8fb2ff;
+        --accent-soft: #1d2b49;
+        --good: #7ed5a9;
+        --warn: #f4bd72;
+        --code: #090b0e;
+        --code-text: #f3f4f6;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.58 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: 44px 26px 80px; }
+    h1 { max-width: 920px; margin: 8px 0 16px; font-size: clamp(38px, 6vw, 68px); line-height: .98; letter-spacing: -.045em; }
+    h2 { margin: 46px 0 14px; padding-top: 30px; border-top: 1px solid var(--line); font-size: 28px; line-height: 1.12; letter-spacing: -.025em; }
+    h3 { margin: 26px 0 9px; font-size: 19px; line-height: 1.25; }
+    p { margin: 0 0 13px; }
+    a { color: var(--accent); }
+    ul, ol { margin: 10px 0 18px; padding-left: 24px; }
+    li { margin: 7px 0; }
+    code { padding: 1px 5px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel-soft); color: var(--text); }
+    pre { margin: 16px 0; padding: 17px; overflow: auto; border-radius: 12px; background: var(--code); color: var(--code-text); font-size: 14px; line-height: 1.46; }
+    pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+    table { width: 100%; margin: 16px 0 24px; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 11px 12px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: var(--panel-soft); }
+    .eyebrow { margin: 0; color: var(--accent); font-size: 13px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+    .lead { max-width: 900px; color: var(--muted); font-size: 20px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .tag { padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .tag.accepted { border-color: var(--good); color: var(--good); }
+    .card { margin: 18px 0; padding: 21px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+    .decision { border-left: 4px solid var(--accent); }
+    .warning { border-left: 4px solid var(--warn); }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .grid > * { min-width: 0; }
+    .metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0; }
+    .metric { padding: 17px; border-top: 3px solid var(--accent); background: var(--panel); }
+    .metric strong { display: block; margin-bottom: 3px; font-size: 26px; line-height: 1.1; }
+    .metric span { color: var(--muted); font-size: 13px; }
+    .flow { display: grid; grid-template-columns: 1fr auto 1.25fr auto 1fr; gap: 12px; align-items: center; margin: 22px 0; }
+    .flow-node { min-height: 100px; display: grid; align-content: center; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); text-align: center; }
+    .flow-node.core { border: 2px solid var(--accent); background: var(--accent-soft); }
+    .flow-node strong { display: block; }
+    .flow-node span { color: var(--muted); font-size: 13px; }
+    .arrow { color: var(--muted); font-size: 22px; }
+    .timeline { margin: 18px 0; }
+    .phase { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 14px; position: relative; padding-bottom: 20px; }
+    .phase:last-child { padding-bottom: 0; }
+    .phase:not(:last-child)::before { content: ""; position: absolute; left: 16px; top: 32px; bottom: 0; width: 1px; background: var(--line); }
+    .number { width: 34px; height: 34px; display: grid; place-items: center; position: relative; z-index: 1; border-radius: 50%; background: var(--accent); color: var(--bg); font-weight: 800; }
+    .phase-body { padding-top: 4px; }
+    .phase-body strong { display: block; }
+    .phase-body p { color: var(--muted); }
+    .rule { padding: 18px 0; border-top: 1px solid var(--line); }
+    .rule:last-child { border-bottom: 1px solid var(--line); }
+    .good { color: var(--good); font-weight: 700; }
+    .muted { color: var(--muted); }
+    .compact { margin-bottom: 0; }
+    footer { margin-top: 46px; padding-top: 24px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+
+    @media (max-width: 760px) {
+      main { padding: 30px 17px 60px; }
+      .grid, .metric-grid { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); text-align: center; }
+      table, thead, tbody, tr, th, td { display: block; }
+      thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+      tr { margin-bottom: 14px; border: 1px solid var(--line); }
+      td { border: 0; border-bottom: 1px solid var(--line); }
+      td:last-child { border-bottom: 0; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">Architecture decision · Issue #261</p>
+    <h1>A small typed Circuit aggregate</h1>
+    <p class="lead">Volt will replace the five borrowed storage facades with one authoritative logical aggregate whose public surface is complete typed specifications, irreducible graph operations, typed updates, generic reads, and free derived queries.</p>
+    <div class="meta">
+      <span class="tag accepted">Accepted</span>
+      <span class="tag">Pre-1.0 breaking change</span>
+      <span class="tag">Python surface preserved</span>
+      <span class="tag">No semantic loss</span>
+    </div>
+  </header>
+
+  <section class="card decision">
+    <p class="eyebrow">Core decision</p>
+    <p><strong><code>Circuit</code> remains the sole canonical logical model, but its public API will no longer mirror its normalized storage tables.</strong></p>
+    <p class="compact">Internal stores may remain decomposed. Public callers see complete domain operations and typed inspection—not connectivity, hierarchy, electrical, intent, or net-class mutation facades.</p>
+  </section>
+
+  <div class="metric-grid" aria-label="Decision summary">
+    <div class="metric"><strong>≈15</strong><span>intended root declarations, defended as a budget</span></div>
+    <div class="metric"><strong>1</strong><span>canonical logical authority and invariant boundary</span></div>
+    <div class="metric"><strong>0</strong><span>public storage facades, raw restore hooks, or generic entity mutation handles</span></div>
+  </div>
+
+  <h2>Why the current split is being replaced</h2>
+  <div class="grid">
+    <div>
+      <h3>The facades group names, not ownership</h3>
+      <p>Each mutator stores a borrowed <code>Circuit&amp;</code> and forwards into the same aggregate. It owns no independent state or invariant boundary, so the conceptual model remains one large storage-shaped API.</p>
+    </div>
+    <div>
+      <h3>The storage model leaked into authoring</h3>
+      <p>Incremental pin/module table insertion, public loader restoration, count-plus-ID traversal, and public query models expose implementation mechanics rather than stable electronics operations.</p>
+    </div>
+    <div>
+      <h3>The lifetime model became less safe</h3>
+      <p>A facade obtained from a temporary root can dangle. <a href="https://github.com/RyanWillie/Volt/issues/234">#234</a> fixes that live hazard while the current API remains shipped.</p>
+    </div>
+    <div>
+      <h3>The surface grows with every internal store</h3>
+      <p>The accepted evolution rule reverses that pressure: new storage stays private; public growth requires a new irreducible domain operation.</p>
+    </div>
+  </div>
+
+  <h2>Ownership model</h2>
+  <div class="flow" role="img" aria-label="Authoring surfaces lower typed values into Circuit, while validation, schematic, PCB, persistence, and export read Circuit">
+    <div class="flow-node"><strong>Authoring</strong><span>Python · C++ · importers</span></div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="flow-node core"><strong>Circuit</strong><span>canonical graph · typed meaning · invariants</span></div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="flow-node"><strong>Consumers</strong><span>validation · schematic · PCB · BOM · export</span></div>
+  </div>
+  <ul>
+    <li><strong>Circuit owns</strong> definitions, instances, pins, nets, connectivity, hierarchy, typed attributes, selected parts, assembly intent, net classes, and explicit logical intent.</li>
+    <li><strong>Schematic and PCB own</strong> presentation and physical implementation data, but never logical connectivity.</li>
+    <li><strong>Python owns</strong> ergonomic syntax and handles, but lowers every meaningful operation into the kernel.</li>
+    <li><strong>Validation and analysis own</strong> read-only computation and diagnostics, not model state.</li>
+  </ul>
+
+  <h2>Target public API</h2>
+  <p>This is the architectural shape. Strong type names may be refined during implementation, but categories may not expand casually.</p>
+  <pre><code>class Circuit final {
+  public:
+    // Complete reusable definitions.
+    ComponentDefId define_component(ComponentSpec);
+    ModuleDefId    define_module(ModuleSpec);
+    NetClassId     define_net_class(NetClassSpec);
+
+    // Canonical graph construction.
+    ComponentId      instantiate_component(ComponentDefId, ComponentInstanceSpec);
+    ModuleInstanceId instantiate_module(ModuleDefId, ModuleInstanceSpec);
+    NetId             add_net(NetSpec);
+
+    // Irreducible structural operations.
+    bool          connect(NetId, PinId);
+    bool          disconnect(PinId);
+    PortBindingId bind_port(ModuleInstanceId, PortDefId, NetId);
+
+    // Progressive, strongly typed meaning.
+    void update(ComponentId, ComponentUpdate);
+    void update(NetId, NetUpdate);
+    void mark_no_connect(PinId);
+
+    // Generic fundamental reads.
+    template &lt;typename Id&gt; requires CircuitEntityId&lt;Id&gt;
+    const entity_type_t&lt;Id&gt;&amp; get(Id) const;
+
+    template &lt;typename Id&gt; requires CircuitEntityId&lt;Id&gt;
+    entity_range_t&lt;Id&gt; all() const;
+
+    std::optional&lt;NetId&gt; net_of(PinId) const;
+};</code></pre>
+
+  <section class="card warning">
+    <p><strong>The method count is not reduced by hiding complexity behind strings.</strong> The generic surface remains constrained by strong IDs and closed domain types. There is no <code>set(EntityRef, string, any)</code>, property-bag escape hatch, generic command bus, or mutable subsystem handle.</p>
+  </section>
+
+  <h2>Complete definitions and immutable pin meaning</h2>
+  <div class="grid">
+    <div>
+      <h3><code>ComponentSpec</code></h3>
+      <p>Contains the complete reusable shape: name, properties, provenance, symbol references, ordered pin definitions, pin semantics, and pin electrical attributes.</p>
+      <p>A successful call allocates canonical IDs and commits all rows atomically. A failed call changes nothing.</p>
+    </div>
+    <div>
+      <h3><code>ModuleSpec</code></h3>
+      <p>Contains template nets, ports, component occurrences, and internal connections. The complete graph is preflighted before the first append.</p>
+      <p>Module instantiation remains a separate canonical operation over the committed definition.</p>
+    </div>
+  </div>
+  <p>Committed component definitions own immutable pin definitions. <code>PinDefId</code> remains canonical identity for concrete pins, module templates, selected-part mappings, validation, and JSON. There is no public post-commit pin-definition setter and no accidental per-instance <code>PinId</code> electrical-attribute model.</p>
+
+  <h2>Typed progressive updates</h2>
+  <p>Some meaning is discovered after instantiation. Volt represents those changes with closed typed values instead of adding one root setter per field.</p>
+  <pre><code>using ComponentUpdate = std::variant&lt;
+    SetComponentProperty,
+    SetComponentElectricalAttribute,
+    SelectPhysicalPart,
+    SetSelectedPartElectricalAttribute,
+    SetAssemblyIntent&gt;;
+
+using NetUpdate = std::variant&lt;
+    SetNetElectricalAttribute,
+    AssignNetClass,
+    MarkIntentionalStub&gt;;</code></pre>
+  <p>Every alternative is kernel-owned, typed, persistable, inspectable, and validated. New alternatives require a real EDA meaning and downstream contract; internal storage growth does not qualify.</p>
+
+  <h2>Generic reads and free queries</h2>
+  <div class="grid">
+    <div class="card">
+      <h3><code>get(Id)</code></h3>
+      <p>One invalid-ID-checking primitive for canonical entities. Strong ID type selects the return type.</p>
+    </div>
+    <div class="card">
+      <h3><code>all&lt;Id&gt;()</code></h3>
+      <p>One deterministic range primitive with range-for and <code>size()</code>, replacing per-table getter/count pairs.</p>
+    </div>
+  </div>
+  <p>Name/reference lookup, pin lookup, hierarchy traversal, origins, net-class resolution, adjacency, and other derived reads stay in <code>volt::queries</code>. They consume <code>const Circuit&amp;</code>, return <code>optional</code> when absence is normal, and do not expose <code>ConnectivityModel</code> or <code>HierarchyModel</code>.</p>
+
+  <h2>Error and idempotency contract</h2>
+  <table>
+    <thead><tr><th>Operation</th><th>Normal absence/no-op</th><th>Structural failure</th></tr></thead>
+    <tbody>
+      <tr><td><code>connect(net, pin)</code></td><td><code>false</code> when already on the same net</td><td>Typed error for invalid IDs or membership in another net</td></tr>
+      <tr><td><code>disconnect(pin)</code></td><td><code>false</code> when valid and already disconnected</td><td>Typed error for invalid pin</td></tr>
+      <tr><td><code>get(id)</code></td><td>Not applicable</td><td>Approved unknown-entity typed error</td></tr>
+      <tr><td><code>net_of(pin)</code></td><td><code>nullopt</code> for a valid unconnected pin</td><td>Typed error for invalid pin</td></tr>
+      <tr><td>Free name/reference query</td><td><code>nullopt</code> when not found</td><td>Typed error only for structurally invalid inputs</td></tr>
+      <tr><td>Definition/instantiation/update</td><td>Explicitly documented idempotency only</td><td>Typed error before any partial commit</td></tr>
+    </tbody>
+  </table>
+  <p>Bad circuit design remains diagnostic: unconnected required pins, single-pin nets, role conflicts, power-domain issues, insufficient ratings, unmapped physical readiness, and unrouted PCB implementation do not become structural exceptions.</p>
+
+  <h2>Rich semantics are preserved</h2>
+  <table>
+    <thead><tr><th>Meaning</th><th>Canonical home</th><th>Capabilities retained</th></tr></thead>
+    <tbody>
+      <tr><td>Pin requirement, terminal, direction, signal, drive, polarity, ranges</td><td>Immutable component-owned pin definitions</td><td>Connectivity and ERC compatibility diagnostics</td></tr>
+      <tr><td>Voltage, current, resistance, capacitance, tolerance, limits</td><td>Typed spec fields and component/net update values</td><td>Constraint, rating, propagation, and future evaluation</td></tr>
+      <tr><td>Manufacturer part, package, pin-pad map, ratings</td><td>Selected physical part on component instance</td><td>BOM, footprint, pad mapping, readiness, rating diagnostics</td></tr>
+      <tr><td>DNP and selection override</td><td>Assembly intent component update</td><td>Variants, BOM, CPL, population diagnostics</td></tr>
+      <tr><td>No-connect and intentional stub</td><td>Explicit Circuit-owned logical intent</td><td>Distinguishes deliberate choices from omissions</td></tr>
+      <tr><td>Net classes and assignments</td><td>Definitions plus typed net updates</td><td>PCB rule derivation and electrical constraints</td></tr>
+      <tr><td>Hierarchy, ports, bindings, origins</td><td>Complete module definitions and canonical instances</td><td>Reusable structure, traversal, persistence, projections</td></tr>
+      <tr><td>Properties, provenance, symbols</td><td>Complete definition/instance specs</td><td>Traceability, library identity, schematic selection</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Authoring remains concise</h2>
+  <div class="grid">
+    <div>
+      <h3>C++ kernel boundary</h3>
+      <pre><code>Circuit circuit;
+
+auto led = circuit.define_component(
+    ComponentSpec{
+        .name = "LED",
+        .pins = {
+            PinSpec{.name = "A", .number = "1",
+                    .terminal = Passive},
+            PinSpec{.name = "K", .number = "2",
+                    .terminal = Passive},
+        },
+    });
+
+auto d1 = circuit.instantiate_component(
+    led, ComponentInstanceSpec{.reference = "D1"});
+auto gnd = circuit.add_net(
+    NetSpec{.name = "GND", .kind = Ground});
+
+circuit.connect(gnd,
+    queries::pin_by_name(circuit, d1, "K").value());</code></pre>
+    </div>
+    <div>
+      <h3>Existing Python surface</h3>
+      <pre><code>import volt
+
+design = volt.Design("led")
+vcc = design.net("VCC", kind="power", voltage=5.0)
+led_a = design.net("LED_A")
+gnd = design.net("GND", kind="ground")
+
+j1 = design.connector_1x02(ref="J1")
+r1 = design.R("330 ohm", ref="R1")
+d1 = design.LED(ref="D1")
+
+vcc += j1[1], r1[1]
+led_a += r1[2], d1["A"]
+gnd += d1["K"], j1[2]
+
+assert not design.validate().has_errors
+design.write("led.volt.json")</code></pre>
+    </div>
+  </div>
+  <p>The Python layer continues to provide handles, catalog helpers, operator sugar, and contextual errors. It lowers those operations into the same typed C++ contract and owns no alternate EDA meaning.</p>
+
+  <h2>Migration roadmap</h2>
+  <p>The native dependency graph under <a href="https://github.com/RyanWillie/Volt/issues/261">#261</a> owns live status and dispatch readiness.</p>
+  <div class="timeline">
+    <div class="phase"><div class="number">0</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/234">#234 — Fix the live lifetime hazard</a></strong><p>Ref-qualify the current facade accessors now. This remains independently releasable and does not begin the redesign.</p></div></div>
+    <div class="phase"><div class="number">1</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/262">#262 — Lock the aggregate contract</a></strong><p>Merge the ADR, this review page, transition rules, semantic inventory, error policy, and roadmap graph.</p></div></div>
+    <div class="phase"><div class="number">2</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/236">#236 — Complete typed specs and atomic construction</a></strong><p>Preflight and commit component/module definitions atomically; move raw restoration behind a private reader boundary.</p></div></div>
+    <div class="phase"><div class="number">3</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/263">#263 — Generic reads and free queries</a></strong><p>Add <code>get</code>, <code>all</code>, and fundamental relationships; remove the need for public subsystem query models.</p></div></div>
+    <div class="phase"><div class="number">4</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/264">#264 — Migrate C++ adapters and tests</a></strong><p>Move setup helpers and suites incrementally so facade deletion is not a thousand-call-site big bang.</p></div></div>
+    <div class="phase"><div class="number">5</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/265">#265 — Migrate Python bindings</a></strong><p>Preserve the user-facing API and lower through the new kernel contract after urgent ownership/atomicity issue <a href="https://github.com/RyanWillie/Volt/issues/238">#238</a>.</p></div></div>
+    <div class="phase"><div class="number">6</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/266">#266 — Delete facades and enforce the boundary</a></strong><p>Remove the five mutators, passkey, raw public restoration, duplicate reads/counts, query-model leaks, snapshots, and transitional guidance.</p></div></div>
+    <div class="phase"><div class="number">7</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/267">#267 — Prove parity and complete</a></strong><p>Verify every semantic field, diagnostic, persistence contract, Python workflow, sanitizer, docs build, platform, and CI gate.</p></div></div>
+  </div>
+
+  <h2>Transition rules</h2>
+  <div class="rule"><span class="good">Current code may keep calling the facades temporarily.</span> Existing call sites move in their scheduled phase.</div>
+  <div class="rule"><span class="good">The facade surface is frozen immediately.</span> No new facade methods, no new public subsystem mutators, and no new code treating the split as the target.</div>
+  <div class="rule"><span class="good">The current architecture checker remains active until deletion.</span> The deletion phase replaces its snapshots and rules atomically with the new enforcement.</div>
+  <div class="rule"><span class="good">Compatibility is time-bounded.</span> The migration may use narrow internal adapters, but no permanent dual public API remains after #266.</div>
+  <div class="rule"><span class="good">GitHub controls dispatch.</span> Only issues carrying both <code>roadmap</code> and <code>ready</code> with no native blockers may be selected autonomously.</div>
+
+  <h2>Non-goals</h2>
+  <ul>
+    <li>No entity removal, erasure, undo, or mutable document-database model.</li>
+    <li>No command bus, ECS, event-sourced framework, generic repository, or plugin system.</li>
+    <li>No generic <code>EntityRef</code> traversal or mutation handle.</li>
+    <li>No transfer of logical/electrical meaning to Python, schematic, PCB, importers, or UI.</li>
+    <li>No redesign of the Python project or CLI experience in this migration.</li>
+    <li>No loss of typed electrical meaning or diagnostic depth to hit a method-count target.</li>
+  </ul>
+
+  <h2>Definition of done</h2>
+  <section class="card decision">
+    <ul class="compact">
+      <li>One authoritative, small, typed Circuit aggregate API.</li>
+      <li>Complete failure-atomic component and module definitions.</li>
+      <li>Generic typed reads and representation-hiding free queries.</li>
+      <li>No public facades, passkeys, query-model leakage, raw restore hooks, or count/getter duplication.</li>
+      <li>Every rich semantic field, persistence relationship, diagnostic, Python workflow, schematic projection, PCB implementation, BOM path, and exporter remains correct.</li>
+      <li>The architecture checker prevents the storage-shaped surface from regrowing.</li>
+      <li>Every native sub-issue under #261 is complete and full CI passes.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Canonical decision: <a href="adr-circuit-aggregate-api.md">ADR: Typed Circuit Aggregate API</a> · Execution source: <a href="https://github.com/RyanWillie/Volt/issues/261">GitHub issue #261</a>
+  </footer>
+</main>
+</body>
+</html>

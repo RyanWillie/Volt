@@ -18,7 +18,17 @@ promoting it into a Markdown document under `docs/` rather than editing the expo
 - `footprint-library-conventions.html` — footprint library naming and structure conventions
 - `pcb-json-format.html` — PCB projection JSON data contract
 
+## Accepted architecture decisions
+
+- [`adr-append-only-kernel.md`](adr-append-only-kernel.md) — kernel models are append-only
+  compiled build artifacts
+- [`adr-circuit-aggregate-api.md`](adr-circuit-aggregate-api.md) — replace storage-shaped
+  Circuit facades with a small typed aggregate API
+
 ## Design notes and explorations
+
+- `circuit-aggregate-api.html` — single-page review companion for the accepted Circuit API
+  ADR and migration roadmap
 
 - `hierarchy-scoped-net-design.html` — exported mirror of
   [`../hierarchy-scoped-net-design.md`](../hierarchy-scoped-net-design.md)
