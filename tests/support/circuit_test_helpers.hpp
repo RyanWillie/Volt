@@ -12,6 +12,7 @@ namespace volt::test {
     return PinSpec{
         .name = std::move(name),
         .number = std::move(number),
+        .requirement = ConnectionRequirement::Required,
         .terminal_kind = ElectricalTerminalKind::Passive,
         .direction = ElectricalDirection::Passive,
         .drive_kind = ElectricalDriveKind::Passive,
