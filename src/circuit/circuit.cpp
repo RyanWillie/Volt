@@ -27,23 +27,23 @@ Circuit::IntentMutator::IntentMutator(Circuit &circuit, MutatorKey) noexcept : c
 Circuit::NetClassMutator::NetClassMutator(Circuit &circuit, MutatorKey) noexcept
     : circuit_{circuit} {}
 
-[[nodiscard]] Circuit::ConnectivityMutator Circuit::connectivity() noexcept {
+[[nodiscard]] Circuit::ConnectivityMutator Circuit::connectivity() & noexcept {
     return ConnectivityMutator{*this, MutatorKey::make()};
 }
 
-[[nodiscard]] Circuit::HierarchyMutator Circuit::hierarchy() noexcept {
+[[nodiscard]] Circuit::HierarchyMutator Circuit::hierarchy() & noexcept {
     return HierarchyMutator{*this, MutatorKey::make()};
 }
 
-[[nodiscard]] Circuit::ElectricalMutator Circuit::electrical() noexcept {
+[[nodiscard]] Circuit::ElectricalMutator Circuit::electrical() & noexcept {
     return ElectricalMutator{*this, MutatorKey::make()};
 }
 
-[[nodiscard]] Circuit::IntentMutator Circuit::intent() noexcept {
+[[nodiscard]] Circuit::IntentMutator Circuit::intent() & noexcept {
     return IntentMutator{*this, MutatorKey::make()};
 }
 
-[[nodiscard]] Circuit::NetClassMutator Circuit::net_classes() noexcept {
+[[nodiscard]] Circuit::NetClassMutator Circuit::net_classes() & noexcept {
     return NetClassMutator{*this, MutatorKey::make()};
 }
 
