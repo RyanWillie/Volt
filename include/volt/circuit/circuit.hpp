@@ -830,7 +830,6 @@ namespace detail {
 template <typename Id> class CircuitEntityRange {
   public:
     /** Forward iterator yielding const references to canonical entities. */
-    /// @cond
     class iterator {
       public:
         using value_type = entity_type_t<Id>;
@@ -876,8 +875,6 @@ template <typename Id> class CircuitEntityRange {
         const Circuit *circuit_ = nullptr;
         std::size_t index_ = 0;
     };
-
-    /// @endcond
 
     /** Return an iterator at the first stable-ID index. */
     [[nodiscard]] iterator begin() const noexcept { return iterator{*circuit_, 0}; }
