@@ -44,7 +44,7 @@ void restore_logical_connectivity(Circuit &circuit, ConnectivityRestoration rest
                                                        std::move(component.electrical_attributes));
     }
     for (auto &pin : restoration.pins) {
-        [[maybe_unused]] const auto id = staged_connectivity.add_pin(std::move(pin));
+        [[maybe_unused]] const auto id = staged_connectivity.add_pin(pin);
     }
 
     circuit.connectivity_ = std::move(staged_connectivity);
