@@ -1,6 +1,10 @@
 # Volt Kernel Architecture Design
 
-**Status:** Proposed — supersedes the `CircuitView` direction taken in PR #135.
+**Status:** Superseded for the public `Circuit` API by
+[`adr-circuit-aggregate-api.md`](../../design/adr-circuit-aggregate-api.md). Retained as
+historical rationale for aggregate ownership, free queries, read-only checkers, and the
+failure of pass-through facade decomposition. Its public composed-subsystem proposal is not
+the implementation authority.
 **Date:** 2026-06-02
 **Scope:** C++ kernel architecture (logical `Circuit`, schematic and PCB projections, and the
 ERC/DRC validation layer). Python is out of scope and stays "syntax over kernel-owned meaning."
@@ -29,8 +33,8 @@ decompose anything:
 - Four `friend` classes each get access to **all** of `Circuit`'s privates — wider coupling
   than before.
 
-This document defines the architecture that actually completes the decomposition, and corrects
-two design mistakes in #135: the `CircuitView` read wrapper and the broad friendship.
+This document proposed the next decomposition after #135 and remains useful historical
+analysis. The accepted Circuit public contract is now the typed aggregate ADR linked above.
 
 ---
 

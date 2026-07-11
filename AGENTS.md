@@ -45,11 +45,18 @@ Layer ownership is strict:
   Python-only EDA semantics that cannot be loaded, validated, serialized, or inspected by
   the kernel.
 
-`Circuit` root methods are reserved for root-owned or cross-subsystem mutations such as
-component/module instantiation, port binding, and pin/net connect-disconnect operations.
-Single-subsystem logical mutations belong on the borrow-only `Circuit` mutator facades
-(`connectivity()`, `hierarchy()`, `electrical()`, `intent()`, and `net_classes()`), not as
-new root `Circuit` methods.
+The accepted target for the logical root is the typed aggregate API in
+`docs/design/adr-circuit-aggregate-api.md`: complete typed definitions, irreducible graph
+operations, closed typed updates, generic typed reads, and free derived queries. New public
+`Circuit` methods must not mirror private storage tables or introduce generic/stringly
+mutation handles.
+
+The existing borrow-only mutator facades (`connectivity()`, `hierarchy()`, `electrical()`,
+`intent()`, and `net_classes()`) are transitional and frozen while the ADR migration is in
+progress. Existing call sites may remain until their scheduled migration, but do not add
+methods to those facades or treat them as the target architecture. The current architecture
+checker remains authoritative for shipped code until the facade-deletion phase replaces its
+snapshots and rules.
 
 ## 1. Think Before Coding
 

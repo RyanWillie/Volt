@@ -60,6 +60,11 @@ Goal: finish the canonical logical circuit foundation before projection or simul
 layers build on it. The next kernel work should add only first-principles primitives that
 make circuits more electrically meaningful without forcing verbosity on simple designs.
 
+The current storage-shaped Circuit facades are being replaced by a small typed aggregate API
+under [#261](https://github.com/RyanWillie/Volt/issues/261). The committed ADR owns the
+architectural contract; the issue and its native sub-issues own live scope, dependencies, and
+status.
+
 Completed since the original plan:
 
 - minimal logical hierarchy: module/block definitions, module instances, ports, and

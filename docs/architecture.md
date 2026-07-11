@@ -351,9 +351,11 @@ This layer keeps the distinction between:
 `FootprintRef` is only a reference. Footprint geometry, pads, courtyards, layers, and
 board placement remain outside the current circuit-kernel scope.
 
-Selected physical parts are assigned to component instances through
-`Circuit::electrical()`. The component stores the selected value, but the mutation boundary
-validates that the
+Selected physical parts are currently assigned to component instances through the
+transitional `Circuit::electrical()` facade. The accepted aggregate API replaces that entry
+point with a typed component update; see
+[ADR: Typed Circuit Aggregate API](design/adr-circuit-aggregate-api.md). In either shape the
+component stores the selected value, and the mutation boundary validates that the
 `PhysicalPart` pin/pad mappings cover the component's logical pin definitions and do not
 reuse a physical pad label. A logical pin may map to more than one physical pad when the
 selected package exposes tied pads.
@@ -441,16 +443,17 @@ pins are visible at once.
 - nets
 
 This layer assigns typed IDs, owns entity payloads, and returns references by ID. Explicit
-mutation operations on `Circuit` and its subsystem mutator facades preserve structural
+mutation operations on `Circuit` preserve structural
 integrity. Operations reject missing definitions, missing component instances, missing pin
 instances, nets that reference unknown pins, and attempts to connect IDs that do not
 belong to the circuit.
 
-`Circuit` root methods are reserved for root-owned or cross-subsystem mutations such as
-component instantiation, root module instantiation, port binding, and pin/net
-connect-disconnect operations. Single-subsystem mutations are exposed through borrow-only
-facades returned by value: `connectivity()`, `hierarchy()`, `electrical()`, `intent()`,
-and `net_classes()`. New public mutation APIs should follow that split.
+The current implementation still exposes borrow-only `connectivity()`, `hierarchy()`,
+`electrical()`, `intent()`, and `net_classes()` mutation facades. Those facades are frozen
+transition machinery, not an extension point. The accepted replacement is one cohesive,
+small `Circuit` aggregate API based on complete typed specs, irreducible graph operations,
+closed typed updates, generic `get`/`all` reads, and free derived queries. See
+[ADR: Typed Circuit Aggregate API](design/adr-circuit-aggregate-api.md).
 
 `Circuit` also enforces the core connectivity invariant that a concrete pin belongs to
 zero or one net. Deeper design-quality checks are reported by validation layers. Examples
@@ -462,8 +465,10 @@ issues.
 Authoring helpers make the logical kernel usable without changing the source of truth. The
 programmatic authoring facade is specified separately in
 [authoring-api.md](authoring-api.md).
-They return typed IDs and route structural mutation through `Circuit` root operations or
-the appropriate subsystem mutator facade.
+They return typed IDs and route structural mutation through invariant-safe `Circuit`
+operations. During the aggregate-API migration they may call existing frozen facade entry
+points only as temporary adapters; new authoring semantics must follow the accepted ADR and
+must not expand the facade surface.
 
 The first authoring helpers are deliberately small:
 

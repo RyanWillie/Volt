@@ -6,12 +6,17 @@ becoming the logical kernel. The authoring layer is a convenience facade over `C
 invariants. The planned Python-facing boundary is documented separately in
 [python-api.md](python-api.md).
 
+The accepted replacement for the current low-level facade boundary is recorded in
+[ADR: Typed Circuit Aggregate API](design/adr-circuit-aggregate-api.md). The five existing
+borrow-only mutator facades are frozen transition machinery: existing calls may remain until
+their migration phase, but new authoring work must not extend them.
+
 ## Goals
 
 - Let users define parts, instantiate components, connect nets, and attach metadata with
   minimal boilerplate.
-- Keep invalid kernel state impossible by routing structural mutation through `Circuit`
-  root operations or subsystem mutator facades.
+- Keep invalid kernel state impossible by routing structural mutation through the approved
+  typed `Circuit` operations.
 - Preserve deterministic output: authoring order maps to kernel insertion order unless an
   API explicitly says otherwise.
 - Make the future Python API feel natural while keeping the C++ kernel small and stable.
@@ -36,7 +41,7 @@ programmatic authoring facade
   - reference designator allocation
   - pin/net lookup conveniences
   - short-lived handles
-        │ calls Circuit root operations and subsystem mutator facades
+        │ lowers to typed Circuit specs, operations, and updates
         ▼
 Circuit kernel
   - owns entity tables
@@ -69,7 +74,7 @@ auto led = volt::authoring::define_component(
     });
 
 auto d1 = volt::authoring::instantiate(circuit, led, "D");
-auto gnd = circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+auto gnd = circuit.add_net(volt::NetSpec{.name = "GND", .kind = volt::NetKind::Ground});
 circuit.connect(gnd, volt::queries::pin_by_name(circuit, d1, "K").value());
 ```
 
@@ -83,8 +88,8 @@ A part builder creates reusable logical definitions:
 - Pin presets such as `passive_pin`, `power_input_pin`, and `analog_input_pin` create
   generic `PinDefinition` semantics.
 - `property(key, value)` attaches component-definition metadata.
-- `commit()` or first use stores the definition with
-  `Circuit::connectivity().add_component_definition`.
+- `commit()` or first use lowers the complete definition through
+  `Circuit::define_component(ComponentSpec)`.
 
 The builder returns a lightweight authoring `PartRef` that identifies the resulting
 `ComponentDefId`. The builder should not permit editing a committed definition in place;
@@ -95,8 +100,8 @@ mutation API exists.
 
 A component handle wraps a `ComponentId` and routes changes through `Circuit`:
 
-- `set_property(key, value)` calls `Circuit::connectivity().set_component_property`.
-- `select_part(PhysicalPart)` calls `Circuit::electrical().select_physical_part`.
+- `set_property(key, value)` lowers to a typed `ComponentUpdate`.
+- `select_part(PhysicalPart)` lowers to a typed `ComponentUpdate`.
 - `pin(name)` and `pin_number(number)` call kernel lookup helpers and return pin handles.
 
 The handle never returns mutable `ComponentInstance &`.
@@ -188,8 +193,8 @@ A minimal useful authoring layer can be built from existing kernel APIs:
 4. `net()` creation and lookup by `NetName`.
 5. `ComponentHandle::pin()` / `pin_number()` lookup helpers.
 6. `NetHandle::connect()` convenience overloads.
-7. `ComponentHandle::set_property()` and `select_part()` delegating to the relevant
-   `Circuit` mutator facade.
+7. `ComponentHandle::set_property()` and `select_part()` lowering to typed component
+   updates.
 
 The current foundation already includes data-driven component definition specs,
 deterministic reference allocation, component instantiation helpers, and net connection
