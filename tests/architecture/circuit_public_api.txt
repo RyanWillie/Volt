@@ -1,9 +1,12 @@
 include <algorithm>
+include <concepts>
 include <cstddef>
+include <iterator>
 include <memory>
 include <optional>
 include <stdexcept>
 include <string_view>
+include <type_traits>
 include <utility>
 include <vector>
 include <volt/circuit/connectivity/connectivity_model.hpp>
@@ -38,12 +41,14 @@ include <volt/core/ids.hpp>
 [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ReferenceDesignator reference, PropertyMap properties = {})
 bool connect(NetId net, PinId pin)
 bool disconnect(PinId pin)
+template <CircuitEntityId Id> [[nodiscard]] const entity_type_t<Id> &get(Id id) const
+template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const &
+template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const && = delete
+[[nodiscard]] std::optional<NetId> net_of(PinId pin) const
 [[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part(ComponentId component) const
 [[nodiscard]] const ElectricalAttributeMap &component_electrical_attributes(ComponentId component) const
 [[nodiscard]] const ElectricalAttributeMap &pin_definition_electrical_attributes(PinDefId pin_definition) const
 [[nodiscard]] const ElectricalAttributeMap &net_electrical_attributes(NetId net) const
-[[nodiscard]] const ConnectivityModel &connectivity_model() const noexcept
-[[nodiscard]] const HierarchyModel &hierarchy_model() const noexcept
 [[nodiscard]] std::vector<ModulePinConnection> module_pin_connections(ModuleDefId module) const
 [[nodiscard]] std::vector<std::pair<TemplateNetDefId, NetId>> module_net_origins(ModuleInstanceId instance) const
 [[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>> module_component_origins(ModuleInstanceId instance) const

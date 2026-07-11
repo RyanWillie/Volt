@@ -83,15 +83,13 @@ TEST_CASE("HierarchyModel stores module definitions and local child entities det
     const auto port = fixture.circuit.hierarchy().add_port_definition(
         fixture.module,
         volt::PortDefinition{volt::PortName{"IN"}, fixture.input, volt::PortRole::Input});
-    const auto &model = fixture.circuit.hierarchy_model();
-
     CHECK(fixture.module == volt::ModuleDefId{0});
     CHECK(fixture.input == volt::TemplateNetDefId{0});
     CHECK(fixture.output == volt::TemplateNetDefId{1});
     CHECK(port == volt::PortDefId{0});
-    CHECK(model.module_definition(fixture.module).template_nets() ==
+    CHECK(fixture.circuit.get(fixture.module).template_nets() ==
           std::vector{fixture.input, fixture.output});
-    CHECK(model.module_definition(fixture.module).ports() == std::vector{port});
+    CHECK(fixture.circuit.get(fixture.module).ports() == std::vector{port});
 }
 
 TEST_CASE("HierarchyModel rejects duplicate names within local hierarchy scopes") {
@@ -130,12 +128,10 @@ TEST_CASE("HierarchyModel records module instances without concrete origin metad
 
     const auto instance =
         fixture.circuit.instantiate_root_module(fixture.module, volt::ModuleInstanceName{"DIV_A"});
-    const auto &model = fixture.circuit.hierarchy_model();
-
     CHECK(instance == volt::ModuleInstanceId{0});
-    CHECK(model.module_instance(instance).name() == volt::ModuleInstanceName{"DIV_A"});
-    CHECK(model.module_instance(instance).definition() == fixture.module);
-    CHECK(model.module_instance_count() == 1);
+    CHECK(fixture.circuit.get(instance).name() == volt::ModuleInstanceName{"DIV_A"});
+    CHECK(fixture.circuit.get(instance).definition() == fixture.module);
+    CHECK(fixture.circuit.all<volt::ModuleInstanceId>().size() == 1);
 }
 
 TEST_CASE("HierarchyModel rejects duplicate local module instance names") {
@@ -146,5 +142,5 @@ TEST_CASE("HierarchyModel rejects duplicate local module instance names") {
     CHECK_THROWS_AS(
         fixture.circuit.instantiate_root_module(fixture.module, volt::ModuleInstanceName{"DIV_A"}),
         std::logic_error);
-    CHECK(fixture.circuit.hierarchy_model().module_instance_count() == 1);
+    CHECK(fixture.circuit.all<volt::ModuleInstanceId>().size() == 1);
 }

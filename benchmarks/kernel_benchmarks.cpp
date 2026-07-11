@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <iostream>
@@ -115,14 +116,52 @@ std::size_t lookup_all_components_and_nets(const volt::Circuit &circuit,
     return found;
 }
 
+std::size_t lookup_sampled_components_and_nets(const volt::Circuit &circuit,
+                                               std::size_t component_count) {
+    const auto sample_count = std::min<std::size_t>(component_count, 100);
+    std::size_t found = 0;
+    for (std::size_t sample = 0; sample < sample_count; ++sample) {
+        const auto index = sample * component_count / sample_count;
+        if (volt::queries::component_by_reference(
+                circuit, volt::ReferenceDesignator{"R" + std::to_string(index + 1)})
+                .has_value()) {
+            ++found;
+        }
+        if (volt::queries::net_by_name(circuit, volt::NetName{"N" + std::to_string(index)})
+                .has_value()) {
+            ++found;
+        }
+    }
+
+    if (found != sample_count * 2) {
+        throw std::runtime_error{"Benchmark sampled name lookups missed known entities"};
+    }
+    return found;
+}
+
 std::size_t enumerate_all_component_pins(const volt::Circuit &circuit) {
     std::size_t pin_total = 0;
     for (std::size_t index = 0; index < circuit.component_count(); ++index) {
-        pin_total += circuit.connectivity_model().pins_for(volt::ComponentId{index}).size();
+        pin_total += volt::queries::pins_for(circuit, volt::ComponentId{index}).size();
     }
 
     if (pin_total != circuit.pin_count()) {
         throw std::runtime_error{"Benchmark pin enumeration missed known pins"};
+    }
+    return pin_total;
+}
+
+std::size_t enumerate_sampled_component_pins(const volt::Circuit &circuit) {
+    const auto component_count = circuit.component_count();
+    const auto sample_count = std::min<std::size_t>(component_count, 100);
+    std::size_t pin_total = 0;
+    for (std::size_t sample = 0; sample < sample_count; ++sample) {
+        const auto index = sample * component_count / sample_count;
+        pin_total += volt::queries::pins_for(circuit, volt::ComponentId{index}).size();
+    }
+
+    if (pin_total != sample_count * 2) {
+        throw std::runtime_error{"Benchmark sampled pin enumeration missed known pins"};
     }
     return pin_total;
 }
@@ -135,8 +174,15 @@ void run_size(BenchmarkSink &sink, std::size_t component_count) {
         return lookup_all_components_and_nets(circuit, component_count);
     });
 
+    measure(sink, "lookup_by_name_sampled", component_count, [&circuit, component_count] {
+        return lookup_sampled_components_and_nets(circuit, component_count);
+    });
+
     measure(sink, "pins_for_all_components", component_count,
             [&circuit] { return enumerate_all_component_pins(circuit); });
+
+    measure(sink, "pins_for_sampled_components", component_count,
+            [&circuit] { return enumerate_sampled_component_pins(circuit); });
 
     const auto report = measure(sink, "validate_circuit", component_count,
                                 [&circuit] { return volt::validate_circuit(circuit); });

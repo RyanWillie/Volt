@@ -1,10 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/core/errors.hpp>
 
 namespace {
 
@@ -100,12 +101,24 @@ TEST_CASE("Circuit queries inspect hierarchy views through const Circuit") {
     const auto binding = circuit.bind_port(instance, port, parent_net);
 
     CHECK(volt::queries::module_definition_by_name(circuit, volt::ModuleName{"Divider"}) == module);
+    CHECK_FALSE(
+        volt::queries::module_definition_by_name(circuit, volt::ModuleName{"Missing"}).has_value());
     CHECK(volt::queries::module_instance_by_name(circuit, volt::ModuleInstanceName{"DIV_A"}) ==
           instance);
+    CHECK_FALSE(
+        volt::queries::module_instance_by_name(circuit, volt::ModuleInstanceName{"MISSING_A"})
+            .has_value());
     CHECK(volt::queries::template_net_by_name(circuit, module, volt::NetName{"OUT"}) == output);
+    CHECK_FALSE(
+        volt::queries::template_net_by_name(circuit, module, volt::NetName{"MISSING"}).has_value());
     CHECK(volt::queries::port_by_name(circuit, module, volt::PortName{"IN"}) == port);
+    CHECK_FALSE(
+        volt::queries::port_by_name(circuit, module, volt::PortName{"MISSING"}).has_value());
     CHECK(volt::queries::module_component_by_reference(
               circuit, module, volt::ReferenceDesignator{"R1"}) == component);
+    CHECK_FALSE(volt::queries::module_component_by_reference(circuit, module,
+                                                             volt::ReferenceDesignator{"R99"})
+                    .has_value());
     CHECK(volt::queries::template_net_for(circuit, module, component, right) == output);
     CHECK(volt::queries::port_binding_for(circuit, instance, port) == binding);
     CHECK(volt::queries::port_bindings_for(circuit, instance) == std::vector{binding});
@@ -154,8 +167,20 @@ TEST_CASE("Circuit hierarchy queries preserve model-owned validation contracts")
         circuit.instantiate_root_module(first_module, volt::ModuleInstanceName{"FIRST_A"});
     [[maybe_unused]] const auto binding = circuit.bind_port(first_instance, first_port, parent_net);
 
-    CHECK_THROWS_AS(volt::queries::template_net_for(circuit, second_module, first_component, pin),
-                    std::logic_error);
-    CHECK_THROWS_AS(volt::queries::port_binding_for(circuit, first_instance, second_port),
-                    std::logic_error);
+    try {
+        static_cast<void>(
+            volt::queries::template_net_for(circuit, second_module, first_component, pin));
+        FAIL("Cross-module component query must throw");
+    } catch (const volt::KernelLogicError &error) {
+        CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+        CHECK(std::string{error.what()} == "Module component does not belong to module definition");
+    }
+
+    try {
+        static_cast<void>(volt::queries::port_binding_for(circuit, first_instance, second_port));
+        FAIL("Cross-module port query must throw");
+    } catch (const volt::KernelLogicError &error) {
+        CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+        CHECK(std::string{error.what()} == "Port does not belong to module definition");
+    }
 }

@@ -35,6 +35,7 @@ REJECTED_TOKENS = (
     "CircuitHierarchy",
     "CircuitElectrical",
     "CircuitDesignIntent",
+    "CircuitEntityTraits",
 )
 FRIEND_TYPE_PREFIXES = ("friend " "class ", "friend " "struct ")
 
