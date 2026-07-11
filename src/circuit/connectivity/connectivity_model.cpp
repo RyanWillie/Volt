@@ -37,16 +37,39 @@ ConnectivityModel &ConnectivityModel::operator=(ConnectivityModel &&other) noexc
 ConnectivityModel::~ConnectivityModel() = default;
 
 [[nodiscard]] PinDefId Circuit::ConnectivityStorage::add_pin_definition(PinDefinition definition) {
-    return mutable_state().pin_definitions.insert(std::move(definition));
+    const auto id = mutable_state().pin_definitions.insert(std::move(definition));
+    mutable_state().component_definition_by_pin.emplace_back();
+    return id;
 }
 
 [[nodiscard]] ComponentDefId
 Circuit::ConnectivityStorage::add_component_definition(ComponentDefinition definition) {
+    auto seen_pins = std::vector<PinDefId>{};
     for (const auto pin : definition.pins()) {
         require_pin_definition(pin);
+        if (std::find(seen_pins.begin(), seen_pins.end(), pin) != seen_pins.end()) {
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Component definition contains a duplicate pin definition"};
+        }
+        if (state().component_definition_by_pin[pin.index()].has_value()) {
+            throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                                   "Pin definition already belongs to a component definition",
+                                   EntityRef::pin_def(pin)};
+        }
+        seen_pins.push_back(pin);
     }
 
-    return mutable_state().component_definitions.insert(std::move(definition));
+    const auto id = mutable_state().component_definitions.insert(std::move(definition));
+    for (const auto pin : seen_pins) {
+        mutable_state().component_definition_by_pin[pin.index()] = id;
+    }
+    return id;
+}
+
+[[nodiscard]] bool
+Circuit::ConnectivityStorage::pin_definition_is_owned(PinDefId pin_definition) const {
+    require_pin_definition(pin_definition);
+    return state().component_definition_by_pin[pin_definition.index()].has_value();
 }
 
 [[nodiscard]] ComponentId Circuit::ConnectivityStorage::add_component(ComponentInstance component) {
@@ -73,6 +96,10 @@ Circuit::ConnectivityStorage::add_component_definition(ComponentDefinition defin
         definition_pins.end()) {
         throw KernelLogicError{ErrorCode::CrossReferenceViolation,
                                "Pin definition does not belong to component definition"};
+    }
+    if (pin_by_definition(pin.component(), pin.definition()).has_value()) {
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Component pin definition is already materialized"};
     }
 
     const auto id = mutable_state().pins.insert(pin);

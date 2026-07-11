@@ -202,7 +202,13 @@ Component definitions describe reusable logical component shapes:
 }
 ```
 
-`source` is optional. `pins` contains `pin_def` IDs in component-definition pin order.
+`source` is optional. `pins` contains `pin_def` IDs in component-definition pin order. A
+pin definition belongs to at most one component definition, and a component definition
+may reference each pin definition only once. The top-level `pin_definitions` table remains
+the canonical persistence representation and table order remains the source of
+deterministic `PinDefId` restoration. Unowned rows remain readable for v1 compatibility
+with transitional facade output, although complete typed construction does not create
+them.
 
 ## Components
 
@@ -259,7 +265,9 @@ future diagnostics or views may need stable pin targets:
 ```
 
 A concrete pin's `definition` must be one of the pins in its component's component
-definition.
+definition. Every component has exactly one concrete pin for each ordered pin definition;
+missing or duplicate materializations are structurally invalid regardless of the pin's
+connection requirement.
 
 ## Nets
 
@@ -464,9 +472,12 @@ including:
 - duplicate component reference designators
 - duplicate net names
 - component definitions referencing missing pin definitions
+- pin definitions owned by more than one component definition
+- component definitions that repeat a pin definition
 - components referencing missing component definitions
 - pins referencing missing components or pin definitions
 - pins whose definitions are not part of their component definition
+- component instances with missing or duplicate concrete pin materializations
 - nets referencing missing pins
 - a pin appearing in more than one net
 - module definitions with duplicate names
@@ -474,6 +485,7 @@ including:
 - module component templates that reference missing component definitions
 - module component template connections whose component, net, or pin belongs to the wrong
   module or component definition
+- duplicate connections for the same module component pin
 - module instances that do not provide exactly one concrete net origin for every
   template-local net
 - module instances that do not provide exactly one concrete component origin for every

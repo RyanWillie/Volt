@@ -229,51 +229,6 @@ TEST_CASE("Circuit exposes hierarchy inspection views") {
     CHECK(volt::queries::port_bindings_for(circuit, instance) == std::vector{binding});
 }
 
-TEST_CASE("Circuit restore rejects mismatched module connectivity before mutating") {
-    volt::Circuit circuit;
-    const auto left = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto right = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto resistor = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
-    const auto concrete_component =
-        circuit.instantiate_component(resistor, volt::ReferenceDesignator{"DIV_A/R1"});
-
-    const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"DIV_A/IN"}, volt::NetKind::Signal});
-    auto second = volt::Net{volt::NetName{"DIV_A/OUT"}, volt::NetKind::Signal};
-    REQUIRE(volt::queries::pin_by_definition(circuit, concrete_component, left).has_value());
-    REQUIRE(volt::queries::pin_by_definition(circuit, concrete_component, right).has_value());
-    CHECK(second.connect(
-        volt::queries::pin_by_definition(circuit, concrete_component, left).value()));
-    CHECK(second.connect(
-        volt::queries::pin_by_definition(circuit, concrete_component, right).value()));
-    const auto second_net = circuit.connectivity().add_net(std::move(second));
-
-    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
-        volt::ModuleName{"Divider"},
-    });
-    const auto input = circuit.hierarchy().add_template_net(
-        module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
-    const auto output = circuit.hierarchy().add_template_net(
-        module, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
-    const auto component = circuit.hierarchy().add_module_component(
-        module, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
-    CHECK(circuit.hierarchy().connect_module_pin(module, input, component, left));
-    CHECK(circuit.hierarchy().connect_module_pin(module, output, component, right));
-
-    CHECK_THROWS_AS(circuit.restore_root_module_instance(module, volt::ModuleInstanceName{"DIV_A"},
-                                                         {{input, first_net}, {output, second_net}},
-                                                         {{component, concrete_component}}),
-                    std::logic_error);
-    CHECK(circuit.module_instance_count() == 0);
-}
-
 TEST_CASE("Circuit rejects structurally invalid module component templates") {
     volt::Circuit circuit;
     const auto left = circuit.connectivity().add_pin_definition(volt::PinDefinition{
@@ -539,40 +494,6 @@ TEST_CASE("Binding a port whose template net has no concrete origin reports inva
     try {
         [[maybe_unused]] const auto binding = circuit.bind_port(instance, late_port, parent_net);
         FAIL("Binding a port without a concrete instance net must throw");
-    } catch (const volt::KernelError &error) {
-        CHECK(error.code() == volt::ErrorCode::InvalidState);
-    }
-}
-
-TEST_CASE("Restoring a module instance over a pin-less component reports invalid state") {
-    volt::Circuit circuit;
-
-    const auto pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
-
-    const auto module = circuit.hierarchy().add_module_definition(volt::ModuleDefinition{
-        volt::ModuleName{"Divider"},
-    });
-    const auto template_net = circuit.hierarchy().add_template_net(
-        module, volt::TemplateNetDefinition{volt::NetName{"MID"}, volt::NetKind::Signal});
-    const auto module_component = circuit.hierarchy().add_module_component(
-        module, volt::ModuleComponentTemplate{component_def, volt::ReferenceDesignator{"R1"}});
-    REQUIRE(
-        circuit.hierarchy().connect_module_pin(module, template_net, module_component, pin_def));
-
-    const auto concrete_net = circuit.connectivity().add_net(
-        volt::Net{volt::NetName{"DIV_A/MID"}, volt::NetKind::Signal});
-    const auto pin_less_component = circuit.connectivity().add_component(
-        volt::ComponentInstance{component_def, volt::ReferenceDesignator{"DIV_A/R1"}});
-
-    try {
-        [[maybe_unused]] const auto instance = circuit.restore_root_module_instance(
-            module, volt::ModuleInstanceName{"DIV_A"}, {{template_net, concrete_net}},
-            {{module_component, pin_less_component}});
-        FAIL("Restoring over a component without concrete pins must throw");
     } catch (const volt::KernelError &error) {
         CHECK(error.code() == volt::ErrorCode::InvalidState);
     }

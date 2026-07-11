@@ -40,6 +40,18 @@ FRIEND_TYPE_PREFIXES = ("friend " "class ", "friend " "struct ")
 
 PRIVILEGED_FRIEND_ALLOWLIST = {
     (
+        "include/volt/circuit/circuit.hpp",
+        "friend void io::detail::restore_logical_connectivity(Circuit &circuit, io::detail::ConnectivityRestoration restoration)",
+    ): "The v1 logical reader must restore independent persisted ID tables atomically without exposing raw authoring operations.",
+    (
+        "include/volt/circuit/circuit.hpp",
+        "friend void io::detail::restore_logical_hierarchy(Circuit &circuit, io::detail::HierarchyDefinitionRestoration restoration)",
+    ): "The v1 logical reader must restore independent global hierarchy table order without exposing raw authoring operations.",
+    (
+        "include/volt/circuit/circuit.hpp",
+        "friend ModuleInstanceId io::detail::restore_logical_module_instance(Circuit &circuit, io::detail::ModuleInstanceRestoration restoration)",
+    ): "The v1 logical reader privately restores persisted module origins after validating their complete relationship set.",
+    (
         "include/volt/pcb/routing/board_spatial_index.hpp",
         "friend void detail::validate_copper_clearance(const Board &board, const std::vector<detail::BoardCopperShape> &shapes, DiagnosticReport &report)",
     ): "Board copper DRC currently reuses the spatial index's internal shape snapshot.",

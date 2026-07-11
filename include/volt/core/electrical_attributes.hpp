@@ -202,6 +202,14 @@ class ElectricalAttributeSpec {
     std::optional<AuthoringUnit> default_authoring_unit_;
 };
 
+/** One typed electrical attribute value paired with the contract that validates it. */
+struct ElectricalAttributeAssignment {
+    /** Attribute owner, kind, name, and required value dimension. */
+    ElectricalAttributeSpec spec;
+    /** Typed value validated against the paired specification. */
+    ElectricalAttributeValue value;
+};
+
 /** Deterministically ordered storage for typed electrical attribute values. */
 class ElectricalAttributeMap {
   public:

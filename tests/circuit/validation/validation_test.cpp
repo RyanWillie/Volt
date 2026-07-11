@@ -14,6 +14,25 @@
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 
+namespace {
+
+void set_pin_voltage_range(volt::Circuit &circuit, volt::PinDefId pin, double minimum,
+                           double maximum) {
+    circuit.electrical().set_pin_definition_electrical_attribute(
+        pin,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage_range"},
+            volt::ElectricalAttributeOwner::PinSpec,
+            volt::ElectricalAttributeKind::Constraint,
+            volt::UnitDimension::Voltage,
+        },
+        volt::ElectricalAttributeValue{
+            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, minimum},
+                                         volt::Quantity{volt::UnitDimension::Voltage, maximum})});
+}
+
+} // namespace
+
 TEST_CASE("Circuit validation diagnostic code catalog remains stable") {
     const auto codes = std::set<std::string>{
         "EMPTY_NET",
@@ -296,6 +315,7 @@ TEST_CASE("Circuit connectivity validation excludes electrical rule diagnostics"
     const auto unconnected_pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "EN", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital});
+    set_pin_voltage_range(circuit, power_input, 1.8, 3.6);
     const auto component_def = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Load", std::vector{power_input, unconnected_pin_def}});
     const auto component =
@@ -304,17 +324,6 @@ TEST_CASE("Circuit connectivity validation excludes electrical rule diagnostics"
     const auto net =
         circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
-    circuit.electrical().set_pin_definition_electrical_attribute(
-        power_input,
-        volt::ElectricalAttributeSpec{
-            volt::ElectricalAttributeName{"voltage_range"},
-            volt::ElectricalAttributeOwner::PinSpec,
-            volt::ElectricalAttributeKind::Constraint,
-            volt::UnitDimension::Voltage,
-        },
-        volt::ElectricalAttributeValue{
-            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
-                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
     circuit.connect(net, power_pin);
     circuit.electrical().set_net_electrical_attribute(
         net,
@@ -338,6 +347,7 @@ TEST_CASE("Circuit electrical-rule validation excludes connectivity diagnostics"
     const auto unconnected_pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "EN", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital});
+    set_pin_voltage_range(circuit, power_input, 1.8, 3.6);
     const auto component_def = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Load", std::vector{power_input, unconnected_pin_def}});
     const auto component =
@@ -346,17 +356,6 @@ TEST_CASE("Circuit electrical-rule validation excludes connectivity diagnostics"
     const auto net =
         circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
-    circuit.electrical().set_pin_definition_electrical_attribute(
-        power_input,
-        volt::ElectricalAttributeSpec{
-            volt::ElectricalAttributeName{"voltage_range"},
-            volt::ElectricalAttributeOwner::PinSpec,
-            volt::ElectricalAttributeKind::Constraint,
-            volt::UnitDimension::Voltage,
-        },
-        volt::ElectricalAttributeValue{
-            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
-                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
     circuit.connect(net, power_pin);
     circuit.electrical().set_net_electrical_attribute(
         net,
@@ -379,6 +378,7 @@ TEST_CASE("Full circuit validation preserves connectivity before electrical rule
     const auto unconnected_pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "EN", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital});
+    set_pin_voltage_range(circuit, power_input, 1.8, 3.6);
     const auto component_def = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Load", std::vector{power_input, unconnected_pin_def}});
     const auto component =
@@ -387,17 +387,6 @@ TEST_CASE("Full circuit validation preserves connectivity before electrical rule
     const auto net =
         circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
-    circuit.electrical().set_pin_definition_electrical_attribute(
-        power_input,
-        volt::ElectricalAttributeSpec{
-            volt::ElectricalAttributeName{"voltage_range"},
-            volt::ElectricalAttributeOwner::PinSpec,
-            volt::ElectricalAttributeKind::Constraint,
-            volt::UnitDimension::Voltage,
-        },
-        volt::ElectricalAttributeValue{
-            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
-                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
     circuit.connect(net, power_pin);
     circuit.electrical().set_net_electrical_attribute(
         net,
@@ -630,6 +619,7 @@ TEST_CASE("Circuit validation reports pin voltage range violations") {
     const auto power_source = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "OUT", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Power,
         volt::ElectricalDirection::Output});
+    set_pin_voltage_range(circuit, power_input, 1.8, 3.6);
     const auto load_def = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Load", std::vector{power_input}});
     const auto regulator_def = circuit.connectivity().add_component_definition(
@@ -642,17 +632,6 @@ TEST_CASE("Circuit validation reports pin voltage range violations") {
     const auto net =
         circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
-    circuit.electrical().set_pin_definition_electrical_attribute(
-        power_input,
-        volt::ElectricalAttributeSpec{
-            volt::ElectricalAttributeName{"voltage_range"},
-            volt::ElectricalAttributeOwner::PinSpec,
-            volt::ElectricalAttributeKind::Constraint,
-            volt::UnitDimension::Voltage,
-        },
-        volt::ElectricalAttributeValue{
-            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
-                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
     circuit.connect(net, load_pin);
     circuit.connect(net, source_pin);
     circuit.electrical().set_net_electrical_attribute(
@@ -682,6 +661,7 @@ TEST_CASE("Circuit validation accepts net voltages within pin voltage ranges") {
     const auto power_source = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "OUT", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Power,
         volt::ElectricalDirection::Output});
+    set_pin_voltage_range(circuit, power_input, 1.8, 3.6);
     const auto load_def = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Load", std::vector{power_input}});
     const auto regulator_def = circuit.connectivity().add_component_definition(
@@ -694,17 +674,6 @@ TEST_CASE("Circuit validation accepts net voltages within pin voltage ranges") {
     const auto net =
         circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
-    circuit.electrical().set_pin_definition_electrical_attribute(
-        power_input,
-        volt::ElectricalAttributeSpec{
-            volt::ElectricalAttributeName{"voltage_range"},
-            volt::ElectricalAttributeOwner::PinSpec,
-            volt::ElectricalAttributeKind::Constraint,
-            volt::UnitDimension::Voltage,
-        },
-        volt::ElectricalAttributeValue{
-            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
-                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
     circuit.connect(net, load_pin);
     circuit.connect(net, source_pin);
     circuit.electrical().set_net_electrical_attribute(
@@ -727,6 +696,7 @@ TEST_CASE("Circuit validation ignores pin voltage ranges without net voltage") {
     const auto power_source = circuit.connectivity().add_pin_definition(volt::PinDefinition{
         "OUT", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Power,
         volt::ElectricalDirection::Output});
+    set_pin_voltage_range(circuit, power_input, 1.8, 3.6);
     const auto load_def = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Load", std::vector{power_input}});
     const auto regulator_def = circuit.connectivity().add_component_definition(
@@ -739,17 +709,6 @@ TEST_CASE("Circuit validation ignores pin voltage ranges without net voltage") {
     const auto net =
         circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
-    circuit.electrical().set_pin_definition_electrical_attribute(
-        power_input,
-        volt::ElectricalAttributeSpec{
-            volt::ElectricalAttributeName{"voltage_range"},
-            volt::ElectricalAttributeOwner::PinSpec,
-            volt::ElectricalAttributeKind::Constraint,
-            volt::UnitDimension::Voltage,
-        },
-        volt::ElectricalAttributeValue{
-            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
-                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
     circuit.connect(net, load_pin);
     circuit.connect(net, source_pin);
 

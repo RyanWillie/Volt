@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
@@ -194,6 +195,42 @@ class ComponentDefinition {
     PropertyMap properties_;
     std::optional<DefinitionSource> source_;
     std::vector<SchematicSymbolReference> schematic_symbols_;
+};
+
+/** Complete data-only reusable pin definition input owned by a ComponentSpec. */
+struct PinSpec {
+    /** Human-readable logical pin name. */
+    std::string name;
+    /** Logical or package pin number. */
+    std::string number;
+    /** Whether normal design intent requires, permits, or forbids a connection. */
+    ConnectionRequirement requirement = ConnectionRequirement::Required;
+    /** Broad terminal behavior. */
+    ElectricalTerminalKind terminal_kind = ElectricalTerminalKind::Unspecified;
+    /** Electrical direction. */
+    ElectricalDirection direction = ElectricalDirection::Unspecified;
+    /** Signal domain, when applicable. */
+    ElectricalSignalDomain signal_domain = ElectricalSignalDomain::Unspecified;
+    /** Output or terminal drive behavior. */
+    ElectricalDriveKind drive_kind = ElectricalDriveKind::Unspecified;
+    /** Logical polarity for control-oriented pins. */
+    ElectricalPolarity polarity = ElectricalPolarity::None;
+    /** Complete typed electrical constraints owned by this pin definition. */
+    std::vector<ElectricalAttributeAssignment> electrical_attributes = {};
+};
+
+/** Complete reusable component definition input lowered atomically by Circuit. */
+struct ComponentSpec {
+    /** Human-readable reusable component name. */
+    std::string name;
+    /** Ordered complete pin definitions. */
+    std::vector<PinSpec> pins;
+    /** Definition metadata properties. */
+    PropertyMap properties = {};
+    /** Optional library provenance. */
+    std::optional<DefinitionSource> source = std::nullopt;
+    /** Ordered schematic symbol choices. */
+    std::vector<SchematicSymbolReference> schematic_symbols = {};
 };
 
 } // namespace volt

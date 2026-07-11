@@ -24,6 +24,21 @@
 
 namespace volt {
 
+class Circuit;
+
+/// @cond
+namespace io::detail {
+struct ConnectivityRestoration;
+struct HierarchyDefinitionRestoration;
+struct ModuleInstanceRestoration;
+void restore_logical_connectivity(Circuit &circuit, ConnectivityRestoration restoration);
+void restore_logical_hierarchy(Circuit &circuit, HierarchyDefinitionRestoration restoration);
+[[nodiscard]] ModuleInstanceId
+restore_logical_module_instance(Circuit &circuit, ModuleInstanceRestoration restoration);
+} // namespace io::detail
+
+/// @endcond
+
 /**
  * Canonical logical circuit model and aggregate root of the kernel.
  *
@@ -70,7 +85,7 @@ class Circuit {
         /** Store a reusable component definition and return its stable ID. */
         [[nodiscard]] ComponentDefId add_component_definition(ComponentDefinition definition);
 
-        /** Store a component instance and return its stable ID. */
+        /** Instantiate a component and all ordered definition pins, returning its stable ID. */
         [[nodiscard]] ComponentId add_component(ComponentInstance component);
 
         /** Store a concrete pin instance and return its stable ID. */
@@ -145,7 +160,7 @@ class Circuit {
                                                 const ElectricalAttributeSpec &spec,
                                                 ElectricalAttributeValue value);
 
-        /** Set or replace a typed electrical attribute on an existing reusable pin definition. */
+        /** Set a typed attribute before a pin definition is committed to a component. */
         void set_pin_definition_electrical_attribute(PinDefId pin_definition,
                                                      const ElectricalAttributeSpec &spec,
                                                      ElectricalAttributeValue value);
@@ -244,6 +259,19 @@ class Circuit {
     [[nodiscard]] NetClassMutator net_classes() & noexcept;
     [[nodiscard]] NetClassMutator net_classes() && = delete;
 
+    /** Atomically commit one complete reusable component definition. */
+    [[nodiscard]] ComponentDefId define_component(ComponentSpec spec);
+
+    /** Atomically commit one complete reusable module definition. */
+    [[nodiscard]] ModuleDefId define_module(ModuleSpec spec);
+
+    /** Atomically instantiate a component and every ordered pin in its definition. */
+    [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition,
+                                                    ComponentInstanceSpec spec);
+
+    /** Atomically add an unconnected canonical net from a complete typed input. */
+    [[nodiscard]] NetId add_net(NetSpec spec);
+
     /** Instantiate a module at the root and create concrete nets for its template-local nets. */
     [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition,
                                                            ModuleInstanceName name);
@@ -251,12 +279,6 @@ class Circuit {
     /** Record an explicit connectivity edge from an instance-local port net to a parent net. */
     [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port,
                                           NetId parent_net);
-
-    /** Restore a root module instance over existing concrete nets while loading JSON. */
-    [[nodiscard]] ModuleInstanceId restore_root_module_instance(
-        ModuleDefId definition, ModuleInstanceName name,
-        const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
-        const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins = {});
 
     /**
      * Instantiate a component definition and create concrete pins for each ordered pin
@@ -427,10 +449,21 @@ class Circuit {
     }
 
   private:
+    friend void
+    io::detail::restore_logical_connectivity(Circuit &circuit,
+                                             io::detail::ConnectivityRestoration restoration);
+    friend void
+    io::detail::restore_logical_hierarchy(Circuit &circuit,
+                                          io::detail::HierarchyDefinitionRestoration restoration);
+    friend ModuleInstanceId
+    io::detail::restore_logical_module_instance(Circuit &circuit,
+                                                io::detail::ModuleInstanceRestoration restoration);
+
     struct ConnectivityStorage
         : detail::SubsystemStorage<ConnectivityModel, detail::ConnectivityState> {
         [[nodiscard]] PinDefId add_pin_definition(PinDefinition definition);
         [[nodiscard]] ComponentDefId add_component_definition(ComponentDefinition definition);
+        [[nodiscard]] bool pin_definition_is_owned(PinDefId pin_definition) const;
         [[nodiscard]] ComponentId add_component(ComponentInstance component);
         [[nodiscard]] PinId add_pin(PinInstance pin);
         [[nodiscard]] NetId add_net(Net net);
@@ -466,6 +499,12 @@ class Circuit {
     };
 
     struct ElectricalStorage : detail::SubsystemStorage<ElectricalModel, detail::ElectricalState> {
+        [[nodiscard]] static ElectricalAttributeMap
+        preflight_attributes(const std::vector<ElectricalAttributeAssignment> &assignments,
+                             ElectricalAttributeOwner owner);
+        void restore_component_attributes(ComponentId component, ElectricalAttributeMap attributes);
+        void restore_pin_definition_attributes(PinDefId pin_definition,
+                                               ElectricalAttributeMap attributes);
         void set_component_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
                                      ElectricalAttributeValue value);
         void set_pin_definition_attribute(PinDefId pin_definition,
@@ -535,6 +574,11 @@ class Circuit {
     void require_net_class(NetClassId net_class) const;
 
     [[nodiscard]] std::optional<NetId> net_of_existing_pin(PinId pin) const;
+
+    [[nodiscard]] ModuleInstanceId restore_root_module_instance(
+        ModuleDefId definition, ModuleInstanceName name,
+        const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
+        const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins);
 
     ConnectivityStorage connectivity_;
     HierarchyStorage hierarchy_;

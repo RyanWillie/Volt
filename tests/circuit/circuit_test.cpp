@@ -134,7 +134,7 @@ TEST_CASE("Circuit stores component instances and concrete pin instances") {
 
     const auto component = circuit.connectivity().add_component(
         volt::ComponentInstance{component_def, volt::ReferenceDesignator{"U1"}});
-    const auto pin = circuit.connectivity().add_pin(volt::PinInstance{component, pin_def});
+    const auto pin = volt::queries::pin_by_definition(circuit, component, pin_def).value();
 
     CHECK(component == volt::ComponentId{0});
     CHECK(circuit.component(component).reference() == volt::ReferenceDesignator{"U1"});
@@ -180,7 +180,7 @@ TEST_CASE("Circuit stores nets") {
         volt::ComponentDefinition{"Connector", std::vector{pin_def}});
     const auto component = circuit.connectivity().add_component(
         volt::ComponentInstance{component_def, volt::ReferenceDesignator{"J1"}});
-    const auto pin = circuit.connectivity().add_pin(volt::PinInstance{component, pin_def});
+    const auto pin = volt::queries::pin_by_definition(circuit, component, pin_def).value();
 
     auto net = volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground};
     net.connect(pin);
@@ -211,7 +211,7 @@ TEST_CASE("Circuit connects existing pins to existing nets") {
         volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
     const auto component = circuit.connectivity().add_component(
         volt::ComponentInstance{component_def, volt::ReferenceDesignator{"R1"}});
-    const auto pin = circuit.connectivity().add_pin(volt::PinInstance{component, pin_def});
+    const auto pin = volt::queries::pin_by_definition(circuit, component, pin_def).value();
     const auto net =
         circuit.connectivity().add_net(volt::Net{volt::NetName{"NET_A"}, volt::NetKind::Signal});
 
@@ -242,7 +242,7 @@ TEST_CASE("Circuit enforces one net per concrete pin") {
         volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
     const auto component = circuit.connectivity().add_component(
         volt::ComponentInstance{component_def, volt::ReferenceDesignator{"R1"}});
-    const auto pin = circuit.connectivity().add_pin(volt::PinInstance{component, pin_def});
+    const auto pin = volt::queries::pin_by_definition(circuit, component, pin_def).value();
     const auto first_net =
         circuit.connectivity().add_net(volt::Net{volt::NetName{"NET_A"}, volt::NetKind::Signal});
     const auto second_net =
@@ -264,7 +264,7 @@ TEST_CASE("Circuit disconnects a pin from its current net") {
         volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
     const auto component = circuit.connectivity().add_component(
         volt::ComponentInstance{component_def, volt::ReferenceDesignator{"R1"}});
-    const auto pin = circuit.connectivity().add_pin(volt::PinInstance{component, pin_def});
+    const auto pin = volt::queries::pin_by_definition(circuit, component, pin_def).value();
     const auto net =
         circuit.connectivity().add_net(volt::Net{volt::NetName{"NET_A"}, volt::NetKind::Signal});
     circuit.connect(net, pin);

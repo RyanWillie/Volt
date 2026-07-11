@@ -54,6 +54,14 @@ class ComponentInstance {
     PropertyMap properties_;
 };
 
+/** Complete component instance input lowered atomically with all definition pins. */
+struct ComponentInstanceSpec {
+    /** Unique human-facing reference designator. */
+    ReferenceDesignator reference;
+    /** Instance metadata properties. */
+    PropertyMap properties = {};
+};
+
 /** Concrete pin occurrence belonging to a component instance. */
 class PinInstance {
   public:

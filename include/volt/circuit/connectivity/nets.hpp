@@ -68,4 +68,12 @@ class Net {
     std::vector<PinId> pins_;
 };
 
+/** Complete canonical net input; pin membership is authored separately through connect. */
+struct NetSpec {
+    /** Unique human-facing net name. */
+    NetName name;
+    /** Broad electrical role of the net. */
+    NetKind kind = NetKind::Signal;
+};
+
 } // namespace volt

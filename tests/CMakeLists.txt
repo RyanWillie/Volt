@@ -19,6 +19,7 @@ add_executable(
     authoring/reference_designators_test.cpp
     circuit/circuit_test.cpp
     circuit/authoring_test.cpp
+    circuit/construction_specs_test.cpp
     circuit/bom/bom_test.cpp
     circuit/connectivity/connectivity_model_test.cpp
     circuit/connectivity/definitions_test.cpp
