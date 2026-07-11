@@ -19,11 +19,16 @@ include <volt/circuit/intent/design_intent.hpp>
 include <volt/circuit/parts/parts.hpp>
 include <volt/core/ids.hpp>
 
-[[nodiscard]] ConnectivityMutator connectivity() noexcept
-[[nodiscard]] HierarchyMutator hierarchy() noexcept
-[[nodiscard]] ElectricalMutator electrical() noexcept
-[[nodiscard]] IntentMutator intent() noexcept
-[[nodiscard]] NetClassMutator net_classes() noexcept
+[[nodiscard]] ConnectivityMutator connectivity() &noexcept
+[[nodiscard]] ConnectivityMutator connectivity() && = delete
+[[nodiscard]] HierarchyMutator hierarchy() &noexcept
+[[nodiscard]] HierarchyMutator hierarchy() && = delete
+[[nodiscard]] ElectricalMutator electrical() &noexcept
+[[nodiscard]] ElectricalMutator electrical() && = delete
+[[nodiscard]] IntentMutator intent() &noexcept
+[[nodiscard]] IntentMutator intent() && = delete
+[[nodiscard]] NetClassMutator net_classes() &noexcept
+[[nodiscard]] NetClassMutator net_classes() && = delete
 [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition, ModuleInstanceName name)
 [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port, NetId parent_net)
 [[nodiscard]] ModuleInstanceId restore_root_module_instance(ModuleDefId definition, ModuleInstanceName name, const std::vector<std::pair<TemplateNetDefId, NetId>> &origins, const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins = {})

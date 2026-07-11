@@ -51,8 +51,8 @@ class Circuit {
     /**
      * Borrow-only facade for connectivity-owned mutations.
      *
-     * Returned by value from Circuit::connectivity(); obtain one at the call site and do not store
-     * it. Root-owned or cross-subsystem mutations stay on Circuit.
+     * A non-copyable scoped handle tied to a live lvalue Circuit. Root-owned or cross-subsystem
+     * mutations stay on Circuit.
      */
     class ConnectivityMutator {
       public:
@@ -89,8 +89,8 @@ class Circuit {
     /**
      * Borrow-only facade for hierarchy-owned mutations.
      *
-     * Returned by value from Circuit::hierarchy(); obtain one at the call site and do not store it.
-     * Root-owned or cross-subsystem mutations stay on Circuit.
+     * A non-copyable scoped handle tied to a live lvalue Circuit. Root-owned or cross-subsystem
+     * mutations stay on Circuit.
      */
     class HierarchyMutator {
       public:
@@ -127,8 +127,8 @@ class Circuit {
     /**
      * Borrow-only facade for electrical-owned mutations.
      *
-     * Returned by value from Circuit::electrical(); obtain one at the call site and do not store
-     * it. Root-owned or cross-subsystem mutations stay on Circuit.
+     * A non-copyable scoped handle tied to a live lvalue Circuit. Root-owned or cross-subsystem
+     * mutations stay on Circuit.
      */
     class ElectricalMutator {
       public:
@@ -169,8 +169,8 @@ class Circuit {
     /**
      * Borrow-only facade for design-intent mutations.
      *
-     * Returned by value from Circuit::intent(); obtain one at the call site and do not store it.
-     * Root-owned or cross-subsystem mutations stay on Circuit.
+     * A non-copyable scoped handle tied to a live lvalue Circuit. Root-owned or cross-subsystem
+     * mutations stay on Circuit.
      */
     class IntentMutator {
       public:
@@ -201,8 +201,8 @@ class Circuit {
     /**
      * Borrow-only facade for net-class mutations.
      *
-     * Returned by value from Circuit::net_classes(); obtain one at the call site and do not store
-     * it. Root-owned or cross-subsystem mutations stay on Circuit.
+     * A non-copyable scoped handle tied to a live lvalue Circuit. Root-owned or cross-subsystem
+     * mutations stay on Circuit.
      */
     class NetClassMutator {
       public:
@@ -225,19 +225,24 @@ class Circuit {
     };
 
     /** Return the borrow-only connectivity mutation facade. */
-    [[nodiscard]] ConnectivityMutator connectivity() noexcept;
+    [[nodiscard]] ConnectivityMutator connectivity() & noexcept;
+    [[nodiscard]] ConnectivityMutator connectivity() && = delete;
 
     /** Return the borrow-only hierarchy mutation facade. */
-    [[nodiscard]] HierarchyMutator hierarchy() noexcept;
+    [[nodiscard]] HierarchyMutator hierarchy() & noexcept;
+    [[nodiscard]] HierarchyMutator hierarchy() && = delete;
 
     /** Return the borrow-only electrical mutation facade. */
-    [[nodiscard]] ElectricalMutator electrical() noexcept;
+    [[nodiscard]] ElectricalMutator electrical() & noexcept;
+    [[nodiscard]] ElectricalMutator electrical() && = delete;
 
     /** Return the borrow-only design-intent mutation facade. */
-    [[nodiscard]] IntentMutator intent() noexcept;
+    [[nodiscard]] IntentMutator intent() & noexcept;
+    [[nodiscard]] IntentMutator intent() && = delete;
 
     /** Return the borrow-only net-class mutation facade. */
-    [[nodiscard]] NetClassMutator net_classes() noexcept;
+    [[nodiscard]] NetClassMutator net_classes() & noexcept;
+    [[nodiscard]] NetClassMutator net_classes() && = delete;
 
     /** Instantiate a module at the root and create concrete nets for its template-local nets. */
     [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition,

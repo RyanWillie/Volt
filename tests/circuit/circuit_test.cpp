@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
@@ -27,6 +28,37 @@ static_assert(is_borrow_only_mutator_facade<volt::Circuit::HierarchyMutator>);
 static_assert(is_borrow_only_mutator_facade<volt::Circuit::ElectricalMutator>);
 static_assert(is_borrow_only_mutator_facade<volt::Circuit::IntentMutator>);
 static_assert(is_borrow_only_mutator_facade<volt::Circuit::NetClassMutator>);
+
+template <typename Circuit>
+concept has_connectivity_mutator =
+    requires(Circuit &&circuit) { std::forward<Circuit>(circuit).connectivity(); };
+
+template <typename Circuit>
+concept has_hierarchy_mutator =
+    requires(Circuit &&circuit) { std::forward<Circuit>(circuit).hierarchy(); };
+
+template <typename Circuit>
+concept has_electrical_mutator =
+    requires(Circuit &&circuit) { std::forward<Circuit>(circuit).electrical(); };
+
+template <typename Circuit>
+concept has_intent_mutator =
+    requires(Circuit &&circuit) { std::forward<Circuit>(circuit).intent(); };
+
+template <typename Circuit>
+concept has_net_class_mutator =
+    requires(Circuit &&circuit) { std::forward<Circuit>(circuit).net_classes(); };
+
+static_assert(has_connectivity_mutator<volt::Circuit &>);
+static_assert(!has_connectivity_mutator<volt::Circuit>);
+static_assert(has_hierarchy_mutator<volt::Circuit &>);
+static_assert(!has_hierarchy_mutator<volt::Circuit>);
+static_assert(has_electrical_mutator<volt::Circuit &>);
+static_assert(!has_electrical_mutator<volt::Circuit>);
+static_assert(has_intent_mutator<volt::Circuit &>);
+static_assert(!has_intent_mutator<volt::Circuit>);
+static_assert(has_net_class_mutator<volt::Circuit &>);
+static_assert(!has_net_class_mutator<volt::Circuit>);
 
 volt::PhysicalPart make_resistor_physical_part(volt::PinDefId first_pin,
                                                volt::PinDefId second_pin) {
