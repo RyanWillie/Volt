@@ -15,6 +15,72 @@
 
 namespace volt::io::detail {
 
+struct RestoredPinDefinition {
+    PinDefinition definition;
+    ElectricalAttributeMap electrical_attributes;
+};
+
+struct RestoredComponentDefinition {
+    ComponentDefinition definition;
+};
+
+struct RestoredComponentInstance {
+    ComponentInstance instance;
+    ElectricalAttributeMap electrical_attributes;
+};
+
+struct ConnectivityRestoration {
+    std::vector<RestoredPinDefinition> pin_definitions;
+    std::vector<RestoredComponentDefinition> component_definitions;
+    std::vector<RestoredComponentInstance> components;
+    std::vector<PinInstance> pins;
+};
+
+struct RestoredModuleDefinition {
+    ModuleDefId id;
+    ModuleDefinition definition;
+};
+
+struct RestoredTemplateNetDefinition {
+    TemplateNetDefId id;
+    ModuleDefId module;
+    TemplateNetDefinition definition;
+};
+
+struct RestoredModuleComponent {
+    ModuleComponentId id;
+    ModuleDefId module;
+    ModuleComponentTemplate component;
+};
+
+struct RestoredModulePinConnection {
+    ModuleDefId module;
+    TemplateNetDefId net;
+    ModuleComponentId component;
+    PinDefId pin;
+};
+
+struct RestoredPortDefinition {
+    PortDefId id;
+    ModuleDefId module;
+    PortDefinition definition;
+};
+
+struct HierarchyDefinitionRestoration {
+    std::vector<RestoredModuleDefinition> module_definitions;
+    std::vector<RestoredTemplateNetDefinition> template_nets;
+    std::vector<RestoredModuleComponent> components;
+    std::vector<RestoredModulePinConnection> connections;
+    std::vector<RestoredPortDefinition> ports;
+};
+
+struct ModuleInstanceRestoration {
+    ModuleDefId definition;
+    ModuleInstanceName name;
+    std::vector<std::pair<TemplateNetDefId, NetId>> net_origins;
+    std::vector<std::pair<ModuleComponentId, ComponentId>> component_origins;
+};
+
 /** Internal implementation for loading the v1 logical circuit JSON format. */
 class LogicalCircuitReader {
   public:
@@ -82,13 +148,14 @@ class LogicalCircuitReader {
     [[nodiscard]] static ElectricalAttributeValue
     electrical_attribute_value(const nlohmann::json &object);
 
+    [[nodiscard]] static ElectricalAttributeMap
+    electrical_attributes(const nlohmann::json &object, ElectricalAttributeOwner owner,
+                          ElectricalAttributeKind kind);
+
     void read_component_electrical_attributes(const nlohmann::json &object, ComponentId component,
                                               ElectricalAttributeOwner owner);
 
     void read_net_electrical_attributes(const nlohmann::json &object, NetId net);
-
-    void read_pin_definition_electrical_attributes(const nlohmann::json &object,
-                                                   PinDefId pin_definition);
 
     [[nodiscard]] static std::optional<DefinitionSource>
     definition_source(const nlohmann::json &object);
@@ -111,6 +178,8 @@ class LogicalCircuitReader {
 
     void read_pins();
 
+    void restore_connectivity();
+
     void read_nets();
 
     void read_net_classes();
@@ -130,6 +199,8 @@ class LogicalCircuitReader {
 
     const nlohmann::json &document_;
     Circuit circuit_;
+    ConnectivityRestoration connectivity_restoration_;
+    std::vector<std::optional<ComponentDefId>> pin_definition_owners_;
     std::map<std::string, PinDefId> pin_def_ids_;
     std::map<std::string, ComponentDefId> component_def_ids_;
     std::map<std::string, ComponentId> component_ids_;

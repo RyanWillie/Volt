@@ -8,6 +8,7 @@
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/core/properties.hpp>
+#include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/schematic/default_symbols.hpp>
 
 TEST_CASE("Component library defines a component from a data-driven spec") {
@@ -55,6 +56,19 @@ TEST_CASE("Component library defines a component from a data-driven spec") {
     CHECK(output.terminal_kind() == volt::ElectricalTerminalKind::Signal);
     CHECK(output.direction() == volt::ElectricalDirection::Output);
     CHECK(output.signal_domain() == volt::ElectricalSignalDomain::Analog);
+}
+
+TEST_CASE("Component library definition failures leave canonical bytes unchanged") {
+    auto circuit = volt::Circuit{};
+    static_cast<void>(volt::authoring::define_component(circuit, volt::authoring::resistor()));
+    const auto before = volt::io::write_logical_circuit(circuit);
+
+    CHECK_THROWS(volt::authoring::define_component(
+        circuit, volt::authoring::ComponentSpec{"Broken",
+                                                {volt::authoring::passive_pin("1", "1"),
+                                                 volt::authoring::passive_pin("", "2")}}));
+
+    CHECK(volt::io::write_logical_circuit(circuit) == before);
 }
 
 TEST_CASE("Passive component catalog specs define two required passive pins") {

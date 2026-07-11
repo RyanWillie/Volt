@@ -57,7 +57,9 @@ Circuit::ConnectivityMutator::add_component_definition(ComponentDefinition defin
 }
 
 [[nodiscard]] ComponentId Circuit::ConnectivityMutator::add_component(ComponentInstance component) {
-    return circuit_.connectivity_.add_component(std::move(component));
+    return circuit_.instantiate_component(
+        component.definition(),
+        ComponentInstanceSpec{component.reference(), component.properties()});
 }
 
 [[nodiscard]] PinId Circuit::ConnectivityMutator::add_pin(PinInstance pin) {
@@ -99,6 +101,176 @@ bool Circuit::HierarchyMutator::connect_module_pin(ModuleDefId module, TemplateN
                                                    ModuleComponentId component, PinDefId pin) {
     circuit_.require_pin_in_module_component(component, pin);
     return circuit_.hierarchy_.connect_module_pin(module, net, component, pin);
+}
+
+[[nodiscard]] ComponentDefId Circuit::define_component(ComponentSpec spec) {
+    auto pin_definitions = std::vector<PinDefinition>{};
+    auto pin_attributes = std::vector<ElectricalAttributeMap>{};
+    auto pin_ids = std::vector<PinDefId>{};
+    pin_definitions.reserve(spec.pins.size());
+    pin_attributes.reserve(spec.pins.size());
+    pin_ids.reserve(spec.pins.size());
+
+    const auto first_pin_index = connectivity_.pin_definition_count();
+    for (std::size_t index = 0; index < spec.pins.size(); ++index) {
+        const auto &pin = spec.pins[index];
+        pin_definitions.emplace_back(pin.name, pin.number, pin.requirement, pin.terminal_kind,
+                                     pin.direction, pin.signal_domain, pin.drive_kind,
+                                     pin.polarity);
+        pin_attributes.push_back(ElectricalStorage::preflight_attributes(
+            pin.electrical_attributes, ElectricalAttributeOwner::PinSpec));
+        pin_ids.emplace_back(first_pin_index + index);
+    }
+
+    auto definition =
+        ComponentDefinition{std::move(spec.name), pin_ids, std::move(spec.properties),
+                            std::move(spec.source), std::move(spec.schematic_symbols)};
+    for (std::size_t index = 0; index < pin_definitions.size(); ++index) {
+        const auto pin = connectivity_.add_pin_definition(std::move(pin_definitions[index]));
+        electrical_.restore_pin_definition_attributes(pin, std::move(pin_attributes[index]));
+    }
+    return connectivity_.add_component_definition(std::move(definition));
+}
+
+[[nodiscard]] ModuleDefId Circuit::define_module(ModuleSpec spec) {
+    if (hierarchy_.module_definition_by_name(spec.name).has_value()) {
+        throw KernelLogicError{ErrorCode::DuplicateName, "Module definition name already exists"};
+    }
+
+    for (std::size_t index = 0; index < spec.template_nets.size(); ++index) {
+        const auto duplicate =
+            std::find_if(spec.template_nets.begin(),
+                         spec.template_nets.begin() + static_cast<std::ptrdiff_t>(index),
+                         [&spec, index](const auto &candidate) {
+                             return candidate.name() == spec.template_nets[index].name();
+                         });
+        if (duplicate != spec.template_nets.begin() + static_cast<std::ptrdiff_t>(index)) {
+            throw KernelLogicError{ErrorCode::DuplicateName,
+                                   "Template net name already exists in module definition"};
+        }
+    }
+
+    for (std::size_t index = 0; index < spec.components.size(); ++index) {
+        require_component_definition(spec.components[index].definition());
+        const auto duplicate = std::find_if(
+            spec.components.begin(), spec.components.begin() + static_cast<std::ptrdiff_t>(index),
+            [&spec, index](const auto &candidate) {
+                return candidate.reference() == spec.components[index].reference();
+            });
+        if (duplicate != spec.components.begin() + static_cast<std::ptrdiff_t>(index)) {
+            throw KernelLogicError{ErrorCode::DuplicateName,
+                                   "Module component reference designator already exists"};
+        }
+    }
+
+    auto resolved_connections =
+        std::vector<std::pair<std::size_t, std::pair<std::size_t, PinDefId>>>{};
+    resolved_connections.reserve(spec.connections.size());
+    for (const auto &connection : spec.connections) {
+        const auto net = std::find_if(
+            spec.template_nets.begin(), spec.template_nets.end(),
+            [&connection](const auto &candidate) { return candidate.name() == connection.net; });
+        if (net == spec.template_nets.end()) {
+            throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                                   "Module connection net does not exist in module spec"};
+        }
+        const auto component = std::find_if(
+            spec.components.begin(), spec.components.end(), [&connection](const auto &candidate) {
+                return candidate.reference() == connection.component;
+            });
+        if (component == spec.components.end()) {
+            throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                                   "Module connection component does not exist in module spec"};
+        }
+        require_pin_definition(connection.pin);
+        const auto &component_pins = component_definition(component->definition()).pins();
+        if (std::find(component_pins.begin(), component_pins.end(), connection.pin) ==
+            component_pins.end()) {
+            throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                                   "Pin definition does not belong to module component definition"};
+        }
+
+        const auto net_index = static_cast<std::size_t>(net - spec.template_nets.begin());
+        const auto component_index = static_cast<std::size_t>(component - spec.components.begin());
+        const auto already_connected =
+            std::any_of(resolved_connections.begin(), resolved_connections.end(),
+                        [component_index, &connection](const auto &resolved) {
+                            return resolved.second.first == component_index &&
+                                   resolved.second.second == connection.pin;
+                        });
+        if (already_connected) {
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Module component pin is already connected"};
+        }
+        resolved_connections.emplace_back(net_index, std::pair{component_index, connection.pin});
+    }
+
+    auto resolved_ports = std::vector<PortDefinition>{};
+    resolved_ports.reserve(spec.ports.size());
+    const auto first_template_net_index = hierarchy_.template_net_definition_count();
+    for (std::size_t index = 0; index < spec.ports.size(); ++index) {
+        const auto &port = spec.ports[index];
+        const auto duplicate = std::find_if(
+            spec.ports.begin(), spec.ports.begin() + static_cast<std::ptrdiff_t>(index),
+            [&port](const auto &candidate) { return candidate.name == port.name; });
+        if (duplicate != spec.ports.begin() + static_cast<std::ptrdiff_t>(index)) {
+            throw KernelLogicError{ErrorCode::DuplicateName,
+                                   "Port name already exists in module definition"};
+        }
+        const auto internal_net = std::find_if(
+            spec.template_nets.begin(), spec.template_nets.end(),
+            [&port](const auto &candidate) { return candidate.name() == port.internal_net; });
+        if (internal_net == spec.template_nets.end()) {
+            throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                                   "Module port internal net does not exist in module spec"};
+        }
+        const auto net_index = static_cast<std::size_t>(internal_net - spec.template_nets.begin());
+        resolved_ports.emplace_back(port.name,
+                                    TemplateNetDefId{first_template_net_index + net_index},
+                                    port.role, port.required);
+    }
+
+    const auto module = hierarchy_.add_module_definition(ModuleDefinition{std::move(spec.name)});
+    auto template_nets = std::vector<TemplateNetDefId>{};
+    template_nets.reserve(spec.template_nets.size());
+    for (auto &net : spec.template_nets) {
+        template_nets.push_back(hierarchy_.add_template_net(module, std::move(net)));
+    }
+    auto components = std::vector<ModuleComponentId>{};
+    components.reserve(spec.components.size());
+    for (auto &component : spec.components) {
+        components.push_back(hierarchy_.add_module_component(module, std::move(component)));
+    }
+    for (const auto &[net_index, component_and_pin] : resolved_connections) {
+        [[maybe_unused]] const auto changed = hierarchy_.connect_module_pin(
+            module, template_nets[net_index], components[component_and_pin.first],
+            component_and_pin.second);
+    }
+    for (auto &port : resolved_ports) {
+        [[maybe_unused]] const auto id = hierarchy_.add_port_definition(module, std::move(port));
+    }
+
+    return module;
+}
+
+[[nodiscard]] ComponentId Circuit::instantiate_component(ComponentDefId definition,
+                                                         ComponentInstanceSpec spec) {
+    require_component_definition(definition);
+    if (queries::component_by_reference(*this, spec.reference).has_value()) {
+        throw KernelLogicError{ErrorCode::DuplicateName,
+                               "Component reference designator already exists"};
+    }
+
+    return connectivity_.instantiate_component(definition, std::move(spec.reference),
+                                               std::move(spec.properties));
+}
+
+[[nodiscard]] NetId Circuit::add_net(NetSpec spec) {
+    if (queries::net_by_name(*this, spec.name).has_value()) {
+        throw KernelLogicError{ErrorCode::DuplicateName, "Net name already exists"};
+    }
+    auto net = Net{std::move(spec.name), spec.kind};
+    return connectivity_.add_net(std::move(net));
 }
 
 [[nodiscard]] ModuleInstanceId Circuit::instantiate_root_module(ModuleDefId definition,
@@ -287,8 +459,8 @@ bool Circuit::HierarchyMutator::connect_module_pin(ModuleDefId module, TemplateN
 [[nodiscard]] ComponentId Circuit::instantiate_component(ComponentDefId definition,
                                                          ReferenceDesignator reference,
                                                          PropertyMap properties) {
-    return connectivity_.instantiate_component(definition, std::move(reference),
-                                               std::move(properties));
+    return instantiate_component(
+        definition, ComponentInstanceSpec{std::move(reference), std::move(properties)});
 }
 
 bool Circuit::connect(NetId net, PinId pin) { return connectivity_.connect(net, pin); }
@@ -304,6 +476,11 @@ void Circuit::ElectricalMutator::set_component_electrical_attribute(
 void Circuit::ElectricalMutator::set_pin_definition_electrical_attribute(
     PinDefId pin_definition, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value) {
     circuit_.require_pin_definition(pin_definition);
+    if (circuit_.connectivity_.pin_definition_is_owned(pin_definition)) {
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Committed pin definition electrical attributes are immutable",
+                               EntityRef::pin_def(pin_definition)};
+    }
     circuit_.electrical_.set_pin_definition_attribute(pin_definition, spec, value);
 }
 

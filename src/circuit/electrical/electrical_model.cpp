@@ -47,6 +47,32 @@ ElectricalModel &ElectricalModel::operator=(ElectricalModel &&other) noexcept = 
 
 ElectricalModel::~ElectricalModel() = default;
 
+[[nodiscard]] ElectricalAttributeMap Circuit::ElectricalStorage::preflight_attributes(
+    const std::vector<ElectricalAttributeAssignment> &assignments, ElectricalAttributeOwner owner) {
+    auto attributes = ElectricalAttributeMap{};
+    for (const auto &assignment : assignments) {
+        detail::require_attribute_owner(assignment.spec, owner);
+        attributes.set(assignment.spec, assignment.value);
+    }
+    return attributes;
+}
+
+void Circuit::ElectricalStorage::restore_component_attributes(ComponentId component,
+                                                              ElectricalAttributeMap attributes) {
+    if (!attributes.empty()) {
+        detail::mutable_attributes(mutable_state().component_attributes, component) =
+            std::move(attributes);
+    }
+}
+
+void Circuit::ElectricalStorage::restore_pin_definition_attributes(
+    PinDefId pin_definition, ElectricalAttributeMap attributes) {
+    if (!attributes.empty()) {
+        detail::mutable_attributes(mutable_state().pin_definition_attributes, pin_definition) =
+            std::move(attributes);
+    }
+}
+
 void Circuit::ElectricalStorage::set_component_attribute(ComponentId component,
                                                          const ElectricalAttributeSpec &spec,
                                                          ElectricalAttributeValue value) {

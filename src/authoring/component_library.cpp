@@ -67,27 +67,33 @@ namespace {
 }
 
 [[nodiscard]] ComponentDefId define_component(Circuit &circuit, const ComponentSpec &spec) {
-    auto pin_definitions = std::vector<PinDefId>{};
-    pin_definitions.reserve(spec.pins.size());
+    auto pins = std::vector<volt::PinSpec>{};
+    pins.reserve(spec.pins.size());
 
     for (const auto &pin : spec.pins) {
-        const auto pin_definition = circuit.connectivity().add_pin_definition(
-            PinDefinition{pin.name, pin.number, pin.requirement, pin.terminal_kind, pin.direction,
-                          pin.signal_domain, pin.drive_kind, pin.polarity});
+        auto attributes = std::vector<ElectricalAttributeAssignment>{};
         if (pin.voltage_range.has_value()) {
-            circuit.electrical().set_pin_definition_electrical_attribute(
-                pin_definition,
+            attributes.push_back(ElectricalAttributeAssignment{
                 ElectricalAttributeSpec{
                     ElectricalAttributeName{"voltage_range"}, ElectricalAttributeOwner::PinSpec,
                     ElectricalAttributeKind::Constraint, UnitDimension::Voltage},
-                ElectricalAttributeValue{pin.voltage_range.value()});
+                ElectricalAttributeValue{pin.voltage_range.value()}});
         }
-        pin_definitions.push_back(pin_definition);
+        pins.push_back(volt::PinSpec{
+            pin.name,
+            pin.number,
+            pin.requirement,
+            pin.terminal_kind,
+            pin.direction,
+            pin.signal_domain,
+            pin.drive_kind,
+            pin.polarity,
+            std::move(attributes),
+        });
     }
 
-    return circuit.connectivity().add_component_definition(
-        ComponentDefinition{spec.name, std::move(pin_definitions), spec.properties, spec.source,
-                            spec.schematic_symbols});
+    return circuit.define_component(volt::ComponentSpec{spec.name, std::move(pins), spec.properties,
+                                                        spec.source, spec.schematic_symbols});
 }
 
 [[nodiscard]] ComponentSpec resistor() {

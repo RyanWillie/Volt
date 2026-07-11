@@ -576,6 +576,44 @@ TEST_CASE("Logical circuit reader rejects duplicate net pin references") {
     CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
 }
 
+TEST_CASE("Logical circuit reader rejects incomplete concrete component pin sets") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["pins"].erase(fixture["pins"].begin() + 5);
+    fixture["nets"][2]["pins"].erase(fixture["nets"][2]["pins"].begin());
+
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
+}
+
+TEST_CASE("Logical circuit reader rejects duplicate concrete component pins") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["pins"].push_back(
+        {{"id", "pin:6"}, {"component", "component:0"}, {"definition", "pin_def:0"}});
+
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
+}
+
+TEST_CASE("Logical circuit reader rejects pin definitions shared by component definitions") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["component_definitions"][1]["pins"][0] = fixture["component_definitions"][0]["pins"][0];
+
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
+}
+
+TEST_CASE("Logical circuit reader rejects repeated component-definition pins") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["component_definitions"][0]["pins"][1] = fixture["component_definitions"][0]["pins"][0];
+
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::invalid_argument);
+}
+
+TEST_CASE("Logical circuit reader rejects duplicate module pin connections") {
+    auto fixture = nlohmann::json::parse(read_fixture("hierarchy_module.volt.json"));
+    fixture["module_definitions"][0]["connections"].push_back(
+        fixture["module_definitions"][0]["connections"][0]);
+
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
+}
+
 TEST_CASE("Logical circuit reader rejects invalid pin electrical enum values") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["pin_definitions"][0]["terminal_kind"] = "ThresholdInput";

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/intent/design_intent.hpp>
 
 namespace {
@@ -56,11 +57,11 @@ TEST_CASE("Circuit records intentional no-connect pins idempotently in determini
     const auto component = circuit.connectivity().add_component(
         volt::ComponentInstance{component_definition, volt::ReferenceDesignator{"J1"}});
     const auto first =
-        circuit.connectivity().add_pin(volt::PinInstance{component, first_definition});
+        volt::queries::pin_by_definition(circuit, component, first_definition).value();
     const auto second =
-        circuit.connectivity().add_pin(volt::PinInstance{component, second_definition});
+        volt::queries::pin_by_definition(circuit, component, second_definition).value();
     const auto unmarked =
-        circuit.connectivity().add_pin(volt::PinInstance{component, unmarked_definition});
+        volt::queries::pin_by_definition(circuit, component, unmarked_definition).value();
 
     CHECK(circuit.intent().mark_intentional_no_connect_pin(first));
     CHECK(circuit.intent().mark_intentional_no_connect_pin(second));

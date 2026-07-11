@@ -169,6 +169,42 @@ class ModulePinConnection {
     PinDefId pin_;
 };
 
+/** Complete module-local pin connection input using domain labels and canonical PinDefId. */
+struct ModulePinConnectionSpec {
+    /** Target template-local net name. */
+    NetName net;
+    /** Target module-local component reference. */
+    ReferenceDesignator component;
+    /** Canonical pin definition owned by the component definition. */
+    PinDefId pin;
+};
+
+/** Complete module boundary-port input resolved against the ModuleSpec's local nets. */
+struct ModulePortSpec {
+    /** Unique module-local port name. */
+    PortName name;
+    /** Template-local net exposed by the port. */
+    NetName internal_net;
+    /** Electrical direction or power role at the module boundary. */
+    PortRole role = PortRole::Passive;
+    /** Whether normal design intent expects the port to be bound. */
+    bool required = true;
+};
+
+/** Complete reusable module input lowered atomically by Circuit. */
+struct ModuleSpec {
+    /** Unique reusable module name. */
+    ModuleName name;
+    /** Ordered template-local net definitions. */
+    std::vector<TemplateNetDefinition> template_nets = {};
+    /** Ordered module-local component occurrences. */
+    std::vector<ModuleComponentTemplate> components = {};
+    /** Ordered internal component-pin connections. */
+    std::vector<ModulePinConnectionSpec> connections = {};
+    /** Ordered module boundary ports. */
+    std::vector<ModulePortSpec> ports = {};
+};
+
 /** Reusable logical module template. */
 class ModuleDefinition {
   public:

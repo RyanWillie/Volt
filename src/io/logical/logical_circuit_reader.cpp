@@ -25,6 +25,91 @@
 
 namespace volt::io::detail {
 
+void restore_logical_connectivity(Circuit &circuit, ConnectivityRestoration restoration) {
+    auto staged_connectivity = circuit.connectivity_;
+    auto staged_electrical = circuit.electrical_;
+
+    for (auto &pin : restoration.pin_definitions) {
+        const auto id = staged_connectivity.add_pin_definition(std::move(pin.definition));
+        staged_electrical.restore_pin_definition_attributes(id,
+                                                            std::move(pin.electrical_attributes));
+    }
+    for (auto &definition : restoration.component_definitions) {
+        [[maybe_unused]] const auto id =
+            staged_connectivity.add_component_definition(std::move(definition.definition));
+    }
+    for (auto &component : restoration.components) {
+        const auto id = staged_connectivity.add_component(std::move(component.instance));
+        staged_electrical.restore_component_attributes(id,
+                                                       std::move(component.electrical_attributes));
+    }
+    for (auto &pin : restoration.pins) {
+        [[maybe_unused]] const auto id = staged_connectivity.add_pin(std::move(pin));
+    }
+
+    circuit.connectivity_ = std::move(staged_connectivity);
+    circuit.electrical_ = std::move(staged_electrical);
+}
+
+void restore_logical_hierarchy(Circuit &circuit, HierarchyDefinitionRestoration restoration) {
+    auto staged_hierarchy = circuit.hierarchy_;
+
+    for (auto &definition : restoration.module_definitions) {
+        const auto id = staged_hierarchy.add_module_definition(std::move(definition.definition));
+        if (id != definition.id) {
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Module definition restoration order is not deterministic"};
+        }
+    }
+    for (auto &net : restoration.template_nets) {
+        const auto id = staged_hierarchy.add_template_net(net.module, std::move(net.definition));
+        if (id != net.id) {
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Template net restoration order is not deterministic"};
+        }
+    }
+    for (auto &component : restoration.components) {
+        circuit.require_component_definition(component.component.definition());
+        const auto id =
+            staged_hierarchy.add_module_component(component.module, std::move(component.component));
+        if (id != component.id) {
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Module component restoration order is not deterministic"};
+        }
+    }
+    for (const auto &connection : restoration.connections) {
+        circuit.require_pin_definition(connection.pin);
+        const auto &component = staged_hierarchy.module_component_template(connection.component);
+        const auto &pins = circuit.component_definition(component.definition()).pins();
+        if (std::find(pins.begin(), pins.end(), connection.pin) == pins.end()) {
+            throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                                   "Pin definition does not belong to module component definition"};
+        }
+        if (!staged_hierarchy.connect_module_pin(connection.module, connection.net,
+                                                 connection.component, connection.pin)) {
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Module component pin is already connected"};
+        }
+    }
+    for (auto &port : restoration.ports) {
+        const auto id =
+            staged_hierarchy.add_port_definition(port.module, std::move(port.definition));
+        if (id != port.id) {
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Port definition restoration order is not deterministic"};
+        }
+    }
+
+    circuit.hierarchy_ = std::move(staged_hierarchy);
+}
+
+[[nodiscard]] ModuleInstanceId
+restore_logical_module_instance(Circuit &circuit, ModuleInstanceRestoration restoration) {
+    return circuit.restore_root_module_instance(restoration.definition, std::move(restoration.name),
+                                                restoration.net_origins,
+                                                restoration.component_origins);
+}
+
 [[nodiscard]] Circuit LogicalCircuitReader::read() {
     require(document_.is_object(), "Logical circuit document must be an object");
     require_format(document_);
@@ -34,6 +119,7 @@ namespace volt::io::detail {
     read_component_definitions();
     read_components();
     read_pins();
+    restore_connectivity();
     read_nets();
     read_net_classes();
     read_design_intent();
@@ -340,6 +426,23 @@ LogicalCircuitReader::electrical_attribute_value(const nlohmann::json &object) {
     throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid electrical attribute value type"};
 }
 
+[[nodiscard]] ElectricalAttributeMap LogicalCircuitReader::electrical_attributes(
+    const nlohmann::json &object, ElectricalAttributeOwner owner, ElectricalAttributeKind kind) {
+    auto result = ElectricalAttributeMap{};
+    const auto it = object.find("electrical_attributes");
+    if (it == object.end()) {
+        return result;
+    }
+    require(it->is_object(), "Electrical attributes must be an object");
+    for (const auto &[name, value] : it->items()) {
+        const auto attribute = electrical_attribute_value(value);
+        result.set(ElectricalAttributeSpec{ElectricalAttributeName{name}, owner, kind,
+                                           attribute.dimension()},
+                   attribute);
+    }
+    return result;
+}
+
 void LogicalCircuitReader::read_component_electrical_attributes(const nlohmann::json &object,
                                                                 ComponentId component,
                                                                 ElectricalAttributeOwner owner) {
@@ -377,24 +480,6 @@ void LogicalCircuitReader::read_net_electrical_attributes(const nlohmann::json &
             net,
             ElectricalAttributeSpec{ElectricalAttributeName{name}, ElectricalAttributeOwner::Net,
                                     ElectricalAttributeKind::DesignInput, attribute.dimension()},
-            attribute);
-    }
-}
-
-void LogicalCircuitReader::read_pin_definition_electrical_attributes(const nlohmann::json &object,
-                                                                     PinDefId pin_definition) {
-    const auto it = object.find("electrical_attributes");
-    if (it == object.end()) {
-        return;
-    }
-    require(it->is_object(), "Electrical attributes must be an object");
-    for (const auto &[name, value] : it->items()) {
-        const auto attribute = electrical_attribute_value(value);
-        circuit_.electrical().set_pin_definition_electrical_attribute(
-            pin_definition,
-            ElectricalAttributeSpec{ElectricalAttributeName{name},
-                                    ElectricalAttributeOwner::PinSpec,
-                                    ElectricalAttributeKind::Constraint, attribute.dimension()},
             attribute);
     }
 }
@@ -443,42 +528,71 @@ void LogicalCircuitReader::read_pin_definitions() {
         const auto drive =
             electrical_drive_kind(optional_string_field(pin, "drive_kind", "Unspecified"));
         const auto polarity = electrical_polarity(optional_string_field(pin, "polarity", "None"));
-        const auto pin_definition_id = circuit_.connectivity().add_pin_definition(
+        const auto pin_definition_id = PinDefId{connectivity_restoration_.pin_definitions.size()};
+        connectivity_restoration_.pin_definitions.push_back(RestoredPinDefinition{
             PinDefinition{string_field(pin, "name"), string_field(pin, "number"), connection,
-                          terminal, direction, signal_domain, drive, polarity});
+                          terminal, direction, signal_domain, drive, polarity},
+            electrical_attributes(pin, ElectricalAttributeOwner::PinSpec,
+                                  ElectricalAttributeKind::Constraint),
+        });
         pin_def_ids_.emplace(id, pin_definition_id);
-        read_pin_definition_electrical_attributes(pin, pin_definition_id);
     }
 }
 
 void LogicalCircuitReader::read_component_definitions() {
     auto seen = std::set<std::string>{};
+    pin_definition_owners_.assign(connectivity_restoration_.pin_definitions.size(), std::nullopt);
     for (const auto &definition : array_field(document_, "component_definitions")) {
         const auto id = local_id<ComponentDefId>(definition, seen);
         auto pins = std::vector<PinDefId>{};
         for (const auto &pin : array_field(definition, "pins")) {
             require(pin.is_string(), "Component definition pin reference must be a string");
-            pins.push_back(resolve(pin_def_ids_, pin.get<std::string>()));
+            const auto pin_definition = resolve(pin_def_ids_, pin.get<std::string>());
+            if (std::find(pins.begin(), pins.end(), pin_definition) != pins.end()) {
+                throw KernelArgumentError{
+                    ErrorCode::InvalidArgument,
+                    "Component definition contains a duplicate pin definition"};
+            }
+            if (pin_definition_owners_[pin_definition.index()].has_value()) {
+                throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                                       "Pin definition already belongs to a component definition",
+                                       EntityRef::pin_def(pin_definition)};
+            }
+            pins.push_back(pin_definition);
         }
-        component_def_ids_.emplace(
-            id, circuit_.connectivity().add_component_definition(ComponentDefinition{
-                    string_field(definition, "name"), std::move(pins),
-                    properties(field(definition, "properties")), definition_source(definition),
-                    schematic_symbol_references(definition)}));
+        const auto component_definition =
+            ComponentDefId{connectivity_restoration_.component_definitions.size()};
+        connectivity_restoration_.component_definitions.push_back(RestoredComponentDefinition{
+            ComponentDefinition{
+                string_field(definition, "name"), pins, properties(field(definition, "properties")),
+                definition_source(definition), schematic_symbol_references(definition)},
+        });
+        for (const auto pin : pins) {
+            pin_definition_owners_[pin.index()] = component_definition;
+        }
+        component_def_ids_.emplace(id, component_definition);
     }
 }
 
 void LogicalCircuitReader::read_components() {
     auto seen = std::set<std::string>{};
+    auto references = std::set<std::string>{};
     for (const auto &component : array_field(document_, "components")) {
         const auto id = local_id<ComponentId>(component, seen);
         const auto definition = resolve(component_def_ids_, string_field(component, "definition"));
-        const auto component_id = circuit_.connectivity().add_component(
-            ComponentInstance{definition, ReferenceDesignator{string_field(component, "reference")},
-                              properties(field(component, "properties"))});
+        auto reference = ReferenceDesignator{string_field(component, "reference")};
+        if (!references.insert(reference.value()).second) {
+            throw KernelLogicError{ErrorCode::DuplicateName,
+                                   "Component reference designator already exists"};
+        }
+        const auto component_id = ComponentId{connectivity_restoration_.components.size()};
+        connectivity_restoration_.components.push_back(RestoredComponentInstance{
+            ComponentInstance{definition, std::move(reference),
+                              properties(field(component, "properties"))},
+            electrical_attributes(component, ElectricalAttributeOwner::ComponentInstance,
+                                  ElectricalAttributeKind::DesignInput),
+        });
         component_ids_.emplace(id, component_id);
-        read_component_electrical_attributes(component, component_id,
-                                             ElectricalAttributeOwner::ComponentInstance);
         if (const auto it = component.find("selected_physical_part"); it != component.end()) {
             selected_parts_.emplace_back(id, *it);
         }
@@ -487,17 +601,52 @@ void LogicalCircuitReader::read_components() {
 
 void LogicalCircuitReader::read_pins() {
     auto seen = std::set<std::string>{};
+    auto definitions_by_component =
+        std::vector<std::vector<PinDefId>>(connectivity_restoration_.components.size());
     for (const auto &pin : array_field(document_, "pins")) {
         const auto id = local_id<PinId>(pin, seen);
         const auto component = resolve(component_ids_, string_field(pin, "component"));
         const auto definition = resolve(pin_def_ids_, string_field(pin, "definition"));
         const auto &definition_pins =
-            circuit_.component_definition(circuit_.component(component).definition()).pins();
-        require(std::find(definition_pins.begin(), definition_pins.end(), definition) !=
-                    definition_pins.end(),
-                "Concrete pin definition is not part of its component definition");
-        pin_ids_.emplace(id, circuit_.connectivity().add_pin(PinInstance{component, definition}));
+            connectivity_restoration_.component_definitions
+                .at(connectivity_restoration_.components.at(component.index())
+                        .instance.definition()
+                        .index())
+                .definition.pins();
+        if (std::find(definition_pins.begin(), definition_pins.end(), definition) ==
+            definition_pins.end()) {
+            throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                                   "Pin definition does not belong to component definition"};
+        }
+        auto &materialized = definitions_by_component[component.index()];
+        if (std::find(materialized.begin(), materialized.end(), definition) != materialized.end()) {
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Component pin definition is already materialized"};
+        }
+        materialized.push_back(definition);
+        const auto pin_id = PinId{connectivity_restoration_.pins.size()};
+        connectivity_restoration_.pins.emplace_back(component, definition);
+        pin_ids_.emplace(id, pin_id);
     }
+
+    for (std::size_t index = 0; index < connectivity_restoration_.components.size(); ++index) {
+        const auto definition = connectivity_restoration_.components[index].instance.definition();
+        const auto &required =
+            connectivity_restoration_.component_definitions.at(definition.index())
+                .definition.pins();
+        const auto &materialized = definitions_by_component[index];
+        require(materialized.size() == required.size() &&
+                    std::all_of(required.begin(), required.end(),
+                                [&](const auto pin) {
+                                    return std::find(materialized.begin(), materialized.end(),
+                                                     pin) != materialized.end();
+                                }),
+                "Concrete component pin set does not match component definition");
+    }
+}
+
+void LogicalCircuitReader::restore_connectivity() {
+    restore_logical_connectivity(circuit_, std::move(connectivity_restoration_));
 }
 
 void LogicalCircuitReader::read_nets() {
@@ -696,65 +845,187 @@ void LogicalCircuitReader::read_module_definitions() {
         return;
     }
 
+    struct ParsedModuleDefinition {
+        std::string id;
+        ModuleDefinition definition;
+    };
+
+    struct ParsedTemplateNetDefinition {
+        std::string id;
+        std::string module;
+        TemplateNetDefinition definition;
+    };
+
+    struct ParsedModuleComponent {
+        std::string id;
+        std::string module;
+        ModuleComponentTemplate component;
+    };
+
+    struct ParsedConnection {
+        std::string module;
+        std::string net;
+        std::string component;
+        PinDefId pin;
+    };
+
+    struct ParsedPortDefinition {
+        std::string id;
+        std::string module;
+        PortName name;
+        std::string internal_net;
+        PortRole role;
+        bool required;
+    };
+
     auto seen = std::set<std::string>{};
     auto seen_template_nets = std::set<std::string>{};
     auto seen_module_components = std::set<std::string>{};
     auto seen_ports = std::set<std::string>{};
+    auto parsed_modules = std::vector<ParsedModuleDefinition>{};
+    auto parsed_template_nets = std::vector<ParsedTemplateNetDefinition>{};
+    auto parsed_components = std::vector<ParsedModuleComponent>{};
+    auto parsed_connections = std::vector<ParsedConnection>{};
+    auto parsed_ports = std::vector<ParsedPortDefinition>{};
+    auto preflight = circuit_;
+
     for (const auto &module_object : *modules) {
         const auto id = local_id<ModuleDefId>(module_object, seen);
-        const auto module = circuit_.hierarchy().add_module_definition(
-            ModuleDefinition{ModuleName{string_field(module_object, "name")}});
-        module_def_ids_.emplace(id, module);
+        const auto module = ModuleDefId{circuit_.module_definition_count() + parsed_modules.size()};
+        auto module_name = ModuleName{string_field(module_object, "name")};
+        auto spec = ModuleSpec{.name = module_name};
+        auto local_template_nets = std::map<std::string, std::size_t>{};
+        auto local_components = std::map<std::string, std::size_t>{};
 
         for (const auto &net_object : array_field(module_object, "local_nets")) {
             const auto net_id = local_id<TemplateNetDefId>(net_object, seen_template_nets);
-            const auto template_net = circuit_.hierarchy().add_template_net(
-                module, TemplateNetDefinition{NetName{string_field(net_object, "name")},
-                                              net_kind(string_field(net_object, "kind"))});
-            template_net_ids_.emplace(net_id, template_net);
+            auto definition = TemplateNetDefinition{
+                NetName{string_field(net_object, "name")},
+                net_kind(string_field(net_object, "kind")),
+            };
+            local_template_nets.emplace(net_id, spec.template_nets.size());
+            spec.template_nets.push_back(definition);
+            parsed_template_nets.push_back(
+                ParsedTemplateNetDefinition{net_id, id, std::move(definition)});
         }
 
         if (const auto components = optional_array_field(module_object, "components")) {
             for (const auto &component_object : *components) {
                 const auto component_id =
                     local_id<ModuleComponentId>(component_object, seen_module_components);
-                const auto component = circuit_.hierarchy().add_module_component(
-                    module,
-                    ModuleComponentTemplate{
-                        resolve(component_def_ids_, string_field(component_object, "definition")),
-                        ReferenceDesignator{string_field(component_object, "reference")},
-                        properties(field(component_object, "properties"))});
-                module_component_ids_.emplace(component_id, component);
+                auto component = ModuleComponentTemplate{
+                    resolve(component_def_ids_, string_field(component_object, "definition")),
+                    ReferenceDesignator{string_field(component_object, "reference")},
+                    properties(field(component_object, "properties")),
+                };
+                local_components.emplace(component_id, spec.components.size());
+                spec.components.push_back(component);
+                parsed_components.push_back(
+                    ParsedModuleComponent{component_id, id, std::move(component)});
             }
         }
 
         if (const auto connections = optional_array_field(module_object, "connections")) {
             for (const auto &connection_object : *connections) {
-                [[maybe_unused]] const auto changed = circuit_.hierarchy().connect_module_pin(
-                    module, resolve(template_net_ids_, string_field(connection_object, "net")),
-                    resolve(module_component_ids_, string_field(connection_object, "component")),
-                    resolve(pin_def_ids_, string_field(connection_object, "pin")));
+                const auto net_id = string_field(connection_object, "net");
+                const auto component_id = string_field(connection_object, "component");
+                const auto net = local_template_nets.find(net_id);
+                const auto component = local_components.find(component_id);
+                require(net != local_template_nets.end(),
+                        "Template net does not belong to module definition");
+                require(component != local_components.end(),
+                        "Module component does not belong to module definition");
+                const auto pin = resolve(pin_def_ids_, string_field(connection_object, "pin"));
+                spec.connections.push_back(ModulePinConnectionSpec{
+                    spec.template_nets[net->second].name(),
+                    spec.components[component->second].reference(),
+                    pin,
+                });
+                parsed_connections.push_back(ParsedConnection{id, net_id, component_id, pin});
             }
         }
 
         for (const auto &port_object : array_field(module_object, "ports")) {
             const auto port_id = local_id<PortDefId>(port_object, seen_ports);
-            const auto internal_net =
-                resolve(template_net_ids_, string_field(port_object, "internal_net"));
+            const auto internal_net_id = string_field(port_object, "internal_net");
+            const auto internal_net = local_template_nets.find(internal_net_id);
+            require(internal_net != local_template_nets.end(),
+                    "Template net does not belong to module definition");
             const auto required_it = port_object.find("required");
             auto required = true;
             if (required_it != port_object.end()) {
                 require(required_it->is_boolean(), "Expected boolean field: required");
                 required = required_it->get<bool>();
             }
-            const auto port = circuit_.hierarchy().add_port_definition(
-                module,
-                PortDefinition{PortName{string_field(port_object, "name")}, internal_net,
-                               port_role(optional_string_field(port_object, "role", "Passive")),
-                               required});
-            port_def_ids_.emplace(port_id, port);
+            auto name = PortName{string_field(port_object, "name")};
+            const auto role = port_role(optional_string_field(port_object, "role", "Passive"));
+            spec.ports.push_back(ModulePortSpec{
+                name, spec.template_nets[internal_net->second].name(), role, required});
+            parsed_ports.push_back(ParsedPortDefinition{port_id, id, std::move(name),
+                                                        internal_net_id, role, required});
         }
+
+        parsed_modules.push_back(
+            ParsedModuleDefinition{id, ModuleDefinition{std::move(module_name)}});
+        const auto committed = preflight.define_module(std::move(spec));
+        require(committed == module, "Module definition restoration order is not deterministic");
+        module_def_ids_.emplace(id, committed);
     }
+
+    std::stable_sort(parsed_template_nets.begin(), parsed_template_nets.end(),
+                     [](const auto &lhs, const auto &rhs) {
+                         return decode_local_id<TemplateNetDefId>(lhs.id).index() <
+                                decode_local_id<TemplateNetDefId>(rhs.id).index();
+                     });
+    std::stable_sort(parsed_components.begin(), parsed_components.end(),
+                     [](const auto &lhs, const auto &rhs) {
+                         return decode_local_id<ModuleComponentId>(lhs.id).index() <
+                                decode_local_id<ModuleComponentId>(rhs.id).index();
+                     });
+    std::stable_sort(parsed_ports.begin(), parsed_ports.end(),
+                     [](const auto &lhs, const auto &rhs) {
+                         return decode_local_id<PortDefId>(lhs.id).index() <
+                                decode_local_id<PortDefId>(rhs.id).index();
+                     });
+
+    auto restoration = HierarchyDefinitionRestoration{};
+    for (auto &module : parsed_modules) {
+        restoration.module_definitions.push_back(RestoredModuleDefinition{
+            resolve(module_def_ids_, module.id), std::move(module.definition)});
+    }
+    const auto first_template_net = circuit_.template_net_definition_count();
+    for (std::size_t index = 0; index < parsed_template_nets.size(); ++index) {
+        auto &net = parsed_template_nets[index];
+        const auto id = TemplateNetDefId{first_template_net + index};
+        template_net_ids_.emplace(net.id, id);
+        restoration.template_nets.push_back(RestoredTemplateNetDefinition{
+            id, resolve(module_def_ids_, net.module), std::move(net.definition)});
+    }
+    const auto first_component = circuit_.module_component_count();
+    for (std::size_t index = 0; index < parsed_components.size(); ++index) {
+        auto &component = parsed_components[index];
+        const auto id = ModuleComponentId{first_component + index};
+        module_component_ids_.emplace(component.id, id);
+        restoration.components.push_back(RestoredModuleComponent{
+            id, resolve(module_def_ids_, component.module), std::move(component.component)});
+    }
+    for (const auto &connection : parsed_connections) {
+        restoration.connections.push_back(RestoredModulePinConnection{
+            resolve(module_def_ids_, connection.module), resolve(template_net_ids_, connection.net),
+            resolve(module_component_ids_, connection.component), connection.pin});
+    }
+    const auto first_port = circuit_.port_definition_count();
+    for (std::size_t index = 0; index < parsed_ports.size(); ++index) {
+        auto &port = parsed_ports[index];
+        const auto id = PortDefId{first_port + index};
+        port_def_ids_.emplace(port.id, id);
+        restoration.ports.push_back(RestoredPortDefinition{
+            id, resolve(module_def_ids_, port.module),
+            PortDefinition{std::move(port.name), resolve(template_net_ids_, port.internal_net),
+                           port.role, port.required}});
+    }
+
+    restore_logical_hierarchy(circuit_, std::move(restoration));
 }
 
 void LogicalCircuitReader::read_module_instances() {
@@ -786,9 +1057,13 @@ void LogicalCircuitReader::read_module_instances() {
             component_origins = infer_component_origins(
                 definition, ModuleInstanceName{string_field(instance_object, "name")});
         }
-        const auto instance = circuit_.restore_root_module_instance(
-            definition, ModuleInstanceName{string_field(instance_object, "name")}, origins,
-            component_origins);
+        const auto instance = restore_logical_module_instance(
+            circuit_, ModuleInstanceRestoration{
+                          definition,
+                          ModuleInstanceName{string_field(instance_object, "name")},
+                          std::move(origins),
+                          std::move(component_origins),
+                      });
         module_instance_ids_.emplace(id, instance);
 
         for (const auto &binding_object : array_field(instance_object, "port_bindings")) {

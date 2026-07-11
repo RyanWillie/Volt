@@ -341,6 +341,9 @@ struct AddedPin {
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
 
+    set_pin_voltage_range(circuit, regulator_vin_pin, 4.5, 5.5);
+    set_pin_voltage_range(circuit, mcu_vdd_pin, 1.8, 3.6);
+
     const auto header_def =
         circuit.connectivity().add_component_definition(volt::ComponentDefinition{
             "PowerAndDebugHeader",
@@ -413,8 +416,6 @@ struct AddedPin {
     set_net_voltage(circuit, vbus, 5.0);
     set_net_voltage(circuit, vdd, 3.3);
     set_net_voltage(circuit, ground, 0.0);
-    set_pin_voltage_range(circuit, regulator_vin_pin, 4.5, 5.5);
-    set_pin_voltage_range(circuit, mcu_vdd_pin, 1.8, 3.6);
 
     select_part(circuit, header, "HDR-1x4", volt::PackageRef{"1x4"},
                 volt::FootprintRef{"regression", "HDR_1x4_PWR"},

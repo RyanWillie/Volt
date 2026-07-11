@@ -29,9 +29,12 @@ include <volt/core/ids.hpp>
 [[nodiscard]] IntentMutator intent() && = delete
 [[nodiscard]] NetClassMutator net_classes() &noexcept
 [[nodiscard]] NetClassMutator net_classes() && = delete
+[[nodiscard]] ComponentDefId define_component(ComponentSpec spec)
+[[nodiscard]] ModuleDefId define_module(ModuleSpec spec)
+[[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ComponentInstanceSpec spec)
+[[nodiscard]] NetId add_net(NetSpec spec)
 [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition, ModuleInstanceName name)
 [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port, NetId parent_net)
-[[nodiscard]] ModuleInstanceId restore_root_module_instance(ModuleDefId definition, ModuleInstanceName name, const std::vector<std::pair<TemplateNetDefId, NetId>> &origins, const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins = {})
 [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ReferenceDesignator reference, PropertyMap properties = {})
 bool connect(NetId net, PinId pin)
 bool disconnect(PinId pin)

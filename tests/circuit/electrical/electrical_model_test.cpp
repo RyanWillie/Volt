@@ -76,12 +76,6 @@ TEST_CASE("Circuit stores typed electrical attributes by owner kind") {
         "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
         volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
         volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
-    const auto component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
-    const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
     const auto component_resistance = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"resistance"},
         volt::ElectricalAttributeOwner::ComponentInstance,
@@ -101,14 +95,20 @@ TEST_CASE("Circuit stores typed electrical attributes by owner kind") {
         volt::UnitDimension::Voltage,
     };
 
-    circuit.electrical().set_component_electrical_attribute(
-        component, component_resistance,
-        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Resistance, 330.0}});
     circuit.electrical().set_pin_definition_electrical_attribute(
         first_pin, pin_voltage_range,
         volt::ElectricalAttributeValue{
             volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
                                          volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
+    const auto component_definition = circuit.connectivity().add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
+    const auto component =
+        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
+    const auto net =
+        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    circuit.electrical().set_component_electrical_attribute(
+        component, component_resistance,
+        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Resistance, 330.0}});
     circuit.electrical().set_net_electrical_attribute(
         net, net_voltage,
         volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}});

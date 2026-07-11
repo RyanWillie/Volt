@@ -24,6 +24,7 @@ struct ConnectivityState {
     // keep them in sync; queries rely on them instead of scanning the tables.
     std::unordered_map<std::string, ComponentId> components_by_reference;
     std::unordered_map<std::string, NetId> nets_by_name;
+    std::vector<std::optional<ComponentDefId>> component_definition_by_pin;
     std::vector<std::vector<PinId>> pins_by_component;
     std::vector<std::optional<NetId>> net_by_pin;
 };
