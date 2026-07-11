@@ -50,10 +50,18 @@ concept SupportsCircuitRead = requires(const volt::Circuit &circuit, Id id) {
     circuit.template all<Id>();
 };
 
+struct UserDefinedCircuitId {
+    using type = volt::ComponentInstance;
+    [[nodiscard]] static const type &get(const volt::Circuit &circuit, UserDefinedCircuitId id);
+    [[nodiscard]] static std::size_t size(const volt::Circuit &circuit) noexcept;
+};
+
 static_assert(!HasRvalueAll<volt::Circuit>);
 static_assert(!ExposesConnectivityModel<volt::Circuit>);
 static_assert(!ExposesHierarchyModel<volt::Circuit>);
 static_assert(!SupportsCircuitRead<volt::SymbolDefId>);
+static_assert(!volt::CircuitEntityId<UserDefinedCircuitId>);
+static_assert(!SupportsCircuitRead<UserDefinedCircuitId>);
 static_assert(std::ranges::forward_range<volt::entity_range_t<volt::ComponentId>>);
 static_assert(std::ranges::sized_range<volt::entity_range_t<volt::ComponentId>>);
 static_assert(std::same_as<std::ranges::range_reference_t<volt::entity_range_t<volt::ComponentId>>,

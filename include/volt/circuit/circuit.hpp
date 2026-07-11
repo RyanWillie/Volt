@@ -29,95 +29,104 @@ namespace volt {
 
 class Circuit;
 
-/** Map a Circuit-owned stable ID to its canonical entity type. */
-template <typename Id> struct CircuitEntityTraits;
-
 /// @cond
-template <> struct CircuitEntityTraits<PinDefId> {
+namespace detail {
+
+template <typename Id> struct CircuitEntityDescriptor;
+template <typename Id> class CircuitEntityRange;
+
+template <> struct CircuitEntityDescriptor<PinDefId> {
     using type = PinDefinition;
     [[nodiscard]] static const type &get(const Circuit &circuit, PinDefId id);
     [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
-template <> struct CircuitEntityTraits<ComponentDefId> {
+template <> struct CircuitEntityDescriptor<ComponentDefId> {
     using type = ComponentDefinition;
     [[nodiscard]] static const type &get(const Circuit &circuit, ComponentDefId id);
     [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
-template <> struct CircuitEntityTraits<ComponentId> {
+template <> struct CircuitEntityDescriptor<ComponentId> {
     using type = ComponentInstance;
     [[nodiscard]] static const type &get(const Circuit &circuit, ComponentId id);
     [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
-template <> struct CircuitEntityTraits<PinId> {
+template <> struct CircuitEntityDescriptor<PinId> {
     using type = PinInstance;
     [[nodiscard]] static const type &get(const Circuit &circuit, PinId id);
     [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
-template <> struct CircuitEntityTraits<NetId> {
+template <> struct CircuitEntityDescriptor<NetId> {
     using type = Net;
     [[nodiscard]] static const type &get(const Circuit &circuit, NetId id);
     [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
-template <> struct CircuitEntityTraits<ModuleDefId> {
+template <> struct CircuitEntityDescriptor<ModuleDefId> {
     using type = ModuleDefinition;
     [[nodiscard]] static const type &get(const Circuit &circuit, ModuleDefId id);
     [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
-template <> struct CircuitEntityTraits<TemplateNetDefId> {
+template <> struct CircuitEntityDescriptor<TemplateNetDefId> {
     using type = TemplateNetDefinition;
     [[nodiscard]] static const type &get(const Circuit &circuit, TemplateNetDefId id);
     [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
-template <> struct CircuitEntityTraits<PortDefId> {
+template <> struct CircuitEntityDescriptor<PortDefId> {
     using type = PortDefinition;
     [[nodiscard]] static const type &get(const Circuit &circuit, PortDefId id);
     [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
-template <> struct CircuitEntityTraits<ModuleComponentId> {
+template <> struct CircuitEntityDescriptor<ModuleComponentId> {
     using type = ModuleComponentTemplate;
     [[nodiscard]] static const type &get(const Circuit &circuit, ModuleComponentId id);
     [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
-template <> struct CircuitEntityTraits<ModuleInstanceId> {
+template <> struct CircuitEntityDescriptor<ModuleInstanceId> {
     using type = ModuleInstance;
     [[nodiscard]] static const type &get(const Circuit &circuit, ModuleInstanceId id);
     [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
-template <> struct CircuitEntityTraits<PortBindingId> {
+template <> struct CircuitEntityDescriptor<PortBindingId> {
     using type = PortBinding;
     [[nodiscard]] static const type &get(const Circuit &circuit, PortBindingId id);
     [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
-template <> struct CircuitEntityTraits<NetClassId> {
+template <> struct CircuitEntityDescriptor<NetClassId> {
     using type = NetClass;
     [[nodiscard]] static const type &get(const Circuit &circuit, NetClassId id);
     [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
+} // namespace detail
+
 /// @endcond
 
 /** True when an ID names one of Circuit's canonical entity tables. */
 template <typename Id>
-concept CircuitEntityId = requires { typename CircuitEntityTraits<Id>::type; };
+concept CircuitEntityId =
+    std::same_as<Id, PinDefId> || std::same_as<Id, ComponentDefId> ||
+    std::same_as<Id, ComponentId> || std::same_as<Id, PinId> || std::same_as<Id, NetId> ||
+    std::same_as<Id, ModuleDefId> || std::same_as<Id, TemplateNetDefId> ||
+    std::same_as<Id, PortDefId> || std::same_as<Id, ModuleComponentId> ||
+    std::same_as<Id, ModuleInstanceId> || std::same_as<Id, PortBindingId> ||
+    std::same_as<Id, NetClassId>;
 
 /** Canonical entity type selected by a Circuit-owned stable ID. */
-template <CircuitEntityId Id> using entity_type_t = typename CircuitEntityTraits<Id>::type;
-
-template <CircuitEntityId Id> class CircuitEntityRange;
+template <CircuitEntityId Id>
+using entity_type_t = typename detail::CircuitEntityDescriptor<Id>::type;
 
 /** Borrowed deterministic range selected by a Circuit-owned stable ID. */
-template <CircuitEntityId Id> using entity_range_t = CircuitEntityRange<Id>;
+template <CircuitEntityId Id> using entity_range_t = detail::CircuitEntityRange<Id>;
 
 /// @cond
 namespace io::detail {
@@ -687,108 +696,123 @@ class Circuit {
 };
 
 /// @cond
-inline const PinDefinition &CircuitEntityTraits<PinDefId>::get(const Circuit &circuit,
-                                                               PinDefId id) {
+inline const PinDefinition &detail::CircuitEntityDescriptor<PinDefId>::get(const Circuit &circuit,
+                                                                           PinDefId id) {
     return circuit.pin_definition(id);
 }
 
-inline std::size_t CircuitEntityTraits<PinDefId>::size(const Circuit &circuit) noexcept {
+inline std::size_t
+detail::CircuitEntityDescriptor<PinDefId>::size(const Circuit &circuit) noexcept {
     return circuit.pin_definition_count();
 }
 
-inline const ComponentDefinition &CircuitEntityTraits<ComponentDefId>::get(const Circuit &circuit,
-                                                                           ComponentDefId id) {
+inline const ComponentDefinition &
+detail::CircuitEntityDescriptor<ComponentDefId>::get(const Circuit &circuit, ComponentDefId id) {
     return circuit.component_definition(id);
 }
 
-inline std::size_t CircuitEntityTraits<ComponentDefId>::size(const Circuit &circuit) noexcept {
+inline std::size_t
+detail::CircuitEntityDescriptor<ComponentDefId>::size(const Circuit &circuit) noexcept {
     return circuit.component_definition_count();
 }
 
-inline const ComponentInstance &CircuitEntityTraits<ComponentId>::get(const Circuit &circuit,
-                                                                      ComponentId id) {
+inline const ComponentInstance &
+detail::CircuitEntityDescriptor<ComponentId>::get(const Circuit &circuit, ComponentId id) {
     return circuit.component(id);
 }
 
-inline std::size_t CircuitEntityTraits<ComponentId>::size(const Circuit &circuit) noexcept {
+inline std::size_t
+detail::CircuitEntityDescriptor<ComponentId>::size(const Circuit &circuit) noexcept {
     return circuit.component_count();
 }
 
-inline const PinInstance &CircuitEntityTraits<PinId>::get(const Circuit &circuit, PinId id) {
+inline const PinInstance &detail::CircuitEntityDescriptor<PinId>::get(const Circuit &circuit,
+                                                                      PinId id) {
     return circuit.pin(id);
 }
 
-inline std::size_t CircuitEntityTraits<PinId>::size(const Circuit &circuit) noexcept {
+inline std::size_t detail::CircuitEntityDescriptor<PinId>::size(const Circuit &circuit) noexcept {
     return circuit.pin_count();
 }
 
-inline const Net &CircuitEntityTraits<NetId>::get(const Circuit &circuit, NetId id) {
+inline const Net &detail::CircuitEntityDescriptor<NetId>::get(const Circuit &circuit, NetId id) {
     return circuit.net(id);
 }
 
-inline std::size_t CircuitEntityTraits<NetId>::size(const Circuit &circuit) noexcept {
+inline std::size_t detail::CircuitEntityDescriptor<NetId>::size(const Circuit &circuit) noexcept {
     return circuit.net_count();
 }
 
-inline const ModuleDefinition &CircuitEntityTraits<ModuleDefId>::get(const Circuit &circuit,
-                                                                     ModuleDefId id) {
+inline const ModuleDefinition &
+detail::CircuitEntityDescriptor<ModuleDefId>::get(const Circuit &circuit, ModuleDefId id) {
     return circuit.module_definition(id);
 }
 
-inline std::size_t CircuitEntityTraits<ModuleDefId>::size(const Circuit &circuit) noexcept {
+inline std::size_t
+detail::CircuitEntityDescriptor<ModuleDefId>::size(const Circuit &circuit) noexcept {
     return circuit.module_definition_count();
 }
 
 inline const TemplateNetDefinition &
-CircuitEntityTraits<TemplateNetDefId>::get(const Circuit &circuit, TemplateNetDefId id) {
+detail::CircuitEntityDescriptor<TemplateNetDefId>::get(const Circuit &circuit,
+                                                       TemplateNetDefId id) {
     return circuit.template_net_definition(id);
 }
 
-inline std::size_t CircuitEntityTraits<TemplateNetDefId>::size(const Circuit &circuit) noexcept {
+inline std::size_t
+detail::CircuitEntityDescriptor<TemplateNetDefId>::size(const Circuit &circuit) noexcept {
     return circuit.template_net_definition_count();
 }
 
-inline const PortDefinition &CircuitEntityTraits<PortDefId>::get(const Circuit &circuit,
-                                                                 PortDefId id) {
+inline const PortDefinition &detail::CircuitEntityDescriptor<PortDefId>::get(const Circuit &circuit,
+                                                                             PortDefId id) {
     return circuit.port_definition(id);
 }
 
-inline std::size_t CircuitEntityTraits<PortDefId>::size(const Circuit &circuit) noexcept {
+inline std::size_t
+detail::CircuitEntityDescriptor<PortDefId>::size(const Circuit &circuit) noexcept {
     return circuit.port_definition_count();
 }
 
 inline const ModuleComponentTemplate &
-CircuitEntityTraits<ModuleComponentId>::get(const Circuit &circuit, ModuleComponentId id) {
+detail::CircuitEntityDescriptor<ModuleComponentId>::get(const Circuit &circuit,
+                                                        ModuleComponentId id) {
     return circuit.module_component_template(id);
 }
 
-inline std::size_t CircuitEntityTraits<ModuleComponentId>::size(const Circuit &circuit) noexcept {
+inline std::size_t
+detail::CircuitEntityDescriptor<ModuleComponentId>::size(const Circuit &circuit) noexcept {
     return circuit.module_component_count();
 }
 
-inline const ModuleInstance &CircuitEntityTraits<ModuleInstanceId>::get(const Circuit &circuit,
-                                                                        ModuleInstanceId id) {
+inline const ModuleInstance &
+detail::CircuitEntityDescriptor<ModuleInstanceId>::get(const Circuit &circuit,
+                                                       ModuleInstanceId id) {
     return circuit.module_instance(id);
 }
 
-inline std::size_t CircuitEntityTraits<ModuleInstanceId>::size(const Circuit &circuit) noexcept {
+inline std::size_t
+detail::CircuitEntityDescriptor<ModuleInstanceId>::size(const Circuit &circuit) noexcept {
     return circuit.module_instance_count();
 }
 
-inline const PortBinding &CircuitEntityTraits<PortBindingId>::get(const Circuit &circuit,
-                                                                  PortBindingId id) {
+inline const PortBinding &
+detail::CircuitEntityDescriptor<PortBindingId>::get(const Circuit &circuit, PortBindingId id) {
     return circuit.port_binding(id);
 }
 
-inline std::size_t CircuitEntityTraits<PortBindingId>::size(const Circuit &circuit) noexcept {
+inline std::size_t
+detail::CircuitEntityDescriptor<PortBindingId>::size(const Circuit &circuit) noexcept {
     return circuit.port_binding_count();
 }
 
-inline const NetClass &CircuitEntityTraits<NetClassId>::get(const Circuit &circuit, NetClassId id) {
+inline const NetClass &detail::CircuitEntityDescriptor<NetClassId>::get(const Circuit &circuit,
+                                                                        NetClassId id) {
     return circuit.net_class(id);
 }
 
-inline std::size_t CircuitEntityTraits<NetClassId>::size(const Circuit &circuit) noexcept {
+inline std::size_t
+detail::CircuitEntityDescriptor<NetClassId>::size(const Circuit &circuit) noexcept {
     return circuit.net_class_count();
 }
 
@@ -800,7 +824,10 @@ inline std::size_t CircuitEntityTraits<NetClassId>::size(const Circuit &circuit)
  * Iterators keep a pointer to the Circuit, so destroying or structurally mutating the Circuit
  * invalidates the range and its iterators. Creating a range from a temporary Circuit is deleted.
  */
-template <CircuitEntityId Id> class CircuitEntityRange {
+/// @cond
+namespace detail {
+
+template <typename Id> class CircuitEntityRange {
   public:
     /** Forward iterator yielding const references to canonical entities. */
     /// @cond
@@ -863,7 +890,7 @@ template <CircuitEntityId Id> class CircuitEntityRange {
 
     /** Construct a correctly sized range borrowing a live Circuit lvalue. */
     explicit CircuitEntityRange(const Circuit &circuit) noexcept
-        : circuit_{&circuit}, size_{CircuitEntityTraits<Id>::size(circuit)} {}
+        : circuit_{&circuit}, size_{detail::CircuitEntityDescriptor<Id>::size(circuit)} {}
 
     /** Prevent a range from borrowing a temporary Circuit. */
     CircuitEntityRange(const Circuit &&) = delete;
@@ -873,8 +900,12 @@ template <CircuitEntityId Id> class CircuitEntityRange {
     std::size_t size_ = 0;
 };
 
+} // namespace detail
+
+/// @endcond
+
 template <CircuitEntityId Id> [[nodiscard]] const entity_type_t<Id> &Circuit::get(Id id) const {
-    return CircuitEntityTraits<Id>::get(*this, id);
+    return detail::CircuitEntityDescriptor<Id>::get(*this, id);
 }
 
 template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> Circuit::all() const & {
