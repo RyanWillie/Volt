@@ -1,11 +1,14 @@
 #pragma once
 
 #include <algorithm>
+#include <concepts>
 #include <cstddef>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -25,6 +28,115 @@
 namespace volt {
 
 class Circuit;
+
+namespace queries {
+[[nodiscard]] std::optional<ComponentId>
+component_by_reference(const Circuit &circuit, const ReferenceDesignator &reference);
+[[nodiscard]] std::optional<ModuleDefId> module_definition_by_name(const Circuit &circuit,
+                                                                   const ModuleName &name);
+[[nodiscard]] std::optional<ModuleInstanceId>
+module_instance_by_name(const Circuit &circuit, const ModuleInstanceName &name);
+[[nodiscard]] std::optional<TemplateNetDefId>
+template_net_by_name(const Circuit &circuit, ModuleDefId module, const NetName &name);
+[[nodiscard]] std::optional<PortDefId> port_by_name(const Circuit &circuit, ModuleDefId module,
+                                                    const PortName &name);
+[[nodiscard]] std::optional<ModuleComponentId>
+module_component_by_reference(const Circuit &circuit, ModuleDefId module,
+                              const ReferenceDesignator &reference);
+[[nodiscard]] std::optional<TemplateNetDefId> template_net_for(const Circuit &circuit,
+                                                               ModuleDefId module,
+                                                               ModuleComponentId component,
+                                                               PinDefId pin);
+[[nodiscard]] std::optional<PortBindingId>
+port_binding_for(const Circuit &circuit, ModuleInstanceId instance, PortDefId port);
+[[nodiscard]] std::vector<PortBindingId> port_bindings_for(const Circuit &circuit,
+                                                           ModuleInstanceId instance);
+[[nodiscard]] std::optional<ComponentId> concrete_component_for(const Circuit &circuit,
+                                                                ModuleInstanceId instance,
+                                                                ModuleComponentId component);
+[[nodiscard]] std::optional<NetId>
+concrete_net_for(const Circuit &circuit, ModuleInstanceId instance, TemplateNetDefId template_net);
+[[nodiscard]] std::vector<std::pair<TemplateNetDefId, NetId>>
+module_net_origins(const Circuit &circuit, ModuleInstanceId instance);
+[[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>>
+module_component_origins(const Circuit &circuit, ModuleInstanceId instance);
+[[nodiscard]] bool is_module_origin_net(const Circuit &circuit, NetId net);
+[[nodiscard]] bool is_module_origin_component(const Circuit &circuit, ComponentId component);
+[[nodiscard]] std::optional<NetId> net_by_name(const Circuit &circuit, const NetName &name);
+[[nodiscard]] std::vector<PinId> pins_for(const Circuit &circuit, ComponentId component);
+[[nodiscard]] std::optional<PinId> pin_by_name(const Circuit &circuit, ComponentId component,
+                                               std::string_view name);
+[[nodiscard]] std::optional<PinId> pin_by_definition(const Circuit &circuit, ComponentId component,
+                                                     PinDefId definition);
+[[nodiscard]] std::optional<PinId> pin_by_number(const Circuit &circuit, ComponentId component,
+                                                 std::string_view number);
+} // namespace queries
+
+/** Map a Circuit-owned stable ID to its canonical entity type. */
+template <typename Id> struct CircuitEntityTraits;
+
+/// @cond
+template <> struct CircuitEntityTraits<PinDefId> {
+    using type = PinDefinition;
+};
+
+template <> struct CircuitEntityTraits<ComponentDefId> {
+    using type = ComponentDefinition;
+};
+
+template <> struct CircuitEntityTraits<ComponentId> {
+    using type = ComponentInstance;
+};
+
+template <> struct CircuitEntityTraits<PinId> {
+    using type = PinInstance;
+};
+
+template <> struct CircuitEntityTraits<NetId> {
+    using type = Net;
+};
+
+template <> struct CircuitEntityTraits<ModuleDefId> {
+    using type = ModuleDefinition;
+};
+
+template <> struct CircuitEntityTraits<TemplateNetDefId> {
+    using type = TemplateNetDefinition;
+};
+
+template <> struct CircuitEntityTraits<PortDefId> {
+    using type = PortDefinition;
+};
+
+template <> struct CircuitEntityTraits<ModuleComponentId> {
+    using type = ModuleComponentTemplate;
+};
+
+template <> struct CircuitEntityTraits<ModuleInstanceId> {
+    using type = ModuleInstance;
+};
+
+template <> struct CircuitEntityTraits<PortBindingId> {
+    using type = PortBinding;
+};
+
+template <> struct CircuitEntityTraits<NetClassId> {
+    using type = NetClass;
+};
+
+/// @endcond
+
+/** True when an ID names one of Circuit's canonical entity tables. */
+template <typename Id>
+concept CircuitEntityId = requires { typename CircuitEntityTraits<Id>::type; };
+
+/** Canonical entity type selected by a Circuit-owned stable ID. */
+template <CircuitEntityId Id> using entity_type_t = typename CircuitEntityTraits<Id>::type;
+
+template <CircuitEntityId Id> class CircuitEntityRange;
+
+/** Borrowed deterministic range selected by a Circuit-owned stable ID. */
+template <CircuitEntityId Id> using entity_range_t = CircuitEntityRange<Id>;
 
 /// @cond
 namespace io::detail {
@@ -294,6 +406,20 @@ class Circuit {
     /** Disconnect an existing pin from its current net; returns true when the circuit changed. */
     bool disconnect(PinId pin);
 
+    /** Return a canonical entity selected by its strongly typed stable ID. */
+    template <CircuitEntityId Id> [[nodiscard]] const entity_type_t<Id> &get(Id id) const;
+
+    /**
+     * Return a borrowed deterministic range over one canonical entity family.
+     *
+     * The range remains valid while this Circuit remains alive and is not structurally mutated.
+     */
+    template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const &;
+    template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const && = delete;
+
+    /** Return the net containing a valid concrete pin, or nullopt when it is disconnected. */
+    [[nodiscard]] std::optional<NetId> net_of(PinId pin) const;
+
     /** Return the selected physical implementation for a component, if one has been assigned. */
     [[nodiscard]] const std::optional<PhysicalPart> &
     selected_physical_part(ComponentId component) const;
@@ -308,14 +434,6 @@ class Circuit {
 
     /** Return typed electrical attributes for an existing net. */
     [[nodiscard]] const ElectricalAttributeMap &net_electrical_attributes(NetId net) const;
-
-    /** Return read-only access to connectivity-owned query primitives. */
-    [[nodiscard]] const ConnectivityModel &connectivity_model() const noexcept {
-        return connectivity_;
-    }
-
-    /** Return read-only access to hierarchy-owned query primitives. */
-    [[nodiscard]] const HierarchyModel &hierarchy_model() const noexcept { return hierarchy_; }
 
     /** Return module-local pin connections for one module definition. */
     [[nodiscard]] std::vector<ModulePinConnection> module_pin_connections(ModuleDefId module) const;
@@ -449,6 +567,42 @@ class Circuit {
     }
 
   private:
+    friend std::optional<ComponentId> queries::component_by_reference(const Circuit &,
+                                                                      const ReferenceDesignator &);
+    friend std::optional<ModuleDefId> queries::module_definition_by_name(const Circuit &,
+                                                                         const ModuleName &);
+    friend std::optional<ModuleInstanceId>
+    queries::module_instance_by_name(const Circuit &, const ModuleInstanceName &);
+    friend std::optional<TemplateNetDefId>
+    queries::template_net_by_name(const Circuit &, ModuleDefId, const NetName &);
+    friend std::optional<PortDefId> queries::port_by_name(const Circuit &, ModuleDefId,
+                                                          const PortName &);
+    friend std::optional<ModuleComponentId>
+    queries::module_component_by_reference(const Circuit &, ModuleDefId,
+                                           const ReferenceDesignator &);
+    friend std::optional<TemplateNetDefId> queries::template_net_for(const Circuit &, ModuleDefId,
+                                                                     ModuleComponentId, PinDefId);
+    friend std::optional<PortBindingId> queries::port_binding_for(const Circuit &, ModuleInstanceId,
+                                                                  PortDefId);
+    friend std::vector<PortBindingId> queries::port_bindings_for(const Circuit &, ModuleInstanceId);
+    friend std::optional<ComponentId>
+    queries::concrete_component_for(const Circuit &, ModuleInstanceId, ModuleComponentId);
+    friend std::optional<NetId> queries::concrete_net_for(const Circuit &, ModuleInstanceId,
+                                                          TemplateNetDefId);
+    friend std::vector<std::pair<TemplateNetDefId, NetId>>
+    queries::module_net_origins(const Circuit &, ModuleInstanceId);
+    friend std::vector<std::pair<ModuleComponentId, ComponentId>>
+    queries::module_component_origins(const Circuit &, ModuleInstanceId);
+    friend bool queries::is_module_origin_net(const Circuit &, NetId);
+    friend bool queries::is_module_origin_component(const Circuit &, ComponentId);
+    friend std::optional<NetId> queries::net_by_name(const Circuit &, const NetName &);
+    friend std::vector<PinId> queries::pins_for(const Circuit &, ComponentId);
+    friend std::optional<PinId> queries::pin_by_name(const Circuit &, ComponentId,
+                                                     std::string_view);
+    friend std::optional<PinId> queries::pin_by_definition(const Circuit &, ComponentId, PinDefId);
+    friend std::optional<PinId> queries::pin_by_number(const Circuit &, ComponentId,
+                                                       std::string_view);
+
     friend void
     io::detail::restore_logical_connectivity(Circuit &circuit,
                                              io::detail::ConnectivityRestoration restoration);
@@ -586,5 +740,143 @@ class Circuit {
     DesignIntentStorage intent_;
     NetClassStorage net_classes_;
 };
+
+/**
+ * Non-owning forward range over one Circuit entity family.
+ *
+ * Iterators keep a pointer to the Circuit, so destroying or structurally mutating the Circuit
+ * invalidates the range and its iterators. Creating a range from a temporary Circuit is deleted.
+ */
+template <CircuitEntityId Id> class CircuitEntityRange {
+  public:
+    /** Forward iterator yielding const references to canonical entities. */
+    /// @cond
+    class iterator {
+      public:
+        using value_type = entity_type_t<Id>;
+        using difference_type = std::ptrdiff_t;
+        using reference = const value_type &;
+        using pointer = const value_type *;
+        using iterator_concept = std::forward_iterator_tag;
+        using iterator_category = std::forward_iterator_tag;
+
+        /** Construct a singular iterator. */
+        iterator() = default;
+
+        /** Return the canonical entity at the current stable-ID index. */
+        [[nodiscard]] reference operator*() const { return circuit_->get(Id{index_}); }
+
+        /** Return the canonical entity pointer at the current stable-ID index. */
+        [[nodiscard]] pointer operator->() const { return &**this; }
+
+        /** Advance to the next stable-ID index. */
+        iterator &operator++() {
+            ++index_;
+            return *this;
+        }
+
+        /** Return the current iterator, then advance to the next stable-ID index. */
+        iterator operator++(int) {
+            auto previous = *this;
+            ++*this;
+            return previous;
+        }
+
+        /** Compare borrowed iterators by Circuit identity and stable-ID index. */
+        friend bool operator==(const iterator &, const iterator &) = default;
+
+        /** Construct an iterator at one deterministic entity-table index. */
+        iterator(const Circuit &circuit, std::size_t index) noexcept
+            : circuit_{&circuit}, index_{index} {}
+
+        /** Prevent an iterator from borrowing a temporary Circuit. */
+        iterator(const Circuit &&, std::size_t) = delete;
+
+      private:
+        const Circuit *circuit_ = nullptr;
+        std::size_t index_ = 0;
+    };
+
+    /// @endcond
+
+    /** Return an iterator at the first stable-ID index. */
+    [[nodiscard]] iterator begin() const noexcept { return iterator{*circuit_, 0}; }
+
+    /** Return the past-the-end iterator for the captured entity count. */
+    [[nodiscard]] iterator end() const noexcept { return iterator{*circuit_, size_}; }
+
+    /** Return the captured number of entities in this family. */
+    [[nodiscard]] std::size_t size() const noexcept { return size_; }
+
+    /** Construct a correctly sized range borrowing a live Circuit lvalue. */
+    explicit CircuitEntityRange(const Circuit &circuit) noexcept : circuit_{&circuit} {
+        if constexpr (std::same_as<Id, PinDefId>) {
+            size_ = circuit.pin_definition_count();
+        } else if constexpr (std::same_as<Id, ComponentDefId>) {
+            size_ = circuit.component_definition_count();
+        } else if constexpr (std::same_as<Id, ComponentId>) {
+            size_ = circuit.component_count();
+        } else if constexpr (std::same_as<Id, PinId>) {
+            size_ = circuit.pin_count();
+        } else if constexpr (std::same_as<Id, NetId>) {
+            size_ = circuit.net_count();
+        } else if constexpr (std::same_as<Id, ModuleDefId>) {
+            size_ = circuit.module_definition_count();
+        } else if constexpr (std::same_as<Id, TemplateNetDefId>) {
+            size_ = circuit.template_net_definition_count();
+        } else if constexpr (std::same_as<Id, PortDefId>) {
+            size_ = circuit.port_definition_count();
+        } else if constexpr (std::same_as<Id, ModuleComponentId>) {
+            size_ = circuit.module_component_count();
+        } else if constexpr (std::same_as<Id, ModuleInstanceId>) {
+            size_ = circuit.module_instance_count();
+        } else if constexpr (std::same_as<Id, PortBindingId>) {
+            size_ = circuit.port_binding_count();
+        } else {
+            static_assert(std::same_as<Id, NetClassId>);
+            size_ = circuit.net_class_count();
+        }
+    }
+
+    /** Prevent a range from borrowing a temporary Circuit. */
+    CircuitEntityRange(const Circuit &&) = delete;
+
+  private:
+    const Circuit *circuit_;
+    std::size_t size_ = 0;
+};
+
+template <CircuitEntityId Id> [[nodiscard]] const entity_type_t<Id> &Circuit::get(Id id) const {
+    if constexpr (std::same_as<Id, PinDefId>) {
+        return pin_definition(id);
+    } else if constexpr (std::same_as<Id, ComponentDefId>) {
+        return component_definition(id);
+    } else if constexpr (std::same_as<Id, ComponentId>) {
+        return component(id);
+    } else if constexpr (std::same_as<Id, PinId>) {
+        return pin(id);
+    } else if constexpr (std::same_as<Id, NetId>) {
+        return net(id);
+    } else if constexpr (std::same_as<Id, ModuleDefId>) {
+        return module_definition(id);
+    } else if constexpr (std::same_as<Id, TemplateNetDefId>) {
+        return template_net_definition(id);
+    } else if constexpr (std::same_as<Id, PortDefId>) {
+        return port_definition(id);
+    } else if constexpr (std::same_as<Id, ModuleComponentId>) {
+        return module_component_template(id);
+    } else if constexpr (std::same_as<Id, ModuleInstanceId>) {
+        return module_instance(id);
+    } else if constexpr (std::same_as<Id, PortBindingId>) {
+        return port_binding(id);
+    } else {
+        static_assert(std::same_as<Id, NetClassId>);
+        return net_class(id);
+    }
+}
+
+template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> Circuit::all() const & {
+    return entity_range_t<Id>{*this};
+}
 
 } // namespace volt

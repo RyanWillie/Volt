@@ -100,12 +100,24 @@ TEST_CASE("Circuit queries inspect hierarchy views through const Circuit") {
     const auto binding = circuit.bind_port(instance, port, parent_net);
 
     CHECK(volt::queries::module_definition_by_name(circuit, volt::ModuleName{"Divider"}) == module);
+    CHECK_FALSE(
+        volt::queries::module_definition_by_name(circuit, volt::ModuleName{"Missing"}).has_value());
     CHECK(volt::queries::module_instance_by_name(circuit, volt::ModuleInstanceName{"DIV_A"}) ==
           instance);
+    CHECK_FALSE(
+        volt::queries::module_instance_by_name(circuit, volt::ModuleInstanceName{"MISSING_A"})
+            .has_value());
     CHECK(volt::queries::template_net_by_name(circuit, module, volt::NetName{"OUT"}) == output);
+    CHECK_FALSE(
+        volt::queries::template_net_by_name(circuit, module, volt::NetName{"MISSING"}).has_value());
     CHECK(volt::queries::port_by_name(circuit, module, volt::PortName{"IN"}) == port);
+    CHECK_FALSE(
+        volt::queries::port_by_name(circuit, module, volt::PortName{"MISSING"}).has_value());
     CHECK(volt::queries::module_component_by_reference(
               circuit, module, volt::ReferenceDesignator{"R1"}) == component);
+    CHECK_FALSE(volt::queries::module_component_by_reference(circuit, module,
+                                                             volt::ReferenceDesignator{"R99"})
+                    .has_value());
     CHECK(volt::queries::template_net_for(circuit, module, component, right) == output);
     CHECK(volt::queries::port_binding_for(circuit, instance, port) == binding);
     CHECK(volt::queries::port_bindings_for(circuit, instance) == std::vector{binding});

@@ -88,14 +88,14 @@ cluster. The root is *thin*: it composes subsystems, owns only cross-subsystem i
 
 ### 3.2 Queries — free functions over a model
 
-Derived reads (lookup by reference/name, adjacency, traversal) are **non-member non-friend free
-functions** taking `const Model&`, grouped by concern (`volt::queries`). They use only the
-model's public accessors. If a query cannot be written over the public interface, that reveals
-either a genuinely core member or a *missing public primitive*. Public read primitives must be
-fundamental and representation-hiding: expose concepts such as `net_of(pin)` and `pins_on(net)`,
-not storage structures such as entity tables. A query must prove it cannot be composed from
-existing primitives before a new read accessor is added. Public write primitives must be
-invariant-safe mutation boundaries.
+Derived reads (lookup by reference/name, adjacency, traversal) are **non-member free functions**
+taking `const Model&`, grouped by concern (`volt::queries`). They compose generic public reads
+where practical. A named query may receive a narrow, architecture-allowlisted friend grant when
+measurement justifies retaining a private index; it must not expose that storage or its subsystem
+model. Public read primitives remain fundamental and representation-hiding: expose concepts such
+as `net_of(pin)` and typed entity ranges, not storage structures such as entity tables. A query
+must prove it cannot be composed from existing primitives before a new read accessor is added.
+Public write primitives must be invariant-safe mutation boundaries.
 
 There is **no `CircuitView` wrapper.** `const Circuit&` is the read surface. (Keep
 `NetContinuityView` — it *computes* an adjacency model, which is a view that adds something.)

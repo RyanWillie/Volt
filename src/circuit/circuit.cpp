@@ -467,6 +467,10 @@ bool Circuit::connect(NetId net, PinId pin) { return connectivity_.connect(net, 
 
 bool Circuit::disconnect(PinId pin) { return connectivity_.disconnect(pin); }
 
+[[nodiscard]] std::optional<NetId> Circuit::net_of(PinId pin) const {
+    return connectivity_.net_of(pin);
+}
+
 void Circuit::ElectricalMutator::set_component_electrical_attribute(
     ComponentId component, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value) {
     circuit_.require_component(component);

@@ -118,7 +118,7 @@ std::size_t lookup_all_components_and_nets(const volt::Circuit &circuit,
 std::size_t enumerate_all_component_pins(const volt::Circuit &circuit) {
     std::size_t pin_total = 0;
     for (std::size_t index = 0; index < circuit.component_count(); ++index) {
-        pin_total += circuit.connectivity_model().pins_for(volt::ComponentId{index}).size();
+        pin_total += volt::queries::pins_for(circuit, volt::ComponentId{index}).size();
     }
 
     if (pin_total != circuit.pin_count()) {

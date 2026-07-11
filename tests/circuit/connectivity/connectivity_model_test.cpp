@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 
 namespace {
 
@@ -49,13 +50,11 @@ TEST_CASE("ConnectivityModel stores reusable definitions in deterministic order"
         volt::ElectricalDriveKind::Passive});
     const auto resistor = circuit.connectivity().add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{first, second}});
-    const auto &model = circuit.connectivity_model();
-
     CHECK(first == volt::PinDefId{0});
     CHECK(second == volt::PinDefId{1});
     CHECK(resistor == volt::ComponentDefId{0});
-    CHECK(model.pin_definition(first).name() == "A");
-    CHECK(model.component_definition(resistor).pins() == std::vector{first, second});
+    CHECK(circuit.get(first).name() == "A");
+    CHECK(circuit.get(resistor).pins() == std::vector{first, second});
 }
 
 TEST_CASE("ConnectivityModel rejects component definitions with missing pin definitions") {
@@ -71,14 +70,13 @@ TEST_CASE("ConnectivityModel instantiates components and pins deterministically"
 
     const auto component = fixture.circuit.instantiate_component(fixture.component_definition,
                                                                  volt::ReferenceDesignator{"R1"});
-    const auto &model = fixture.circuit.connectivity_model();
-
     CHECK(component == volt::ComponentId{0});
-    CHECK(model.component(component).reference() == volt::ReferenceDesignator{"R1"});
-    CHECK(model.pin_count() == 2);
-    CHECK(model.pins_for(component) == std::vector{volt::PinId{0}, volt::PinId{1}});
-    CHECK(model.pin(volt::PinId{0}).definition() == fixture.first_pin);
-    CHECK(model.pin(volt::PinId{1}).definition() == fixture.second_pin);
+    CHECK(fixture.circuit.get(component).reference() == volt::ReferenceDesignator{"R1"});
+    CHECK(fixture.circuit.all<volt::PinId>().size() == 2);
+    CHECK(volt::queries::pins_for(fixture.circuit, component) ==
+          std::vector{volt::PinId{0}, volt::PinId{1}});
+    CHECK(fixture.circuit.get(volt::PinId{0}).definition() == fixture.first_pin);
+    CHECK(fixture.circuit.get(volt::PinId{1}).definition() == fixture.second_pin);
 }
 
 TEST_CASE("ConnectivityModel enforces unique component references") {
@@ -110,7 +108,7 @@ TEST_CASE("ConnectivityModel enforces unique net names and dangling pin rejectio
     auto fixture = make_connectivity_fixture();
     const auto component = fixture.circuit.instantiate_component(fixture.component_definition,
                                                                  volt::ReferenceDesignator{"R1"});
-    const auto pin = fixture.circuit.connectivity_model().pins_for(component).front();
+    const auto pin = volt::queries::pins_for(fixture.circuit, component).front();
     auto net_with_pin = volt::Net{volt::NetName{"NET_A"}, volt::NetKind::Signal};
     net_with_pin.connect(pin);
 
@@ -130,7 +128,7 @@ TEST_CASE("ConnectivityModel enforces one net per pin at mutation boundaries") {
     auto fixture = make_connectivity_fixture();
     const auto component = fixture.circuit.instantiate_component(fixture.component_definition,
                                                                  volt::ReferenceDesignator{"R1"});
-    const auto pin = fixture.circuit.connectivity_model().pins_for(component).front();
+    const auto pin = volt::queries::pins_for(fixture.circuit, component).front();
     const auto first_net = fixture.circuit.connectivity().add_net(
         volt::Net{volt::NetName{"NET_A"}, volt::NetKind::Signal});
     const auto second_net = fixture.circuit.connectivity().add_net(
@@ -139,9 +137,9 @@ TEST_CASE("ConnectivityModel enforces one net per pin at mutation boundaries") {
     CHECK(fixture.circuit.connect(first_net, pin));
     CHECK_FALSE(fixture.circuit.connect(first_net, pin));
     CHECK_THROWS_AS(fixture.circuit.connect(second_net, pin), std::logic_error);
-    CHECK(fixture.circuit.connectivity_model().net_of(pin) == first_net);
+    CHECK(fixture.circuit.net_of(pin) == first_net);
 
     CHECK(fixture.circuit.disconnect(pin));
     CHECK_FALSE(fixture.circuit.disconnect(pin));
-    CHECK_FALSE(fixture.circuit.connectivity_model().net_of(pin).has_value());
+    CHECK_FALSE(fixture.circuit.net_of(pin).has_value());
 }

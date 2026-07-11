@@ -455,6 +455,15 @@ small `Circuit` aggregate API based on complete typed specs, irreducible graph o
 closed typed updates, generic `get`/`all` reads, and free derived queries. See
 [ADR: Typed Circuit Aggregate API](design/adr-circuit-aggregate-api.md).
 
+The generic read boundary covers every stable-ID logical entity family. `get(id)` preserves
+the typed unknown-entity failure contract, while `all<Id>()` returns a deterministic sized
+range of const entity references. That range borrows the `Circuit`: it cannot be created from
+a temporary and is invalidated by structural mutation. `net_of(PinId)` is the root's
+irreducible relationship read. Named lookup, pin lookup, hierarchy traversal, origins, and
+other derived reads remain `volt::queries` free functions over `const Circuit&`; they use
+narrow, architecture-allowlisted access to private indexes rather than exposing
+`ConnectivityModel` or `HierarchyModel` handles.
+
 `Circuit` also enforces the core connectivity invariant that a concrete pin belongs to
 zero or one net. Deeper design-quality checks are reported by validation layers. Examples
 include unconnected pins, single-pin nets, incompatible pin electrical semantics, and power-domain
