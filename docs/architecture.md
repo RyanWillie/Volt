@@ -460,9 +460,9 @@ the typed unknown-entity failure contract, while `all<Id>()` returns a determini
 range of const entity references. That range borrows the `Circuit`: it cannot be created from
 a temporary and is invalidated by structural mutation. `net_of(PinId)` is the root's
 irreducible relationship read. Named lookup, pin lookup, hierarchy traversal, origins, and
-other derived reads remain `volt::queries` free functions over `const Circuit&`; they use
-narrow, architecture-allowlisted access to private indexes rather than exposing
-`ConnectivityModel` or `HierarchyModel` handles.
+other derived reads remain non-friend `volt::queries` free functions over `const Circuit&`;
+they compose the public read primitives without exposing `ConnectivityModel` or
+`HierarchyModel` handles.
 
 `Circuit` also enforces the core connectivity invariant that a concrete pin belongs to
 zero or one net. Deeper design-quality checks are reported by validation layers. Examples

@@ -1,10 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/core/errors.hpp>
 
 namespace {
 
@@ -166,8 +167,20 @@ TEST_CASE("Circuit hierarchy queries preserve model-owned validation contracts")
         circuit.instantiate_root_module(first_module, volt::ModuleInstanceName{"FIRST_A"});
     [[maybe_unused]] const auto binding = circuit.bind_port(first_instance, first_port, parent_net);
 
-    CHECK_THROWS_AS(volt::queries::template_net_for(circuit, second_module, first_component, pin),
-                    std::logic_error);
-    CHECK_THROWS_AS(volt::queries::port_binding_for(circuit, first_instance, second_port),
-                    std::logic_error);
+    try {
+        static_cast<void>(
+            volt::queries::template_net_for(circuit, second_module, first_component, pin));
+        FAIL("Cross-module component query must throw");
+    } catch (const volt::KernelLogicError &error) {
+        CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+        CHECK(std::string{error.what()} == "Module component does not belong to module definition");
+    }
+
+    try {
+        static_cast<void>(volt::queries::port_binding_for(circuit, first_instance, second_port));
+        FAIL("Cross-module port query must throw");
+    } catch (const volt::KernelLogicError &error) {
+        CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+        CHECK(std::string{error.what()} == "Port does not belong to module definition");
+    }
 }

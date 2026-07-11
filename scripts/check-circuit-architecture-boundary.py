@@ -38,29 +38,6 @@ REJECTED_TOKENS = (
 )
 FRIEND_TYPE_PREFIXES = ("friend " "class ", "friend " "struct ")
 
-CIRCUIT_QUERY_FRIENDS = (
-    "friend std::optional<ComponentId> queries::component_by_reference(const Circuit &, const ReferenceDesignator &)",
-    "friend std::optional<ModuleDefId> queries::module_definition_by_name(const Circuit &, const ModuleName &)",
-    "friend std::optional<ModuleInstanceId> queries::module_instance_by_name(const Circuit &, const ModuleInstanceName &)",
-    "friend std::optional<TemplateNetDefId> queries::template_net_by_name(const Circuit &, ModuleDefId, const NetName &)",
-    "friend std::optional<PortDefId> queries::port_by_name(const Circuit &, ModuleDefId, const PortName &)",
-    "friend std::optional<ModuleComponentId> queries::module_component_by_reference(const Circuit &, ModuleDefId, const ReferenceDesignator &)",
-    "friend std::optional<TemplateNetDefId> queries::template_net_for(const Circuit &, ModuleDefId, ModuleComponentId, PinDefId)",
-    "friend std::optional<PortBindingId> queries::port_binding_for(const Circuit &, ModuleInstanceId, PortDefId)",
-    "friend std::vector<PortBindingId> queries::port_bindings_for(const Circuit &, ModuleInstanceId)",
-    "friend std::optional<ComponentId> queries::concrete_component_for(const Circuit &, ModuleInstanceId, ModuleComponentId)",
-    "friend std::optional<NetId> queries::concrete_net_for(const Circuit &, ModuleInstanceId, TemplateNetDefId)",
-    "friend std::vector<std::pair<TemplateNetDefId, NetId>> queries::module_net_origins(const Circuit &, ModuleInstanceId)",
-    "friend std::vector<std::pair<ModuleComponentId, ComponentId>> queries::module_component_origins(const Circuit &, ModuleInstanceId)",
-    "friend bool queries::is_module_origin_net(const Circuit &, NetId)",
-    "friend bool queries::is_module_origin_component(const Circuit &, ComponentId)",
-    "friend std::optional<NetId> queries::net_by_name(const Circuit &, const NetName &)",
-    "friend std::vector<PinId> queries::pins_for(const Circuit &, ComponentId)",
-    "friend std::optional<PinId> queries::pin_by_name(const Circuit &, ComponentId, std::string_view)",
-    "friend std::optional<PinId> queries::pin_by_definition(const Circuit &, ComponentId, PinDefId)",
-    "friend std::optional<PinId> queries::pin_by_number(const Circuit &, ComponentId, std::string_view)",
-)
-
 PRIVILEGED_FRIEND_ALLOWLIST = {
     (
         "include/volt/circuit/circuit.hpp",
@@ -82,13 +59,6 @@ PRIVILEGED_FRIEND_ALLOWLIST = {
         "include/volt/pcb/routing/board_spatial_index.hpp",
         "friend void detail::insert_after_board_mutation(BoardSpatialIndex &index, BoardSpatialQueryShape shape, std::size_t previous_geometry_mutation_count)",
     ): "BoardRouter mirrors an accepted board mutation into its private runtime spatial index.",
-    **{
-        ("include/volt/circuit/circuit.hpp", declaration): (
-            "The accepted Circuit API keeps derived reads free while granting each named query "
-            "narrow access to existing private lookup indexes."
-        )
-        for declaration in CIRCUIT_QUERY_FRIENDS
-    },
 }
 
 CIRCUIT_MUTATOR_PUBLIC_API_SNAPSHOTS = {
