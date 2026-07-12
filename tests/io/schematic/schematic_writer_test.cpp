@@ -11,24 +11,19 @@
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
 
+#include "../../support/circuit_test_helpers.hpp"
+
 namespace {
 
 volt::ComponentId add_resistor(volt::Circuit &circuit) {
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
-    return circuit.instantiate_component(definition, volt::ReferenceDesignator{"R1"});
+    const auto definition = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    return volt::test::instantiate_component(circuit, definition, "R1");
 }
 
 volt::NetId add_net(volt::Circuit &circuit) {
-    return circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    return circuit.add_net(volt::NetSpec{volt::NetName{"VCC"}, volt::NetKind::Power});
 }
 
 volt::SymbolDefinition make_symbol() {
@@ -130,8 +125,8 @@ TEST_CASE("Schematic writer emits wire runs and net labels over canonical nets")
 TEST_CASE("Schematic writer emits optional net label display text") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto net = circuit.connectivity().add_net(
-        volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
+    const auto net =
+        circuit.add_net(volt::NetSpec{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
     auto schematic = make_schematic(circuit, component);
     [[maybe_unused]] const auto label = schematic.add_net_label(
         volt::SheetId{0},
@@ -150,8 +145,8 @@ TEST_CASE("Schematic writer emits optional net label display text") {
 TEST_CASE("Schematic writer emits explicit text presentation metadata") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto net = circuit.connectivity().add_net(
-        volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
+    const auto net =
+        circuit.add_net(volt::NetSpec{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
 
     auto schematic = make_schematic(circuit, component);
     auto symbol = volt::SymbolDefinition{"TextStyle"};
@@ -197,10 +192,9 @@ TEST_CASE("Schematic writer emits professional primitives and sheet metadata") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
     const auto vcc = add_net(circuit);
-    const auto gnd =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto gnd = circuit.add_net(volt::NetSpec{volt::NetName{"GND"}, volt::NetKind::Ground});
     const auto no_connect_pin = volt::queries::pin_by_number(circuit, component, "2").value();
-    circuit.intent().mark_intentional_no_connect_pin(no_connect_pin);
+    circuit.mark_no_connect(no_connect_pin);
 
     auto schematic = volt::Schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{

@@ -16,24 +16,26 @@
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
 
+#include "../../support/circuit_test_helpers.hpp"
+
 namespace {
 
 volt::ComponentId add_resistor(volt::Circuit &circuit) {
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1&", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2<", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
-    return circuit.instantiate_component(definition, volt::ReferenceDesignator{"R&1"});
+    const auto definition = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("1&", "1"), volt::test::passive_pin("2<", "2")});
+    return volt::test::instantiate_component(circuit, definition, "R&1");
+}
+
+volt::ComponentId add_divider(volt::Circuit &circuit) {
+    const auto definition = volt::test::define_component(
+        circuit, "Divider",
+        {volt::test::passive_pin("IN", "1"), volt::test::passive_pin("OUT", "2")});
+    return volt::test::instantiate_component(circuit, definition, "DIV_A/R1");
 }
 
 volt::NetId add_net(volt::Circuit &circuit) {
-    return circuit.connectivity().add_net(volt::Net{volt::NetName{"V&CC"}, volt::NetKind::Power});
+    return circuit.add_net(volt::NetSpec{volt::NetName{"V&CC"}, volt::NetKind::Power});
 }
 
 volt::SymbolDefinition make_symbol() {
@@ -86,10 +88,9 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
     const auto net = add_net(circuit);
-    const auto ground =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto ground = circuit.add_net(volt::NetSpec{volt::NetName{"GND"}, volt::NetKind::Ground});
     const auto no_connect_pin = volt::queries::pin_by_number(circuit, component, "2").value();
-    circuit.intent().mark_intentional_no_connect_pin(no_connect_pin);
+    circuit.mark_no_connect(no_connect_pin);
     auto schematic = make_schematic_with_wires(circuit, component, net);
     [[maybe_unused]] const auto junction =
         schematic.add_junction(volt::SheetId{0}, volt::Junction{net, volt::Point{30.0, 20.0}});
@@ -430,10 +431,8 @@ TEST_CASE("Schematic SVG writer clamps title-block labels to the rendered block 
 
 TEST_CASE("Schematic SVG writer keeps terminal marker glyphs in canonical orientation") {
     volt::Circuit circuit;
-    const auto power =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"+5V"}, volt::NetKind::Power});
-    const auto ground =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto power = circuit.add_net(volt::NetSpec{volt::NetName{"+5V"}, volt::NetKind::Power});
+    const auto ground = circuit.add_net(volt::NetSpec{volt::NetName{"GND"}, volt::NetKind::Ground});
     auto schematic = volt::Schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
     static_cast<void>(schematic.add_power_port(
@@ -496,20 +495,9 @@ TEST_CASE("Schematic SVG writer renders debug pin overlays only when enabled") {
 
 TEST_CASE("Schematic SVG writer preserves scoped names by default") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "IN", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "OUT", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Divider", std::vector{first_pin, second_pin}});
-    const auto component =
-        circuit.instantiate_component(definition, volt::ReferenceDesignator{"DIV_A/R1"});
+    const auto component = add_divider(circuit);
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"DIV_A/VIN"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{volt::NetName{"DIV_A/VIN"}, volt::NetKind::Power});
     auto schematic = volt::Schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
     const auto symbol = schematic.add_symbol_definition(make_symbol());
@@ -531,20 +519,9 @@ TEST_CASE("Schematic SVG writer preserves scoped names by default") {
 
 TEST_CASE("Schematic SVG writer renders explicit presentation labels") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "IN", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "OUT", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Divider", std::vector{first_pin, second_pin}});
-    const auto component =
-        circuit.instantiate_component(definition, volt::ReferenceDesignator{"DIV_A/R1"});
+    const auto component = add_divider(circuit);
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"DIV_A/VIN"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{volt::NetName{"DIV_A/VIN"}, volt::NetKind::Power});
     auto schematic = volt::Schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
     const auto symbol = schematic.add_symbol_definition(make_symbol());
@@ -579,20 +556,9 @@ TEST_CASE("Schematic SVG writer does not derive reference fields from symbol ins
 
 TEST_CASE("Schematic SVG writer renders explicit net label display text") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "IN", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "OUT", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Divider", std::vector{first_pin, second_pin}});
-    const auto component =
-        circuit.instantiate_component(definition, volt::ReferenceDesignator{"DIV_A/R1"});
-    const auto net = circuit.connectivity().add_net(
-        volt::Net{volt::NetName{"DIV_A/SWDIO"}, volt::NetKind::Signal});
+    const auto component = add_divider(circuit);
+    const auto net =
+        circuit.add_net(volt::NetSpec{volt::NetName{"DIV_A/SWDIO"}, volt::NetKind::Signal});
     auto schematic = volt::Schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
     const auto symbol = schematic.add_symbol_definition(make_symbol());
