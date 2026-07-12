@@ -48,14 +48,14 @@ TEST_CASE("Real-board ERC edge cases cover semantic rule boundaries") {
 
     SECTION("empty debug net and one-pin testpoint net remain diagnosable warnings") {
         auto fixture = make_real_board_fixture();
-        const auto empty = fixture.circuit.connectivity().add_net(
-            volt::Net{volt::NetName{"UNUSED_DEBUG"}, volt::NetKind::Signal});
+        const auto empty = fixture.circuit.add_net(
+            volt::NetSpec{volt::NetName{"UNUSED_DEBUG"}, volt::NetKind::Signal});
         const auto testpoint = add_single_pin_component(
             fixture.circuit, "TP1", "PAD", volt::ConnectionRequirement::Required,
             volt::ElectricalTerminalKind::Passive, volt::ElectricalDirection::Passive,
             volt::ElectricalSignalDomain::Unspecified, volt::ElectricalDriveKind::Passive);
-        const auto spare = fixture.circuit.connectivity().add_net(
-            volt::Net{volt::NetName{"TP_SPARE"}, volt::NetKind::Signal});
+        const auto spare = fixture.circuit.add_net(
+            volt::NetSpec{volt::NetName{"TP_SPARE"}, volt::NetKind::Signal});
         fixture.circuit.connect(spare, testpoint.pin);
 
         const auto report = volt::validate_circuit(fixture.circuit);
@@ -78,8 +78,8 @@ TEST_CASE("Real-board ERC edge cases cover semantic rule boundaries") {
             fixture.circuit, "JP1", "1", volt::ConnectionRequirement::Required,
             volt::ElectricalTerminalKind::Passive, volt::ElectricalDirection::Passive,
             volt::ElectricalSignalDomain::Unspecified, volt::ElectricalDriveKind::Passive);
-        const auto switched = fixture.circuit.connectivity().add_net(
-            volt::Net{volt::NetName{"SW_3V3"}, volt::NetKind::Power});
+        const auto switched =
+            fixture.circuit.add_net(volt::NetSpec{volt::NetName{"SW_3V3"}, volt::NetKind::Power});
         fixture.circuit.connect(switched, fixture.mcu_vdd);
         fixture.circuit.connect(switched, jumper.pin);
 
