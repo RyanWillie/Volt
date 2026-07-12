@@ -131,13 +131,8 @@ template <CircuitEntityId Id> using entity_range_t = detail::CircuitEntityRange<
 
 /// @cond
 namespace io::detail {
-struct ConnectivityRestoration;
-struct HierarchyDefinitionRestoration;
-struct ModuleInstanceRestoration;
-void restore_logical_connectivity(Circuit &circuit, ConnectivityRestoration restoration);
-void restore_logical_hierarchy(Circuit &circuit, HierarchyDefinitionRestoration restoration);
-[[nodiscard]] ModuleInstanceId
-restore_logical_module_instance(Circuit &circuit, ModuleInstanceRestoration restoration);
+struct LogicalCircuitRestorationPlan;
+[[nodiscard]] Circuit restore_logical_circuit(LogicalCircuitRestorationPlan plan);
 } // namespace io::detail
 
 /// @endcond
@@ -570,15 +565,8 @@ class Circuit {
     }
 
   private:
-    friend void
-    io::detail::restore_logical_connectivity(Circuit &circuit,
-                                             io::detail::ConnectivityRestoration restoration);
-    friend void
-    io::detail::restore_logical_hierarchy(Circuit &circuit,
-                                          io::detail::HierarchyDefinitionRestoration restoration);
-    friend ModuleInstanceId
-    io::detail::restore_logical_module_instance(Circuit &circuit,
-                                                io::detail::ModuleInstanceRestoration restoration);
+    friend Circuit
+    io::detail::restore_logical_circuit(io::detail::LogicalCircuitRestorationPlan plan);
 
     struct ConnectivityStorage
         : detail::SubsystemStorage<ConnectivityModel, detail::ConnectivityState> {

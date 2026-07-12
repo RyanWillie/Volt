@@ -23,6 +23,9 @@ add_library(
     capabilities/board_capability_profile.cpp
     detail/entity_ref_format.cpp
     logical/logical_circuit_reader.cpp
+    logical/logical_circuit_hierarchy_parser.cpp
+    logical/logical_circuit_parser.cpp
+    logical/logical_circuit_restoration.cpp
     logical/logical_circuit_writer.cpp
     logical/logical_net_class_format.cpp
     parts/part_definition_reader.cpp

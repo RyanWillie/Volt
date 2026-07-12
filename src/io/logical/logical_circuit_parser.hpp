@@ -13,82 +13,18 @@
 #include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
 
+#include "logical_circuit_restoration.hpp"
+
 namespace volt::io::detail {
 
-struct RestoredPinDefinition {
-    PinDefinition definition;
-    ElectricalAttributeMap electrical_attributes;
-};
-
-struct RestoredComponentDefinition {
-    ComponentDefinition definition;
-};
-
-struct RestoredComponentInstance {
-    ComponentInstance instance;
-    ElectricalAttributeMap electrical_attributes;
-};
-
-struct ConnectivityRestoration {
-    std::vector<RestoredPinDefinition> pin_definitions;
-    std::vector<RestoredComponentDefinition> component_definitions;
-    std::vector<RestoredComponentInstance> components;
-    std::vector<PinInstance> pins;
-};
-
-struct RestoredModuleDefinition {
-    ModuleDefId id;
-    ModuleDefinition definition;
-};
-
-struct RestoredTemplateNetDefinition {
-    TemplateNetDefId id;
-    ModuleDefId module;
-    TemplateNetDefinition definition;
-};
-
-struct RestoredModuleComponent {
-    ModuleComponentId id;
-    ModuleDefId module;
-    ModuleComponentTemplate component;
-};
-
-struct RestoredModulePinConnection {
-    ModuleDefId module;
-    TemplateNetDefId net;
-    ModuleComponentId component;
-    PinDefId pin;
-};
-
-struct RestoredPortDefinition {
-    PortDefId id;
-    ModuleDefId module;
-    PortDefinition definition;
-};
-
-struct HierarchyDefinitionRestoration {
-    std::vector<RestoredModuleDefinition> module_definitions;
-    std::vector<RestoredTemplateNetDefinition> template_nets;
-    std::vector<RestoredModuleComponent> components;
-    std::vector<RestoredModulePinConnection> connections;
-    std::vector<RestoredPortDefinition> ports;
-};
-
-struct ModuleInstanceRestoration {
-    ModuleDefId definition;
-    ModuleInstanceName name;
-    std::vector<std::pair<TemplateNetDefId, NetId>> net_origins;
-    std::vector<std::pair<ModuleComponentId, ComponentId>> component_origins;
-};
-
-/** Internal implementation for loading the v1 logical circuit JSON format. */
-class LogicalCircuitReader {
+/** Parse and validate the v1 logical circuit JSON format without mutating Circuit. */
+class LogicalCircuitParser {
   public:
-    /** Construct a reader over a parsed JSON document. */
-    explicit LogicalCircuitReader(const nlohmann::json &document) : document_{document} {}
+    /** Construct a parser over a JSON document. */
+    explicit LogicalCircuitParser(const nlohmann::json &document) : document_{document} {}
 
-    /** Load and structurally validate the document into a Circuit. */
-    [[nodiscard]] Circuit read();
+    /** Parse the complete document into one explicit restoration plan. */
+    [[nodiscard]] LogicalCircuitRestorationPlan parse();
 
   private:
     static void require(bool condition, const std::string &message);
@@ -152,11 +88,6 @@ class LogicalCircuitReader {
     electrical_attributes(const nlohmann::json &object, ElectricalAttributeOwner owner,
                           ElectricalAttributeKind kind);
 
-    void read_component_electrical_attributes(const nlohmann::json &object, ComponentId component,
-                                              ElectricalAttributeOwner owner);
-
-    void read_net_electrical_attributes(const nlohmann::json &object, NetId net);
-
     [[nodiscard]] static std::optional<DefinitionSource>
     definition_source(const nlohmann::json &object);
 
@@ -178,8 +109,6 @@ class LogicalCircuitReader {
 
     void read_pins();
 
-    void restore_connectivity();
-
     void read_nets();
 
     void read_net_classes();
@@ -195,15 +124,13 @@ class LogicalCircuitReader {
 
     [[nodiscard]] PhysicalPart physical_part(const nlohmann::json &object) const;
 
-    void read_selected_physical_parts();
-
     const nlohmann::json &document_;
-    Circuit circuit_;
-    ConnectivityRestoration connectivity_restoration_;
+    LogicalCircuitRestorationPlan plan_;
     std::vector<std::optional<ComponentDefId>> pin_definition_owners_;
     std::map<std::string, PinDefId> pin_def_ids_;
     std::map<std::string, ComponentDefId> component_def_ids_;
     std::map<std::string, ComponentId> component_ids_;
+    std::map<std::string, ComponentId> component_reference_ids_;
     std::map<std::string, PinId> pin_ids_;
     std::map<std::string, NetId> net_ids_;
     std::map<std::string, NetClassId> net_class_ids_;
@@ -211,8 +138,6 @@ class LogicalCircuitReader {
     std::map<std::string, TemplateNetDefId> template_net_ids_;
     std::map<std::string, ModuleComponentId> module_component_ids_;
     std::map<std::string, PortDefId> port_def_ids_;
-    std::map<std::string, ModuleInstanceId> module_instance_ids_;
-    std::vector<std::pair<std::string, nlohmann::json>> selected_parts_;
 };
 
 } // namespace volt::io::detail
