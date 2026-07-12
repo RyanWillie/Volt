@@ -110,31 +110,38 @@ find_diagnostics(const volt::DiagnosticReport &report, const std::string &code) 
 make_placed_resistors(std::size_t count, volt::FootprintRef footprint = volt::FootprintRef{
                                              "passives", "R_0603_1608Metric"}) {
     auto circuit = volt::Circuit{};
-    const auto first_pin_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin_definition =
-        circuit.connectivity().add_pin_definition(volt::PinDefinition{
-            "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-            volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-            volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
+    const auto component_definition = circuit.define_component(volt::ComponentSpec{
+        .name = "Resistor",
+        .pins =
+            {
+                volt::PinSpec{.name = "A",
+                              .number = "1",
+                              .terminal_kind = volt::ElectricalTerminalKind::Passive,
+                              .direction = volt::ElectricalDirection::Passive,
+                              .drive_kind = volt::ElectricalDriveKind::Passive},
+                volt::PinSpec{.name = "B",
+                              .number = "2",
+                              .terminal_kind = volt::ElectricalTerminalKind::Passive,
+                              .direction = volt::ElectricalDirection::Passive,
+                              .drive_kind = volt::ElectricalDriveKind::Passive},
+            },
+    });
+    const auto &definition_pins = circuit.get(component_definition).pins();
+    const auto first_pin_definition = definition_pins[0];
+    const auto second_pin_definition = definition_pins[1];
 
     auto components = std::vector<volt::ComponentId>{};
     components.reserve(count);
     for (std::size_t index = 0; index < count; ++index) {
         const auto component = circuit.instantiate_component(
             component_definition, volt::ReferenceDesignator{"R" + std::to_string(index + 1U)});
-        circuit.electrical().select_physical_part(
-            component, volt::PhysicalPart{
-                           volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                           volt::PackageRef{"0603"},
-                           footprint,
-                           std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                       volt::PinPadMapping{second_pin_definition, "2"}},
-                       });
+        circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
+                                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                                      volt::PackageRef{"0603"},
+                                      footprint,
+                                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                                  }});
         components.push_back(component);
     }
 
@@ -643,15 +650,14 @@ TEST_CASE(
     "Board visual validation uses shared default reference geometry for pad-only footprints") {
     const auto library = mixed_package_library();
     auto fixture = make_placed_resistors(2, square_package_ref());
-    fixture.circuit.electrical().select_physical_part(
-        fixture.components[1],
-        volt::PhysicalPart{
-            volt::ManufacturerPart{"Volt", "PAD-ONLY"},
-            volt::PackageRef{"PAD"},
-            pad_only_ref(),
-            std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
-                        volt::PinPadMapping{fixture.second_pin_definition, "2"}},
-        });
+    fixture.circuit.update(fixture.components[1],
+                           volt::SelectPhysicalPart{volt::PhysicalPart{
+                               volt::ManufacturerPart{"Volt", "PAD-ONLY"},
+                               volt::PackageRef{"PAD"},
+                               pad_only_ref(),
+                               std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
+                                           volt::PinPadMapping{fixture.second_pin_definition, "2"}},
+                           }});
     auto board = make_visual_board(fixture);
     const auto square = board.place_component(volt::ComponentPlacement{
         fixture.components[0], volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});

@@ -31,24 +31,32 @@ struct EscapeBoard {
     volt::BoardLayerId back;
 };
 
+[[nodiscard]] volt::PinSpec signal_pin(std::string name, std::string number) {
+    return volt::PinSpec{
+        .name = std::move(name),
+        .number = std::move(number),
+        .terminal_kind = volt::ElectricalTerminalKind::Signal,
+        .direction = volt::ElectricalDirection::Bidirectional,
+        .drive_kind = volt::ElectricalDriveKind::Passive,
+    };
+}
+
 [[nodiscard]] SoicFixture make_soic_fixture(bool leave_first_pin_unconnected = false) {
     auto circuit = volt::Circuit{};
-    auto pins = std::vector<volt::PinDefId>{};
+    auto pin_specs = std::vector<volt::PinSpec>{};
     auto nets = std::vector<volt::NetId>{};
-    pins.reserve(8U);
+    pin_specs.reserve(8U);
     nets.reserve(8U);
     for (std::size_t index = 0; index < 8U; ++index) {
         const auto number = std::to_string(index + 1U);
-        pins.push_back(circuit.connectivity().add_pin_definition(volt::PinDefinition{
-            "P" + number, number, volt::ConnectionRequirement::Required,
-            volt::ElectricalTerminalKind::Signal, volt::ElectricalDirection::Bidirectional,
-            volt::ElectricalSignalDomain::Unspecified, volt::ElectricalDriveKind::Passive}));
-        nets.push_back(circuit.connectivity().add_net(
-            volt::Net{volt::NetName{"N" + number}, volt::NetKind::Signal}));
+        pin_specs.push_back(signal_pin("P" + number, number));
+        nets.push_back(
+            circuit.add_net(volt::NetSpec{volt::NetName{"N" + number}, volt::NetKind::Signal}));
     }
 
-    const auto definition =
-        circuit.connectivity().add_component_definition(volt::ComponentDefinition{"TLC555", pins});
+    const auto definition = circuit.define_component(
+        volt::ComponentSpec{.name = "TLC555", .pins = std::move(pin_specs)});
+    const auto &pins = circuit.get(definition).pins();
     const auto component =
         circuit.instantiate_component(definition, volt::ReferenceDesignator{"U1"});
 
@@ -62,13 +70,12 @@ struct EscapeBoard {
         }
     }
 
-    circuit.electrical().select_physical_part(
-        component, volt::PhysicalPart{
-                       volt::ManufacturerPart{"Texas Instruments", "TLC555CDR"},
-                       volt::PackageRef{"SOIC-8"},
-                       volt::FootprintRef{"ics", "SOIC-8_3.9x4.9mm_P1.27mm"},
-                       std::move(mappings),
-                   });
+    circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
+                                  volt::ManufacturerPart{"Texas Instruments", "TLC555CDR"},
+                                  volt::PackageRef{"SOIC-8"},
+                                  volt::FootprintRef{"ics", "SOIC-8_3.9x4.9mm_P1.27mm"},
+                                  std::move(mappings),
+                              }});
 
     return SoicFixture{std::move(circuit), component, std::move(nets)};
 }
@@ -185,8 +192,9 @@ TEST_CASE("Escape router resolves stub width from net-class rules", "[pcb][escap
     auto fixture = make_soic_fixture();
     auto wide = volt::NetClass{volt::NetClassName{"Wide"}};
     wide.set_track_width_mm(0.30);
-    const auto wide_class = fixture.circuit.net_classes().add_net_class(std::move(wide));
-    REQUIRE(fixture.circuit.net_classes().assign_net_class(fixture.nets.front(), wide_class));
+    const auto wide_class =
+        fixture.circuit.define_net_class(volt::NetClassSpec{.net_class = std::move(wide)});
+    fixture.circuit.update(fixture.nets.front(), volt::AssignNetClass{wide_class});
 
     auto layout = make_escape_board(fixture);
     auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
@@ -203,8 +211,9 @@ TEST_CASE("Generated escape room does not relax stricter net-class clearance", "
     auto fixture = make_soic_fixture();
     auto strict = volt::NetClass{volt::NetClassName{"Strict"}};
     strict.set_copper_clearance_mm(0.50);
-    const auto strict_class = fixture.circuit.net_classes().add_net_class(std::move(strict));
-    REQUIRE(fixture.circuit.net_classes().assign_net_class(fixture.nets[0], strict_class));
+    const auto strict_class =
+        fixture.circuit.define_net_class(volt::NetClassSpec{.net_class = std::move(strict)});
+    fixture.circuit.update(fixture.nets[0], volt::AssignNetClass{strict_class});
 
     auto layout = make_escape_board(fixture);
     auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
@@ -241,40 +250,38 @@ TEST_CASE("Generated escape room does not relax stricter net-class clearance", "
 
 TEST_CASE("Escape router selects an allowed layer for multi-layer pads", "[pcb][escape]") {
     auto circuit = volt::Circuit{};
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
-        volt::ElectricalDirection::Bidirectional, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
-        volt::ElectricalDirection::Bidirectional, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
+    const auto definition = circuit.define_component(volt::ComponentSpec{
+        .name = "J2",
+        .pins = {signal_pin("A", "1"), signal_pin("B", "2")},
+    });
+    const auto &definition_pins = circuit.get(definition).pins();
+    const auto first_pin = definition_pins[0];
+    const auto second_pin = definition_pins[1];
     const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{volt::NetName{"A"}, volt::NetKind::Signal});
     const auto second_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
-    const auto definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"J2", {first_pin, second_pin}});
+        circuit.add_net(volt::NetSpec{volt::NetName{"B"}, volt::NetKind::Signal});
     const auto component =
         circuit.instantiate_component(definition, volt::ReferenceDesignator{"J1"});
     circuit.connect(first_net,
                     volt::queries::pin_by_definition(circuit, component, first_pin).value());
     circuit.connect(second_net,
                     volt::queries::pin_by_definition(circuit, component, second_pin).value());
-    circuit.electrical().select_physical_part(
+    circuit.update(
         component,
-        volt::PhysicalPart{
+        volt::SelectPhysicalPart{volt::PhysicalPart{
             volt::ManufacturerPart{"Generic", "PinHeader_1x02"},
             volt::PackageRef{"1x02"},
             volt::FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
             std::vector{volt::PinPadMapping{first_pin, "1"}, volt::PinPadMapping{second_pin, "2"}},
-        });
+        }});
 
     auto bottom_only = volt::NetClass{volt::NetClassName{"BottomOnly"}};
     bottom_only.set_layer_scope(volt::NetClassLayerScope::BottomOnly);
-    const auto class_id = circuit.net_classes().add_net_class(std::move(bottom_only));
-    REQUIRE(circuit.net_classes().assign_net_class(first_net, class_id));
-    REQUIRE(circuit.net_classes().assign_net_class(second_net, class_id));
+    const auto class_id =
+        circuit.define_net_class(volt::NetClassSpec{.net_class = std::move(bottom_only)});
+    circuit.update(first_net, volt::AssignNetClass{class_id});
+    circuit.update(second_net, volt::AssignNetClass{class_id});
 
     auto board = volt::Board{circuit};
     const auto front = board.add_layer(
@@ -364,34 +371,30 @@ TEST_CASE("Escape router reports per-pad unconnected pins without hiding partial
 TEST_CASE("Escape router reports pads with no copper layer while escaping other pads",
           "[pcb][escape]") {
     auto circuit = volt::Circuit{};
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
-        volt::ElectricalDirection::Bidirectional, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
-        volt::ElectricalDirection::Bidirectional, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
+    const auto definition = circuit.define_component(volt::ComponentSpec{
+        .name = "MixedSide",
+        .pins = {signal_pin("A", "1"), signal_pin("B", "2")},
+    });
+    const auto &definition_pins = circuit.get(definition).pins();
+    const auto first_pin = definition_pins[0];
+    const auto second_pin = definition_pins[1];
     const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{volt::NetName{"A"}, volt::NetKind::Signal});
     const auto second_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
-    const auto definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"MixedSide", {first_pin, second_pin}});
+        circuit.add_net(volt::NetSpec{volt::NetName{"B"}, volt::NetKind::Signal});
     const auto component =
         circuit.instantiate_component(definition, volt::ReferenceDesignator{"U1"});
     circuit.connect(first_net,
                     volt::queries::pin_by_definition(circuit, component, first_pin).value());
     circuit.connect(second_net,
                     volt::queries::pin_by_definition(circuit, component, second_pin).value());
-    circuit.electrical().select_physical_part(
-        component,
-        volt::PhysicalPart{
-            volt::ManufacturerPart{"Volt", "MixedSide"},
-            volt::PackageRef{"MixedSide"},
-            volt::FootprintRef{"tests", "MixedSide"},
-            std::vector{volt::PinPadMapping{first_pin, "1"}, volt::PinPadMapping{second_pin, "2"}},
-        });
+    circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
+                                  volt::ManufacturerPart{"Volt", "MixedSide"},
+                                  volt::PackageRef{"MixedSide"},
+                                  volt::FootprintRef{"tests", "MixedSide"},
+                                  std::vector{volt::PinPadMapping{first_pin, "1"},
+                                              volt::PinPadMapping{second_pin, "2"}},
+                              }});
 
     auto board = volt::Board{circuit};
     const auto front = board.add_layer(
@@ -433,8 +436,9 @@ TEST_CASE("Escape router reports pads disallowed by net-class layer scope", "[pc
     auto fixture = make_soic_fixture();
     auto bottom_only = volt::NetClass{volt::NetClassName{"BottomOnly"}};
     bottom_only.set_layer_scope(volt::NetClassLayerScope::BottomOnly);
-    const auto class_id = fixture.circuit.net_classes().add_net_class(std::move(bottom_only));
-    REQUIRE(fixture.circuit.net_classes().assign_net_class(fixture.nets.front(), class_id));
+    const auto class_id =
+        fixture.circuit.define_net_class(volt::NetClassSpec{.net_class = std::move(bottom_only)});
+    fixture.circuit.update(fixture.nets.front(), volt::AssignNetClass{class_id});
     auto layout = make_escape_board(fixture);
 
     auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
@@ -477,12 +481,11 @@ TEST_CASE("Escape router rejects component requests that cannot be attempted", "
     }
 
     auto no_part_circuit = volt::Circuit{};
-    const auto pin = no_part_circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
-        volt::ElectricalDirection::Bidirectional, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto no_part_definition = no_part_circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"NoPart", {pin}});
+    const auto no_part_definition = no_part_circuit.define_component(volt::ComponentSpec{
+        .name = "NoPart",
+        .pins = {signal_pin("A", "1")},
+    });
+    const auto pin = no_part_circuit.get(no_part_definition).pins()[0];
     const auto no_part_component =
         no_part_circuit.instantiate_component(no_part_definition, volt::ReferenceDesignator{"U1"});
     auto no_part_board = volt::Board{no_part_circuit};
@@ -493,11 +496,11 @@ TEST_CASE("Escape router rejects component requests that cannot be attempted", "
         no_part_router.escape(no_part_component), std::invalid_argument,
         Catch::Matchers::Message("Cannot escape component without a selected physical part"));
 
-    no_part_circuit.electrical().select_physical_part(
+    no_part_circuit.update(
         no_part_component,
-        volt::PhysicalPart{volt::ManufacturerPart{"Volt", "MissingFootprint"},
-                           volt::PackageRef{"Missing"}, volt::FootprintRef{"tests", "Missing"},
-                           std::vector{volt::PinPadMapping{pin, "1"}}});
+        volt::SelectPhysicalPart{volt::PhysicalPart{
+            volt::ManufacturerPart{"Volt", "MissingFootprint"}, volt::PackageRef{"Missing"},
+            volt::FootprintRef{"tests", "Missing"}, std::vector{volt::PinPadMapping{pin, "1"}}}});
     auto missing_footprint_board = volt::Board{no_part_circuit};
     static_cast<void>(missing_footprint_board.place_component(volt::ComponentPlacement{
         no_part_component, volt::BoardPoint{0.0, 0.0}, volt::BoardRotation::degrees(0.0)}));

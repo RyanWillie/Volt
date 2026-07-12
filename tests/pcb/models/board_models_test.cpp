@@ -93,8 +93,7 @@ TEST_CASE("BoardStructureModel owns layers, stack, outline, rules, and features"
 
 TEST_CASE("PCB board model structural rejections carry machine-readable error codes") {
     auto circuit = volt::Circuit{};
-    const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"N1"}, volt::NetKind::Signal});
+    const auto net = circuit.add_net(volt::NetSpec{volt::NetName{"N1"}, volt::NetKind::Signal});
     auto board = volt::Board{circuit};
     const auto front = board.add_layer(
         volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});

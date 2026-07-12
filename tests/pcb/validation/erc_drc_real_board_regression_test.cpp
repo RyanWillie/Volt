@@ -338,8 +338,9 @@ TEST_CASE("Real-board DRC regression covers net-class and manufacturability prer
         auto fixture = make_real_board_fixture();
         auto signal_class = volt::NetClass{volt::NetClassName{"TOP_ONLY_LED"}};
         signal_class.set_layer_scope(volt::NetClassLayerScope::TopOnly);
-        const auto class_id = fixture.circuit.net_classes().add_net_class(std::move(signal_class));
-        REQUIRE(fixture.circuit.net_classes().assign_net_class(fixture.led_drive, class_id));
+        const auto class_id = fixture.circuit.define_net_class(
+            volt::NetClassSpec{.net_class = std::move(signal_class)});
+        fixture.circuit.update(fixture.led_drive, volt::AssignNetClass{class_id});
         auto layout = make_real_board_layout(fixture);
         const auto bottom_track = layout.board.add_track(volt::BoardTrack{
             fixture.led_drive, layout.back,
