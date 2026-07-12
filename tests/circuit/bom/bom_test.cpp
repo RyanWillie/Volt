@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "support/circuit_test_helpers.hpp"
+
 #include <nlohmann/json.hpp>
 
 #include <cstdint>
@@ -23,29 +25,36 @@ struct BomCircuit {
 
 volt::ComponentId add_resistor(volt::Circuit &circuit, const std::string &reference,
                                const std::string &mpn, std::vector<std::string> alternates = {}) {
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
-    const auto component =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{reference});
-    circuit.electrical().select_physical_part(
-        component,
-        volt::PhysicalPart{
-            volt::ManufacturerPart{"Yageo", mpn},
-            volt::PackageRef{"0603"},
-            volt::FootprintRef{"passives", "R_0603_1608Metric"},
-            std::vector{volt::PinPadMapping{first_pin, "1"}, volt::PinPadMapping{second_pin, "2"}},
-            {},
-            std::nullopt,
-            std::move(alternates),
-        });
+    const auto first_pin_spec = volt::PinSpec{"1",
+                                              "1",
+                                              volt::ConnectionRequirement::Required,
+                                              volt::ElectricalTerminalKind::Passive,
+                                              volt::ElectricalDirection::Passive,
+                                              volt::ElectricalSignalDomain::Unspecified,
+                                              volt::ElectricalDriveKind::Passive};
+    const auto second_pin_spec = volt::PinSpec{"2",
+                                               "2",
+                                               volt::ConnectionRequirement::Required,
+                                               volt::ElectricalTerminalKind::Passive,
+                                               volt::ElectricalDirection::Passive,
+                                               volt::ElectricalSignalDomain::Unspecified,
+                                               volt::ElectricalDriveKind::Passive};
+    const auto component_def = volt::test::define_component(
+        circuit, "Resistor", std::vector{first_pin_spec, second_pin_spec});
+    const auto pins = circuit.get(component_def).pins();
+    const auto component = circuit.instantiate_component(
+        component_def,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{reference}});
+    circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
+                                  volt::ManufacturerPart{"Yageo", mpn},
+                                  volt::PackageRef{"0603"},
+                                  volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                                  std::vector{volt::PinPadMapping{pins[0], "1"},
+                                              volt::PinPadMapping{pins[1], "2"}},
+                                  {},
+                                  std::nullopt,
+                                  std::move(alternates),
+                              }});
     return component;
 }
 
@@ -54,10 +63,10 @@ BomCircuit build_bom_circuit() {
     const auto r1 = add_resistor(circuit, "R1", "RC0603FR-07330RL", {"RC0603FR-07330RLA"});
     const auto r2 = add_resistor(circuit, "R2", "RC0603FR-07330RL", {"RC0603FR-07330RLA"});
     const auto r3 = add_resistor(circuit, "R3", "RC0603FR-071KL", {"RC0603FR-071KLA"});
-    circuit.intent().set_component_dnp(r1, false);
-    circuit.intent().set_component_dnp(r2, false);
-    circuit.intent().set_component_selection_override(r2, true);
-    circuit.intent().set_component_dnp(r3, true);
+    circuit.update(r1, volt::SetAssemblyIntent{.dnp = false});
+    circuit.update(r2, volt::SetAssemblyIntent{.dnp = false});
+    circuit.update(r2, volt::SetAssemblyIntent{.selection_override = true});
+    circuit.update(r3, volt::SetAssemblyIntent{.dnp = true});
     return BomCircuit{std::move(circuit), r1, r2, r3};
 }
 
@@ -120,7 +129,7 @@ TEST_CASE("BOM CSV output is deterministic and includes alternates and sourcing"
 TEST_CASE("BOM CSV escapes dynamic sourcing headers") {
     auto circuit = volt::Circuit{};
     const auto component = add_resistor(circuit, "R1", "RC0603FR-07330RL");
-    circuit.intent().set_component_dnp(component, false);
+    circuit.update(component, volt::SetAssemblyIntent{.dnp = false});
     auto sourcing = volt::BomSourcingSnapshot{};
     sourcing.set_mpn_properties(
         "RC0603FR-07330RL",
@@ -175,42 +184,48 @@ TEST_CASE("BOM sourcing snapshot rejects empty MPNs with a typed kernel error") 
 
 TEST_CASE("BOM readiness reports stable diagnostics on offending instances") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
-    const auto missing_part =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
-    const auto missing_dnp =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R2"});
-    const auto bad_alternate =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R3"});
+    const auto first_pin_spec = volt::PinSpec{"1",
+                                              "1",
+                                              volt::ConnectionRequirement::Required,
+                                              volt::ElectricalTerminalKind::Passive,
+                                              volt::ElectricalDirection::Passive,
+                                              volt::ElectricalSignalDomain::Unspecified,
+                                              volt::ElectricalDriveKind::Passive};
+    const auto second_pin_spec = volt::PinSpec{"2",
+                                               "2",
+                                               volt::ConnectionRequirement::Required,
+                                               volt::ElectricalTerminalKind::Passive,
+                                               volt::ElectricalDirection::Passive,
+                                               volt::ElectricalSignalDomain::Unspecified,
+                                               volt::ElectricalDriveKind::Passive};
+    const auto component_def = volt::test::define_component(
+        circuit, "Resistor", std::vector{first_pin_spec, second_pin_spec});
+    const auto pins = circuit.get(component_def).pins();
+    const auto missing_part = circuit.instantiate_component(
+        component_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
+    const auto missing_dnp = circuit.instantiate_component(
+        component_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R2"}});
+    const auto bad_alternate = circuit.instantiate_component(
+        component_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R3"}});
 
-    circuit.intent().set_component_dnp(missing_part, false);
-    circuit.electrical().select_physical_part(
-        missing_dnp, volt::PhysicalPart{volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                        volt::PackageRef{"0603"},
-                                        volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                        std::vector{volt::PinPadMapping{first_pin, "1"},
-                                                    volt::PinPadMapping{second_pin, "2"}}});
-    circuit.intent().set_component_dnp(bad_alternate, false);
-    circuit.electrical().select_physical_part(
-        bad_alternate,
-        volt::PhysicalPart{
-            volt::ManufacturerPart{"Yageo", "RC0603FR-071KL"},
-            volt::PackageRef{"0603"},
+    circuit.update(missing_part, volt::SetAssemblyIntent{.dnp = false});
+    circuit.update(
+        missing_dnp,
+        volt::SelectPhysicalPart{volt::PhysicalPart{
+            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"}, volt::PackageRef{"0603"},
             volt::FootprintRef{"passives", "R_0603_1608Metric"},
-            std::vector{volt::PinPadMapping{first_pin, "1"}, volt::PinPadMapping{second_pin, "2"}},
-            {},
-            std::nullopt,
-            std::vector<std::string>{"RC0603FR-071KL"},
-        });
+            std::vector{volt::PinPadMapping{pins[0], "1"}, volt::PinPadMapping{pins[1], "2"}}}});
+    circuit.update(bad_alternate, volt::SetAssemblyIntent{.dnp = false});
+    circuit.update(bad_alternate, volt::SelectPhysicalPart{volt::PhysicalPart{
+                                      volt::ManufacturerPart{"Yageo", "RC0603FR-071KL"},
+                                      volt::PackageRef{"0603"},
+                                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                                      std::vector{volt::PinPadMapping{pins[0], "1"},
+                                                  volt::PinPadMapping{pins[1], "2"}},
+                                      {},
+                                      std::nullopt,
+                                      std::vector<std::string>{"RC0603FR-071KL"},
+                                  }});
 
     const auto report = volt::validate_bom_readiness(circuit);
 
