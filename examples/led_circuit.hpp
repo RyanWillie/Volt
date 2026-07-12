@@ -34,21 +34,22 @@ inline Circuit build_led_circuit() {
         circuit, resistor, "R", PropertyMap{{PropertyKey{"value"}, PropertyValue{"330 ohm"}}});
     const auto d1 = authoring::instantiate(circuit, led, "D");
 
-    circuit.electrical().select_physical_part(
-        j1, PhysicalPart{ManufacturerPart{"Generic", "HDR-1x02-2.54mm"}, PackageRef{"2.54mm-1x02"},
-                         FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
-                         std::vector{PinPadMapping{connector_positive, "1"},
-                                     PinPadMapping{connector_negative, "2"}}});
-    circuit.electrical().select_physical_part(
-        r1, PhysicalPart{ManufacturerPart{"Yageo", "RC0603FR-07330RL"}, PackageRef{"0603"},
-                         FootprintRef{"passives", "R_0603_1608Metric"},
-                         std::vector{PinPadMapping{resistor_pin_1, "1"},
-                                     PinPadMapping{resistor_pin_2, "2"}}});
-    circuit.electrical().select_physical_part(
-        d1,
-        PhysicalPart{ManufacturerPart{"Lite-On", "LTST-C190KRKT"}, PackageRef{"0603"},
-                     FootprintRef{"leds", "LED_0603_1608Metric"},
-                     std::vector{PinPadMapping{led_cathode, "1"}, PinPadMapping{led_anode, "2"}}});
+    circuit.update(j1,
+                   SelectPhysicalPart{PhysicalPart{
+                       ManufacturerPart{"Generic", "HDR-1x02-2.54mm"}, PackageRef{"2.54mm-1x02"},
+                       FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
+                       std::vector{PinPadMapping{connector_positive, "1"},
+                                   PinPadMapping{connector_negative, "2"}}}});
+    circuit.update(r1, SelectPhysicalPart{PhysicalPart{
+                           ManufacturerPart{"Yageo", "RC0603FR-07330RL"}, PackageRef{"0603"},
+                           FootprintRef{"passives", "R_0603_1608Metric"},
+                           std::vector{PinPadMapping{resistor_pin_1, "1"},
+                                       PinPadMapping{resistor_pin_2, "2"}}}});
+    circuit.update(
+        d1, SelectPhysicalPart{PhysicalPart{
+                ManufacturerPart{"Lite-On", "LTST-C190KRKT"}, PackageRef{"0603"},
+                FootprintRef{"leds", "LED_0603_1608Metric"},
+                std::vector{PinPadMapping{led_cathode, "1"}, PinPadMapping{led_anode, "2"}}}});
 
     const auto vcc = circuit.add_net(NetSpec{.name = NetName{"VCC"}, .kind = NetKind::Power});
     const auto led_a = circuit.add_net(NetSpec{.name = NetName{"LED_A"}, .kind = NetKind::Signal});

@@ -11,11 +11,11 @@ namespace {
 
 template <typename Model>
 concept CanMarkIntentionalStubNet =
-    requires(Model model, volt::NetId net) { model.intent().mark_intentional_stub_net(net); };
+    requires(Model model, volt::NetId net) { model.update(net, volt::MarkIntentionalStub{}); };
 
 template <typename Model>
 concept CanMarkIntentionalNoConnectPin =
-    requires(Model model, volt::PinId pin) { model.intent().mark_intentional_no_connect_pin(pin); };
+    requires(Model model, volt::PinId pin) { model.mark_no_connect(pin); };
 
 static_assert(!CanMarkIntentionalStubNet<volt::DesignIntent>);
 static_assert(!CanMarkIntentionalNoConnectPin<volt::DesignIntent>);
@@ -24,16 +24,13 @@ static_assert(!CanMarkIntentionalNoConnectPin<volt::DesignIntent>);
 
 TEST_CASE("Circuit records intentional stub nets idempotently in deterministic order") {
     volt::Circuit circuit;
-    const auto first =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"STUB_A"}, volt::NetKind::Signal});
-    const auto second =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"STUB_B"}, volt::NetKind::Signal});
-    const auto unmarked =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"NORMAL"}, volt::NetKind::Signal});
+    const auto first = circuit.add_net(volt::NetSpec{.name = volt::NetName{"STUB_A"}});
+    const auto second = circuit.add_net(volt::NetSpec{.name = volt::NetName{"STUB_B"}});
+    const auto unmarked = circuit.add_net(volt::NetSpec{.name = volt::NetName{"NORMAL"}});
 
-    CHECK(circuit.intent().mark_intentional_stub_net(first));
-    CHECK(circuit.intent().mark_intentional_stub_net(second));
-    CHECK_FALSE(circuit.intent().mark_intentional_stub_net(first));
+    circuit.update(first, volt::MarkIntentionalStub{});
+    circuit.update(second, volt::MarkIntentionalStub{});
+    circuit.update(first, volt::MarkIntentionalStub{});
 
     CHECK(circuit.is_intentional_stub_net(first));
     CHECK_FALSE(circuit.is_intentional_stub_net(unmarked));
@@ -42,20 +39,31 @@ TEST_CASE("Circuit records intentional stub nets idempotently in deterministic o
 
 TEST_CASE("Circuit records intentional no-connect pins idempotently in deterministic order") {
     volt::Circuit circuit;
-    const auto first_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "NC1", "1", volt::ConnectionRequirement::MustNotConnect,
-        volt::ElectricalTerminalKind::NoConnect, volt::ElectricalDirection::Unspecified});
-    const auto second_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "NC2", "2", volt::ConnectionRequirement::MustNotConnect,
-        volt::ElectricalTerminalKind::NoConnect, volt::ElectricalDirection::Unspecified});
-    const auto unmarked_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "NC3", "3", volt::ConnectionRequirement::MustNotConnect,
-        volt::ElectricalTerminalKind::NoConnect, volt::ElectricalDirection::Unspecified});
-    const auto component_definition =
-        circuit.connectivity().add_component_definition(volt::ComponentDefinition{
-            "Connector", std::vector{first_definition, second_definition, unmarked_definition}});
-    const auto component = circuit.connectivity().add_component(
-        volt::ComponentInstance{component_definition, volt::ReferenceDesignator{"J1"}});
+    const auto component_definition = circuit.define_component(volt::ComponentSpec{
+        .name = "Connector",
+        .pins =
+            {
+                volt::PinSpec{.name = "NC1",
+                              .number = "1",
+                              .requirement = volt::ConnectionRequirement::MustNotConnect,
+                              .terminal_kind = volt::ElectricalTerminalKind::NoConnect},
+                volt::PinSpec{.name = "NC2",
+                              .number = "2",
+                              .requirement = volt::ConnectionRequirement::MustNotConnect,
+                              .terminal_kind = volt::ElectricalTerminalKind::NoConnect},
+                volt::PinSpec{.name = "NC3",
+                              .number = "3",
+                              .requirement = volt::ConnectionRequirement::MustNotConnect,
+                              .terminal_kind = volt::ElectricalTerminalKind::NoConnect},
+            },
+    });
+    const auto component = circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"J1"}});
+    const auto &definitions = circuit.get(component_definition).pins();
+    const auto first_definition = definitions[0];
+    const auto second_definition = definitions[1];
+    const auto unmarked_definition = definitions[2];
     const auto first =
         volt::queries::pin_by_definition(circuit, component, first_definition).value();
     const auto second =
@@ -63,9 +71,9 @@ TEST_CASE("Circuit records intentional no-connect pins idempotently in determini
     const auto unmarked =
         volt::queries::pin_by_definition(circuit, component, unmarked_definition).value();
 
-    CHECK(circuit.intent().mark_intentional_no_connect_pin(first));
-    CHECK(circuit.intent().mark_intentional_no_connect_pin(second));
-    CHECK_FALSE(circuit.intent().mark_intentional_no_connect_pin(first));
+    circuit.mark_no_connect(first);
+    circuit.mark_no_connect(second);
+    circuit.mark_no_connect(first);
 
     CHECK(circuit.is_intentional_no_connect_pin(first));
     CHECK_FALSE(circuit.is_intentional_no_connect_pin(unmarked));

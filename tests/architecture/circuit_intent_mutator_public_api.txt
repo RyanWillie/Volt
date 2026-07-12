@@ -20,6 +20,7 @@ include <volt/circuit/hierarchy/hierarchy.hpp>
 include <volt/circuit/hierarchy/hierarchy_model.hpp>
 include <volt/circuit/intent/design_intent.hpp>
 include <volt/circuit/parts/parts.hpp>
+include <volt/circuit/updates.hpp>
 include <volt/core/ids.hpp>
 
 IntentMutator(Circuit &circuit, MutatorKey) noexcept

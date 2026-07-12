@@ -215,6 +215,12 @@ class NetClass {
     std::optional<NetKind> default_for_net_kind_;
 };
 
+/** Complete reusable net-class definition input lowered atomically by Circuit. */
+struct NetClassSpec {
+    /** Validated net-class intent to commit. */
+    NetClass net_class;
+};
+
 /**
  * Owns net classes and deterministic net-to-net-class assignments.
  *

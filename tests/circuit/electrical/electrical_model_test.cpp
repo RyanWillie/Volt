@@ -68,14 +68,6 @@ volt::PhysicalPart make_resistor_physical_part(volt::PinDefId first_pin,
 
 TEST_CASE("Circuit stores typed electrical attributes by owner kind") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
     const auto component_resistance = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"resistance"},
         volt::ElectricalAttributeOwner::ComponentInstance,
@@ -95,23 +87,43 @@ TEST_CASE("Circuit stores typed electrical attributes by owner kind") {
         volt::UnitDimension::Voltage,
     };
 
-    circuit.electrical().set_pin_definition_electrical_attribute(
-        first_pin, pin_voltage_range,
+    auto first_pin_spec = volt::PinSpec{
+        .name = "1",
+        .number = "1",
+        .terminal_kind = volt::ElectricalTerminalKind::Passive,
+        .direction = volt::ElectricalDirection::Passive,
+        .drive_kind = volt::ElectricalDriveKind::Passive,
+    };
+    first_pin_spec.electrical_attributes.push_back(volt::ElectricalAttributeAssignment{
+        pin_voltage_range,
         volt::ElectricalAttributeValue{
             volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
-                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
-    const auto component_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
+                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})},
+    });
+    const auto component_definition = circuit.define_component(volt::ComponentSpec{
+        .name = "Resistor",
+        .pins =
+            {
+                std::move(first_pin_spec),
+                volt::PinSpec{.name = "2",
+                              .number = "2",
+                              .terminal_kind = volt::ElectricalTerminalKind::Passive,
+                              .direction = volt::ElectricalDirection::Passive,
+                              .drive_kind = volt::ElectricalDriveKind::Passive},
+            },
+    });
+    const auto first_pin = circuit.get(component_definition).pins()[0];
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
     const auto net =
         circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
-    circuit.electrical().set_component_electrical_attribute(
-        component, component_resistance,
-        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Resistance, 330.0}});
-    circuit.electrical().set_net_electrical_attribute(
-        net, net_voltage,
-        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}});
+    circuit.update(component,
+                   volt::SetComponentElectricalAttribute{
+                       component_resistance, volt::ElectricalAttributeValue{volt::Quantity{
+                                                 volt::UnitDimension::Resistance, 330.0}}});
+    circuit.update(net, volt::SetNetElectricalAttribute{
+                            net_voltage, volt::ElectricalAttributeValue{
+                                             volt::Quantity{volt::UnitDimension::Voltage, 3.3}}});
 
     CHECK(circuit.component_electrical_attributes(component)
               .get(volt::ElectricalAttributeName{"resistance"})
@@ -142,16 +154,16 @@ TEST_CASE("Circuit rejects electrical attributes for the wrong owner kind") {
         volt::UnitDimension::Voltage,
     };
 
-    CHECK_THROWS_AS(
-        circuit.electrical().set_component_electrical_attribute(
-            component, net_voltage,
-            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}}),
-        std::logic_error);
+    CHECK_THROWS_AS(circuit.update(component,
+                                   volt::SetComponentElectricalAttribute{
+                                       net_voltage, volt::ElectricalAttributeValue{volt::Quantity{
+                                                        volt::UnitDimension::Voltage, 3.3}}}),
+                    std::logic_error);
 
     try {
-        circuit.electrical().set_component_electrical_attribute(
-            component, net_voltage,
-            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}});
+        circuit.update(component, volt::SetComponentElectricalAttribute{
+                                      net_voltage, volt::ElectricalAttributeValue{volt::Quantity{
+                                                       volt::UnitDimension::Voltage, 3.3}}});
         FAIL("Wrong electrical attribute owner must throw");
     } catch (const volt::KernelError &error) {
         CHECK(error.code() == volt::ErrorCode::InvalidArgument);
@@ -180,11 +192,11 @@ TEST_CASE("Circuit owns selected physical parts and selected-part attributes") {
         volt::UnitDimension::Voltage,
     };
 
-    circuit.electrical().select_physical_part(component,
-                                              make_resistor_physical_part(first_pin, second_pin));
-    circuit.electrical().set_selected_part_electrical_attribute(
-        component, voltage_rating,
-        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 75.0}});
+    circuit.update(component,
+                   volt::SelectPhysicalPart{make_resistor_physical_part(first_pin, second_pin)});
+    circuit.update(component, volt::SetSelectedPartElectricalAttribute{
+                                  voltage_rating, volt::ElectricalAttributeValue{volt::Quantity{
+                                                      volt::UnitDimension::Voltage, 75.0}}});
 
     REQUIRE(circuit.selected_physical_part(component).has_value());
     CHECK(circuit.selected_physical_part(component)
@@ -212,13 +224,13 @@ TEST_CASE("Circuit rejects selected parts that do not match component pins") {
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
 
-    CHECK_THROWS_AS(circuit.electrical().select_physical_part(
-                        component, make_resistor_physical_part(first_pin, extra_pin)),
+    CHECK_THROWS_AS(circuit.update(component, volt::SelectPhysicalPart{make_resistor_physical_part(
+                                                  first_pin, extra_pin)}),
                     std::logic_error);
 
     try {
-        circuit.electrical().select_physical_part(
-            component, make_resistor_physical_part(first_pin, extra_pin));
+        circuit.update(component,
+                       volt::SelectPhysicalPart{make_resistor_physical_part(first_pin, extra_pin)});
         FAIL("Physical part pin mappings outside the component definition must throw");
     } catch (const volt::KernelError &error) {
         CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
@@ -235,7 +247,7 @@ TEST_CASE("Circuit rejects selected parts that do not match component pins") {
         },
     };
     try {
-        circuit.electrical().select_physical_part(component, incomplete_part);
+        circuit.update(component, volt::SelectPhysicalPart{incomplete_part});
         FAIL("Physical part pin mappings must cover every component pin definition");
     } catch (const volt::KernelError &error) {
         CHECK(error.code() == volt::ErrorCode::InvalidArgument);
@@ -262,15 +274,16 @@ TEST_CASE("Circuit rejects selected-part attributes without selected-part metada
     };
 
     CHECK_THROWS_AS(
-        circuit.electrical().set_selected_part_electrical_attribute(
-            component, voltage_rating,
-            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 75.0}}),
+        circuit.update(component,
+                       volt::SetSelectedPartElectricalAttribute{
+                           voltage_rating, volt::ElectricalAttributeValue{volt::Quantity{
+                                               volt::UnitDimension::Voltage, 75.0}}}),
         std::logic_error);
 
     try {
-        circuit.electrical().set_selected_part_electrical_attribute(
-            component, voltage_rating,
-            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 75.0}});
+        circuit.update(component, volt::SetSelectedPartElectricalAttribute{
+                                      voltage_rating, volt::ElectricalAttributeValue{volt::Quantity{
+                                                          volt::UnitDimension::Voltage, 75.0}}});
         FAIL("Selected-part attributes require selected-part metadata first");
     } catch (const volt::KernelError &error) {
         CHECK(error.code() == volt::ErrorCode::InvalidState);
