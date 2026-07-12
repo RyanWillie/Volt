@@ -112,6 +112,9 @@ TEST_CASE("Circuit stores module component templates and template pin connectivi
     const auto resistor = volt::test::define_component(
         circuit, "Resistor",
         {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    const auto &resistor_pins = circuit.get(resistor).pins();
+    const auto left = resistor_pins[0];
+    const auto right = resistor_pins[1];
     const auto module = circuit.define_module(volt::ModuleSpec{
         .name = volt::ModuleName{"Divider"},
         .template_nets =
@@ -123,9 +126,9 @@ TEST_CASE("Circuit stores module component templates and template pin connectivi
         .connections =
             {
                 volt::ModulePinConnectionSpec{volt::NetName{"IN"}, volt::ReferenceDesignator{"R1"},
-                                              volt::PinDefId{0}},
+                                              left},
                 volt::ModulePinConnectionSpec{volt::NetName{"OUT"}, volt::ReferenceDesignator{"R1"},
-                                              volt::PinDefId{1}},
+                                              right},
             },
     });
     const auto &definition = circuit.get(module);
@@ -139,8 +142,8 @@ TEST_CASE("Circuit stores module component templates and template pin connectivi
     CHECK(circuit.module_component_template(component).reference() ==
           volt::ReferenceDesignator{"R1"});
 
-    CHECK(volt::queries::template_net_for(circuit, module, component, volt::PinDefId{0}) == input);
-    CHECK(volt::queries::template_net_for(circuit, module, component, volt::PinDefId{1}) == output);
+    CHECK(volt::queries::template_net_for(circuit, module, component, left) == input);
+    CHECK(volt::queries::template_net_for(circuit, module, component, right) == output);
     CHECK(circuit.module_component_count() == 1);
     CHECK(circuit.module_pin_connection_count() == 2);
 }
@@ -150,6 +153,9 @@ TEST_CASE("Root module instantiation materializes module component templates") {
     const auto resistor = volt::test::define_component(
         circuit, "Resistor",
         {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    const auto &resistor_pins = circuit.get(resistor).pins();
+    const auto left = resistor_pins[0];
+    const auto right = resistor_pins[1];
     const auto module = circuit.define_module(volt::ModuleSpec{
         .name = volt::ModuleName{"Divider"},
         .template_nets =
@@ -161,9 +167,9 @@ TEST_CASE("Root module instantiation materializes module component templates") {
         .connections =
             {
                 volt::ModulePinConnectionSpec{volt::NetName{"IN"}, volt::ReferenceDesignator{"R1"},
-                                              volt::PinDefId{0}},
+                                              left},
                 volt::ModulePinConnectionSpec{volt::NetName{"OUT"}, volt::ReferenceDesignator{"R1"},
-                                              volt::PinDefId{1}},
+                                              right},
             },
     });
     const auto &definition = circuit.get(module);
@@ -199,6 +205,9 @@ TEST_CASE("Circuit exposes hierarchy inspection views") {
     const auto resistor = volt::test::define_component(
         circuit, "Resistor",
         {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    const auto &resistor_pins = circuit.get(resistor).pins();
+    const auto left = resistor_pins[0];
+    const auto right = resistor_pins[1];
     const auto module = circuit.define_module(volt::ModuleSpec{
         .name = volt::ModuleName{"Divider"},
         .template_nets =
@@ -210,9 +219,9 @@ TEST_CASE("Circuit exposes hierarchy inspection views") {
         .connections =
             {
                 volt::ModulePinConnectionSpec{volt::NetName{"IN"}, volt::ReferenceDesignator{"R1"},
-                                              volt::PinDefId{0}},
+                                              left},
                 volt::ModulePinConnectionSpec{volt::NetName{"OUT"}, volt::ReferenceDesignator{"R1"},
-                                              volt::PinDefId{1}},
+                                              right},
             },
         .ports = {volt::ModulePortSpec{volt::PortName{"IN"}, volt::NetName{"IN"},
                                        volt::PortRole::PowerInput}},
@@ -241,10 +250,10 @@ TEST_CASE("Legacy hierarchy facade preserves incremental connection rejection co
     const auto resistor = volt::test::define_component(
         circuit, "Resistor",
         {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
-    [[maybe_unused]] const auto other =
+    const auto other =
         volt::test::define_component(circuit, "Other", {volt::test::passive_pin("3", "3")});
-    const auto left = volt::PinDefId{0};
-    const auto extra = volt::PinDefId{2};
+    const auto left = circuit.get(resistor).pins().front();
+    const auto extra = circuit.get(other).pins().front();
     const auto first = circuit.define_module(volt::ModuleSpec{
         .name = volt::ModuleName{"First"},
         .template_nets =
@@ -565,7 +574,7 @@ TEST_CASE("Legacy hierarchy facade preserves raw module-component entity payload
 
     const auto component_def =
         volt::test::define_component(circuit, "Resistor", {volt::test::passive_pin("A", "1")});
-    const auto pin_def = volt::PinDefId{0};
+    const auto pin_def = circuit.get(component_def).pins().front();
     const auto first_module = circuit.define_module(volt::ModuleSpec{
         .name = volt::ModuleName{"Divider"},
         .components = {volt::ModuleComponentTemplate{component_def,
