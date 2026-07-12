@@ -103,19 +103,20 @@ ReadFixture make_read_fixture() {
     const auto parent_net =
         circuit.add_net(volt::NetSpec{volt::NetName{"PARENT"}, volt::NetKind::Signal});
 
-    const auto module_definition = circuit.hierarchy().add_module_definition(
-        volt::ModuleDefinition{volt::ModuleName{"Channel"}});
-    const auto template_net = circuit.hierarchy().add_template_net(
-        module_definition,
-        volt::TemplateNetDefinition{volt::NetName{"SIGNAL"}, volt::NetKind::Signal});
-    const auto port_definition = circuit.hierarchy().add_port_definition(
-        module_definition,
-        volt::PortDefinition{volt::PortName{"SIGNAL"}, template_net, volt::PortRole::Passive});
-    const auto module_component = circuit.hierarchy().add_module_component(
-        module_definition,
-        volt::ModuleComponentTemplate{component_definition, volt::ReferenceDesignator{"R2"}});
-    static_cast<void>(circuit.hierarchy().connect_module_pin(
-        module_definition, template_net, module_component, first_pin_definition));
+    const auto module_definition = circuit.define_module(volt::ModuleSpec{
+        .name = volt::ModuleName{"Channel"},
+        .template_nets = {volt::TemplateNetDefinition{volt::NetName{"SIGNAL"},
+                                                      volt::NetKind::Signal}},
+        .components = {volt::ModuleComponentTemplate{component_definition,
+                                                     volt::ReferenceDesignator{"R2"}}},
+        .connections = {volt::ModulePinConnectionSpec{
+            volt::NetName{"SIGNAL"}, volt::ReferenceDesignator{"R2"}, first_pin_definition}},
+        .ports = {volt::ModulePortSpec{volt::PortName{"SIGNAL"}, volt::NetName{"SIGNAL"},
+                                       volt::PortRole::Passive}},
+    });
+    const auto template_net = circuit.get(module_definition).template_nets().front();
+    const auto port_definition = circuit.get(module_definition).ports().front();
+    const auto module_component = circuit.get(module_definition).components().front();
     const auto module_instance =
         circuit.instantiate_root_module(module_definition, volt::ModuleInstanceName{"CHANNEL_A"});
     const auto port_binding = circuit.bind_port(module_instance, port_definition, parent_net);

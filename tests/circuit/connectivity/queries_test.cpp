@@ -75,18 +75,25 @@ TEST_CASE("Circuit queries inspect hierarchy views through const Circuit") {
     const auto &pins = circuit.get(resistor).pins();
     const auto left = pins[0];
     const auto right = pins[1];
-    const auto module = circuit.hierarchy().add_module_definition(
-        volt::ModuleDefinition{volt::ModuleName{"Divider"}});
-    const auto input = circuit.hierarchy().add_template_net(
-        module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
-    const auto output = circuit.hierarchy().add_template_net(
-        module, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
-    const auto port = circuit.hierarchy().add_port_definition(
-        module, volt::PortDefinition{volt::PortName{"IN"}, input, volt::PortRole::Passive});
-    const auto component = circuit.hierarchy().add_module_component(
-        module, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
-    CHECK(circuit.hierarchy().connect_module_pin(module, input, component, left));
-    CHECK(circuit.hierarchy().connect_module_pin(module, output, component, right));
+    const auto module = circuit.define_module(volt::ModuleSpec{
+        .name = volt::ModuleName{"Divider"},
+        .template_nets = {volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal},
+                          volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal}},
+        .components = {volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}}},
+        .connections =
+            {
+                volt::ModulePinConnectionSpec{volt::NetName{"IN"}, volt::ReferenceDesignator{"R1"},
+                                              left},
+                volt::ModulePinConnectionSpec{volt::NetName{"OUT"}, volt::ReferenceDesignator{"R1"},
+                                              right},
+            },
+        .ports = {volt::ModulePortSpec{volt::PortName{"IN"}, volt::NetName{"IN"},
+                                       volt::PortRole::Passive}},
+    });
+    const auto input = circuit.get(module).template_nets()[0];
+    const auto output = circuit.get(module).template_nets()[1];
+    const auto port = circuit.get(module).ports().front();
+    const auto component = circuit.get(module).components().front();
     const auto parent_net = volt::test::add_net(circuit, "PARENT");
     const auto instance =
         circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"});
@@ -130,25 +137,28 @@ TEST_CASE("Circuit hierarchy queries preserve model-owned validation contracts")
         volt::test::define_component(circuit, "Thing", {volt::test::passive_pin("A", "1")});
     const auto pin = circuit.get(component_definition).pins().front();
 
-    const auto first_module = circuit.hierarchy().add_module_definition(
-        volt::ModuleDefinition{volt::ModuleName{"First"}});
-    const auto first_net = circuit.hierarchy().add_template_net(
-        first_module, volt::TemplateNetDefinition{volt::NetName{"FIRST"}, volt::NetKind::Signal});
-    const auto first_port = circuit.hierarchy().add_port_definition(
-        first_module,
-        volt::PortDefinition{volt::PortName{"FIRST"}, first_net, volt::PortRole::Passive});
-    const auto first_component = circuit.hierarchy().add_module_component(
-        first_module,
-        volt::ModuleComponentTemplate{component_definition, volt::ReferenceDesignator{"U1"}});
-    CHECK(circuit.hierarchy().connect_module_pin(first_module, first_net, first_component, pin));
+    const auto first_module = circuit.define_module(volt::ModuleSpec{
+        .name = volt::ModuleName{"First"},
+        .template_nets = {volt::TemplateNetDefinition{volt::NetName{"FIRST"},
+                                                      volt::NetKind::Signal}},
+        .components = {volt::ModuleComponentTemplate{component_definition,
+                                                     volt::ReferenceDesignator{"U1"}}},
+        .connections = {volt::ModulePinConnectionSpec{volt::NetName{"FIRST"},
+                                                      volt::ReferenceDesignator{"U1"}, pin}},
+        .ports = {volt::ModulePortSpec{volt::PortName{"FIRST"}, volt::NetName{"FIRST"},
+                                       volt::PortRole::Passive}},
+    });
+    const auto first_port = circuit.get(first_module).ports().front();
+    const auto first_component = circuit.get(first_module).components().front();
 
-    const auto second_module = circuit.hierarchy().add_module_definition(
-        volt::ModuleDefinition{volt::ModuleName{"Second"}});
-    const auto second_net = circuit.hierarchy().add_template_net(
-        second_module, volt::TemplateNetDefinition{volt::NetName{"SECOND"}, volt::NetKind::Signal});
-    const auto second_port = circuit.hierarchy().add_port_definition(
-        second_module,
-        volt::PortDefinition{volt::PortName{"SECOND"}, second_net, volt::PortRole::Passive});
+    const auto second_module = circuit.define_module(volt::ModuleSpec{
+        .name = volt::ModuleName{"Second"},
+        .template_nets = {volt::TemplateNetDefinition{volt::NetName{"SECOND"},
+                                                      volt::NetKind::Signal}},
+        .ports = {volt::ModulePortSpec{volt::PortName{"SECOND"}, volt::NetName{"SECOND"},
+                                       volt::PortRole::Passive}},
+    });
+    const auto second_port = circuit.get(second_module).ports().front();
 
     const auto parent_net = volt::test::add_net(circuit, "PARENT");
     const auto first_instance =
