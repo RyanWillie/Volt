@@ -57,87 +57,80 @@ TEST_CASE("Golden hierarchy module fixture round-trips") {
 }
 
 TEST_CASE("Logical reader preserves independent connectivity table identity") {
-    auto circuit = volt::Circuit{};
-    const auto a1 = circuit.connectivity().add_pin_definition(volt::PinDefinition{"A1", "1"});
-    const auto b1 = circuit.connectivity().add_pin_definition(volt::PinDefinition{"B1", "1"});
-    const auto a2 = circuit.connectivity().add_pin_definition(volt::PinDefinition{"A2", "2"});
-    const auto b2 = circuit.connectivity().add_pin_definition(volt::PinDefinition{"B2", "2"});
-    const auto first_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"First", std::vector{a1, a2}});
-    const auto second_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Second", std::vector{b1, b2}});
-    const auto transitional_orphan =
-        circuit.connectivity().add_pin_definition(volt::PinDefinition{"Unowned", "3"});
-    circuit.electrical().set_pin_definition_electrical_attribute(
-        transitional_orphan,
-        volt::ElectricalAttributeSpec{
-            volt::ElectricalAttributeName{"voltage_range"}, volt::ElectricalAttributeOwner::PinSpec,
-            volt::ElectricalAttributeKind::Constraint, volt::UnitDimension::Voltage},
-        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 5.0}});
-    static_cast<void>(circuit.connectivity().add_component(
-        volt::ComponentInstance{second_definition, volt::ReferenceDesignator{"U1"}}));
-    static_cast<void>(circuit.connectivity().add_component(
-        volt::ComponentInstance{first_definition, volt::ReferenceDesignator{"U2"}}));
-
-    const auto serialized = volt::io::write_logical_circuit(circuit);
+    const auto serialized = R"json({
+  "format": "volt.logical_circuit",
+  "version": 1,
+  "pin_definitions": [
+    { "id": "pin_def:0", "name": "A1", "number": "1", "connection_requirement": "Required" },
+    { "id": "pin_def:1", "name": "B1", "number": "1", "connection_requirement": "Required" },
+    { "id": "pin_def:2", "name": "A2", "number": "2", "connection_requirement": "Required" },
+    { "id": "pin_def:3", "name": "B2", "number": "2", "connection_requirement": "Required" },
+    { "id": "pin_def:4", "name": "Unowned", "number": "3", "connection_requirement": "Required", "electrical_attributes": { "voltage_range": { "type": "quantity", "dimension": "voltage", "value": 5 } } }
+  ],
+  "component_definitions": [
+    { "id": "component_def:0", "name": "First", "pins": ["pin_def:0", "pin_def:2"], "properties": {} },
+    { "id": "component_def:1", "name": "Second", "pins": ["pin_def:1", "pin_def:3"], "properties": {} }
+  ],
+  "components": [
+    { "id": "component:0", "definition": "component_def:1", "reference": "U1", "properties": {} },
+    { "id": "component:1", "definition": "component_def:0", "reference": "U2", "properties": {} }
+  ],
+  "pins": [
+    { "id": "pin:0", "component": "component:0", "definition": "pin_def:1" },
+    { "id": "pin:1", "component": "component:0", "definition": "pin_def:3" },
+    { "id": "pin:2", "component": "component:1", "definition": "pin_def:0" },
+    { "id": "pin:3", "component": "component:1", "definition": "pin_def:2" }
+  ],
+  "nets": []
+})json";
     const auto restored = volt::io::read_logical_circuit_text(serialized);
 
     CHECK(restored.component_definition(volt::ComponentDefId{0}).pins() ==
           std::vector{volt::PinDefId{0}, volt::PinDefId{2}});
     CHECK(restored.component_definition(volt::ComponentDefId{1}).pins() ==
           std::vector{volt::PinDefId{1}, volt::PinDefId{3}});
-    CHECK(transitional_orphan == volt::PinDefId{4});
     CHECK(restored.pin_definition(volt::PinDefId{4}).name() == "Unowned");
     CHECK(restored.pin_definition_electrical_attributes(volt::PinDefId{4})
               .get(volt::ElectricalAttributeName{"voltage_range"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 5.0});
-    CHECK(volt::io::write_logical_circuit(restored) == serialized);
+    const auto rewritten = volt::io::write_logical_circuit(restored);
+    CHECK(volt::io::write_logical_circuit(volt::io::read_logical_circuit_text(rewritten)) ==
+          rewritten);
 }
 
 TEST_CASE("Logical reader preserves interleaved global hierarchy table identity") {
-    auto circuit = volt::Circuit{};
-    const auto pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive});
-    const auto component_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"One pin", std::vector{pin}});
-    const auto first_module = circuit.hierarchy().add_module_definition(
-        volt::ModuleDefinition{volt::ModuleName{"First"}});
-    const auto second_module = circuit.hierarchy().add_module_definition(
-        volt::ModuleDefinition{volt::ModuleName{"Second"}});
-
-    const auto first_net = circuit.hierarchy().add_template_net(
-        first_module, volt::TemplateNetDefinition{volt::NetName{"A"}, volt::NetKind::Signal});
-    const auto second_module_net = circuit.hierarchy().add_template_net(
-        second_module, volt::TemplateNetDefinition{volt::NetName{"B"}, volt::NetKind::Signal});
-    const auto second_net = circuit.hierarchy().add_template_net(
-        first_module, volt::TemplateNetDefinition{volt::NetName{"C"}, volt::NetKind::Signal});
-
-    const auto first_component = circuit.hierarchy().add_module_component(
-        first_module,
-        volt::ModuleComponentTemplate{component_definition, volt::ReferenceDesignator{"R1"}});
-    const auto second_module_component = circuit.hierarchy().add_module_component(
-        second_module,
-        volt::ModuleComponentTemplate{component_definition, volt::ReferenceDesignator{"R1"}});
-    const auto second_component = circuit.hierarchy().add_module_component(
-        first_module,
-        volt::ModuleComponentTemplate{component_definition, volt::ReferenceDesignator{"R2"}});
-
-    REQUIRE(circuit.hierarchy().connect_module_pin(first_module, first_net, first_component, pin));
-    REQUIRE(circuit.hierarchy().connect_module_pin(second_module, second_module_net,
-                                                   second_module_component, pin));
-    REQUIRE(
-        circuit.hierarchy().connect_module_pin(first_module, second_net, second_component, pin));
-
-    const auto first_port = circuit.hierarchy().add_port_definition(
-        first_module,
-        volt::PortDefinition{volt::PortName{"A"}, first_net, volt::PortRole::Input, true});
-    const auto second_module_port = circuit.hierarchy().add_port_definition(
-        second_module,
-        volt::PortDefinition{volt::PortName{"B"}, second_module_net, volt::PortRole::Input, true});
-    const auto second_port = circuit.hierarchy().add_port_definition(
-        first_module,
-        volt::PortDefinition{volt::PortName{"C"}, second_net, volt::PortRole::Output, true});
+    const auto serialized = R"json({
+  "format": "volt.logical_circuit",
+  "version": 1,
+  "pin_definitions": [
+    { "id": "pin_def:0", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive" }
+  ],
+  "component_definitions": [
+    { "id": "component_def:0", "name": "One pin", "pins": ["pin_def:0"], "properties": {} }
+  ],
+  "components": [],
+  "pins": [],
+  "nets": [],
+  "module_definitions": [
+    { "id": "module_def:0", "name": "First", "local_nets": [{ "id": "template_net:0", "name": "A", "kind": "Signal" }, { "id": "template_net:2", "name": "C", "kind": "Signal" }], "components": [{ "id": "module_component:0", "definition": "component_def:0", "reference": "R1", "properties": {} }, { "id": "module_component:2", "definition": "component_def:0", "reference": "R2", "properties": {} }], "connections": [{ "net": "template_net:0", "component": "module_component:0", "pin": "pin_def:0" }, { "net": "template_net:2", "component": "module_component:2", "pin": "pin_def:0" }], "ports": [{ "id": "port:0", "name": "A", "internal_net": "template_net:0", "role": "Input", "required": true }, { "id": "port:2", "name": "C", "internal_net": "template_net:2", "role": "Output", "required": true }] },
+    { "id": "module_def:1", "name": "Second", "local_nets": [{ "id": "template_net:1", "name": "B", "kind": "Signal" }], "components": [{ "id": "module_component:1", "definition": "component_def:0", "reference": "R1", "properties": {} }], "connections": [{ "net": "template_net:1", "component": "module_component:1", "pin": "pin_def:0" }], "ports": [{ "id": "port:1", "name": "B", "internal_net": "template_net:1", "role": "Input", "required": true }] }
+  ],
+  "module_instances": []
+})json";
+    const auto circuit = volt::io::read_logical_circuit_text(serialized);
+    const auto first_module = volt::ModuleDefId{0};
+    const auto second_module = volt::ModuleDefId{1};
+    const auto &first_definition = circuit.get(first_module);
+    const auto &second_definition = circuit.get(second_module);
+    const auto first_net = first_definition.template_nets()[0];
+    const auto second_net = first_definition.template_nets()[1];
+    const auto second_module_net = second_definition.template_nets()[0];
+    const auto first_component = first_definition.components()[0];
+    const auto second_component = first_definition.components()[1];
+    const auto second_module_component = second_definition.components()[0];
+    const auto first_port = first_definition.ports()[0];
+    const auto second_port = first_definition.ports()[1];
+    const auto second_module_port = second_definition.ports()[0];
 
     CHECK(first_net == volt::TemplateNetDefId{0});
     CHECK(second_module_net == volt::TemplateNetDefId{1});
@@ -149,8 +142,8 @@ TEST_CASE("Logical reader preserves interleaved global hierarchy table identity"
     CHECK(second_module_port == volt::PortDefId{1});
     CHECK(second_port == volt::PortDefId{2});
 
-    const auto serialized = volt::io::write_logical_circuit(circuit);
-    const auto restored = volt::io::read_logical_circuit_text(serialized);
+    const auto rewritten = volt::io::write_logical_circuit(circuit);
+    const auto restored = volt::io::read_logical_circuit_text(rewritten);
 
-    CHECK(volt::io::write_logical_circuit(restored) == serialized);
+    CHECK(volt::io::write_logical_circuit(restored) == rewritten);
 }
