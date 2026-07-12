@@ -18,6 +18,7 @@ add_executable(
     authoring/component_library_test.cpp
     authoring/reference_designators_test.cpp
     circuit/circuit_test.cpp
+    circuit/circuit_updates_test.cpp
     circuit/circuit_reads_test.cpp
     circuit/authoring_test.cpp
     circuit/construction_specs_test.cpp

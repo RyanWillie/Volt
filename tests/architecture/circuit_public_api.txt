@@ -20,6 +20,7 @@ include <volt/circuit/hierarchy/hierarchy.hpp>
 include <volt/circuit/hierarchy/hierarchy_model.hpp>
 include <volt/circuit/intent/design_intent.hpp>
 include <volt/circuit/parts/parts.hpp>
+include <volt/circuit/updates.hpp>
 include <volt/core/ids.hpp>
 
 [[nodiscard]] ConnectivityMutator connectivity() &noexcept
@@ -36,11 +37,15 @@ include <volt/core/ids.hpp>
 [[nodiscard]] ModuleDefId define_module(ModuleSpec spec)
 [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ComponentInstanceSpec spec)
 [[nodiscard]] NetId add_net(NetSpec spec)
+[[nodiscard]] NetClassId define_net_class(NetClassSpec spec)
 [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition, ModuleInstanceName name)
 [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port, NetId parent_net)
 [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ReferenceDesignator reference, PropertyMap properties = {})
 bool connect(NetId net, PinId pin)
 bool disconnect(PinId pin)
+void update(ComponentId component, ComponentUpdate change)
+void update(NetId net, NetUpdate change)
+void mark_no_connect(PinId pin)
 template <CircuitEntityId Id> [[nodiscard]] const entity_type_t<Id> &get(Id id) const
 template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const &
 template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const && = delete

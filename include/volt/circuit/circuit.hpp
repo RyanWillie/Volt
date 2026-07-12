@@ -23,6 +23,7 @@
 #include <volt/circuit/hierarchy/hierarchy_model.hpp>
 #include <volt/circuit/intent/design_intent.hpp>
 #include <volt/circuit/parts/parts.hpp>
+#include <volt/circuit/updates.hpp>
 #include <volt/core/ids.hpp>
 
 namespace volt {
@@ -374,6 +375,9 @@ class Circuit {
     /** Atomically add an unconnected canonical net from a complete typed input. */
     [[nodiscard]] NetId add_net(NetSpec spec);
 
+    /** Atomically commit one complete reusable net-class definition. */
+    [[nodiscard]] NetClassId define_net_class(NetClassSpec spec);
+
     /** Instantiate a module at the root and create concrete nets for its template-local nets. */
     [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition,
                                                            ModuleInstanceName name);
@@ -395,6 +399,15 @@ class Circuit {
 
     /** Disconnect an existing pin from its current net; returns true when the circuit changed. */
     bool disconnect(PinId pin);
+
+    /** Apply one closed typed progressive update to a component instance. */
+    void update(ComponentId component, ComponentUpdate change);
+
+    /** Apply one closed typed progressive update to a logical net. */
+    void update(NetId net, NetUpdate change);
+
+    /** Mark an existing concrete pin as intentionally unconnected. */
+    void mark_no_connect(PinId pin);
 
     /** Return a canonical entity selected by its strongly typed stable ID. */
     template <CircuitEntityId Id> [[nodiscard]] const entity_type_t<Id> &get(Id id) const;

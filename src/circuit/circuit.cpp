@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -273,6 +274,10 @@ bool Circuit::HierarchyMutator::connect_module_pin(ModuleDefId module, TemplateN
     return connectivity_.add_net(std::move(net));
 }
 
+[[nodiscard]] NetClassId Circuit::define_net_class(NetClassSpec spec) {
+    return net_classes_.add_net_class(std::move(spec.net_class));
+}
+
 [[nodiscard]] ModuleInstanceId Circuit::instantiate_root_module(ModuleDefId definition,
                                                                 ModuleInstanceName name) {
     require_module_definition(definition);
@@ -466,6 +471,65 @@ bool Circuit::HierarchyMutator::connect_module_pin(ModuleDefId module, TemplateN
 bool Circuit::connect(NetId net, PinId pin) { return connectivity_.connect(net, pin); }
 
 bool Circuit::disconnect(PinId pin) { return connectivity_.disconnect(pin); }
+
+void Circuit::update(ComponentId component, ComponentUpdate change) {
+    require_component(component);
+    std::visit(
+        [this, component](auto update) {
+            using Update = decltype(update);
+            if constexpr (std::same_as<Update, SetComponentProperty>) {
+                connectivity_.set_component_property(component, std::move(update.key),
+                                                     std::move(update.value));
+            } else if constexpr (std::same_as<Update, SetComponentElectricalAttribute>) {
+                electrical_.set_component_attribute(component, update.spec,
+                                                    std::move(update.value));
+            } else if constexpr (std::same_as<Update, SelectPhysicalPart>) {
+                electrical_.select_physical_part(
+                    component, std::move(update.physical_part),
+                    component_definition(this->component(component).definition()).pins());
+            } else if constexpr (std::same_as<Update, SetSelectedPartElectricalAttribute>) {
+                electrical_.set_selected_part_attribute(component, update.spec,
+                                                        std::move(update.value));
+            } else if constexpr (std::same_as<Update, SetAssemblyIntent>) {
+                if (!update.dnp.has_value() && !update.selection_override.has_value()) {
+                    throw KernelArgumentError{
+                        ErrorCode::InvalidArgument,
+                        "Assembly intent update must set DNP or selection override intent"};
+                }
+                if (update.dnp.has_value()) {
+                    intent_.set_component_dnp(component, update.dnp.value());
+                }
+                if (update.selection_override.has_value()) {
+                    intent_.set_component_selection_override(component,
+                                                             update.selection_override.value());
+                }
+            }
+        },
+        std::move(change));
+}
+
+void Circuit::update(NetId net, NetUpdate change) {
+    require_net(net);
+    std::visit(
+        [this, net](auto update) {
+            using Update = decltype(update);
+            if constexpr (std::same_as<Update, SetNetElectricalAttribute>) {
+                electrical_.set_net_attribute(net, update.spec, std::move(update.value));
+            } else if constexpr (std::same_as<Update, AssignNetClass>) {
+                require_net_class(update.net_class);
+                [[maybe_unused]] const auto changed =
+                    net_classes_.assign_net_class(net, update.net_class);
+            } else if constexpr (std::same_as<Update, MarkIntentionalStub>) {
+                [[maybe_unused]] const auto changed = intent_.mark_intentional_stub_net(net);
+            }
+        },
+        std::move(change));
+}
+
+void Circuit::mark_no_connect(PinId pin) {
+    require_pin(pin);
+    [[maybe_unused]] const auto changed = intent_.mark_intentional_no_connect_pin(pin);
+}
 
 [[nodiscard]] std::optional<NetId> Circuit::net_of(PinId pin) const {
     return connectivity_.net_of(pin);
