@@ -12,6 +12,8 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 
+#include <support/circuit_test_helpers.hpp>
+
 namespace {
 
 template <typename Id, typename Entity>
@@ -88,16 +90,12 @@ struct ReadFixture {
 
 ReadFixture make_read_fixture() {
     auto circuit = volt::Circuit{};
-    const auto first_pin_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive});
-    const auto second_pin_definition =
-        circuit.connectivity().add_pin_definition(volt::PinDefinition{
-            "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-            volt::ElectricalDirection::Passive});
-    const auto component_definition =
-        circuit.connectivity().add_component_definition(volt::ComponentDefinition{
-            "Resistor", std::vector{first_pin_definition, second_pin_definition}});
+    const auto component_definition = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("A", "1"), volt::test::passive_pin("B", "2")});
+    const auto &pins = circuit.get(component_definition).pins();
+    const auto first_pin_definition = pins[0];
+    const auto second_pin_definition = pins[1];
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
     const auto first_pin =

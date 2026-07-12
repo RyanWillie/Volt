@@ -7,6 +7,8 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 
+#include <support/circuit_test_helpers.hpp>
+
 namespace {
 
 struct QueryFixture {
@@ -27,20 +29,15 @@ QueryFixture make_query_fixture() {
         .component = volt::ComponentId{0},
         .net = volt::NetId{0},
     };
-    fixture.first_pin = fixture.circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    fixture.second_pin = fixture.circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "K", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    fixture.component_definition = fixture.circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Diode", std::vector{fixture.first_pin, fixture.second_pin}});
-    fixture.component = fixture.circuit.instantiate_component(fixture.component_definition,
-                                                              volt::ReferenceDesignator{"D1"});
-    fixture.net = fixture.circuit.connectivity().add_net(
-        volt::Net{volt::NetName{"LED_A"}, volt::NetKind::Signal});
+    fixture.component_definition = volt::test::define_component(
+        fixture.circuit, "Diode",
+        {volt::test::passive_pin("A", "1"), volt::test::passive_pin("K", "2")});
+    const auto &pins = fixture.circuit.get(fixture.component_definition).pins();
+    fixture.first_pin = pins[0];
+    fixture.second_pin = pins[1];
+    fixture.component =
+        volt::test::instantiate_component(fixture.circuit, fixture.component_definition, "D1");
+    fixture.net = volt::test::add_net(fixture.circuit, "LED_A");
     fixture.circuit.connect(
         fixture.net, volt::queries::pin_by_number(fixture.circuit, fixture.component, "1").value());
     return fixture;
@@ -72,16 +69,12 @@ TEST_CASE("Circuit queries find connectivity entities through the const read sur
 
 TEST_CASE("Circuit queries inspect hierarchy views through const Circuit") {
     volt::Circuit circuit;
-    const auto left = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "L", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto right = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "R", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto resistor = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{left, right}});
+    const auto resistor = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("L", "1"), volt::test::passive_pin("R", "2")});
+    const auto &pins = circuit.get(resistor).pins();
+    const auto left = pins[0];
+    const auto right = pins[1];
     const auto module = circuit.hierarchy().add_module_definition(
         volt::ModuleDefinition{volt::ModuleName{"Divider"}});
     const auto input = circuit.hierarchy().add_template_net(
@@ -94,8 +87,7 @@ TEST_CASE("Circuit queries inspect hierarchy views through const Circuit") {
         module, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
     CHECK(circuit.hierarchy().connect_module_pin(module, input, component, left));
     CHECK(circuit.hierarchy().connect_module_pin(module, output, component, right));
-    const auto parent_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"PARENT"}, volt::NetKind::Signal});
+    const auto parent_net = volt::test::add_net(circuit, "PARENT");
     const auto instance =
         circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"});
     const auto binding = circuit.bind_port(instance, port, parent_net);
@@ -134,12 +126,9 @@ TEST_CASE("Circuit queries inspect hierarchy views through const Circuit") {
 
 TEST_CASE("Circuit hierarchy queries preserve model-owned validation contracts") {
     volt::Circuit circuit;
-    const auto pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Thing", std::vector{pin}});
+    const auto component_definition =
+        volt::test::define_component(circuit, "Thing", {volt::test::passive_pin("A", "1")});
+    const auto pin = circuit.get(component_definition).pins().front();
 
     const auto first_module = circuit.hierarchy().add_module_definition(
         volt::ModuleDefinition{volt::ModuleName{"First"}});
@@ -161,8 +150,7 @@ TEST_CASE("Circuit hierarchy queries preserve model-owned validation contracts")
         second_module,
         volt::PortDefinition{volt::PortName{"SECOND"}, second_net, volt::PortRole::Passive});
 
-    const auto parent_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"PARENT"}, volt::NetKind::Signal});
+    const auto parent_net = volt::test::add_net(circuit, "PARENT");
     const auto first_instance =
         circuit.instantiate_root_module(first_module, volt::ModuleInstanceName{"FIRST_A"});
     [[maybe_unused]] const auto binding = circuit.bind_port(first_instance, first_port, parent_net);

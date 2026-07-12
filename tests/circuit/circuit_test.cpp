@@ -15,6 +15,8 @@
 #include <volt/core/errors.hpp>
 #include <volt/core/ids.hpp>
 
+#include <support/circuit_test_helpers.hpp>
+
 namespace {
 
 template <typename Facade>
@@ -87,15 +89,13 @@ TEST_CASE("Circuit starts with empty entity tables") {
 
 TEST_CASE("Circuit stores pin definitions in deterministic order") {
     volt::Circuit circuit;
-
-    const auto first = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
+    const auto definition = circuit.define_component(volt::ComponentSpec{
+        .name = "Resistor",
+        .pins = {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")},
+    });
+    const auto &pins = circuit.get(definition).pins();
+    const auto first = pins[0];
+    const auto second = pins[1];
 
     CHECK(first == volt::PinDefId{0});
     CHECK(second == volt::PinDefId{1});
@@ -106,17 +106,10 @@ TEST_CASE("Circuit stores pin definitions in deterministic order") {
 
 TEST_CASE("Circuit stores component definitions") {
     volt::Circuit circuit;
-    const auto pin_a = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto pin_b = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-
-    const auto resistor = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{pin_a, pin_b}});
+    const auto resistor = circuit.define_component(volt::ComponentSpec{
+        .name = "Resistor",
+        .pins = {volt::test::passive_pin("A", "1"), volt::test::passive_pin("B", "2")},
+    });
 
     CHECK(resistor == volt::ComponentDefId{0});
     CHECK(circuit.component_definition(resistor).name() == "Resistor");
@@ -126,14 +119,17 @@ TEST_CASE("Circuit stores component definitions") {
 
 TEST_CASE("Circuit stores component instances and concrete pin instances") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.connectivity().add_pin_definition(
-        volt::PinDefinition{"VDD", "1", volt::ConnectionRequirement::Required,
-                            volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Regulator", std::vector{pin_def}});
-
-    const auto component = circuit.connectivity().add_component(
-        volt::ComponentInstance{component_def, volt::ReferenceDesignator{"U1"}});
+    const auto component_def = circuit.define_component(volt::ComponentSpec{
+        .name = "Regulator",
+        .pins = {volt::PinSpec{.name = "VDD",
+                               .number = "1",
+                               .requirement = volt::ConnectionRequirement::Required,
+                               .terminal_kind = volt::ElectricalTerminalKind::Power,
+                               .direction = volt::ElectricalDirection::Input}},
+    });
+    const auto pin_def = circuit.get(component_def).pins().front();
+    const auto component = circuit.instantiate_component(
+        component_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U1"}});
     const auto pin = volt::queries::pin_by_definition(circuit, component, pin_def).value();
 
     CHECK(component == volt::ComponentId{0});
@@ -148,21 +144,29 @@ TEST_CASE("Circuit stores component instances and concrete pin instances") {
 TEST_CASE("Circuit rejects component instances that reference missing definitions") {
     volt::Circuit circuit;
 
-    CHECK_THROWS_AS(circuit.connectivity().add_component(volt::ComponentInstance{
-                        volt::ComponentDefId{9}, volt::ReferenceDesignator{"U_MISSING"}}),
-                    std::out_of_range);
+    try {
+        static_cast<void>(circuit.instantiate_component(
+            volt::ComponentDefId{9},
+            volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U_MISSING"}}));
+        FAIL("Unknown component definition must throw");
+    } catch (const volt::KernelRangeError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        CHECK(std::string{error.what()} ==
+              "Component definition ID does not belong to this circuit");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::ComponentDef);
+        CHECK(error.entity()->index() == 9);
+    }
 }
 
-TEST_CASE("Circuit rejects pin instances with missing component or pin definitions") {
+TEST_CASE("Legacy connectivity facade rejects raw pin instances with missing IDs") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.connectivity().add_pin_definition(
-        volt::PinDefinition{"VDD", "1", volt::ConnectionRequirement::Required,
-                            volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Regulator", std::vector{pin_def}});
-    const auto component = circuit.connectivity().add_component(
-        volt::ComponentInstance{component_def, volt::ReferenceDesignator{"U1"}});
+    const auto component_def =
+        volt::test::define_component(circuit, "Regulator", {volt::test::passive_pin("VDD", "1")});
+    const auto pin_def = circuit.get(component_def).pins().front();
+    const auto component = volt::test::instantiate_component(circuit, component_def, "U1");
 
+    // Raw pin insertion exists only on the transitional facade and remains locked until #266.
     CHECK_THROWS_AS(
         circuit.connectivity().add_pin(volt::PinInstance{volt::ComponentId{42}, pin_def}),
         std::out_of_range);
@@ -173,19 +177,14 @@ TEST_CASE("Circuit rejects pin instances with missing component or pin definitio
 
 TEST_CASE("Circuit stores nets") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "GND", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Ground,
-        volt::ElectricalDirection::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Connector", std::vector{pin_def}});
-    const auto component = circuit.connectivity().add_component(
-        volt::ComponentInstance{component_def, volt::ReferenceDesignator{"J1"}});
+    const auto component_def =
+        volt::test::define_component(circuit, "Connector", {volt::test::passive_pin("GND", "1")});
+    const auto pin_def = circuit.get(component_def).pins().front();
+    const auto component = volt::test::instantiate_component(circuit, component_def, "J1");
     const auto pin = volt::queries::pin_by_definition(circuit, component, pin_def).value();
-
-    auto net = volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground};
-    net.connect(pin);
-
-    const auto net_id = circuit.connectivity().add_net(std::move(net));
+    const auto net_id =
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"GND"}, .kind = volt::NetKind::Ground});
+    CHECK(circuit.connect(net_id, pin));
 
     CHECK(net_id == volt::NetId{0});
     CHECK(circuit.net(net_id).name() == volt::NetName{"GND"});
@@ -193,27 +192,23 @@ TEST_CASE("Circuit stores nets") {
     CHECK(circuit.net_count() == 1);
 }
 
-TEST_CASE("Circuit rejects nets that reference missing pins") {
+TEST_CASE("Legacy connectivity facade rejects preconnected nets with missing pins") {
     volt::Circuit circuit;
     auto net = volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground};
     net.connect(volt::PinId{99});
 
+    // Preconnected Net insertion exists only on the transitional facade and remains until #266.
     CHECK_THROWS_AS(circuit.connectivity().add_net(std::move(net)), std::out_of_range);
 }
 
 TEST_CASE("Circuit connects existing pins to existing nets") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
-    const auto component = circuit.connectivity().add_component(
-        volt::ComponentInstance{component_def, volt::ReferenceDesignator{"R1"}});
+    const auto component_def =
+        volt::test::define_component(circuit, "Resistor", {volt::test::passive_pin("1", "1")});
+    const auto pin_def = circuit.get(component_def).pins().front();
+    const auto component = volt::test::instantiate_component(circuit, component_def, "R1");
     const auto pin = volt::queries::pin_by_definition(circuit, component, pin_def).value();
-    const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"NET_A"}, volt::NetKind::Signal});
+    const auto net = circuit.add_net(volt::NetSpec{.name = volt::NetName{"NET_A"}});
 
     CHECK(circuit.connect(net, pin));
     CHECK_FALSE(circuit.connect(net, pin));
@@ -225,70 +220,89 @@ TEST_CASE("Circuit connects existing pins to existing nets") {
 
 TEST_CASE("Circuit rejects connect operations with missing IDs") {
     volt::Circuit circuit;
-    const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"NET_A"}, volt::NetKind::Signal});
+    const auto net = circuit.add_net(volt::NetSpec{.name = volt::NetName{"NET_A"}});
 
-    CHECK_THROWS_AS(circuit.connect(volt::NetId{99}, volt::PinId{0}), std::out_of_range);
-    CHECK_THROWS_AS(circuit.connect(net, volt::PinId{99}), std::out_of_range);
+    try {
+        static_cast<void>(circuit.connect(volt::NetId{99}, volt::PinId{0}));
+        FAIL("Unknown net must throw");
+    } catch (const volt::KernelRangeError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        CHECK(std::string{error.what()} == "Net ID does not belong to this circuit");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::Net);
+        CHECK(error.entity()->index() == 99);
+    }
+
+    try {
+        static_cast<void>(circuit.connect(net, volt::PinId{99}));
+        FAIL("Unknown pin must throw");
+    } catch (const volt::KernelRangeError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        CHECK(std::string{error.what()} == "Pin ID does not belong to this circuit");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::Pin);
+        CHECK(error.entity()->index() == 99);
+    }
 }
 
 TEST_CASE("Circuit enforces one net per concrete pin") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
-    const auto component = circuit.connectivity().add_component(
-        volt::ComponentInstance{component_def, volt::ReferenceDesignator{"R1"}});
+    const auto component_def =
+        volt::test::define_component(circuit, "Resistor", {volt::test::passive_pin("1", "1")});
+    const auto pin_def = circuit.get(component_def).pins().front();
+    const auto component = volt::test::instantiate_component(circuit, component_def, "R1");
     const auto pin = volt::queries::pin_by_definition(circuit, component, pin_def).value();
-    const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"NET_A"}, volt::NetKind::Signal});
-    const auto second_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"NET_B"}, volt::NetKind::Signal});
+    const auto first_net = circuit.add_net(volt::NetSpec{.name = volt::NetName{"NET_A"}});
+    const auto second_net = circuit.add_net(volt::NetSpec{.name = volt::NetName{"NET_B"}});
 
     CHECK(circuit.connect(first_net, pin));
-    CHECK_THROWS_AS(circuit.connect(second_net, pin), std::logic_error);
+    try {
+        static_cast<void>(circuit.connect(second_net, pin));
+        FAIL("A pin on another net must throw");
+    } catch (const volt::KernelLogicError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidState);
+        CHECK(std::string{error.what()} == "Pin is already connected to another net");
+    }
     CHECK(circuit.net(first_net).contains(pin));
     CHECK_FALSE(circuit.net(second_net).contains(pin));
 }
 
 TEST_CASE("Circuit disconnects a pin from its current net") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
-    const auto component = circuit.connectivity().add_component(
-        volt::ComponentInstance{component_def, volt::ReferenceDesignator{"R1"}});
+    const auto component_def =
+        volt::test::define_component(circuit, "Resistor", {volt::test::passive_pin("1", "1")});
+    const auto pin_def = circuit.get(component_def).pins().front();
+    const auto component = volt::test::instantiate_component(circuit, component_def, "R1");
     const auto pin = volt::queries::pin_by_definition(circuit, component, pin_def).value();
-    const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"NET_A"}, volt::NetKind::Signal});
+    const auto net = circuit.add_net(volt::NetSpec{.name = volt::NetName{"NET_A"}});
     circuit.connect(net, pin);
 
     CHECK(circuit.disconnect(pin));
     CHECK_FALSE(circuit.disconnect(pin));
     CHECK_FALSE(volt::queries::net_of(circuit, pin).has_value());
     CHECK(circuit.net(net).pins().empty());
+
+    try {
+        static_cast<void>(circuit.disconnect(volt::PinId{99}));
+        FAIL("Unknown pin must throw");
+    } catch (const volt::KernelRangeError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        CHECK(std::string{error.what()} == "Pin ID does not belong to this circuit");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity()->kind() == volt::EntityKind::Pin);
+        CHECK(error.entity()->index() == 99);
+    }
 }
 
 TEST_CASE("Circuit assigns and reads a selected physical part for a component") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
-    const auto component =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    const auto component_def = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    const auto &pins = circuit.get(component_def).pins();
+    const auto first_pin = pins[0];
+    const auto second_pin = pins[1];
+    const auto component = volt::test::instantiate_component(circuit, component_def, "R1");
 
     CHECK_FALSE(circuit.selected_physical_part(component).has_value());
 
@@ -305,18 +319,13 @@ TEST_CASE("Circuit assigns and reads a selected physical part for a component") 
 
 TEST_CASE("Circuit stores component assembly intent and selected part alternates") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
-    const auto component =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    const auto component_def = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    const auto &pins = circuit.get(component_def).pins();
+    const auto first_pin = pins[0];
+    const auto second_pin = pins[1];
+    const auto component = volt::test::instantiate_component(circuit, component_def, "R1");
 
     CHECK_FALSE(circuit.component_dnp(component).has_value());
     circuit.update(component, volt::SetAssemblyIntent{.selection_override = true});
@@ -349,18 +358,13 @@ TEST_CASE("Circuit stores component assembly intent and selected part alternates
 
 TEST_CASE("Circuit sets typed electrical attributes on selected physical parts") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
-    const auto component =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    const auto component_def = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    const auto &pins = circuit.get(component_def).pins();
+    const auto first_pin = pins[0];
+    const auto second_pin = pins[1];
+    const auto component = volt::test::instantiate_component(circuit, component_def, "R1");
     circuit.update(component,
                    volt::SelectPhysicalPart{make_resistor_physical_part(first_pin, second_pin)});
     const auto voltage_rating = volt::ElectricalAttributeSpec{
@@ -384,14 +388,9 @@ TEST_CASE("Circuit sets typed electrical attributes on selected physical parts")
 
 TEST_CASE("Circuit sets component instance properties through an explicit mutation API") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Test point", std::vector{pin_def}});
-    const auto component =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"TP1"});
+    const auto component_def =
+        volt::test::define_component(circuit, "Test point", {volt::test::passive_pin("1", "1")});
+    const auto component = volt::test::instantiate_component(circuit, component_def, "TP1");
 
     circuit.update(component, volt::SetComponentProperty{volt::PropertyKey{"value"},
                                                          volt::PropertyValue{"VCC"}});
@@ -406,14 +405,9 @@ TEST_CASE("Circuit sets component instance properties through an explicit mutati
 
 TEST_CASE("Circuit sets typed electrical attributes on component instances") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
-    const auto component =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    const auto component_def =
+        volt::test::define_component(circuit, "Resistor", {volt::test::passive_pin("1", "1")});
+    const auto component = volt::test::instantiate_component(circuit, component_def, "R1");
     const auto resistance = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"resistance"},
         volt::ElectricalAttributeOwner::ComponentInstance,
@@ -467,7 +461,7 @@ TEST_CASE("Circuit sets typed electrical attributes on pin definitions") {
 TEST_CASE("Circuit sets typed electrical attributes on nets") {
     volt::Circuit circuit;
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"3V3"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"3V3"}, .kind = volt::NetKind::Power});
     const auto voltage = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"voltage"},
         volt::ElectricalAttributeOwner::Net,
@@ -495,14 +489,9 @@ TEST_CASE("Circuit rejects component property mutation for missing components") 
 
 TEST_CASE("Circuit rejects incompatible component electrical attributes") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
-    const auto component =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    const auto component_def =
+        volt::test::define_component(circuit, "Resistor", {volt::test::passive_pin("1", "1")});
+    const auto component = volt::test::instantiate_component(circuit, component_def, "R1");
     const auto resistance = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"resistance"},
         volt::ElectricalAttributeOwner::ComponentInstance,
@@ -579,7 +568,7 @@ TEST_CASE("Circuit rejects incompatible pin definition electrical attributes") {
 TEST_CASE("Circuit rejects incompatible net electrical attributes") {
     volt::Circuit circuit;
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"3V3"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"3V3"}, .kind = volt::NetKind::Power});
     const auto voltage = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"voltage"},
         volt::ElectricalAttributeOwner::Net,
@@ -613,14 +602,12 @@ TEST_CASE("Circuit rejects incompatible net electrical attributes") {
 
 TEST_CASE("Circuit rejects selected-part operations for missing components") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
+    const auto definition = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    const auto &pins = circuit.get(definition).pins();
+    const auto first_pin = pins[0];
+    const auto second_pin = pins[1];
 
     CHECK_THROWS_AS(circuit.update(volt::ComponentId{99},
                                    volt::SelectPhysicalPart{
@@ -631,18 +618,13 @@ TEST_CASE("Circuit rejects selected-part operations for missing components") {
 
 TEST_CASE("Circuit rejects incompatible selected part electrical attributes") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
-    const auto component =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    const auto component_def = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    const auto &pins = circuit.get(component_def).pins();
+    const auto first_pin = pins[0];
+    const auto second_pin = pins[1];
+    const auto component = volt::test::instantiate_component(circuit, component_def, "R1");
     const auto voltage_rating = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"voltage_rating"},
         volt::ElectricalAttributeOwner::SelectedPart,
@@ -682,22 +664,15 @@ TEST_CASE("Circuit rejects incompatible selected part electrical attributes") {
 
 TEST_CASE("Circuit rejects selected parts with mappings outside the component definition") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto foreign_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "3", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
-    const auto component =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    const auto component_def = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    const auto &pins = circuit.get(component_def).pins();
+    const auto first_pin = pins[0];
+    const auto foreign_definition =
+        volt::test::define_component(circuit, "Foreign", {volt::test::passive_pin("3", "3")});
+    const auto foreign_pin = circuit.get(foreign_definition).pins().front();
+    const auto component = volt::test::instantiate_component(circuit, component_def, "R1");
 
     CHECK_THROWS_AS(circuit.update(component, volt::SelectPhysicalPart{make_resistor_physical_part(
                                                   first_pin, foreign_pin)}),
@@ -707,18 +682,12 @@ TEST_CASE("Circuit rejects selected parts with mappings outside the component de
 
 TEST_CASE("Circuit rejects selected parts that do not map every component-definition pin") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
-    const auto component =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    const auto component_def = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    const auto &pins = circuit.get(component_def).pins();
+    const auto first_pin = pins[0];
+    const auto component = volt::test::instantiate_component(circuit, component_def, "R1");
     auto incomplete_part = volt::PhysicalPart{
         volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
         volt::PackageRef{"0603"},
@@ -735,15 +704,11 @@ TEST_CASE("Circuit rejects selected parts that do not map every component-defini
 
 TEST_CASE("Circuit copies keep name lookups independent and uniqueness enforced") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.connectivity().add_pin_definition(
-        volt::PinDefinition{"VDD", "1", volt::ConnectionRequirement::Required,
-                            volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Regulator", std::vector{pin_def}});
-    const auto component =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+    const auto component_def =
+        volt::test::define_component(circuit, "Regulator", {volt::test::passive_pin("VDD", "1")});
+    const auto component = volt::test::instantiate_component(circuit, component_def, "U1");
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VCC"}, .kind = volt::NetKind::Power});
     const auto pin = volt::queries::pin_by_number(circuit, component, "1").value();
     CHECK(circuit.connect(net, pin));
 
@@ -753,17 +718,18 @@ TEST_CASE("Circuit copies keep name lookups independent and uniqueness enforced"
           component);
     CHECK(volt::queries::net_by_name(copy, volt::NetName{"VCC"}) == net);
     CHECK(volt::queries::net_of(copy, pin) == net);
-    CHECK_THROWS_AS(copy.connectivity().add_component(
-                        volt::ComponentInstance{component_def, volt::ReferenceDesignator{"U1"}}),
+    CHECK_THROWS_AS(copy.instantiate_component(
+                        component_def,
+                        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U1"}}),
                     std::logic_error);
     CHECK_THROWS_AS(
-        copy.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power}),
+        copy.add_net(volt::NetSpec{.name = volt::NetName{"VCC"}, .kind = volt::NetKind::Power}),
         std::logic_error);
 
-    const auto copy_only =
-        copy.instantiate_component(component_def, volt::ReferenceDesignator{"U2"});
+    const auto copy_only = copy.instantiate_component(
+        component_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U2"}});
     const auto copy_only_net =
-        copy.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+        copy.add_net(volt::NetSpec{.name = volt::NetName{"GND"}, .kind = volt::NetKind::Ground});
     CHECK(copy.disconnect(pin));
 
     CHECK(volt::queries::component_by_reference(copy, volt::ReferenceDesignator{"U2"}) ==
@@ -781,15 +747,12 @@ TEST_CASE("Circuit copies keep name lookups independent and uniqueness enforced"
 
 TEST_CASE("Moved-from circuits reset to empty and stay safely usable") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.connectivity().add_pin_definition(
-        volt::PinDefinition{"VDD", "1", volt::ConnectionRequirement::Required,
-                            volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Regulator", std::vector{pin_def}});
+    const auto component_def =
+        volt::test::define_component(circuit, "Regulator", {volt::test::passive_pin("VDD", "1")});
     [[maybe_unused]] const auto component =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+        volt::test::instantiate_component(circuit, component_def, "U1");
     [[maybe_unused]] const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VCC"}, .kind = volt::NetKind::Power});
 
     const auto moved = std::move(circuit);
 
@@ -801,11 +764,8 @@ TEST_CASE("Moved-from circuits reset to empty and stay safely usable") {
     CHECK_FALSE(volt::queries::component_by_reference(circuit, volt::ReferenceDesignator{"U1"})
                     .has_value());
 
-    const auto reused_pin_def = circuit.connectivity().add_pin_definition(
-        volt::PinDefinition{"VDD", "1", volt::ConnectionRequirement::Required,
-                            volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
-    const auto reused_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Regulator", std::vector{reused_pin_def}});
+    const auto reused_def =
+        volt::test::define_component(circuit, "Regulator", {volt::test::passive_pin("VDD", "1")});
     [[maybe_unused]] const auto reused =
         circuit.instantiate_component(reused_def, volt::ReferenceDesignator{"U1"});
     CHECK(circuit.component_count() == 1);
@@ -816,20 +776,17 @@ TEST_CASE("Moved-from circuits reset to empty and stay safely usable") {
     CHECK(assigned.component_count() == 1);
     CHECK(circuit.component_count() == 0);
     [[maybe_unused]] const auto after_move_assign =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VCC"}, .kind = volt::NetKind::Power});
     CHECK(circuit.net_count() == 1);
     CHECK(assigned.net_count() == 0);
 }
 
 TEST_CASE("Structural rejections carry machine-readable error codes") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.connectivity().add_pin_definition(
-        volt::PinDefinition{"VDD", "1", volt::ConnectionRequirement::Required,
-                            volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
-    const auto component_def = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Regulator", std::vector{pin_def}});
+    const auto component_def =
+        volt::test::define_component(circuit, "Regulator", {volt::test::passive_pin("VDD", "1")});
     [[maybe_unused]] const auto component =
-        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+        volt::test::instantiate_component(circuit, component_def, "U1");
 
     try {
         [[maybe_unused]] const auto duplicate =
