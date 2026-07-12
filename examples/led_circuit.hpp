@@ -50,9 +50,9 @@ inline Circuit build_led_circuit() {
                      FootprintRef{"leds", "LED_0603_1608Metric"},
                      std::vector{PinPadMapping{led_cathode, "1"}, PinPadMapping{led_anode, "2"}}});
 
-    const auto vcc = circuit.connectivity().add_net(Net{NetName{"VCC"}, NetKind::Power});
-    const auto led_a = circuit.connectivity().add_net(Net{NetName{"LED_A"}, NetKind::Signal});
-    const auto gnd = circuit.connectivity().add_net(Net{NetName{"GND"}, NetKind::Ground});
+    const auto vcc = circuit.add_net(NetSpec{.name = NetName{"VCC"}, .kind = NetKind::Power});
+    const auto led_a = circuit.add_net(NetSpec{.name = NetName{"LED_A"}, .kind = NetKind::Signal});
+    const auto gnd = circuit.add_net(NetSpec{.name = NetName{"GND"}, .kind = NetKind::Ground});
 
     authoring::connect(circuit, vcc,
                        {volt::queries::pin_by_number(circuit, j1, "1").value(),

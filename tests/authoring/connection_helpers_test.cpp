@@ -5,19 +5,14 @@
 
 #include <volt/authoring/connection_helpers.hpp>
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/connectivity/definitions.hpp>
-#include <volt/circuit/connectivity/nets.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
+
+#include <support/circuit_test_helpers.hpp>
 
 namespace {
 
 volt::ComponentDefId add_one_pin_component(volt::Circuit &circuit) {
-    const auto pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    return circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"OnePin", std::vector{pin}});
+    return volt::test::define_component(circuit, "OnePin", {volt::test::passive_pin("1", "1")});
 }
 
 } // namespace
@@ -25,14 +20,11 @@ volt::ComponentDefId add_one_pin_component(volt::Circuit &circuit) {
 TEST_CASE("Authoring connect helper connects multiple pins to one net") {
     auto circuit = volt::Circuit{};
     const auto component_definition = add_one_pin_component(circuit);
-    const auto first =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"J1"});
-    const auto second =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"J2"});
+    const auto first = volt::test::instantiate_component(circuit, component_definition, "J1");
+    const auto second = volt::test::instantiate_component(circuit, component_definition, "J2");
     const auto first_pin = volt::queries::pin_by_number(circuit, first, "1").value();
     const auto second_pin = volt::queries::pin_by_number(circuit, second, "1").value();
-    const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"BUS"}, volt::NetKind::Signal});
+    const auto net = volt::test::add_net(circuit, "BUS");
 
     volt::authoring::connect(circuit, net, {first_pin, second_pin});
 
@@ -46,16 +38,13 @@ TEST_CASE("Authoring connect helper connects multiple pins to one net") {
 TEST_CASE("Authoring connect helper accepts deterministic pin vectors") {
     auto circuit = volt::Circuit{};
     const auto component_definition = add_one_pin_component(circuit);
-    const auto first =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"J1"});
-    const auto second =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"J2"});
+    const auto first = volt::test::instantiate_component(circuit, component_definition, "J1");
+    const auto second = volt::test::instantiate_component(circuit, component_definition, "J2");
     const auto pins = std::vector{
         volt::queries::pin_by_number(circuit, first, "1").value(),
         volt::queries::pin_by_number(circuit, second, "1").value(),
     };
-    const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"BUS"}, volt::NetKind::Signal});
+    const auto net = volt::test::add_net(circuit, "BUS");
 
     volt::authoring::connect(circuit, net, pins);
 
@@ -65,13 +54,10 @@ TEST_CASE("Authoring connect helper accepts deterministic pin vectors") {
 TEST_CASE("Authoring connect helper preserves Circuit structural checks") {
     auto circuit = volt::Circuit{};
     const auto component_definition = add_one_pin_component(circuit);
-    const auto component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"J1"});
+    const auto component = volt::test::instantiate_component(circuit, component_definition, "J1");
     const auto pin = volt::queries::pin_by_number(circuit, component, "1").value();
-    const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"FIRST"}, volt::NetKind::Signal});
-    const auto second_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"SECOND"}, volt::NetKind::Signal});
+    const auto first_net = volt::test::add_net(circuit, "FIRST");
+    const auto second_net = volt::test::add_net(circuit, "SECOND");
 
     volt::authoring::connect(circuit, first_net, {pin});
 
