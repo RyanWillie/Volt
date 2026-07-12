@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "support/circuit_test_helpers.hpp"
+
 #include <nlohmann/json.hpp>
 
 #include <limits>
@@ -24,40 +26,53 @@ struct CplCircuit {
 
 [[nodiscard]] volt::ComponentId add_resistor(volt::Circuit &circuit, const std::string &reference,
                                              const std::string &mpn) {
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", {first_pin, second_pin}});
-    const auto component =
-        circuit.instantiate_component(definition, volt::ReferenceDesignator{reference});
-    circuit.electrical().select_physical_part(
-        component,
-        volt::PhysicalPart{volt::ManufacturerPart{"Yageo", mpn}, volt::PackageRef{"0603"},
-                           volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                           std::vector{volt::PinPadMapping{first_pin, "1"},
-                                       volt::PinPadMapping{second_pin, "2"}}});
+    const auto first_pin = volt::PinSpec{"A",
+                                         "1",
+                                         volt::ConnectionRequirement::Required,
+                                         volt::ElectricalTerminalKind::Passive,
+                                         volt::ElectricalDirection::Passive,
+                                         volt::ElectricalSignalDomain::Unspecified,
+                                         volt::ElectricalDriveKind::Passive};
+    const auto second_pin = volt::PinSpec{"B",
+                                          "2",
+                                          volt::ConnectionRequirement::Required,
+                                          volt::ElectricalTerminalKind::Passive,
+                                          volt::ElectricalDirection::Passive,
+                                          volt::ElectricalSignalDomain::Unspecified,
+                                          volt::ElectricalDriveKind::Passive};
+    const auto definition =
+        volt::test::define_component(circuit, "Resistor", std::vector{first_pin, second_pin});
+    const auto pins = circuit.get(definition).pins();
+    const auto component = circuit.instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{reference}});
+    circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
+                                  volt::ManufacturerPart{"Yageo", mpn}, volt::PackageRef{"0603"},
+                                  volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                                  std::vector{volt::PinPadMapping{pins[0], "1"},
+                                              volt::PinPadMapping{pins[1], "2"}}}});
     return component;
 }
 
 [[nodiscard]] volt::ComponentId add_unselected_resistor(volt::Circuit &circuit,
                                                         const std::string &reference) {
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", {first_pin, second_pin}});
-    return circuit.instantiate_component(definition, volt::ReferenceDesignator{reference});
+    const auto first_pin = volt::PinSpec{"A",
+                                         "1",
+                                         volt::ConnectionRequirement::Required,
+                                         volt::ElectricalTerminalKind::Passive,
+                                         volt::ElectricalDirection::Passive,
+                                         volt::ElectricalSignalDomain::Unspecified,
+                                         volt::ElectricalDriveKind::Passive};
+    const auto second_pin = volt::PinSpec{"B",
+                                          "2",
+                                          volt::ConnectionRequirement::Required,
+                                          volt::ElectricalTerminalKind::Passive,
+                                          volt::ElectricalDirection::Passive,
+                                          volt::ElectricalSignalDomain::Unspecified,
+                                          volt::ElectricalDriveKind::Passive};
+    const auto definition =
+        volt::test::define_component(circuit, "Resistor", std::vector{first_pin, second_pin});
+    return circuit.instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{reference}});
 }
 
 [[nodiscard]] CplCircuit make_cpl_circuit() {
@@ -66,10 +81,10 @@ struct CplCircuit {
     auto r2 = add_resistor(circuit, "R2", "RC0603FR-07330RL");
     auto r3 = add_resistor(circuit, "R3", "RC0603FR-071KL");
     auto r4 = add_resistor(circuit, "R4", "RC0603FR-07470RL");
-    circuit.intent().set_component_dnp(r1, false);
-    circuit.intent().set_component_dnp(r2, false);
-    circuit.intent().set_component_dnp(r3, true);
-    circuit.intent().set_component_dnp(r4, false);
+    circuit.update(r1, volt::SetAssemblyIntent{.dnp = false});
+    circuit.update(r2, volt::SetAssemblyIntent{.dnp = false});
+    circuit.update(r3, volt::SetAssemblyIntent{.dnp = true});
+    circuit.update(r4, volt::SetAssemblyIntent{.dnp = false});
     return CplCircuit{std::move(circuit), r1, r2, r3, r4};
 }
 
@@ -158,10 +173,10 @@ TEST_CASE("CPL projection reports missing assembly data and skips DNP components
     const auto unplaced = add_resistor(circuit, "R1", "RC0603FR-07330RL");
     const auto dnp = add_resistor(circuit, "R2", "RC0603FR-071KL");
     const auto unplaced_missing_selected = add_unselected_resistor(circuit, "R3");
-    circuit.intent().set_component_dnp(missing_selected, false);
-    circuit.intent().set_component_dnp(unplaced, false);
-    circuit.intent().set_component_dnp(dnp, true);
-    circuit.intent().set_component_dnp(unplaced_missing_selected, false);
+    circuit.update(missing_selected, volt::SetAssemblyIntent{.dnp = false});
+    circuit.update(unplaced, volt::SetAssemblyIntent{.dnp = false});
+    circuit.update(dnp, volt::SetAssemblyIntent{.dnp = true});
+    circuit.update(unplaced_missing_selected, volt::SetAssemblyIntent{.dnp = false});
     auto board = volt::Board{circuit};
     static_cast<void>(board.place_component(volt::ComponentPlacement{
         missing_selected, volt::BoardPoint{1.0, 2.0}, volt::BoardRotation::degrees(0.0)}));

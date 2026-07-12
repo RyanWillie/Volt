@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "support/circuit_test_helpers.hpp"
+
 #include <algorithm>
 #include <fstream>
 #include <iterator>
@@ -45,51 +47,64 @@ class ScopedLocale {
 
 [[nodiscard]] FabricationCircuit make_fabrication_circuit() {
     auto circuit = volt::Circuit{};
-    const auto passive_a = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto passive_b = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto header_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
+    const auto passive_a_spec = volt::PinSpec{"A",
+                                              "1",
+                                              volt::ConnectionRequirement::Required,
+                                              volt::ElectricalTerminalKind::Passive,
+                                              volt::ElectricalDirection::Passive,
+                                              volt::ElectricalSignalDomain::Unspecified,
+                                              volt::ElectricalDriveKind::Passive};
+    const auto passive_b_spec = volt::PinSpec{"B",
+                                              "2",
+                                              volt::ConnectionRequirement::Required,
+                                              volt::ElectricalTerminalKind::Passive,
+                                              volt::ElectricalDirection::Passive,
+                                              volt::ElectricalSignalDomain::Unspecified,
+                                              volt::ElectricalDriveKind::Passive};
+    const auto header_pin_spec = volt::PinSpec{"1",
+                                               "1",
+                                               volt::ConnectionRequirement::Required,
+                                               volt::ElectricalTerminalKind::Passive,
+                                               volt::ElectricalDirection::Passive,
+                                               volt::ElectricalSignalDomain::Unspecified,
+                                               volt::ElectricalDriveKind::Passive};
 
-    const auto resistor_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", {passive_a, passive_b}});
-    const auto header_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Header", {header_pin}});
-    const auto resistor =
-        circuit.instantiate_component(resistor_definition, volt::ReferenceDesignator{"R1"});
-    const auto header =
-        circuit.instantiate_component(header_definition, volt::ReferenceDesignator{"J1"});
+    const auto resistor_definition = volt::test::define_component(
+        circuit, "Resistor", std::vector{passive_a_spec, passive_b_spec});
+    const auto resistor_pins = circuit.get(resistor_definition).pins();
+    const auto passive_a = resistor_pins[0];
+    const auto passive_b = resistor_pins[1];
+    const auto header_definition =
+        volt::test::define_component(circuit, "Header", std::vector{header_pin_spec});
+    const auto header_pin = circuit.get(header_definition).pins()[0];
+    const auto resistor = circuit.instantiate_component(
+        resistor_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
+    const auto header = circuit.instantiate_component(
+        header_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"J1"}});
 
-    const auto signal =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"SIGNAL"}, volt::NetKind::Signal});
+    const auto signal = circuit.add_net(
+        volt::NetSpec{.name = volt::NetName{"SIGNAL"}, .kind = volt::NetKind::Signal});
     const auto ground =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"GND"}, .kind = volt::NetKind::Ground});
     circuit.connect(signal, volt::queries::pin_by_definition(circuit, resistor, passive_a).value());
     circuit.connect(signal, volt::queries::pin_by_definition(circuit, header, header_pin).value());
     circuit.connect(ground, volt::queries::pin_by_definition(circuit, resistor, passive_b).value());
 
-    circuit.electrical().select_physical_part(
-        resistor,
-        volt::PhysicalPart{
-            volt::ManufacturerPart{"Volt", "RECT-0603"},
-            volt::PackageRef{"0603"},
-            volt::FootprintRef{"test", "RectSmd"},
-            std::vector{volt::PinPadMapping{passive_a, "1"}, volt::PinPadMapping{passive_b, "2"}},
-        });
-    circuit.electrical().select_physical_part(header,
-                                              volt::PhysicalPart{
-                                                  volt::ManufacturerPart{"Volt", "TH-1"},
-                                                  volt::PackageRef{"TH"},
-                                                  volt::FootprintRef{"test", "OnePinThroughHole"},
-                                                  std::vector{volt::PinPadMapping{header_pin, "1"}},
-                                              });
+    circuit.update(resistor, volt::SelectPhysicalPart{volt::PhysicalPart{
+                                 volt::ManufacturerPart{"Volt", "RECT-0603"},
+                                 volt::PackageRef{"0603"},
+                                 volt::FootprintRef{"test", "RectSmd"},
+                                 std::vector{volt::PinPadMapping{passive_a, "1"},
+                                             volt::PinPadMapping{passive_b, "2"}},
+                             }});
+    circuit.update(header, volt::SelectPhysicalPart{volt::PhysicalPart{
+                               volt::ManufacturerPart{"Volt", "TH-1"},
+                               volt::PackageRef{"TH"},
+                               volt::FootprintRef{"test", "OnePinThroughHole"},
+                               std::vector{volt::PinPadMapping{header_pin, "1"}},
+                           }});
 
     return FabricationCircuit{std::move(circuit), resistor, header, signal, ground};
 }
@@ -506,21 +521,24 @@ TEST_CASE("PCB fabrication writer exports ordered inner copper Gerbers") {
 
 TEST_CASE("PCB fabrication writer emits unconnected mapped pads without fabrication loss") {
     auto circuit = volt::Circuit{};
-    const auto passive = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Optional, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"TestPoint", {passive}});
-    const auto component =
-        circuit.instantiate_component(definition, volt::ReferenceDesignator{"TP1"});
-    circuit.electrical().select_physical_part(component,
-                                              volt::PhysicalPart{
-                                                  volt::ManufacturerPart{"Volt", "TP-SMD"},
-                                                  volt::PackageRef{"TH"},
-                                                  volt::FootprintRef{"test", "OnePinThroughHole"},
-                                                  std::vector{volt::PinPadMapping{passive, "1"}},
-                                              });
+    const auto passive_spec = volt::PinSpec{"1",
+                                            "1",
+                                            volt::ConnectionRequirement::Optional,
+                                            volt::ElectricalTerminalKind::Passive,
+                                            volt::ElectricalDirection::Passive,
+                                            volt::ElectricalSignalDomain::Unspecified,
+                                            volt::ElectricalDriveKind::Passive};
+    const auto definition =
+        volt::test::define_component(circuit, "TestPoint", std::vector{passive_spec});
+    const auto passive = circuit.get(definition).pins()[0];
+    const auto component = circuit.instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"TP1"}});
+    circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
+                                  volt::ManufacturerPart{"Volt", "TP-SMD"},
+                                  volt::PackageRef{"TH"},
+                                  volt::FootprintRef{"test", "OnePinThroughHole"},
+                                  std::vector{volt::PinPadMapping{passive, "1"}},
+                              }});
 
     auto board = volt::Board{circuit, volt::BoardName{"Control"}};
     const auto front = board.add_layer(

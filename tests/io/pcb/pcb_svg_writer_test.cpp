@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "support/circuit_test_helpers.hpp"
+
 #include <cstddef>
 #include <fstream>
 #include <sstream>
@@ -35,40 +37,48 @@ struct MultiComponentNetCircuit {
 
 [[nodiscard]] ResistorCircuit make_resistor_circuit(bool select_physical_part = true) {
     auto circuit = volt::Circuit{};
-    const auto first_pin_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin_definition =
-        circuit.connectivity().add_pin_definition(volt::PinDefinition{
-            "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-            volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-            volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
-    const auto component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
+    const auto first_pin_spec = volt::PinSpec{"A",
+                                              "1",
+                                              volt::ConnectionRequirement::Required,
+                                              volt::ElectricalTerminalKind::Passive,
+                                              volt::ElectricalDirection::Passive,
+                                              volt::ElectricalSignalDomain::Unspecified,
+                                              volt::ElectricalDriveKind::Passive};
+    const auto second_pin_spec = volt::PinSpec{"B",
+                                               "2",
+                                               volt::ConnectionRequirement::Required,
+                                               volt::ElectricalTerminalKind::Passive,
+                                               volt::ElectricalDirection::Passive,
+                                               volt::ElectricalSignalDomain::Unspecified,
+                                               volt::ElectricalDriveKind::Passive};
+    const auto component_definition = volt::test::define_component(
+        circuit, "Resistor", std::vector{first_pin_spec, second_pin_spec});
+    const auto pin_definitions = circuit.get(component_definition).pins();
+    const auto first_pin_definition = pin_definitions[0];
+    const auto second_pin_definition = pin_definitions[1];
+    const auto component = circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
     const auto first_pin =
         volt::queries::pin_by_definition(circuit, component, first_pin_definition).value();
     const auto second_pin =
         volt::queries::pin_by_definition(circuit, component, second_pin_definition).value();
-    const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"LEFT"}, volt::NetKind::Signal});
-    const auto second_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"RIGHT"}, volt::NetKind::Signal});
+    const auto first_net = circuit.add_net(
+        volt::NetSpec{.name = volt::NetName{"LEFT"}, .kind = volt::NetKind::Signal});
+    const auto second_net = circuit.add_net(
+        volt::NetSpec{.name = volt::NetName{"RIGHT"}, .kind = volt::NetKind::Signal});
 
     circuit.connect(first_net, first_pin);
     circuit.connect(second_net, second_pin);
 
     if (select_physical_part) {
-        circuit.electrical().select_physical_part(
-            component, volt::PhysicalPart{
-                           volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                           volt::PackageRef{"0603"},
-                           volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                           std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                       volt::PinPadMapping{second_pin_definition, "2"}},
-                       });
+        circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
+                                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                                      volt::PackageRef{"0603"},
+                                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                                  }});
     }
 
     return ResistorCircuit{std::move(circuit),
@@ -85,33 +95,42 @@ struct MultiComponentNetCircuit {
     std::size_t component_count,
     volt::FootprintRef footprint = volt::FootprintRef{"passives", "R_0603_1608Metric"}) {
     auto circuit = volt::Circuit{};
-    const auto first_pin_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin_definition =
-        circuit.connectivity().add_pin_definition(volt::PinDefinition{
-            "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-            volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-            volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
-    const auto shared_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"SHARED"}, volt::NetKind::Signal});
+    const auto first_pin_spec = volt::PinSpec{"A",
+                                              "1",
+                                              volt::ConnectionRequirement::Required,
+                                              volt::ElectricalTerminalKind::Passive,
+                                              volt::ElectricalDirection::Passive,
+                                              volt::ElectricalSignalDomain::Unspecified,
+                                              volt::ElectricalDriveKind::Passive};
+    const auto second_pin_spec = volt::PinSpec{"B",
+                                               "2",
+                                               volt::ConnectionRequirement::Required,
+                                               volt::ElectricalTerminalKind::Passive,
+                                               volt::ElectricalDirection::Passive,
+                                               volt::ElectricalSignalDomain::Unspecified,
+                                               volt::ElectricalDriveKind::Passive};
+    const auto component_definition = volt::test::define_component(
+        circuit, "Resistor", std::vector{first_pin_spec, second_pin_spec});
+    const auto pin_definitions = circuit.get(component_definition).pins();
+    const auto first_pin_definition = pin_definitions[0];
+    const auto second_pin_definition = pin_definitions[1];
+    const auto shared_net = circuit.add_net(
+        volt::NetSpec{.name = volt::NetName{"SHARED"}, .kind = volt::NetKind::Signal});
 
     auto components = std::vector<volt::ComponentId>{};
     components.reserve(component_count);
     for (std::size_t index = 0; index < component_count; ++index) {
         const auto component = circuit.instantiate_component(
-            component_definition, volt::ReferenceDesignator{"R" + std::to_string(index + 1U)});
-        circuit.electrical().select_physical_part(
-            component, volt::PhysicalPart{
-                           volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                           volt::PackageRef{"0603"},
-                           footprint,
-                           std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                       volt::PinPadMapping{second_pin_definition, "2"}},
-                       });
+            component_definition,
+            volt::ComponentInstanceSpec{
+                .reference = volt::ReferenceDesignator{"R" + std::to_string(index + 1U)}});
+        circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
+                                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                                      volt::PackageRef{"0603"},
+                                      footprint,
+                                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                                  }});
         const auto connected_pin_definition =
             index == 0U ? second_pin_definition : first_pin_definition;
         circuit.connect(
@@ -228,14 +247,14 @@ TEST_CASE("PCB SVG writer exposes stable selectors matching PCB JSON entities") 
 
 TEST_CASE("PCB SVG writer renders declared footprint body and courtyard polygons") {
     auto fixture = make_resistor_circuit(false);
-    fixture.circuit.electrical().select_physical_part(
-        fixture.component, volt::PhysicalPart{
+    fixture.circuit.update(fixture.component,
+                           volt::SelectPhysicalPart{volt::PhysicalPart{
                                volt::ManufacturerPart{"Volt", "DeclaredGeometry"},
                                volt::PackageRef{"DeclaredGeometry"},
                                volt::FootprintRef{"test", "DeclaredGeometry"},
                                std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
                                            volt::PinPadMapping{fixture.second_pin_definition, "2"}},
-                           });
+                           }});
     auto board = volt::Board{fixture.circuit, volt::BoardName{"Declared Geometry"}};
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
@@ -263,14 +282,14 @@ TEST_CASE("PCB SVG writer renders declared footprint body and courtyard polygons
 
 TEST_CASE("PCB SVG writer marks pad-derived footprint envelopes as synthetic") {
     auto fixture = make_resistor_circuit(false);
-    fixture.circuit.electrical().select_physical_part(
-        fixture.component, volt::PhysicalPart{
+    fixture.circuit.update(fixture.component,
+                           volt::SelectPhysicalPart{volt::PhysicalPart{
                                volt::ManufacturerPart{"Volt", "PadOnly"},
                                volt::PackageRef{"PadOnly"},
                                volt::FootprintRef{"test", "PadOnly"},
                                std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
                                            volt::PinPadMapping{fixture.second_pin_definition, "2"}},
-                           });
+                           }});
     auto board = volt::Board{fixture.circuit, volt::BoardName{"Pad Only"}};
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
@@ -482,14 +501,14 @@ TEST_CASE("PCB SVG writer filters layer-owned content for a selected layer") {
 
 TEST_CASE("PCB SVG writer preserves through-hole pad copper on non-placement-side layers") {
     auto fixture = make_resistor_circuit(false);
-    fixture.circuit.electrical().select_physical_part(
-        fixture.component, volt::PhysicalPart{
+    fixture.circuit.update(fixture.component,
+                           volt::SelectPhysicalPart{volt::PhysicalPart{
                                volt::ManufacturerPart{"Generic", "PinHeader_1x02"},
                                volt::PackageRef{"1x02"},
                                volt::FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
                                std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
                                            volt::PinPadMapping{fixture.second_pin_definition, "2"}},
-                           });
+                           }});
     auto board = volt::Board{fixture.circuit, volt::BoardName{"Through Hole Layers"}};
     const auto front = board.add_layer(
         volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
