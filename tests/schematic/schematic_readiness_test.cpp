@@ -156,16 +156,22 @@ TEST_CASE("Schematic validation reports duplicate placements and unplaced connec
 
 TEST_CASE("Schematic validation does not require unplaced mechanical components") {
     volt::Circuit circuit;
-    const auto pin_def = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Ground,
-        volt::ElectricalDirection::Passive});
     auto properties = volt::PropertyMap{};
     properties.set(volt::PropertyKey{"category"}, volt::PropertyValue{"mechanical"});
-    const auto definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"MountingHole_Pad", std::vector{pin_def}, std::move(properties)});
-    const auto hole = circuit.instantiate_component(definition, volt::ReferenceDesignator{"H1"});
-    const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto definition = circuit.define_component(volt::ComponentSpec{
+        .name = "MountingHole_Pad",
+        .pins = {{
+            .name = "1",
+            .number = "1",
+            .requirement = volt::ConnectionRequirement::Required,
+            .terminal_kind = volt::ElectricalTerminalKind::Ground,
+            .direction = volt::ElectricalDirection::Passive,
+        }},
+        .properties = std::move(properties),
+    });
+    const auto hole = circuit.instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"H1"}});
+    const auto net = circuit.add_net(volt::NetSpec{volt::NetName{"GND"}, volt::NetKind::Ground});
     connect_pin_by_number(circuit, net, hole, "1");
 
     volt::Schematic schematic{circuit};
@@ -317,13 +323,18 @@ TEST_CASE("Schematic validation reports no-connect markers without kernel-owned 
 
 TEST_CASE("Schematic validation accepts no-connect markers on no-connect pin definitions") {
     volt::Circuit circuit;
-    const auto pin_definition = circuit.connectivity().add_pin_definition(
-        volt::PinDefinition{"NC", "1", volt::ConnectionRequirement::MustNotConnect,
-                            volt::ElectricalTerminalKind::NoConnect});
-    const auto component_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"NoConnectPad", std::vector{pin_definition}});
-    const auto component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"TP1"});
+    const auto component_definition = circuit.define_component(volt::ComponentSpec{
+        .name = "NoConnectPad",
+        .pins = {{
+            .name = "NC",
+            .number = "1",
+            .requirement = volt::ConnectionRequirement::MustNotConnect,
+            .terminal_kind = volt::ElectricalTerminalKind::NoConnect,
+        }},
+    });
+    const auto component = circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"TP1"}});
     const auto pin = volt::queries::pin_by_number(circuit, component, "1").value();
 
     auto symbol_definition = volt::SymbolDefinition{"NoConnectPad"};

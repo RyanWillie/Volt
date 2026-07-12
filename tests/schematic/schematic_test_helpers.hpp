@@ -23,21 +23,16 @@
 #include <volt/schematic/symbols.hpp>
 #include <volt/schematic/validation.hpp>
 
+#include "../support/circuit_test_helpers.hpp"
+
 namespace {
 
 [[maybe_unused]] volt::ComponentId add_resistor(volt::Circuit &circuit,
                                                 const std::string &reference) {
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
-    return circuit.instantiate_component(definition, volt::ReferenceDesignator{reference});
+    const auto definition = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    return volt::test::instantiate_component(circuit, definition, reference);
 }
 
 [[maybe_unused]] volt::ComponentId add_resistor(volt::Circuit &circuit) {
@@ -45,54 +40,28 @@ namespace {
 }
 
 [[maybe_unused]] volt::ComponentId add_three_pin_component(volt::Circuit &circuit) {
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto third_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "C", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"ThreePin", std::vector{first_pin, second_pin, third_pin}});
-    return circuit.instantiate_component(definition, volt::ReferenceDesignator{"U1"});
+    const auto definition = volt::test::define_component(circuit, "ThreePin",
+                                                         {volt::test::passive_pin("A", "1"),
+                                                          volt::test::passive_pin("B", "2"),
+                                                          volt::test::passive_pin("C", "3")});
+    return volt::test::instantiate_component(circuit, definition, "U1");
 }
 
 [[maybe_unused]] volt::ComponentId add_four_pin_component(volt::Circuit &circuit,
                                                           const std::string &reference) {
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto third_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "C", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto fourth_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "D", "4", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto definition =
-        circuit.connectivity().add_component_definition(volt::ComponentDefinition{
-            "FourPin", std::vector{first_pin, second_pin, third_pin, fourth_pin}});
-    return circuit.instantiate_component(definition, volt::ReferenceDesignator{reference});
+    const auto definition = volt::test::define_component(
+        circuit, "FourPin",
+        {volt::test::passive_pin("A", "1"), volt::test::passive_pin("B", "2"),
+         volt::test::passive_pin("C", "3"), volt::test::passive_pin("D", "4")});
+    return volt::test::instantiate_component(circuit, definition, reference);
 }
 
 [[maybe_unused]] volt::NetId add_net(volt::Circuit &circuit) {
-    return circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    return volt::test::add_net(circuit, "VCC", volt::NetKind::Power);
 }
 
 [[maybe_unused]] volt::NetId add_named_net(volt::Circuit &circuit, std::string name) {
-    return circuit.connectivity().add_net(
-        volt::Net{volt::NetName{std::move(name)}, volt::NetKind::Signal});
+    return volt::test::add_net(circuit, std::move(name));
 }
 
 [[maybe_unused]] void connect_pin_by_number(volt::Circuit &circuit, volt::NetId net,

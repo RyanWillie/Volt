@@ -86,8 +86,7 @@ TEST_CASE("Schematic readability reports labels crowding symbols") {
 TEST_CASE("Schematic readability accepts terminal markers attached to connected symbol pins") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto ground =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto ground = circuit.add_net(volt::NetSpec{volt::NetName{"GND"}, volt::NetKind::Ground});
     connect_pin_by_number(circuit, ground, component, "1");
 
     volt::Schematic schematic{circuit};
@@ -106,8 +105,7 @@ TEST_CASE("Schematic readability accepts terminal markers attached to connected 
 TEST_CASE("Schematic readability accepts terminal markers on connected symbol leads") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto supply =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"+3V3"}, volt::NetKind::Power});
+    const auto supply = circuit.add_net(volt::NetSpec{volt::NetName{"+3V3"}, volt::NetKind::Power});
     connect_pin_by_number(circuit, supply, component, "1");
 
     auto switch_symbol = volt::SymbolDefinition{"SwitchLike"};
@@ -295,32 +293,43 @@ TEST_CASE("Schematic readability accepts compact labels and spaced tag ports") {
 
 TEST_CASE("Schematic readability accepts a clean local oscillator reset boot fixture") {
     volt::Circuit circuit;
-    auto pin_definitions = std::vector<volt::PinDefId>{};
-    pin_definitions.push_back(circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "OSC_IN", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
-        volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital}));
-    pin_definitions.push_back(circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "NRST", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
-        volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital}));
-    pin_definitions.push_back(circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "BOOT0", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
-        volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital}));
-    pin_definitions.push_back(circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "VSS", "4", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Ground,
-        volt::ElectricalDirection::Passive}));
-    const auto mcu_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"MCU", pin_definitions});
-    const auto mcu = circuit.instantiate_component(mcu_definition, volt::ReferenceDesignator{"U1"});
+    const auto mcu_definition = circuit.define_component(
+        volt::ComponentSpec{.name = "MCU",
+                            .pins = {
+                                {.name = "OSC_IN",
+                                 .number = "1",
+                                 .requirement = volt::ConnectionRequirement::Required,
+                                 .terminal_kind = volt::ElectricalTerminalKind::Signal,
+                                 .direction = volt::ElectricalDirection::Input,
+                                 .signal_domain = volt::ElectricalSignalDomain::Digital},
+                                {.name = "NRST",
+                                 .number = "2",
+                                 .requirement = volt::ConnectionRequirement::Required,
+                                 .terminal_kind = volt::ElectricalTerminalKind::Signal,
+                                 .direction = volt::ElectricalDirection::Input,
+                                 .signal_domain = volt::ElectricalSignalDomain::Digital},
+                                {.name = "BOOT0",
+                                 .number = "3",
+                                 .requirement = volt::ConnectionRequirement::Required,
+                                 .terminal_kind = volt::ElectricalTerminalKind::Signal,
+                                 .direction = volt::ElectricalDirection::Input,
+                                 .signal_domain = volt::ElectricalSignalDomain::Digital},
+                                {.name = "VSS",
+                                 .number = "4",
+                                 .requirement = volt::ConnectionRequirement::Required,
+                                 .terminal_kind = volt::ElectricalTerminalKind::Ground,
+                                 .direction = volt::ElectricalDirection::Passive},
+                            }});
+    const auto mcu = circuit.instantiate_component(
+        mcu_definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U1"}});
     const auto crystal = add_resistor(circuit, "Y1");
     const auto reset_pullup = add_resistor(circuit, "R1");
     const auto boot_resistor = add_resistor(circuit, "R2");
     const auto osc = add_named_net(circuit, "OSC_IN");
     const auto reset = add_named_net(circuit, "NRST");
     const auto boot = add_named_net(circuit, "BOOT0");
-    const auto vcc =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
-    const auto gnd =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto vcc = circuit.add_net(volt::NetSpec{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto gnd = circuit.add_net(volt::NetSpec{volt::NetName{"GND"}, volt::NetKind::Ground});
     connect_pin_by_number(circuit, osc, mcu, "1");
     connect_pin_by_number(circuit, reset, mcu, "2");
     connect_pin_by_number(circuit, boot, mcu, "3");
@@ -373,8 +382,7 @@ TEST_CASE("Schematic readability accepts a clean local oscillator reset boot fix
 
 TEST_CASE("Schematic readability warns when power marker is placed on ground net") {
     volt::Circuit circuit;
-    const auto gnd =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto gnd = circuit.add_net(volt::NetSpec{volt::NetName{"GND"}, volt::NetKind::Ground});
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -393,8 +401,7 @@ TEST_CASE("Schematic readability warns when power marker is placed on ground net
 
 TEST_CASE("Schematic readability warns when ground marker is placed on power net") {
     volt::Circuit circuit;
-    const auto vcc =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto vcc = circuit.add_net(volt::NetSpec{volt::NetName{"VCC"}, volt::NetKind::Power});
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -413,8 +420,7 @@ TEST_CASE("Schematic readability warns when ground marker is placed on power net
 
 TEST_CASE("Schematic readability accepts power marker on power net") {
     volt::Circuit circuit;
-    const auto vcc =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto vcc = circuit.add_net(volt::NetSpec{volt::NetName{"VCC"}, volt::NetKind::Power});
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});

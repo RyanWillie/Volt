@@ -247,19 +247,23 @@ TEST_CASE("Schematic readability reports duplicate junctions and hard-to-read la
 TEST_CASE("Schematic readability reports missing passive values and dense no-connect clusters") {
     volt::Circuit circuit;
     const auto resistor = add_resistor(circuit);
-    circuit.connectivity().set_component_property(resistor, volt::PropertyKey{"value"},
-                                                  volt::PropertyValue{"10k"});
+    circuit.update(resistor, volt::SetComponentProperty{volt::PropertyKey{"value"},
+                                                        volt::PropertyValue{"10k"}});
 
-    auto pin_definitions = std::vector<volt::PinDefId>{};
+    auto pin_definitions = std::vector<volt::PinSpec>{};
     for (auto index = 1; index <= 6; ++index) {
-        pin_definitions.push_back(circuit.connectivity().add_pin_definition(volt::PinDefinition{
-            "NC" + std::to_string(index), std::to_string(index),
-            volt::ConnectionRequirement::MustNotConnect, volt::ElectricalTerminalKind::NoConnect}));
+        pin_definitions.push_back(volt::PinSpec{
+            .name = "NC" + std::to_string(index),
+            .number = std::to_string(index),
+            .requirement = volt::ConnectionRequirement::MustNotConnect,
+            .terminal_kind = volt::ElectricalTerminalKind::NoConnect,
+        });
     }
-    const auto connector_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Header", pin_definitions});
-    const auto connector =
-        circuit.instantiate_component(connector_definition, volt::ReferenceDesignator{"J1"});
+    const auto connector_definition = circuit.define_component(
+        volt::ComponentSpec{.name = "Header", .pins = std::move(pin_definitions)});
+    const auto connector = circuit.instantiate_component(
+        connector_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"J1"}});
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -441,8 +445,7 @@ TEST_CASE("Schematic readability reports text crossing wire geometry") {
 
 TEST_CASE("Schematic readability reports power labels crossing wire geometry") {
     volt::Circuit circuit;
-    const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto net = circuit.add_net(volt::NetSpec{volt::NetName{"VCC"}, volt::NetKind::Power});
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -492,9 +495,9 @@ TEST_CASE("Schematic readability reports symbol text crossing wire geometry") {
 TEST_CASE("Schematic readability reports labels crowding unrelated wire geometry") {
     volt::Circuit circuit;
     const auto label_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"+3V3"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{volt::NetName{"+3V3"}, volt::NetKind::Power});
     const auto wire_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+        circuit.add_net(volt::NetSpec{volt::NetName{"GND"}, volt::NetKind::Ground});
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -656,9 +659,9 @@ TEST_CASE("Schematic readability reports wire continuations routed through a sym
 TEST_CASE("Schematic readability reports terminal markers touching unrelated wires") {
     volt::Circuit circuit;
     const auto power_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VDDA"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{volt::NetName{"VDDA"}, volt::NetKind::Power});
     const auto ground_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+        circuit.add_net(volt::NetSpec{volt::NetName{"GND"}, volt::NetKind::Ground});
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -684,7 +687,7 @@ TEST_CASE("Schematic readability reports terminal markers touching symbol bodies
     volt::Circuit circuit;
     const auto component = add_four_pin_component(circuit, "U1");
     const auto power_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"+3V3"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{volt::NetName{"+3V3"}, volt::NetKind::Power});
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -709,7 +712,7 @@ TEST_CASE("Schematic readability reports no-connect markers misplaced on owning 
     volt::Circuit circuit;
     const auto component = add_four_pin_component(circuit, "U1");
     const auto pin = volt::queries::pin_by_number(circuit, component, "1").value();
-    circuit.intent().mark_intentional_no_connect_pin(pin);
+    circuit.mark_no_connect(pin);
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -734,9 +737,9 @@ TEST_CASE("Schematic readability reports no-connect markers misplaced on owning 
 TEST_CASE("Schematic readability reports generic visual element collisions") {
     volt::Circuit circuit;
     const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"+3V3"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{volt::NetName{"+3V3"}, volt::NetKind::Power});
     const auto second_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"+5V"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{volt::NetName{"+5V"}, volt::NetKind::Power});
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
