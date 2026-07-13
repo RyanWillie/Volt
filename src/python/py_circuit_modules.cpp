@@ -180,7 +180,12 @@ std::size_t PyCircuit::define_module(const std::string &name) {
     [[maybe_unused]] const auto defined = preflight.define_module(spec);
 
     const auto handle = module_drafts_.size();
-    module_drafts_.push_back(ModuleDraft{.handle = handle, .spec = std::move(spec)});
+    module_drafts_.push_back(ModuleDraft{.handle = handle,
+                                         .spec = std::move(spec),
+                                         .template_net_handles = {},
+                                         .port_handles = {},
+                                         .component_handles = {},
+                                         .committed_id = std::nullopt});
     return handle;
 }
 
