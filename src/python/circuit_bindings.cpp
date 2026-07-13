@@ -5,6 +5,7 @@
 #include "py_circuit.hpp"
 
 #include <volt/core/content_hash.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/io/capabilities/board_capability_profile.hpp>
 
 #include <array>
@@ -29,6 +30,9 @@ string_view_catalog_to_tuple(const std::array<std::string_view, Size> &catalog) 
 } // namespace
 
 void bind_circuit(pybind11::module_ &module) {
+    module.def("_raise_cross_reference_error", [](const std::string &message) {
+        throw volt::KernelLogicError{volt::ErrorCode::CrossReferenceViolation, message};
+    });
     module.def("diagnostic_categories",
                []() { return string_view_catalog_to_tuple(diagnostic_category_catalogs::All); });
     module.def("erc_diagnostic_codes",
@@ -115,6 +119,8 @@ void bind_circuit(pybind11::module_ &module) {
         .def("component_schematic_symbol", &PyCircuit::component_schematic_symbol,
              py::arg("component"), py::arg("variant"))
         .def("connect", &PyCircuit::connect, py::arg("net"), py::arg("pin"))
+        .def("connect_endpoints", &PyCircuit::connect_endpoints, py::arg("net"),
+             py::arg("endpoints"))
         .def("net_of", &PyCircuit::net_of, py::arg("pin"))
         .def("net_pins", &PyCircuit::net_pins, py::arg("net"))
         .def("mark_intentional_stub_net", &PyCircuit::mark_intentional_stub_net, py::arg("net"))

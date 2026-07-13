@@ -4,7 +4,12 @@
 
 #include <volt/pcb/board.hpp>
 
+#include <utility>
+#include <variant>
+
 namespace volt::python {
+
+using PyConnectivityEndpoint = std::variant<std::size_t, std::pair<std::size_t, std::size_t>>;
 
 class PyCircuit {
   public:
@@ -97,6 +102,8 @@ class PyCircuit {
     component_schematic_symbol(std::size_t component, const std::string &variant) const;
 
     void connect(std::size_t net, std::size_t pin);
+
+    void connect_endpoints(std::size_t net, const std::vector<PyConnectivityEndpoint> &endpoints);
 
     [[nodiscard]] std::optional<std::size_t> net_of(std::size_t pin) const;
 
