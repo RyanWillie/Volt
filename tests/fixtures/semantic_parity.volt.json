@@ -1,0 +1,78 @@
+{
+  "format": "volt.logical_circuit",
+  "version": 1,
+  "pin_definitions": [
+    { "id": "pin_def:0", "name": "IO", "number": "1", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital", "drive_kind": "HighImpedance", "polarity": "ActiveLow", "electrical_attributes": {
+        "voltage_range": { "type": "range", "dimension": "voltage", "minimum": 0, "maximum": 5.5 }
+      } },
+    { "id": "pin_def:1", "name": "NC", "number": "2", "connection_requirement": "MustNotConnect", "terminal_kind": "NoConnect", "direction": "Passive", "drive_kind": "Passive" }
+  ],
+  "component_definitions": [
+    { "id": "component_def:0", "name": "Controller", "source": { "namespace": "volt.logic", "name": "controller_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.logic:controller", "variant": "default" }], "pins": ["pin_def:0", "pin_def:1"], "properties": {
+        "category": { "type": "string", "value": "control" },
+        "gain": { "type": "number", "value": 1.5 },
+        "production": { "type": "boolean", "value": true },
+        "revision": { "type": "integer", "value": 2 }
+      } }
+  ],
+  "components": [
+    { "id": "component:0", "definition": "component_def:0", "reference": "U1", "properties": {
+        "value": { "type": "string", "value": "CTRL-1" }
+      }, "electrical_attributes": {
+        "frequency": { "type": "quantity", "dimension": "frequency", "value": 1000000 },
+        "tolerance": { "type": "tolerance", "mode": "percent", "dimension": "ratio", "minus": 0.01, "plus": 0.02 }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Acme", "part_number": "CTRL-1" },
+      "package": "SOIC-2",
+      "footprint": { "library": "logic", "name": "SOIC-2_3.9x4.9mm" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:0", "pad": "1" },
+        { "pin": "pin_def:1", "pad": "2" }
+      ],
+      "model_3d": {
+        "format": "step",
+        "file_name": "controller.step",
+        "translation_mm": [0.10000000000000001, -0.20000000000000001, 0.29999999999999999],
+        "rotation_deg": 90
+      },
+      "approved_alternate_mpns": ["CTRL-1A", "CTRL-1B"],
+      "properties": {
+        "lifecycle": { "type": "string", "value": "active" }
+      },
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 5.5 }
+      }
+    } },
+    { "id": "component:1", "definition": "component_def:0", "reference": "CH1/U1", "properties": {
+        "mode": { "type": "string", "value": "module" }
+      } }
+  ],
+  "pins": [
+    { "id": "pin:0", "component": "component:0", "definition": "pin_def:0" },
+    { "id": "pin:1", "component": "component:0", "definition": "pin_def:1" },
+    { "id": "pin:2", "component": "component:1", "definition": "pin_def:0" },
+    { "id": "pin:3", "component": "component:1", "definition": "pin_def:1" }
+  ],
+  "nets": [
+    { "id": "net:0", "name": "BUS", "kind": "Signal", "pins": ["pin:0"], "electrical_attributes": {
+        "voltage": { "type": "quantity", "dimension": "voltage", "value": 3.2999999999999998 }
+      } },
+    { "id": "net:1", "name": "TEST_STUB", "kind": "Signal", "pins": [] },
+    { "id": "net:2", "name": "CH1/IO", "kind": "Signal", "pins": ["pin:2"] }
+  ],
+  "net_classes": { "classes": [
+    { "id": "net_class:0", "name": "PowerBus", "maximum_net_voltage": { "dimension": "voltage", "value": 5 }, "copper_clearance_mm": 0.25, "derived_copper_clearance": { "value_mm": 0.13, "calculator": { "id": "ipc-2221.clearance.external-voltage", "name": "External conductor clearance from voltage", "standard": "IPC-2221", "reference": "deterministic IPC-2221 external-conductor voltage-clearance fixture" }, "inputs": [{ "name": "voltage", "value": 5, "unit": "V" }] }, "track_width_mm": 0.40000000000000002, "derived_track_width": { "value_mm": 0.30037622221997168, "calculator": { "id": "ipc-2221.trace-width.current", "name": "Trace width from current and temperature rise", "standard": "IPC-2221", "reference": "I = k * dT^0.44 * A^0.725; width = A / copper_thickness" }, "inputs": [{ "name": "current", "value": 1, "unit": "A" }, { "name": "temperature_rise", "value": 10, "unit": "C" }, { "name": "copper_weight", "value": 1, "unit": "oz/ft^2" }, { "name": "environment", "value": "external", "unit": "enum" }] }, "via_drill_mm": 0.29999999999999999, "via_diameter_mm": 0.59999999999999998, "layer_scope": "OuterOnly", "priority": 20, "default_for_net_kind": "Power" },
+    { "id": "net_class:1", "name": "NamedLayers", "allowed_layers": ["In1.Cu", "In2.Cu"] }
+  ], "net_assignments": [
+    { "net": "net:0", "net_class": "net_class:0" }
+  ] },
+  "design_intent": { "stub_nets": ["net:1"], "no_connect_pins": ["pin:1"], "component_assembly": [{ "component": "component:0", "dnp": true, "selection_override": true }] },
+  "module_definitions": [
+    { "id": "module_def:0", "name": "Channel", "local_nets": [{ "id": "template_net:0", "name": "IO", "kind": "Signal" }], "components": [{ "id": "module_component:0", "definition": "component_def:0", "reference": "U1", "properties": {
+        "mode": { "type": "string", "value": "module" }
+      } }], "connections": [{ "net": "template_net:0", "component": "module_component:0", "pin": "pin_def:0" }], "ports": [{ "id": "port:0", "name": "IO", "internal_net": "template_net:0", "role": "Bidirectional", "required": true }] }
+  ],
+  "module_instances": [
+    { "id": "module:0", "definition": "module_def:0", "name": "CH1", "net_origins": [{ "template_net": "template_net:0", "net": "net:2" }], "component_origins": [{ "template_component": "module_component:0", "component": "component:1" }], "port_bindings": [{ "port": "port:0", "parent_net": "net:0" }] }
+  ]
+}

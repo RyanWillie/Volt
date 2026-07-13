@@ -44,7 +44,14 @@ TEST_CASE("Golden diagnostic fixture round-trips and preserves connectivity") {
 
     REQUIRE(circuit.all<volt::NetId>().size() == 1);
     CHECK(circuit.get(volt::NetId{0}).pins().size() == 1);
-    CHECK_FALSE(report.empty());
+    REQUIRE(report.count() == 1);
+    const auto &diagnostic = report.diagnostics().front();
+    CHECK(diagnostic.code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.category() == volt::DiagnosticCategory{"erc"});
+    CHECK(diagnostic.message() == "Net has only one connected pin");
+    CHECK(diagnostic.entities() ==
+          std::vector{volt::EntityRef::net(volt::NetId{0}), volt::EntityRef::pin(volt::PinId{0})});
     check_fixture_round_trips("single_pin_net.volt.json");
 }
 
@@ -54,6 +61,10 @@ TEST_CASE("Golden typed electrical attribute fixture round-trips") {
 
 TEST_CASE("Golden hierarchy module fixture round-trips") {
     check_fixture_round_trips("hierarchy_module.volt.json");
+}
+
+TEST_CASE("Comprehensive semantic parity fixture round-trips") {
+    check_fixture_round_trips("semantic_parity.volt.json");
 }
 
 TEST_CASE("Logical reader preserves independent connectivity table identity") {

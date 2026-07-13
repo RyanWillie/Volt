@@ -10,6 +10,7 @@
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/io/logical/logical_circuit_writer.hpp>
 
 #include <support/circuit_test_helpers.hpp>
 
@@ -359,9 +360,11 @@ TEST_CASE("Root module instantiation preflights concrete net names before mutati
     });
     [[maybe_unused]] const auto existing_net =
         volt::test::add_net(circuit, "BUCK_A/VIN", volt::NetKind::Power);
+    const auto before = volt::io::write_logical_circuit(circuit);
 
     CHECK_THROWS_AS(circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"}),
                     std::logic_error);
+    CHECK(volt::io::write_logical_circuit(circuit) == before);
     CHECK(circuit.all<volt::ModuleInstanceId>().size() == 0);
     CHECK(circuit.all<volt::NetId>().size() == 1);
 }
@@ -377,9 +380,11 @@ TEST_CASE("Root module instantiation preflights concrete component references be
         .template_nets = {volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal}},
         .components = {volt::ModuleComponentTemplate{definition, volt::ReferenceDesignator{"R1"}}},
     });
+    const auto before = volt::io::write_logical_circuit(circuit);
 
     CHECK_THROWS_AS(circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"}),
                     std::logic_error);
+    CHECK(volt::io::write_logical_circuit(circuit) == before);
     CHECK(circuit.all<volt::ModuleInstanceId>().size() == 0);
     CHECK(circuit.all<volt::ComponentId>().size() == 1);
     CHECK(circuit.all<volt::NetId>().size() == 0);

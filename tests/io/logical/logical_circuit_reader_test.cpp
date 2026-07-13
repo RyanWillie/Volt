@@ -488,12 +488,24 @@ TEST_CASE("Logical circuit reader infers missing module component origins for v1
     fixture["module_instances"][0].erase("component_origins");
 
     const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
+    const auto canonical = volt::io::write_logical_circuit(circuit);
+    const auto reread = volt::io::read_logical_circuit_text(canonical);
 
     CHECK(circuit.all<volt::ModuleInstanceId>().size() == 1);
     CHECK(circuit.all<volt::ModuleComponentId>().size() == 1);
     CHECK(volt::queries::concrete_component_for(circuit, volt::ModuleInstanceId{0},
                                                 volt::ModuleComponentId{0}) ==
           volt::ComponentId{0});
+    CHECK(canonical == read_fixture("hierarchy_module.volt.json"));
+    CHECK(volt::io::write_logical_circuit(reread) == canonical);
+}
+
+TEST_CASE("Logical circuit reader rejects a missing module component origin it cannot infer") {
+    auto fixture = nlohmann::json::parse(read_fixture("hierarchy_module.volt.json"));
+    fixture["module_instances"][0].erase("component_origins");
+    fixture["components"][0]["reference"] = "OTHER";
+
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
 }
 
 TEST_CASE("Logical circuit reader rejects mismatched module component origin connectivity") {

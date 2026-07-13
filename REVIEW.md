@@ -43,8 +43,8 @@ include:
 - Reporting references such as `EntityRef` become normal traversal or mutation handles.
 - A public API addition lacks a kernel-owned data model, mutation API, constraint, or
   validation story for the EDA meaning it introduces.
-- A new `Circuit` root method performs a single-subsystem mutation that should live on
-  the relevant borrow-only subsystem mutator facade instead.
+- A new `Circuit` root method mirrors private storage or bypasses complete typed specs,
+  irreducible graph operations, closed typed updates, generic reads, and free queries.
 - A kernel aggregate adds entity removal, erasure, or deletion APIs, contradicting
   `docs/design/adr-append-only-kernel.md`, without linking a decision to revisit it.
 - Serialization or parsing becomes nondeterministic, lossy, silently accepts malformed
@@ -140,10 +140,10 @@ Check that CMake and library target boundaries remain intentional:
 Flag dependency inversions, leaky umbrella-target usage, accidental public dependencies,
 and install/export regressions when the PR touches build files.
 
-`Circuit` root methods should stay limited to root-owned or cross-subsystem mutations.
-Single-subsystem mutations should be exposed through the borrow-only `Circuit`
-`connectivity()`, `hierarchy()`, `electrical()`, `intent()`, or `net_classes()` mutator
-facade.
+`Circuit` root methods should stay within the accepted typed aggregate contract. Private
+subsystem storage must remain inaccessible; new authoring meaning needs a complete typed spec,
+an irreducible graph operation, or a closed typed update with persistence and validation
+semantics.
 
 ## Implementation checks
 

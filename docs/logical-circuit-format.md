@@ -184,6 +184,16 @@ not persist Python authoring preset or role names.
 - `Required`
 - `MustNotConnect`
 
+The optional electrical-semantic fields use these spellings and default to their neutral
+value when omitted:
+
+- `terminal_kind`: `Unspecified`, `Passive`, `Signal`, `Power`, `Ground`, or `NoConnect`
+- `direction`: `Unspecified`, `Input`, `Output`, `Bidirectional`, or `Passive`
+- `signal_domain`: `Unspecified`, `Digital`, `Analog`, or `Mixed`
+- `drive_kind`: `Unspecified`, `PushPull`, `OpenCollector`, `OpenDrain`, `HighImpedance`,
+  or `Passive`
+- `polarity`: `None`, `ActiveHigh`, or `ActiveLow`
+
 ## Component Definitions
 
 Component definitions describe reusable logical component shapes:
@@ -197,15 +207,21 @@ Component definitions describe reusable logical component shapes:
     "name": "led_2pin",
     "version": "1.0.0"
   },
+  "schematic_symbols": [
+    { "name": "volt.optos:led", "variant": "default" }
+  ],
   "pins": ["pin_def:0", "pin_def:1"],
   "properties": {}
 }
 ```
 
-`source` is optional. `pins` contains `pin_def` IDs in component-definition pin order. A
-pin definition belongs to at most one component definition, and a component definition
-may reference each pin definition only once. The top-level `pin_definitions` table remains
-the canonical persistence representation and table order remains the source of
+`source` and `schematic_symbols` are optional. A schematic-symbol reference contains a
+non-empty `name`. Its component-local `variant` may be omitted on read and then defaults to
+`default`; the canonical writer always emits the resulting non-empty variant. Variants must be
+unique within one component definition. `pins` contains `pin_def` IDs in component-definition
+pin order. A pin definition belongs to at most one component definition, and a component
+definition may reference each pin definition only once. The top-level `pin_definitions` table
+remains the canonical persistence representation and table order remains the source of
 deterministic `PinDefId` restoration. Unowned rows remain readable for v1 document
 compatibility, although complete typed construction does not create them.
 
@@ -249,6 +265,16 @@ physical footprint pad labels. The mapping must exactly match the component defi
 pins: no missing logical pins, no foreign logical pins, and no duplicate pad labels. A
 logical pin may appear more than once when multiple physical package pads are tied to that
 same logical pin.
+
+Selected parts may also carry:
+
+- `model_3d`: `format` must be `glb` or `step`; `file_name` must be a non-empty basename
+  rather than `.`, `..`, or a path; `translation_mm` must contain three finite numbers; and
+  `rotation_deg` must be finite
+- `approved_alternate_mpns`: an ordered, unique list of non-empty alternate part numbers
+- `properties`: typed scalar metadata
+- `electrical_attributes`: selected-part ratings and constraints using the shared typed
+  encoding
 
 ## Concrete Pins
 
@@ -343,6 +369,14 @@ Hand-set values always win over derived values during rule resolution. If both
 override and the derived object is retained as visible provenance. The same precedence
 applies to `copper_clearance_mm` and `derived_copper_clearance`.
 
+Each class may persist these optional fields: `maximum_net_voltage`,
+`copper_clearance_mm`, `derived_copper_clearance`, `track_width_mm`,
+`derived_track_width`, `via_drill_mm`, `via_diameter_mm`, `layer_scope`, `allowed_layers`,
+`priority`, and `default_for_net_kind`. `layer_scope` uses `AnyCopper`, `OuterOnly`,
+`InnerOnly`, `TopOnly`, or `BottomOnly`. A non-empty `allowed_layers` list is mutually
+exclusive with a non-default semantic layer scope. Net assignments refer to existing nets
+and net classes and are unique per net.
+
 Derived rule provenance objects require:
 
 - `value_mm`: finite result in millimeters
@@ -359,6 +393,29 @@ copper thickness derived from copper weight. Dielectric spacing derives 1H strip
 2H microstrip clearance from dielectric height. Voltage clearance uses a deterministic
 IPC-2221 external-conductor fixture; replace it with an authoritative table update if
 Volt adds licensed standards data.
+
+## Design Intent
+
+Optional `design_intent` state records explicit exceptions and assembly choices without
+changing logical connectivity:
+
+```json
+{
+  "design_intent": {
+    "stub_nets": ["net:1"],
+    "no_connect_pins": ["pin:5"],
+    "component_assembly": [
+      { "component": "component:2", "dnp": true, "selection_override": true }
+    ]
+  }
+}
+```
+
+`stub_nets` suppress empty/single-pin findings for nets intentionally left as test or future
+connection points. `no_connect_pins` identifies concrete pins deliberately left open;
+connecting one remains diagnosable. A `component_assembly` entry may carry optional `dnp`
+and `selection_override` values, but must set at least one. Writers emit entity references in
+deterministic insertion order and omit the section when all three collections are empty.
 
 ## Hierarchy Modules
 
@@ -445,11 +502,14 @@ created from these templates use the module instance name as a prefix, such as
 must belong to the module component's component definition. A module component pin may
 appear in at most one template connection.
 
-Each module instance must provide exactly one `component_origins` entry for every
-module component template in its definition. Each entry points to the concrete
-`component` created for that module instance. `port_bindings` connect instance ports to
-parent concrete nets without merging the parent net and internal module-origin net into
-one logical net.
+Canonical v1 output provides exactly one `component_origins` entry for every module
+component template in its definition. Each entry points to the concrete `component` created
+for that module instance. The v1 reader retains one documented legacy compatibility path:
+when `component_origins` is omitted, it infers the complete mapping only when instance name,
+component reference, and definition make every origin deterministic. It rejects ambiguous or
+connectivity-inconsistent input, and the next canonical write emits the inferred
+`component_origins`. `port_bindings` connect instance ports to parent concrete nets without
+merging the parent net and internal module-origin net into one logical net.
 
 This hierarchy model intentionally persists only the current kernel-owned logical
 state: module definitions, template-local nets, ports, component templates, template pin
@@ -487,8 +547,9 @@ including:
 - duplicate connections for the same module component pin
 - module instances that do not provide exactly one concrete net origin for every
   template-local net
-- module instances that do not provide exactly one concrete component origin for every
-  module component template
+- module instances whose explicit `component_origins` do not provide exactly one concrete
+  component origin for every module component template; omitted origins are accepted only by
+  the deterministic legacy-v1 inference described above
 - module component origins whose concrete component definition does not match the
   template component definition
 - module component origins whose concrete pins are not connected to the concrete nets

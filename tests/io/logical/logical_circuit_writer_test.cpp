@@ -15,6 +15,8 @@
 #include <volt/io/logical/logical_circuit_reader.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 
+#include <support/semantic_parity_circuit.hpp>
+
 #include "led_circuit.hpp"
 
 namespace {
@@ -447,4 +449,10 @@ TEST_CASE("Logical circuit writer matches the LED golden fixture") {
     const auto circuit = volt::examples::build_led_circuit();
 
     CHECK(volt::io::write_logical_circuit(circuit) == read_fixture("led_circuit.volt.json"));
+}
+
+TEST_CASE("Logical circuit writer matches the comprehensive semantic parity golden") {
+    const auto circuit = volt::test::build_semantic_parity_circuit();
+
+    CHECK(volt::io::write_logical_circuit(circuit) == read_fixture("semantic_parity.volt.json"));
 }

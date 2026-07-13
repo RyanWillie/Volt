@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Circuit redesign semantic parity signoff</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17211f;
+      --muted: #5f6d68;
+      --paper: #f4f1e9;
+      --panel: #fffdf8;
+      --line: #d7d2c6;
+      --teal: #0c7467;
+      --teal-soft: #dcefe9;
+      --amber: #9a5b00;
+      --amber-soft: #fff0ce;
+      --red: #a3382c;
+      --red-soft: #f8ded8;
+      --blue: #315f84;
+      --blue-soft: #e2edf5;
+      --shadow: 0 12px 34px rgba(32, 39, 36, .08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 82% 0, rgba(12, 116, 103, .12), transparent 32rem),
+        var(--paper);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.48;
+    }
+    a { color: var(--teal); text-underline-offset: .16em; }
+    code {
+      padding: .08rem .28rem;
+      border: 1px solid #ddd8cc;
+      border-radius: .28rem;
+      background: #f3f0e8;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: .88em;
+      overflow-wrap: anywhere;
+    }
+    header {
+      padding: clamp(2.5rem, 7vw, 6rem) clamp(1.2rem, 6vw, 6rem) 2.5rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .eyebrow {
+      margin: 0 0 .7rem;
+      color: var(--teal);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 { line-height: 1.12; letter-spacing: -.025em; }
+    h1 { max-width: 16ch; margin: 0; font-size: clamp(2.5rem, 7vw, 5.8rem); }
+    header .lede { max-width: 70ch; margin: 1.4rem 0 0; color: var(--muted); font-size: 1.08rem; }
+    .decision {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: .8rem 1rem;
+      max-width: 72rem;
+      margin-top: 2rem;
+      padding: 1.2rem 1.35rem;
+      border: 1px solid #9dc9bf;
+      border-radius: .8rem;
+      background: var(--teal-soft);
+      box-shadow: var(--shadow);
+    }
+    .decision strong { color: var(--teal); }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      gap: .45rem;
+      padding: .75rem clamp(1rem, 6vw, 6rem);
+      overflow-x: auto;
+      border-bottom: 1px solid var(--line);
+      background: rgba(244, 241, 233, .94);
+      backdrop-filter: blur(12px);
+    }
+    nav a {
+      flex: 0 0 auto;
+      padding: .42rem .7rem;
+      border-radius: 2rem;
+      color: var(--ink);
+      font-size: .82rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    nav a:hover { background: var(--panel); }
+    main { width: min(100% - 2rem, 92rem); margin: 0 auto; padding: 2.6rem 0 5rem; }
+    section { scroll-margin-top: 5rem; margin: 0 0 4rem; }
+    h2 { margin: 0 0 .7rem; font-size: clamp(1.8rem, 4vw, 3rem); }
+    .section-intro { max-width: 78ch; margin: 0 0 1.5rem; color: var(--muted); }
+    .facts, .gap-grid, .proof-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+      gap: 1rem;
+    }
+    .fact, .gap, .proof, .matrix-card {
+      border: 1px solid var(--line);
+      border-radius: .8rem;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .fact, .gap, .proof { padding: 1rem 1.1rem; }
+    .fact b { display: block; margin-bottom: .28rem; color: var(--teal); font-size: .82rem; text-transform: uppercase; }
+    .fact p, .gap p, .proof p { margin: 0; }
+    .matrix { display: grid; gap: 1rem; }
+    .matrix-card { overflow: hidden; }
+    .matrix-card > header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 1.15rem;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: #faf7ef;
+    }
+    .matrix-card h3 { margin: 0; font-size: 1.1rem; }
+    .status {
+      flex: 0 0 auto;
+      padding: .22rem .56rem;
+      border-radius: 2rem;
+      font-size: .72rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .covered { color: var(--teal); background: var(--teal-soft); }
+    .fixed { color: var(--blue); background: var(--blue-soft); }
+    .future { color: var(--amber); background: var(--amber-soft); }
+    dl {
+      display: grid;
+      grid-template-columns: minmax(9rem, 13rem) 1fr;
+      margin: 0;
+    }
+    dt, dd { margin: 0; padding: .68rem 1.15rem; border-bottom: 1px solid #ebe6da; }
+    dt { color: var(--muted); font-size: .78rem; font-weight: 800; text-transform: uppercase; }
+    dd { min-width: 0; }
+    dl > :nth-last-child(-n + 2) { border-bottom: 0; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line); border-radius: .8rem; background: var(--panel); overflow: hidden; }
+    th, td { padding: .72rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: #ebe8df; font-size: .76rem; letter-spacing: .04em; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+    .table-wrap { overflow-x: auto; border-radius: .8rem; box-shadow: var(--shadow); }
+    .gap { border-left: .35rem solid var(--line); }
+    .gap.real { border-left-color: var(--red); background: linear-gradient(90deg, var(--red-soft), var(--panel) 34%); }
+    .gap.proof-gap { border-left-color: var(--blue); background: linear-gradient(90deg, var(--blue-soft), var(--panel) 34%); }
+    .gap.docs { border-left-color: var(--amber); background: linear-gradient(90deg, var(--amber-soft), var(--panel) 34%); }
+    .gap h3, .proof h3 { margin: 0 0 .45rem; font-size: 1rem; }
+    .gap small { display: block; margin-top: .55rem; color: var(--muted); }
+    .checks { columns: 2 22rem; column-gap: 2rem; margin: 1rem 0 0; padding-left: 1.15rem; }
+    .checks li { break-inside: avoid; margin: 0 0 .5rem; }
+    .callout { padding: 1rem 1.15rem; border-left: .35rem solid var(--teal); background: var(--teal-soft); }
+    footer { padding: 2rem; border-top: 1px solid var(--line); color: var(--muted); text-align: center; }
+    @media (max-width: 650px) {
+      dl { grid-template-columns: 1fr; }
+      dt { padding-bottom: .2rem; border-bottom: 0; }
+      dd { padding-top: .2rem; }
+      dl > :nth-last-child(-n + 2) { border-bottom: 0; }
+      .decision { grid-template-columns: 1fr; }
+    }
+    @media print {
+      nav { display: none; }
+      body { background: white; }
+      .fact, .gap, .proof, .matrix-card, table { box-shadow: none; break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="eyebrow">Issue #267 · final evidence lane</p>
+    <h1>Circuit changed shape. Its electrical meaning did not shrink.</h1>
+    <p class="lede">A field-by-field signoff for the typed aggregate migration, reconstructed from the accepted ADR, the original redesign proposal, the merged issue chain, the kernel model, logical persistence, diagnostics, Python authoring, and schematic/PCB consumers.</p>
+    <div class="decision">
+      <strong>Signoff position</strong>
+      <span>The required semantic surface is owned by the C++ kernel, deterministically persisted, inspectable without storage facades, and consumed unchanged downstream. The audit found three real boundary regressions and several proof gaps; this change closes them without another API redesign. After exact-head CI and independent review, #267 may close. Parent #261 may then close only after its native child state is independently confirmed.</span>
+    </div>
+  </header>
+
+  <nav aria-label="Document sections">
+    <a href="#baseline">Baseline</a>
+    <a href="#matrix">Parity matrix</a>
+    <a href="#contracts">Contract index</a>
+    <a href="#atomicity">Atomicity</a>
+    <a href="#persistence">Persistence</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#gaps">Gap disposition</a>
+    <a href="#verification">Verification</a>
+    <a href="#verdict">Verdict</a>
+  </nav>
+
+  <main>
+    <section id="baseline">
+      <h2>Baseline and method</h2>
+      <p class="section-intro">Analysis began at <code>fb2eab2eddf07f699d4688a3804ad6cfc8a2a7a8</code>, the merge of PR #286 on the default branch. There is no standalone repository artifact named “Phase 0 inventory”; this matrix reconstructs it from the accepted aggregate ADR, its single-page review companion, and the superseded June 2 architecture proposal.</p>
+      <div class="facts">
+        <div class="fact"><b>Accepted contract</b><p><code>docs/design/adr-circuit-aggregate-api.md</code>: complete typed definitions, irreducible graph operations, closed typed updates, generic reads, and free queries.</p></div>
+        <div class="fact"><b>Issue chain</b><p>#262 → #236 → #263 → #264 → #265 → #266 → #267, with #238 also required by #265. #234 is an independent safety sibling.</p></div>
+        <div class="fact"><b>Merged delivery evidence</b><p>PR #268 delivered #262; #270 delivered #234; #271 delivered #236; #272 delivered #263; #273–#283 delivered #264; #284 delivered #238; #285 delivered #265; and #286 delivered #266. Their descriptions and diffs were reviewed as trace inputs, not treated as proof by assertion.</p></div>
+        <div class="fact"><b>Historical diff proof</b><p>From ADR merge <code>3c090fcb</code> to baseline <code>fb2eab2</code>, logical fixtures did not change; writer and consumer migrations replaced access shape rather than persisted fields or diagnostic/output contracts.</p></div>
+        <div class="fact"><b>Initial evidence</b><p>The plan and pre-edit gap list were published before repository changes in <a href="https://github.com/RyanWillie/Volt/issues/267#issuecomment-4961808065">issue comment 4961808065</a>.</p></div>
+      </div>
+    </section>
+
+    <section id="matrix">
+      <h2>Required semantic and persistence matrix</h2>
+      <p class="section-intro">Every card records the canonical C++ owner, approved write path, generic inspection path, writer/restoration path, diagnostic consumers, Python surface, schematic/PCB behavior, evidence, and gap status.</p>
+      <div class="matrix">
+        <article class="matrix-card">
+          <header><h3>1. Component and pin definitions, properties, provenance, symbols</h3><span class="status covered">Covered</span></header>
+          <dl>
+            <dt>C++ owner</dt><dd><code>PinDefinition</code>, <code>ComponentDefinition</code>, <code>PinSpec</code>, and <code>ComponentSpec</code> in <code>include/volt/circuit/connectivity/definitions.hpp</code>; fields include requirement, terminal, direction, signal domain, drive, polarity, typed pin attributes, definition properties, <code>DefinitionSource</code>, and ordered <code>SchematicSymbolReference</code>s.</dd>
+            <dt>Construct / mutate</dt><dd><code>Circuit::define_component(ComponentSpec)</code> atomically commits the complete definition and ordered owned pins. Definitions are immutable thereafter.</dd>
+            <dt>Inspect</dt><dd><code>get&lt;ComponentDefId&gt;</code>, <code>get&lt;PinDefId&gt;</code>, deterministic <code>all&lt;…&gt;</code>, and definition-owned pin IDs.</dd>
+            <dt>Logical JSON</dt><dd><code>pin_definitions</code> and <code>component_definitions</code> are written by <code>logical_circuit_writer.cpp</code>, parsed by <code>logical_circuit_parser.cpp</code>, and restored through the private restoration plan. Typed IDs and table order are preserved.</dd>
+            <dt>Diagnostics</dt><dd>ERC consumes requirement, terminal, direction, signal domain, and pin voltage ranges. Drive and polarity remain persisted and inspectable but have no current diagnostic rule. Exact contracts include <code>UNCONNECTED_REQUIRED_PIN</code>, <code>PIN_MUST_NOT_CONNECT</code>, domain/driver and voltage-range findings.</dd>
+            <dt>Python</dt><dd><code>Design.define_component</code>, <code>PinSpec</code>, library components, and role presets lower to the same primitive kernel fields; preset names are not persisted as alternate semantics.</dd>
+            <dt>Projection</dt><dd>Schematic symbol selection reads definition-owned symbol references. PCB later resolves selected-part mappings against the same definition pins; neither projection mutates definitions.</dd>
+            <dt>Evidence</dt><dd><code>construction_specs_test.cpp</code>, <code>definitions_test.cpp</code>, logical writer/reader tests, LED golden, and the comprehensive <code>semantic_parity.volt.json</code> golden.</dd>
+            <dt>Gap / action</dt><dd>Logical format documentation omitted signal domain, polarity, and symbol references. The format contract now documents the existing fields; no schema change was made.</dd>
+          </dl>
+        </article>
+
+        <article class="matrix-card">
+          <header><h3>2. Component instances and concrete pins</h3><span class="status covered">Covered</span></header>
+          <dl>
+            <dt>C++ owner</dt><dd><code>ComponentInstance</code>, <code>ComponentInstanceSpec</code>, and <code>PinInstance</code> in <code>connectivity/instances.hpp</code>.</dd>
+            <dt>Construct / mutate</dt><dd><code>instantiate_component</code> creates the instance and exactly one concrete pin for every ordered definition pin in one atomic operation. Closed component updates change properties, electrical data, physical selection, or assembly intent.</dd>
+            <dt>Inspect</dt><dd>Generic <code>get/all</code> plus free queries <code>pins_for</code>, <code>pin_by_name</code>, <code>pin_by_number</code>, and <code>pin_by_definition</code>.</dd>
+            <dt>Logical JSON</dt><dd>Separate <code>components</code> and <code>pins</code> tables retain definition references and stable concrete IDs. Restoration rejects missing, duplicate, foreign, or incomplete pin materializations.</dd>
+            <dt>Diagnostics</dt><dd>Instance/pin identity is reporting metadata in ERC, PCB readiness, BOM, and assembly findings; structural mismatches fail at load/mutation boundaries instead of becoming diagnostics.</dd>
+            <dt>Python</dt><dd><code>Design.instantiate</code>, component convenience constructors, handles, and pin groups lower to the same component/pin tables.</dd>
+            <dt>Projection</dt><dd>Schematic and PCB items refer to canonical <code>ComponentId</code>/<code>PinId</code>. PCB pad resolution joins concrete pins to selected-part pin-definition mappings.</dd>
+            <dt>Evidence</dt><dd><code>construction_specs_test.cpp</code>, malformed reader tests, Python ownership tests, LED and hierarchy goldens.</dd>
+            <dt>Gap / action</dt><dd>No semantic gap. Duplicate-reference and missing-definition failures already had canonical byte-atomic proof.</dd>
+          </dl>
+        </article>
+
+        <article class="matrix-card">
+          <header><h3>3. Nets, one-net-per-pin connectivity, disconnect</h3><span class="status fixed">Regression fixed</span></header>
+          <dl>
+            <dt>C++ owner</dt><dd><code>Net</code>/<code>NetSpec</code> in <code>connectivity/nets.hpp</code>; pin membership belongs only to the logical circuit.</dd>
+            <dt>Construct / mutate</dt><dd><code>add_net(NetSpec)</code>, <code>connect(NetId, PinId)</code>, and <code>disconnect(PinId)</code> are the irreducible graph operations. <code>authoring::connect</code> is a bulk ergonomic wrapper.</dd>
+            <dt>Inspect</dt><dd><code>get&lt;NetId&gt;</code>, <code>all&lt;NetId&gt;</code>, <code>net_of(PinId)</code>, and free name/connectivity queries.</dd>
+            <dt>Logical JSON</dt><dd><code>nets[].pins</code> persists ordered concrete-pin membership. Reader/restoration rejects unknown pins and any pin present on more than one net.</dd>
+            <dt>Diagnostics</dt><dd><code>EMPTY_NET</code>, <code>SINGLE_PIN_NET</code>, driver/domain, power, voltage, and net-class checks all consume canonical connectivity.</dd>
+            <dt>Python</dt><dd><code>Design.net</code> and <code>Net += pins</code> lower to the same root connection operation with owner checks. Disconnect remains a C++ kernel operation rather than a separate Python authoring surface.</dd>
+            <dt>Projection</dt><dd>Schematic wires, PCB ratsnest/copper, KiCad, and exports read the Circuit netlist. Port continuity is a derived read view, never a net merge.</dd>
+            <dt>Evidence</dt><dd><code>circuit_test.cpp</code>, reader multi-net negatives, Python connectivity ownership tests, single-pin diagnostic golden, schematic/PCB projection snapshots.</dd>
+            <dt>Gap / action</dt><dd><strong>Real regression:</strong> the C++ bulk helper could connect early pins before a late conflict/invalid ID. It now preflights the full span and has byte-identical late-failure regressions.</dd>
+          </dl>
+        </article>
+
+        <article class="matrix-card">
+          <header><h3>4. Hierarchy definitions, instances, template nets, origins, ports, bindings</h3><span class="status fixed">Proof strengthened</span></header>
+          <dl>
+            <dt>C++ owner</dt><dd><code>ModuleSpec</code>, template nets, module component templates/connections, ports, <code>ModuleInstance</code>, net/component origins, and <code>PortBinding</code> in <code>hierarchy.hpp</code>.</dd>
+            <dt>Construct / mutate</dt><dd><code>define_module</code>, <code>instantiate_root_module</code>, and <code>bind_port</code>. Root instantiation preflights every concrete name/reference, then commits generated nets, components, pins, origins, and the instance.</dd>
+            <dt>Inspect</dt><dd>Generic <code>get/all</code>; <code>module_net_origins</code>, <code>module_component_origins</code>, free module/instance/template lookup, <code>port_binding_for</code>, <code>port_bindings_for</code>, and <code>NetContinuityView</code>.</dd>
+            <dt>Logical JSON</dt><dd><code>module_definitions</code> and <code>module_instances</code> preserve local nets, components, connections, ports, origins, and bindings. Restoration rejects concrete/template connectivity disagreement.</dd>
+            <dt>Diagnostics</dt><dd><code>UNBOUND_REQUIRED_PORT</code> and connectivity shape operate over binding continuity. Structural origin/template mismatches are load failures.</dd>
+            <dt>Python</dt><dd><code>Design.define_module</code>, module draft nets/ports/components/connections, root <code>instantiate</code>, bound-port handles, and read-only hierarchy views.</dd>
+            <dt>Projection</dt><dd>PCB ratsnest and copper continuity follow bindings without merging logical nets. Schematic and PCB continue to reference existing Circuit connectivity only.</dd>
+            <dt>Evidence</dt><dd>Hierarchy and construction-spec tests, hierarchy golden, reader mismatch rejection, bound-port validation and PCB ratsnest tests.</dd>
+            <dt>Gap / action</dt><dd>Concrete net/reference collision tests previously checked counts only; they now compare canonical JSON bytes. Existing legacy-v1 origin inference is explicitly documented and still rewrites canonically.</dd>
+          </dl>
+        </article>
+
+        <article class="matrix-card">
+          <header><h3>5. Typed electrical attributes, quantities, tolerances, ranges</h3><span class="status covered">Covered</span></header>
+          <dl>
+            <dt>C++ owner</dt><dd><code>ElectricalAttributeMap</code>, assignments/specs, <code>Quantity</code>, <code>Tolerance</code>, and <code>QuantityRange</code>. Maps live on pin definitions, component instances, selected parts, and nets.</dd>
+            <dt>Construct / mutate</dt><dd>Pin values enter complete <code>ComponentSpec</code>; closed <code>SetComponentElectricalAttribute</code>, <code>SetSelectedPartElectricalAttribute</code>, and <code>SetNetElectricalAttribute</code> updates validate owner and dimension.</dd>
+            <dt>Inspect</dt><dd><code>pin_definition_electrical_attributes</code>, <code>component_electrical_attributes</code>, <code>net_electrical_attributes</code>, and <code>selected_physical_part(…)-&gt;electrical_attributes()</code>; values retain quantity/tolerance/range kind and unit dimension.</dd>
+            <dt>Logical JSON</dt><dd>Shared deterministic object encoding preserves lexicographically ordered names, dimension, quantity, tolerance mode/bounds, and optional range bounds.</dd>
+            <dt>Diagnostics</dt><dd>Voltage-range, selected-part rating, and net-class voltage checks consume the typed values; incompatible owners/dimensions fail structurally.</dd>
+            <dt>Python</dt><dd>Natural authoring values and library/catalog specs lower to typed kernel attributes; Python does not retain a parallel units model.</dd>
+            <dt>Projection</dt><dd>ERC consumes pin ranges, net voltage, and selected-part ratings. PCB consumes Circuit-owned net-class physical rules separately. BOM projects selected-part identity but does not reinterpret general electrical attributes.</dd>
+            <dt>Evidence</dt><dd>Typed-attribute golden, electrical model/core tests, reader/writer tests, Python natural-value tests, rich progressive round trip, comprehensive parity golden.</dd>
+            <dt>Gap / action</dt><dd>No semantic gap. The new comprehensive golden aggregates previously distributed field evidence.</dd>
+          </dl>
+        </article>
+
+        <article class="matrix-card">
+          <header><h3>6. Selected parts, ratings, pin-pad mappings, 3D models, alternates</h3><span class="status fixed">Proof strengthened</span></header>
+          <dl>
+            <dt>C++ owner</dt><dd><code>PhysicalPart</code>, <code>ManufacturerPart</code>, package/footprint refs, <code>PinPadMapping</code>, <code>PartModel3D</code>, properties, approved alternate MPNs, and selected-part typed attributes.</dd>
+            <dt>Construct / mutate</dt><dd><code>SelectPhysicalPart</code> and <code>SetSelectedPartElectricalAttribute</code> are closed component updates. Mappings are checked against the component definition before replacement.</dd>
+            <dt>Inspect</dt><dd><code>selected_physical_part(ComponentId)</code> and its typed field accessors.</dd>
+            <dt>Logical JSON</dt><dd><code>selected_physical_part</code> preserves manufacturer identity, package, footprint, ordered mappings, model pose, alternates, properties, and ratings.</dd>
+            <dt>Diagnostics</dt><dd><code>SELECTED_PART_VOLTAGE_RATING_EXCEEDED</code>; PCB readiness <code>PHYSICAL_PART_REQUIRED</code>; BOM and assembly identity/alternate contracts.</dd>
+            <dt>Python</dt><dd><code>Component.select_part</code>, <code>PhysicalPartSpec</code>, library orderable parts, ratings, model assets, alternates, and selection override lower into the same model.</dd>
+            <dt>Projection</dt><dd>PCB footprint/pad resolution, CPL, KiCad, fabrication, BOM, and model bundle consumers read the canonical selection.</dd>
+            <dt>Evidence</dt><dd>Parts/model tests; logical reader/writer 3D/alternate tests; BOM/CPL/PCB/KiCad tests; semantic parity golden.</dd>
+            <dt>Gap / action</dt><dd>Added canonical-byte proof for an invalid foreign pin mapping. Logical format docs now enumerate existing 3D and alternate fields.</dd>
+          </dl>
+        </article>
+
+        <article class="matrix-card">
+          <header><h3>7. DNP and selection-override assembly intent</h3><span class="status covered">Covered</span></header>
+          <dl>
+            <dt>C++ owner</dt><dd><code>DesignIntent</code> and <code>ComponentAssemblyIntent</code>.</dd>
+            <dt>Construct / mutate</dt><dd><code>SetAssemblyIntent</code> is a closed update; it must set DNP or selection-override intent and validates before either non-throwing field commit.</dd>
+            <dt>Inspect</dt><dd><code>component_dnp</code>, <code>is_component_selection_override</code>, and deterministic <code>component_assembly_intents</code>.</dd>
+            <dt>Logical JSON</dt><dd><code>design_intent.component_assembly</code> preserves component IDs and optional DNP/override booleans.</dd>
+            <dt>Diagnostics</dt><dd>DNP controls fitted population and suppresses populated-part/placement requirements in BOM and assembly. Selection override is retained in BOM component/line projections rather than changing assembly population.</dd>
+            <dt>Python</dt><dd><code>Component.dnp</code> and <code>select_part(selection_override=…)</code> update the same kernel intent.</dd>
+            <dt>Projection</dt><dd>BOM consumes DNP and selection override; CPL/assembly consumes DNP. Schematic and PCB placement do not own or reinterpret either intent.</dd>
+            <dt>Evidence</dt><dd>Design-intent, logical IO, BOM, CPL, Python design-intent/project tests, rich round trip and parity golden.</dd>
+            <dt>Gap / action</dt><dd>Documentation gap closed; no behavior change.</dd>
+          </dl>
+        </article>
+
+        <article class="matrix-card">
+          <header><h3>8. Explicit no-connect and intentional-stub intent</h3><span class="status covered">Covered</span></header>
+          <dl>
+            <dt>C++ owner</dt><dd><code>DesignIntent</code> stores ordered concrete <code>PinId</code> and <code>NetId</code> intent.</dd>
+            <dt>Construct / mutate</dt><dd><code>mark_no_connect(PinId)</code> and <code>update(NetId, MarkIntentionalStub)</code>.</dd>
+            <dt>Inspect</dt><dd><code>is_intentional_no_connect_pin</code>, <code>intentional_no_connect_pins</code>, <code>is_intentional_stub_net</code>, and <code>intentional_stub_nets</code>.</dd>
+            <dt>Logical JSON</dt><dd><code>design_intent.no_connect_pins</code> and <code>stub_nets</code> restore exact typed references.</dd>
+            <dt>Diagnostics</dt><dd>Intent suppresses expected omissions; a connected marked pin emits <code>PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED</code>. Unmarked omissions remain <code>EMPTY_NET</code>, <code>SINGLE_PIN_NET</code>, or <code>UNCONNECTED_REQUIRED_PIN</code>.</dd>
+            <dt>Python</dt><dd>Explicit intent methods in <code>Design</code>/<code>Component</code> call the kernel boundary.</dd>
+            <dt>Projection</dt><dd>Circuit validation consumes both intent forms. Schematic readiness projects and cross-checks no-connect intent without changing Circuit bytes. PCB does not consume these intent fields.</dd>
+            <dt>Evidence</dt><dd>Validation intent tests, logical reader/writer tests, Python design-intent tests, projection before/after snapshots, parity golden.</dd>
+            <dt>Gap / action</dt><dd>Documentation gap closed; no behavior change.</dd>
+          </dl>
+        </article>
+
+        <article class="matrix-card">
+          <header><h3>9. Net-class definitions and assignments</h3><span class="status covered">Covered</span></header>
+          <dl>
+            <dt>C++ owner</dt><dd><code>NetClass</code>/<code>NetClassSpec</code>: voltage, explicit and derived clearance/width with provenance, via sizes, semantic or named layer restrictions, priority, default net kind, and deterministic assignments.</dd>
+            <dt>Construct / mutate</dt><dd><code>define_net_class</code> commits a complete class; <code>AssignNetClass</code> is a closed net update.</dd>
+            <dt>Inspect</dt><dd><code>get/all&lt;NetClassId&gt;</code>, <code>net_class_by_name</code>, <code>net_class_for_net</code>, assignments, and free effective-rule queries.</dd>
+            <dt>Logical JSON</dt><dd><code>net_classes.classes</code> and <code>net_assignments</code> preserve explicit values, derivation calculator/input provenance, restrictions, priority/defaults, and typed IDs.</dd>
+            <dt>Diagnostics</dt><dd><code>NET_CLASS_VOLTAGE_EXCEEDED</code>; PCB DRC width/via/layer rules and capability comparisons.</dd>
+            <dt>Python</dt><dd><code>Design.net_class</code>, sizing helpers, and bulk assignment lower into the same class/assignment state.</dd>
+            <dt>Projection</dt><dd>PCB routing/DRC resolves the Circuit assignment; board layers do not redefine the logical class.</dd>
+            <dt>Evidence</dt><dd>Net-class model/resolution tests, full logical IO tests, Python net-class/PCB tests, rich round trip, comprehensive parity golden.</dd>
+            <dt>Gap / action</dt><dd>Logical format docs now enumerate the already-supported rule fields. No schema change.</dd>
+          </dl>
+        </article>
+
+        <article class="matrix-card">
+          <header><h3>10. Deterministic typed IDs/order, typed errors, EntityRef metadata</h3><span class="status fixed">Architecture hardened</span></header>
+          <dl>
+            <dt>C++ owner</dt><dd>Twelve typed entity families in <code>circuit.hpp</code>; structural errors in <code>core/errors.hpp</code>; <code>EntityRef</code> is report metadata only.</dd>
+            <dt>Construct / mutate</dt><dd>Typed aggregate methods accept domain IDs/specs. Stable IDs are append-only table indices; no public raw restore or per-table mutation handles exist.</dd>
+            <dt>Inspect</dt><dd>Generic <code>get&lt;Id&gt;</code> and lvalue-only <code>all&lt;Id&gt;</code>; free derived queries return typed IDs.</dd>
+            <dt>Logical JSON</dt><dd>Typed local prefixes and insertion order are deterministic. Parser validates prefix, range, ownership, cross-reference, and table identity.</dd>
+            <dt>Diagnostics</dt><dd><code>UnknownEntity</code>, <code>DuplicateName</code>, <code>CrossReferenceViolation</code>, <code>InvalidArgument</code>, and <code>InvalidState</code> retain codes and optional entity metadata.</dd>
+            <dt>Python</dt><dd>Exception translation preserves typed codes, Python exception families, message, and optional entity payload.</dd>
+            <dt>Projection</dt><dd>Projections store/report typed IDs but cannot use <code>EntityRef</code> as a traversal or mutation handle.</dd>
+            <dt>Evidence</dt><dd><code>circuit_reads_test.cpp</code>, independent/interleaved restoration tests, error tests, Python translator tests, architecture checker/self-test and API snapshot.</dd>
+            <dt>Gap / action</dt><dd><strong>Real architecture regression:</strong> public range construction allowed forged sizes/temporary borrowing. Construction is now private to <code>Circuit::all</code>. Exact public/protected declaration admission rejects same-name raw overloads, fields, aliases, nested mutation handles, protected escape hatches, and alternate range factories.</dd>
+          </dl>
+        </article>
+
+        <article class="matrix-card">
+          <header><h3>11. ERC, BOM, assembly, and PCB readiness contracts</h3><span class="status covered">Covered</span></header>
+          <dl>
+            <dt>C++ owner</dt><dd><code>src/circuit/validation</code>, <code>src/circuit/bom</code>, <code>src/pcb/assembly</code>, and PCB validation consume <code>const Circuit&amp;</code>.</dd>
+            <dt>Construct / mutate</dt><dd>None. These are derived reports/outputs over canonical state.</dd>
+            <dt>Inspect</dt><dd>Generic reads and free queries; diagnostic entities use <code>EntityRef</code> only for reporting.</dd>
+            <dt>Logical JSON</dt><dd>Consumers operate identically on authored or restored Circuit state. Diagnostics themselves are derived and not persisted as canonical design state.</dd>
+            <dt>Diagnostics</dt><dd>ERC: <code>PIN_MUST_NOT_CONNECT</code>, <code>PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED</code>, <code>UNCONNECTED_REQUIRED_PIN</code>, <code>EMPTY_NET</code>, <code>SINGLE_PIN_NET</code>, <code>UNBOUND_REQUIRED_PORT</code>, ground/power/domain/driver/rating/range/net-class contracts. PCB readiness: <code>PHYSICAL_PART_REQUIRED</code>. BOM: missing part, implicit DNP, duplicate-primary alternate. Assembly: missing part/identity/placement and ambiguous orientation.</dd>
+            <dt>Python</dt><dd><code>Design.validate</code>, project stages, BOM/assembly and PCB validation expose the same ordered diagnostic codes, severities, categories, messages, and entity tuples.</dd>
+            <dt>Projection</dt><dd>BOM/CPL/PCB/KiCad outputs are downstream products; none owns logical meaning.</dd>
+            <dt>Evidence</dt><dd>Validation matrices, BOM/CPL tests, Python diagnostic contract exports, project workflows, and the shared C++/Python single-pin golden with exact diagnostic tuple.</dd>
+            <dt>Gap / action</dt><dd>Added explicit cross-language non-empty diagnostic parity instead of relying on “both suites are green.”</dd>
+          </dl>
+        </article>
+
+        <article class="matrix-card">
+          <header><h3>12. Schematic, PCB, KiCad, and export projections</h3><span class="status covered">Covered</span></header>
+          <dl>
+            <dt>C++ owner</dt><dd><code>Schematic(const Circuit&amp;)</code> stores a const reference; <code>Board(const Circuit&amp;)</code> stores a const pointer. Both delete rvalue construction.</dd>
+            <dt>Construct / mutate</dt><dd>Projection APIs may add presentation, placement, routing, and manufacturing state but have no API to create/merge/split Circuit nets.</dd>
+            <dt>Inspect</dt><dd>They read generic Circuit entities and free connectivity/part/rule queries.</dd>
+            <dt>Logical JSON</dt><dd>Logical JSON contains no schematic placement or PCB geometry. Projection formats reference existing typed logical IDs; creating or editing a projection leaves logical JSON bytes unchanged.</dd>
+            <dt>Diagnostics</dt><dd>Schematic readiness/visual and PCB DRC/fabrication diagnostics report projection-specific problems while retaining Circuit references.</dd>
+            <dt>Python</dt><dd><code>design.schematic()</code> and <code>design.board()</code> wrap the same borrowed Circuit; regression snapshots assert before/after logical equality.</dd>
+            <dt>Projection</dt><dd>Schematic draws canonical connectivity. PCB resolves pads, ratsnest, rules, and exports over it. KiCad adapters and fab/CPL writers remain consumers.</dd>
+            <dt>Evidence</dt><dd>Schematic/board borrowing static assertions, projection snapshots, board connectivity/ratsnest tests, PCB JSON/SVG/fabrication, CPL, KiCad schematic/PCB goldens, project examples.</dd>
+            <dt>Gap / action</dt><dd>No ownership gap. New architecture searches/checks forbid reintroducing deleted connectivity facades and public raw restore surfaces.</dd>
+          </dl>
+        </article>
+      </div>
+    </section>
+
+    <section id="contracts">
+      <h2>Exact persistence and diagnostic contract index</h2>
+      <p class="section-intro">The matrix above explains ownership and behavior. This index pins those claims to actual writer, parser, restoration, and test symbols. Entity lists are in emitted order.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Matrix items</th><th>Writer</th><th>Reader / restoration</th><th>Strongest contract evidence</th></tr></thead>
+          <tbody>
+            <tr><td>1 · definitions, pins, provenance, symbols</td><td><code>write_logical_circuit</code>; <code>write_pin_definition_semantics</code>; <code>write_pin_definition_electrical_attributes</code>; <code>write_properties</code></td><td><code>LogicalCircuitParser::read_pin_definitions</code>, <code>read_component_definitions</code>, <code>definition_source</code>, <code>schematic_symbol_references</code>; <code>restore_logical_circuit</code> calls <code>add_pin_definition</code>, <code>restore_pin_definition_attributes</code>, <code>add_component_definition</code></td><td><code>Logical circuit writer matches the comprehensive semantic parity golden</code>; <code>Comprehensive semantic parity fixture round-trips</code></td></tr>
+            <tr><td>2–3 · instances, concrete pins, nets, connectivity</td><td><code>write_logical_circuit</code> emits <code>components</code>, <code>pins</code>, and ordered <code>nets[].pins</code></td><td><code>read_components</code>, <code>read_pins</code>, <code>read_nets</code>; restoration calls <code>add_component</code>, <code>add_pin</code>, and <code>add_net</code> on a new local Circuit</td><td><code>Logical circuit reader rejects a pin connected to more than one net</code>; <code>Authoring connect helper preflights the complete pin range before mutating</code>; LED and single-pin goldens</td></tr>
+            <tr><td>4 · hierarchy and bindings</td><td><code>write_logical_circuit</code> emits <code>module_definitions</code>/<code>module_instances</code>, origins, and bindings</td><td><code>read_module_definitions</code>, <code>read_module_instances</code>, <code>infer_component_origins</code>; restoration uses <code>add_module_definition</code>, <code>add_template_net</code>, <code>add_module_component</code>, <code>connect_module_pin</code>, <code>add_port_definition</code>, <code>restore_root_module_instance</code>, <code>bind_port</code></td><td>Hierarchy golden; concrete-name byte-atomic tests; <code>Logical circuit reader infers missing module component origins for v1 fixtures</code> locks canonical rewrite and second read/write</td></tr>
+            <tr><td>5–6 · typed attributes and physical selection</td><td><code>write_electrical_attributes</code>, <code>write_electrical_attribute_value</code>, <code>write_quantity_payload</code>, <code>write_selected_physical_part</code></td><td><code>electrical_attributes</code>, <code>electrical_attribute_value</code>, <code>physical_part</code>; restoration calls typed electrical restore/set operations and <code>select_physical_part</code></td><td>Typed electrical golden; comprehensive golden; <code>Circuit typed update failures leave canonical bytes unchanged</code></td></tr>
+            <tr><td>7–8 · assembly/no-connect/stub intent</td><td><code>write_logical_circuit</code> emits deterministic <code>design_intent</code> collections</td><td><code>read_design_intent</code>; restoration calls <code>mark_intentional_stub_net</code>, <code>mark_intentional_no_connect_pin</code>, <code>set_component_dnp</code>, <code>set_component_selection_override</code></td><td><code>design_intent_test.cpp</code>, <code>test_design_intent.py</code>, BOM/CPL tests, comprehensive golden</td></tr>
+            <tr><td>9 · net classes</td><td><code>write_net_classes</code> plus <code>write_derived_net_class_rule_value</code></td><td><code>read_net_classes</code>; restoration calls <code>add_net_class</code> and <code>assign_net_class</code></td><td><code>net_classes_test.cpp</code>, logical reader rule tests, comprehensive golden</td></tr>
+            <tr><td>10 · IDs, order, typed errors, EntityRef</td><td>Every table is emitted in typed ID order by <code>write_logical_circuit</code>; errors and <code>EntityRef</code> are not persisted design state</td><td><code>LogicalCircuitParser::parse</code>, typed <code>local_id</code>/<code>resolve</code>, and restoration order checks reject prefix/range/table/cross-reference drift</td><td>Independent/interleaved table restoration tests; <code>errors_test.cpp</code>; Python exception translation tests; architecture checker/self-test</td></tr>
+            <tr><td>11–12 · validation and projections</td><td>Logical writer persists their Circuit inputs, not derived reports, schematic placement, PCB geometry, or exports</td><td>Authored and restored Circuit values enter the same <code>validate_circuit</code>, <code>validate_for_pcb</code>, BOM, CPL, schematic, board, KiCad, and fabrication consumers</td><td>Real-board diagnostic matrices; projection byte snapshots; PCB/KiCad/export goldens; C++/Python exact LED and single-pin parity</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Logical, BOM, and assembly diagnostic contracts</h3>
+      <p class="section-intro">Source of truth: <code>src/circuit/validation/validation.cpp</code> and <code>src/pcb/assembly/cpl.cpp</code>. The real-board regression matrices lock code, severity, category, and entity order; focused validation tests lock the rule behavior. The shared single-pin golden additionally locks its exact message across C++ and Python.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Code</th><th>Severity / category</th><th>Exact message</th><th>EntityRef order</th></tr></thead>
+          <tbody>
+            <tr><td><code>PIN_MUST_NOT_CONNECT</code></td><td>Error / erc</td><td>Pin must not be connected</td><td>pin, component, pin_def, net</td></tr>
+            <tr><td><code>PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED</code></td><td>Error / erc</td><td>Intentional no-connect pin is connected</td><td>pin, component, pin_def, net</td></tr>
+            <tr><td><code>UNCONNECTED_REQUIRED_PIN</code></td><td>Error / erc</td><td>Required pin is not connected</td><td>pin, component, pin_def</td></tr>
+            <tr><td><code>EMPTY_NET</code></td><td>Warning / erc</td><td>Net has no connected pins</td><td>net</td></tr>
+            <tr><td><code>SINGLE_PIN_NET</code></td><td>Warning / erc</td><td>Net has only one connected pin</td><td>net, pin</td></tr>
+            <tr><td><code>PIN_GROUND_ON_NON_GROUND_NET</code></td><td>Error / erc</td><td>Ground pin is connected to a non-ground net</td><td>net, pin, pin_def</td></tr>
+            <tr><td><code>PIN_POWER_ON_GROUND_NET</code></td><td>Error / erc</td><td>Power pin is connected to a ground net</td><td>net, pin, pin_def</td></tr>
+            <tr><td><code>POWER_INPUT_WITHOUT_SOURCE</code></td><td>Error / erc</td><td>Power input is connected to a net with no typed supply source</td><td>net, then ordered power-input pins</td></tr>
+            <tr><td><code>SELECTED_PART_VOLTAGE_RATING_EXCEEDED</code></td><td>Error / erc</td><td>Net voltage exceeds selected part voltage rating</td><td>net, pin, component</td></tr>
+            <tr><td><code>PIN_VOLTAGE_RANGE_VIOLATION</code></td><td>Error / erc</td><td>Net voltage is outside pin voltage range</td><td>net, pin, pin_def</td></tr>
+            <tr><td><code>NET_CLASS_VOLTAGE_EXCEEDED</code></td><td>Error / erc</td><td>Net voltage exceeds assigned net class limit</td><td>net</td></tr>
+            <tr><td><code>MULTIPLE_OUTPUTS_ON_NET</code></td><td>Error / erc</td><td>Net has multiple output drivers</td><td>net, then ordered output pins</td></tr>
+            <tr><td><code>INPUT_SIGNAL_DOMAIN_MISMATCH</code></td><td>Error / erc</td><td>Input pins with incompatible signal domains share a net with no typed driver</td><td>net, then ordered input pins</td></tr>
+            <tr><td><code>UNBOUND_REQUIRED_PORT</code></td><td>Error / erc</td><td>Required module port is not bound</td><td>module_instance, module_def, port_def</td></tr>
+            <tr><td><code>PHYSICAL_PART_REQUIRED</code></td><td>Error / general</td><td>Component requires a selected physical part for PCB readiness</td><td>component, component_def</td></tr>
+            <tr><td><code>BOM_COMPONENT_IMPLICIT_DNP</code></td><td>Error / bom</td><td>Component requires explicit DNP intent for BOM readiness</td><td>component, component_def</td></tr>
+            <tr><td><code>BOM_COMPONENT_MISSING_SELECTED_PART</code></td><td>Error / bom</td><td>Populated component requires a selected physical part for BOM readiness</td><td>component, component_def</td></tr>
+            <tr><td><code>BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY</code></td><td>Error / bom</td><td>Approved alternate MPN duplicates the selected primary MPN</td><td>component, component_def</td></tr>
+            <tr><td><code>ASSEMBLY_COMPONENT_MISSING_SELECTED_PART</code></td><td>Error / assembly</td><td>Populated component requires a selected physical part for assembly handoff</td><td>component, component_def</td></tr>
+            <tr><td><code>ASSEMBLY_PART_IDENTITY_MISSING</code></td><td>Error / assembly</td><td>Populated component has no manufacturer part identity for assembly handoff</td><td>component, component_def</td></tr>
+            <tr><td><code>ASSEMBLY_COMPONENT_UNPLACED</code></td><td>Error / assembly</td><td>Populated BOM component has no board placement for assembly handoff</td><td>component, component_def</td></tr>
+            <tr><td><code>ASSEMBLY_ORIENTATION_AMBIGUOUS</code></td><td>Error / assembly</td><td>Footprint has conflicting assembly rotation-offset data</td><td>component, component_placement</td></tr>
+            <tr><td>Persisted-only pin fields</td><td>No current diagnostic</td><td>Drive kind and polarity remain kernel-owned, deterministic, and inspectable.</td><td>None</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Schematic, PCB, capability, and export diagnostic contracts</h3>
+      <p class="section-intro">Exact construction lives in <code>schematic/readiness_validation.cpp</code>, <code>pcb/board.cpp</code>, <code>pcb/footprints/footprints.cpp</code>, <code>pcb/copper/board_copper_validation.cpp</code>, <code>pcb/validation/board_capability_validation.cpp</code>, the KiCad loss report, and the native fabrication writer. Schematic-readiness, real-board ERC/DRC, footprint, capability, fabrication, and KiCad golden tests lock the corresponding consumers.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Code</th><th>Severity / category</th><th>Exact message or template</th><th>EntityRef order</th></tr></thead>
+          <tbody>
+            <tr><td><code>SCHEMATIC_NO_CONNECT_MARKER_ON_CONNECTED_PIN</code></td><td>Error / general</td><td>Schematic no-connect marker is attached to a connected pin</td><td>no_connect_marker, pin, component, net</td></tr>
+            <tr><td><code>SCHEMATIC_NO_CONNECT_MARKER_WITHOUT_INTENT</code></td><td>Error / general</td><td>Schematic no-connect marker has no matching kernel no-connect intent</td><td>no_connect_marker, pin, component</td></tr>
+            <tr><td><code>SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED</code></td><td>Warning / general</td><td>Kernel no-connect intent is not shown by a schematic no-connect marker</td><td>pin, component, pin_def</td></tr>
+            <tr><td><code>PCB_COMPONENT_NOT_PLACED</code></td><td>Error / pcb.board</td><td>Component has no board placement</td><td>component</td></tr>
+            <tr><td><code>PCB_COMPONENT_MISSING_SELECTED_PART</code></td><td>Error / pcb.board</td><td>Component requires a selected physical part for board placement</td><td>component</td></tr>
+            <tr><td><code>PCB_NET_WITHOUT_PLACED_PADS</code></td><td>Warning / pcb.board</td><td>Net has logical connectivity but no placed pads on the board</td><td>net</td></tr>
+            <tr><td><code>PCB_FOOTPRINT_UNRESOLVED</code></td><td>Error / pcb.board</td><td>Selected physical part footprint cannot be resolved: <var>library:name</var></td><td>component, component_placement</td></tr>
+            <tr><td><code>PCB_PAD_MAPPING_UNKNOWN_PAD</code></td><td>Error / pcb.board</td><td>Selected physical part maps <var>pin_def</var> to unknown footprint pad '<var>pad</var>'</td><td>component, component_placement</td></tr>
+            <tr><td><code>PCB_PAD_MAPPING_NON_ELECTRICAL</code></td><td>Error / pcb.board</td><td>Selected physical part maps <var>pin_def</var> to non-electrical footprint pad '<var>pad</var>'</td><td>component, component_placement</td></tr>
+            <tr><td><code>PCB_PAD_MAPPING_MISSING_PIN</code></td><td>Error / pcb.board</td><td>Footprint electrical pad '<var>pad</var>' has no selected-part pin mapping</td><td>component, component_placement</td></tr>
+            <tr><td><code>PCB_TRACK_WIDTH_BELOW_NET_CLASS</code></td><td>Error / drc</td><td>Track width is below the resolved net class width</td><td>board_track, net, board_layer, optional board_room</td></tr>
+            <tr><td><code>PCB_VIA_DRILL_BELOW_NET_CLASS</code></td><td>Error / drc</td><td>Via drill diameter is below the resolved net class drill</td><td>board_via, net</td></tr>
+            <tr><td><code>PCB_VIA_DIAMETER_BELOW_NET_CLASS</code></td><td>Error / drc</td><td>Via copper diameter is below the resolved net class diameter</td><td>board_via, net</td></tr>
+            <tr><td><code>PCB_COPPER_ON_DISALLOWED_LAYER</code> · track</td><td>Error / drc</td><td>Track is on a layer the resolved net class does not allow</td><td>board_track, net, board_layer</td></tr>
+            <tr><td><code>PCB_COPPER_ON_DISALLOWED_LAYER</code> · zone</td><td>Error / drc</td><td>Zone is on a layer the resolved net class does not allow</td><td>board_zone, net, board_layer</td></tr>
+            <tr><td><code>PCB_RULE_BELOW_CAPABILITY</code></td><td>Error / drc</td><td><var>label</var> is below capability profile minimum</td><td>board (global rule); none (net-class rule); board_room (room rule)</td></tr>
+            <tr><td><code>PCB_RULE_AT_CAPABILITY_MINIMUM</code></td><td>Warning / drc</td><td><var>label</var> is at manufacturing minimum</td><td>board (global rule); none (net-class rule); board_room (room rule)</td></tr>
+            <tr><td><code>PCB_KICAD_FAB_EXPORT_LOSS</code></td><td>Error / pcb.fabrication</td><td>KiCad PCB export has fab-critical loss for <var>construct</var>: <var>message</var></td><td>board</td></tr>
+            <tr><td><code>PCB_NATIVE_FAB_MISSING_GEOMETRY</code>, <code>…UNSUPPORTED_GEOMETRY</code>, <code>…UNSUPPORTED_LAYER</code>, <code>…LOSSY_GEOMETRY</code></td><td>Info/Warning/Error / pcb.fabrication</td><td>Native PCB fabrication export has loss for <var>construct</var>: <var>message</var></td><td>Warning-specific entities; board when none supplied</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="atomicity">
+      <h2>Atomicity proof</h2>
+      <p class="section-intro">“Byte atomic” means a throwing operation leaves <code>write_logical_circuit(circuit)</code> exactly unchanged. Compound boundaries were inventoried separately from single-row operations.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Boundary</th><th>Compound state</th><th>Failure proof</th><th>Disposition</th></tr></thead>
+          <tbody>
+            <tr><td><code>define_component</code></td><td>Definition + ordered owned pin definitions + pin attributes</td><td>Late invalid/duplicate complete-spec tests compare canonical bytes.</td><td><span class="status covered">Covered</span></td></tr>
+            <tr><td><code>define_module</code></td><td>Definition + template nets + components + connections + ports</td><td>Late cross-reference/name failures compare canonical bytes.</td><td><span class="status covered">Covered</span></td></tr>
+            <tr><td><code>instantiate_component</code></td><td>Component + complete concrete pin set</td><td>Missing definition and duplicate reference leave bytes unchanged.</td><td><span class="status covered">Covered</span></td></tr>
+            <tr><td><code>instantiate_root_module</code></td><td>Instance + concrete nets/components/pins + origins</td><td>Duplicate instance and concrete net/reference collisions compare canonical bytes.</td><td><span class="status fixed">Proof added</span></td></tr>
+            <tr><td>C++ bulk <code>authoring::connect</code></td><td>Multiple one-net-per-pin edges</td><td>Late conflict and late invalid pin now preflight the span and compare bytes.</td><td><span class="status fixed">Regression fixed</span></td></tr>
+            <tr><td>Closed component/net updates</td><td>Property/attribute/part/intent/class changes</td><td>Typed code/message and byte helper covers every closed variant, including invalid selected-part mapping.</td><td><span class="status fixed">Proof added</span></td></tr>
+            <tr><td>Python endpoint and net-class bulk operations</td><td>Sequences of kernel operations from ergonomic syntax</td><td>Late type/owner/state failures preserve serialized bytes.</td><td><span class="status covered">Covered</span></td></tr>
+            <tr><td>Python module draft edits</td><td>Draft nets/ports/components/connections</td><td>Candidate-spec preflight leaves materialized JSON and draft unchanged on failure.</td><td><span class="status covered">Covered</span></td></tr>
+            <tr><td>Python root module instantiation</td><td>Draft commit + complete root instantiation</td><td>Operation now commits on a Circuit copy, move-assigns only after success, and proves both bytes and draft editability after failure.</td><td><span class="status fixed">Regression fixed</span></td></tr>
+            <tr><td>Logical restoration</td><td>Every canonical table and cross-reference</td><td>Builds a local new Circuit and returns only after full parse/restoration validation; malformed input cannot partially mutate caller state.</td><td><span class="status covered">Covered</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="persistence">
+      <h2>Persistence proof</h2>
+      <div class="proof-grid">
+        <article class="proof"><h3>Deterministic goldens</h3><p>LED, single-pin diagnostic, typed electrical, hierarchy, and new comprehensive semantic-parity fixtures all satisfy read → write → read and write → read → write byte equality.</p></article>
+        <article class="proof"><h3>One rich aggregate</h3><p><code>tests/fixtures/semantic_parity.volt.json</code> combines provenance, symbols, all scalar property kinds, pin semantics/range, component quantity/tolerance, selected part/rating/model/alternates/mappings, net attributes, complete net-class rules, intent, hierarchy, origins, and bindings.</p></article>
+        <article class="proof"><h3>C++ ↔ Python parity</h3><p>Equivalent LED designs match the same exact JSON golden and empty diagnostic contract. Equivalent output-driver designs match the same exact JSON and the ordered <code>SINGLE_PIN_NET</code> tuple: warning, ERC, exact message, net and pin entities.</p></article>
+        <article class="proof"><h3>Version discipline</h3><p>No redesign-era format difference was found, so no version bump or migration was manufactured. The one pre-existing v1 <code>component_origins</code> omission path is now explicitly documented, tested, validated, and canonicalized on write.</p></article>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <h2>Compatibility and architecture proof</h2>
+      <p class="section-intro">Compatibility means supported authoring and downstream behavior remain stable—not that transitional storage-shaped APIs remain public.</p>
+      <ul class="checks">
+        <li>Public <code>Circuit</code> exposes complete specs, irreducible graph operations, closed typed updates, generic reads, and free queries.</li>
+        <li>No <code>connectivity()</code>, <code>hierarchy()</code>, <code>electrical()</code>, <code>intent()</code>, or <code>net_classes()</code> facade remains.</li>
+        <li>No public passkey, raw restore, per-table stable-ID getter/count, or ordinary compatibility lock remains.</li>
+        <li>The sole logical restore authority is a narrow private friend accepting a typed restoration plan.</li>
+        <li>The public method snapshot detects method/order/include drift.</li>
+        <li>Independent exact public/protected declaration admission prevents a snapshot update from admitting raw same-name overloads, data members, aliases, nested mutation handles, protected escape hatches, or alternate borrowed-range factories.</li>
+        <li>Range constructors are private and checker-enforced; only lvalue <code>Circuit::all</code> can create a correctly sized borrowed range. The checker snapshots the nested iterator's complete public/protected surface so an iterator cannot regrow an alias-, <code>auto</code>-, or <code>decltype</code>-spelled range factory.</li>
+        <li><code>EntityRef</code> scanning prevents reporting metadata from becoming a kernel traversal/mutation handle.</li>
+        <li>Supported C++ examples and Python goldens exercise the typed aggregate.</li>
+        <li>Schematic and PCB constructors borrow a live lvalue Circuit read-only and reject temporaries.</li>
+      </ul>
+    </section>
+
+    <section id="gaps">
+      <h2>Every gap and its disposition</h2>
+      <div class="gap-grid">
+        <article class="gap real"><h3>Real semantic regression · C++ bulk connectivity</h3><p>Late failure could leave earlier pins connected.</p><small>Fixed with full-span preflight and two negative byte regressions.</small></article>
+        <article class="gap real"><h3>Real semantic regression · Python module transaction</h3><p>Failed root instantiation could commit/freeze its draft.</p><small>Fixed with copy/commit transaction; regression proves bytes unchanged and draft remains editable.</small></article>
+        <article class="gap real"><h3>Real architecture regression · borrowed ranges</h3><p>Public construction could forge size and borrow a temporary.</p><small>Fixed by private construction, compile-time tests, checker and self-test.</small></article>
+        <article class="gap proof-gap"><h3>Missing proof · exposed-surface bypass</h3><p>Name-only admission could accept storage-shaped overloads and non-method mutation handles.</p><small>Closed by exact public/protected declaration policy and bypass samples.</small></article>
+        <article class="gap proof-gap"><h3>Missing proof · cross-language parity</h3><p>No test compared equivalent C++/Python JSON and diagnostics.</p><small>Closed with shared valid and diagnostic goldens plus exact tuple checks.</small></article>
+        <article class="gap proof-gap"><h3>Missing proof · rich persistence aggregate</h3><p>Coverage existed but was distributed across inline tests and four fixtures.</p><small>Closed with one comprehensive builder-backed golden and two-direction equivalence.</small></article>
+        <article class="gap proof-gap"><h3>Missing proof · compound negative bytes</h3><p>Two hierarchy collisions checked only counts; invalid part mapping checked only absence.</p><small>Closed with full canonical byte assertions.</small></article>
+        <article class="gap docs"><h3>Documentation mismatch · v1 origins</h3><p>Docs said origins were always required while reader inferred a legacy omission.</p><small>Closed by documenting the narrow deterministic, validated, canonicalizing exception.</small></article>
+        <article class="gap docs"><h3>Documentation gap · rich fields</h3><p>Format docs omitted existing pin, symbol, part, intent, and net-class fields.</p><small>Closed by documenting current v1 behavior without changing the schema.</small></article>
+        <article class="gap"><h3>Out-of-scope future features</h3><p>Nested modules, alias nets, power ties, new CLI/project framework architecture, and Python-only convenience semantics are not redesign regressions.</p><small>No action; they remain separate future work and cannot block parity by analogy.</small></article>
+      </div>
+    </section>
+
+    <section id="verification">
+      <h2>Verification ledger</h2>
+      <p class="section-intro">This page is the durable semantic matrix. The pull request records exact-head CI links and state so the evidence cannot claim a moving branch.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Gate</th><th>Command / evidence</th><th>Local result</th></tr></thead>
+          <tbody>
+            <tr><td>Patch hygiene</td><td><code>git diff --check</code>; <code>python3 scripts/check-format.py</code>; build-config check</td><td>Passed</td></tr>
+            <tr><td>Architecture</td><td>Checker normal + <code>--self-test</code>; public API snapshot; final forbidden-symbol searches</td><td>Passed; no transitional surface found</td></tr>
+            <tr><td>Focused regressions</td><td>Bulk-connect, root-module collision, typed-update, legacy-origin restoration, rich golden, range, and C++/Python parity cases</td><td>13 C++ cases / 86 assertions and 3 Python parity/atomicity cases passed</td></tr>
+            <tr><td>Complete development lane</td><td><code>cmake --workflow --preset dev</code></td><td>749 / 749 tests passed, including 714 C++ tests, 33 Python tests, 6 example-labelled tests, and 2 docs checks</td></tr>
+            <tr><td>Logical persistence</td><td>Reader, writer, round-trip, golden, rich semantic parity, and cross-language cases</td><td>Byte equality and exact diagnostic contracts passed in the complete lane</td></tr>
+            <tr><td>Documentation</td><td>Generated Python API docs, docs-site check, and explicit Doxygen <code>docs</code> target</td><td>Passed</td></tr>
+            <tr><td>Static / dynamic</td><td>clang-tidy workflow; ASan/UBSan workflow; clean sequential coverage run and LCOV extraction</td><td>Coverage passed: 716 / 716 tests, 89.3% lines (21,058 / 23,573) and 92.0% functions (4,783 / 5,200). clang-tidy is not installed locally. macOS ASan stops in Catch2 discovery at the sanitizer runtime initialization check; exact-head Linux CI is authoritative for both.</td></tr>
+            <tr><td>Performance</td><td>C++ resistor-chain benchmark workflow and runtime; targeted review of the Python module transaction</td><td>C++ runtime passed across 100, 1,000, 5,000, and 10,000 component inputs. That benchmark does not exercise Python module instantiation; code review preserves the prior direct path for committed modules and copies only for the first draft commit.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="verdict">
+      <h2>Closure recommendation</h2>
+      <div class="callout">
+        <strong>#267:</strong> close after this branch’s exact-head CI is green and an independent reviewer confirms the matrix/actions. <strong>#261:</strong> close only after #267 is independently accepted and the parent’s native subissue state is rechecked. Do not close #269 or unrelated work by analogy. No merge or issue closure is performed by this evidence lane.
+      </div>
+    </section>
+  </main>
+
+  <footer>Volt Circuit redesign · semantic parity signoff · issue #267</footer>
+</body>
+</html>

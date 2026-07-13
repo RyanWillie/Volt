@@ -68,6 +68,10 @@ static_assert(std::ranges::forward_range<volt::entity_range_t<volt::ComponentId>
 static_assert(std::ranges::sized_range<volt::entity_range_t<volt::ComponentId>>);
 static_assert(std::same_as<std::ranges::range_reference_t<volt::entity_range_t<volt::ComponentId>>,
                            const volt::ComponentInstance &>);
+static_assert(!std::is_constructible_v<volt::entity_range_t<volt::ComponentId>,
+                                       const volt::Circuit &, std::size_t>);
+static_assert(!std::is_constructible_v<volt::entity_range_t<volt::ComponentId>, volt::Circuit &&,
+                                       std::size_t>);
 static_assert(!std::is_constructible_v<volt::entity_range_t<volt::ComponentId>::iterator,
                                        volt::Circuit &&, std::size_t>);
 

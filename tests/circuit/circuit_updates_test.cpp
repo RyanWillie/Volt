@@ -43,7 +43,7 @@ TEST_CASE("Circuit closed typed updates preserve every progressive semantic") {
     const auto definition = volt::test::define_component(
         circuit, "Resistor",
         {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
-    const auto &definition_pins = circuit.get(definition).pins();
+    const auto definition_pins = circuit.get(definition).pins();
     const auto component = volt::test::instantiate_component(circuit, definition, "R1");
     const auto net = volt::test::add_net(circuit, "VCC", volt::NetKind::Power);
     const auto component_attribute = volt::ElectricalAttributeSpec{
@@ -140,7 +140,10 @@ TEST_CASE("Circuit typed update failures leave canonical bytes unchanged") {
     const auto definition =
         volt::test::define_component(circuit, "Test point", {volt::test::passive_pin("1", "1")});
     const auto component = volt::test::instantiate_component(circuit, definition, "TP1");
-    const auto &definition_pins = circuit.get(definition).pins();
+    const auto definition_pins = circuit.get(definition).pins();
+    const auto foreign_definition =
+        volt::test::define_component(circuit, "Foreign", {volt::test::passive_pin("1", "1")});
+    const auto foreign_pin = circuit.get(foreign_definition).pins().front();
     const auto net = volt::test::add_net(circuit, "TEST");
     const auto component_attribute = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"resistance"},
@@ -197,6 +200,12 @@ TEST_CASE("Circuit typed update failures leave canonical bytes unchanged") {
                            volt::SetComponentElectricalAttribute{
                                component_attribute, volt::ElectricalAttributeValue{volt::Quantity{
                                                         volt::UnitDimension::Voltage, 3.3}}});
+        });
+    check_failure_is_byte_atomic(
+        circuit, volt::ErrorCode::CrossReferenceViolation,
+        "Physical part maps a pin outside the component definition", [&] {
+            circuit.update(component, volt::SelectPhysicalPart{
+                                          resistor_part(definition_pins.front(), foreign_pin)});
         });
     check_failure_is_byte_atomic(circuit, volt::ErrorCode::InvalidArgument,
                                  "Assembly intent update must set DNP or selection override intent",
