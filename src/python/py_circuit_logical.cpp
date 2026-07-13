@@ -151,8 +151,21 @@ std::size_t PyCircuit::add_net_class(const std::string &name, const py::dict &op
     return circuit_.define_net_class(volt::NetClassSpec{std::move(net_class)}).index();
 }
 
-void PyCircuit::assign_net_class(std::size_t net, std::size_t net_class) {
-    circuit_.update(net_id(net), volt::AssignNetClass{volt::NetClassId{net_class}});
+void PyCircuit::assign_net_class(const std::vector<std::size_t> &nets, std::size_t net_class) {
+    const auto target_class = volt::NetClassId{net_class};
+    static_cast<void>(circuit_.get(target_class));
+
+    auto targets = std::vector<volt::NetId>{};
+    targets.reserve(nets.size());
+    for (const auto net : nets) {
+        const auto target = net_id(net);
+        static_cast<void>(circuit_.get(target));
+        targets.push_back(target);
+    }
+
+    for (const auto target : targets) {
+        circuit_.update(target, volt::AssignNetClass{target_class});
+    }
 }
 
 py::dict PyCircuit::net_class_info(std::size_t net_class) const {

@@ -55,7 +55,7 @@ class PyCircuit {
 
     [[nodiscard]] std::size_t add_net_class(const std::string &name, const py::dict &options);
 
-    void assign_net_class(std::size_t net, std::size_t net_class);
+    void assign_net_class(const std::vector<std::size_t> &nets, std::size_t net_class);
 
     [[nodiscard]] py::dict net_class_info(std::size_t net_class) const;
 
@@ -125,9 +125,9 @@ class PyCircuit {
     [[nodiscard]] std::size_t add_template_net(std::size_t module, const std::string &name,
                                                const std::string &kind);
 
-    [[nodiscard]] std::size_t add_port(std::size_t module, const std::string &name,
-                                       std::size_t internal_net, const std::string &role,
-                                       bool required);
+    [[nodiscard]] std::pair<std::size_t, std::size_t>
+    add_module_port(std::size_t module, const std::string &name, const std::string &kind,
+                    const std::string &role, bool required);
 
     [[nodiscard]] std::size_t add_module_component(std::size_t module, std::size_t definition,
                                                    const std::string &reference,
@@ -141,8 +141,9 @@ class PyCircuit {
 
     [[nodiscard]] py::list module_component_pin_refs(std::size_t component) const;
 
-    void connect_module_pin(std::size_t module, std::size_t net, std::size_t component,
-                            std::size_t pin);
+    void
+    connect_module_pins(std::size_t module, std::size_t net,
+                        const std::vector<std::pair<std::size_t, std::size_t>> &component_pins);
 
     [[nodiscard]] std::size_t instantiate_root_module(std::size_t definition,
                                                       const std::string &name);

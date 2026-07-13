@@ -100,18 +100,8 @@ volt::ModuleDefId PyCircuit::commit_module(std::size_t module) {
         return requested.committed_id.value();
     }
 
-    for (auto &draft : module_drafts_) {
-        if (!draft.committed_id.has_value()) {
-            draft.committed_id = circuit_.define_module(draft.spec);
-        }
-        if (draft.handle == module) {
-            return draft.committed_id.value();
-        }
-    }
-
-    throw volt::KernelRangeError{volt::ErrorCode::UnknownEntity,
-                                 "Module definition ID does not belong to this circuit",
-                                 volt::EntityRef::module_def(volt::ModuleDefId{module})};
+    requested.committed_id = circuit_.define_module(requested.spec);
+    return requested.committed_id.value();
 }
 
 volt::PortDefId PyCircuit::resolved_port_id(std::size_t port) const {
@@ -206,31 +196,28 @@ std::size_t PyCircuit::add_template_net(std::size_t module, const std::string &n
     return handle;
 }
 
-std::size_t PyCircuit::add_port(std::size_t module, const std::string &name,
-                                std::size_t internal_net, const std::string &role, bool required) {
+std::pair<std::size_t, std::size_t>
+PyCircuit::add_module_port(std::size_t module, const std::string &name, const std::string &kind,
+                           const std::string &role, bool required) {
     auto &draft = module_draft(module);
     if (draft.committed_id.has_value()) {
         throw volt::KernelLogicError{volt::ErrorCode::InvalidState,
                                      "Committed module definitions are immutable"};
     }
-    const auto [net_draft, net_index] = template_net_draft(internal_net);
-    if (net_draft->handle != module) {
-        throw volt::KernelLogicError{
-            volt::ErrorCode::CrossReferenceViolation,
-            "Template net does not belong to module definition",
-            volt::EntityRef::template_net_def(volt::TemplateNetDefId{internal_net})};
-    }
 
     auto candidate = draft.spec;
-    candidate.ports.push_back(volt::ModulePortSpec{volt::PortName{name},
-                                                   candidate.template_nets.at(net_index).name(),
+    candidate.template_nets.emplace_back(volt::NetName{name}, parse_net_kind(kind));
+    preflight_module_drafts(module, candidate);
+    candidate.ports.push_back(volt::ModulePortSpec{volt::PortName{name}, volt::NetName{name},
                                                    parse_port_role(role), required});
     preflight_module_drafts(module, candidate);
 
-    const auto handle = next_port_handle_++;
+    const auto net_handle = next_template_net_handle_++;
+    const auto port_handle = next_port_handle_++;
     draft.spec = std::move(candidate);
-    draft.port_handles.push_back(handle);
-    return handle;
+    draft.template_net_handles.push_back(net_handle);
+    draft.port_handles.push_back(port_handle);
+    return {net_handle, port_handle};
 }
 
 std::size_t PyCircuit::add_module_component(std::size_t module, std::size_t definition,
@@ -296,8 +283,9 @@ py::list PyCircuit::module_component_pin_refs(std::size_t component) const {
     return result;
 }
 
-void PyCircuit::connect_module_pin(std::size_t module, std::size_t net, std::size_t component,
-                                   std::size_t pin) {
+void PyCircuit::connect_module_pins(
+    std::size_t module, std::size_t net,
+    const std::vector<std::pair<std::size_t, std::size_t>> &component_pins) {
     auto &draft = module_draft(module);
     if (draft.committed_id.has_value()) {
         throw volt::KernelLogicError{volt::ErrorCode::InvalidState,
@@ -310,29 +298,32 @@ void PyCircuit::connect_module_pin(std::size_t module, std::size_t net, std::siz
             "Template net does not belong to module definition",
             volt::EntityRef::template_net_def(volt::TemplateNetDefId{net})};
     }
-    const auto [component_draft, component_index] = module_component_draft(component);
-    if (component_draft->handle != module) {
-        throw volt::KernelLogicError{
-            volt::ErrorCode::CrossReferenceViolation,
-            "Module component does not belong to module definition",
-            volt::EntityRef::module_component(volt::ModuleComponentId{component})};
-    }
 
     const auto &target_net = draft.spec.template_nets.at(net_index).name();
-    const auto &target_component = draft.spec.components.at(component_index).reference();
-    const auto pin_definition = volt::PinDefId{pin};
-    const auto existing = std::find_if(draft.spec.connections.begin(), draft.spec.connections.end(),
-                                       [&target_component, pin_definition](const auto &connection) {
-                                           return connection.component == target_component &&
-                                                  connection.pin == pin_definition;
-                                       });
-    if (existing != draft.spec.connections.end() && existing->net == target_net) {
-        return;
-    }
-
     auto candidate = draft.spec;
-    candidate.connections.push_back(
-        volt::ModulePinConnectionSpec{target_net, target_component, pin_definition});
+    for (const auto &[component, pin] : component_pins) {
+        const auto [component_draft, component_index] = module_component_draft(component);
+        if (component_draft->handle != module) {
+            throw volt::KernelLogicError{
+                volt::ErrorCode::CrossReferenceViolation,
+                "Module component does not belong to module definition",
+                volt::EntityRef::module_component(volt::ModuleComponentId{component})};
+        }
+
+        const auto &target_component = draft.spec.components.at(component_index).reference();
+        const auto pin_definition = volt::PinDefId{pin};
+        const auto existing = std::find_if(
+            candidate.connections.begin(), candidate.connections.end(),
+            [&target_component, pin_definition](const auto &connection) {
+                return connection.component == target_component && connection.pin == pin_definition;
+            });
+        if (existing != candidate.connections.end() && existing->net == target_net) {
+            continue;
+        }
+
+        candidate.connections.push_back(
+            volt::ModulePinConnectionSpec{target_net, target_component, pin_definition});
+    }
     preflight_module_drafts(module, candidate);
     draft.spec = std::move(candidate);
 }

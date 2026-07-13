@@ -121,8 +121,9 @@ class ModuleDefinition:
         required: bool = True,
     ) -> ModulePort:
         """Create a module boundary port backed by an internal template net."""
-        net = self._design._circuit.add_template_net(self._index, name, kind)
-        port = self._design._circuit.add_port(self._index, name, net, role, required)
+        net, port = self._design._circuit.add_module_port(
+            self._index, name, kind, role, required
+        )
         self._ports_by_name[name] = port
         return ModulePort(self, net, port, name)
 
@@ -668,10 +669,11 @@ class NetClass:
 
     def assign(self, *nets: Net | Iterable[Net]) -> NetClass:
         """Assign this net class to one or more logical nets."""
-        for net in _flatten_nets(nets):
+        targets = _flatten_nets(nets)
+        for net in targets:
             if net._design is not self._design:
                 raise ValueError("Net belongs to a different design")
-            self._design._circuit.assign_net_class(net.index, self._index)
+        self._design._circuit.assign_net_class([net.index for net in targets], self._index)
         return self
 
     def info(self) -> dict:
@@ -752,6 +754,7 @@ def _connect_module_endpoints(endpoints) -> ModuleNet:
         raise TypeError("Module connections need exactly one ModuleNet or ModulePort")
 
     net = nets[0]
+    component_pins = []
     for endpoint in endpoints:
         if endpoint is net:
             continue
@@ -759,7 +762,9 @@ def _connect_module_endpoints(endpoints) -> ModuleNet:
             raise TypeError("Module nets can only connect ModulePin handles")
         if endpoint._component._module is not net._module:
             raise ValueError("Module pin belongs to a different module")
-        net._module._design._circuit.connect_module_pin(
-            net._module.index, net.index, endpoint._component.index, endpoint.index
+        component_pins.append((endpoint._component.index, endpoint.index))
+    if component_pins:
+        net._module._design._circuit.connect_module_pins(
+            net._module.index, net.index, component_pins
         )
     return net
