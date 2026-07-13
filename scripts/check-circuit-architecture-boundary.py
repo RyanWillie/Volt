@@ -15,6 +15,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CODE_DIRS = [ROOT / "include", ROOT / "src", ROOT / "tests", ROOT / "examples", ROOT / "python"]
 ARCHITECTURE_CODE_DIRS = [ROOT / "include", ROOT / "src"]
+NATIVE_CPP_DIRS = [
+    ROOT / "include",
+    ROOT / "src",
+    ROOT / "tests",
+    ROOT / "examples",
+    ROOT / "benchmarks",
+]
 ALLOWLIST_DIR = ROOT / "tests" / "architecture"
 
 ROOT_TYPES = {
@@ -78,6 +85,76 @@ CIRCUIT_MUTATOR_PUBLIC_API_SNAPSHOTS = {
 }
 
 PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {}
+
+FACADE_ACQUISITION_PATTERN = re.compile(
+    r"\.\s*(connectivity|hierarchy|electrical|intent|net_classes)\s*\(\s*\)"
+)
+FILE_SCOPE = "<file-scope>"
+# Exact deletion-time compatibility locks retained for #266. The key constrains the file,
+# named test scope, and facade; the value constrains the number of acquisitions in that scope.
+CIRCUIT_FACADE_ACQUISITION_LOCKS = {
+    ("tests/circuit/circuit_test.cpp", FILE_SCOPE, "connectivity"): 1,
+    ("tests/circuit/circuit_test.cpp", FILE_SCOPE, "hierarchy"): 1,
+    ("tests/circuit/circuit_test.cpp", FILE_SCOPE, "electrical"): 1,
+    ("tests/circuit/circuit_test.cpp", FILE_SCOPE, "intent"): 1,
+    ("tests/circuit/circuit_test.cpp", FILE_SCOPE, "net_classes"): 1,
+    (
+        "tests/circuit/circuit_test.cpp",
+        "Legacy connectivity facade rejects raw pin instances with missing IDs",
+        "connectivity",
+    ): 2,
+    (
+        "tests/circuit/circuit_test.cpp",
+        "Legacy connectivity facade rejects preconnected nets with missing pins",
+        "connectivity",
+    ): 1,
+    (
+        "tests/circuit/construction_specs_test.cpp",
+        "Legacy electrical facade rejects committed pin-definition mutation",
+        "electrical",
+    ): 1,
+    (
+        "tests/circuit/connectivity/connectivity_model_test.cpp",
+        "Legacy connectivity facade rejects definitions with missing raw pin IDs",
+        "connectivity",
+    ): 1,
+    (
+        "tests/circuit/connectivity/connectivity_model_test.cpp",
+        "Legacy connectivity facade rejects raw pins outside their component definition",
+        "connectivity",
+    ): 1,
+    (
+        "tests/circuit/connectivity/connectivity_model_test.cpp",
+        "Legacy connectivity facade rejects preconnected nets with dangling pins",
+        "connectivity",
+    ): 1,
+    ("tests/circuit/hierarchy/hierarchy_model_test.cpp", FILE_SCOPE, "hierarchy"): 2,
+    (
+        "tests/circuit/hierarchy/hierarchy_model_test.cpp",
+        "Legacy hierarchy facade rejects raw child IDs outside their owning module",
+        "hierarchy",
+    ): 1,
+    (
+        "tests/circuit/hierarchy/hierarchy_test.cpp",
+        "Legacy hierarchy facade preserves incremental connection rejection contracts",
+        "hierarchy",
+    ): 7,
+    (
+        "tests/circuit/hierarchy/hierarchy_test.cpp",
+        "Legacy hierarchy facade preserves late-child binding rejection",
+        "hierarchy",
+    ): 2,
+    (
+        "tests/circuit/hierarchy/hierarchy_test.cpp",
+        "Legacy hierarchy facade preserves raw child entity error payloads",
+        "hierarchy",
+    ): 4,
+    (
+        "tests/circuit/hierarchy/hierarchy_test.cpp",
+        "Legacy hierarchy facade preserves raw module-component entity payloads",
+        "hierarchy",
+    ): 2,
+}
 
 ENTITY_REF_KERNEL_ALLOWLIST = {
     (
@@ -313,6 +390,14 @@ class SubmodelDerivation:
     base: str
 
 
+@dataclass(frozen=True)
+class FacadeAcquisition:
+    path: Path
+    line: int
+    scope: str
+    facade: str
+
+
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
@@ -410,6 +495,20 @@ def architecture_code_files() -> list[Path]:
         for path in directory.rglob("*"):
             if path.suffix in {".cpp", ".hpp", ".h"}:
                 files.append(path)
+    return sorted(files)
+
+
+def native_cpp_files() -> list[Path]:
+    files: list[Path] = []
+    for directory in NATIVE_CPP_DIRS:
+        if not directory.exists():
+            continue
+        for path in directory.rglob("*"):
+            if path.suffix not in {".cpp", ".hpp", ".h"}:
+                continue
+            if is_python_binding_source(path):
+                continue
+            files.append(path)
     return sorted(files)
 
 
@@ -889,6 +988,59 @@ def raw_structural_throw_lines(text: str) -> list[tuple[int, str]]:
     return lines
 
 
+def facade_acquisitions(path: Path, text: str) -> list[FacadeAcquisition]:
+    stripped = strip_cpp_comments_and_strings_preserve_lines(text)
+    test_scopes = [
+        (match.start(), match.group(1))
+        for match in re.finditer(r'TEST_CASE\s*\(\s*"([^"]+)"', text)
+    ]
+    acquisitions: list[FacadeAcquisition] = []
+    for match in FACADE_ACQUISITION_PATTERN.finditer(stripped):
+        scope = FILE_SCOPE
+        for scope_start, scope_name in test_scopes:
+            if scope_start > match.start():
+                break
+            scope = scope_name
+        acquisitions.append(
+            FacadeAcquisition(
+                path=path,
+                line=stripped.count("\n", 0, match.start()) + 1,
+                scope=scope,
+                facade=match.group(1),
+            )
+        )
+    return acquisitions
+
+
+def facade_inventory_failures(
+    acquisitions: list[FacadeAcquisition], expected: dict[tuple[str, str, str], int]
+) -> list[str]:
+    actual: dict[tuple[str, str, str], list[FacadeAcquisition]] = {}
+    for acquisition in acquisitions:
+        key = (relative(acquisition.path), acquisition.scope, acquisition.facade)
+        actual.setdefault(key, []).append(acquisition)
+
+    failures: list[str] = []
+    for key, found in sorted(actual.items()):
+        if key in expected:
+            continue
+        for acquisition in found:
+            failures.append(
+                f"{relative(acquisition.path)}:{acquisition.line} acquires deprecated "
+                f"Circuit::{acquisition.facade}() outside an exact #266 compatibility lock "
+                f"(scope: {acquisition.scope})"
+            )
+    for key, expected_count in sorted(expected.items()):
+        actual_count = len(actual.get(key, []))
+        if actual_count != expected_count:
+            path, scope, facade = key
+            failures.append(
+                f"#266 compatibility lock {path} [{scope}] Circuit::{facade}() expected "
+                f"{expected_count} acquisition(s), found {actual_count}"
+            )
+    return failures
+
+
 def check_rejected_tokens(failures: list[str]) -> None:
     for path in code_files():
         text = read(path)
@@ -1030,6 +1182,15 @@ def check_no_raw_structural_throws(failures: list[str]) -> None:
                 f"use a typed volt::Kernel*Error with an ErrorCode: {line}",
                 failures,
             )
+
+
+def check_no_circuit_facade_acquisition_regrowth(failures: list[str]) -> None:
+    acquisitions = [
+        acquisition
+        for path in native_cpp_files()
+        for acquisition in facade_acquisitions(path, read(path))
+    ]
+    failures.extend(facade_inventory_failures(acquisitions, CIRCUIT_FACADE_ACQUISITION_LOCKS))
 
 
 def subsystem_root_name(path: Path) -> str | None:
@@ -1473,6 +1634,54 @@ def run_self_tests() -> int:
         "raw structural throw checker must keep non-Python source in scope",
     )
 
+    facade_sample = textwrap.dedent(
+        """
+        template <typename Circuit>
+        concept HasConnectivity = requires(Circuit &circuit) { circuit.connectivity(); };
+
+        TEST_CASE("Legacy hierarchy facade lock") {
+            circuit
+                .hierarchy()
+                .connect_module_pin(module, net, component, pin);
+            // circuit.electrical();
+            const char *example = "circuit.intent()";
+        }
+        """
+    )
+    sample_path = Path("tests/sample.cpp")
+    sample_acquisitions = facade_acquisitions(sample_path, facade_sample)
+    sample_locks = {
+        ("tests/sample.cpp", FILE_SCOPE, "connectivity"): 1,
+        ("tests/sample.cpp", "Legacy hierarchy facade lock", "hierarchy"): 1,
+    }
+    require_self_test(
+        not facade_inventory_failures(sample_acquisitions, sample_locks),
+        "exact file/scope/facade compatibility-lock counts must pass",
+    )
+    require_self_test(
+        any(
+            "outside an exact #266 compatibility lock" in failure
+            for failure in facade_inventory_failures(
+                sample_acquisitions,
+                {("tests/sample.cpp", FILE_SCOPE, "connectivity"): 1},
+            )
+        ),
+        "new native C++ facade acquisitions outside compatibility locks must fail",
+    )
+    require_self_test(
+        any(
+            "expected 2 acquisition(s), found 1" in failure
+            for failure in facade_inventory_failures(
+                sample_acquisitions,
+                {
+                    ("tests/sample.cpp", FILE_SCOPE, "connectivity"): 2,
+                    ("tests/sample.cpp", "Legacy hierarchy facade lock", "hierarchy"): 1,
+                },
+            )
+        ),
+        "compatibility-lock count drift must fail",
+    )
+
     entity_ref_bad = textwrap.dedent(
         """
         void mutate_from_ref(Circuit &circuit, EntityRef ref) {
@@ -1547,6 +1756,7 @@ def run_checks() -> int:
     check_no_flat_pcb_public_headers(failures)
     check_privileged_friends_are_allowlisted(failures)
     check_public_api_snapshots(failures)
+    check_no_circuit_facade_acquisition_regrowth(failures)
     check_python_connectivity_semantics(failures)
     check_entity_ref_not_kernel_traversal_handle(failures)
     check_no_raw_structural_throws(failures)

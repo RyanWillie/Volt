@@ -120,8 +120,8 @@ ReadFixture make_read_fixture() {
     const auto module_instance =
         circuit.instantiate_root_module(module_definition, volt::ModuleInstanceName{"CHANNEL_A"});
     const auto port_binding = circuit.bind_port(module_instance, port_definition, parent_net);
-    const auto net_class =
-        circuit.net_classes().add_net_class(volt::NetClass{volt::NetClassName{"Default"}});
+    const auto net_class = circuit.define_net_class(
+        volt::NetClassSpec{.net_class = volt::NetClass{volt::NetClassName{"Default"}}});
 
     return ReadFixture{std::move(circuit),
                        first_pin_definition,

@@ -127,7 +127,7 @@ TEST_CASE("Failed complete component definitions leave canonical bytes unchanged
     });
 }
 
-TEST_CASE("Committed component pin electrical semantics are immutable") {
+TEST_CASE("Legacy electrical facade rejects committed pin-definition mutation") {
     auto circuit = volt::Circuit{};
     const auto definition = circuit.define_component(volt::ComponentSpec{
         .name = "Input",
@@ -136,6 +136,7 @@ TEST_CASE("Committed component pin electrical semantics are immutable") {
     const auto pin = circuit.component_definition(definition).pins().front();
     const auto before = volt::io::write_logical_circuit(circuit);
 
+    // Raw committed PinDef mutation exists only on the transitional facade until #266.
     try {
         circuit.electrical().set_pin_definition_electrical_attribute(
             pin,

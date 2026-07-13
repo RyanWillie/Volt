@@ -1,6 +1,7 @@
 # Hierarchy and Scoped Net Design
 
-Status: design proposal for review. APIs and JSON examples are illustrative.
+Status: design proposal for review. JSON and Python examples are illustrative; the C++ section
+uses the current typed aggregate API.
 
 ## Core rule
 
@@ -134,34 +135,42 @@ buck_b.port("VOUT").connect(board.net("VOUT_B", voltage=3.3))
 `/BUCK_A/FB` and `/BUCK_B/FB` are distinct concrete `NetId`s with the same local name.
 They are not connected unless a future explicit mechanism ties or aliases them.
 
-## Illustrative C++ API shape
+## Current C++ aggregate API shape
 
 ```cpp
-auto buck = circuit.hierarchy().add_module_definition(ModuleDefinition{"BuckConverter"});
+const auto &regulatorPins = circuit.get(buckRegulatorDef).pins();
+const auto buck = circuit.define_module(ModuleSpec{
+    .name = ModuleName{"BuckConverter"},
+    .template_nets = {
+        TemplateNetDefinition{NetName{"VIN"}, NetKind::Power},
+        TemplateNetDefinition{NetName{"VOUT"}, NetKind::Power},
+        TemplateNetDefinition{NetName{"GND"}, NetKind::Ground},
+        TemplateNetDefinition{NetName{"SW"}, NetKind::Signal},
+        TemplateNetDefinition{NetName{"FB"}, NetKind::Signal},
+    },
+    .components = {
+        ModuleComponentTemplate{buckRegulatorDef, ReferenceDesignator{"U"}},
+    },
+    .connections = {
+        ModulePinConnectionSpec{NetName{"VIN"}, ReferenceDesignator{"U"}, regulatorPins[0]},
+        ModulePinConnectionSpec{NetName{"GND"}, ReferenceDesignator{"U"}, regulatorPins[1]},
+        ModulePinConnectionSpec{NetName{"VOUT"}, ReferenceDesignator{"U"}, regulatorPins[2]},
+        ModulePinConnectionSpec{NetName{"SW"}, ReferenceDesignator{"U"}, regulatorPins[3]},
+        ModulePinConnectionSpec{NetName{"FB"}, ReferenceDesignator{"U"}, regulatorPins[4]},
+    },
+    .ports = {
+        ModulePortSpec{PortName{"VIN"}, NetName{"VIN"}, PortRole::PowerInput},
+        ModulePortSpec{PortName{"VOUT"}, NetName{"VOUT"}, PortRole::PowerOutput},
+        ModulePortSpec{PortName{"GND"}, NetName{"GND"}, PortRole::Ground},
+    },
+});
+const auto &ports = circuit.get(buck).ports();
+const auto vinPort = ports[0];
+const auto voutPort = ports[1];
+const auto gndPort = ports[2];
 
-auto vinInternal = circuit.hierarchy().add_template_net(buck, NetName{"VIN"});
-auto voutInternal = circuit.hierarchy().add_template_net(buck, NetName{"VOUT"});
-auto gndInternal = circuit.hierarchy().add_template_net(buck, NetName{"GND"});
-auto sw = circuit.hierarchy().add_template_net(buck, NetName{"SW"});
-auto fb = circuit.hierarchy().add_template_net(buck, NetName{"FB"});
-
-auto vinPort = circuit.hierarchy().add_port_definition(
-    buck, PortDefinition{"VIN", vinInternal, PortRole::PowerInput});
-auto voutPort = circuit.hierarchy().add_port_definition(
-    buck, PortDefinition{"VOUT", voutInternal, PortRole::PowerOutput});
-auto gndPort = circuit.hierarchy().add_port_definition(
-    buck, PortDefinition{"GND", gndInternal, PortRole::Ground});
-
-auto reg = circuit.instantiate_template_component(
-    buck, buckRegulatorDef, ReferenceDesignator{"U"});
-circuit.connect(vinInternal, circuit.template_pin(reg, "VIN"));
-circuit.connect(gndInternal, circuit.template_pin(reg, "GND"));
-circuit.connect(voutInternal, circuit.template_pin(reg, "VOUT"));
-circuit.connect(sw, circuit.template_pin(reg, "SW"));
-circuit.connect(fb, circuit.template_pin(reg, "FB"));
-
-auto buckA = circuit.instantiate_root_module(buck, InstanceName{"BUCK_A"});
-auto buckB = circuit.instantiate_root_module(buck, InstanceName{"BUCK_B"});
+auto buckA = circuit.instantiate_root_module(buck, ModuleInstanceName{"BUCK_A"});
+auto buckB = circuit.instantiate_root_module(buck, ModuleInstanceName{"BUCK_B"});
 
 circuit.bind_port(buckA, vinPort, vinNet);
 circuit.bind_port(buckA, gndPort, gndNet);
@@ -171,6 +180,8 @@ circuit.bind_port(buckB, vinPort, vinNet);
 circuit.bind_port(buckB, gndPort, gndNet);
 circuit.bind_port(buckB, voutPort, voutBNet);
 ```
+
+Pin handles come from the owning component definition rather than positional global IDs.
 
 ## Name resolution rules for the first slice
 

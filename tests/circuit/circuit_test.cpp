@@ -51,6 +51,7 @@ template <typename Circuit>
 concept has_net_class_mutator =
     requires(Circuit &&circuit) { std::forward<Circuit>(circuit).net_classes(); };
 
+// These five acquisition checks lock lvalue-only facade availability until deletion in #266.
 static_assert(has_connectivity_mutator<volt::Circuit &>);
 static_assert(!has_connectivity_mutator<volt::Circuit>);
 static_assert(has_hierarchy_mutator<volt::Circuit &>);
