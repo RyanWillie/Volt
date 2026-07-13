@@ -407,7 +407,7 @@ void Schematic::replace_with(Schematic replacement) {
 [[nodiscard]] SymbolInstanceId Schematic::place_symbol(SheetId sheet, SymbolInstance instance) {
     require_sheet(sheet);
     require_symbol_definition(instance.symbol_definition());
-    static_cast<void>(circuit_.component(instance.component()));
+    static_cast<void>(circuit_.get(instance.component()));
     require_symbol_matches_component(instance.symbol_definition(), instance.component());
     require_authored_region(sheet, instance.authored_region());
 
@@ -418,7 +418,7 @@ void Schematic::replace_with(Schematic replacement) {
 
 [[nodiscard]] JunctionId Schematic::add_junction(SheetId sheet, Junction junction) {
     require_sheet(sheet);
-    static_cast<void>(circuit_.net(junction.net()));
+    static_cast<void>(circuit_.get(junction.net()));
     require_authored_region(sheet, junction.authored_region());
     require_junction_does_not_touch_different_net(sheet, junction);
 
@@ -429,7 +429,7 @@ void Schematic::replace_with(Schematic replacement) {
 
 [[nodiscard]] PowerPortId Schematic::add_power_port(SheetId sheet, PowerPort port) {
     require_sheet(sheet);
-    static_cast<void>(circuit_.net(port.net()));
+    static_cast<void>(circuit_.get(port.net()));
     require_authored_region(sheet, port.authored_region());
 
     const auto id = items_.add_power_port(std::move(port));
@@ -442,7 +442,7 @@ void Schematic::replace_with(Schematic replacement) {
     SchematicOrientation orientation, std::optional<std::size_t> authored_region,
     std::optional<std::string> label) {
     const auto resolved_net = resolve_endpoint_net(net, endpoint, "schematic power port");
-    if (label.has_value() && label.value() == circuit_.net(resolved_net).name().value()) {
+    if (label.has_value() && label.value() == circuit_.get(resolved_net).name().value()) {
         label = std::nullopt;
     }
     return add_power_port(sheet, PowerPort{resolved_net, kind, endpoint.position(), orientation,
@@ -464,7 +464,7 @@ void Schematic::replace_with(Schematic replacement) {
 [[nodiscard]] NoConnectMarkerId Schematic::add_no_connect_marker(SheetId sheet,
                                                                  NoConnectMarker marker) {
     require_sheet(sheet);
-    static_cast<void>(circuit_.pin(marker.pin()));
+    static_cast<void>(circuit_.get(marker.pin()));
     require_authored_region(sheet, marker.authored_region());
 
     const auto id = items_.add_no_connect_marker(std::move(marker));
@@ -474,7 +474,7 @@ void Schematic::replace_with(Schematic replacement) {
 
 [[nodiscard]] SheetPortId Schematic::add_sheet_port(SheetId sheet, SheetPort port) {
     require_sheet(sheet);
-    static_cast<void>(circuit_.net(port.net()));
+    static_cast<void>(circuit_.get(port.net()));
     require_authored_region(sheet, port.authored_region());
 
     const auto id = items_.add_sheet_port(std::move(port));
@@ -509,7 +509,7 @@ Schematic::add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
 
 [[nodiscard]] WireRunId Schematic::add_wire_run(SheetId sheet, WireRun wire) {
     require_sheet(sheet);
-    static_cast<void>(circuit_.net(wire.net()));
+    static_cast<void>(circuit_.get(wire.net()));
     require_authored_region(sheet, wire.authored_region());
     require_wire_run_does_not_collide_with_different_net(sheet, wire);
 
@@ -529,7 +529,7 @@ Schematic::add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
 
 [[nodiscard]] NetLabelId Schematic::add_net_label(SheetId sheet, NetLabel label) {
     require_sheet(sheet);
-    static_cast<void>(circuit_.net(label.net()));
+    static_cast<void>(circuit_.get(label.net()));
     require_authored_region(sheet, label.authored_region());
 
     const auto id = items_.add_net_label(std::move(label));
@@ -709,14 +709,14 @@ void Schematic::require_wire_run_does_not_collide_with_different_net(SheetId she
 }
 
 [[nodiscard]] std::string Schematic::net_label(NetId net) const {
-    const auto &logical_net = circuit_.net(net);
+    const auto &logical_net = circuit_.get(net);
     return logical_net.name().value() + " (net:" + std::to_string(net.index()) + ")";
 }
 
 [[nodiscard]] std::string Schematic::pin_label(PinId pin) const {
-    const auto &pin_ref = circuit_.pin(pin);
-    const auto &component = circuit_.component(pin_ref.component());
-    const auto &definition = circuit_.pin_definition(pin_ref.definition());
+    const auto &pin_ref = circuit_.get(pin);
+    const auto &component = circuit_.get(pin_ref.component());
+    const auto &definition = circuit_.get(pin_ref.definition());
     return component.reference().value() + " pin " + definition.number() + " (" +
            definition.name() + ")";
 }
@@ -734,7 +734,7 @@ void Schematic::require_wire_run_does_not_collide_with_different_net(SheetId she
 [[nodiscard]] std::optional<NetId>
 Schematic::infer_endpoint_net(const SchematicEndpoint &endpoint) const {
     if (endpoint.pin().has_value()) {
-        static_cast<void>(circuit_.pin(endpoint.pin().value()));
+        static_cast<void>(circuit_.get(endpoint.pin().value()));
         const auto pin_net = queries::net_of(circuit_, endpoint.pin().value());
         if (!pin_net.has_value()) {
             throw KernelArgumentError{ErrorCode::InvalidState,
@@ -745,14 +745,14 @@ Schematic::infer_endpoint_net(const SchematicEndpoint &endpoint) const {
         return pin_net.value();
     }
     if (endpoint.port_net().has_value()) {
-        static_cast<void>(circuit_.net(endpoint.port_net().value()));
+        static_cast<void>(circuit_.get(endpoint.port_net().value()));
         return endpoint.port_net().value();
     }
     return std::nullopt;
 }
 
 void Schematic::require_endpoint_matches_net(const SchematicEndpoint &endpoint, NetId net) const {
-    static_cast<void>(circuit_.net(net));
+    static_cast<void>(circuit_.get(net));
     const auto endpoint_net = infer_endpoint_net(endpoint);
     if (endpoint_net.has_value() && endpoint_net.value() != net) {
         if (endpoint.pin().has_value()) {

@@ -38,74 +38,50 @@ template <typename Id> class CircuitEntityRange;
 
 template <> struct CircuitEntityDescriptor<PinDefId> {
     using type = PinDefinition;
-    [[nodiscard]] static const type &get(const Circuit &circuit, PinDefId id);
-    [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
 template <> struct CircuitEntityDescriptor<ComponentDefId> {
     using type = ComponentDefinition;
-    [[nodiscard]] static const type &get(const Circuit &circuit, ComponentDefId id);
-    [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
 template <> struct CircuitEntityDescriptor<ComponentId> {
     using type = ComponentInstance;
-    [[nodiscard]] static const type &get(const Circuit &circuit, ComponentId id);
-    [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
 template <> struct CircuitEntityDescriptor<PinId> {
     using type = PinInstance;
-    [[nodiscard]] static const type &get(const Circuit &circuit, PinId id);
-    [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
 template <> struct CircuitEntityDescriptor<NetId> {
     using type = Net;
-    [[nodiscard]] static const type &get(const Circuit &circuit, NetId id);
-    [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
 template <> struct CircuitEntityDescriptor<ModuleDefId> {
     using type = ModuleDefinition;
-    [[nodiscard]] static const type &get(const Circuit &circuit, ModuleDefId id);
-    [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
 template <> struct CircuitEntityDescriptor<TemplateNetDefId> {
     using type = TemplateNetDefinition;
-    [[nodiscard]] static const type &get(const Circuit &circuit, TemplateNetDefId id);
-    [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
 template <> struct CircuitEntityDescriptor<PortDefId> {
     using type = PortDefinition;
-    [[nodiscard]] static const type &get(const Circuit &circuit, PortDefId id);
-    [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
 template <> struct CircuitEntityDescriptor<ModuleComponentId> {
     using type = ModuleComponentTemplate;
-    [[nodiscard]] static const type &get(const Circuit &circuit, ModuleComponentId id);
-    [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
 template <> struct CircuitEntityDescriptor<ModuleInstanceId> {
     using type = ModuleInstance;
-    [[nodiscard]] static const type &get(const Circuit &circuit, ModuleInstanceId id);
-    [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
 template <> struct CircuitEntityDescriptor<PortBindingId> {
     using type = PortBinding;
-    [[nodiscard]] static const type &get(const Circuit &circuit, PortBindingId id);
-    [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
 template <> struct CircuitEntityDescriptor<NetClassId> {
     using type = NetClass;
-    [[nodiscard]] static const type &get(const Circuit &circuit, NetClassId id);
-    [[nodiscard]] static std::size_t size(const Circuit &circuit) noexcept;
 };
 
 } // namespace detail
@@ -151,212 +127,7 @@ struct LogicalCircuitRestorationPlan;
  *   docs/design/adr-append-only-kernel.md.
  */
 class Circuit {
-  private:
-    struct MutatorKey {
-      public:
-        [[nodiscard]] static MutatorKey make() noexcept { return MutatorKey{}; }
-
-      private:
-        MutatorKey() = default;
-    };
-
   public:
-    /**
-     * Borrow-only facade for connectivity-owned mutations.
-     *
-     * A non-copyable scoped handle tied to a live lvalue Circuit. Root-owned or cross-subsystem
-     * mutations stay on Circuit.
-     */
-    class ConnectivityMutator {
-      public:
-        /** Constructed only by Circuit::connectivity(); callers obtain this facade by value. */
-        ConnectivityMutator(Circuit &circuit, MutatorKey) noexcept;
-
-        ConnectivityMutator(const ConnectivityMutator &) = delete;
-        ConnectivityMutator(ConnectivityMutator &&) = delete;
-        ConnectivityMutator &operator=(const ConnectivityMutator &) = delete;
-        ConnectivityMutator &operator=(ConnectivityMutator &&) = delete;
-
-        /** Store a reusable pin definition and return its stable ID. */
-        [[nodiscard]] PinDefId add_pin_definition(PinDefinition definition);
-
-        /** Store a reusable component definition and return its stable ID. */
-        [[nodiscard]] ComponentDefId add_component_definition(ComponentDefinition definition);
-
-        /** Instantiate a component and all ordered definition pins, returning its stable ID. */
-        [[nodiscard]] ComponentId add_component(ComponentInstance component);
-
-        /** Store a concrete pin instance and return its stable ID. */
-        [[nodiscard]] PinId add_pin(PinInstance pin);
-
-        /** Store a canonical net and return its stable ID. */
-        [[nodiscard]] NetId add_net(Net net);
-
-        /** Set or replace a metadata property on an existing component instance. */
-        void set_component_property(ComponentId component, PropertyKey key, PropertyValue value);
-
-      private:
-        Circuit &circuit_;
-    };
-
-    /**
-     * Borrow-only facade for hierarchy-owned mutations.
-     *
-     * A non-copyable scoped handle tied to a live lvalue Circuit. Root-owned or cross-subsystem
-     * mutations stay on Circuit.
-     */
-    class HierarchyMutator {
-      public:
-        /** Constructed only by Circuit::hierarchy(); callers obtain this facade by value. */
-        HierarchyMutator(Circuit &circuit, MutatorKey) noexcept;
-
-        HierarchyMutator(const HierarchyMutator &) = delete;
-        HierarchyMutator(HierarchyMutator &&) = delete;
-        HierarchyMutator &operator=(const HierarchyMutator &) = delete;
-        HierarchyMutator &operator=(HierarchyMutator &&) = delete;
-
-        /** Store a reusable logical module definition and return its stable ID. */
-        [[nodiscard]] ModuleDefId add_module_definition(ModuleDefinition definition);
-
-        /** Add a template-local net to a reusable module definition. */
-        [[nodiscard]] TemplateNetDefId add_template_net(ModuleDefId module,
-                                                        TemplateNetDefinition net);
-
-        /** Add a boundary port to a reusable module definition. */
-        [[nodiscard]] PortDefId add_port_definition(ModuleDefId module, PortDefinition port);
-
-        /** Add a component occurrence to a reusable module definition. */
-        [[nodiscard]] ModuleComponentId add_module_component(ModuleDefId module,
-                                                             ModuleComponentTemplate component);
-
-        /** Connect a module component template pin to a template-local net. */
-        bool connect_module_pin(ModuleDefId module, TemplateNetDefId net,
-                                ModuleComponentId component, PinDefId pin);
-
-      private:
-        Circuit &circuit_;
-    };
-
-    /**
-     * Borrow-only facade for electrical-owned mutations.
-     *
-     * A non-copyable scoped handle tied to a live lvalue Circuit. Root-owned or cross-subsystem
-     * mutations stay on Circuit.
-     */
-    class ElectricalMutator {
-      public:
-        /** Constructed only by Circuit::electrical(); callers obtain this facade by value. */
-        ElectricalMutator(Circuit &circuit, MutatorKey) noexcept;
-
-        ElectricalMutator(const ElectricalMutator &) = delete;
-        ElectricalMutator(ElectricalMutator &&) = delete;
-        ElectricalMutator &operator=(const ElectricalMutator &) = delete;
-        ElectricalMutator &operator=(ElectricalMutator &&) = delete;
-
-        /** Set or replace a typed electrical attribute on an existing component instance. */
-        void set_component_electrical_attribute(ComponentId component,
-                                                const ElectricalAttributeSpec &spec,
-                                                ElectricalAttributeValue value);
-
-        /** Set a typed attribute before a pin definition is committed to a component. */
-        void set_pin_definition_electrical_attribute(PinDefId pin_definition,
-                                                     const ElectricalAttributeSpec &spec,
-                                                     ElectricalAttributeValue value);
-
-        /** Set or replace a typed electrical attribute on an existing net. */
-        void set_net_electrical_attribute(NetId net, const ElectricalAttributeSpec &spec,
-                                          ElectricalAttributeValue value);
-
-        /** Assign a selected physical implementation to an existing component instance. */
-        void select_physical_part(ComponentId component, PhysicalPart physical_part);
-
-        /** Set or replace a typed electrical attribute on a component's selected physical part. */
-        void set_selected_part_electrical_attribute(ComponentId component,
-                                                    const ElectricalAttributeSpec &spec,
-                                                    ElectricalAttributeValue value);
-
-      private:
-        Circuit &circuit_;
-    };
-
-    /**
-     * Borrow-only facade for design-intent mutations.
-     *
-     * A non-copyable scoped handle tied to a live lvalue Circuit. Root-owned or cross-subsystem
-     * mutations stay on Circuit.
-     */
-    class IntentMutator {
-      public:
-        /** Constructed only by Circuit::intent(); callers obtain this facade by value. */
-        IntentMutator(Circuit &circuit, MutatorKey) noexcept;
-
-        IntentMutator(const IntentMutator &) = delete;
-        IntentMutator(IntentMutator &&) = delete;
-        IntentMutator &operator=(const IntentMutator &) = delete;
-        IntentMutator &operator=(IntentMutator &&) = delete;
-
-        /** Record that an otherwise empty or single-ended named net is intentionally exported. */
-        bool mark_intentional_stub_net(NetId net);
-
-        /** Record that an otherwise connectable concrete pin is intentionally left open. */
-        bool mark_intentional_no_connect_pin(PinId pin);
-
-        /** Set explicit do-not-populate assembly intent for an existing component. */
-        void set_component_dnp(ComponentId component, bool dnp);
-
-        /** Set or clear selected-part override assembly intent for an existing component. */
-        void set_component_selection_override(ComponentId component, bool override);
-
-      private:
-        Circuit &circuit_;
-    };
-
-    /**
-     * Borrow-only facade for net-class mutations.
-     *
-     * A non-copyable scoped handle tied to a live lvalue Circuit. Root-owned or cross-subsystem
-     * mutations stay on Circuit.
-     */
-    class NetClassMutator {
-      public:
-        /** Constructed only by Circuit::net_classes(); callers obtain this facade by value. */
-        NetClassMutator(Circuit &circuit, MutatorKey) noexcept;
-
-        NetClassMutator(const NetClassMutator &) = delete;
-        NetClassMutator(NetClassMutator &&) = delete;
-        NetClassMutator &operator=(const NetClassMutator &) = delete;
-        NetClassMutator &operator=(NetClassMutator &&) = delete;
-
-        /** Store a reusable net class intent definition. */
-        [[nodiscard]] NetClassId add_net_class(NetClass net_class);
-
-        /** Assign an existing net class to an existing logical net. */
-        bool assign_net_class(NetId net, NetClassId net_class);
-
-      private:
-        Circuit &circuit_;
-    };
-
-    /** Return the borrow-only connectivity mutation facade. */
-    [[nodiscard]] ConnectivityMutator connectivity() & noexcept;
-    [[nodiscard]] ConnectivityMutator connectivity() && = delete;
-
-    /** Return the borrow-only hierarchy mutation facade. */
-    [[nodiscard]] HierarchyMutator hierarchy() & noexcept;
-    [[nodiscard]] HierarchyMutator hierarchy() && = delete;
-
-    /** Return the borrow-only electrical mutation facade. */
-    [[nodiscard]] ElectricalMutator electrical() & noexcept;
-    [[nodiscard]] ElectricalMutator electrical() && = delete;
-
-    /** Return the borrow-only design-intent mutation facade. */
-    [[nodiscard]] IntentMutator intent() & noexcept;
-    [[nodiscard]] IntentMutator intent() && = delete;
-
-    /** Return the borrow-only net-class mutation facade. */
-    [[nodiscard]] NetClassMutator net_classes() & noexcept;
-    [[nodiscard]] NetClassMutator net_classes() && = delete;
-
     /** Atomically commit one complete reusable component definition. */
     [[nodiscard]] ComponentDefId define_component(ComponentSpec spec);
 
@@ -466,9 +237,6 @@ class Circuit {
     [[nodiscard]] const std::vector<ComponentAssemblyIntent> &
     component_assembly_intents() const noexcept;
 
-    /** Return a reusable net class intent definition by ID. */
-    [[nodiscard]] const NetClass &net_class(NetClassId id) const;
-
     /** Return a net class by stable name, if one exists. */
     [[nodiscard]] std::optional<NetClassId> net_class_by_name(const NetClassName &name) const;
 
@@ -478,91 +246,6 @@ class Circuit {
     /** Return net-class net assignments in deterministic insertion order. */
     [[nodiscard]] const std::vector<std::pair<NetId, NetClassId>> &
     net_class_assignments() const noexcept;
-
-    /** Return a reusable pin definition by ID. */
-    [[nodiscard]] const PinDefinition &pin_definition(PinDefId id) const;
-
-    /** Return a reusable component definition by ID. */
-    [[nodiscard]] const ComponentDefinition &component_definition(ComponentDefId id) const;
-
-    /** Return a component instance by ID. */
-    [[nodiscard]] const ComponentInstance &component(ComponentId id) const;
-
-    /** Return a concrete pin instance by ID. */
-    [[nodiscard]] const PinInstance &pin(PinId id) const { return connectivity_.pin(id); }
-
-    /** Return a canonical net by ID. */
-    [[nodiscard]] const Net &net(NetId id) const { return connectivity_.net(id); }
-
-    /** Return a reusable module definition by ID. */
-    [[nodiscard]] const ModuleDefinition &module_definition(ModuleDefId id) const;
-
-    /** Return a template-local net definition by ID. */
-    [[nodiscard]] const TemplateNetDefinition &template_net_definition(TemplateNetDefId id) const {
-        return hierarchy_.template_net_definition(id);
-    }
-
-    /** Return a module port definition by ID. */
-    [[nodiscard]] const PortDefinition &port_definition(PortDefId id) const;
-
-    /** Return a module component template by ID. */
-    [[nodiscard]] const ModuleComponentTemplate &
-    module_component_template(ModuleComponentId id) const {
-        return hierarchy_.module_component_template(id);
-    }
-
-    /** Return a root-level module instance by ID. */
-    [[nodiscard]] const ModuleInstance &module_instance(ModuleInstanceId id) const;
-
-    /** Return an explicit module port binding by ID. */
-    [[nodiscard]] const PortBinding &port_binding(PortBindingId id) const;
-
-    /** Return the number of reusable pin definitions. */
-    [[nodiscard]] std::size_t pin_definition_count() const noexcept;
-
-    /** Return the number of reusable component definitions. */
-    [[nodiscard]] std::size_t component_definition_count() const noexcept;
-
-    /** Return the number of component instances. */
-    [[nodiscard]] std::size_t component_count() const noexcept {
-        return connectivity_.component_count();
-    }
-
-    /** Return the number of concrete pin instances. */
-    [[nodiscard]] std::size_t pin_count() const noexcept { return connectivity_.pin_count(); }
-
-    /** Return the number of canonical nets. */
-    [[nodiscard]] std::size_t net_count() const noexcept { return connectivity_.net_count(); }
-
-    /** Return the number of reusable module definitions. */
-    [[nodiscard]] std::size_t module_definition_count() const noexcept;
-
-    /** Return the number of template-local net definitions. */
-    [[nodiscard]] std::size_t template_net_definition_count() const noexcept {
-        return hierarchy_.template_net_definition_count();
-    }
-
-    /** Return the number of module port definitions. */
-    [[nodiscard]] std::size_t port_definition_count() const noexcept;
-
-    /** Return the number of module component templates. */
-    [[nodiscard]] std::size_t module_component_count() const noexcept;
-
-    /** Return the number of module pin template connections. */
-    [[nodiscard]] std::size_t module_pin_connection_count() const noexcept;
-
-    /** Return the number of root-level module instances. */
-    [[nodiscard]] std::size_t module_instance_count() const noexcept;
-
-    /** Return the number of explicit module port bindings. */
-    [[nodiscard]] std::size_t port_binding_count() const noexcept {
-        return hierarchy_.port_binding_count();
-    }
-
-    /** Return the number of reusable net class intent definitions. */
-    [[nodiscard]] std::size_t net_class_count() const noexcept {
-        return net_classes_.net_class_count();
-    }
 
   private:
     friend Circuit
@@ -696,129 +379,6 @@ class Circuit {
     NetClassStorage net_classes_;
 };
 
-/// @cond
-inline const PinDefinition &detail::CircuitEntityDescriptor<PinDefId>::get(const Circuit &circuit,
-                                                                           PinDefId id) {
-    return circuit.pin_definition(id);
-}
-
-inline std::size_t
-detail::CircuitEntityDescriptor<PinDefId>::size(const Circuit &circuit) noexcept {
-    return circuit.pin_definition_count();
-}
-
-inline const ComponentDefinition &
-detail::CircuitEntityDescriptor<ComponentDefId>::get(const Circuit &circuit, ComponentDefId id) {
-    return circuit.component_definition(id);
-}
-
-inline std::size_t
-detail::CircuitEntityDescriptor<ComponentDefId>::size(const Circuit &circuit) noexcept {
-    return circuit.component_definition_count();
-}
-
-inline const ComponentInstance &
-detail::CircuitEntityDescriptor<ComponentId>::get(const Circuit &circuit, ComponentId id) {
-    return circuit.component(id);
-}
-
-inline std::size_t
-detail::CircuitEntityDescriptor<ComponentId>::size(const Circuit &circuit) noexcept {
-    return circuit.component_count();
-}
-
-inline const PinInstance &detail::CircuitEntityDescriptor<PinId>::get(const Circuit &circuit,
-                                                                      PinId id) {
-    return circuit.pin(id);
-}
-
-inline std::size_t detail::CircuitEntityDescriptor<PinId>::size(const Circuit &circuit) noexcept {
-    return circuit.pin_count();
-}
-
-inline const Net &detail::CircuitEntityDescriptor<NetId>::get(const Circuit &circuit, NetId id) {
-    return circuit.net(id);
-}
-
-inline std::size_t detail::CircuitEntityDescriptor<NetId>::size(const Circuit &circuit) noexcept {
-    return circuit.net_count();
-}
-
-inline const ModuleDefinition &
-detail::CircuitEntityDescriptor<ModuleDefId>::get(const Circuit &circuit, ModuleDefId id) {
-    return circuit.module_definition(id);
-}
-
-inline std::size_t
-detail::CircuitEntityDescriptor<ModuleDefId>::size(const Circuit &circuit) noexcept {
-    return circuit.module_definition_count();
-}
-
-inline const TemplateNetDefinition &
-detail::CircuitEntityDescriptor<TemplateNetDefId>::get(const Circuit &circuit,
-                                                       TemplateNetDefId id) {
-    return circuit.template_net_definition(id);
-}
-
-inline std::size_t
-detail::CircuitEntityDescriptor<TemplateNetDefId>::size(const Circuit &circuit) noexcept {
-    return circuit.template_net_definition_count();
-}
-
-inline const PortDefinition &detail::CircuitEntityDescriptor<PortDefId>::get(const Circuit &circuit,
-                                                                             PortDefId id) {
-    return circuit.port_definition(id);
-}
-
-inline std::size_t
-detail::CircuitEntityDescriptor<PortDefId>::size(const Circuit &circuit) noexcept {
-    return circuit.port_definition_count();
-}
-
-inline const ModuleComponentTemplate &
-detail::CircuitEntityDescriptor<ModuleComponentId>::get(const Circuit &circuit,
-                                                        ModuleComponentId id) {
-    return circuit.module_component_template(id);
-}
-
-inline std::size_t
-detail::CircuitEntityDescriptor<ModuleComponentId>::size(const Circuit &circuit) noexcept {
-    return circuit.module_component_count();
-}
-
-inline const ModuleInstance &
-detail::CircuitEntityDescriptor<ModuleInstanceId>::get(const Circuit &circuit,
-                                                       ModuleInstanceId id) {
-    return circuit.module_instance(id);
-}
-
-inline std::size_t
-detail::CircuitEntityDescriptor<ModuleInstanceId>::size(const Circuit &circuit) noexcept {
-    return circuit.module_instance_count();
-}
-
-inline const PortBinding &
-detail::CircuitEntityDescriptor<PortBindingId>::get(const Circuit &circuit, PortBindingId id) {
-    return circuit.port_binding(id);
-}
-
-inline std::size_t
-detail::CircuitEntityDescriptor<PortBindingId>::size(const Circuit &circuit) noexcept {
-    return circuit.port_binding_count();
-}
-
-inline const NetClass &detail::CircuitEntityDescriptor<NetClassId>::get(const Circuit &circuit,
-                                                                        NetClassId id) {
-    return circuit.net_class(id);
-}
-
-inline std::size_t
-detail::CircuitEntityDescriptor<NetClassId>::size(const Circuit &circuit) noexcept {
-    return circuit.net_class_count();
-}
-
-/// @endcond
-
 /**
  * Non-owning forward range over one Circuit entity family.
  *
@@ -887,8 +447,8 @@ template <typename Id> class CircuitEntityRange {
     [[nodiscard]] std::size_t size() const noexcept { return size_; }
 
     /** Construct a correctly sized range borrowing a live Circuit lvalue. */
-    explicit CircuitEntityRange(const Circuit &circuit) noexcept
-        : circuit_{&circuit}, size_{detail::CircuitEntityDescriptor<Id>::size(circuit)} {}
+    CircuitEntityRange(const Circuit &circuit, std::size_t size) noexcept
+        : circuit_{&circuit}, size_{size} {}
 
     /** Prevent a range from borrowing a temporary Circuit. */
     CircuitEntityRange(const Circuit &&) = delete;
@@ -903,11 +463,61 @@ template <typename Id> class CircuitEntityRange {
 /// @endcond
 
 template <CircuitEntityId Id> [[nodiscard]] const entity_type_t<Id> &Circuit::get(Id id) const {
-    return detail::CircuitEntityDescriptor<Id>::get(*this, id);
+    if constexpr (std::same_as<Id, PinDefId>) {
+        return connectivity_.pin_definition(id);
+    } else if constexpr (std::same_as<Id, ComponentDefId>) {
+        return connectivity_.component_definition(id);
+    } else if constexpr (std::same_as<Id, ComponentId>) {
+        return connectivity_.component(id);
+    } else if constexpr (std::same_as<Id, PinId>) {
+        return connectivity_.pin(id);
+    } else if constexpr (std::same_as<Id, NetId>) {
+        return connectivity_.net(id);
+    } else if constexpr (std::same_as<Id, ModuleDefId>) {
+        return hierarchy_.module_definition(id);
+    } else if constexpr (std::same_as<Id, TemplateNetDefId>) {
+        return hierarchy_.template_net_definition(id);
+    } else if constexpr (std::same_as<Id, PortDefId>) {
+        return hierarchy_.port_definition(id);
+    } else if constexpr (std::same_as<Id, ModuleComponentId>) {
+        return hierarchy_.module_component_template(id);
+    } else if constexpr (std::same_as<Id, ModuleInstanceId>) {
+        return hierarchy_.module_instance(id);
+    } else if constexpr (std::same_as<Id, PortBindingId>) {
+        return hierarchy_.port_binding(id);
+    } else {
+        return net_classes_.net_class(id);
+    }
 }
 
 template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> Circuit::all() const & {
-    return entity_range_t<Id>{*this};
+    std::size_t size = 0;
+    if constexpr (std::same_as<Id, PinDefId>) {
+        size = connectivity_.pin_definition_count();
+    } else if constexpr (std::same_as<Id, ComponentDefId>) {
+        size = connectivity_.component_definition_count();
+    } else if constexpr (std::same_as<Id, ComponentId>) {
+        size = connectivity_.component_count();
+    } else if constexpr (std::same_as<Id, PinId>) {
+        size = connectivity_.pin_count();
+    } else if constexpr (std::same_as<Id, NetId>) {
+        size = connectivity_.net_count();
+    } else if constexpr (std::same_as<Id, ModuleDefId>) {
+        size = hierarchy_.module_definition_count();
+    } else if constexpr (std::same_as<Id, TemplateNetDefId>) {
+        size = hierarchy_.template_net_definition_count();
+    } else if constexpr (std::same_as<Id, PortDefId>) {
+        size = hierarchy_.port_definition_count();
+    } else if constexpr (std::same_as<Id, ModuleComponentId>) {
+        size = hierarchy_.module_component_count();
+    } else if constexpr (std::same_as<Id, ModuleInstanceId>) {
+        size = hierarchy_.module_instance_count();
+    } else if constexpr (std::same_as<Id, PortBindingId>) {
+        size = hierarchy_.port_binding_count();
+    } else {
+        size = net_classes_.net_class_count();
+    }
+    return entity_range_t<Id>{*this, size};
 }
 
 } // namespace volt

@@ -62,7 +62,7 @@ std::size_t PyCircuit::place_schematic_symbol(std::size_t sheet, std::size_t com
     static_cast<void>(projection.sheet(sheet_handle));
 
     const auto component_handle = component_id(component);
-    static_cast<void>(circuit_.component(component_handle));
+    static_cast<void>(circuit_.get(component_handle));
 
     const auto symbol_definition = ensure_schematic_symbol(symbol);
     return projection

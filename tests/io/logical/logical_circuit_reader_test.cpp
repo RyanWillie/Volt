@@ -198,24 +198,23 @@ TEST_CASE("Logical circuit reader preserves net classes and net assignments") {
 
     const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
 
-    CHECK(circuit.net_class_count() == 1);
+    CHECK(circuit.all<volt::NetClassId>().size() == 1);
     REQUIRE(circuit.net_class_for_net(volt::NetId{0}).has_value());
     CHECK(circuit.net_class_for_net(volt::NetId{0}).value() == volt::NetClassId{0});
-    CHECK(circuit.net_class(volt::NetClassId{0}).name() == volt::NetClassName{"Logic"});
-    REQUIRE(circuit.net_class(volt::NetClassId{0}).maximum_net_voltage().has_value());
-    CHECK(circuit.net_class(volt::NetClassId{0}).maximum_net_voltage()->value() == 3.6);
-    REQUIRE(circuit.net_class(volt::NetClassId{0}).copper_clearance_mm().has_value());
-    CHECK(circuit.net_class(volt::NetClassId{0}).copper_clearance_mm().value() == 0.25);
-    CHECK(circuit.net_class(volt::NetClassId{0}).track_width_mm() == 0.3);
-    REQUIRE(circuit.net_class(volt::NetClassId{0}).derived_track_width().has_value());
-    CHECK(circuit.net_class(volt::NetClassId{0}).derived_track_width()->value_mm ==
-          0.3003762222199717);
-    CHECK(circuit.net_class(volt::NetClassId{0}).via_drill_mm() == 0.3);
-    CHECK(circuit.net_class(volt::NetClassId{0}).via_diameter_mm() == 0.6);
-    CHECK(circuit.net_class(volt::NetClassId{0}).allowed_layer_names() ==
+    CHECK(circuit.get(volt::NetClassId{0}).name() == volt::NetClassName{"Logic"});
+    REQUIRE(circuit.get(volt::NetClassId{0}).maximum_net_voltage().has_value());
+    CHECK(circuit.get(volt::NetClassId{0}).maximum_net_voltage()->value() == 3.6);
+    REQUIRE(circuit.get(volt::NetClassId{0}).copper_clearance_mm().has_value());
+    CHECK(circuit.get(volt::NetClassId{0}).copper_clearance_mm().value() == 0.25);
+    CHECK(circuit.get(volt::NetClassId{0}).track_width_mm() == 0.3);
+    REQUIRE(circuit.get(volt::NetClassId{0}).derived_track_width().has_value());
+    CHECK(circuit.get(volt::NetClassId{0}).derived_track_width()->value_mm == 0.3003762222199717);
+    CHECK(circuit.get(volt::NetClassId{0}).via_drill_mm() == 0.3);
+    CHECK(circuit.get(volt::NetClassId{0}).via_diameter_mm() == 0.6);
+    CHECK(circuit.get(volt::NetClassId{0}).allowed_layer_names() ==
           std::vector<std::string>{"F.Cu", "B.Cu"});
-    CHECK(circuit.net_class(volt::NetClassId{0}).priority() == 5);
-    CHECK(circuit.net_class(volt::NetClassId{0}).default_for_net_kind() == volt::NetKind::Power);
+    CHECK(circuit.get(volt::NetClassId{0}).priority() == 5);
+    CHECK(circuit.get(volt::NetClassId{0}).default_for_net_kind() == volt::NetKind::Power);
 
     const auto report = volt::validate_electrical_rules(circuit);
     REQUIRE(report.count() == 1);
@@ -312,8 +311,7 @@ TEST_CASE("Logical circuit reader round-trips net-class layer scopes") {
 
     const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
 
-    CHECK(circuit.net_class(volt::NetClassId{0}).layer_scope() ==
-          volt::NetClassLayerScope::OuterOnly);
+    CHECK(circuit.get(volt::NetClassId{0}).layer_scope() == volt::NetClassLayerScope::OuterOnly);
     const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
     CHECK(output["net_classes"] == fixture["net_classes"]);
 }
@@ -371,16 +369,11 @@ TEST_CASE("Logical circuit reader preserves pin electrical semantics") {
     };
 
     const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
-    CHECK(circuit.pin_definition(volt::PinDefId{0}).terminal_kind() ==
-          volt::ElectricalTerminalKind::Signal);
-    CHECK(circuit.pin_definition(volt::PinDefId{0}).direction() ==
-          volt::ElectricalDirection::Output);
-    CHECK(circuit.pin_definition(volt::PinDefId{0}).signal_domain() ==
-          volt::ElectricalSignalDomain::Digital);
-    CHECK(circuit.pin_definition(volt::PinDefId{0}).drive_kind() ==
-          volt::ElectricalDriveKind::PushPull);
-    CHECK(circuit.pin_definition(volt::PinDefId{0}).polarity() ==
-          volt::ElectricalPolarity::ActiveHigh);
+    CHECK(circuit.get(volt::PinDefId{0}).terminal_kind() == volt::ElectricalTerminalKind::Signal);
+    CHECK(circuit.get(volt::PinDefId{0}).direction() == volt::ElectricalDirection::Output);
+    CHECK(circuit.get(volt::PinDefId{0}).signal_domain() == volt::ElectricalSignalDomain::Digital);
+    CHECK(circuit.get(volt::PinDefId{0}).drive_kind() == volt::ElectricalDriveKind::PushPull);
+    CHECK(circuit.get(volt::PinDefId{0}).polarity() == volt::ElectricalPolarity::ActiveHigh);
 
     const auto &range = circuit.pin_definition_electrical_attributes(volt::PinDefId{0})
                             .get(volt::ElectricalAttributeName{"voltage_range"})
@@ -472,15 +465,14 @@ TEST_CASE("Logical circuit reader preserves hierarchy module scaffold") {
 
     const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
 
-    CHECK(circuit.module_definition_count() == 1);
-    CHECK(circuit.template_net_definition_count() == 2);
-    CHECK(circuit.port_definition_count() == 1);
-    CHECK(circuit.module_component_count() == 1);
-    CHECK(circuit.module_pin_connection_count() == 2);
-    CHECK(circuit.module_instance_count() == 1);
-    CHECK(circuit.port_binding_count() == 1);
-    CHECK(circuit.module_definition(volt::ModuleDefId{0}).name() ==
-          volt::ModuleName{"BuckConverter"});
+    CHECK(circuit.all<volt::ModuleDefId>().size() == 1);
+    CHECK(circuit.all<volt::TemplateNetDefId>().size() == 2);
+    CHECK(circuit.all<volt::PortDefId>().size() == 1);
+    CHECK(circuit.all<volt::ModuleComponentId>().size() == 1);
+    CHECK(circuit.module_pin_connections(volt::ModuleDefId{0}).size() == 2);
+    CHECK(circuit.all<volt::ModuleInstanceId>().size() == 1);
+    CHECK(circuit.all<volt::PortBindingId>().size() == 1);
+    CHECK(circuit.get(volt::ModuleDefId{0}).name() == volt::ModuleName{"BuckConverter"});
     CHECK(volt::queries::concrete_net_for(circuit, volt::ModuleInstanceId{0},
                                           volt::TemplateNetDefId{0}) == volt::NetId{3});
     CHECK(volt::queries::concrete_net_for(circuit, volt::ModuleInstanceId{0},
@@ -488,7 +480,7 @@ TEST_CASE("Logical circuit reader preserves hierarchy module scaffold") {
     CHECK(volt::queries::concrete_component_for(circuit, volt::ModuleInstanceId{0},
                                                 volt::ModuleComponentId{0}) ==
           volt::ComponentId{3});
-    CHECK(circuit.port_binding(volt::PortBindingId{0}).parent_net() == volt::NetId{0});
+    CHECK(circuit.get(volt::PortBindingId{0}).parent_net() == volt::NetId{0});
 }
 
 TEST_CASE("Logical circuit reader infers missing module component origins for v1 fixtures") {
@@ -497,8 +489,8 @@ TEST_CASE("Logical circuit reader infers missing module component origins for v1
 
     const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
 
-    CHECK(circuit.module_instance_count() == 1);
-    CHECK(circuit.module_component_count() == 1);
+    CHECK(circuit.all<volt::ModuleInstanceId>().size() == 1);
+    CHECK(circuit.all<volt::ModuleComponentId>().size() == 1);
     CHECK(volt::queries::concrete_component_for(circuit, volt::ModuleInstanceId{0},
                                                 volt::ModuleComponentId{0}) ==
           volt::ComponentId{0});

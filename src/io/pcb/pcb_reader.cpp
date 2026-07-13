@@ -647,7 +647,7 @@ void PcbBoardReader::read_placements(Board &board, const nlohmann::json &board_j
         require_sequential_id(placement_json, "id", expected,
                               "PCB component placement IDs must be sequential");
         const auto component = typed_id<ComponentId>(placement_json, "component");
-        if (component.index() >= circuit_.component_count()) {
+        if (component.index() >= circuit_.all<volt::ComponentId>().size()) {
             throw KernelLogicError{ErrorCode::UnknownEntity,
                                    "PCB placement references missing component"};
         }
@@ -676,7 +676,7 @@ void PcbBoardReader::read_tracks(Board &board, const nlohmann::json &board_json)
         require_sequential_id(track_json, "id", expected, "PCB track IDs must be sequential");
 
         const auto net = typed_id<NetId>(track_json, "net");
-        if (net.index() >= circuit_.net_count()) {
+        if (net.index() >= circuit_.all<volt::NetId>().size()) {
             throw KernelLogicError{ErrorCode::UnknownEntity, "PCB track references missing net"};
         }
         const auto layer = typed_id<BoardLayerId>(track_json, "layer");
@@ -711,7 +711,7 @@ void PcbBoardReader::read_vias(Board &board, const nlohmann::json &board_json) c
         require_sequential_id(via_json, "id", expected, "PCB via IDs must be sequential");
 
         const auto net = typed_id<NetId>(via_json, "net");
-        if (net.index() >= circuit_.net_count()) {
+        if (net.index() >= circuit_.all<volt::NetId>().size()) {
             throw KernelLogicError{ErrorCode::UnknownEntity, "PCB via references missing net"};
         }
         const auto start_layer = typed_id<BoardLayerId>(via_json, "start_layer");
@@ -767,7 +767,7 @@ void PcbBoardReader::read_zones(Board &board, const nlohmann::json &board_json) 
         auto net = std::optional<NetId>{};
         if (net_value.has_value()) {
             net = decode_local_id<NetId>(net_value.value());
-            if (net->index() >= circuit_.net_count()) {
+            if (net->index() >= circuit_.all<volt::NetId>().size()) {
                 throw KernelLogicError{ErrorCode::UnknownEntity, "PCB zone references missing net"};
             }
         }
@@ -940,7 +940,7 @@ void PcbBoardReader::validate_viewer_pad_resolution(const Board &board,
                                "PCB viewer pad resolution references missing placement"};
     }
     const auto component = typed_id<ComponentId>(pad_resolution, "component");
-    if (component.index() >= circuit_.component_count()) {
+    if (component.index() >= circuit_.all<volt::ComponentId>().size()) {
         throw KernelLogicError{ErrorCode::UnknownEntity,
                                "PCB viewer pad resolution references missing component"};
     }
@@ -979,18 +979,18 @@ void PcbBoardReader::validate_viewer_pad_resolution(const Board &board,
     const auto pin = nullable_string_field(pad_resolution, "pin");
     if (pin.has_value()) {
         const auto pin_id = decode_local_id<PinId>(pin.value());
-        if (pin_id.index() >= circuit_.pin_count()) {
+        if (pin_id.index() >= circuit_.all<volt::PinId>().size()) {
             throw KernelLogicError{ErrorCode::UnknownEntity,
                                    "PCB viewer pad resolution references missing pin"};
         }
-        require_cross_reference(circuit_.pin(pin_id).component() == component,
+        require_cross_reference(circuit_.get(pin_id).component() == component,
                                 "PCB viewer pad resolution pin does not belong to component");
     }
 
     const auto net = nullable_string_field(pad_resolution, "net");
     if (net.has_value()) {
         const auto net_id = decode_local_id<NetId>(net.value());
-        if (net_id.index() >= circuit_.net_count()) {
+        if (net_id.index() >= circuit_.all<volt::NetId>().size()) {
             throw KernelLogicError{ErrorCode::UnknownEntity,
                                    "PCB viewer pad resolution references missing net"};
         }
@@ -1192,56 +1192,56 @@ void PcbBoardReader::validate_viewer_diagnostic_ref(const Board &board,
                                "PCB viewer diagnostic references missing board"};
     }
     if (const auto id = decode_if_prefixed<ComponentDefId>(ref)) {
-        if (id->index() >= circuit_.component_definition_count()) {
+        if (id->index() >= circuit_.all<volt::ComponentDefId>().size()) {
             throw KernelLogicError{ErrorCode::UnknownEntity,
                                    "PCB viewer diagnostic references missing component definition"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<ComponentId>(ref)) {
-        if (id->index() >= circuit_.component_count()) {
+        if (id->index() >= circuit_.all<volt::ComponentId>().size()) {
             throw KernelLogicError{ErrorCode::UnknownEntity,
                                    "PCB viewer diagnostic references missing component"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<PinDefId>(ref)) {
-        if (id->index() >= circuit_.pin_definition_count()) {
+        if (id->index() >= circuit_.all<volt::PinDefId>().size()) {
             throw KernelLogicError{ErrorCode::UnknownEntity,
                                    "PCB viewer diagnostic references missing pin definition"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<PinId>(ref)) {
-        if (id->index() >= circuit_.pin_count()) {
+        if (id->index() >= circuit_.all<volt::PinId>().size()) {
             throw KernelLogicError{ErrorCode::UnknownEntity,
                                    "PCB viewer diagnostic references missing pin"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<NetId>(ref)) {
-        if (id->index() >= circuit_.net_count()) {
+        if (id->index() >= circuit_.all<volt::NetId>().size()) {
             throw KernelLogicError{ErrorCode::UnknownEntity,
                                    "PCB viewer diagnostic references missing net"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<ModuleDefId>(ref)) {
-        if (id->index() >= circuit_.module_definition_count()) {
+        if (id->index() >= circuit_.all<volt::ModuleDefId>().size()) {
             throw KernelLogicError{ErrorCode::UnknownEntity,
                                    "PCB viewer diagnostic references missing module definition"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<ModuleInstanceId>(ref)) {
-        if (id->index() >= circuit_.module_instance_count()) {
+        if (id->index() >= circuit_.all<volt::ModuleInstanceId>().size()) {
             throw KernelLogicError{ErrorCode::UnknownEntity,
                                    "PCB viewer diagnostic references missing module instance"};
         }
         return;
     }
     if (const auto id = decode_if_prefixed<PortDefId>(ref)) {
-        if (id->index() >= circuit_.port_definition_count()) {
+        if (id->index() >= circuit_.all<volt::PortDefId>().size()) {
             throw KernelLogicError{ErrorCode::UnknownEntity,
                                    "PCB viewer diagnostic references missing port definition"};
         }

@@ -10,20 +10,6 @@
 
 namespace {
 
-// These concepts lock the transitional facade boundary until its scheduled deletion in #266.
-template <typename Model>
-concept CanAddModuleComponent =
-    requires(Model model, volt::ModuleDefId module, volt::ModuleComponentTemplate component) {
-        model.hierarchy().add_module_component(module, component);
-    };
-
-template <typename Model>
-concept CanConnectModulePin =
-    requires(Model model, volt::ModuleDefId module, volt::TemplateNetDefId net,
-             volt::ModuleComponentId component, volt::PinDefId pin) {
-        model.hierarchy().connect_module_pin(module, net, component, pin);
-    };
-
 template <typename Model>
 concept CanRestoreRootModuleInstance = requires(
     Model model, volt::ModuleDefId definition, volt::ModuleInstanceName name,
@@ -52,8 +38,6 @@ concept CanBindPort = requires(Model model, volt::ModuleInstanceId instance, vol
     model.bind_port(instance, port, internal_net, parent_net);
 };
 
-static_assert(!CanAddModuleComponent<volt::HierarchyModel>);
-static_assert(!CanConnectModulePin<volt::HierarchyModel>);
 static_assert(!CanRestoreRootModuleInstance<volt::HierarchyModel>);
 static_assert(!CanRecordModuleNetOrigin<volt::HierarchyModel>);
 static_assert(!CanRecordModuleComponentOrigin<volt::HierarchyModel>);
@@ -117,24 +101,6 @@ TEST_CASE("Circuit complete modules reject duplicate names within local hierarch
                         .ports = {volt::ModulePortSpec{volt::PortName{"IN"}, volt::NetName{"IN"}},
                                   volt::ModulePortSpec{volt::PortName{"IN"}, volt::NetName{"IN"}}},
                     }),
-                    std::logic_error);
-}
-
-TEST_CASE("Legacy hierarchy facade rejects raw child IDs outside their owning module") {
-    auto circuit = volt::Circuit{};
-    const auto first = circuit.define_module(volt::ModuleSpec{
-        .name = volt::ModuleName{"First"},
-        .template_nets = {volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal}},
-    });
-    const auto second = circuit.define_module(volt::ModuleSpec{
-        .name = volt::ModuleName{"Second"},
-        .template_nets = {volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal}},
-    });
-    const auto second_net = circuit.get(second).template_nets().front();
-
-    // Cross-module raw ID insertion remains only on the transitional facade until #266.
-    CHECK_THROWS_AS(circuit.hierarchy().add_port_definition(
-                        first, volt::PortDefinition{volt::PortName{"BAD"}, second_net}),
                     std::logic_error);
 }
 

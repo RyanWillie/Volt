@@ -161,7 +161,7 @@ authoring surface over kernel-owned state. Schematic and PCB layers are implemen
 projections over the logical circuit, not alternate owners of connectivity.
 
 See [docs/architecture.md](docs/architecture.md) for the architectural outline,
-[docs/authoring-api.md](docs/authoring-api.md) for the programmatic authoring facade
+[docs/authoring-api.md](docs/authoring-api.md) for the programmatic authoring
 boundary, [docs/logical-circuit-format.md](docs/logical-circuit-format.md) for the
 canonical logical circuit file format, and
 [docs/schema-versioning.md](docs/schema-versioning.md) for file compatibility policy.

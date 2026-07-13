@@ -129,9 +129,6 @@ class HierarchyModel {
     /** Return the number of module component templates. */
     [[nodiscard]] std::size_t module_component_count() const noexcept;
 
-    /** Return the number of module pin template connections. */
-    [[nodiscard]] std::size_t module_pin_connection_count() const noexcept;
-
     /** Return the number of module instances. */
     [[nodiscard]] std::size_t module_instance_count() const noexcept;
 

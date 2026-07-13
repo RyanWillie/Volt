@@ -65,7 +65,7 @@ TEST_CASE("Schematic JSON round-trips deterministically") {
     const auto loaded = volt::io::read_schematic_text(output, circuit);
 
     CHECK(volt::io::write_schematic(loaded) == output);
-    CHECK(circuit.net(net).pins().empty());
+    CHECK(circuit.get(net).pins().empty());
 }
 
 TEST_CASE("Schematic JSON round-trips terminal lead line roles") {

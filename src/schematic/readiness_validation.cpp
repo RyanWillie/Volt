@@ -21,7 +21,7 @@ void validate_component_placement_coverage(const Schematic &schematic, const She
                                            DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
     const auto &instance = schematic.symbol_instance(instance_id);
-    const auto &component = circuit.component(instance.component());
+    const auto &component = circuit.get(instance.component());
     const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
 
     for (const auto &symbol_pin : symbol.pins()) {
@@ -40,16 +40,16 @@ void validate_component_placement_coverage(const Schematic &schematic, const She
     }
 
     for (const auto pin_id : queries::pins_for(circuit, instance.component())) {
-        const auto &pin_instance = circuit.pin(pin_id);
+        const auto &pin_instance = circuit.get(pin_id);
         const auto pin_def_id = pin_instance.definition();
         const auto net = queries::net_of(circuit, pin_id);
         if (!net.has_value() || schematic_readiness_exempts_pin(circuit, pin_id, pin_def_id)) {
             continue;
         }
-        const auto &pin_definition = circuit.pin_definition(pin_def_id);
+        const auto &pin_definition = circuit.get(pin_def_id);
         const auto symbol_pin = symbol_pin_by_number(symbol, pin_definition.number());
         if (!symbol_pin.has_value()) {
-            const auto &net_model = circuit.net(net.value());
+            const auto &net_model = circuit.get(net.value());
             report.add(Diagnostic{
                 Severity::Error,
                 DiagnosticCode{"SCHEMATIC_CONNECTED_PIN_MISSING_SYMBOL_PIN"},
@@ -73,7 +73,7 @@ void validate_component_placement_coverage(const Schematic &schematic, const She
             continue;
         }
 
-        const auto &net_model = circuit.net(net.value());
+        const auto &net_model = circuit.get(net.value());
         report.add(Diagnostic{
             Severity::Error,
             DiagnosticCode{"SCHEMATIC_PIN_NET_NOT_VISUALLY_COVERED"},
@@ -89,13 +89,13 @@ void validate_component_placement_coverage(const Schematic &schematic, const She
 
 void validate_component_placements(const Schematic &schematic, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
-    for (std::size_t component_index = 0; component_index < circuit.component_count();
+    for (std::size_t component_index = 0; component_index < circuit.all<volt::ComponentId>().size();
          ++component_index) {
         const auto component_id = ComponentId{component_index};
         const auto placements = symbol_instances_for_component(schematic, component_id);
         if (placements.empty()) {
             if (component_is_schematic_relevant(circuit, component_id)) {
-                const auto &component = circuit.component(component_id);
+                const auto &component = circuit.get(component_id);
                 report.add(Diagnostic{
                     Severity::Error,
                     DiagnosticCode{"SCHEMATIC_COMPONENT_NOT_PLACED"},
@@ -112,7 +112,7 @@ void validate_component_placements(const Schematic &schematic, DiagnosticReport 
             for (const auto instance_id : placements) {
                 refs.push_back(EntityRef::symbol_instance(instance_id));
             }
-            const auto &component = circuit.component(component_id);
+            const auto &component = circuit.get(component_id);
             report.add(Diagnostic{
                 Severity::Error,
                 DiagnosticCode{"SCHEMATIC_COMPONENT_DUPLICATE_PLACEMENT"},
@@ -127,7 +127,7 @@ void validate_component_placements(const Schematic &schematic, DiagnosticReport 
 void validate_repeated_labels(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                               DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
-    for (std::size_t net_index = 0; net_index < circuit.net_count(); ++net_index) {
+    for (std::size_t net_index = 0; net_index < circuit.all<volt::NetId>().size(); ++net_index) {
         const auto net_id = NetId{net_index};
         auto count = std::size_t{0};
         for (const auto label_id : sheet.net_labels()) {
@@ -136,7 +136,7 @@ void validate_repeated_labels(const Schematic &schematic, SheetId sheet_id, cons
             }
         }
         if (count > repeated_label_warning_threshold) {
-            const auto &net = circuit.net(net_id);
+            const auto &net = circuit.get(net_id);
             report.add(Diagnostic{
                 Severity::Warning,
                 DiagnosticCode{"SCHEMATIC_REPEATED_NET_LABELS"},
@@ -152,7 +152,7 @@ void validate_fragmented_pin_labels_for_net(const Schematic &schematic, SheetId 
                                             const Sheet &sheet, NetId net_id,
                                             DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
-    const auto &net = circuit.net(net_id);
+    const auto &net = circuit.get(net_id);
     if (net.pins().size() < fragmented_pin_label_threshold) {
         return;
     }
@@ -193,7 +193,7 @@ void validate_fragmented_pin_labels_for_net(const Schematic &schematic, SheetId 
 void validate_fragmented_pin_labels(const Schematic &schematic, SheetId sheet_id,
                                     const Sheet &sheet, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
-    for (std::size_t net_index = 0; net_index < circuit.net_count(); ++net_index) {
+    for (std::size_t net_index = 0; net_index < circuit.all<volt::NetId>().size(); ++net_index) {
         validate_fragmented_pin_labels_for_net(schematic, sheet_id, sheet, NetId{net_index},
                                                report);
     }
@@ -316,7 +316,7 @@ void validate_no_connect_markers(const Schematic &schematic, SheetId sheet_id, c
     const auto &circuit = schematic.circuit();
     for (const auto marker_id : sheet.no_connect_markers()) {
         const auto &marker = schematic.no_connect_marker(marker_id);
-        const auto &pin = circuit.pin(marker.pin());
+        const auto &pin = circuit.get(marker.pin());
         const auto net = queries::net_of(circuit, marker.pin());
         if (net.has_value()) {
             report.add(Diagnostic{
@@ -348,7 +348,7 @@ void validate_missing_no_connect_markers(const Schematic &schematic, DiagnosticR
         if (schematic_has_no_connect_marker_for_pin(schematic, pin_id)) {
             continue;
         }
-        const auto &pin = circuit.pin(pin_id);
+        const auto &pin = circuit.get(pin_id);
         report.add(Diagnostic{
             Severity::Warning,
             DiagnosticCode{"SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED"},

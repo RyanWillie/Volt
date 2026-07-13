@@ -91,7 +91,7 @@ namespace volt::io::detail {
     for (const auto &connection : plan.hierarchy.connections) {
         circuit.require_pin_definition(connection.pin);
         const auto &component = circuit.hierarchy_.module_component_template(connection.component);
-        const auto &pins = circuit.component_definition(component.definition()).pins();
+        const auto &pins = circuit.get(component.definition()).pins();
         if (std::find(pins.begin(), pins.end(), connection.pin) == pins.end()) {
             throw KernelLogicError{ErrorCode::CrossReferenceViolation,
                                    "Pin definition does not belong to module component definition"};
@@ -127,10 +127,9 @@ namespace volt::io::detail {
     }
 
     for (auto &selected : plan.selected_physical_parts) {
-        const auto definition = circuit.component(selected.component).definition();
-        circuit.electrical_.select_physical_part(selected.component,
-                                                 std::move(selected.physical_part),
-                                                 circuit.component_definition(definition).pins());
+        const auto definition = circuit.get(selected.component).definition();
+        circuit.electrical_.select_physical_part(
+            selected.component, std::move(selected.physical_part), circuit.get(definition).pins());
         for (const auto &[name, value] : selected.electrical_attributes.entries()) {
             circuit.electrical_.set_selected_part_attribute(
                 selected.component,

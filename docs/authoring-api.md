@@ -6,10 +6,11 @@ becoming the logical kernel. The authoring layer is a convenience facade over `C
 invariants. The planned Python-facing boundary is documented separately in
 [python-api.md](python-api.md).
 
-The accepted replacement for the current low-level facade boundary is recorded in
-[ADR: Typed Circuit Aggregate API](design/adr-circuit-aggregate-api.md). The five existing
-borrow-only mutator facades are frozen transition machinery: existing calls may remain until
-their migration phase, but new authoring work must not extend them.
+The low-level kernel boundary is the typed aggregate contract recorded in
+[ADR: Typed Circuit Aggregate API](design/adr-circuit-aggregate-api.md). Authoring code uses
+complete specs, irreducible graph operations, closed typed updates, generic `get`/`all` reads,
+and free derived queries; subsystem mutation facades and storage-shaped root methods are not
+part of the public API.
 
 ## Goals
 

@@ -65,16 +65,16 @@ TEST_CASE("Circuit instantiates component pins from the component definition") {
     const auto pins = volt::queries::pins_for(circuit, component);
 
     CHECK(component == volt::ComponentId{0});
-    CHECK(circuit.component(component).definition() == led);
-    CHECK(circuit.component(component).reference() == volt::ReferenceDesignator{"D1"});
-    CHECK(circuit.component_count() == 1);
+    CHECK(circuit.get(component).definition() == led);
+    CHECK(circuit.get(component).reference() == volt::ReferenceDesignator{"D1"});
+    CHECK(circuit.all<volt::ComponentId>().size() == 1);
     REQUIRE(pins.size() == 2);
     CHECK(pins[0] == volt::PinId{0});
     CHECK(pins[1] == volt::PinId{1});
-    CHECK(circuit.pin(pins[0]).component() == component);
-    CHECK(circuit.pin(pins[0]).definition() == anode);
-    CHECK(circuit.pin(pins[1]).component() == component);
-    CHECK(circuit.pin(pins[1]).definition() == cathode);
+    CHECK(circuit.get(pins[0]).component() == component);
+    CHECK(circuit.get(pins[0]).definition() == anode);
+    CHECK(circuit.get(pins[1]).component() == component);
+    CHECK(circuit.get(pins[1]).definition() == cathode);
 }
 
 TEST_CASE("Circuit instantiates components with instance properties") {
@@ -86,7 +86,7 @@ TEST_CASE("Circuit instantiates components with instance properties") {
         resistor, volt::ReferenceDesignator{"R1"},
         volt::PropertyMap{{volt::PropertyKey{"value"}, volt::PropertyValue{"330 ohm"}}});
 
-    CHECK(circuit.component(component).properties().get(volt::PropertyKey{"value"}) ==
+    CHECK(circuit.get(component).properties().get(volt::PropertyKey{"value"}) ==
           volt::PropertyValue{"330 ohm"});
 }
 

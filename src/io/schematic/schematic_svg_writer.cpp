@@ -123,7 +123,7 @@ namespace volt::io::detail {
     }
     for (const auto port_id : sheet.power_ports()) {
         const auto &port = schematic.power_port(port_id);
-        const auto &net = schematic.circuit().net(port.net());
+        const auto &net = schematic.circuit().get(port.net());
         include(
             ::volt::io::detail::power_port_bounds(port, port.label().value_or(net.name().value())));
     }
@@ -135,7 +135,7 @@ namespace volt::io::detail {
     }
     for (const auto label_id : sheet.net_labels()) {
         const auto &label = schematic.net_label(label_id);
-        const auto &net = schematic.circuit().net(label.net());
+        const auto &net = schematic.circuit().get(label.net());
         include(text_bounds(label.text_position(), label.orientation(),
                             label.label().value_or(net.name().value()), label.style(),
                             schematic_svg_visual_scale.net_label_font_size));

@@ -242,7 +242,7 @@ void BoardSpatialIndex::ensure_geometry_current() const {
 }
 
 void BoardSpatialIndex::validate_shape(const detail::BoardCopperShape &shape) const {
-    if (shape.net.index() >= state().board->circuit().net_count()) {
+    if (shape.net.index() >= state().board->circuit().all<NetId>().size()) {
         throw KernelArgumentError{ErrorCode::UnknownEntity,
                                   "Board spatial index shape net must belong to the board",
                                   EntityRef::net(shape.net)};
@@ -531,8 +531,8 @@ namespace detail {
     for (const auto &entry : board.design_rules().clearance_matrix()) {
         result = std::max(result, entry.clearance_mm);
     }
-    for (std::size_t index = 0; index < board.circuit().net_class_count(); ++index) {
-        const auto clearance = board.circuit().net_class(NetClassId{index}).copper_clearance_mm();
+    for (std::size_t index = 0; index < board.circuit().all<volt::NetClassId>().size(); ++index) {
+        const auto clearance = board.circuit().get(NetClassId{index}).copper_clearance_mm();
         if (clearance.has_value()) {
             result = std::max(result, clearance.value());
         }

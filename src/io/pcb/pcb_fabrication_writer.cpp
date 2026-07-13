@@ -550,7 +550,7 @@ void report_invalid_pad_resolution(const Board &board, const PadResolution &reso
     if (resolution.status() != PadResolutionStatus::Invalid) {
         return;
     }
-    const auto &component = board.circuit().component(resolution.component());
+    const auto &component = board.circuit().get(resolution.component());
     add_fab_critical_warning(loss_report, PcbFabricationLossKind::MissingGeometry, "pad_resolution",
                              "Footprint pad " + component.reference().value() + "." +
                                  resolution.pad_label() +

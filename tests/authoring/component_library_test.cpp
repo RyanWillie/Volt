@@ -30,10 +30,10 @@ TEST_CASE("Component library defines a component from a data-driven spec") {
             volt::DefinitionSource{"volt.sensors", "analog_sensor", "1.0.0"},
         });
 
-    REQUIRE(circuit.pin_definition_count() == 2);
-    REQUIRE(circuit.component_definition_count() == 1);
+    REQUIRE(circuit.all<volt::PinDefId>().size() == 2);
+    REQUIRE(circuit.all<volt::ComponentDefId>().size() == 1);
 
-    const auto &definition = circuit.component_definition(component_definition);
+    const auto &definition = circuit.get(component_definition);
     CHECK(definition.name() == "Sensor");
     REQUIRE(definition.pins().size() == 2);
     CHECK(definition.properties().get(volt::PropertyKey{"category"}).as_string() == "sensor");
@@ -42,14 +42,14 @@ TEST_CASE("Component library defines a component from a data-driven spec") {
     CHECK(definition.source()->name() == "analog_sensor");
     CHECK(definition.source()->version() == "1.0.0");
 
-    const auto &power = circuit.pin_definition(definition.pins()[0]);
+    const auto &power = circuit.get(definition.pins()[0]);
     CHECK(power.name() == "VDD");
     CHECK(power.number() == "1");
     CHECK(power.connection_requirement() == volt::ConnectionRequirement::Required);
     CHECK(power.terminal_kind() == volt::ElectricalTerminalKind::Power);
     CHECK(power.direction() == volt::ElectricalDirection::Input);
 
-    const auto &output = circuit.pin_definition(definition.pins()[1]);
+    const auto &output = circuit.get(definition.pins()[1]);
     CHECK(output.name() == "OUT");
     CHECK(output.number() == "2");
     CHECK(output.connection_requirement() == volt::ConnectionRequirement::Optional);
@@ -77,30 +77,30 @@ TEST_CASE("Passive component catalog specs define two required passive pins") {
     const auto resistor = volt::authoring::define_component(circuit, volt::authoring::resistor());
     const auto capacitor = volt::authoring::define_component(circuit, volt::authoring::capacitor());
 
-    const auto &resistor_definition = circuit.component_definition(resistor);
+    const auto &resistor_definition = circuit.get(resistor);
     REQUIRE(resistor_definition.pins().size() == 2);
-    CHECK(circuit.pin_definition(resistor_definition.pins()[0]).name() == "1");
-    CHECK(circuit.pin_definition(resistor_definition.pins()[0]).number() == "1");
-    CHECK(circuit.pin_definition(resistor_definition.pins()[0]).connection_requirement() ==
+    CHECK(circuit.get(resistor_definition.pins()[0]).name() == "1");
+    CHECK(circuit.get(resistor_definition.pins()[0]).number() == "1");
+    CHECK(circuit.get(resistor_definition.pins()[0]).connection_requirement() ==
           volt::ConnectionRequirement::Required);
-    CHECK(circuit.pin_definition(resistor_definition.pins()[0]).terminal_kind() ==
+    CHECK(circuit.get(resistor_definition.pins()[0]).terminal_kind() ==
           volt::ElectricalTerminalKind::Passive);
-    CHECK(circuit.pin_definition(resistor_definition.pins()[0]).direction() ==
+    CHECK(circuit.get(resistor_definition.pins()[0]).direction() ==
           volt::ElectricalDirection::Passive);
-    CHECK(circuit.pin_definition(resistor_definition.pins()[1]).name() == "2");
-    CHECK(circuit.pin_definition(resistor_definition.pins()[1]).number() == "2");
-    CHECK(circuit.pin_definition(resistor_definition.pins()[1]).terminal_kind() ==
+    CHECK(circuit.get(resistor_definition.pins()[1]).name() == "2");
+    CHECK(circuit.get(resistor_definition.pins()[1]).number() == "2");
+    CHECK(circuit.get(resistor_definition.pins()[1]).terminal_kind() ==
           volt::ElectricalTerminalKind::Passive);
 
-    const auto &capacitor_definition = circuit.component_definition(capacitor);
+    const auto &capacitor_definition = circuit.get(capacitor);
     REQUIRE(capacitor_definition.pins().size() == 2);
-    CHECK(circuit.pin_definition(capacitor_definition.pins()[0]).name() == "1");
-    CHECK(circuit.pin_definition(capacitor_definition.pins()[0]).number() == "1");
-    CHECK(circuit.pin_definition(capacitor_definition.pins()[0]).terminal_kind() ==
+    CHECK(circuit.get(capacitor_definition.pins()[0]).name() == "1");
+    CHECK(circuit.get(capacitor_definition.pins()[0]).number() == "1");
+    CHECK(circuit.get(capacitor_definition.pins()[0]).terminal_kind() ==
           volt::ElectricalTerminalKind::Passive);
-    CHECK(circuit.pin_definition(capacitor_definition.pins()[1]).name() == "2");
-    CHECK(circuit.pin_definition(capacitor_definition.pins()[1]).number() == "2");
-    CHECK(circuit.pin_definition(capacitor_definition.pins()[1]).direction() ==
+    CHECK(circuit.get(capacitor_definition.pins()[1]).name() == "2");
+    CHECK(circuit.get(capacitor_definition.pins()[1]).number() == "2");
+    CHECK(circuit.get(capacitor_definition.pins()[1]).direction() ==
           volt::ElectricalDirection::Passive);
 }
 
@@ -111,29 +111,28 @@ TEST_CASE("LED and connector catalog specs preserve expected logical pin convent
     const auto connector =
         volt::authoring::define_component(circuit, volt::authoring::connector_1x02());
 
-    const auto &led_definition = circuit.component_definition(led);
+    const auto &led_definition = circuit.get(led);
     REQUIRE(led_definition.pins().size() == 2);
-    CHECK(circuit.pin_definition(led_definition.pins()[0]).name() == "A");
-    CHECK(circuit.pin_definition(led_definition.pins()[0]).number() == "2");
-    CHECK(circuit.pin_definition(led_definition.pins()[0]).terminal_kind() ==
+    CHECK(circuit.get(led_definition.pins()[0]).name() == "A");
+    CHECK(circuit.get(led_definition.pins()[0]).number() == "2");
+    CHECK(circuit.get(led_definition.pins()[0]).terminal_kind() ==
           volt::ElectricalTerminalKind::Passive);
-    CHECK(circuit.pin_definition(led_definition.pins()[1]).name() == "K");
-    CHECK(circuit.pin_definition(led_definition.pins()[1]).number() == "1");
-    CHECK(circuit.pin_definition(led_definition.pins()[1]).direction() ==
-          volt::ElectricalDirection::Passive);
+    CHECK(circuit.get(led_definition.pins()[1]).name() == "K");
+    CHECK(circuit.get(led_definition.pins()[1]).number() == "1");
+    CHECK(circuit.get(led_definition.pins()[1]).direction() == volt::ElectricalDirection::Passive);
 
-    const auto &connector_definition = circuit.component_definition(connector);
+    const auto &connector_definition = circuit.get(connector);
     REQUIRE(connector_definition.pins().size() == 2);
-    CHECK(circuit.pin_definition(connector_definition.pins()[0]).terminal_kind() ==
+    CHECK(circuit.get(connector_definition.pins()[0]).terminal_kind() ==
           volt::ElectricalTerminalKind::Signal);
-    CHECK(circuit.pin_definition(connector_definition.pins()[0]).direction() ==
+    CHECK(circuit.get(connector_definition.pins()[0]).direction() ==
           volt::ElectricalDirection::Bidirectional);
-    CHECK(circuit.pin_definition(connector_definition.pins()[0]).number() == "1");
-    CHECK(circuit.pin_definition(connector_definition.pins()[1]).terminal_kind() ==
+    CHECK(circuit.get(connector_definition.pins()[0]).number() == "1");
+    CHECK(circuit.get(connector_definition.pins()[1]).terminal_kind() ==
           volt::ElectricalTerminalKind::Signal);
-    CHECK(circuit.pin_definition(connector_definition.pins()[1]).direction() ==
+    CHECK(circuit.get(connector_definition.pins()[1]).direction() ==
           volt::ElectricalDirection::Bidirectional);
-    CHECK(circuit.pin_definition(connector_definition.pins()[1]).number() == "2");
+    CHECK(circuit.get(connector_definition.pins()[1]).number() == "2");
 }
 
 TEST_CASE("Common component catalog specs carry stable default schematic symbol references") {
@@ -185,11 +184,11 @@ TEST_CASE("Op amp catalog spec models both supply rails as power inputs") {
     auto circuit = volt::Circuit{};
 
     const auto op_amp = volt::authoring::define_component(circuit, volt::authoring::op_amp_5pin());
-    const auto &definition = circuit.component_definition(op_amp);
+    const auto &definition = circuit.get(op_amp);
 
     const auto find_pin = [&](const std::string &name) -> const volt::PinDefinition * {
         for (const auto pin_id : definition.pins()) {
-            const auto &pin = circuit.pin_definition(pin_id);
+            const auto &pin = circuit.get(pin_id);
             if (pin.name() == name) {
                 return &pin;
             }

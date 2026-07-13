@@ -97,7 +97,7 @@ TEST_CASE("Schematic readability reports visually dangling wire endpoints") {
     const auto wire = schematic.add_wire_run(
         sheet, volt::WireRun{net, std::vector{volt::Point{40.0, 20.0}, volt::Point{70.0, 20.0}}});
 
-    const auto pins_before = circuit.net(net).pins();
+    const auto pins_before = circuit.get(net).pins();
     const auto report = volt::validate_schematic_readability(schematic);
 
     const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_DANGLING_WIRE_ENDPOINT");
@@ -105,7 +105,7 @@ TEST_CASE("Schematic readability reports visually dangling wire endpoints") {
     CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
                                                volt::EntityRef::wire_run(wire),
                                                volt::EntityRef::net(net)});
-    CHECK(circuit.net(net).pins() == pins_before);
+    CHECK(circuit.get(net).pins() == pins_before);
 }
 
 TEST_CASE("Schematic readability reports exactly one diagnostic per dangling endpoint") {

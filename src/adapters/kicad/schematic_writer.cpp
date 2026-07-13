@@ -190,7 +190,7 @@ void write_wire(std::ostream &out, const WireRun &wire, std::size_t index) {
 
 void write_label(std::ostream &out, const Schematic &schematic, const NetLabel &label,
                  std::size_t index) {
-    const auto &net = schematic.circuit().net(label.net());
+    const auto &net = schematic.circuit().get(label.net());
     out << "  (label " << sexpr_string(net.name().value()) << ' ';
     write_at(out, label.position(), label.orientation());
     out << "\n";
@@ -203,8 +203,8 @@ void write_symbol_instance(std::ostream &out, const Schematic &schematic, Symbol
                            std::size_t index) {
     const auto &instance = schematic.symbol_instance(id);
     const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
-    const auto &component = schematic.circuit().component(instance.component());
-    const auto &definition = schematic.circuit().component_definition(component.definition());
+    const auto &component = schematic.circuit().get(instance.component());
+    const auto &definition = schematic.circuit().get(component.definition());
 
     out << "  (symbol\n";
     out << "    (lib_id " << sexpr_string(symbol_library_name(symbol)) << ")\n";

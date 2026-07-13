@@ -153,9 +153,9 @@ void validate_board_rule_capability(const Board &board, const BoardCapabilityPro
 void validate_net_class_capability(const Board &board, const BoardCapabilityProfile &profile,
                                    DiagnosticReport &report) {
     const auto copper_clearance_minimum = profile_max_clearance_minimum(profile, false);
-    for (std::size_t index = 0; index < board.circuit().net_class_count(); ++index) {
+    for (std::size_t index = 0; index < board.circuit().all<volt::NetClassId>().size(); ++index) {
         const auto net_class_id = NetClassId{index};
-        const auto &net_class = board.circuit().net_class(net_class_id);
+        const auto &net_class = board.circuit().get(net_class_id);
         const auto prefix = std::string{"Net class '"} + net_class.name().value() + "' ";
         if (net_class.copper_clearance_mm().has_value() && copper_clearance_minimum.has_value()) {
             report_capability_rule(report, net_class.copper_clearance_mm().value(),

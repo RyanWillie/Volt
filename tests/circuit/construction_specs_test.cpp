@@ -67,11 +67,11 @@ TEST_CASE("Circuit defines complete components atomically from typed specs") {
     });
 
     CHECK(definition == volt::ComponentDefId{0});
-    REQUIRE(circuit.pin_definition_count() == 2);
-    const auto &stored = circuit.component_definition(definition);
+    REQUIRE(circuit.all<volt::PinDefId>().size() == 2);
+    const auto &stored = circuit.get(definition);
     REQUIRE(stored.pins() == std::vector{volt::PinDefId{0}, volt::PinDefId{1}});
-    CHECK(circuit.pin_definition(stored.pins()[0]).name() == "VDD");
-    CHECK(circuit.pin_definition(stored.pins()[1]).name() == "OUT");
+    CHECK(circuit.get(stored.pins()[0]).name() == "VDD");
+    CHECK(circuit.get(stored.pins()[1]).name() == "OUT");
     CHECK(circuit.pin_definition_electrical_attributes(stored.pins()[0])
               .get(volt::ElectricalAttributeName{"voltage_range"})
               .as_range()
@@ -127,35 +127,6 @@ TEST_CASE("Failed complete component definitions leave canonical bytes unchanged
     });
 }
 
-TEST_CASE("Legacy electrical facade rejects committed pin-definition mutation") {
-    auto circuit = volt::Circuit{};
-    const auto definition = circuit.define_component(volt::ComponentSpec{
-        .name = "Input",
-        .pins = {passive_pin("IN", "1")},
-    });
-    const auto pin = circuit.component_definition(definition).pins().front();
-    const auto before = volt::io::write_logical_circuit(circuit);
-
-    // Raw committed PinDef mutation exists only on the transitional facade until #266.
-    try {
-        circuit.electrical().set_pin_definition_electrical_attribute(
-            pin,
-            volt::ElectricalAttributeSpec{
-                volt::ElectricalAttributeName{"voltage_range"},
-                volt::ElectricalAttributeOwner::PinSpec,
-                volt::ElectricalAttributeKind::Constraint,
-                volt::UnitDimension::Voltage,
-            },
-            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 5.0}});
-        FAIL("Committed pin electrical semantics must not be mutable");
-    } catch (const volt::KernelError &error) {
-        CHECK(error.code() == volt::ErrorCode::InvalidState);
-        CHECK(std::string{error.what()} ==
-              "Committed pin definition electrical attributes are immutable");
-    }
-    CHECK(volt::io::write_logical_circuit(circuit) == before);
-}
-
 TEST_CASE("Circuit component instances materialize every definition pin atomically") {
     auto circuit = volt::Circuit{};
     const auto definition = circuit.define_component(volt::ComponentSpec{
@@ -173,8 +144,8 @@ TEST_CASE("Circuit component instances materialize every definition pin atomical
     CHECK(component == volt::ComponentId{0});
     const auto pins = volt::queries::pins_for(circuit, component);
     REQUIRE(pins == std::vector{volt::PinId{0}, volt::PinId{1}});
-    CHECK(circuit.pin(pins[0]).definition() == volt::PinDefId{0});
-    CHECK(circuit.pin(pins[1]).definition() == volt::PinDefId{1});
+    CHECK(circuit.get(pins[0]).definition() == volt::PinDefId{0});
+    CHECK(circuit.get(pins[1]).definition() == volt::PinDefId{1});
 
     check_failure_is_byte_atomic(circuit, [&] {
         static_cast<void>(circuit.instantiate_component(
@@ -194,8 +165,8 @@ TEST_CASE("Circuit adds canonical nets from typed specs atomically") {
         circuit.add_net(volt::NetSpec{.name = volt::NetName{"GND"}, .kind = volt::NetKind::Ground});
 
     CHECK(ground == volt::NetId{0});
-    CHECK(circuit.net(ground).name() == volt::NetName{"GND"});
-    CHECK(circuit.net(ground).kind() == volt::NetKind::Ground);
+    CHECK(circuit.get(ground).name() == volt::NetName{"GND"});
+    CHECK(circuit.get(ground).kind() == volt::NetKind::Ground);
     check_failure_is_byte_atomic(circuit, [&] {
         static_cast<void>(circuit.add_net(
             volt::NetSpec{.name = volt::NetName{"GND"}, .kind = volt::NetKind::Signal}));
@@ -235,11 +206,10 @@ TEST_CASE("Circuit defines complete modules atomically from typed specs") {
     });
 
     CHECK(module == volt::ModuleDefId{0});
-    REQUIRE(circuit.module_definition(module).template_nets() ==
+    REQUIRE(circuit.get(module).template_nets() ==
             std::vector{volt::TemplateNetDefId{0}, volt::TemplateNetDefId{1}});
-    REQUIRE(circuit.module_definition(module).components() ==
-            std::vector{volt::ModuleComponentId{0}});
-    REQUIRE(circuit.module_definition(module).ports() == std::vector{volt::PortDefId{0}});
+    REQUIRE(circuit.get(module).components() == std::vector{volt::ModuleComponentId{0}});
+    REQUIRE(circuit.get(module).ports() == std::vector{volt::PortDefId{0}});
     CHECK(volt::queries::template_net_for(circuit, module, volt::ModuleComponentId{0},
                                           volt::PinDefId{0}) == volt::TemplateNetDefId{0});
     CHECK(volt::queries::template_net_for(circuit, module, volt::ModuleComponentId{0},

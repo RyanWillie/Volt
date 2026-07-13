@@ -42,8 +42,8 @@ TEST_CASE("Golden diagnostic fixture round-trips and preserves connectivity") {
     const auto circuit = volt::io::read_logical_circuit_text(fixture);
     const auto report = volt::validate_circuit(circuit);
 
-    REQUIRE(circuit.net_count() == 1);
-    CHECK(circuit.net(volt::NetId{0}).pins().size() == 1);
+    REQUIRE(circuit.all<volt::NetId>().size() == 1);
+    CHECK(circuit.get(volt::NetId{0}).pins().size() == 1);
     CHECK_FALSE(report.empty());
     check_fixture_round_trips("single_pin_net.volt.json");
 }
@@ -85,11 +85,11 @@ TEST_CASE("Logical reader preserves independent connectivity table identity") {
 })json";
     const auto restored = volt::io::read_logical_circuit_text(serialized);
 
-    CHECK(restored.component_definition(volt::ComponentDefId{0}).pins() ==
+    CHECK(restored.get(volt::ComponentDefId{0}).pins() ==
           std::vector{volt::PinDefId{0}, volt::PinDefId{2}});
-    CHECK(restored.component_definition(volt::ComponentDefId{1}).pins() ==
+    CHECK(restored.get(volt::ComponentDefId{1}).pins() ==
           std::vector{volt::PinDefId{1}, volt::PinDefId{3}});
-    CHECK(restored.pin_definition(volt::PinDefId{4}).name() == "Unowned");
+    CHECK(restored.get(volt::PinDefId{4}).name() == "Unowned");
     CHECK(restored.pin_definition_electrical_attributes(volt::PinDefId{4})
               .get(volt::ElectricalAttributeName{"voltage_range"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 5.0});

@@ -206,9 +206,8 @@ Component definitions describe reusable logical component shapes:
 pin definition belongs to at most one component definition, and a component definition
 may reference each pin definition only once. The top-level `pin_definitions` table remains
 the canonical persistence representation and table order remains the source of
-deterministic `PinDefId` restoration. Unowned rows remain readable for v1 compatibility
-with transitional facade output, although complete typed construction does not create
-them.
+deterministic `PinDefId` restoration. Unowned rows remain readable for v1 document
+compatibility, although complete typed construction does not create them.
 
 ## Components
 

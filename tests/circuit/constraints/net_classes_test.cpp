@@ -78,12 +78,12 @@ TEST_CASE("NetClasses stores net classes by stable ID and name") {
     const auto logic_id = circuit.define_net_class(
         volt::NetClassSpec{.net_class = volt::NetClass{volt::NetClassName{"Logic"}}});
 
-    REQUIRE(circuit.net_class_count() == 2);
-    CHECK(circuit.net_class(high_voltage_id).name() == volt::NetClassName{"HighVoltage"});
-    REQUIRE(circuit.net_class(high_voltage_id).maximum_net_voltage().has_value());
-    CHECK(circuit.net_class(high_voltage_id).maximum_net_voltage()->value() == 60.0);
-    REQUIRE(circuit.net_class(high_voltage_id).copper_clearance_mm().has_value());
-    CHECK(circuit.net_class(high_voltage_id).copper_clearance_mm().value() == 0.6);
+    REQUIRE(circuit.all<volt::NetClassId>().size() == 2);
+    CHECK(circuit.get(high_voltage_id).name() == volt::NetClassName{"HighVoltage"});
+    REQUIRE(circuit.get(high_voltage_id).maximum_net_voltage().has_value());
+    CHECK(circuit.get(high_voltage_id).maximum_net_voltage()->value() == 60.0);
+    REQUIRE(circuit.get(high_voltage_id).copper_clearance_mm().has_value());
+    CHECK(circuit.get(high_voltage_id).copper_clearance_mm().value() == 0.6);
     CHECK(circuit.net_class_by_name(volt::NetClassName{"HighVoltage"}) == high_voltage_id);
     CHECK(circuit.net_class_by_name(volt::NetClassName{"Logic"}) == logic_id);
     CHECK_THROWS_AS(circuit.define_net_class(volt::NetClassSpec{

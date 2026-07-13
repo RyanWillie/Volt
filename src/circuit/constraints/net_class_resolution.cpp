@@ -11,14 +11,13 @@ namespace {
 [[nodiscard]] std::optional<NetClassId> kind_default_net_class(const Circuit &circuit,
                                                                NetKind kind) {
     std::optional<NetClassId> best;
-    for (std::size_t index = 0; index < circuit.net_class_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::NetClassId>().size(); ++index) {
         const auto id = NetClassId{index};
-        const auto &net_class = circuit.net_class(id);
+        const auto &net_class = circuit.get(id);
         if (net_class.default_for_net_kind() != kind) {
             continue;
         }
-        if (!best.has_value() ||
-            net_class.priority() > circuit.net_class(best.value()).priority()) {
+        if (!best.has_value() || net_class.priority() > circuit.get(best.value()).priority()) {
             best = id;
         }
     }
@@ -33,7 +32,7 @@ namespace {
         return assigned;
     }
 
-    return kind_default_net_class(circuit, circuit.net(net).kind());
+    return kind_default_net_class(circuit, circuit.get(net).kind());
 }
 
 [[nodiscard]] ResolvedNetClassRules resolve_net_class_rules(const Circuit &circuit, NetId net) {
@@ -43,7 +42,7 @@ namespace {
         return rules;
     }
 
-    const auto &net_class = circuit.net_class(rules.net_class.value());
+    const auto &net_class = circuit.get(rules.net_class.value());
     rules.maximum_net_voltage = net_class.maximum_net_voltage();
     rules.copper_clearance_mm = net_class.copper_clearance_mm();
     rules.derived_copper_clearance = net_class.derived_copper_clearance();

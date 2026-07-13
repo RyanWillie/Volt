@@ -110,7 +110,7 @@ schematic_text_candidate_is_clear(const Schematic &schematic, const Sheet &sheet
 choose_net_label_position(const Schematic &schematic, const Sheet &sheet, const NetLabel &label,
                           const std::vector<SchematicBounds> &placed_text_bounds,
                           double clearance) {
-    const auto &net = schematic.circuit().net(label.net());
+    const auto &net = schematic.circuit().get(label.net());
     const auto text = label.label().value_or(net.name().value());
     for (const auto candidate : schematic_text_candidate_positions(label.text_position())) {
         const auto bounds = text_bounds(candidate, label.orientation(), text, label.style(),
@@ -164,7 +164,7 @@ choose_net_label_position(const Schematic &schematic, const Sheet &sheet, const 
 [[nodiscard]] Point choose_power_port_label_position(
     const Schematic &schematic, const Sheet &sheet, const PowerPort &port,
     const std::vector<SchematicBounds> &placed_text_bounds, double clearance) {
-    const auto &net = schematic.circuit().net(port.net());
+    const auto &net = schematic.circuit().get(port.net());
     const auto label = port.label().value_or(net.name().value());
     const auto anchor =
         port.explicit_label_position().value_or(default_power_port_label_position(port));
@@ -208,7 +208,7 @@ void layout_schematic_text(Schematic &schematic, SchematicTextLayoutOptions opti
                 schematic.move_power_port_label(port_id, position);
             }
             const auto &port = schematic.power_port(port_id);
-            const auto &net = schematic.circuit().net(port.net());
+            const auto &net = schematic.circuit().get(port.net());
             placed_text_bounds.push_back(
                 detail::power_port_label_bounds(port, port.label().value_or(net.name().value())));
         }
@@ -221,7 +221,7 @@ void layout_schematic_text(Schematic &schematic, SchematicTextLayoutOptions opti
                 schematic.move_net_label_text(label_id, position);
             }
             const auto &label = schematic.net_label(label_id);
-            const auto &net = schematic.circuit().net(label.net());
+            const auto &net = schematic.circuit().get(label.net());
             placed_text_bounds.push_back(
                 detail::text_bounds(label.text_position(), label.orientation(),
                                     label.label().value_or(net.name().value()), label.style(),

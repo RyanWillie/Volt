@@ -469,7 +469,7 @@ SchematicReader::text_vertical_alignment(const std::string &value) {
 
 [[nodiscard]] ComponentId SchematicReader::component_id(const std::string &id) const {
     const auto component = decode_local_id<ComponentId>(id);
-    if (component.index() >= circuit_.component_count()) {
+    if (component.index() >= circuit_.all<volt::ComponentId>().size()) {
         throw KernelLogicError{ErrorCode::UnknownEntity,
                                "Component reference points to a missing logical component: " + id};
     }
@@ -478,7 +478,7 @@ SchematicReader::text_vertical_alignment(const std::string &value) {
 
 [[nodiscard]] NetId SchematicReader::net_id(const std::string &id) const {
     const auto net = decode_local_id<NetId>(id);
-    if (net.index() >= circuit_.net_count()) {
+    if (net.index() >= circuit_.all<volt::NetId>().size()) {
         throw KernelLogicError{ErrorCode::UnknownEntity,
                                "Net reference points to a missing logical net: " + id};
     }
@@ -487,7 +487,7 @@ SchematicReader::text_vertical_alignment(const std::string &value) {
 
 [[nodiscard]] PinId SchematicReader::pin_id(const std::string &id) const {
     const auto pin = decode_local_id<PinId>(id);
-    if (pin.index() >= circuit_.pin_count()) {
+    if (pin.index() >= circuit_.all<volt::PinId>().size()) {
         throw KernelLogicError{ErrorCode::UnknownEntity,
                                "Pin reference points to a missing logical pin: " + id};
     }

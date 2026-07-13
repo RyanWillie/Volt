@@ -464,7 +464,7 @@ TEST_CASE("Escape router rejects component requests that cannot be attempted", "
     auto layout = make_escape_board(fixture);
     auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
     const auto other = fixture.circuit.instantiate_component(
-        fixture.circuit.component(fixture.component).definition(), volt::ReferenceDesignator{"U2"});
+        fixture.circuit.get(fixture.component).definition(), volt::ReferenceDesignator{"U2"});
 
     CHECK_THROWS_MATCHES(
         router.escape(other), std::invalid_argument,

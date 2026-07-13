@@ -287,8 +287,8 @@ TEST_CASE("Schematic reader loads professional primitives over logical IDs") {
     CHECK(schematic.no_connect_marker(volt::NoConnectMarkerId{0}).reason() == "not populated");
     CHECK(schematic.sheet_port(volt::SheetPortId{0}).name() == "VIN");
     CHECK(schematic.symbol_field(volt::SymbolFieldId{0}).value() == "10k");
-    CHECK(circuit.net(vcc).pins().empty());
-    CHECK(circuit.net(gnd).pins().empty());
+    CHECK(circuit.get(vcc).pins().empty());
+    CHECK(circuit.get(gnd).pins().empty());
 }
 
 TEST_CASE("Schematic reader loads drawing page metadata and named regions") {

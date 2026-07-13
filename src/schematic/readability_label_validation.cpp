@@ -99,7 +99,7 @@ void validate_label_readability(const Schematic &schematic, SheetId sheet_id, co
                                 DiagnosticReport &report) {
     for (const auto label_id : sheet.net_labels()) {
         const auto &label = schematic.net_label(label_id);
-        const auto &net = schematic.circuit().net(label.net());
+        const auto &net = schematic.circuit().get(label.net());
         if (label.orientation() != SchematicOrientation::Right) {
             add_readability_diagnostic(
                 report, Severity::Warning, "SCHEMATIC_TEXT_NOT_HORIZONTAL",

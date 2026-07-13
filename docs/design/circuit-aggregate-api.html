@@ -113,7 +113,7 @@
   <header>
     <p class="eyebrow">Architecture decision · Issue #261</p>
     <h1>A small typed Circuit aggregate</h1>
-    <p class="lead">Volt will replace the five borrowed storage facades with one authoritative logical aggregate whose public surface is complete typed specifications, irreducible graph operations, typed updates, generic reads, and free derived queries.</p>
+    <p class="lead">Volt exposes one authoritative logical aggregate whose public surface is complete typed specifications, irreducible graph operations, typed updates, generic reads, and free derived queries.</p>
     <div class="meta">
       <span class="tag accepted">Accepted</span>
       <span class="tag">Pre-1.0 breaking change</span>
@@ -137,8 +137,8 @@
   <h2>Why the current split is being replaced</h2>
   <div class="grid">
     <div>
-      <h3>The facades group names, not ownership</h3>
-      <p>Each mutator stores a borrowed <code>Circuit&amp;</code> and forwards into the same aggregate. It owns no independent state or invariant boundary, so the conceptual model remains one large storage-shaped API.</p>
+      <h3>The former facades grouped names, not ownership</h3>
+      <p>Each former mutator stored a borrowed <code>Circuit&amp;</code> and forwarded into the same aggregate. It owned no independent state or invariant boundary, so the conceptual model remained one large storage-shaped API.</p>
     </div>
     <div>
       <h3>The storage model leaked into authoring</h3>
@@ -146,7 +146,7 @@
     </div>
     <div>
       <h3>The lifetime model became less safe</h3>
-      <p>A facade obtained from a temporary root can dangle. <a href="https://github.com/RyanWillie/Volt/issues/234">#234</a> fixes that live hazard while the current API remains shipped.</p>
+      <p>A facade obtained from a temporary root could dangle. <a href="https://github.com/RyanWillie/Volt/issues/234">#234</a> closed that live hazard before the facades were removed.</p>
     </div>
     <div>
       <h3>The surface grows with every internal store</h3>
@@ -330,21 +330,21 @@ design.write("led.volt.json")</code></pre>
   <h2>Migration roadmap</h2>
   <p>The native dependency graph under <a href="https://github.com/RyanWillie/Volt/issues/261">#261</a> owns live status and dispatch readiness.</p>
   <div class="timeline">
-    <div class="phase"><div class="number">0</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/234">#234 — Fix the live lifetime hazard</a></strong><p>Ref-qualify the current facade accessors now. This remains independently releasable and does not begin the redesign.</p></div></div>
+    <div class="phase"><div class="number">0</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/234">#234 — Fix the live lifetime hazard</a></strong><p>Ref-qualified the temporary facade accessors before the wider redesign.</p></div></div>
     <div class="phase"><div class="number">1</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/262">#262 — Lock the aggregate contract</a></strong><p>Merge the ADR, this review page, transition rules, semantic inventory, error policy, and roadmap graph.</p></div></div>
     <div class="phase"><div class="number">2</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/236">#236 — Complete typed specs and atomic construction</a></strong><p>Preflight and commit component/module definitions atomically; move raw restoration behind a private reader boundary.</p></div></div>
     <div class="phase"><div class="number">3</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/263">#263 — Generic reads and free queries</a></strong><p>Add <code>get</code>, <code>all</code>, and fundamental relationships; remove the need for public subsystem query models.</p></div></div>
     <div class="phase"><div class="number">4</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/264">#264 — Migrate C++ adapters and tests</a></strong><p>Move setup helpers and suites incrementally so facade deletion is not a thousand-call-site big bang.</p></div></div>
     <div class="phase"><div class="number">5</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/265">#265 — Migrate Python bindings</a></strong><p>Preserve the user-facing API and lower through the new kernel contract after urgent ownership/atomicity issue <a href="https://github.com/RyanWillie/Volt/issues/238">#238</a>.</p></div></div>
-    <div class="phase"><div class="number">6</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/266">#266 — Delete facades and enforce the boundary</a></strong><p>Remove the five mutators, passkey, raw public restoration, duplicate reads/counts, query-model leaks, snapshots, and transitional guidance.</p></div></div>
+    <div class="phase"><div class="number">6</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/266">#266 — Delete facades and enforce the boundary</a></strong><p>Removes the five mutators, passkey, raw public restoration, duplicate reads/counts, query-model leaks, snapshots, and migration-only guidance.</p></div></div>
     <div class="phase"><div class="number">7</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/267">#267 — Prove parity and complete</a></strong><p>Verify every semantic field, diagnostic, persistence contract, Python workflow, sanitizer, docs build, platform, and CI gate.</p></div></div>
   </div>
 
-  <h2>Transition rules</h2>
-  <div class="rule"><span class="good">Current code may keep calling the facades temporarily.</span> Existing call sites move in their scheduled phase.</div>
-  <div class="rule"><span class="good">The facade surface is frozen immediately.</span> No new facade methods, no new public subsystem mutators, and no new code treating the split as the target.</div>
-  <div class="rule"><span class="good">The current architecture checker remains active until deletion.</span> The deletion phase replaces its snapshots and rules atomically with the new enforcement.</div>
-  <div class="rule"><span class="good">Compatibility is time-bounded.</span> The migration may use narrow internal adapters, but no permanent dual public API remains after #266.</div>
+  <h2>Boundary rules</h2>
+  <div class="rule"><span class="good">The typed aggregate is the only public logical root.</span> No borrowed subsystem facades or public subsystem mutators.</div>
+  <div class="rule"><span class="good">Reads are generic and typed.</span> Use <code>get(Id)</code>, <code>all&lt;Id&gt;()</code>, fundamental relationships, and free derived queries instead of table getters and counts.</div>
+  <div class="rule"><span class="good">Restoration remains private.</span> The logical reader may apply its narrow validated restoration plan without exposing loader mechanics as authoring operations.</div>
+  <div class="rule"><span class="good">The architecture checker enforces admission.</span> New storage-shaped methods, generic mutation handles, public submodel mutation, and Python-owned connectivity semantics fail the boundary checks.</div>
   <div class="rule"><span class="good">GitHub controls dispatch.</span> Only issues carrying both <code>roadmap</code> and <code>ready</code> with no native blockers may be selected autonomously.</div>
 
   <h2>Non-goals</h2>

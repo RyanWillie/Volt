@@ -16,7 +16,7 @@ namespace volt::detail {
 namespace {
 
 [[nodiscard]] std::string pcb_reference_label(const Circuit &circuit, ComponentId component_id) {
-    const auto &component = circuit.component(component_id);
+    const auto &component = circuit.get(component_id);
     const auto key = PropertyKey{"pcb_reference"};
     if (component.properties().contains(key)) {
         const auto &value = component.properties().get(key);
@@ -263,8 +263,8 @@ reference_label_overlay(const ReferenceDesignatorVisualExtent &extent, const Boa
     const auto rhs_entities = placement_entities(rhs);
     entities.insert(entities.end(), rhs_entities.begin(), rhs_entities.end());
 
-    const auto lhs_label = board.circuit().component(lhs.component).reference().value();
-    const auto rhs_label = board.circuit().component(rhs.component).reference().value();
+    const auto lhs_label = board.circuit().get(lhs.component).reference().value();
+    const auto rhs_label = board.circuit().get(rhs.component).reference().value();
 
     return Diagnostic{
         Severity::Warning,

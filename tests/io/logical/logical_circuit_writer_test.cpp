@@ -333,7 +333,7 @@ TEST_CASE("Logical circuit writer emits net classes and net assignments") {
     CHECK(assignments == nlohmann::json::array({{{"net", "net:0"}, {"net_class", "net_class:0"}}}));
 
     const auto reloaded = volt::io::read_logical_circuit_text(output.dump());
-    const auto &reloaded_class = reloaded.net_class(volt::NetClassId{0});
+    const auto &reloaded_class = reloaded.get(volt::NetClassId{0});
     CHECK_FALSE(reloaded_class.has_explicit_track_width_mm());
     CHECK(reloaded_class.track_width_mm() == 0.3003762222199717);
     REQUIRE(reloaded_class.derived_track_width().has_value());

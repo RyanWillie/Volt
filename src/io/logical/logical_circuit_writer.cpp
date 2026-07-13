@@ -427,9 +427,9 @@ void write_pin_definition_electrical_attributes(std::ostream &out,
 
 void write_net_classes(std::ostream &out, const Circuit &circuit) {
     out << "  \"net_classes\": { \"classes\": [\n";
-    for (std::size_t index = 0; index < circuit.net_class_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::NetClassId>().size(); ++index) {
         const auto id = NetClassId{index};
-        const auto &net_class = circuit.net_class(id);
+        const auto &net_class = circuit.get(id);
         out << "    { \"id\": " << json_string(net_class_id(id))
             << ", \"name\": " << json_string(net_class.name().value());
         if (net_class.maximum_net_voltage().has_value()) {
@@ -480,7 +480,7 @@ void write_net_classes(std::ostream &out, const Circuit &circuit) {
                 << json_string(net_kind_name(net_class.default_for_net_kind().value()));
         }
         out << " }";
-        if (index + 1 != circuit.net_class_count()) {
+        if (index + 1 != circuit.all<volt::NetClassId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -512,9 +512,9 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
     out << "  \"version\": " << logical_circuit_format_version() << ",\n";
 
     out << "  \"pin_definitions\": [\n";
-    for (std::size_t index = 0; index < circuit.pin_definition_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::PinDefId>().size(); ++index) {
         const auto id = PinDefId{index};
-        const auto &pin = circuit.pin_definition(id);
+        const auto &pin = circuit.get(id);
         out << "    { \"id\": " << detail::json_string(detail::pin_def_id(id))
             << ", \"name\": " << detail::json_string(pin.name())
             << ", \"number\": " << detail::json_string(pin.number())
@@ -525,7 +525,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         detail::write_pin_definition_electrical_attributes(
             out, circuit.pin_definition_electrical_attributes(id));
         out << " }";
-        if (index + 1 != circuit.pin_definition_count()) {
+        if (index + 1 != circuit.all<volt::PinDefId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -533,9 +533,9 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
     out << "  ],\n";
 
     out << "  \"component_definitions\": [\n";
-    for (std::size_t index = 0; index < circuit.component_definition_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::ComponentDefId>().size(); ++index) {
         const auto id = ComponentDefId{index};
-        const auto &definition = circuit.component_definition(id);
+        const auto &definition = circuit.get(id);
         out << "    { \"id\": " << detail::json_string(detail::component_def_id(id))
             << ", \"name\": " << detail::json_string(definition.name());
         if (definition.source().has_value()) {
@@ -567,7 +567,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         out << "], \"properties\": ";
         detail::write_properties(out, definition.properties());
         out << " }";
-        if (index + 1 != circuit.component_definition_count()) {
+        if (index + 1 != circuit.all<volt::ComponentDefId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -575,9 +575,9 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
     out << "  ],\n";
 
     out << "  \"components\": [\n";
-    for (std::size_t index = 0; index < circuit.component_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::ComponentId>().size(); ++index) {
         const auto id = ComponentId{index};
-        const auto &component = circuit.component(id);
+        const auto &component = circuit.get(id);
         out << "    { \"id\": " << detail::json_string(detail::component_id(id))
             << ", \"definition\": "
             << detail::json_string(detail::component_def_id(component.definition()))
@@ -594,7 +594,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             detail::write_selected_physical_part(out, circuit.selected_physical_part(id).value());
         }
         out << " }";
-        if (index + 1 != circuit.component_count()) {
+        if (index + 1 != circuit.all<volt::ComponentId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -602,14 +602,14 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
     out << "  ],\n";
 
     out << "  \"pins\": [\n";
-    for (std::size_t index = 0; index < circuit.pin_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::PinId>().size(); ++index) {
         const auto id = PinId{index};
-        const auto &pin = circuit.pin(id);
+        const auto &pin = circuit.get(id);
         out << "    { \"id\": " << detail::json_string(detail::pin_id(id))
             << ", \"component\": " << detail::json_string(detail::component_id(pin.component()))
             << ", \"definition\": " << detail::json_string(detail::pin_def_id(pin.definition()))
             << " }";
-        if (index + 1 != circuit.pin_count()) {
+        if (index + 1 != circuit.all<volt::PinId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -617,9 +617,9 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
     out << "  ],\n";
 
     out << "  \"nets\": [\n";
-    for (std::size_t index = 0; index < circuit.net_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::NetId>().size(); ++index) {
         const auto id = NetId{index};
-        const auto &net = circuit.net(id);
+        const auto &net = circuit.get(id);
         out << "    { \"id\": " << detail::json_string(detail::net_id(id))
             << ", \"name\": " << detail::json_string(net.name().value())
             << ", \"kind\": " << detail::json_string(detail::net_kind_name(net.kind()))
@@ -637,7 +637,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             detail::write_electrical_attributes(out, net_attributes, "        ", "      ");
         }
         out << " }";
-        if (index + 1 != circuit.net_count()) {
+        if (index + 1 != circuit.all<volt::NetId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -646,9 +646,9 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
                                    !circuit.intentional_no_connect_pins().empty() ||
                                    !circuit.component_assembly_intents().empty();
     const auto has_net_classes =
-        circuit.net_class_count() != 0 || !circuit.net_class_assignments().empty();
-    const auto has_hierarchy =
-        circuit.module_definition_count() != 0 || circuit.module_instance_count() != 0;
+        circuit.all<volt::NetClassId>().size() != 0 || !circuit.net_class_assignments().empty();
+    const auto has_hierarchy = circuit.all<volt::ModuleDefId>().size() != 0 ||
+                               circuit.all<volt::ModuleInstanceId>().size() != 0;
     out << ((has_net_classes || has_design_intent || has_hierarchy) ? "  ],\n" : "  ]\n");
 
     if (has_net_classes) {
@@ -700,16 +700,16 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
     }
 
     out << "  \"module_definitions\": [\n";
-    for (std::size_t index = 0; index < circuit.module_definition_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::ModuleDefId>().size(); ++index) {
         const auto id = ModuleDefId{index};
-        const auto &definition = circuit.module_definition(id);
+        const auto &definition = circuit.get(id);
         out << "    { \"id\": " << detail::json_string(detail::module_def_id(id))
             << ", \"name\": " << detail::json_string(definition.name().value())
             << ", \"local_nets\": [";
         for (std::size_t net_index = 0; net_index < definition.template_nets().size();
              ++net_index) {
             const auto template_net_id = definition.template_nets()[net_index];
-            const auto &template_net = circuit.template_net_definition(template_net_id);
+            const auto &template_net = circuit.get(template_net_id);
             if (net_index != 0) {
                 out << ", ";
             }
@@ -722,7 +722,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         for (std::size_t component_index = 0; component_index < definition.components().size();
              ++component_index) {
             const auto component_id = definition.components()[component_index];
-            const auto &component = circuit.module_component_template(component_id);
+            const auto &component = circuit.get(component_id);
             if (component_index != 0) {
                 out << ", ";
             }
@@ -737,8 +737,8 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         out << "], \"connections\": [";
         auto wrote_connection = false;
         for (const auto component_id : definition.components()) {
-            const auto &component = circuit.module_component_template(component_id);
-            const auto &component_definition = circuit.component_definition(component.definition());
+            const auto &component = circuit.get(component_id);
+            const auto &component_definition = circuit.get(component.definition());
             for (const auto pin_id : component_definition.pins()) {
                 const auto net = queries::template_net_for(circuit, id, component_id, pin_id);
                 if (!net.has_value()) {
@@ -758,7 +758,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         out << "], \"ports\": [";
         for (std::size_t port_index = 0; port_index < definition.ports().size(); ++port_index) {
             const auto port_id = definition.ports()[port_index];
-            const auto &port = circuit.port_definition(port_id);
+            const auto &port = circuit.get(port_id);
             if (port_index != 0) {
                 out << ", ";
             }
@@ -770,7 +770,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
                 << ", \"required\": " << (port.required() ? "true" : "false") << " }";
         }
         out << "] }";
-        if (index + 1 != circuit.module_definition_count()) {
+        if (index + 1 != circuit.all<volt::ModuleDefId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -778,10 +778,10 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
     out << "  ],\n";
 
     out << "  \"module_instances\": [\n";
-    for (std::size_t index = 0; index < circuit.module_instance_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::ModuleInstanceId>().size(); ++index) {
         const auto id = ModuleInstanceId{index};
-        const auto &instance = circuit.module_instance(id);
-        const auto &definition = circuit.module_definition(instance.definition());
+        const auto &instance = circuit.get(id);
+        const auto &definition = circuit.get(instance.definition());
         out << "    { \"id\": " << detail::json_string(detail::module_instance_id(id))
             << ", \"definition\": "
             << detail::json_string(detail::module_def_id(instance.definition()))
@@ -828,7 +828,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             if (!binding.has_value()) {
                 continue;
             }
-            const auto &port_binding = circuit.port_binding(binding.value());
+            const auto &port_binding = circuit.get(binding.value());
             if (wrote_binding) {
                 out << ", ";
             }
@@ -838,7 +838,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
                 << detail::json_string(detail::net_id(port_binding.parent_net())) << " }";
         }
         out << "] }";
-        if (index + 1 != circuit.module_instance_count()) {
+        if (index + 1 != circuit.all<volt::ModuleInstanceId>().size()) {
             out << ',';
         }
         out << '\n';

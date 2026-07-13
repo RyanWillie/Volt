@@ -105,12 +105,12 @@ Bom::Bom(std::vector<BomComponent> components, std::vector<BomLine> lines)
 
 [[nodiscard]] Bom project_bom(const Circuit &circuit, const BomSourcingSnapshot &sourcing) {
     auto components = std::vector<BomComponent>{};
-    components.reserve(circuit.component_count());
+    components.reserve(circuit.all<volt::ComponentId>().size());
 
     auto accumulators = std::vector<LineAccumulator>{};
-    for (std::size_t index = 0; index < circuit.component_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::ComponentId>().size(); ++index) {
         const auto component_id = ComponentId{index};
-        const auto &component = circuit.component(component_id);
+        const auto &component = circuit.get(component_id);
         const auto dnp_intent = circuit.component_dnp(component_id);
         const auto dnp = dnp_intent.value_or(false);
         const auto selection_override = circuit.is_component_selection_override(component_id);

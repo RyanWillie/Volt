@@ -1,8 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <stdexcept>
-#include <type_traits>
-#include <utility>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
@@ -18,50 +16,6 @@
 #include <support/circuit_test_helpers.hpp>
 
 namespace {
-
-template <typename Facade>
-constexpr bool is_borrow_only_mutator_facade =
-    !std::is_default_constructible_v<Facade> && !std::is_constructible_v<Facade, volt::Circuit &> &&
-    !std::is_copy_constructible_v<Facade> && !std::is_move_constructible_v<Facade> &&
-    !std::is_copy_assignable_v<Facade> && !std::is_move_assignable_v<Facade>;
-
-static_assert(is_borrow_only_mutator_facade<volt::Circuit::ConnectivityMutator>);
-static_assert(is_borrow_only_mutator_facade<volt::Circuit::HierarchyMutator>);
-static_assert(is_borrow_only_mutator_facade<volt::Circuit::ElectricalMutator>);
-static_assert(is_borrow_only_mutator_facade<volt::Circuit::IntentMutator>);
-static_assert(is_borrow_only_mutator_facade<volt::Circuit::NetClassMutator>);
-
-template <typename Circuit>
-concept has_connectivity_mutator =
-    requires(Circuit &&circuit) { std::forward<Circuit>(circuit).connectivity(); };
-
-template <typename Circuit>
-concept has_hierarchy_mutator =
-    requires(Circuit &&circuit) { std::forward<Circuit>(circuit).hierarchy(); };
-
-template <typename Circuit>
-concept has_electrical_mutator =
-    requires(Circuit &&circuit) { std::forward<Circuit>(circuit).electrical(); };
-
-template <typename Circuit>
-concept has_intent_mutator =
-    requires(Circuit &&circuit) { std::forward<Circuit>(circuit).intent(); };
-
-template <typename Circuit>
-concept has_net_class_mutator =
-    requires(Circuit &&circuit) { std::forward<Circuit>(circuit).net_classes(); };
-
-// These five acquisition checks lock lvalue-only facade availability until deletion in #266.
-static_assert(has_connectivity_mutator<volt::Circuit &>);
-static_assert(!has_connectivity_mutator<volt::Circuit>);
-static_assert(has_hierarchy_mutator<volt::Circuit &>);
-static_assert(!has_hierarchy_mutator<volt::Circuit>);
-static_assert(has_electrical_mutator<volt::Circuit &>);
-static_assert(!has_electrical_mutator<volt::Circuit>);
-static_assert(has_intent_mutator<volt::Circuit &>);
-static_assert(!has_intent_mutator<volt::Circuit>);
-static_assert(has_net_class_mutator<volt::Circuit &>);
-static_assert(!has_net_class_mutator<volt::Circuit>);
 
 volt::PhysicalPart make_resistor_physical_part(volt::PinDefId first_pin,
                                                volt::PinDefId second_pin) {
@@ -81,11 +35,11 @@ volt::PhysicalPart make_resistor_physical_part(volt::PinDefId first_pin,
 TEST_CASE("Circuit starts with empty entity tables") {
     const volt::Circuit circuit;
 
-    CHECK(circuit.pin_definition_count() == 0);
-    CHECK(circuit.component_definition_count() == 0);
-    CHECK(circuit.component_count() == 0);
-    CHECK(circuit.pin_count() == 0);
-    CHECK(circuit.net_count() == 0);
+    CHECK(circuit.all<volt::PinDefId>().size() == 0);
+    CHECK(circuit.all<volt::ComponentDefId>().size() == 0);
+    CHECK(circuit.all<volt::ComponentId>().size() == 0);
+    CHECK(circuit.all<volt::PinId>().size() == 0);
+    CHECK(circuit.all<volt::NetId>().size() == 0);
 }
 
 TEST_CASE("Circuit stores pin definitions in deterministic order") {
@@ -100,9 +54,9 @@ TEST_CASE("Circuit stores pin definitions in deterministic order") {
 
     CHECK(first == volt::PinDefId{0});
     CHECK(second == volt::PinDefId{1});
-    CHECK(circuit.pin_definition(first).name() == "1");
-    CHECK(circuit.pin_definition(second).number() == "2");
-    CHECK(circuit.pin_definition_count() == 2);
+    CHECK(circuit.get(first).name() == "1");
+    CHECK(circuit.get(second).number() == "2");
+    CHECK(circuit.all<volt::PinDefId>().size() == 2);
 }
 
 TEST_CASE("Circuit stores component definitions") {
@@ -113,9 +67,9 @@ TEST_CASE("Circuit stores component definitions") {
     });
 
     CHECK(resistor == volt::ComponentDefId{0});
-    CHECK(circuit.component_definition(resistor).name() == "Resistor");
-    REQUIRE(circuit.component_definition(resistor).pins().size() == 2);
-    CHECK(circuit.component_definition_count() == 1);
+    CHECK(circuit.get(resistor).name() == "Resistor");
+    REQUIRE(circuit.get(resistor).pins().size() == 2);
+    CHECK(circuit.all<volt::ComponentDefId>().size() == 1);
 }
 
 TEST_CASE("Circuit stores component instances and concrete pin instances") {
@@ -134,12 +88,12 @@ TEST_CASE("Circuit stores component instances and concrete pin instances") {
     const auto pin = volt::queries::pin_by_definition(circuit, component, pin_def).value();
 
     CHECK(component == volt::ComponentId{0});
-    CHECK(circuit.component(component).reference() == volt::ReferenceDesignator{"U1"});
+    CHECK(circuit.get(component).reference() == volt::ReferenceDesignator{"U1"});
     CHECK(pin == volt::PinId{0});
-    CHECK(circuit.pin(pin).component() == component);
-    CHECK(circuit.pin(pin).definition() == pin_def);
-    CHECK(circuit.component_count() == 1);
-    CHECK(circuit.pin_count() == 1);
+    CHECK(circuit.get(pin).component() == component);
+    CHECK(circuit.get(pin).definition() == pin_def);
+    CHECK(circuit.all<volt::ComponentId>().size() == 1);
+    CHECK(circuit.all<volt::PinId>().size() == 1);
 }
 
 TEST_CASE("Circuit rejects component instances that reference missing definitions") {
@@ -160,22 +114,6 @@ TEST_CASE("Circuit rejects component instances that reference missing definition
     }
 }
 
-TEST_CASE("Legacy connectivity facade rejects raw pin instances with missing IDs") {
-    volt::Circuit circuit;
-    const auto component_def =
-        volt::test::define_component(circuit, "Regulator", {volt::test::passive_pin("VDD", "1")});
-    const auto pin_def = circuit.get(component_def).pins().front();
-    const auto component = volt::test::instantiate_component(circuit, component_def, "U1");
-
-    // Raw pin insertion exists only on the transitional facade and remains locked until #266.
-    CHECK_THROWS_AS(
-        circuit.connectivity().add_pin(volt::PinInstance{volt::ComponentId{42}, pin_def}),
-        std::out_of_range);
-    CHECK_THROWS_AS(
-        circuit.connectivity().add_pin(volt::PinInstance{component, volt::PinDefId{42}}),
-        std::out_of_range);
-}
-
 TEST_CASE("Circuit stores nets") {
     volt::Circuit circuit;
     const auto component_def =
@@ -188,18 +126,9 @@ TEST_CASE("Circuit stores nets") {
     CHECK(circuit.connect(net_id, pin));
 
     CHECK(net_id == volt::NetId{0});
-    CHECK(circuit.net(net_id).name() == volt::NetName{"GND"});
-    REQUIRE(circuit.net(net_id).pins().size() == 1);
-    CHECK(circuit.net_count() == 1);
-}
-
-TEST_CASE("Legacy connectivity facade rejects preconnected nets with missing pins") {
-    volt::Circuit circuit;
-    auto net = volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground};
-    net.connect(volt::PinId{99});
-
-    // Preconnected Net insertion exists only on the transitional facade and remains until #266.
-    CHECK_THROWS_AS(circuit.connectivity().add_net(std::move(net)), std::out_of_range);
+    CHECK(circuit.get(net_id).name() == volt::NetName{"GND"});
+    REQUIRE(circuit.get(net_id).pins().size() == 1);
+    CHECK(circuit.all<volt::NetId>().size() == 1);
 }
 
 TEST_CASE("Circuit connects existing pins to existing nets") {
@@ -213,8 +142,8 @@ TEST_CASE("Circuit connects existing pins to existing nets") {
 
     CHECK(circuit.connect(net, pin));
     CHECK_FALSE(circuit.connect(net, pin));
-    REQUIRE(circuit.net(net).pins().size() == 1);
-    CHECK(circuit.net(net).pins().front() == pin);
+    REQUIRE(circuit.get(net).pins().size() == 1);
+    CHECK(circuit.get(net).pins().front() == pin);
     REQUIRE(volt::queries::net_of(circuit, pin).has_value());
     CHECK(volt::queries::net_of(circuit, pin).value() == net);
 }
@@ -264,8 +193,8 @@ TEST_CASE("Circuit enforces one net per concrete pin") {
         CHECK(error.code() == volt::ErrorCode::InvalidState);
         CHECK(std::string{error.what()} == "Pin is already connected to another net");
     }
-    CHECK(circuit.net(first_net).contains(pin));
-    CHECK_FALSE(circuit.net(second_net).contains(pin));
+    CHECK(circuit.get(first_net).contains(pin));
+    CHECK_FALSE(circuit.get(second_net).contains(pin));
 }
 
 TEST_CASE("Circuit disconnects a pin from its current net") {
@@ -281,7 +210,7 @@ TEST_CASE("Circuit disconnects a pin from its current net") {
     CHECK(circuit.disconnect(pin));
     CHECK_FALSE(circuit.disconnect(pin));
     CHECK_FALSE(volt::queries::net_of(circuit, pin).has_value());
-    CHECK(circuit.net(net).pins().empty());
+    CHECK(circuit.get(net).pins().empty());
 
     try {
         static_cast<void>(circuit.disconnect(volt::PinId{99}));
@@ -398,9 +327,9 @@ TEST_CASE("Circuit sets component instance properties through an explicit mutati
     circuit.update(component, volt::SetComponentProperty{volt::PropertyKey{"fitted"},
                                                          volt::PropertyValue{true}});
 
-    CHECK(circuit.component(component).properties().get(volt::PropertyKey{"value"}) ==
+    CHECK(circuit.get(component).properties().get(volt::PropertyKey{"value"}) ==
           volt::PropertyValue{"VCC"});
-    CHECK(circuit.component(component).properties().get(volt::PropertyKey{"fitted"}) ==
+    CHECK(circuit.get(component).properties().get(volt::PropertyKey{"fitted"}) ==
           volt::PropertyValue{true});
 }
 
@@ -742,8 +671,8 @@ TEST_CASE("Circuit copies keep name lookups independent and uniqueness enforced"
                     .has_value());
     CHECK_FALSE(volt::queries::net_by_name(circuit, volt::NetName{"GND"}).has_value());
     CHECK(volt::queries::net_of(circuit, pin) == net);
-    CHECK(circuit.component_count() == 1);
-    CHECK(circuit.net_count() == 1);
+    CHECK(circuit.all<volt::ComponentId>().size() == 1);
+    CHECK(circuit.all<volt::NetId>().size() == 1);
 }
 
 TEST_CASE("Moved-from circuits reset to empty and stay safely usable") {
@@ -757,11 +686,11 @@ TEST_CASE("Moved-from circuits reset to empty and stay safely usable") {
 
     const auto moved = std::move(circuit);
 
-    CHECK(moved.component_count() == 1);
-    CHECK(moved.net_count() == 1);
-    CHECK(circuit.component_count() == 0);
-    CHECK(circuit.pin_count() == 0);
-    CHECK(circuit.net_count() == 0);
+    CHECK(moved.all<volt::ComponentId>().size() == 1);
+    CHECK(moved.all<volt::NetId>().size() == 1);
+    CHECK(circuit.all<volt::ComponentId>().size() == 0);
+    CHECK(circuit.all<volt::PinId>().size() == 0);
+    CHECK(circuit.all<volt::NetId>().size() == 0);
     CHECK_FALSE(volt::queries::component_by_reference(circuit, volt::ReferenceDesignator{"U1"})
                     .has_value());
 
@@ -769,17 +698,17 @@ TEST_CASE("Moved-from circuits reset to empty and stay safely usable") {
         volt::test::define_component(circuit, "Regulator", {volt::test::passive_pin("VDD", "1")});
     [[maybe_unused]] const auto reused =
         circuit.instantiate_component(reused_def, volt::ReferenceDesignator{"U1"});
-    CHECK(circuit.component_count() == 1);
-    CHECK(moved.component_count() == 1);
+    CHECK(circuit.all<volt::ComponentId>().size() == 1);
+    CHECK(moved.all<volt::ComponentId>().size() == 1);
 
     volt::Circuit assigned;
     assigned = std::move(circuit);
-    CHECK(assigned.component_count() == 1);
-    CHECK(circuit.component_count() == 0);
+    CHECK(assigned.all<volt::ComponentId>().size() == 1);
+    CHECK(circuit.all<volt::ComponentId>().size() == 0);
     [[maybe_unused]] const auto after_move_assign =
         circuit.add_net(volt::NetSpec{.name = volt::NetName{"VCC"}, .kind = volt::NetKind::Power});
-    CHECK(circuit.net_count() == 1);
-    CHECK(assigned.net_count() == 0);
+    CHECK(circuit.all<volt::NetId>().size() == 1);
+    CHECK(assigned.all<volt::NetId>().size() == 0);
 }
 
 TEST_CASE("Structural rejections carry machine-readable error codes") {

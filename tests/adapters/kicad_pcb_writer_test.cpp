@@ -423,7 +423,8 @@ TEST_CASE("KiCad PCB writer pins a routed multi-net golden board") {
     CHECK(count_occurrences(result.text, "(pad ") == exported_pad_count(board));
     CHECK(count_occurrences(result.text, "(segment\n") == exported_segment_count(board));
     CHECK(count_occurrences(result.text, "(via\n") == board.via_count());
-    CHECK(count_occurrences(result.text, "\n  (net ") == board.circuit().net_count() + 1U);
+    CHECK(count_occurrences(result.text, "\n  (net ") ==
+          board.circuit().all<volt::NetId>().size() + 1U);
     CHECK(result.text.find("(net 1 \"VCC\")") != std::string::npos);
     CHECK(result.text.find("(net 2 \"LED_A\")") != std::string::npos);
     CHECK(result.text.find("(net 3 \"GND\")") != std::string::npos);

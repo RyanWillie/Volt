@@ -53,15 +53,6 @@ TEST_CASE("Circuit complete definitions preserve deterministic connectivity IDs"
     CHECK(circuit.get(resistor).pins() == std::vector{first, second});
 }
 
-TEST_CASE("Legacy connectivity facade rejects definitions with missing raw pin IDs") {
-    volt::Circuit circuit;
-
-    // ComponentSpec owns complete PinSpec values; raw PinDefId input remains only until #266.
-    CHECK_THROWS_AS(circuit.connectivity().add_component_definition(
-                        volt::ComponentDefinition{"Broken", std::vector{volt::PinDefId{99}}}),
-                    std::out_of_range);
-}
-
 TEST_CASE("Circuit instantiates complete components and pins deterministically") {
     auto fixture = make_connectivity_fixture();
 
@@ -91,20 +82,6 @@ TEST_CASE("Circuit enforces unique component references") {
     }
 }
 
-TEST_CASE("Legacy connectivity facade rejects raw pins outside their component definition") {
-    auto fixture = make_connectivity_fixture();
-    const auto component =
-        volt::test::instantiate_component(fixture.circuit, fixture.component_definition, "R1");
-    const auto unrelated_definition = volt::test::define_component(
-        fixture.circuit, "Unrelated", {volt::test::passive_pin("C", "3")});
-    const auto unrelated_pin = fixture.circuit.get(unrelated_definition).pins().front();
-
-    // Raw PinInstance insertion remains a focused transitional-facade contract until #266.
-    CHECK_THROWS_AS(
-        fixture.circuit.connectivity().add_pin(volt::PinInstance{component, unrelated_pin}),
-        std::logic_error);
-}
-
 TEST_CASE("Circuit enforces unique net names") {
     auto fixture = make_connectivity_fixture();
     const auto net = fixture.circuit.add_net(volt::NetSpec{.name = volt::NetName{"NET_A"}});
@@ -117,14 +94,6 @@ TEST_CASE("Circuit enforces unique net names") {
         CHECK(error.code() == volt::ErrorCode::DuplicateName);
         CHECK(std::string{error.what()} == "Net name already exists");
     }
-}
-
-TEST_CASE("Legacy connectivity facade rejects preconnected nets with dangling pins") {
-    auto fixture = make_connectivity_fixture();
-    auto dangling = volt::Net{volt::NetName{"BROKEN"}, volt::NetKind::Signal};
-    dangling.connect(volt::PinId{99});
-    // NetSpec creates an empty net; raw preconnected Net insertion remains only until #266.
-    CHECK_THROWS_AS(fixture.circuit.connectivity().add_net(std::move(dangling)), std::out_of_range);
 }
 
 TEST_CASE("Circuit enforces one net per pin at mutation boundaries") {
