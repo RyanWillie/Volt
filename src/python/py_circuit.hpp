@@ -4,8 +4,11 @@
 
 #include <volt/pcb/board.hpp>
 
+#include <cstddef>
+#include <optional>
 #include <utility>
 #include <variant>
+#include <vector>
 
 namespace volt::python {
 
@@ -396,11 +399,50 @@ class PyCircuit {
     [[nodiscard]] py::dict board_to_fabrication_files() const;
 
   private:
+    /** Binding-local typed draft committed atomically through Circuit::define_module. */
+    struct ModuleDraft {
+        std::size_t handle;
+        volt::ModuleSpec spec;
+        std::vector<std::size_t> template_net_handles;
+        std::vector<std::size_t> port_handles;
+        std::vector<std::size_t> component_handles;
+        std::optional<volt::ModuleDefId> committed_id = std::nullopt;
+    };
+
+    [[nodiscard]] ModuleDraft &module_draft(std::size_t module);
+
+    [[nodiscard]] const ModuleDraft &module_draft(std::size_t module) const;
+
+    [[nodiscard]] std::pair<const ModuleDraft *, std::size_t>
+    template_net_draft(std::size_t net) const;
+
+    [[nodiscard]] std::pair<const ModuleDraft *, std::size_t>
+    module_component_draft(std::size_t component) const;
+
+    [[nodiscard]] std::pair<const ModuleDraft *, std::size_t> port_draft(std::size_t port) const;
+
+    void preflight_module_drafts(std::size_t module, const volt::ModuleSpec &candidate) const;
+
+    [[nodiscard]] volt::ModuleDefId commit_module(std::size_t module);
+
+    [[nodiscard]] volt::PortDefId resolved_port_id(std::size_t port) const;
+
+    [[nodiscard]] volt::ModuleComponentId resolved_module_component_id(std::size_t component) const;
+
+    [[nodiscard]] std::size_t public_template_net_index(volt::TemplateNetDefId net) const;
+
+    [[nodiscard]] std::size_t public_port_index(volt::PortDefId port) const;
+
+    [[nodiscard]] std::size_t
+    public_module_component_index(volt::ModuleComponentId component) const;
+
+    [[nodiscard]] volt::Circuit materialized_circuit() const;
+
     [[nodiscard]] std::vector<volt::PinId> pins_by_name(volt::ComponentId component,
                                                         const std::string &name) const;
 
     [[nodiscard]] std::vector<volt::PinDefId>
-    module_component_pins_by_name(volt::ModuleComponentId component, const std::string &name) const;
+    module_component_pins_by_name(std::size_t component, const std::string &name) const;
 
     [[nodiscard]] volt::Schematic &schematic_projection();
 
@@ -415,6 +457,10 @@ class PyCircuit {
     volt::Circuit circuit_;
     volt::SchematicDocument schematic_document_;
     std::optional<volt::Board> board_projection_;
+    std::vector<ModuleDraft> module_drafts_;
+    std::size_t next_template_net_handle_ = 0;
+    std::size_t next_port_handle_ = 0;
+    std::size_t next_module_component_handle_ = 0;
 };
 
 } // namespace volt::python

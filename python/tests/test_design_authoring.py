@@ -330,3 +330,57 @@ def test_module_authoring_exposes_hierarchy_inspection_views():
         volt.PortBindingInfo(port=0, internal_net=2, parent_net=0),
         volt.PortBindingInfo(port=1, internal_net=3, parent_net=1),
     )
+
+
+def test_module_authoring_preserves_typed_duplicate_errors_without_partial_state():
+    design = volt.Design("module-errors")
+    module = design.define_module("Block")
+    module.net("IO")
+    before = design.to_json().encode()
+
+    with pytest.raises(
+        volt.DuplicateNameError,
+        match="^Template net name already exists in module definition$",
+    ) as duplicate_net:
+        module.net("IO")
+
+    assert duplicate_net.value.code == "DuplicateName"
+    assert design.to_json().encode() == before
+
+    with pytest.raises(
+        volt.DuplicateNameError,
+        match="^Module definition name already exists$",
+    ) as duplicate_module:
+        design.define_module("Block")
+
+    assert duplicate_module.value.code == "DuplicateName"
+    assert design.to_json().encode() == before
+
+
+def test_module_authoring_can_continue_after_a_serialization_snapshot():
+    design = volt.Design("module-snapshot")
+    resistor = design.define_component(
+        "Resistor",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+    )
+    module = design.define_module("Block")
+    input_net = module.port("IN")
+
+    snapshot = json.loads(design.to_json())
+    assert snapshot["module_definitions"][0]["name"] == "Block"
+
+    output_net = module.port("OUT")
+    resistor_instance = module.instantiate(resistor, ref="R1")
+    input_net += resistor_instance[1]
+    input_net += resistor_instance[1]
+    output_net += resistor_instance[2]
+
+    block = design.instantiate(module, ref="BLOCK_A")
+    parent_input = design.net("IN")
+    parent_output = design.net("OUT")
+    parent_input += block["IN"]
+    parent_output += block["OUT"]
+
+    circuit = json.loads(design.to_json())
+    assert len(circuit["module_definitions"][0]["connections"]) == 2
+    assert circuit["module_instances"][0]["name"] == "BLOCK_A"
