@@ -90,8 +90,8 @@ TEST_CASE("NetClasses stores net classes by stable ID and name") {
                         .net_class = volt::NetClass{volt::NetClassName{"Logic"}}}),
                     std::logic_error);
 
-    const auto unassigned_net = circuit.connectivity().add_net(
-        volt::Net{volt::NetName{"UNASSIGNED"}, volt::NetKind::Signal});
+    const auto unassigned_net = circuit.add_net(
+        volt::NetSpec{.name = volt::NetName{"UNASSIGNED"}, .kind = volt::NetKind::Signal});
     CHECK_FALSE(circuit.net_class_for_net(unassigned_net).has_value());
     CHECK(circuit.net_class_assignments().empty());
 }
@@ -114,7 +114,7 @@ TEST_CASE("NetClass rejects malformed local constraints") {
 TEST_CASE("Circuit owns net-class intent and rejects dangling assignments") {
     auto circuit = volt::Circuit{};
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VDD"}, .kind = volt::NetKind::Power});
     const auto net_class = circuit.define_net_class(
         volt::NetClassSpec{.net_class = volt::NetClass{volt::NetClassName{"PowerRails"}}});
 
@@ -154,7 +154,7 @@ TEST_CASE("Net-class structural rejections carry machine-readable error codes") 
 
     auto circuit = volt::Circuit{};
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VDD"}, .kind = volt::NetKind::Power});
     static_cast<void>(circuit.define_net_class(
         volt::NetClassSpec{.net_class = volt::NetClass{volt::NetClassName{"PowerRails"}}}));
     try {
@@ -181,7 +181,7 @@ TEST_CASE("Net-class structural rejections carry machine-readable error codes") 
 TEST_CASE("Circuit electrical validation applies assigned net-class voltage limits") {
     auto circuit = volt::Circuit{};
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VDD"}, .kind = volt::NetKind::Power});
     auto net_class = volt::NetClass{volt::NetClassName{"Logic"}};
     net_class.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, 3.6});
     const auto net_class_id = define_net_class(circuit, std::move(net_class));
@@ -201,9 +201,9 @@ TEST_CASE("Circuit electrical validation applies assigned net-class voltage limi
 TEST_CASE("Board validation applies assigned net-class copper clearance") {
     auto circuit = volt::Circuit{};
     const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"HV"}, volt::NetKind::Power});
-    const auto second_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"LOGIC"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"HV"}, .kind = volt::NetKind::Power});
+    const auto second_net = circuit.add_net(
+        volt::NetSpec{.name = volt::NetName{"LOGIC"}, .kind = volt::NetKind::Signal});
     auto net_class = volt::NetClass{volt::NetClassName{"HighVoltage"}};
     net_class.set_copper_clearance_mm(0.5);
     const auto net_class_id = define_net_class(circuit, std::move(net_class));
@@ -315,7 +315,7 @@ TEST_CASE("NetClass resolves hand-set rule values before derived values") {
 
     auto circuit = volt::Circuit{};
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VDD"}, .kind = volt::NetKind::Power});
     assign_net_class(circuit, net, define_net_class(circuit, std::move(net_class)));
 
     const auto rules = volt::resolve_net_class_rules(circuit, net);
@@ -328,7 +328,7 @@ TEST_CASE("NetClass resolves hand-set rule values before derived values") {
 TEST_CASE("Net class resolution exposes provenance for effective derived rule values") {
     auto circuit = volt::Circuit{};
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VDD"}, .kind = volt::NetKind::Power});
     auto net_class = volt::NetClass{volt::NetClassName{"DerivedPower"}};
     net_class.derive_track_width(volt::ipc2221_trace_width_from_current_mm(
         1.0, 10.0, 1.0, volt::NetClassTraceEnvironment::External));
@@ -344,7 +344,7 @@ TEST_CASE("Net class resolution exposes provenance for effective derived rule va
 TEST_CASE("Net class resolution prefers explicit assignment over intent defaults") {
     auto circuit = volt::Circuit{};
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VDD"}, .kind = volt::NetKind::Power});
 
     auto power_default = volt::NetClass{volt::NetClassName{"PowerDefault"}};
     power_default.set_default_for_net_kind(volt::NetKind::Power);
@@ -361,9 +361,9 @@ TEST_CASE("Net class resolution prefers explicit assignment over intent defaults
 TEST_CASE("Net class resolution picks the highest-priority kind default deterministically") {
     auto circuit = volt::Circuit{};
     const auto power_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
-    const auto signal_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"DATA"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VDD"}, .kind = volt::NetKind::Power});
+    const auto signal_net = circuit.add_net(
+        volt::NetSpec{.name = volt::NetName{"DATA"}, .kind = volt::NetKind::Signal});
 
     auto low = volt::NetClass{volt::NetClassName{"LowPriority"}};
     low.set_default_for_net_kind(volt::NetKind::Power);
@@ -388,9 +388,9 @@ TEST_CASE("Net class resolution picks the highest-priority kind default determin
 TEST_CASE("Net class pair clearance resolves to the larger class value with a floor") {
     auto circuit = volt::Circuit{};
     const auto first =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"HV"}, volt::NetKind::Power});
-    const auto second =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"LOGIC"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"HV"}, .kind = volt::NetKind::Power});
+    const auto second = circuit.add_net(
+        volt::NetSpec{.name = volt::NetName{"LOGIC"}, .kind = volt::NetKind::Signal});
 
     auto wide = volt::NetClass{volt::NetClassName{"Wide"}};
     wide.set_copper_clearance_mm(0.8);
@@ -408,7 +408,7 @@ TEST_CASE("Net class pair clearance resolves to the larger class value with a fl
 TEST_CASE("Circuit electrical validation applies kind-default net-class voltage limits") {
     auto circuit = volt::Circuit{};
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VDD"}, .kind = volt::NetKind::Power});
 
     auto net_class = volt::NetClass{volt::NetClassName{"PowerDefault"}};
     net_class.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, 3.6});
@@ -428,7 +428,7 @@ TEST_CASE("Circuit electrical validation applies kind-default net-class voltage 
 TEST_CASE("Board validation applies net-class track width, via size, and layer rules") {
     auto circuit = volt::Circuit{};
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VDD"}, .kind = volt::NetKind::Power});
 
     auto net_class = volt::NetClass{volt::NetClassName{"PowerRules"}};
     net_class.set_track_width_mm(0.5);
@@ -558,9 +558,9 @@ TEST_CASE("Net class layer scope and explicit layer names are mutually exclusive
 TEST_CASE("Board validation applies semantic layer scopes on a four-layer board") {
     auto circuit = volt::Circuit{};
     const auto outer_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"RF"}, volt::NetKind::Signal});
-    const auto inner_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"QUIET"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"RF"}, .kind = volt::NetKind::Signal});
+    const auto inner_net = circuit.add_net(
+        volt::NetSpec{.name = volt::NetName{"QUIET"}, .kind = volt::NetKind::Signal});
 
     auto outer_class = volt::NetClass{volt::NetClassName{"OuterOnly"}};
     outer_class.set_layer_scope(volt::NetClassLayerScope::OuterOnly);
@@ -609,9 +609,9 @@ TEST_CASE("Board validation applies semantic layer scopes on a four-layer board"
 TEST_CASE("Board validation applies clearance-matrix pair rules") {
     auto circuit = volt::Circuit{};
     const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"A"}, .kind = volt::NetKind::Signal});
     const auto second_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"B"}, .kind = volt::NetKind::Signal});
 
     auto board = volt::Board{circuit};
     const auto front = board.add_layer(
@@ -647,9 +647,9 @@ TEST_CASE("Board validation applies clearance-matrix pair rules") {
 TEST_CASE("Board validation lets same-room clearance replace net-class and matrix clearances") {
     auto circuit = volt::Circuit{};
     const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"A"}, .kind = volt::NetKind::Signal});
     const auto second_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"B"}, .kind = volt::NetKind::Signal});
 
     auto net_class = volt::NetClass{volt::NetClassName{"Local"}};
     net_class.set_copper_clearance_mm(0.10);
@@ -698,9 +698,9 @@ TEST_CASE("Board validation lets same-room clearance replace net-class and matri
 TEST_CASE("Board validation lets lower same-room clearance suppress net-class clearance") {
     auto circuit = volt::Circuit{};
     const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"A"}, .kind = volt::NetKind::Signal});
     const auto second_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"B"}, .kind = volt::NetKind::Signal});
 
     auto net_class = volt::NetClass{volt::NetClassName{"Local"}};
     net_class.set_copper_clearance_mm(0.50);
@@ -760,9 +760,9 @@ TEST_CASE("Board validation lets lower same-room clearance suppress net-class cl
 TEST_CASE("Board validation ignores room clearance when only one shape is inside") {
     auto circuit = volt::Circuit{};
     const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"A"}, .kind = volt::NetKind::Signal});
     const auto second_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"B"}, .kind = volt::NetKind::Signal});
 
     auto board = volt::Board{circuit};
     const auto front = board.add_layer(
@@ -793,8 +793,8 @@ TEST_CASE("Board validation ignores room clearance when only one shape is inside
 
 TEST_CASE("Board validation lets room track width replace resolved net-class width") {
     auto circuit = volt::Circuit{};
-    const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"DATA"}, volt::NetKind::Signal});
+    const auto net = circuit.add_net(
+        volt::NetSpec{.name = volt::NetName{"DATA"}, .kind = volt::NetKind::Signal});
 
     auto net_class = volt::NetClass{volt::NetClassName{"Signal"}};
     net_class.set_track_width_mm(0.10);
@@ -839,9 +839,9 @@ TEST_CASE("Board validation lets room track width replace resolved net-class wid
 TEST_CASE("Board validation resolves overlapping rooms by priority then lowest ID") {
     auto circuit = volt::Circuit{};
     const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"A"}, .kind = volt::NetKind::Signal});
     const auto second_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"B"}, .kind = volt::NetKind::Signal});
 
     auto board = volt::Board{circuit};
     const auto front = board.add_layer(
@@ -888,9 +888,9 @@ TEST_CASE("Board validation resolves overlapping rooms by priority then lowest I
 TEST_CASE("Board validation ignores overlapping rooms without clearance overrides") {
     auto circuit = volt::Circuit{};
     const auto first_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"A"}, .kind = volt::NetKind::Signal});
     const auto second_net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"B"}, .kind = volt::NetKind::Signal});
 
     auto board = volt::Board{circuit};
     const auto front = board.add_layer(
@@ -931,8 +931,8 @@ TEST_CASE("Board validation ignores overlapping rooms without clearance override
 
 TEST_CASE("Board validation ignores overlapping rooms without track-width overrides") {
     auto circuit = volt::Circuit{};
-    const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"DATA"}, volt::NetKind::Signal});
+    const auto net = circuit.add_net(
+        volt::NetSpec{.name = volt::NetName{"DATA"}, .kind = volt::NetKind::Signal});
 
     auto board = volt::Board{circuit};
     const auto front = board.add_layer(

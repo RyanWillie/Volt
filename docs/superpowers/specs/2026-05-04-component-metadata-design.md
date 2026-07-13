@@ -1,5 +1,8 @@
 # Component Metadata Foundation Design
 
+Status: historical design record. The current authoring contract is the typed aggregate API in
+`docs/design/adr-circuit-aggregate-api.md`; the example below uses that settled surface.
+
 ## Purpose
 
 Volt needs a metadata model that lets a logical circuit describe both electrical intent
@@ -188,30 +191,31 @@ Validation for this slice:
 Expected usage after the first two slices:
 
 ```cpp
-auto resistor = circuit.connectivity().add_component_definition(ComponentDefinition{
-    "Resistor",
-    std::vector{pin_1, pin_2},
-    PropertyMap{{PropertyKey{"category"}, PropertyValue{"passive"}}},
+auto resistor = circuit.define_component(ComponentSpec{
+    .name = "Resistor",
+    .pins = {pin_1, pin_2},
+    .properties = PropertyMap{{PropertyKey{"category"}, PropertyValue{"passive"}}},
 });
+const auto &resistorPins = circuit.get(resistor).pins();
 
 auto r1 = circuit.instantiate_component(resistor, ReferenceDesignator{"R1"});
-circuit.component(r1).properties().set(PropertyKey{"value"}, PropertyValue{"330 ohm"});
+circuit.update(r1, SetComponentProperty{PropertyKey{"value"}, PropertyValue{"330 ohm"}});
 
-circuit.select_part(
+circuit.update(
     r1,
-    PhysicalPart{
+    SelectPhysicalPart{PhysicalPart{
         ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
         PackageRef{"0603"},
         FootprintRef{"Resistor_SMD", "R_0603_1608Metric"},
         std::vector{
-            PinPadMapping{pin_1, "1"},
-            PinPadMapping{pin_2, "2"},
+            PinPadMapping{resistorPins[0], "1"},
+            PinPadMapping{resistorPins[1], "2"},
         },
-    });
+    }});
 ```
 
-The exact mutability shape may differ depending on the current `Circuit` accessor style,
-but the conceptual split should remain.
+The historical design's logical/physical split remains; the settled mutation shape is the typed
+aggregate API shown above.
 
 ## Invariants
 

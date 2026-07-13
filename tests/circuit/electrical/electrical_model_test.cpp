@@ -10,6 +10,8 @@
 #include <volt/circuit/electrical/electrical_model.hpp>
 #include <volt/core/errors.hpp>
 
+#include <support/circuit_test_helpers.hpp>
+
 namespace {
 
 template <typename Model>
@@ -116,7 +118,7 @@ TEST_CASE("Circuit stores typed electrical attributes by owner kind") {
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
     const auto net =
-        circuit.connectivity().add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VCC"}, .kind = volt::NetKind::Power});
     circuit.update(component,
                    volt::SetComponentElectricalAttribute{
                        component_resistance, volt::ElectricalAttributeValue{volt::Quantity{
@@ -139,12 +141,8 @@ TEST_CASE("Circuit stores typed electrical attributes by owner kind") {
 
 TEST_CASE("Circuit rejects electrical attributes for the wrong owner kind") {
     volt::Circuit circuit;
-    const auto pin_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{pin_definition}});
+    const auto component_definition =
+        volt::test::define_component(circuit, "Resistor", {volt::test::passive_pin("1", "1")});
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
     const auto net_voltage = volt::ElectricalAttributeSpec{
@@ -173,16 +171,12 @@ TEST_CASE("Circuit rejects electrical attributes for the wrong owner kind") {
 
 TEST_CASE("Circuit owns selected physical parts and selected-part attributes") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
+    const auto component_definition = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    const auto &pins = circuit.get(component_definition).pins();
+    const auto first_pin = pins[0];
+    const auto second_pin = pins[1];
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
     const auto voltage_rating = volt::ElectricalAttributeSpec{
@@ -207,20 +201,14 @@ TEST_CASE("Circuit owns selected physical parts and selected-part attributes") {
 
 TEST_CASE("Circuit rejects selected parts that do not match component pins") {
     volt::Circuit circuit;
-    const auto first_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto second_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto extra_pin = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "3", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
+    const auto component_definition = volt::test::define_component(
+        circuit, "Resistor",
+        {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
+    const auto extra_definition =
+        volt::test::define_component(circuit, "Other", {volt::test::passive_pin("3", "3")});
+    const auto &pins = circuit.get(component_definition).pins();
+    const auto first_pin = pins[0];
+    const auto extra_pin = circuit.get(extra_definition).pins().front();
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
 
@@ -258,12 +246,8 @@ TEST_CASE("Circuit rejects selected parts that do not match component pins") {
 
 TEST_CASE("Circuit rejects selected-part attributes without selected-part metadata") {
     volt::Circuit circuit;
-    const auto pin_definition = circuit.connectivity().add_pin_definition(volt::PinDefinition{
-        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
-        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
-        volt::ElectricalDriveKind::Passive});
-    const auto component_definition = circuit.connectivity().add_component_definition(
-        volt::ComponentDefinition{"Resistor", std::vector{pin_definition}});
+    const auto component_definition =
+        volt::test::define_component(circuit, "Resistor", {volt::test::passive_pin("1", "1")});
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
     const auto voltage_rating = volt::ElectricalAttributeSpec{
