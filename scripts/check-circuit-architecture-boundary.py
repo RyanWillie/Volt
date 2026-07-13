@@ -1185,9 +1185,14 @@ def check_no_raw_structural_throws(failures: list[str]) -> None:
 
 
 def check_no_circuit_facade_acquisition_regrowth(failures: list[str]) -> None:
+    python_binding_files = sorted(
+        path
+        for path in PYTHON_BINDING_SOURCE_DIR.rglob("*")
+        if path.suffix in {".cpp", ".hpp", ".h"}
+    )
     acquisitions = [
         acquisition
-        for path in native_cpp_files()
+        for path in [*native_cpp_files(), *python_binding_files]
         for acquisition in facade_acquisitions(path, read(path))
     ]
     failures.extend(facade_inventory_failures(acquisitions, CIRCUIT_FACADE_ACQUISITION_LOCKS))

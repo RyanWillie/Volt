@@ -86,7 +86,8 @@ void bind_circuit(pybind11::module_ &module) {
         .def("add_net", &PyCircuit::add_net, py::arg("name"), py::arg("kind") = "signal")
         .def("add_net_class", &PyCircuit::add_net_class, py::arg("name"),
              py::arg("options") = py::dict{})
-        .def("assign_net_class", &PyCircuit::assign_net_class, py::arg("net"), py::arg("net_class"))
+        .def("assign_net_class", &PyCircuit::assign_net_class, py::arg("nets"),
+             py::arg("net_class"))
         .def("net_class_info", &PyCircuit::net_class_info, py::arg("net_class"))
         .def("net_refs", &PyCircuit::net_refs)
         .def("component_refs", &PyCircuit::component_refs)
@@ -133,8 +134,8 @@ void bind_circuit(pybind11::module_ &module) {
         .def("define_module", &PyCircuit::define_module, py::arg("name"))
         .def("add_template_net", &PyCircuit::add_template_net, py::arg("module"), py::arg("name"),
              py::arg("kind") = "signal")
-        .def("add_port", &PyCircuit::add_port, py::arg("module"), py::arg("name"),
-             py::arg("internal_net"), py::arg("role") = "passive", py::arg("required") = true)
+        .def("add_module_port", &PyCircuit::add_module_port, py::arg("module"), py::arg("name"),
+             py::arg("kind") = "signal", py::arg("role") = "passive", py::arg("required") = true)
         .def("add_module_component", &PyCircuit::add_module_component, py::arg("module"),
              py::arg("definition"), py::arg("reference"), py::arg("properties") = py::dict{})
         .def("module_component_pin_by_name", &PyCircuit::module_component_pin_by_name,
@@ -143,8 +144,8 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("component"), py::arg("number"))
         .def("module_component_pin_refs", &PyCircuit::module_component_pin_refs,
              py::arg("component"))
-        .def("connect_module_pin", &PyCircuit::connect_module_pin, py::arg("module"),
-             py::arg("net"), py::arg("component"), py::arg("pin"))
+        .def("connect_module_pins", &PyCircuit::connect_module_pins, py::arg("module"),
+             py::arg("net"), py::arg("component_pins"))
         .def("instantiate_root_module", &PyCircuit::instantiate_root_module, py::arg("definition"),
              py::arg("name"))
         .def("concrete_component_for", &PyCircuit::concrete_component_for, py::arg("instance"),

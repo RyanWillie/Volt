@@ -178,6 +178,20 @@ def test_net_class_ipc_current_sizing_is_kernel_owned_and_serialized():
         {"net": "net:0", "net_class": "net_class:0"}
     ]
 
+
+def test_net_class_assignment_rejects_late_foreign_net_without_partial_state():
+    design = volt.Design("net-class-atomic")
+    local = design.net("LOCAL")
+    foreign = volt.Design("foreign").net("FOREIGN")
+    power = design.net_class("Power")
+    before = design.to_json().encode()
+
+    with pytest.raises(ValueError, match="^Net belongs to a different design$"):
+        power.assign(local, foreign)
+
+    assert design.to_json().encode() == before
+
+
 def test_custom_component_definitions_are_kernel_owned():
     design = volt.Design("custom")
 
@@ -330,3 +344,137 @@ def test_module_authoring_exposes_hierarchy_inspection_views():
         volt.PortBindingInfo(port=0, internal_net=2, parent_net=0),
         volt.PortBindingInfo(port=1, internal_net=3, parent_net=1),
     )
+
+
+def test_module_authoring_preserves_typed_duplicate_errors_without_partial_state():
+    design = volt.Design("module-errors")
+    module = design.define_module("Block")
+    module.net("IO")
+    before = design.to_json().encode()
+
+    with pytest.raises(
+        volt.DuplicateNameError,
+        match="^Template net name already exists in module definition$",
+    ) as duplicate_net:
+        module.net("IO")
+
+    assert duplicate_net.value.code == "DuplicateName"
+    assert design.to_json().encode() == before
+
+    with pytest.raises(
+        volt.DuplicateNameError,
+        match="^Module definition name already exists$",
+    ) as duplicate_module:
+        design.define_module("Block")
+
+    assert duplicate_module.value.code == "DuplicateName"
+    assert design.to_json().encode() == before
+
+
+def test_module_authoring_can_continue_after_a_serialization_snapshot():
+    design = volt.Design("module-snapshot")
+    resistor = design.define_component(
+        "Resistor",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+    )
+    module = design.define_module("Block")
+    input_net = module.port("IN")
+
+    snapshot = json.loads(design.to_json())
+    assert snapshot["module_definitions"][0]["name"] == "Block"
+
+    output_net = module.port("OUT")
+    resistor_instance = module.instantiate(resistor, ref="R1")
+    input_net += resistor_instance[1]
+    input_net += resistor_instance[1]
+    output_net += resistor_instance[2]
+
+    block = design.instantiate(module, ref="BLOCK_A")
+    parent_input = design.net("IN")
+    parent_output = design.net("OUT")
+    parent_input += block["IN"]
+    parent_output += block["OUT"]
+
+    circuit = json.loads(design.to_json())
+    assert len(circuit["module_definitions"][0]["connections"]) == 2
+    assert circuit["module_instances"][0]["name"] == "BLOCK_A"
+
+
+def test_instantiating_later_module_does_not_freeze_earlier_draft():
+    design = volt.Design("module-interleaving")
+    first = design.define_module("First")
+    second = design.define_module("Second")
+    second.port("IO")
+
+    design.instantiate(second, ref="SECOND_A")
+    late = first.port("LATE")
+
+    assert late.name == "LATE"
+    assert {module["name"] for module in json.loads(design.to_json())["module_definitions"]} == {
+        "First",
+        "Second",
+    }
+
+
+def test_module_port_rejects_invalid_role_without_partial_state():
+    design = volt.Design("module-port-atomic")
+    module = design.define_module("Block")
+    before = design.to_json().encode()
+
+    with pytest.raises(ValueError, match="^Unknown port role"):
+        module.port("IO", role="not-a-role")
+
+    assert design.to_json().encode() == before
+    assert module.port("IO").name == "IO"
+
+
+def test_module_connect_rejects_late_invalid_endpoint_without_partial_state():
+    design = volt.Design("module-connect-type-atomic")
+    resistor = design.define_component(
+        "Resistor", pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)]
+    )
+    module = design.define_module("Block")
+    net = module.net("IO")
+    component = module.instantiate(resistor, ref="R1")
+    before = design.to_json().encode()
+
+    with pytest.raises(TypeError, match="^Module nets can only connect ModulePin handles$"):
+        module.connect(net, component[1], object())
+
+    assert design.to_json().encode() == before
+
+
+def test_module_connect_rejects_late_foreign_pin_without_partial_state():
+    design = volt.Design("module-connect-owner-atomic")
+    resistor = design.define_component(
+        "Resistor", pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)]
+    )
+    module = design.define_module("Block")
+    net = module.net("IO")
+    component = module.instantiate(resistor, ref="R1")
+    foreign_module = design.define_module("Foreign")
+    foreign_component = foreign_module.instantiate(resistor, ref="R2")
+    before = design.to_json().encode()
+
+    with pytest.raises(ValueError, match="^Module pin belongs to a different module$"):
+        module.connect(net, component[1], foreign_component[1])
+
+    assert design.to_json().encode() == before
+
+
+def test_module_connect_rejects_late_connected_pin_without_partial_state():
+    design = volt.Design("module-connect-state-atomic")
+    resistor = design.define_component(
+        "Resistor", pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)]
+    )
+    module = design.define_module("Block")
+    first = module.net("FIRST")
+    second = module.net("SECOND")
+    component = module.instantiate(resistor, ref="R1")
+    second += component[2]
+    before = design.to_json().encode()
+
+    with pytest.raises(volt.InvalidStateError, match="already connected"):
+        module.connect(first, component[1], component[2])
+
+    assert design.to_json().encode() == before
