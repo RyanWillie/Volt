@@ -19,13 +19,13 @@ inline Circuit build_led_circuit() {
     const auto resistor = authoring::define_component(circuit, authoring::resistor());
     const auto led = authoring::define_component(circuit, authoring::led());
 
-    const auto &connector_pins = circuit.component_definition(connector).pins();
+    const auto &connector_pins = circuit.get(connector).pins();
     const auto connector_positive = connector_pins[0];
     const auto connector_negative = connector_pins[1];
-    const auto &resistor_pins = circuit.component_definition(resistor).pins();
+    const auto &resistor_pins = circuit.get(resistor).pins();
     const auto resistor_pin_1 = resistor_pins[0];
     const auto resistor_pin_2 = resistor_pins[1];
-    const auto &led_pins = circuit.component_definition(led).pins();
+    const auto &led_pins = circuit.get(led).pins();
     const auto led_anode = led_pins[0];
     const auto led_cathode = led_pins[1];
 

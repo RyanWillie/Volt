@@ -231,7 +231,7 @@ py::list PyCircuit::board_stackup() const {
 
 py::list PyCircuit::board_component_footprint_pads(std::size_t component) const {
     const auto component_handle = component_id(component);
-    static_cast<void>(circuit_.component(component_handle));
+    static_cast<void>(circuit_.get(component_handle));
 
     auto result = py::list{};
     const auto &selected_part = circuit_.selected_physical_part(component_handle);

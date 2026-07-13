@@ -51,12 +51,10 @@ operations, closed typed updates, generic typed reads, and free derived queries.
 `Circuit` methods must not mirror private storage tables or introduce generic/stringly
 mutation handles.
 
-The existing borrow-only mutator facades (`connectivity()`, `hierarchy()`, `electrical()`,
-`intent()`, and `net_classes()`) are transitional and frozen while the ADR migration is in
-progress. Existing call sites may remain until their scheduled migration, but do not add
-methods to those facades or treat them as the target architecture. The current architecture
-checker remains authoritative for shipped code until the facade-deletion phase replaces its
-snapshots and rules.
+The public logical boundary is the typed aggregate API. Do not add borrowed subsystem facades,
+per-table getters or counts, public restoration mechanics, storage-shaped root methods, or
+generic mutation handles. The architecture checker and `Circuit` public snapshot enforce this
+final boundary.
 
 ## 1. Think Before Coding
 

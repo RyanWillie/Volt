@@ -378,7 +378,7 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
             reference_designator_suppressed(diagnostics, placement_id)) {
             continue;
         }
-        const auto &component = board.circuit().component(placement.component());
+        const auto &component = board.circuit().get(placement.component());
         write_reference_designator(out, placement_id, placement, *definition, component);
     }
     out << "      </g>\n";

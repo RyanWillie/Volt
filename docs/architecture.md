@@ -351,10 +351,8 @@ This layer keeps the distinction between:
 `FootprintRef` is only a reference. Footprint geometry, pads, courtyards, layers, and
 board placement remain outside the current circuit-kernel scope.
 
-Selected physical parts are currently assigned to component instances through the
-transitional `Circuit::electrical()` facade. The accepted aggregate API replaces that entry
-point with a typed component update; see
-[ADR: Typed Circuit Aggregate API](design/adr-circuit-aggregate-api.md). In either shape the
+Selected physical parts are assigned to component instances through a typed component update;
+see [ADR: Typed Circuit Aggregate API](design/adr-circuit-aggregate-api.md). The
 component stores the selected value, and the mutation boundary validates that the
 `PhysicalPart` pin/pad mappings cover the component's logical pin definitions and do not
 reuse a physical pad label. A logical pin may map to more than one physical pad when the
@@ -448,11 +446,9 @@ integrity. Operations reject missing definitions, missing component instances, m
 instances, nets that reference unknown pins, and attempts to connect IDs that do not
 belong to the circuit.
 
-The current implementation still exposes borrow-only `connectivity()`, `hierarchy()`,
-`electrical()`, `intent()`, and `net_classes()` mutation facades. Those facades are frozen
-transition machinery, not an extension point. The accepted replacement is one cohesive,
-small `Circuit` aggregate API based on complete typed specs, irreducible graph operations,
-closed typed updates, generic `get`/`all` reads, and free derived queries. See
+The public boundary is one cohesive, small `Circuit` aggregate API based on complete typed
+specs, irreducible graph operations, closed typed updates, generic `get`/`all` reads, and free
+derived queries. Private subsystem storage remains an implementation detail. See
 [ADR: Typed Circuit Aggregate API](design/adr-circuit-aggregate-api.md).
 
 The generic read boundary covers every stable-ID logical entity family. `get(id)` preserves
@@ -472,12 +468,11 @@ issues.
 ## Authoring Helpers
 
 Authoring helpers make the logical kernel usable without changing the source of truth. The
-programmatic authoring facade is specified separately in
+programmatic authoring boundary is specified separately in
 [authoring-api.md](authoring-api.md).
 They return typed IDs and route structural mutation through invariant-safe `Circuit`
-operations. During the aggregate-API migration they may call existing frozen facade entry
-points only as temporary adapters; new authoring semantics must follow the accepted ADR and
-must not expand the facade surface.
+operations. New authoring semantics must follow the accepted ADR and must not introduce a
+parallel mutation or storage-shaped read surface.
 
 The first authoring helpers are deliberately small:
 

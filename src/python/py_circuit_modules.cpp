@@ -257,9 +257,9 @@ std::size_t PyCircuit::module_component_pin_by_number(std::size_t component,
                                                       const std::string &number) const {
     const auto [draft, local_index] = module_component_draft(component);
     const auto &component_template = draft->spec.components.at(local_index);
-    const auto &definition = circuit_.component_definition(component_template.definition());
+    const auto &definition = circuit_.get(component_template.definition());
     for (const auto pin : definition.pins()) {
-        if (circuit_.pin_definition(pin).number() == number) {
+        if (circuit_.get(pin).number() == number) {
             return pin.index();
         }
     }
@@ -271,9 +271,9 @@ py::list PyCircuit::module_component_pin_refs(std::size_t component) const {
     auto result = py::list{};
     const auto [draft, local_index] = module_component_draft(component);
     const auto &component_template = draft->spec.components.at(local_index);
-    const auto &definition = circuit_.component_definition(component_template.definition());
+    const auto &definition = circuit_.get(component_template.definition());
     for (const auto pin : definition.pins()) {
-        const auto &pin_definition = circuit_.pin_definition(pin);
+        const auto &pin_definition = circuit_.get(pin);
         auto item = py::dict{};
         item["index"] = pin.index();
         item["name"] = pin_definition.name();
@@ -500,7 +500,7 @@ py::list PyCircuit::port_bindings(std::size_t instance) const {
     auto result = py::list{};
     for (const auto binding_id :
          queries::port_bindings_for(circuit_, module_instance_id(instance))) {
-        const auto &binding = circuit_.port_binding(binding_id);
+        const auto &binding = circuit_.get(binding_id);
         auto item = py::dict{};
         item["port"] = public_port_index(binding.port());
         item["internal_net"] = binding.internal_net().index();
@@ -515,9 +515,9 @@ PyCircuit::module_component_pins_by_name(std::size_t component, const std::strin
     auto result = std::vector<volt::PinDefId>{};
     const auto [draft, local_index] = module_component_draft(component);
     const auto &component_template = draft->spec.components.at(local_index);
-    const auto &definition = circuit_.component_definition(component_template.definition());
+    const auto &definition = circuit_.get(component_template.definition());
     for (const auto pin : definition.pins()) {
-        if (circuit_.pin_definition(pin).name() == name) {
+        if (circuit_.get(pin).name() == name) {
             result.push_back(pin);
         }
     }

@@ -170,7 +170,7 @@ void PyCircuit::assign_net_class(const std::vector<std::size_t> &nets, std::size
 
 py::dict PyCircuit::net_class_info(std::size_t net_class) const {
     const auto id = volt::NetClassId{net_class};
-    const auto &rule = circuit_.net_class(id);
+    const auto &rule = circuit_.get(id);
     auto result = py::dict{};
     result["index"] = id.index();
     result["name"] = rule.name().value();
@@ -199,9 +199,9 @@ py::dict PyCircuit::net_class_info(std::size_t net_class) const {
 
 py::list PyCircuit::net_refs() const {
     auto result = py::list{};
-    for (std::size_t index = 0; index < circuit_.net_count(); ++index) {
+    for (std::size_t index = 0; index < circuit_.all<volt::NetId>().size(); ++index) {
         const auto id = volt::NetId{index};
-        const auto &net = circuit_.net(id);
+        const auto &net = circuit_.get(id);
         auto item = py::dict{};
         item["index"] = id.index();
         item["name"] = net.name().value();
@@ -212,9 +212,9 @@ py::list PyCircuit::net_refs() const {
 
 py::list PyCircuit::component_refs() const {
     auto result = py::list{};
-    for (std::size_t index = 0; index < circuit_.component_count(); ++index) {
+    for (std::size_t index = 0; index < circuit_.all<volt::ComponentId>().size(); ++index) {
         const auto id = volt::ComponentId{index};
-        const auto &component = circuit_.component(id);
+        const auto &component = circuit_.get(id);
         auto item = py::dict{};
         item["index"] = id.index();
         item["reference"] = component.reference().value();
@@ -225,7 +225,7 @@ py::list PyCircuit::component_refs() const {
 
 py::object PyCircuit::component_selected_part_model_3d(std::size_t component) const {
     const auto component_handle = component_id(component);
-    static_cast<void>(circuit_.component(component_handle));
+    static_cast<void>(circuit_.get(component_handle));
     const auto &selected_part = circuit_.selected_physical_part(component_handle);
     if (!selected_part.has_value()) {
         return py::none{};
@@ -260,7 +260,7 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
         if (!pin.has_value()) {
             throw std::out_of_range{"Component has no pin with that name or number"};
         }
-        const auto pin_definition = circuit_.pin(pin.value()).definition();
+        const auto pin_definition = circuit_.get(pin.value()).definition();
         for (const auto &pad : pad_labels_from_value(item.second)) {
             mappings.emplace_back(pin_definition, pad);
         }
@@ -306,8 +306,7 @@ void PyCircuit::set_net_quantity(std::size_t net, const std::string &name,
 
 void PyCircuit::select_generic_physical_part(std::size_t component) {
     const auto component_handle = component_id(component);
-    const auto &definition =
-        circuit_.component_definition(circuit_.component(component_handle).definition());
+    const auto &definition = circuit_.get(circuit_.get(component_handle).definition());
     auto mappings = std::vector<volt::PinPadMapping>{};
     mappings.reserve(definition.pins().size());
     for (std::size_t index = 0; index < definition.pins().size(); ++index) {
@@ -366,17 +365,17 @@ std::size_t PyCircuit::pin_by_number(std::size_t component, const std::string &n
 }
 
 std::size_t PyCircuit::pin_component(std::size_t pin) const {
-    return circuit_.pin(pin_id(pin)).component().index();
+    return circuit_.get(pin_id(pin)).component().index();
 }
 
 std::string PyCircuit::component_reference(std::size_t component) const {
-    return circuit_.component(component_id(component)).reference().value();
+    return circuit_.get(component_id(component)).reference().value();
 }
 
 py::list PyCircuit::pin_refs(std::size_t component) const {
     auto result = py::list{};
     for (const auto pin : queries::pins_for(circuit_, component_id(component))) {
-        const auto &definition = circuit_.pin_definition(circuit_.pin(pin).definition());
+        const auto &definition = circuit_.get(circuit_.get(pin).definition());
         auto item = py::dict{};
         item["index"] = pin.index();
         item["name"] = definition.name();
@@ -389,8 +388,7 @@ py::list PyCircuit::pin_refs(std::size_t component) const {
 std::optional<std::string> PyCircuit::component_schematic_symbol(std::size_t component,
                                                                  const std::string &variant) const {
     const auto component_handle = component_id(component);
-    const auto &definition =
-        circuit_.component_definition(circuit_.component(component_handle).definition());
+    const auto &definition = circuit_.get(circuit_.get(component_handle).definition());
     for (const auto &symbol : definition.schematic_symbols()) {
         if (symbol.variant() == variant) {
             return symbol.name();
@@ -413,7 +411,7 @@ std::optional<std::size_t> PyCircuit::net_of(std::size_t pin) const {
 
 py::list PyCircuit::net_pins(std::size_t net) const {
     auto result = py::list{};
-    for (const auto pin : circuit_.net(net_id(net)).pins()) {
+    for (const auto pin : circuit_.get(net_id(net)).pins()) {
         result.append(pin.index());
     }
     return result;
@@ -440,8 +438,8 @@ std::vector<volt::PinId> PyCircuit::pins_by_name(volt::ComponentId component,
                                                  const std::string &name) const {
     auto result = std::vector<volt::PinId>{};
     for (const auto pin : queries::pins_for(circuit_, component)) {
-        const auto definition = circuit_.pin(pin).definition();
-        if (circuit_.pin_definition(definition).name() == name) {
+        const auto definition = circuit_.get(pin).definition();
+        if (circuit_.get(definition).name() == name) {
             result.push_back(pin);
         }
     }

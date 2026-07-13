@@ -55,7 +55,7 @@ void validate_long_local_doglegs(const Schematic &schematic, SheetId sheet_id, c
 void validate_misaligned_local_labels(const Schematic &schematic, SheetId sheet_id,
                                       const Sheet &sheet, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
-    for (std::size_t net_index = 0; net_index < circuit.net_count(); ++net_index) {
+    for (std::size_t net_index = 0; net_index < circuit.all<volt::NetId>().size(); ++net_index) {
         const auto net_id = NetId{net_index};
         auto labels = std::vector<NetLabelId>{};
         auto points = std::vector<Point>{};
@@ -329,7 +329,7 @@ void validate_dangling_wire_endpoints(const Schematic &schematic, SheetId sheet_
 void validate_floating_stub_clusters(const Schematic &schematic, SheetId sheet_id,
                                      const Sheet &sheet, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
-    for (std::size_t net_index = 0; net_index < circuit.net_count(); ++net_index) {
+    for (std::size_t net_index = 0; net_index < circuit.all<volt::NetId>().size(); ++net_index) {
         const auto net_id = NetId{net_index};
         auto stubs = std::vector<FloatingStubCandidate>{};
         for (const auto wire_id : sheet.wire_runs()) {

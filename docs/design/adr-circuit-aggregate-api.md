@@ -6,14 +6,14 @@ Issue: [#261](https://github.com/RyanWillie/Volt/issues/261)
 
 ## Decision
 
-`Circuit` remains Volt's sole canonical logical aggregate. Its public API will be
-replaced with a small domain-shaped surface built from complete typed specifications,
+`Circuit` remains Volt's sole canonical logical aggregate. Its public API is a small
+domain-shaped surface built from complete typed specifications,
 irreducible graph operations, typed progressive updates, generic typed reads, and free
 derived queries.
 
-The current borrow-only mutation facades are transitional and frozen. They may remain at
-existing call sites until their scheduled migration, but must not gain new methods or be
-treated as the target architecture.
+Private subsystem storage does not create public subsystem owners. Borrowed mutation facades,
+per-table getters and counts, public restoration mechanics, and generic mutation handles are
+outside the accepted boundary.
 
 The intended public shape is approximately fifteen declarations:
 
@@ -184,9 +184,8 @@ The native GitHub dependency graph under #261 is the execution source of truth:
 8. [#267](https://github.com/RyanWillie/Volt/issues/267) proves semantic, persistence,
    diagnostic, Python, and CI parity.
 
-The old and new APIs may coexist only as a time-bounded migration mechanism. Tests move
-incrementally from the first implementation phase so facade deletion is not a thousand-
-call-site big bang.
+The migration through #266 removes the time-bounded compatibility surface. Later work must use
+the typed aggregate contract rather than reintroducing forwarding shims.
 
 ## Consequences
 
@@ -216,4 +215,3 @@ Revisit this decision only when a concrete, measured requirement cannot be repre
 complete specs, typed updates, generic reads, or free queries without violating a kernel
 invariant or creating unacceptable performance. Method-count preference alone is not a
 reason to add an untyped escape hatch.
-

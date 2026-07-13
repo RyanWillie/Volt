@@ -114,7 +114,7 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
 }
 
 [[nodiscard]] ComponentPlacementId Board::place_component(ComponentPlacement placement) {
-    static_cast<void>(circuit().component(placement.component()));
+    static_cast<void>(circuit().get(placement.component()));
     const auto id = placements_.place_component(placement);
     ++geometry_mutation_count_;
     return id;
@@ -268,7 +268,7 @@ Board::ratsnest_edges(const FootprintLibrary &footprints) const {
 
 void Board::require_layer(BoardLayerId layer) const { structure_.require_layer(layer); }
 
-void Board::require_net(NetId net) const { static_cast<void>(circuit().net(net)); }
+void Board::require_net(NetId net) const { static_cast<void>(circuit().get(net)); }
 
 void Board::require_copper_layer(BoardLayerId layer_id) const {
     require_layer(layer_id);
@@ -497,7 +497,7 @@ namespace {
         }
     }
 
-    for (std::size_t index = 0; index < board.circuit().component_count(); ++index) {
+    for (std::size_t index = 0; index < board.circuit().all<volt::ComponentId>().size(); ++index) {
         const auto component = ComponentId{index};
         if (!board.placement_for_component(component).has_value()) {
             report.add(
@@ -563,9 +563,9 @@ namespace {
         }
     }
 
-    for (std::size_t index = 0; index < board.circuit().net_count(); ++index) {
+    for (std::size_t index = 0; index < board.circuit().all<volt::NetId>().size(); ++index) {
         const auto net_id = NetId{index};
-        const auto &net = board.circuit().net(net_id);
+        const auto &net = board.circuit().get(net_id);
         if (net.pins().size() < 2U) {
             continue;
         }

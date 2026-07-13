@@ -23,16 +23,6 @@ include <volt/circuit/parts/parts.hpp>
 include <volt/circuit/updates.hpp>
 include <volt/core/ids.hpp>
 
-[[nodiscard]] ConnectivityMutator connectivity() &noexcept
-[[nodiscard]] ConnectivityMutator connectivity() && = delete
-[[nodiscard]] HierarchyMutator hierarchy() &noexcept
-[[nodiscard]] HierarchyMutator hierarchy() && = delete
-[[nodiscard]] ElectricalMutator electrical() &noexcept
-[[nodiscard]] ElectricalMutator electrical() && = delete
-[[nodiscard]] IntentMutator intent() &noexcept
-[[nodiscard]] IntentMutator intent() && = delete
-[[nodiscard]] NetClassMutator net_classes() &noexcept
-[[nodiscard]] NetClassMutator net_classes() && = delete
 [[nodiscard]] ComponentDefId define_component(ComponentSpec spec)
 [[nodiscard]] ModuleDefId define_module(ModuleSpec spec)
 [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ComponentInstanceSpec spec)
@@ -64,31 +54,6 @@ template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const && = 
 [[nodiscard]] const std::vector<NetId> &intentional_stub_nets() const noexcept
 [[nodiscard]] const std::vector<PinId> &intentional_no_connect_pins() const noexcept
 [[nodiscard]] const std::vector<ComponentAssemblyIntent> &component_assembly_intents() const noexcept
-[[nodiscard]] const NetClass &net_class(NetClassId id) const
 [[nodiscard]] std::optional<NetClassId> net_class_by_name(const NetClassName &name) const
 [[nodiscard]] std::optional<NetClassId> net_class_for_net(NetId net) const
 [[nodiscard]] const std::vector<std::pair<NetId, NetClassId>> &net_class_assignments() const noexcept
-[[nodiscard]] const PinDefinition &pin_definition(PinDefId id) const
-[[nodiscard]] const ComponentDefinition &component_definition(ComponentDefId id) const
-[[nodiscard]] const ComponentInstance &component(ComponentId id) const
-[[nodiscard]] const PinInstance &pin(PinId id) const
-[[nodiscard]] const Net &net(NetId id) const
-[[nodiscard]] const ModuleDefinition &module_definition(ModuleDefId id) const
-[[nodiscard]] const TemplateNetDefinition &template_net_definition(TemplateNetDefId id) const
-[[nodiscard]] const PortDefinition &port_definition(PortDefId id) const
-[[nodiscard]] const ModuleComponentTemplate &module_component_template(ModuleComponentId id) const
-[[nodiscard]] const ModuleInstance &module_instance(ModuleInstanceId id) const
-[[nodiscard]] const PortBinding &port_binding(PortBindingId id) const
-[[nodiscard]] std::size_t pin_definition_count() const noexcept
-[[nodiscard]] std::size_t component_definition_count() const noexcept
-[[nodiscard]] std::size_t component_count() const noexcept
-[[nodiscard]] std::size_t pin_count() const noexcept
-[[nodiscard]] std::size_t net_count() const noexcept
-[[nodiscard]] std::size_t module_definition_count() const noexcept
-[[nodiscard]] std::size_t template_net_definition_count() const noexcept
-[[nodiscard]] std::size_t port_definition_count() const noexcept
-[[nodiscard]] std::size_t module_component_count() const noexcept
-[[nodiscard]] std::size_t module_pin_connection_count() const noexcept
-[[nodiscard]] std::size_t module_instance_count() const noexcept
-[[nodiscard]] std::size_t port_binding_count() const noexcept
-[[nodiscard]] std::size_t net_class_count() const noexcept

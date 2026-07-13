@@ -508,10 +508,6 @@ HierarchyModel::module_component_template(ModuleComponentId id) const {
     return state().module_component_templates.size();
 }
 
-[[nodiscard]] std::size_t HierarchyModel::module_pin_connection_count() const noexcept {
-    return state().module_pin_connections.size();
-}
-
 [[nodiscard]] std::size_t HierarchyModel::module_instance_count() const noexcept {
     return state().module_instances.size();
 }

@@ -160,7 +160,7 @@ first_allowed_layer(const std::vector<BoardLayerId> &layers, const BoardRoutePar
 
 [[nodiscard]] std::string escape_room_name(const Board &board, ComponentId component,
                                            const ComponentPlacement &placement) {
-    const auto &reference = board.circuit().component(component).reference().value();
+    const auto &reference = board.circuit().get(component).reference().value();
     return "escape-" + reference + "-at-" + fixed_millimeters(placement.position().x_mm()) + "-" +
            fixed_millimeters(placement.position().y_mm());
 }
@@ -566,7 +566,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
 }
 
 [[nodiscard]] BoardEscapeResult BoardRouter::escape(ComponentId component) {
-    static_cast<void>(board_->circuit().component(component));
+    static_cast<void>(board_->circuit().get(component));
 
     auto result = BoardEscapeResult{};
     result.component = component;

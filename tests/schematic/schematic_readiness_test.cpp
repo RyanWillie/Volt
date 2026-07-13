@@ -31,7 +31,7 @@ TEST_CASE("Schematic readiness reports connected symbol pins without visual net 
     CHECK(diagnostic.entities()[1] == volt::EntityRef::component(component));
     const auto pin = volt::queries::pin_by_number(circuit, component, "1").value();
     CHECK(diagnostic.entities()[2] == volt::EntityRef::pin(pin));
-    CHECK(diagnostic.entities()[3] == volt::EntityRef::pin_def(circuit.pin(pin).definition()));
+    CHECK(diagnostic.entities()[3] == volt::EntityRef::pin_def(circuit.get(pin).definition()));
     CHECK(diagnostic.entities()[4] == volt::EntityRef::net(net));
 }
 
@@ -73,11 +73,11 @@ TEST_CASE("Schematic readiness accepts wires and labels at connected symbol pin 
     [[maybe_unused]] const auto label =
         schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{60.0, 20.0}});
 
-    const auto pins_before = circuit.net(net).pins();
+    const auto pins_before = circuit.get(net).pins();
     const auto report = volt::validate_schematic_readiness(schematic);
 
     CHECK(report.empty());
-    CHECK(circuit.net(net).pins() == pins_before);
+    CHECK(circuit.get(net).pins() == pins_before);
 }
 
 TEST_CASE("Schematic validation reports connected logical pins missing from a placed symbol") {
@@ -107,7 +107,7 @@ TEST_CASE("Schematic validation reports connected logical pins missing from a pl
     const auto pin = volt::queries::pin_by_number(circuit, component, "3").value();
     CHECK(diagnostic.entities() ==
           std::vector{volt::EntityRef::component(component), volt::EntityRef::pin(pin),
-                      volt::EntityRef::pin_def(circuit.pin(pin).definition()),
+                      volt::EntityRef::pin_def(circuit.get(pin).definition()),
                       volt::EntityRef::net(net), volt::EntityRef::symbol_instance(instance)});
 }
 

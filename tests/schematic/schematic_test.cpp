@@ -62,7 +62,7 @@ TEST_CASE("Schematic stores sheets and symbol instances over logical components"
     CHECK(schematic.symbol_instance(instance).symbol_definition() == symbol);
     CHECK(schematic.symbol_instance(instance).position() == volt::Point{40.0, 20.0});
     CHECK(schematic.sheet(sheet).symbol_instances() == std::vector{instance});
-    CHECK(circuit.net_count() == 0);
+    CHECK(circuit.all<volt::NetId>().size() == 0);
 }
 
 TEST_CASE("Schematic stores wire runs and labels over canonical logical nets") {
@@ -99,7 +99,7 @@ TEST_CASE("Schematic authoring mutations infer nets from logical pin endpoints")
     const auto second_pin = volt::queries::pin_by_number(circuit, second_component, "1").value();
     circuit.connect(net, first_pin);
     circuit.connect(net, second_pin);
-    const auto net_count = circuit.net_count();
+    const auto net_count = circuit.all<volt::NetId>().size();
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -112,7 +112,7 @@ TEST_CASE("Schematic authoring mutations infer nets from logical pin endpoints")
     CHECK(schematic.wire_run(wire).net() == net);
     CHECK(schematic.wire_run(wire).points() ==
           std::vector{volt::Point{20.0, 0.0}, volt::Point{40.0, 0.0}});
-    CHECK(circuit.net_count() == net_count);
+    CHECK(circuit.all<volt::NetId>().size() == net_count);
 }
 
 TEST_CASE("Schematic authoring mutations reject unconnected and mismatched endpoints") {
@@ -233,8 +233,8 @@ TEST_CASE("Schematic stores professional primitives without changing logical con
     CHECK(schematic.symbol_field(field).symbol_instance() == instance);
     CHECK(schematic.symbol_field(field).name() == "value");
     CHECK(schematic.symbol_field(field).value() == "10k");
-    CHECK(circuit.net(vcc).pins().empty());
-    CHECK(circuit.net(gnd).pins().empty());
+    CHECK(circuit.get(vcc).pins().empty());
+    CHECK(circuit.get(gnd).pins().empty());
     CHECK_FALSE(volt::queries::net_of(circuit, no_connect_pin).has_value());
 }
 

@@ -88,9 +88,9 @@ volt::Circuit build_resistor_chain(std::size_t component_count) {
 
 void require_valid_round_trip(const volt::Circuit &circuit, std::string_view json) {
     const auto restored = volt::io::read_logical_circuit_text(json);
-    if (restored.component_count() != circuit.component_count() ||
-        restored.pin_count() != circuit.pin_count() ||
-        restored.net_count() != circuit.net_count()) {
+    if (restored.all<volt::ComponentId>().size() != circuit.all<volt::ComponentId>().size() ||
+        restored.all<volt::PinId>().size() != circuit.all<volt::PinId>().size() ||
+        restored.all<volt::NetId>().size() != circuit.all<volt::NetId>().size()) {
         throw std::runtime_error{"Logical circuit round-trip changed entity counts"};
     }
 }
@@ -141,18 +141,18 @@ std::size_t lookup_sampled_components_and_nets(const volt::Circuit &circuit,
 
 std::size_t enumerate_all_component_pins(const volt::Circuit &circuit) {
     std::size_t pin_total = 0;
-    for (std::size_t index = 0; index < circuit.component_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::ComponentId>().size(); ++index) {
         pin_total += volt::queries::pins_for(circuit, volt::ComponentId{index}).size();
     }
 
-    if (pin_total != circuit.pin_count()) {
+    if (pin_total != circuit.all<volt::PinId>().size()) {
         throw std::runtime_error{"Benchmark pin enumeration missed known pins"};
     }
     return pin_total;
 }
 
 std::size_t enumerate_sampled_component_pins(const volt::Circuit &circuit) {
-    const auto component_count = circuit.component_count();
+    const auto component_count = circuit.all<volt::ComponentId>().size();
     const auto sample_count = std::min<std::size_t>(component_count, 100);
     std::size_t pin_total = 0;
     for (std::size_t sample = 0; sample < sample_count; ++sample) {

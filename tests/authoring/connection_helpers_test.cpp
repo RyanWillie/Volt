@@ -28,9 +28,9 @@ TEST_CASE("Authoring connect helper connects multiple pins to one net") {
 
     volt::authoring::connect(circuit, net, {first_pin, second_pin});
 
-    REQUIRE(circuit.net(net).pins().size() == 2);
-    CHECK(circuit.net(net).pins()[0] == first_pin);
-    CHECK(circuit.net(net).pins()[1] == second_pin);
+    REQUIRE(circuit.get(net).pins().size() == 2);
+    CHECK(circuit.get(net).pins()[0] == first_pin);
+    CHECK(circuit.get(net).pins()[1] == second_pin);
     CHECK(volt::queries::net_of(circuit, first_pin) == net);
     CHECK(volt::queries::net_of(circuit, second_pin) == net);
 }
@@ -48,7 +48,7 @@ TEST_CASE("Authoring connect helper accepts deterministic pin vectors") {
 
     volt::authoring::connect(circuit, net, pins);
 
-    CHECK(circuit.net(net).pins() == pins);
+    CHECK(circuit.get(net).pins() == pins);
 }
 
 TEST_CASE("Authoring connect helper preserves Circuit structural checks") {

@@ -70,13 +70,12 @@ find_offset(const std::vector<ResolvedRotationOffset> &offsets, const FootprintR
 
 [[nodiscard]] std::vector<ComponentId> sorted_components(const Circuit &circuit) {
     auto components = std::vector<ComponentId>{};
-    components.reserve(circuit.component_count());
-    for (std::size_t index = 0; index < circuit.component_count(); ++index) {
+    components.reserve(circuit.all<volt::ComponentId>().size());
+    for (std::size_t index = 0; index < circuit.all<volt::ComponentId>().size(); ++index) {
         components.push_back(ComponentId{index});
     }
     std::sort(components.begin(), components.end(), [&](ComponentId lhs, ComponentId rhs) {
-        return circuit.component(lhs).reference().value() <
-               circuit.component(rhs).reference().value();
+        return circuit.get(lhs).reference().value() < circuit.get(rhs).reference().value();
     });
     return components;
 }
@@ -91,7 +90,7 @@ void append_component_diagnostics(const Board &board, DiagnosticReport &report) 
             continue;
         }
 
-        const auto &instance = board.circuit().component(component);
+        const auto &instance = board.circuit().get(component);
         const auto entities = std::vector{EntityRef::component(component),
                                           EntityRef::component_def(instance.definition())};
         const auto &selected_part = board.circuit().selected_physical_part(component);
@@ -190,7 +189,7 @@ Cpl::Cpl(std::vector<CplRow> rows, DiagnosticReport diagnostics)
 
         const auto authored_rotation_deg = normalize_rotation(placement.rotation().degrees());
         rows.emplace_back(placement_id, placement.component(),
-                          board.circuit().component(placement.component()).reference().value(),
+                          board.circuit().get(placement.component()).reference().value(),
                           std::move(footprint), placement.side(), placement.position(),
                           authored_rotation_deg, rotation_offset_deg,
                           normalize_rotation(authored_rotation_deg + rotation_offset_deg),

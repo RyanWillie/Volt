@@ -14,96 +14,6 @@
 
 namespace volt {
 
-Circuit::ConnectivityMutator::ConnectivityMutator(Circuit &circuit, MutatorKey) noexcept
-    : circuit_{circuit} {}
-
-Circuit::HierarchyMutator::HierarchyMutator(Circuit &circuit, MutatorKey) noexcept
-    : circuit_{circuit} {}
-
-Circuit::ElectricalMutator::ElectricalMutator(Circuit &circuit, MutatorKey) noexcept
-    : circuit_{circuit} {}
-
-Circuit::IntentMutator::IntentMutator(Circuit &circuit, MutatorKey) noexcept : circuit_{circuit} {}
-
-Circuit::NetClassMutator::NetClassMutator(Circuit &circuit, MutatorKey) noexcept
-    : circuit_{circuit} {}
-
-[[nodiscard]] Circuit::ConnectivityMutator Circuit::connectivity() & noexcept {
-    return ConnectivityMutator{*this, MutatorKey::make()};
-}
-
-[[nodiscard]] Circuit::HierarchyMutator Circuit::hierarchy() & noexcept {
-    return HierarchyMutator{*this, MutatorKey::make()};
-}
-
-[[nodiscard]] Circuit::ElectricalMutator Circuit::electrical() & noexcept {
-    return ElectricalMutator{*this, MutatorKey::make()};
-}
-
-[[nodiscard]] Circuit::IntentMutator Circuit::intent() & noexcept {
-    return IntentMutator{*this, MutatorKey::make()};
-}
-
-[[nodiscard]] Circuit::NetClassMutator Circuit::net_classes() & noexcept {
-    return NetClassMutator{*this, MutatorKey::make()};
-}
-
-[[nodiscard]] PinDefId Circuit::ConnectivityMutator::add_pin_definition(PinDefinition definition) {
-    return circuit_.connectivity_.add_pin_definition(std::move(definition));
-}
-
-[[nodiscard]] ComponentDefId
-Circuit::ConnectivityMutator::add_component_definition(ComponentDefinition definition) {
-    return circuit_.connectivity_.add_component_definition(std::move(definition));
-}
-
-[[nodiscard]] ComponentId Circuit::ConnectivityMutator::add_component(ComponentInstance component) {
-    return circuit_.instantiate_component(
-        component.definition(),
-        ComponentInstanceSpec{component.reference(), component.properties()});
-}
-
-[[nodiscard]] PinId Circuit::ConnectivityMutator::add_pin(PinInstance pin) {
-    return circuit_.connectivity_.add_pin(pin);
-}
-
-[[nodiscard]] NetId Circuit::ConnectivityMutator::add_net(Net net) {
-    return circuit_.connectivity_.add_net(std::move(net));
-}
-
-void Circuit::ConnectivityMutator::set_component_property(ComponentId component, PropertyKey key,
-                                                          PropertyValue value) {
-    circuit_.connectivity_.set_component_property(component, std::move(key), std::move(value));
-}
-
-[[nodiscard]] ModuleDefId
-Circuit::HierarchyMutator::add_module_definition(ModuleDefinition definition) {
-    return circuit_.hierarchy_.add_module_definition(std::move(definition));
-}
-
-[[nodiscard]] TemplateNetDefId
-Circuit::HierarchyMutator::add_template_net(ModuleDefId module, TemplateNetDefinition net) {
-    return circuit_.hierarchy_.add_template_net(module, std::move(net));
-}
-
-[[nodiscard]] PortDefId Circuit::HierarchyMutator::add_port_definition(ModuleDefId module,
-                                                                       PortDefinition port) {
-    return circuit_.hierarchy_.add_port_definition(module, std::move(port));
-}
-
-[[nodiscard]] ModuleComponentId
-Circuit::HierarchyMutator::add_module_component(ModuleDefId module,
-                                                ModuleComponentTemplate component) {
-    circuit_.require_component_definition(component.definition());
-    return circuit_.hierarchy_.add_module_component(module, std::move(component));
-}
-
-bool Circuit::HierarchyMutator::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
-                                                   ModuleComponentId component, PinDefId pin) {
-    circuit_.require_pin_in_module_component(component, pin);
-    return circuit_.hierarchy_.connect_module_pin(module, net, component, pin);
-}
-
 [[nodiscard]] ComponentDefId Circuit::define_component(ComponentSpec spec) {
     auto pin_definitions = std::vector<PinDefinition>{};
     auto pin_attributes = std::vector<ElectricalAttributeMap>{};
@@ -184,7 +94,7 @@ bool Circuit::HierarchyMutator::connect_module_pin(ModuleDefId module, TemplateN
                                    "Module connection component does not exist in module spec"};
         }
         require_pin_definition(connection.pin);
-        const auto &component_pins = component_definition(component->definition()).pins();
+        const auto &component_pins = get(component->definition()).pins();
         if (std::find(component_pins.begin(), component_pins.end(), connection.pin) ==
             component_pins.end()) {
             throw KernelLogicError{ErrorCode::CrossReferenceViolation,
@@ -321,7 +231,7 @@ bool Circuit::HierarchyMutator::connect_module_pin(ModuleDefId module, TemplateN
 
     const auto &template_nets = hierarchy_.module_definition(definition).template_nets();
     for (std::size_t index = 0; index < template_nets.size(); ++index) {
-        const auto net = connectivity().add_net(std::move(concrete_nets.at(index)));
+        const auto net = connectivity_.add_net(std::move(concrete_nets.at(index)));
         hierarchy_.record_module_net_origin(instance, template_nets.at(index), net);
     }
 
@@ -484,9 +394,8 @@ void Circuit::update(ComponentId component, ComponentUpdate change) {
                 electrical_.set_component_attribute(component, update.spec,
                                                     std::move(update.value));
             } else if constexpr (std::same_as<Update, SelectPhysicalPart>) {
-                electrical_.select_physical_part(
-                    component, std::move(update.physical_part),
-                    component_definition(this->component(component).definition()).pins());
+                electrical_.select_physical_part(component, std::move(update.physical_part),
+                                                 get(get(component).definition()).pins());
             } else if constexpr (std::same_as<Update, SetSelectedPartElectricalAttribute>) {
                 electrical_.set_selected_part_attribute(component, update.spec,
                                                         std::move(update.value));
@@ -533,75 +442,6 @@ void Circuit::mark_no_connect(PinId pin) {
 
 [[nodiscard]] std::optional<NetId> Circuit::net_of(PinId pin) const {
     return connectivity_.net_of(pin);
-}
-
-void Circuit::ElectricalMutator::set_component_electrical_attribute(
-    ComponentId component, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value) {
-    circuit_.require_component(component);
-    circuit_.electrical_.set_component_attribute(component, spec, value);
-}
-
-void Circuit::ElectricalMutator::set_pin_definition_electrical_attribute(
-    PinDefId pin_definition, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value) {
-    circuit_.require_pin_definition(pin_definition);
-    if (circuit_.connectivity_.pin_definition_is_owned(pin_definition)) {
-        throw KernelLogicError{ErrorCode::InvalidState,
-                               "Committed pin definition electrical attributes are immutable",
-                               EntityRef::pin_def(pin_definition)};
-    }
-    circuit_.electrical_.set_pin_definition_attribute(pin_definition, spec, value);
-}
-
-void Circuit::ElectricalMutator::set_net_electrical_attribute(NetId net,
-                                                              const ElectricalAttributeSpec &spec,
-                                                              ElectricalAttributeValue value) {
-    circuit_.require_net(net);
-    circuit_.electrical_.set_net_attribute(net, spec, value);
-}
-
-void Circuit::ElectricalMutator::select_physical_part(ComponentId component,
-                                                      PhysicalPart physical_part) {
-    circuit_.require_component(component);
-    circuit_.electrical_.select_physical_part(
-        component, std::move(physical_part),
-        circuit_.component_definition(circuit_.component(component).definition()).pins());
-}
-
-void Circuit::ElectricalMutator::set_selected_part_electrical_attribute(
-    ComponentId component, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value) {
-    circuit_.require_component(component);
-    circuit_.electrical_.set_selected_part_attribute(component, spec, value);
-}
-
-bool Circuit::IntentMutator::mark_intentional_stub_net(NetId net) {
-    circuit_.require_net(net);
-    return circuit_.intent_.mark_intentional_stub_net(net);
-}
-
-bool Circuit::IntentMutator::mark_intentional_no_connect_pin(PinId pin) {
-    circuit_.require_pin(pin);
-    return circuit_.intent_.mark_intentional_no_connect_pin(pin);
-}
-
-void Circuit::IntentMutator::set_component_dnp(ComponentId component, bool dnp) {
-    circuit_.require_component(component);
-    circuit_.intent_.set_component_dnp(component, dnp);
-}
-
-void Circuit::IntentMutator::set_component_selection_override(ComponentId component,
-                                                              bool override) {
-    circuit_.require_component(component);
-    circuit_.intent_.set_component_selection_override(component, override);
-}
-
-[[nodiscard]] NetClassId Circuit::NetClassMutator::add_net_class(NetClass net_class) {
-    return circuit_.net_classes_.add_net_class(std::move(net_class));
-}
-
-bool Circuit::NetClassMutator::assign_net_class(NetId net, NetClassId net_class) {
-    circuit_.require_net(net);
-    circuit_.require_net_class(net_class);
-    return circuit_.net_classes_.assign_net_class(net, net_class);
 }
 
 [[nodiscard]] const std::optional<PhysicalPart> &
@@ -675,10 +515,6 @@ Circuit::component_assembly_intents() const noexcept {
     return intent_.component_assembly_intents();
 }
 
-[[nodiscard]] const NetClass &Circuit::net_class(NetClassId id) const {
-    return net_classes_.net_class(id);
-}
-
 [[nodiscard]] std::optional<NetClassId> Circuit::net_class_by_name(const NetClassName &name) const {
     return net_classes_.net_class_by_name(name);
 }
@@ -691,62 +527,6 @@ Circuit::component_assembly_intents() const noexcept {
 [[nodiscard]] const std::vector<std::pair<NetId, NetClassId>> &
 Circuit::net_class_assignments() const noexcept {
     return net_classes_.net_class_assignments();
-}
-
-[[nodiscard]] const PinDefinition &Circuit::pin_definition(PinDefId id) const {
-    return connectivity_.pin_definition(id);
-}
-
-[[nodiscard]] const ComponentDefinition &Circuit::component_definition(ComponentDefId id) const {
-    return connectivity_.component_definition(id);
-}
-
-[[nodiscard]] const ComponentInstance &Circuit::component(ComponentId id) const {
-    return connectivity_.component(id);
-}
-
-[[nodiscard]] const ModuleDefinition &Circuit::module_definition(ModuleDefId id) const {
-    return hierarchy_.module_definition(id);
-}
-
-[[nodiscard]] const PortDefinition &Circuit::port_definition(PortDefId id) const {
-    return hierarchy_.port_definition(id);
-}
-
-[[nodiscard]] const ModuleInstance &Circuit::module_instance(ModuleInstanceId id) const {
-    return hierarchy_.module_instance(id);
-}
-
-[[nodiscard]] const PortBinding &Circuit::port_binding(PortBindingId id) const {
-    return hierarchy_.port_binding(id);
-}
-
-[[nodiscard]] std::size_t Circuit::pin_definition_count() const noexcept {
-    return connectivity_.pin_definition_count();
-}
-
-[[nodiscard]] std::size_t Circuit::component_definition_count() const noexcept {
-    return connectivity_.component_definition_count();
-}
-
-[[nodiscard]] std::size_t Circuit::module_definition_count() const noexcept {
-    return hierarchy_.module_definition_count();
-}
-
-[[nodiscard]] std::size_t Circuit::port_definition_count() const noexcept {
-    return hierarchy_.port_definition_count();
-}
-
-[[nodiscard]] std::size_t Circuit::module_component_count() const noexcept {
-    return hierarchy_.module_component_count();
-}
-
-[[nodiscard]] std::size_t Circuit::module_pin_connection_count() const noexcept {
-    return hierarchy_.module_pin_connection_count();
-}
-
-[[nodiscard]] std::size_t Circuit::module_instance_count() const noexcept {
-    return hierarchy_.module_instance_count();
 }
 
 void Circuit::require_pin_definition(PinDefId pin_definition) const {

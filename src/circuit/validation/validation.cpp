@@ -68,7 +68,7 @@ namespace volt::detail {
 }
 
 [[nodiscard]] bool has_authored_power_supply(const Circuit &circuit, NetId net_id) {
-    const auto &net = circuit.net(net_id);
+    const auto &net = circuit.get(net_id);
     if (net.kind() != NetKind::Power) {
         return false;
     }
@@ -85,13 +85,13 @@ namespace volt::detail {
 }
 
 NetContinuityView::NetContinuityView(const Circuit &circuit) {
-    parent_.reserve(circuit.net_count());
-    for (std::size_t index = 0; index < circuit.net_count(); ++index) {
+    parent_.reserve(circuit.all<volt::NetId>().size());
+    for (std::size_t index = 0; index < circuit.all<volt::NetId>().size(); ++index) {
         parent_.push_back(index);
     }
 
-    for (std::size_t index = 0; index < circuit.port_binding_count(); ++index) {
-        const auto &binding = circuit.port_binding(PortBindingId{index});
+    for (std::size_t index = 0; index < circuit.all<volt::PortBindingId>().size(); ++index) {
+        const auto &binding = circuit.get(PortBindingId{index});
         join(binding.internal_net(), binding.parent_net());
     }
 }
@@ -100,11 +100,11 @@ NetContinuityView::NetContinuityView(const Circuit &circuit) {
                                                                    NetId net) const {
     auto pins = std::vector<PinId>{};
     const auto group = find(net.index());
-    for (std::size_t index = 0; index < circuit.net_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::NetId>().size(); ++index) {
         if (find(index) != group) {
             continue;
         }
-        const auto &net_pins = circuit.net(NetId{index}).pins();
+        const auto &net_pins = circuit.get(NetId{index}).pins();
         pins.insert(pins.end(), net_pins.begin(), net_pins.end());
     }
     return pins;
@@ -113,7 +113,7 @@ NetContinuityView::NetContinuityView(const Circuit &circuit) {
 [[nodiscard]] bool NetContinuityView::group_has_authored_power_supply(const Circuit &circuit,
                                                                       NetId net) const {
     const auto group = find(net.index());
-    for (std::size_t index = 0; index < circuit.net_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::NetId>().size(); ++index) {
         if (find(index) == group && has_authored_power_supply(circuit, NetId{index})) {
             return true;
         }
@@ -141,10 +141,10 @@ void NetContinuityView::join(NetId first, NetId second) {
 }
 
 void validate_pin_connection_requirements(const Circuit &circuit, DiagnosticReport &report) {
-    for (std::size_t index = 0; index < circuit.pin_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::PinId>().size(); ++index) {
         const auto pin_id = PinId{index};
-        const auto &pin = circuit.pin(pin_id);
-        const auto &definition = circuit.pin_definition(pin.definition());
+        const auto &pin = circuit.get(pin_id);
+        const auto &definition = circuit.get(pin.definition());
         const auto connected_net = queries::net_of(circuit, pin_id);
 
         if (is_no_connect_pin(definition)) {
@@ -206,8 +206,8 @@ void validate_power_and_ground_semantics(const Circuit &circuit, NetId net_id, c
     auto power_input_pins = std::vector<PinId>{};
     auto has_power_source = has_authored_power_supply;
     for (const auto pin_id : group_pins) {
-        const auto &pin = circuit.pin(pin_id);
-        const auto &definition = circuit.pin_definition(pin.definition());
+        const auto &pin = circuit.get(pin_id);
+        const auto &definition = circuit.get(pin.definition());
         if (is_power_input(definition)) {
             power_input_pins.push_back(pin_id);
         }
@@ -252,7 +252,7 @@ void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId net_id
         if (net_voltage_attribute.kind() == ElectricalAttributeValueKind::Quantity) {
             const auto net_voltage = std::abs(net_voltage_attribute.as_quantity().value());
             for (const auto pin_id : group_pins) {
-                const auto &pin = circuit.pin(pin_id);
+                const auto &pin = circuit.get(pin_id);
                 const auto &selected_part = circuit.selected_physical_part(pin.component());
                 if (!selected_part.has_value() || !selected_part->electrical_attributes().contains(
                                                       voltage_rating_attribute_name)) {
@@ -298,7 +298,7 @@ void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net
 
     const auto net_voltage = net_voltage_quantity.value();
     for (const auto pin_id : group_pins) {
-        const auto &pin = circuit.pin(pin_id);
+        const auto &pin = circuit.get(pin_id);
         const auto &definition_attributes =
             circuit.pin_definition_electrical_attributes(pin.definition());
         if (!definition_attributes.contains(voltage_range_attribute_name)) {
@@ -362,8 +362,8 @@ void validate_output_driver_conflicts(const Circuit &circuit, NetId net_id,
                                       DiagnosticReport &report) {
     auto output_pins = std::vector<PinId>{};
     for (const auto pin_id : group_pins) {
-        const auto &pin = circuit.pin(pin_id);
-        const auto &definition = circuit.pin_definition(pin.definition());
+        const auto &pin = circuit.get(pin_id);
+        const auto &definition = circuit.get(pin.definition());
         if (is_output_pin(definition)) {
             output_pins.push_back(pin_id);
         }
@@ -392,8 +392,8 @@ void validate_input_signal_domains(const Circuit &circuit, NetId net_id,
     auto has_mismatched_domain = false;
     auto has_driver = false;
     for (const auto pin_id : group_pins) {
-        const auto &pin = circuit.pin(pin_id);
-        const auto &definition = circuit.pin_definition(pin.definition());
+        const auto &pin = circuit.get(pin_id);
+        const auto &definition = circuit.get(pin.definition());
         if (is_input_pin(definition)) {
             input_pins.push_back(pin_id);
             if (definition.signal_domain() != ElectricalSignalDomain::Unspecified) {
@@ -425,9 +425,9 @@ void validate_input_signal_domains(const Circuit &circuit, NetId net_id,
 
 void validate_net_shapes(const Circuit &circuit, const NetContinuityView &continuity,
                          DiagnosticReport &report) {
-    for (std::size_t index = 0; index < circuit.net_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::NetId>().size(); ++index) {
         const auto net_id = NetId{index};
-        const auto &net = circuit.net(net_id);
+        const auto &net = circuit.get(net_id);
         if (circuit.is_intentional_stub_net(net_id)) {
             continue;
         }
@@ -438,9 +438,9 @@ void validate_net_shapes(const Circuit &circuit, const NetContinuityView &contin
 
 void validate_net_electrical_rules(const Circuit &circuit, const NetContinuityView &continuity,
                                    DiagnosticReport &report) {
-    for (std::size_t index = 0; index < circuit.net_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::NetId>().size(); ++index) {
         const auto net_id = NetId{index};
-        const auto &net = circuit.net(net_id);
+        const auto &net = circuit.get(net_id);
         const auto group_pins = continuity.pins_for_group(circuit, net_id);
         const auto has_authored_power_supply =
             continuity.group_has_authored_power_supply(circuit, net_id);
@@ -457,9 +457,9 @@ void validate_net_electrical_rules(const Circuit &circuit, const NetContinuityVi
 
 void validate_net_semantics(const Circuit &circuit, const NetContinuityView &continuity,
                             DiagnosticReport &report) {
-    for (std::size_t index = 0; index < circuit.net_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::NetId>().size(); ++index) {
         const auto net_id = NetId{index};
-        const auto &net = circuit.net(net_id);
+        const auto &net = circuit.get(net_id);
         const auto group_pins = continuity.pins_for_group(circuit, net_id);
         const auto has_authored_power_supply =
             continuity.group_has_authored_power_supply(circuit, net_id);
@@ -478,13 +478,13 @@ void validate_net_semantics(const Circuit &circuit, const NetContinuityView &con
 }
 
 void validate_required_module_ports(const Circuit &circuit, DiagnosticReport &report) {
-    for (std::size_t instance_index = 0; instance_index < circuit.module_instance_count();
-         ++instance_index) {
+    for (std::size_t instance_index = 0;
+         instance_index < circuit.all<volt::ModuleInstanceId>().size(); ++instance_index) {
         const auto instance_id = ModuleInstanceId{instance_index};
-        const auto &instance = circuit.module_instance(instance_id);
-        const auto &definition = circuit.module_definition(instance.definition());
+        const auto &instance = circuit.get(instance_id);
+        const auto &definition = circuit.get(instance.definition());
         for (const auto port_id : definition.ports()) {
-            const auto &port = circuit.port_definition(port_id);
+            const auto &port = circuit.get(port_id);
             if (port.required() &&
                 !queries::port_binding_for(circuit, instance_id, port_id).has_value()) {
                 report.add(erc_error(erc_diagnostic_codes::UnboundRequiredPort,
@@ -498,9 +498,9 @@ void validate_required_module_ports(const Circuit &circuit, DiagnosticReport &re
 }
 
 void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &report) {
-    for (std::size_t index = 0; index < circuit.component_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::ComponentId>().size(); ++index) {
         const auto component_id = ComponentId{index};
-        const auto &component = circuit.component(component_id);
+        const auto &component = circuit.get(component_id);
         if (!circuit.selected_physical_part(component_id).has_value()) {
             report.add(Diagnostic{
                 Severity::Error,
@@ -514,9 +514,9 @@ void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &
 }
 
 void validate_bom_component_readiness(const Circuit &circuit, DiagnosticReport &report) {
-    for (std::size_t index = 0; index < circuit.component_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::ComponentId>().size(); ++index) {
         const auto component_id = ComponentId{index};
-        const auto &component = circuit.component(component_id);
+        const auto &component = circuit.get(component_id);
         const auto entities = std::vector{EntityRef::component(component_id),
                                           EntityRef::component_def(component.definition())};
         const auto dnp = circuit.component_dnp(component_id);

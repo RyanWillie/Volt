@@ -13,9 +13,9 @@
 TEST_CASE("LED example builds a valid logical circuit") {
     const auto circuit = volt::examples::build_led_circuit();
 
-    CHECK(circuit.component_count() == 3);
-    CHECK(circuit.pin_count() == 6);
-    CHECK(circuit.net_count() == 3);
+    CHECK(circuit.all<volt::ComponentId>().size() == 3);
+    CHECK(circuit.all<volt::PinId>().size() == 6);
+    CHECK(circuit.all<volt::NetId>().size() == 3);
 
     const auto vcc = volt::queries::net_by_name(circuit, volt::NetName{"VCC"});
     const auto led_a = volt::queries::net_by_name(circuit, volt::NetName{"LED_A"});
@@ -24,12 +24,12 @@ TEST_CASE("LED example builds a valid logical circuit") {
     REQUIRE(vcc.has_value());
     REQUIRE(led_a.has_value());
     REQUIRE(gnd.has_value());
-    CHECK(circuit.net(vcc.value()).kind() == volt::NetKind::Power);
-    CHECK(circuit.net(led_a.value()).kind() == volt::NetKind::Signal);
-    CHECK(circuit.net(gnd.value()).kind() == volt::NetKind::Ground);
-    CHECK(circuit.net(vcc.value()).pins().size() == 2);
-    CHECK(circuit.net(led_a.value()).pins().size() == 2);
-    CHECK(circuit.net(gnd.value()).pins().size() == 2);
+    CHECK(circuit.get(vcc.value()).kind() == volt::NetKind::Power);
+    CHECK(circuit.get(led_a.value()).kind() == volt::NetKind::Signal);
+    CHECK(circuit.get(gnd.value()).kind() == volt::NetKind::Ground);
+    CHECK(circuit.get(vcc.value()).pins().size() == 2);
+    CHECK(circuit.get(led_a.value()).pins().size() == 2);
+    CHECK(circuit.get(gnd.value()).pins().size() == 2);
 
     const auto j1 = volt::queries::component_by_reference(circuit, volt::ReferenceDesignator{"J1"});
     const auto r1 = volt::queries::component_by_reference(circuit, volt::ReferenceDesignator{"R1"});
@@ -37,7 +37,7 @@ TEST_CASE("LED example builds a valid logical circuit") {
     REQUIRE(j1.has_value());
     REQUIRE(r1.has_value());
     REQUIRE(d1.has_value());
-    CHECK(circuit.component(r1.value()).properties().get(volt::PropertyKey{"value"}) ==
+    CHECK(circuit.get(r1.value()).properties().get(volt::PropertyKey{"value"}) ==
           volt::PropertyValue{"330 ohm"});
 
     const auto &j1_part = circuit.selected_physical_part(j1.value());
@@ -46,12 +46,9 @@ TEST_CASE("LED example builds a valid logical circuit") {
     REQUIRE(j1_part.has_value());
     REQUIRE(r1_part.has_value());
     REQUIRE(d1_part.has_value());
-    const auto &j1_pins =
-        circuit.component_definition(circuit.component(j1.value()).definition()).pins();
-    const auto &r1_pins =
-        circuit.component_definition(circuit.component(r1.value()).definition()).pins();
-    const auto &d1_pins =
-        circuit.component_definition(circuit.component(d1.value()).definition()).pins();
+    const auto &j1_pins = circuit.get(circuit.get(j1.value()).definition()).pins();
+    const auto &r1_pins = circuit.get(circuit.get(r1.value()).definition()).pins();
+    const auto &d1_pins = circuit.get(circuit.get(d1.value()).definition()).pins();
 
     CHECK(j1_part->package().value() == "2.54mm-1x02");
     CHECK(j1_part->footprint().name() == "PinHeader_1x02_P2.54mm_Vertical");

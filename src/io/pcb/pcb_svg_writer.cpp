@@ -484,7 +484,7 @@ void write_pad_overlays(std::ostream &out, const Board &board,
             out << "\" y=\"";
             write_pcb_svg_number(out, resolution.position().y_mm() - 0.45);
             out << "\">"
-                << pcb_svg_escape(board.circuit().net(resolution.net().value()).name().value())
+                << pcb_svg_escape(board.circuit().get(resolution.net().value()).name().value())
                 << "</text>\n";
         }
     }

@@ -203,7 +203,7 @@ void write_wire_run_svg(std::ostream &out, const Schematic &schematic, WireRunId
 
 void write_net_label_svg(std::ostream &out, const Schematic &schematic, NetLabelId id) {
     const auto &label = schematic.net_label(id);
-    const auto &net = schematic.circuit().net(label.net());
+    const auto &net = schematic.circuit().get(label.net());
     const auto &text = label.label().value_or(net.name().value());
     const auto text_position = label.text_position();
 
@@ -238,7 +238,7 @@ void write_junction_svg(std::ostream &out, const Schematic &schematic, JunctionI
 
 void write_power_port_svg(std::ostream &out, const Schematic &schematic, PowerPortId id) {
     const auto &port = schematic.power_port(id);
-    const auto &net = schematic.circuit().net(port.net());
+    const auto &net = schematic.circuit().get(port.net());
     const auto kind_class = power_port_class(port.kind());
 
     out << "    <g class=\"power-port " << kind_class << "\" data-net=\""

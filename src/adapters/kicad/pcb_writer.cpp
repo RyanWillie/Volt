@@ -331,7 +331,7 @@ void report_invalid_pad_resolution(const PadResolution &resolution, const Circui
 
     auto message = std::ostringstream{};
     message << "Pad '" << resolution.pad_label() << "' on "
-            << circuit.component(resolution.component()).reference().value()
+            << circuit.get(resolution.component()).reference().value()
             << " has invalid selected-part pin-pad mapping; KiCad pad is emitted without a net";
     add_fab_critical_warning(loss_report, LossKind::IncompleteConstruct, "pad_resolution",
                              message.str());
@@ -379,9 +379,9 @@ void write_setup(std::ostream &out) {
 
 void write_nets(std::ostream &out, const Circuit &circuit) {
     out << "  (net 0 \"\")\n";
-    for (std::size_t index = 0; index < circuit.net_count(); ++index) {
+    for (std::size_t index = 0; index < circuit.all<volt::NetId>().size(); ++index) {
         const auto id = NetId{index};
-        out << "  (net " << kicad_net(id) << ' ' << sexpr_string(circuit.net(id).name().value())
+        out << "  (net " << kicad_net(id) << ' ' << sexpr_string(circuit.get(id).name().value())
             << ")\n";
     }
 }
@@ -523,7 +523,7 @@ void write_pad(std::ostream &out, const FootprintPad &pad, const PadResolution &
     if (resolution.status() == PadResolutionStatus::Connected && resolution.net().has_value()) {
         const auto net = resolution.net().value();
         out << "      (net " << kicad_net(net) << ' '
-            << sexpr_string(circuit.net(net).name().value()) << ")\n";
+            << sexpr_string(circuit.get(net).name().value()) << ")\n";
     }
     out << "      (uuid " << sexpr_string(uuid) << ")\n";
     out << "    )\n";
@@ -534,9 +534,8 @@ void write_component_footprints(std::ostream &out, const Board &board,
     for (const auto &placement_export : build_placement_exports(board, footprints, loss_report)) {
         const auto &placement = *placement_export.placement;
         const auto &definition = *placement_export.definition;
-        const auto &component = board.circuit().component(placement.component());
-        const auto &component_definition =
-            board.circuit().component_definition(component.definition());
+        const auto &component = board.circuit().get(placement.component());
+        const auto &component_definition = board.circuit().get(component.definition());
 
         out << "  (footprint " << sexpr_string(definition.ref().name()) << "\n";
         out << "    (layer \"F.Cu\")\n";
@@ -639,7 +638,7 @@ void write_zone(std::ostream &out, const Board &board, BoardZoneId id, const Boa
                 const PcbLayer &layer) {
     const auto net_index = zone.net().has_value() ? kicad_net(zone.net().value()) : 0;
     const auto net_name = zone.net().has_value()
-                              ? board.circuit().net(zone.net().value()).name().value()
+                              ? board.circuit().get(zone.net().value()).name().value()
                               : std::string{};
 
     out << "  (zone\n";

@@ -57,7 +57,7 @@ TEST_CASE("Authoring instantiate helper preserves explicit references") {
     const auto r10 =
         volt::authoring::instantiate(circuit, resistor, volt::ReferenceDesignator{"R10"});
 
-    CHECK(circuit.component(r10).reference() == volt::ReferenceDesignator{"R10"});
+    CHECK(circuit.get(r10).reference() == volt::ReferenceDesignator{"R10"});
     CHECK(volt::queries::pins_for(circuit, r10).size() == 2);
     CHECK_THROWS_AS(
         volt::authoring::instantiate(circuit, resistor, volt::ReferenceDesignator{"R10"}),
@@ -73,9 +73,9 @@ TEST_CASE("Authoring instantiate helper allocates deterministic unique reference
         circuit, resistor, "R",
         volt::PropertyMap{{volt::PropertyKey{"value"}, volt::PropertyValue{"10k"}}});
 
-    CHECK(circuit.component(r1).reference() == volt::ReferenceDesignator{"R1"});
-    CHECK(circuit.component(r2).reference() == volt::ReferenceDesignator{"R2"});
-    CHECK(circuit.component(r2).properties().get(volt::PropertyKey{"value"}).as_string() == "10k");
+    CHECK(circuit.get(r1).reference() == volt::ReferenceDesignator{"R1"});
+    CHECK(circuit.get(r2).reference() == volt::ReferenceDesignator{"R2"});
+    CHECK(circuit.get(r2).properties().get(volt::PropertyKey{"value"}).as_string() == "10k");
     CHECK(volt::queries::pins_for(circuit, r1).size() == 2);
     CHECK(volt::queries::pins_for(circuit, r2).size() == 2);
 }
