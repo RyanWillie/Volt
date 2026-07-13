@@ -446,14 +446,12 @@ template <typename Id> class CircuitEntityRange {
     /** Return the captured number of entities in this family. */
     [[nodiscard]] std::size_t size() const noexcept { return size_; }
 
-    /** Construct a correctly sized range borrowing a live Circuit lvalue. */
+  private:
+    friend entity_range_t<Id> Circuit::all<Id>() const &;
+
     CircuitEntityRange(const Circuit &circuit, std::size_t size) noexcept
         : circuit_{&circuit}, size_{size} {}
 
-    /** Prevent a range from borrowing a temporary Circuit. */
-    CircuitEntityRange(const Circuit &&) = delete;
-
-  private:
     const Circuit *circuit_;
     std::size_t size_ = 0;
 };

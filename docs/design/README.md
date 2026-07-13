@@ -29,6 +29,8 @@ promoting it into a Markdown document under `docs/` rather than editing the expo
 
 - `circuit-aggregate-api.html` — single-page review companion for the accepted Circuit API
   ADR and migration roadmap
+- `circuit-semantic-parity.html` — final evidence matrix for Circuit API redesign parity,
+  atomicity, persistence, compatibility, and downstream behavior
 
 - `hierarchy-scoped-net-design.html` — exported mirror of
   [`../hierarchy-scoped-net-design.md`](../hierarchy-scoped-net-design.md)

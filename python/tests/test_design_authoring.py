@@ -1,11 +1,15 @@
 import json
+from pathlib import Path
 
 import pytest
 
 import volt
 
 
-def test_led_circuit_validates():
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_python_led_matches_cpp_logical_and_diagnostic_golden():
     design = volt.Design("led")
 
     vcc = design.net("VCC", kind="power")
@@ -16,6 +20,28 @@ def test_led_circuit_validates():
     r1 = design.R("330 ohm", ref="R1")
     d1 = design.LED(ref="D1")
 
+    j1.select_part(
+        manufacturer="Generic",
+        part_number="HDR-1x02-2.54mm",
+        package="2.54mm-1x02",
+        footprint=("connectors", "PinHeader_1x02_P2.54mm_Vertical"),
+        pin_pads={1: "1", 2: "2"},
+    )
+    r1.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603FR-07330RL",
+        package="0603",
+        footprint=("passives", "R_0603_1608Metric"),
+        pin_pads={1: "1", 2: "2"},
+    )
+    d1.select_part(
+        manufacturer="Lite-On",
+        part_number="LTST-C190KRKT",
+        package="0603",
+        footprint=("leds", "LED_0603_1608Metric"),
+        pin_pads={"K": "1", "A": "2"},
+    )
+
     vcc += j1[1], r1[1]
     led_a += r1[2], d1["A"]
     gnd += d1["K"], j1[2]
@@ -24,9 +50,40 @@ def test_led_circuit_validates():
     assert len(report) == 0
     assert not report.has_errors
 
-    json_text = design.to_json()
-    assert '"name": "VCC"' in json_text
-    assert '"reference": "R1"' in json_text
+    assert design.to_json() == (ROOT / "tests/fixtures/led_circuit.volt.json").read_text()
+
+
+def test_python_diagnostic_design_matches_cpp_logical_and_diagnostic_golden():
+    design = volt.Design("single-pin")
+    output_driver = design.define_component(
+        "OutputDriver", pins=[volt.PinSpec("OUT", 1, role="output")]
+    )
+    u1 = design.instantiate(output_driver, ref="U1")
+    floating = design.net("FLOATING_OUT")
+    floating += u1["OUT"]
+
+    assert design.to_json() == (
+        ROOT / "tests/fixtures/single_pin_net.volt.json"
+    ).read_text()
+    report = design.validate()
+    assert [
+        (
+            diagnostic.code,
+            diagnostic.severity,
+            diagnostic.category,
+            diagnostic.message,
+            tuple((entity.kind, entity.index) for entity in diagnostic.entities),
+        )
+        for diagnostic in report
+    ] == [
+        (
+            "SINGLE_PIN_NET",
+            "warning",
+            "erc",
+            "Net has only one connected pin",
+            (("net", 0), ("pin", 0)),
+        )
+    ]
 
 def test_design_returns_component_handles_by_reference():
     design = volt.Design("component-lookup")
@@ -414,6 +471,23 @@ def test_instantiating_later_module_does_not_freeze_earlier_draft():
         "First",
         "Second",
     }
+
+
+def test_failed_root_module_instantiation_leaves_circuit_and_draft_unchanged():
+    design = volt.Design("module-instantiation-atomic")
+    module = design.define_module("Block")
+    module.port("IO")
+    design.net("BLOCK_A/IO")
+    before = design.to_json().encode()
+
+    with pytest.raises(
+        volt.DuplicateNameError,
+        match="^Module instance concrete net name already exists$",
+    ):
+        design.instantiate(module, ref="BLOCK_A")
+
+    assert design.to_json().encode() == before
+    assert module.port("LATE").name == "LATE"
 
 
 def test_module_port_rejects_invalid_role_without_partial_state():

@@ -47,6 +47,13 @@ The v1 reader is strict about interpreted structure:
 - enum and property type spellings must match the documented values
 - structurally invalid input is rejected instead of normalized
 
+One existing v1 compatibility exception is explicitly retained: a module instance may omit
+`component_origins` only when the reader can infer the complete one-to-one mapping
+deterministically from instance names, component references, and component definitions. The
+reader still validates restored template connectivity, and the canonical writer always emits
+the inferred field. This exception is covered by logical reader and round-trip tests; it does
+not relax any other required structure.
+
 The v1 reader may ignore unknown fields until an extension mechanism is defined. Unknown
 fields are not preserved when rewriting canonical output, so producers must not rely on
 unknown fields for data that should round-trip.

@@ -424,8 +424,6 @@ class PyCircuit {
 
     void preflight_module_drafts(std::size_t module, const volt::ModuleSpec &candidate) const;
 
-    [[nodiscard]] volt::ModuleDefId commit_module(std::size_t module);
-
     [[nodiscard]] volt::PortDefId resolved_port_id(std::size_t port) const;
 
     [[nodiscard]] volt::ModuleComponentId resolved_module_component_id(std::size_t component) const;

@@ -94,16 +94,6 @@ volt::Circuit PyCircuit::materialized_circuit() const {
     return materialized;
 }
 
-volt::ModuleDefId PyCircuit::commit_module(std::size_t module) {
-    auto &requested = module_draft(module);
-    if (requested.committed_id.has_value()) {
-        return requested.committed_id.value();
-    }
-
-    requested.committed_id = circuit_.define_module(requested.spec);
-    return requested.committed_id.value();
-}
-
 volt::PortDefId PyCircuit::resolved_port_id(std::size_t port) const {
     const auto [draft, local_index] = port_draft(port);
     if (!draft->committed_id.has_value()) {
@@ -329,9 +319,21 @@ void PyCircuit::connect_module_pins(
 }
 
 std::size_t PyCircuit::instantiate_root_module(std::size_t definition, const std::string &name) {
-    return circuit_
-        .instantiate_root_module(commit_module(definition), volt::ModuleInstanceName{name})
-        .index();
+    auto &requested = module_draft(definition);
+    if (requested.committed_id.has_value()) {
+        return circuit_
+            .instantiate_root_module(requested.committed_id.value(), volt::ModuleInstanceName{name})
+            .index();
+    }
+
+    auto candidate = circuit_;
+    const auto candidate_definition = candidate.define_module(requested.spec);
+    const auto instance =
+        candidate.instantiate_root_module(candidate_definition, volt::ModuleInstanceName{name});
+
+    circuit_ = std::move(candidate);
+    requested.committed_id = candidate_definition;
+    return instance.index();
 }
 
 std::size_t PyCircuit::concrete_component_for(std::size_t instance, std::size_t component) const {

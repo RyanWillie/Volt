@@ -55,6 +55,10 @@ FRIEND_TYPE_PREFIXES = ("friend " "class ", "friend " "struct ")
 PRIVILEGED_FRIEND_ALLOWLIST = {
     (
         "include/volt/circuit/circuit.hpp",
+        "friend entity_range_t<Id> Circuit::all<Id>() const &",
+    ): "Circuit::all is the sole factory for correctly sized borrowed entity ranges.",
+    (
+        "include/volt/circuit/circuit.hpp",
         "friend Circuit io::detail::restore_logical_circuit(io::detail::LogicalCircuitRestorationPlan plan)",
     ): "The v1 logical reader applies one complete validated restoration plan without exposing raw persisted-table operations.",
     (
@@ -69,39 +73,71 @@ PRIVILEGED_FRIEND_ALLOWLIST = {
 
 PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {}
 
-CIRCUIT_PUBLIC_METHODS = {
-    "add_net",
-    "all",
-    "bind_port",
-    "component_assembly_intents",
-    "component_dnp",
-    "component_electrical_attributes",
-    "connect",
-    "define_component",
-    "define_module",
-    "define_net_class",
-    "disconnect",
-    "get",
-    "instantiate_component",
-    "instantiate_root_module",
-    "intentional_no_connect_pins",
-    "intentional_stub_nets",
-    "is_component_selection_override",
-    "is_intentional_no_connect_pin",
-    "is_intentional_stub_net",
-    "mark_no_connect",
-    "module_component_origins",
-    "module_net_origins",
-    "module_pin_connections",
-    "net_class_assignments",
-    "net_class_by_name",
-    "net_class_for_net",
-    "net_electrical_attributes",
-    "net_of",
-    "pin_definition_electrical_attributes",
-    "selected_physical_part",
-    "update",
-}
+CIRCUIT_PUBLIC_METHOD_DECLARATIONS = frozenset(
+    """
+[[nodiscard]] ComponentDefId define_component(ComponentSpec spec)
+[[nodiscard]] ModuleDefId define_module(ModuleSpec spec)
+[[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ComponentInstanceSpec spec)
+[[nodiscard]] NetId add_net(NetSpec spec)
+[[nodiscard]] NetClassId define_net_class(NetClassSpec spec)
+[[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition, ModuleInstanceName name)
+[[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port, NetId parent_net)
+[[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ReferenceDesignator reference, PropertyMap properties = {})
+bool connect(NetId net, PinId pin)
+bool disconnect(PinId pin)
+void update(ComponentId component, ComponentUpdate change)
+void update(NetId net, NetUpdate change)
+void mark_no_connect(PinId pin)
+template <CircuitEntityId Id> [[nodiscard]] const entity_type_t<Id> &get(Id id) const
+template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const &
+template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const && = delete
+[[nodiscard]] std::optional<NetId> net_of(PinId pin) const
+[[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part(ComponentId component) const
+[[nodiscard]] const ElectricalAttributeMap &component_electrical_attributes(ComponentId component) const
+[[nodiscard]] const ElectricalAttributeMap &pin_definition_electrical_attributes(PinDefId pin_definition) const
+[[nodiscard]] const ElectricalAttributeMap &net_electrical_attributes(NetId net) const
+[[nodiscard]] std::vector<ModulePinConnection> module_pin_connections(ModuleDefId module) const
+[[nodiscard]] std::vector<std::pair<TemplateNetDefId, NetId>> module_net_origins(ModuleInstanceId instance) const
+[[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>> module_component_origins(ModuleInstanceId instance) const
+[[nodiscard]] bool is_intentional_stub_net(NetId net) const
+[[nodiscard]] bool is_intentional_no_connect_pin(PinId pin) const
+[[nodiscard]] std::optional<bool> component_dnp(ComponentId component) const
+[[nodiscard]] bool is_component_selection_override(ComponentId component) const
+[[nodiscard]] const std::vector<NetId> &intentional_stub_nets() const noexcept
+[[nodiscard]] const std::vector<PinId> &intentional_no_connect_pins() const noexcept
+[[nodiscard]] const std::vector<ComponentAssemblyIntent> &component_assembly_intents() const noexcept
+[[nodiscard]] std::optional<NetClassId> net_class_by_name(const NetClassName &name) const
+[[nodiscard]] std::optional<NetClassId> net_class_for_net(NetId net) const
+[[nodiscard]] const std::vector<std::pair<NetId, NetClassId>> &net_class_assignments() const noexcept
+""".strip().splitlines()
+)
+
+CIRCUIT_ENTITY_RANGE_PUBLIC_DECLARATIONS = frozenset(
+    {
+        "class iterator",
+        "[[nodiscard]] iterator begin() const noexcept",
+        "[[nodiscard]] iterator end() const noexcept",
+        "[[nodiscard]] std::size_t size() const noexcept",
+    }
+)
+
+CIRCUIT_ENTITY_RANGE_ITERATOR_PUBLIC_SURFACE = (
+    "using value_type = entity_type_t<Id>; "
+    "using difference_type = std::ptrdiff_t; "
+    "using reference = const value_type &; "
+    "using pointer = const value_type *; "
+    "using iterator_concept = std::forward_iterator_tag; "
+    "using iterator_category = std::forward_iterator_tag; "
+    "iterator() = default; "
+    "[[nodiscard]] reference operator*() const { return circuit_->get(Id{index_}); } "
+    "[[nodiscard]] pointer operator->() const { return &**this; } "
+    "iterator &operator++() { ++index_; return *this; } "
+    "iterator operator++(int) { auto previous = *this; ++*this; return previous; } "
+    "friend bool operator==(const iterator &, const iterator &) = default; "
+    "iterator(const Circuit &circuit, std::size_t index) noexcept "
+    ": circuit_{&circuit}, index_{index} {} "
+    "iterator(const Circuit &&, std::size_t) = delete;"
+)
 
 ENTITY_REF_KERNEL_ALLOWLIST = {
     (
@@ -646,6 +682,34 @@ def public_declarations_from_header(class_name: str, header: str) -> list[str]:
     return declarations_from_accesses(body, {"public"})
 
 
+def public_surface_declarations_from_header(
+    class_name: str, header: str, access_names: set[str] | None = None
+) -> list[str]:
+    body = class_body(strip_comments(header), class_name)
+    selected_accesses = {"public"} if access_names is None else access_names
+    declarations: list[str] = []
+    nested_type_pattern = re.compile(r"\b(class|struct)\s+([A-Za-z_]\w*)\b[^;{]*\{")
+    for access, section in access_sections(body):
+        if access not in selected_accesses:
+            continue
+        for match in nested_type_pattern.finditer(section):
+            declarations.append(f"{match.group(1)} {match.group(2)}")
+        for chunk in declaration_chunks(strip_nested_type_definitions(section)):
+            if chunk:
+                declarations.append(chunk)
+    return declarations
+
+
+def normalized_access_surface_from_header(
+    class_name: str, header: str, access_names: set[str]
+) -> str:
+    body = class_body(strip_comments(header), class_name)
+    selected = " ".join(
+        section for access, section in access_sections(body) if access in access_names
+    )
+    return re.sub(r"\s+", " ", selected).strip()
+
+
 def declarations_from_accesses(body: str, access_names: set[str]) -> list[str]:
     declarations: list[str] = []
     for access, section in access_sections(body):
@@ -1071,11 +1135,14 @@ def check_no_raw_structural_throws(failures: list[str]) -> None:
 
 def circuit_public_method_admission_failures(header_text: str) -> list[str]:
     failures: list[str] = []
-    for declaration in public_declarations_from_header("Circuit", header_text):
-        name = declaration_function_name(declaration)
-        if name is not None and name not in CIRCUIT_PUBLIC_METHODS:
+    for declaration in public_surface_declarations_from_header(
+        "Circuit", header_text, {"public", "protected"}
+    ):
+        if declaration not in CIRCUIT_PUBLIC_METHOD_DECLARATIONS:
             failures.append(
-                f"Circuit public method {name} is outside the approved typed aggregate contract"
+                "Circuit public/protected declaration is outside the approved typed aggregate "
+                "contract: "
+                f"{declaration}"
             )
     return failures
 
@@ -1083,6 +1150,32 @@ def circuit_public_method_admission_failures(header_text: str) -> list[str]:
 def check_circuit_public_method_admission(failures: list[str]) -> None:
     header = ROOT_TYPES["Circuit"]
     failures.extend(circuit_public_method_admission_failures(read(header)))
+
+
+def circuit_range_construction_failures(header_text: str) -> list[str]:
+    failures: list[str] = []
+    for declaration in public_surface_declarations_from_header(
+        "CircuitEntityRange", header_text, {"public", "protected"}
+    ):
+        declaration = declaration.lstrip("} ")
+        if declaration not in CIRCUIT_ENTITY_RANGE_PUBLIC_DECLARATIONS:
+            failures.append(
+                "CircuitEntityRange public declaration is outside the borrowed-range contract: "
+                f"{declaration}"
+            )
+    iterator_surface = normalized_access_surface_from_header(
+        "iterator", header_text, {"public", "protected"}
+    )
+    if iterator_surface != CIRCUIT_ENTITY_RANGE_ITERATOR_PUBLIC_SURFACE:
+        failures.append(
+            "CircuitEntityRange::iterator public/protected surface is outside the approved "
+            f"forward-iterator contract: {iterator_surface}"
+        )
+    return failures
+
+
+def check_circuit_range_construction(failures: list[str]) -> None:
+    failures.extend(circuit_range_construction_failures(read(ROOT_TYPES["Circuit"])))
 
 
 def subsystem_root_name(path: Path) -> str | None:
@@ -1530,18 +1623,50 @@ def run_self_tests() -> int:
         """
         class Circuit {
           public:
-            template <CircuitEntityId Id> const entity_type_t<Id> &get(Id id) const;
+            template <CircuitEntityId Id> [[nodiscard]] const entity_type_t<Id> &get(Id id) const;
             ComponentId add_component(ComponentInstance component);
-            void mutate(EntityRef entity, PropertyValue value);
+            const Net &get(NetId id) const;
+            NetId add_net(Net net);
+            void update(EntityRef entity, PropertyValue value);
+            ConnectivityModel connectivity;
+            using RawMutationHandle = ConnectivityModel;
+            struct Mutator {
+                void mutate(Circuit &circuit);
+            };
+          protected:
+            ConnectivityModel &connectivity();
         };
         """
     )
     admission_failures = circuit_public_method_admission_failures(circuit_admission_sample)
     require_self_test(
-        len(admission_failures) == 2
+        len(admission_failures) == 8
         and any("add_component" in failure for failure in admission_failures)
-        and any("mutate" in failure for failure in admission_failures),
-        "storage-shaped and generic Circuit mutation methods must fail admission",
+        and any("const Net &get" in failure for failure in admission_failures)
+        and any("NetId add_net(Net net)" in failure for failure in admission_failures)
+        and any("void update(EntityRef" in failure for failure in admission_failures)
+        and any("ConnectivityModel connectivity" in failure for failure in admission_failures)
+        and any("using RawMutationHandle" in failure for failure in admission_failures)
+        and any("struct Mutator" in failure for failure in admission_failures)
+        and any("ConnectivityModel &connectivity" in failure for failure in admission_failures),
+        "new names, same-name overloads, exposed fields, aliases, nested mutation handles, and "
+        "protected access outside the typed contract must fail admission",
+    )
+    require_self_test(
+        not circuit_public_method_admission_failures(read(ROOT_TYPES["Circuit"])),
+        "the approved Circuit declaration set must admit the repository header",
+    )
+
+    range_escape_sample = read(ROOT_TYPES["Circuit"]).replace(
+        "iterator() = default;",
+        "iterator() = default;\n"
+        "        static entity_range_t<Id> forge(const Circuit &circuit, std::size_t size);",
+        1,
+    )
+    range_failures = circuit_range_construction_failures(range_escape_sample)
+    require_self_test(
+        len(range_failures) == 1 and "forge" in range_failures[0],
+        "nested iterator factories outside Circuit::all must fail range admission",
     )
 
     entity_ref_bad = textwrap.dedent(
@@ -1619,6 +1744,7 @@ def run_checks() -> int:
     check_privileged_friends_are_allowlisted(failures)
     check_public_api_snapshots(failures)
     check_circuit_public_method_admission(failures)
+    check_circuit_range_construction(failures)
     check_python_connectivity_semantics(failures)
     check_entity_ref_not_kernel_traversal_handle(failures)
     check_no_raw_structural_throws(failures)
