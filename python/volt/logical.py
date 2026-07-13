@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Iterator
 
+from . import _volt
 from ._footprint import Footprint, FootprintInput, footprint_ref
 from .library import PartModel3D
 from ._utils import _number
@@ -328,6 +329,7 @@ class ModuleInstancePort:
 
     def __init__(self, instance: ModuleInstance, port_index: int, name: str):
         self._instance = instance
+        self._owner = instance._owner
         self._port_index = port_index
         self.name = name
 
@@ -345,6 +347,7 @@ class ModuleInstance:
 
     def __init__(self, design: Design, definition: ModuleDefinition, index: int, name: str):
         self._design = design
+        self._owner = design._owner
         self._definition = definition
         self._index = index
         self.name = name
@@ -400,6 +403,7 @@ class Pin:
 
     def __init__(self, design: Design, index: int):
         self._design = design
+        self._owner = design._owner
         self._index = index
 
     @property
@@ -601,6 +605,7 @@ class Net:
 
     def __init__(self, design: Design, index: int, name: str):
         self._design = design
+        self._owner = design._owner
         self._index = index
         self.name = name
 
@@ -622,17 +627,22 @@ class Net:
 
     def connect(self, *pins: Pin | ModuleInstancePort | Iterable[Pin | ModuleInstancePort]) -> Net:
         """Connect concrete pins or module instance ports to this logical net."""
-        for pin in _flatten_pins(pins):
-            if isinstance(pin, Pin):
-                self._design._circuit.connect(self._index, pin.index)
-            elif isinstance(pin, ModuleInstancePort):
-                if pin._instance._design is not self._design:
-                    raise ValueError("Module instance port belongs to a different design")
-                self._design._circuit.bind_port(
-                    pin._instance.index, pin.port_index, self._index
-                )
+        endpoints = []
+        for endpoint in _flatten_pins(pins):
+            if isinstance(endpoint, Pin):
+                if endpoint._owner is not self._owner:
+                    _raise_cross_reference("Pin belongs to a different design")
+                endpoints.append(endpoint.index)
+            elif isinstance(endpoint, ModuleInstancePort):
+                if endpoint._owner is not self._owner:
+                    _raise_cross_reference(
+                        "Module instance port belongs to a different design"
+                    )
+                endpoints.append((endpoint._instance.index, endpoint.port_index))
             else:
                 raise TypeError("Nets can only connect Pin or ModuleInstancePort handles")
+        if endpoints:
+            self._design._circuit.connect_endpoints(self._index, endpoints)
         return self
 
     def __iadd__(self, pins: Pin | ModuleInstancePort | Iterable[Pin | ModuleInstancePort]) -> Net:
@@ -681,6 +691,9 @@ def _flatten_nets(values) -> tuple[Net, ...]:
             result.extend(value)
     return tuple(result)
 
+
+def _raise_cross_reference(message: str) -> None:
+    _volt._raise_cross_reference_error(message)
 
 
 def _pin_refs_by_name(pin_refs, name: str):

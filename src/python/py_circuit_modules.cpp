@@ -1,6 +1,11 @@
 #include "py_circuit.hpp"
 
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/core/errors.hpp>
+
+#include <algorithm>
+#include <utility>
+#include <vector>
 
 namespace volt::python {
 
@@ -106,6 +111,59 @@ std::size_t PyCircuit::concrete_component_for(std::size_t instance, std::size_t 
 void PyCircuit::bind_port(std::size_t instance, std::size_t port, std::size_t parent_net) {
     [[maybe_unused]] const auto binding =
         circuit_.bind_port(module_instance_id(instance), port_def_id(port), net_id(parent_net));
+}
+
+void PyCircuit::connect_endpoints(std::size_t net,
+                                  const std::vector<PyConnectivityEndpoint> &endpoints) {
+    const auto target_net = net_id(net);
+    static_cast<void>(circuit_.get(target_net));
+
+    auto seen_ports = std::vector<std::pair<volt::ModuleInstanceId, volt::PortDefId>>{};
+    for (const auto &endpoint : endpoints) {
+        if (const auto *pin_index = std::get_if<std::size_t>(&endpoint)) {
+            const auto pin = pin_id(*pin_index);
+            const auto current_net = circuit_.net_of(pin);
+            if (current_net.has_value() && current_net.value() != target_net) {
+                throw volt::KernelLogicError{volt::ErrorCode::InvalidState,
+                                             "Pin is already connected to another net"};
+            }
+            continue;
+        }
+
+        const auto &[instance_index, port_index] =
+            std::get<std::pair<std::size_t, std::size_t>>(endpoint);
+        const auto instance = module_instance_id(instance_index);
+        const auto port = port_def_id(port_index);
+        if (volt::queries::is_module_origin_net(circuit_, target_net)) {
+            throw volt::KernelLogicError{
+                volt::ErrorCode::CrossReferenceViolation,
+                "Module instance port parent net must be outside module origins"};
+        }
+        const auto internal_net =
+            volt::queries::concrete_net_for(circuit_, instance, circuit_.get(port).internal_net());
+        if (!internal_net.has_value()) {
+            throw volt::KernelLogicError{volt::ErrorCode::InvalidState,
+                                         "Port internal net has no concrete module instance net"};
+        }
+
+        const auto endpoint_key = std::pair{instance, port};
+        if (volt::queries::port_binding_for(circuit_, instance, port).has_value() ||
+            std::find(seen_ports.begin(), seen_ports.end(), endpoint_key) != seen_ports.end()) {
+            throw volt::KernelLogicError{volt::ErrorCode::InvalidState,
+                                         "Module instance port is already bound"};
+        }
+        seen_ports.push_back(endpoint_key);
+    }
+
+    for (const auto &endpoint : endpoints) {
+        if (const auto *port = std::get_if<std::pair<std::size_t, std::size_t>>(&endpoint)) {
+            [[maybe_unused]] const auto binding = circuit_.bind_port(
+                module_instance_id(port->first), port_def_id(port->second), target_net);
+        } else {
+            static_cast<void>(
+                circuit_.connect(target_net, pin_id(std::get<std::size_t>(endpoint))));
+        }
+    }
 }
 
 py::list PyCircuit::template_nets(std::size_t module) const {

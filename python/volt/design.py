@@ -33,6 +33,7 @@ class Design:
 
         self.name = name
         self._circuit = _volt.Circuit()
+        self._owner = self._circuit
         self._definitions: dict[str, int] = {}
         self._library_definitions: dict[tuple[str, str, str], ComponentDefinition] = {}
         self._object_footprints: dict[FootprintRef, Footprint] = {}
