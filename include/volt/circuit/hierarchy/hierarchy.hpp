@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -12,10 +11,6 @@
 #include <volt/core/properties.hpp>
 
 namespace volt {
-
-namespace detail {
-struct ModuleDefinitionState;
-}
 
 /** Human-facing reusable module name. */
 class ModuleName {
@@ -208,46 +203,66 @@ struct ModuleSpec {
 /** Reusable logical module template. */
 class ModuleDefinition {
   public:
-    /** Construct an empty reusable logical module template. */
-    explicit ModuleDefinition(ModuleName name);
-    /** Copy reusable module definition state. */
-    ModuleDefinition(const ModuleDefinition &other);
-    /** Move reusable module definition state. */
-    ModuleDefinition(ModuleDefinition &&other) noexcept;
-    /** Copy reusable module definition state. */
-    ModuleDefinition &operator=(const ModuleDefinition &other);
-    /** Move reusable module definition state. */
-    ModuleDefinition &operator=(ModuleDefinition &&other) noexcept;
-    /** Destroy reusable module definition state. */
-    ~ModuleDefinition();
+    /** Construct a reusable logical module template from its complete owned relationships. */
+    explicit ModuleDefinition(ModuleName name, std::vector<TemplateNetDefId> template_nets = {},
+                              std::vector<PortDefId> ports = {},
+                              std::vector<ModuleComponentId> components = {},
+                              std::vector<ModulePinConnection> connections = {});
 
     /** Return the reusable module name. */
-    [[nodiscard]] const ModuleName &name() const noexcept;
+    [[nodiscard]] const ModuleName &name() const noexcept { return name_; }
 
     /** Return template-local nets in deterministic insertion order. */
-    [[nodiscard]] const std::vector<TemplateNetDefId> &template_nets() const noexcept;
+    [[nodiscard]] const std::vector<TemplateNetDefId> &template_nets() const noexcept {
+        return template_nets_;
+    }
 
     /** Return module ports in deterministic insertion order. */
-    [[nodiscard]] const std::vector<PortDefId> &ports() const noexcept;
+    [[nodiscard]] const std::vector<PortDefId> &ports() const noexcept { return ports_; }
 
     /** Return component templates in deterministic insertion order. */
-    [[nodiscard]] const std::vector<ModuleComponentId> &components() const noexcept;
+    [[nodiscard]] const std::vector<ModuleComponentId> &components() const noexcept {
+        return components_;
+    }
 
-  protected:
-    /** Construct a read-only facade over owner-private storage. */
-    explicit ModuleDefinition(std::shared_ptr<const detail::ModuleDefinitionState> state);
+    /** Return module-local pin connections in deterministic insertion order. */
+    [[nodiscard]] const std::vector<ModulePinConnection> &connections() const noexcept {
+        return connections_;
+    }
+
+    /** Append one owned template net while consuming this temporary value. */
+    [[nodiscard]] ModuleDefinition with_template_net(TemplateNetDefId net) &&;
+
+    /** Append one owned port while consuming this temporary value. */
+    [[nodiscard]] ModuleDefinition with_port(PortDefId port) &&;
+
+    /** Append one owned component template while consuming this temporary value. */
+    [[nodiscard]] ModuleDefinition with_component(ModuleComponentId component) &&;
+
+    /** Append one module-local pin connection while consuming this temporary value. */
+    [[nodiscard]] ModuleDefinition with_connection(ModulePinConnection connection) &&;
 
   private:
-    [[nodiscard]] const detail::ModuleDefinitionState &state() const noexcept;
+    ModuleName name_;
+    std::vector<TemplateNetDefId> template_nets_;
+    std::vector<PortDefId> ports_;
+    std::vector<ModuleComponentId> components_;
+    std::vector<ModulePinConnection> connections_;
+};
 
-    std::shared_ptr<const detail::ModuleDefinitionState> state_;
+/** Complete root module-instance input lowered atomically by Circuit. */
+struct ModuleInstanceSpec {
+    /** Unique root-level module instance name. */
+    ModuleInstanceName name;
 };
 
 /** Root-level occurrence of a reusable module definition. */
 class ModuleInstance {
   public:
     /** Construct a root-level occurrence of a reusable module definition. */
-    ModuleInstance(ModuleDefId definition, ModuleInstanceName name);
+    ModuleInstance(ModuleDefId definition, ModuleInstanceName name,
+                   std::vector<std::pair<TemplateNetDefId, NetId>> net_origins = {},
+                   std::vector<std::pair<ModuleComponentId, ComponentId>> component_origins = {});
 
     /** Return the reusable module definition instantiated here. */
     [[nodiscard]] ModuleDefId definition() const noexcept { return definition_; }
@@ -255,43 +270,23 @@ class ModuleInstance {
     /** Return the root-level instance name. */
     [[nodiscard]] const ModuleInstanceName &name() const noexcept { return name_; }
 
+    /** Return concrete net origins in module template-net order. */
+    [[nodiscard]] const std::vector<std::pair<TemplateNetDefId, NetId>> &
+    net_origins() const noexcept {
+        return net_origins_;
+    }
+
+    /** Return concrete component origins in module component order. */
+    [[nodiscard]] const std::vector<std::pair<ModuleComponentId, ComponentId>> &
+    component_origins() const noexcept {
+        return component_origins_;
+    }
+
   private:
     ModuleDefId definition_;
     ModuleInstanceName name_;
-};
-
-/** Concrete net created from a module template net. */
-class ModuleNetOrigin {
-  public:
-    /** Construct origin metadata for a concrete net copied from a template-local net. */
-    ModuleNetOrigin(ModuleInstanceId instance, TemplateNetDefId template_net);
-
-    /** Return the module instance that owns the concrete net. */
-    [[nodiscard]] ModuleInstanceId instance() const noexcept { return instance_; }
-
-    /** Return the template-local net copied into the concrete net. */
-    [[nodiscard]] TemplateNetDefId template_net() const noexcept { return template_net_; }
-
-  private:
-    ModuleInstanceId instance_;
-    TemplateNetDefId template_net_;
-};
-
-/** Concrete component created from a module component template. */
-class ModuleComponentOrigin {
-  public:
-    /** Construct origin metadata for a concrete component copied from a module template. */
-    ModuleComponentOrigin(ModuleInstanceId instance, ModuleComponentId component);
-
-    /** Return the module instance that owns the concrete component. */
-    [[nodiscard]] ModuleInstanceId instance() const noexcept { return instance_; }
-
-    /** Return the module component template copied into the concrete component. */
-    [[nodiscard]] ModuleComponentId component() const noexcept { return component_; }
-
-  private:
-    ModuleInstanceId instance_;
-    ModuleComponentId component_;
+    std::vector<std::pair<TemplateNetDefId, NetId>> net_origins_;
+    std::vector<std::pair<ModuleComponentId, ComponentId>> component_origins_;
 };
 
 /** Explicit edge from an instance-local concrete port net to a parent concrete net. */

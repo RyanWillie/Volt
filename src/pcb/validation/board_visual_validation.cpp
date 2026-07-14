@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/pcb/projection/footprint_visual_projection.hpp>
 
 namespace volt::detail {
@@ -76,7 +77,8 @@ struct ReferenceDesignatorVisualExtent {
 placement_visual_extent(const Board &board, const FootprintLibrary &footprints,
                         ComponentPlacementId placement_id) {
     const auto &placement = board.placement(placement_id);
-    const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+    const auto &selected_part =
+        volt::queries::selected_physical_part(board.circuit(), placement.component());
     if (!selected_part.has_value()) {
         return std::nullopt;
     }
@@ -405,7 +407,8 @@ collect_pad_visual_geometry(const Board &board, const FootprintLibrary &footprin
          ++placement_index) {
         const auto placement_id = ComponentPlacementId{placement_index};
         const auto &placement = board.placement(placement_id);
-        const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+        const auto &selected_part =
+            volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {
             continue;
         }
@@ -449,7 +452,8 @@ collect_reference_designator_extents(const Board &board, const FootprintLibrary 
          ++placement_index) {
         const auto placement_id = ComponentPlacementId{placement_index};
         const auto &placement = board.placement(placement_id);
-        const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+        const auto &selected_part =
+            volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {
             continue;
         }

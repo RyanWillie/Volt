@@ -72,7 +72,7 @@ TEST_CASE("Circuit defines complete components atomically from typed specs") {
     REQUIRE(stored.pins() == std::vector{volt::PinDefId{0}, volt::PinDefId{1}});
     CHECK(circuit.get(stored.pins()[0]).name() == "VDD");
     CHECK(circuit.get(stored.pins()[1]).name() == "OUT");
-    CHECK(circuit.pin_definition_electrical_attributes(stored.pins()[0])
+    CHECK(volt::queries::pin_definition_electrical_attributes(circuit, stored.pins()[0])
               .get(volt::ElectricalAttributeName{"voltage_range"})
               .as_range()
               .maximum() == volt::Quantity{volt::UnitDimension::Voltage, 5.5});
@@ -215,8 +215,8 @@ TEST_CASE("Circuit defines complete modules atomically from typed specs") {
     CHECK(volt::queries::template_net_for(circuit, module, volt::ModuleComponentId{0},
                                           volt::PinDefId{1}) == volt::TemplateNetDefId{1});
 
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"DIV_A"}});
     const auto concrete =
         volt::queries::concrete_component_for(circuit, instance, volt::ModuleComponentId{0});
     REQUIRE(concrete.has_value());
@@ -226,8 +226,8 @@ TEST_CASE("Circuit defines complete modules atomically from typed specs") {
     CHECK(volt::io::write_logical_circuit(volt::io::read_logical_circuit_text(serialized)) ==
           serialized);
     check_failure_is_byte_atomic(circuit, [&] {
-        static_cast<void>(
-            circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"}));
+        static_cast<void>(circuit.instantiate_module(
+            module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"DIV_A"}}));
     });
 }
 

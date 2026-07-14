@@ -1,5 +1,6 @@
 #include <volt/circuit/bom/bom.hpp>
 
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 
 #include <algorithm>
@@ -111,11 +112,12 @@ Bom::Bom(std::vector<BomComponent> components, std::vector<BomLine> lines)
     for (std::size_t index = 0; index < circuit.all<volt::ComponentId>().size(); ++index) {
         const auto component_id = ComponentId{index};
         const auto &component = circuit.get(component_id);
-        const auto dnp_intent = circuit.component_dnp(component_id);
+        const auto dnp_intent = volt::queries::component_dnp(circuit, component_id);
         const auto dnp = dnp_intent.value_or(false);
-        const auto selection_override = circuit.is_component_selection_override(component_id);
+        const auto selection_override =
+            volt::queries::is_component_selection_override(circuit, component_id);
         auto selected = std::optional<BomSelectedPart>{};
-        const auto &selected_part = circuit.selected_physical_part(component_id);
+        const auto &selected_part = volt::queries::selected_physical_part(circuit, component_id);
         if (selected_part.has_value()) {
             selected = BomSelectedPart{
                 selected_part->manufacturer_part().manufacturer(),

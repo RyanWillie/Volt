@@ -26,6 +26,38 @@ void require_component(const volt::Circuit &circuit, volt::ComponentId component
     }
 }
 
+void require_pin_definition(const volt::Circuit &circuit, volt::PinDefId pin_definition) {
+    if (pin_definition.index() >= circuit.all<volt::PinDefId>().size()) {
+        throw volt::KernelRangeError{volt::ErrorCode::UnknownEntity,
+                                     "Pin definition ID does not belong to this circuit",
+                                     volt::EntityRef::pin_def(pin_definition)};
+    }
+}
+
+void require_pin(const volt::Circuit &circuit, volt::PinId pin) {
+    if (pin.index() >= circuit.all<volt::PinId>().size()) {
+        throw volt::KernelRangeError{volt::ErrorCode::UnknownEntity,
+                                     "Pin ID does not belong to this circuit",
+                                     volt::EntityRef::pin(pin)};
+    }
+}
+
+void require_net(const volt::Circuit &circuit, volt::NetId net) {
+    if (net.index() >= circuit.all<volt::NetId>().size()) {
+        throw volt::KernelRangeError{volt::ErrorCode::UnknownEntity,
+                                     "Net ID does not belong to this circuit",
+                                     volt::EntityRef::net(net)};
+    }
+}
+
+void require_module_definition(const volt::Circuit &circuit, volt::ModuleDefId module) {
+    if (module.index() >= circuit.all<volt::ModuleDefId>().size()) {
+        throw volt::KernelRangeError{volt::ErrorCode::UnknownEntity,
+                                     "Module definition ID does not belong to this circuit",
+                                     volt::EntityRef::module_def(module)};
+    }
+}
+
 void require_module_instance(const volt::Circuit &circuit, volt::ModuleInstanceId instance) {
     if (instance.index() >= circuit.all<volt::ModuleInstanceId>().size()) {
         throw volt::KernelRangeError{volt::ErrorCode::UnknownEntity,
@@ -130,7 +162,7 @@ module_component_by_reference(const Circuit &circuit, ModuleDefId module,
                                                                ModuleComponentId component,
                                                                PinDefId pin) {
     require_module_component_in_module(circuit, module, component);
-    for (const auto &connection : circuit.module_pin_connections(module)) {
+    for (const auto &connection : circuit.get(module).connections()) {
         if (connection.component() == component && connection.pin() == pin) {
             return connection.net();
         }
@@ -164,7 +196,7 @@ port_binding_for(const Circuit &circuit, ModuleInstanceId instance, PortDefId po
                                                                 ModuleComponentId component) {
     require_module_instance(circuit, instance);
     require_module_component_in_module(circuit, circuit.get(instance).definition(), component);
-    for (const auto &[origin, concrete] : circuit.module_component_origins(instance)) {
+    for (const auto &[origin, concrete] : circuit.get(instance).component_origins()) {
         if (origin == component) {
             return concrete;
         }
@@ -176,7 +208,7 @@ port_binding_for(const Circuit &circuit, ModuleInstanceId instance, PortDefId po
 concrete_net_for(const Circuit &circuit, ModuleInstanceId instance, TemplateNetDefId template_net) {
     require_module_instance(circuit, instance);
     require_template_net_in_module(circuit, circuit.get(instance).definition(), template_net);
-    for (const auto &[origin, concrete] : circuit.module_net_origins(instance)) {
+    for (const auto &[origin, concrete] : circuit.get(instance).net_origins()) {
         if (origin == template_net) {
             return concrete;
         }
@@ -186,38 +218,36 @@ concrete_net_for(const Circuit &circuit, ModuleInstanceId instance, TemplateNetD
 
 [[nodiscard]] std::vector<std::pair<TemplateNetDefId, NetId>>
 module_net_origins(const Circuit &circuit, ModuleInstanceId instance) {
-    return circuit.module_net_origins(instance);
+    require_module_instance(circuit, instance);
+    return circuit.get(instance).net_origins();
 }
 
 [[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>>
 module_component_origins(const Circuit &circuit, ModuleInstanceId instance) {
-    return circuit.module_component_origins(instance);
+    require_module_instance(circuit, instance);
+    return circuit.get(instance).component_origins();
 }
 
 [[nodiscard]] bool is_module_origin_net(const Circuit &circuit, NetId net) {
     static_cast<void>(circuit.get(net));
-    std::size_t instance_index = 0;
-    for ([[maybe_unused]] const auto &instance : circuit.all<ModuleInstanceId>()) {
-        const auto origins = circuit.module_net_origins(ModuleInstanceId{instance_index});
+    for (const auto &instance : circuit.all<ModuleInstanceId>()) {
+        const auto &origins = instance.net_origins();
         if (std::ranges::any_of(origins,
                                 [net](const auto &origin) { return origin.second == net; })) {
             return true;
         }
-        ++instance_index;
     }
     return false;
 }
 
 [[nodiscard]] bool is_module_origin_component(const Circuit &circuit, ComponentId component) {
     static_cast<void>(circuit.get(component));
-    std::size_t instance_index = 0;
-    for ([[maybe_unused]] const auto &instance : circuit.all<ModuleInstanceId>()) {
-        const auto origins = circuit.module_component_origins(ModuleInstanceId{instance_index});
+    for (const auto &instance : circuit.all<ModuleInstanceId>()) {
+        const auto &origins = instance.component_origins();
         if (std::ranges::any_of(
                 origins, [component](const auto &origin) { return origin.second == component; })) {
             return true;
         }
-        ++instance_index;
     }
     return false;
 }
@@ -267,6 +297,130 @@ module_component_origins(const Circuit &circuit, ModuleInstanceId instance) {
         }
     }
     return std::nullopt;
+}
+
+[[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part(const Circuit &circuit,
+                                                                        ComponentId component) {
+    require_component(circuit, component);
+    return circuit.get(component).selected_physical_part();
+}
+
+[[nodiscard]] const ElectricalAttributeMap &component_electrical_attributes(const Circuit &circuit,
+                                                                            ComponentId component) {
+    require_component(circuit, component);
+    return circuit.get(component).electrical_attributes();
+}
+
+[[nodiscard]] const ElectricalAttributeMap &
+pin_definition_electrical_attributes(const Circuit &circuit, PinDefId pin_definition) {
+    require_pin_definition(circuit, pin_definition);
+    return circuit.get(pin_definition).electrical_attributes();
+}
+
+[[nodiscard]] const ElectricalAttributeMap &net_electrical_attributes(const Circuit &circuit,
+                                                                      NetId net) {
+    require_net(circuit, net);
+    return circuit.get(net).electrical_attributes();
+}
+
+[[nodiscard]] std::vector<ModulePinConnection> module_pin_connections(const Circuit &circuit,
+                                                                      ModuleDefId module) {
+    require_module_definition(circuit, module);
+    return circuit.get(module).connections();
+}
+
+[[nodiscard]] bool is_intentional_stub_net(const Circuit &circuit, NetId net) {
+    require_net(circuit, net);
+    return circuit.get(net).intentional_stub();
+}
+
+[[nodiscard]] bool is_intentional_no_connect_pin(const Circuit &circuit, PinId pin) {
+    require_pin(circuit, pin);
+    return circuit.get(pin).intentional_no_connect();
+}
+
+[[nodiscard]] std::optional<bool> component_dnp(const Circuit &circuit, ComponentId component) {
+    require_component(circuit, component);
+    return circuit.get(component).dnp();
+}
+
+[[nodiscard]] bool is_component_selection_override(const Circuit &circuit, ComponentId component) {
+    require_component(circuit, component);
+    return circuit.get(component).selection_override();
+}
+
+[[nodiscard]] std::vector<NetId> intentional_stub_nets(const Circuit &circuit) {
+    auto result = std::vector<NetId>{};
+    std::size_t index = 0;
+    for (const auto &net : circuit.all<NetId>()) {
+        if (net.intentional_stub()) {
+            result.emplace_back(index);
+        }
+        ++index;
+    }
+    std::ranges::sort(result, {}, [&circuit](NetId net) {
+        return circuit.get(net).intentional_stub_order().value();
+    });
+    return result;
+}
+
+[[nodiscard]] std::vector<PinId> intentional_no_connect_pins(const Circuit &circuit) {
+    auto result = std::vector<PinId>{};
+    std::size_t index = 0;
+    for (const auto &pin : circuit.all<PinId>()) {
+        if (pin.intentional_no_connect()) {
+            result.emplace_back(index);
+        }
+        ++index;
+    }
+    std::ranges::sort(result, {}, [&circuit](PinId pin) {
+        return circuit.get(pin).intentional_no_connect_order().value();
+    });
+    return result;
+}
+
+[[nodiscard]] std::vector<ComponentAssemblyIntent>
+component_assembly_intents(const Circuit &circuit) {
+    auto result = std::vector<ComponentAssemblyIntent>{};
+    std::size_t index = 0;
+    for (const auto &component : circuit.all<ComponentId>()) {
+        if (component.dnp().has_value() || component.selection_override()) {
+            result.emplace_back(ComponentId{index}, component.dnp(),
+                                component.selection_override());
+        }
+        ++index;
+    }
+    std::ranges::sort(result, {}, [&circuit](const ComponentAssemblyIntent &intent) {
+        return circuit.get(intent.component()).assembly_intent_order().value();
+    });
+    return result;
+}
+
+[[nodiscard]] std::optional<NetClassId> net_class_by_name(const Circuit &circuit,
+                                                          const NetClassName &name) {
+    return find_entity<NetClassId>(
+        circuit, [&name](const auto &net_class) { return net_class.name() == name; });
+}
+
+[[nodiscard]] std::optional<NetClassId> net_class_for_net(const Circuit &circuit, NetId net) {
+    require_net(circuit, net);
+    return circuit.get(net).net_class();
+}
+
+[[nodiscard]] std::vector<std::pair<NetId, NetClassId>>
+net_class_assignments(const Circuit &circuit) {
+    auto result = std::vector<std::pair<NetId, NetClassId>>{};
+    std::size_t index = 0;
+    for (const auto &net : circuit.all<NetId>()) {
+        if (net.net_class().has_value()) {
+            result.emplace_back(NetId{index}, net.net_class().value());
+        }
+        ++index;
+    }
+    std::ranges::sort(result, {}, [&circuit](const auto &assignment) {
+        return circuit.get(assignment.first).net_class_assignment_order().value();
+    });
+    return result;
 }
 
 } // namespace volt::queries

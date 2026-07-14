@@ -39,13 +39,6 @@ concept HasRvalueAll = requires(Circuit &&circuit) {
     std::forward<Circuit>(circuit).template all<volt::ComponentId>();
 };
 
-template <typename Circuit>
-concept ExposesConnectivityModel =
-    requires(const Circuit &circuit) { circuit.connectivity_model(); };
-
-template <typename Circuit>
-concept ExposesHierarchyModel = requires(const Circuit &circuit) { circuit.hierarchy_model(); };
-
 template <typename Id>
 concept SupportsCircuitRead = requires(const volt::Circuit &circuit, Id id) {
     circuit.get(id);
@@ -59,8 +52,6 @@ struct UserDefinedCircuitId {
 };
 
 static_assert(!HasRvalueAll<volt::Circuit>);
-static_assert(!ExposesConnectivityModel<volt::Circuit>);
-static_assert(!ExposesHierarchyModel<volt::Circuit>);
 static_assert(!SupportsCircuitRead<volt::SymbolDefId>);
 static_assert(!volt::CircuitEntityId<UserDefinedCircuitId>);
 static_assert(!SupportsCircuitRead<UserDefinedCircuitId>);
@@ -100,8 +91,9 @@ ReadFixture make_read_fixture() {
     const auto &pins = circuit.get(component_definition).pins();
     const auto first_pin_definition = pins[0];
     const auto second_pin_definition = pins[1];
-    const auto component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
+    const auto component = circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
     const auto first_pin =
         volt::queries::pin_by_definition(circuit, component, first_pin_definition).value();
     const auto parent_net =
@@ -121,8 +113,8 @@ ReadFixture make_read_fixture() {
     const auto template_net = circuit.get(module_definition).template_nets().front();
     const auto port_definition = circuit.get(module_definition).ports().front();
     const auto module_component = circuit.get(module_definition).components().front();
-    const auto module_instance =
-        circuit.instantiate_root_module(module_definition, volt::ModuleInstanceName{"CHANNEL_A"});
+    const auto module_instance = circuit.instantiate_module(
+        module_definition, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"CHANNEL_A"}});
     const auto port_binding = circuit.bind_port(module_instance, port_definition, parent_net);
     const auto net_class = circuit.define_net_class(
         volt::NetClassSpec{.net_class = volt::NetClass{volt::NetClassName{"Default"}}});

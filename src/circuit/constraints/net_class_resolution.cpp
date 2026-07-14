@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <optional>
 
+#include <volt/circuit/connectivity/queries.hpp>
+
 namespace volt {
 
 namespace {
@@ -27,7 +29,7 @@ namespace {
 } // namespace
 
 [[nodiscard]] std::optional<NetClassId> resolve_net_class(const Circuit &circuit, NetId net) {
-    const auto assigned = circuit.net_class_for_net(net);
+    const auto assigned = volt::queries::net_class_for_net(circuit, net);
     if (assigned.has_value()) {
         return assigned;
     }

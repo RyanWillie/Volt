@@ -2,37 +2,34 @@ include <algorithm>
 include <concepts>
 include <cstddef>
 include <iterator>
-include <memory>
 include <optional>
 include <stdexcept>
+include <string>
 include <string_view>
 include <type_traits>
+include <unordered_map>
 include <utility>
 include <vector>
-include <volt/circuit/connectivity/connectivity_model.hpp>
 include <volt/circuit/connectivity/definitions.hpp>
 include <volt/circuit/connectivity/instances.hpp>
 include <volt/circuit/connectivity/nets.hpp>
 include <volt/circuit/constraints/net_classes.hpp>
-include <volt/circuit/detail/subsystem_storage.hpp>
-include <volt/circuit/electrical/electrical_model.hpp>
 include <volt/circuit/hierarchy/hierarchy.hpp>
-include <volt/circuit/hierarchy/hierarchy_model.hpp>
 include <volt/circuit/intent/design_intent.hpp>
 include <volt/circuit/parts/parts.hpp>
 include <volt/circuit/updates.hpp>
+include <volt/core/entity_table.hpp>
 include <volt/core/ids.hpp>
 
 [[nodiscard]] ComponentDefId define_component(ComponentSpec spec)
 [[nodiscard]] ModuleDefId define_module(ModuleSpec spec)
-[[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ComponentInstanceSpec spec)
-[[nodiscard]] NetId add_net(NetSpec spec)
 [[nodiscard]] NetClassId define_net_class(NetClassSpec spec)
-[[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition, ModuleInstanceName name)
-[[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port, NetId parent_net)
-[[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ReferenceDesignator reference, PropertyMap properties = {})
+[[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ComponentInstanceSpec spec)
+[[nodiscard]] ModuleInstanceId instantiate_module(ModuleDefId definition, ModuleInstanceSpec spec)
+[[nodiscard]] NetId add_net(NetSpec spec)
 bool connect(NetId net, PinId pin)
 bool disconnect(PinId pin)
+[[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port, NetId parent_net)
 void update(ComponentId component, ComponentUpdate change)
 void update(NetId net, NetUpdate change)
 void mark_no_connect(PinId pin)
@@ -40,20 +37,3 @@ template <CircuitEntityId Id> [[nodiscard]] const entity_type_t<Id> &get(Id id) 
 template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const &
 template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const && = delete
 [[nodiscard]] std::optional<NetId> net_of(PinId pin) const
-[[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part(ComponentId component) const
-[[nodiscard]] const ElectricalAttributeMap &component_electrical_attributes(ComponentId component) const
-[[nodiscard]] const ElectricalAttributeMap &pin_definition_electrical_attributes(PinDefId pin_definition) const
-[[nodiscard]] const ElectricalAttributeMap &net_electrical_attributes(NetId net) const
-[[nodiscard]] std::vector<ModulePinConnection> module_pin_connections(ModuleDefId module) const
-[[nodiscard]] std::vector<std::pair<TemplateNetDefId, NetId>> module_net_origins(ModuleInstanceId instance) const
-[[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>> module_component_origins(ModuleInstanceId instance) const
-[[nodiscard]] bool is_intentional_stub_net(NetId net) const
-[[nodiscard]] bool is_intentional_no_connect_pin(PinId pin) const
-[[nodiscard]] std::optional<bool> component_dnp(ComponentId component) const
-[[nodiscard]] bool is_component_selection_override(ComponentId component) const
-[[nodiscard]] const std::vector<NetId> &intentional_stub_nets() const noexcept
-[[nodiscard]] const std::vector<PinId> &intentional_no_connect_pins() const noexcept
-[[nodiscard]] const std::vector<ComponentAssemblyIntent> &component_assembly_intents() const noexcept
-[[nodiscard]] std::optional<NetClassId> net_class_by_name(const NetClassName &name) const
-[[nodiscard]] std::optional<NetClassId> net_class_for_net(NetId net) const
-[[nodiscard]] const std::vector<std::pair<NetId, NetClassId>> &net_class_assignments() const noexcept

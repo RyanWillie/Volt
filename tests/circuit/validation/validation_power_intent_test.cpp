@@ -129,8 +129,8 @@ TEST_CASE("Circuit validation applies authored power intent across bound module 
                                        volt::PortRole::PowerInput}},
     });
     const auto port = circuit.get(module).ports().front();
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"LOAD_A"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"LOAD_A"}});
     const auto tap = circuit.instantiate_component(
         tap_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"TP1"}});
     const auto parent_net =

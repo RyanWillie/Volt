@@ -16,29 +16,26 @@ namespace volt {
 
 [[nodiscard]] ComponentDefId Circuit::define_component(ComponentSpec spec) {
     auto pin_definitions = std::vector<PinDefinition>{};
-    auto pin_attributes = std::vector<ElectricalAttributeMap>{};
     auto pin_ids = std::vector<PinDefId>{};
     pin_definitions.reserve(spec.pins.size());
-    pin_attributes.reserve(spec.pins.size());
     pin_ids.reserve(spec.pins.size());
 
-    const auto first_pin_index = connectivity_.pin_definition_count();
+    const auto first_pin_index = connectivity_.pin_definitions.size();
     for (std::size_t index = 0; index < spec.pins.size(); ++index) {
         const auto &pin = spec.pins[index];
-        pin_definitions.emplace_back(pin.name, pin.number, pin.requirement, pin.terminal_kind,
-                                     pin.direction, pin.signal_domain, pin.drive_kind,
-                                     pin.polarity);
-        pin_attributes.push_back(ElectricalStorage::preflight_attributes(
-            pin.electrical_attributes, ElectricalAttributeOwner::PinSpec));
+        pin_definitions.emplace_back(
+            pin.name, pin.number, pin.requirement, pin.terminal_kind, pin.direction,
+            pin.signal_domain, pin.drive_kind, pin.polarity,
+            preflight_attributes(pin.electrical_attributes, ElectricalAttributeOwner::PinSpec));
         pin_ids.emplace_back(first_pin_index + index);
     }
 
     auto definition =
         ComponentDefinition{std::move(spec.name), pin_ids, std::move(spec.properties),
                             std::move(spec.source), std::move(spec.schematic_symbols)};
-    for (std::size_t index = 0; index < pin_definitions.size(); ++index) {
-        const auto pin = connectivity_.add_pin_definition(std::move(pin_definitions[index]));
-        electrical_.restore_pin_definition_attributes(pin, std::move(pin_attributes[index]));
+    for (auto &pin_definition : pin_definitions) {
+        [[maybe_unused]] const auto pin =
+            connectivity_.add_pin_definition(std::move(pin_definition));
     }
     return connectivity_.add_component_definition(std::move(definition));
 }
@@ -118,7 +115,7 @@ namespace volt {
 
     auto resolved_ports = std::vector<PortDefinition>{};
     resolved_ports.reserve(spec.ports.size());
-    const auto first_template_net_index = hierarchy_.template_net_definition_count();
+    const auto first_template_net_index = hierarchy_.template_net_definitions.size();
     for (std::size_t index = 0; index < spec.ports.size(); ++index) {
         const auto &port = spec.ports[index];
         const auto duplicate = std::find_if(
@@ -172,8 +169,7 @@ namespace volt {
                                "Component reference designator already exists"};
     }
 
-    return connectivity_.instantiate_component(definition, std::move(spec.reference),
-                                               std::move(spec.properties));
+    return connectivity_.instantiate_component(definition, std::move(spec));
 }
 
 [[nodiscard]] NetId Circuit::add_net(NetSpec spec) {
@@ -188,16 +184,17 @@ namespace volt {
     return net_classes_.add_net_class(std::move(spec.net_class));
 }
 
-[[nodiscard]] ModuleInstanceId Circuit::instantiate_root_module(ModuleDefId definition,
-                                                                ModuleInstanceName name) {
+[[nodiscard]] ModuleInstanceId Circuit::instantiate_module(ModuleDefId definition,
+                                                           ModuleInstanceSpec spec) {
+    auto name = std::move(spec.name);
     require_module_definition(definition);
     if (queries::module_instance_by_name(*this, name).has_value()) {
         throw KernelLogicError{ErrorCode::DuplicateName, "Module instance name already exists"};
     }
 
     std::vector<Net> concrete_nets;
-    for (const auto template_net : hierarchy_.module_definition(definition).template_nets()) {
-        const auto &template_net_definition = hierarchy_.template_net_definition(template_net);
+    for (const auto template_net : get(definition).template_nets()) {
+        const auto &template_net_definition = get(template_net);
         auto concrete_name = NetName{name.value() + "/" + template_net_definition.name().value()};
         if (queries::net_by_name(*this, concrete_name).has_value()) {
             throw KernelLogicError{ErrorCode::DuplicateName,
@@ -207,8 +204,8 @@ namespace volt {
     }
 
     std::vector<ComponentInstance> concrete_components;
-    for (const auto component : hierarchy_.module_definition(definition).components()) {
-        const auto &component_template = hierarchy_.module_component_template(component);
+    for (const auto component : get(definition).components()) {
+        const auto &component_template = get(component);
         auto concrete_reference =
             ReferenceDesignator{name.value() + "/" + component_template.reference().value()};
         if (queries::component_by_reference(*this, concrete_reference).has_value()) {
@@ -220,26 +217,29 @@ namespace volt {
                                          component_template.properties());
     }
 
-    const auto instance = hierarchy_.instantiate_root_module(definition, std::move(name));
-    const auto &module_components = hierarchy_.module_definition(definition).components();
+    const auto &module_components = get(definition).components();
+    auto component_origins = std::vector<std::pair<ModuleComponentId, ComponentId>>{};
+    component_origins.reserve(module_components.size());
     for (std::size_t index = 0; index < module_components.size(); ++index) {
-        const auto component = instantiate_component(concrete_components.at(index).definition(),
-                                                     concrete_components.at(index).reference(),
-                                                     concrete_components.at(index).properties());
-        hierarchy_.record_module_component_origin(instance, module_components.at(index), component);
+        auto &concrete_component = concrete_components.at(index);
+        const auto component = instantiate_component(
+            concrete_component.definition(),
+            ComponentInstanceSpec{concrete_component.reference(), concrete_component.properties()});
+        component_origins.emplace_back(module_components.at(index), component);
     }
 
-    const auto &template_nets = hierarchy_.module_definition(definition).template_nets();
+    const auto &template_nets = get(definition).template_nets();
+    auto net_origins = std::vector<std::pair<TemplateNetDefId, NetId>>{};
+    net_origins.reserve(template_nets.size());
     for (std::size_t index = 0; index < template_nets.size(); ++index) {
         const auto net = connectivity_.add_net(std::move(concrete_nets.at(index)));
-        hierarchy_.record_module_net_origin(instance, template_nets.at(index), net);
+        net_origins.emplace_back(template_nets.at(index), net);
     }
 
-    for (const auto &connection : hierarchy_.module_pin_connections(definition)) {
-        if (!require_template_net_in_module_if_present(definition, connection.net()) ||
-            !require_module_component_in_module_if_present(definition, connection.component())) {
-            continue;
-        }
+    const auto instance = hierarchy_.add_module_instance(ModuleInstance{
+        definition, std::move(name), std::move(net_origins), std::move(component_origins)});
+
+    for (const auto &connection : get(definition).connections()) {
         const auto concrete_component =
             queries::concrete_component_for(*this, instance, connection.component());
         const auto concrete_net = queries::concrete_net_for(*this, instance, connection.net());
@@ -267,8 +267,7 @@ namespace volt {
                                "Module instance port parent net must be outside module origins"};
     }
 
-    const auto internal_net =
-        queries::concrete_net_for(*this, instance, hierarchy_.port_definition(port).internal_net());
+    const auto internal_net = queries::concrete_net_for(*this, instance, get(port).internal_net());
     if (!internal_net.has_value()) {
         throw KernelLogicError{ErrorCode::InvalidState,
                                "Port internal net has no concrete module instance net"};
@@ -286,7 +285,7 @@ namespace volt {
         throw KernelLogicError{ErrorCode::DuplicateName, "Module instance name already exists"};
     }
 
-    const auto &template_nets = hierarchy_.module_definition(definition).template_nets();
+    const auto &template_nets = get(definition).template_nets();
     if (origins.size() != template_nets.size()) {
         throw KernelLogicError{ErrorCode::InvalidArgument,
                                "Module instance origin net count does not match definition"};
@@ -323,7 +322,7 @@ namespace volt {
         }
     }
 
-    const auto &module_components = hierarchy_.module_definition(definition).components();
+    const auto &module_components = get(definition).components();
     if (component_origins.size() != module_components.size()) {
         throw KernelLogicError{ErrorCode::InvalidArgument,
                                "Module instance component origin count does not match definition"};
@@ -348,8 +347,7 @@ namespace volt {
             throw KernelLogicError{ErrorCode::InvalidState,
                                    "Concrete component already has module origin metadata"};
         }
-        if (connectivity_.component(concrete_component).definition() !=
-            hierarchy_.module_component_template(template_component).definition()) {
+        if (get(concrete_component).definition() != get(template_component).definition()) {
             throw KernelLogicError{
                 ErrorCode::CrossReferenceViolation,
                 "Module instance concrete component definition does not match template"};
@@ -367,15 +365,27 @@ namespace volt {
     }
     require_restored_module_connectivity_matches_template(definition, origins, component_origins);
 
-    return hierarchy_.restore_root_module_instance(definition, std::move(name), origins,
-                                                   component_origins);
-}
+    auto canonical_net_origins = std::vector<std::pair<TemplateNetDefId, NetId>>{};
+    canonical_net_origins.reserve(template_nets.size());
+    for (const auto template_net : template_nets) {
+        const auto origin =
+            std::find_if(origins.begin(), origins.end(),
+                         [template_net](const auto &pair) { return pair.first == template_net; });
+        canonical_net_origins.push_back(*origin);
+    }
 
-[[nodiscard]] ComponentId Circuit::instantiate_component(ComponentDefId definition,
-                                                         ReferenceDesignator reference,
-                                                         PropertyMap properties) {
-    return instantiate_component(
-        definition, ComponentInstanceSpec{std::move(reference), std::move(properties)});
+    auto canonical_component_origins = std::vector<std::pair<ModuleComponentId, ComponentId>>{};
+    canonical_component_origins.reserve(module_components.size());
+    for (const auto template_component : module_components) {
+        const auto origin = std::find_if(
+            component_origins.begin(), component_origins.end(),
+            [template_component](const auto &pair) { return pair.first == template_component; });
+        canonical_component_origins.push_back(*origin);
+    }
+
+    return hierarchy_.add_module_instance(ModuleInstance{definition, std::move(name),
+                                                         std::move(canonical_net_origins),
+                                                         std::move(canonical_component_origins)});
 }
 
 bool Circuit::connect(NetId net, PinId pin) { return connectivity_.connect(net, pin); }
@@ -391,27 +401,20 @@ void Circuit::update(ComponentId component, ComponentUpdate change) {
                 connectivity_.set_component_property(component, std::move(update.key),
                                                      std::move(update.value));
             } else if constexpr (std::same_as<Update, SetComponentElectricalAttribute>) {
-                electrical_.set_component_attribute(component, update.spec,
-                                                    std::move(update.value));
+                set_component_attribute(component, update.spec, std::move(update.value));
             } else if constexpr (std::same_as<Update, SelectPhysicalPart>) {
-                electrical_.select_physical_part(component, std::move(update.physical_part),
-                                                 get(get(component).definition()).pins());
+                select_physical_part(component, std::move(update.physical_part),
+                                     get(get(component).definition()).pins());
             } else if constexpr (std::same_as<Update, SetSelectedPartElectricalAttribute>) {
-                electrical_.set_selected_part_attribute(component, update.spec,
-                                                        std::move(update.value));
+                set_selected_part_attribute(component, update.spec, std::move(update.value));
             } else if constexpr (std::same_as<Update, SetAssemblyIntent>) {
                 if (!update.dnp.has_value() && !update.selection_override.has_value()) {
                     throw KernelArgumentError{
                         ErrorCode::InvalidArgument,
                         "Assembly intent update must set DNP or selection override intent"};
                 }
-                if (update.dnp.has_value()) {
-                    intent_.set_component_dnp(component, update.dnp.value());
-                }
-                if (update.selection_override.has_value()) {
-                    intent_.set_component_selection_override(component,
-                                                             update.selection_override.value());
-                }
+                connectivity_.set_component_assembly_intent(component, update.dnp,
+                                                            update.selection_override);
             }
         },
         std::move(change));
@@ -423,13 +426,13 @@ void Circuit::update(NetId net, NetUpdate change) {
         [this, net](auto update) {
             using Update = decltype(update);
             if constexpr (std::same_as<Update, SetNetElectricalAttribute>) {
-                electrical_.set_net_attribute(net, update.spec, std::move(update.value));
+                set_net_attribute(net, update.spec, std::move(update.value));
             } else if constexpr (std::same_as<Update, AssignNetClass>) {
                 require_net_class(update.net_class);
                 [[maybe_unused]] const auto changed =
-                    net_classes_.assign_net_class(net, update.net_class);
+                    connectivity_.assign_net_class(net, update.net_class);
             } else if constexpr (std::same_as<Update, MarkIntentionalStub>) {
-                [[maybe_unused]] const auto changed = intent_.mark_intentional_stub_net(net);
+                [[maybe_unused]] const auto changed = connectivity_.mark_intentional_stub(net);
             }
         },
         std::move(change));
@@ -437,96 +440,12 @@ void Circuit::update(NetId net, NetUpdate change) {
 
 void Circuit::mark_no_connect(PinId pin) {
     require_pin(pin);
-    [[maybe_unused]] const auto changed = intent_.mark_intentional_no_connect_pin(pin);
+    connectivity_.mark_intentional_no_connect(pin);
 }
 
 [[nodiscard]] std::optional<NetId> Circuit::net_of(PinId pin) const {
-    return connectivity_.net_of(pin);
-}
-
-[[nodiscard]] const std::optional<PhysicalPart> &
-Circuit::selected_physical_part(ComponentId component) const {
-    require_component(component);
-    return electrical_.selected_physical_part(component);
-}
-
-[[nodiscard]] const ElectricalAttributeMap &
-Circuit::component_electrical_attributes(ComponentId component) const {
-    require_component(component);
-    return electrical_.component_attributes(component);
-}
-
-[[nodiscard]] const ElectricalAttributeMap &
-Circuit::pin_definition_electrical_attributes(PinDefId pin_definition) const {
-    require_pin_definition(pin_definition);
-    return electrical_.pin_definition_attributes(pin_definition);
-}
-
-[[nodiscard]] const ElectricalAttributeMap &Circuit::net_electrical_attributes(NetId net) const {
-    require_net(net);
-    return electrical_.net_attributes(net);
-}
-
-[[nodiscard]] std::vector<ModulePinConnection>
-Circuit::module_pin_connections(ModuleDefId module) const {
-    return hierarchy_.module_pin_connections(module);
-}
-
-[[nodiscard]] std::vector<std::pair<TemplateNetDefId, NetId>>
-Circuit::module_net_origins(ModuleInstanceId instance) const {
-    return hierarchy_.module_net_origins(instance);
-}
-
-[[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>>
-Circuit::module_component_origins(ModuleInstanceId instance) const {
-    return hierarchy_.module_component_origins(instance);
-}
-
-[[nodiscard]] bool Circuit::is_intentional_stub_net(NetId net) const {
-    require_net(net);
-    return intent_.is_intentional_stub_net(net);
-}
-
-[[nodiscard]] bool Circuit::is_intentional_no_connect_pin(PinId pin) const {
     require_pin(pin);
-    return intent_.is_intentional_no_connect_pin(pin);
-}
-
-[[nodiscard]] std::optional<bool> Circuit::component_dnp(ComponentId component) const {
-    require_component(component);
-    return intent_.component_dnp(component);
-}
-
-[[nodiscard]] bool Circuit::is_component_selection_override(ComponentId component) const {
-    require_component(component);
-    return intent_.is_component_selection_override(component);
-}
-
-[[nodiscard]] const std::vector<NetId> &Circuit::intentional_stub_nets() const noexcept {
-    return intent_.intentional_stub_nets();
-}
-
-[[nodiscard]] const std::vector<PinId> &Circuit::intentional_no_connect_pins() const noexcept {
-    return intent_.intentional_no_connect_pins();
-}
-
-[[nodiscard]] const std::vector<ComponentAssemblyIntent> &
-Circuit::component_assembly_intents() const noexcept {
-    return intent_.component_assembly_intents();
-}
-
-[[nodiscard]] std::optional<NetClassId> Circuit::net_class_by_name(const NetClassName &name) const {
-    return net_classes_.net_class_by_name(name);
-}
-
-[[nodiscard]] std::optional<NetClassId> Circuit::net_class_for_net(NetId net) const {
-    require_net(net);
-    return net_classes_.net_class_for_net(net);
-}
-
-[[nodiscard]] const std::vector<std::pair<NetId, NetClassId>> &
-Circuit::net_class_assignments() const noexcept {
-    return net_classes_.net_class_assignments();
+    return connectivity_.net_of_existing_pin(pin);
 }
 
 void Circuit::require_pin_definition(PinDefId pin_definition) const {
@@ -545,26 +464,8 @@ void Circuit::require_module_definition(ModuleDefId module) const {
     hierarchy_.require_module_definition(module);
 }
 
-void Circuit::require_template_net(TemplateNetDefId net) const {
-    hierarchy_.require_template_net(net);
-}
-
-void Circuit::require_port(PortDefId port) const { hierarchy_.require_port(port); }
-
-void Circuit::require_module_component(ModuleComponentId component) const {
-    hierarchy_.require_module_component(component);
-}
-
-void Circuit::require_module_instance(ModuleInstanceId instance) const {
-    hierarchy_.require_module_instance(instance);
-}
-
 void Circuit::require_template_net_in_module(ModuleDefId module, TemplateNetDefId net) const {
     hierarchy_.require_template_net_in_module(module, net);
-}
-
-void Circuit::require_port_in_module(ModuleDefId module, PortDefId port) const {
-    hierarchy_.require_port_in_module(module, port);
 }
 
 void Circuit::require_module_component_in_module(ModuleDefId module,
@@ -572,29 +473,11 @@ void Circuit::require_module_component_in_module(ModuleDefId module,
     hierarchy_.require_module_component_in_module(module, component);
 }
 
-[[nodiscard]] bool
-Circuit::require_module_component_in_module_if_present(ModuleDefId module,
-                                                       ModuleComponentId component) const {
-    return hierarchy_.module_component_belongs_to_module(module, component);
-}
-
-void Circuit::require_pin_in_module_component(ModuleComponentId component, PinDefId pin) const {
-    require_module_component(component);
-    require_pin_definition(pin);
-    const auto &definition = connectivity_.component_definition(
-        hierarchy_.module_component_template(component).definition());
-    const auto &pins = definition.pins();
-    if (std::find(pins.begin(), pins.end(), pin) == pins.end()) {
-        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
-                               "Pin definition does not belong to module component definition"};
-    }
-}
-
 void Circuit::require_restored_module_connectivity_matches_template(
     ModuleDefId definition, const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
     const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins) const {
     require_module_definition(definition);
-    for (const auto &connection : module_pin_connections(definition)) {
+    for (const auto &connection : get(definition).connections()) {
         const auto concrete_component = std::find_if(
             component_origins.begin(), component_origins.end(),
             [&connection](const auto &origin) { return origin.first == connection.component(); });
@@ -614,7 +497,7 @@ void Circuit::require_restored_module_connectivity_matches_template(
                                    "Concrete module component pin is missing"};
         }
 
-        if (connectivity_.net_of(concrete_pin.value()) != concrete_net->second) {
+        if (net_of(concrete_pin.value()) != concrete_net->second) {
             throw KernelLogicError{ErrorCode::InvalidState,
                                    "Module instance concrete connectivity does not match template"};
         }
@@ -627,10 +510,6 @@ void Circuit::require_net(NetId net) const { connectivity_.require_net(net); }
 
 void Circuit::require_net_class(NetClassId net_class) const {
     net_classes_.require_net_class(net_class);
-}
-
-[[nodiscard]] std::optional<NetId> Circuit::net_of_existing_pin(PinId pin) const {
-    return connectivity_.net_of(pin);
 }
 
 } // namespace volt

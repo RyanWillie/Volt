@@ -277,8 +277,9 @@ struct AddedPin {
                                .drive_kind = drive}},
     });
     const auto pin_definition = circuit.get(definition).pins()[0];
-    const auto component =
-        circuit.instantiate_component(definition, volt::ReferenceDesignator{std::move(reference)});
+    const auto component = circuit.instantiate_component(
+        definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{std::move(reference)}});
     return AddedPin{pin_definition, component,
                     volt::queries::pin_by_name(circuit, component, pin_name).value()};
 }
@@ -390,13 +391,16 @@ struct AddedPin {
     const auto led_a_pin = led_pins[0];
     const auto led_k_pin = led_pins[1];
 
-    const auto header = circuit.instantiate_component(header_def, volt::ReferenceDesignator{"J1"});
-    const auto regulator =
-        circuit.instantiate_component(regulator_def, volt::ReferenceDesignator{"U1"});
-    const auto mcu = circuit.instantiate_component(mcu_def, volt::ReferenceDesignator{"U2"});
-    const auto resistor =
-        circuit.instantiate_component(resistor_def, volt::ReferenceDesignator{"R1"});
-    const auto led = circuit.instantiate_component(led_def, volt::ReferenceDesignator{"D1"});
+    const auto header = circuit.instantiate_component(
+        header_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"J1"}});
+    const auto regulator = circuit.instantiate_component(
+        regulator_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U1"}});
+    const auto mcu = circuit.instantiate_component(
+        mcu_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U2"}});
+    const auto resistor = circuit.instantiate_component(
+        resistor_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
+    const auto led = circuit.instantiate_component(
+        led_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"D1"}});
 
     const auto ground = circuit.add_net(volt::NetSpec{volt::NetName{"GND"}, volt::NetKind::Ground});
     const auto vbus = circuit.add_net(volt::NetSpec{volt::NetName{"VBUS"}, volt::NetKind::Power});

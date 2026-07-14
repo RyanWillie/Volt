@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/constraints/net_class_resolution.hpp>
 #include <volt/pcb/copper/board_copper.hpp>
 
@@ -579,7 +580,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
     result.placement = placement_id;
     const auto &placement = board_->placement(placement_id.value());
 
-    const auto &selected_part = board_->circuit().selected_physical_part(component);
+    const auto &selected_part = volt::queries::selected_physical_part(board_->circuit(), component);
     if (!selected_part.has_value()) {
         throw KernelArgumentError{ErrorCode::InvalidState,
                                   "Cannot escape component without a selected physical part",

@@ -12,8 +12,7 @@ namespace volt::io::detail {
 
     for (auto &pin : plan.connectivity.pin_definitions) {
         const auto id = circuit.connectivity_.add_pin_definition(std::move(pin.definition));
-        circuit.electrical_.restore_pin_definition_attributes(id,
-                                                              std::move(pin.electrical_attributes));
+        circuit.restore_pin_definition_attributes(id, std::move(pin.electrical_attributes));
     }
     for (auto &definition : plan.connectivity.component_definitions) {
         [[maybe_unused]] const auto id =
@@ -21,8 +20,7 @@ namespace volt::io::detail {
     }
     for (auto &component : plan.connectivity.components) {
         const auto id = circuit.connectivity_.add_component(std::move(component.instance));
-        circuit.electrical_.restore_component_attributes(
-            id, std::move(component.electrical_attributes));
+        circuit.restore_component_attributes(id, std::move(component.electrical_attributes));
     }
     for (auto &pin : plan.connectivity.pins) {
         [[maybe_unused]] const auto id = circuit.connectivity_.add_pin(pin);
@@ -35,11 +33,11 @@ namespace volt::io::detail {
                                    "Net restoration order is not deterministic"};
         }
         for (const auto &[name, value] : restored.electrical_attributes.entries()) {
-            circuit.electrical_.set_net_attribute(
-                id,
-                ElectricalAttributeSpec{name, ElectricalAttributeOwner::Net,
-                                        ElectricalAttributeKind::DesignInput, value.dimension()},
-                value);
+            circuit.set_net_attribute(id,
+                                      ElectricalAttributeSpec{name, ElectricalAttributeOwner::Net,
+                                                              ElectricalAttributeKind::DesignInput,
+                                                              value.dimension()},
+                                      value);
         }
     }
 
@@ -48,21 +46,18 @@ namespace volt::io::detail {
     }
     for (const auto &assignment : plan.net_class_assignments) {
         [[maybe_unused]] const auto changed =
-            circuit.net_classes_.assign_net_class(assignment.net, assignment.net_class);
+            circuit.connectivity_.assign_net_class(assignment.net, assignment.net_class);
     }
 
     for (const auto net : plan.intentional_stub_nets) {
-        [[maybe_unused]] const auto changed = circuit.intent_.mark_intentional_stub_net(net);
+        circuit.update(net, MarkIntentionalStub{});
     }
     for (const auto pin : plan.intentional_no_connect_pins) {
-        [[maybe_unused]] const auto changed = circuit.intent_.mark_intentional_no_connect_pin(pin);
+        circuit.mark_no_connect(pin);
     }
     for (const auto &intent : plan.assembly_intent) {
-        if (intent.dnp.has_value()) {
-            circuit.intent_.set_component_dnp(intent.component, intent.dnp.value());
-        }
-        circuit.intent_.set_component_selection_override(intent.component,
-                                                         intent.selection_override);
+        circuit.connectivity_.set_component_assembly_intent(intent.component, intent.dnp,
+                                                            intent.selection_override);
     }
 
     for (auto &definition : plan.hierarchy.module_definitions) {
@@ -90,7 +85,7 @@ namespace volt::io::detail {
     }
     for (const auto &connection : plan.hierarchy.connections) {
         circuit.require_pin_definition(connection.pin);
-        const auto &component = circuit.hierarchy_.module_component_template(connection.component);
+        const auto &component = circuit.get(connection.component);
         const auto &pins = circuit.get(component.definition()).pins();
         if (std::find(pins.begin(), pins.end(), connection.pin) == pins.end()) {
             throw KernelLogicError{ErrorCode::CrossReferenceViolation,
@@ -128,10 +123,10 @@ namespace volt::io::detail {
 
     for (auto &selected : plan.selected_physical_parts) {
         const auto definition = circuit.get(selected.component).definition();
-        circuit.electrical_.select_physical_part(
-            selected.component, std::move(selected.physical_part), circuit.get(definition).pins());
+        circuit.select_physical_part(selected.component, std::move(selected.physical_part),
+                                     circuit.get(definition).pins());
         for (const auto &[name, value] : selected.electrical_attributes.entries()) {
-            circuit.electrical_.set_selected_part_attribute(
+            circuit.set_selected_part_attribute(
                 selected.component,
                 ElectricalAttributeSpec{name, ElectricalAttributeOwner::SelectedPart,
                                         ElectricalAttributeKind::DesignInput, value.dimension()},

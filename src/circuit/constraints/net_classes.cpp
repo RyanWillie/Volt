@@ -1,13 +1,10 @@
-#include <volt/circuit/constraints/net_classes.hpp>
+#include <volt/circuit/circuit.hpp>
 
 #include <volt/core/errors.hpp>
-
-#include "../circuit_storage.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -293,61 +290,29 @@ void NetClass::set_allowed_layer_names(std::vector<std::string> names) {
     return std::nullopt;
 }
 
-NetClasses::NetClasses() : NetClasses{std::make_shared<detail::NetClassesState>()} {}
-
-NetClasses::NetClasses(std::shared_ptr<const detail::NetClassesState> state)
-    : state_{std::move(state)} {}
-
-NetClasses::NetClasses(const NetClasses &other)
-    : NetClasses{std::make_shared<detail::NetClassesState>(other.state())} {}
-
-NetClasses::NetClasses(NetClasses &&other) noexcept = default;
-
-NetClasses &NetClasses::operator=(const NetClasses &other) {
-    if (this != &other) {
-        state_ = std::make_shared<detail::NetClassesState>(other.state());
-    }
-    return *this;
-}
-
-NetClasses &NetClasses::operator=(NetClasses &&other) noexcept = default;
-
-NetClasses::~NetClasses() = default;
-
-[[nodiscard]] NetClassId Circuit::NetClassStorage::add_net_class(NetClass net_class) {
+[[nodiscard]] NetClassId Circuit::NetClassState::add_net_class(NetClass net_class) {
     if (net_class_by_name(net_class.name()).has_value()) {
         throw KernelLogicError{ErrorCode::DuplicateName, "Net class name already exists"};
     }
 
-    return mutable_state().net_classes.insert(std::move(net_class));
+    return net_classes.insert(std::move(net_class));
 }
 
-[[nodiscard]] bool Circuit::NetClassStorage::assign_net_class(NetId net, NetClassId net_class) {
-    require_net_class(net_class);
-    const auto existing = std::find_if(
-        mutable_state().net_class_assignments.begin(), mutable_state().net_class_assignments.end(),
-        [net](const auto &assignment) { return assignment.first == net; });
-    if (existing == mutable_state().net_class_assignments.end()) {
-        mutable_state().net_class_assignments.emplace_back(net, net_class);
-        return true;
-    }
-    if (existing->second == net_class) {
-        return false;
-    }
+Circuit::NetClassState::NetClassState(NetClassState &&other) noexcept
+    : net_classes{std::exchange(other.net_classes, {})} {}
 
-    existing->second = net_class;
-    return true;
-}
-
-[[nodiscard]] const NetClass &NetClasses::net_class(NetClassId id) const {
-    return state().net_classes.get(id);
+Circuit::NetClassState &Circuit::NetClassState::operator=(NetClassState &&other) noexcept {
+    if (this != &other) {
+        net_classes = std::exchange(other.net_classes, {});
+    }
+    return *this;
 }
 
 [[nodiscard]] std::optional<NetClassId>
-NetClasses::net_class_by_name(const NetClassName &name) const {
-    for (std::size_t index = 0; index < state().net_classes.size(); ++index) {
+Circuit::NetClassState::net_class_by_name(const NetClassName &name) const {
+    for (std::size_t index = 0; index < net_classes.size(); ++index) {
         const auto id = NetClassId{index};
-        if (state().net_classes.get(id).name() == name) {
+        if (net_classes.get(id).name() == name) {
             return id;
         }
     }
@@ -355,33 +320,11 @@ NetClasses::net_class_by_name(const NetClassName &name) const {
     return std::nullopt;
 }
 
-[[nodiscard]] std::optional<NetClassId> NetClasses::net_class_for_net(NetId net) const noexcept {
-    const auto match =
-        std::find_if(state().net_class_assignments.begin(), state().net_class_assignments.end(),
-                     [net](const auto &assignment) { return assignment.first == net; });
-    if (match == state().net_class_assignments.end()) {
-        return std::nullopt;
-    }
-
-    return match->second;
-}
-
-[[nodiscard]] const std::vector<std::pair<NetId, NetClassId>> &
-NetClasses::net_class_assignments() const noexcept {
-    return state().net_class_assignments;
-}
-
-[[nodiscard]] std::size_t NetClasses::net_class_count() const noexcept {
-    return state().net_classes.size();
-}
-
-void NetClasses::require_net_class(NetClassId net_class) const {
-    if (!state().net_classes.contains(net_class)) {
+void Circuit::NetClassState::require_net_class(NetClassId net_class) const {
+    if (!net_classes.contains(net_class)) {
         throw KernelRangeError{ErrorCode::UnknownEntity, "Net class ID is out of range",
                                EntityRef::net_class(net_class)};
     }
 }
-
-[[nodiscard]] const detail::NetClassesState &NetClasses::state() const noexcept { return *state_; }
 
 } // namespace volt

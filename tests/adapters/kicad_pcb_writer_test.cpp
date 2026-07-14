@@ -325,7 +325,8 @@ struct LedBadgeCircuit {
     const auto library = volt::builtin_footprint_library();
     for (std::size_t index = 0; index < board.placement_count(); ++index) {
         const auto &placement = board.placement(volt::ComponentPlacementId{index});
-        const auto &part = board.circuit().selected_physical_part(placement.component()).value();
+        const auto &part =
+            volt::queries::selected_physical_part(board.circuit(), placement.component()).value();
         const auto *definition = library.find(part.footprint());
         REQUIRE(definition != nullptr);
         count += definition->pad_count();

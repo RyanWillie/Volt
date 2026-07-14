@@ -78,7 +78,8 @@ class PinDefinition {
                   ElectricalDirection direction = ElectricalDirection::Unspecified,
                   ElectricalSignalDomain signal_domain = ElectricalSignalDomain::Unspecified,
                   ElectricalDriveKind drive_kind = ElectricalDriveKind::Unspecified,
-                  ElectricalPolarity polarity = ElectricalPolarity::None);
+                  ElectricalPolarity polarity = ElectricalPolarity::None,
+                  ElectricalAttributeMap electrical_attributes = {});
 
     /** Return the human-readable pin name, such as VDD or A. */
     [[nodiscard]] const std::string &name() const noexcept { return name_; }
@@ -104,6 +105,11 @@ class PinDefinition {
     /** Return the pin's logical polarity. */
     [[nodiscard]] ElectricalPolarity polarity() const noexcept { return polarity_; }
 
+    /** Return typed electrical constraints owned by this reusable pin definition. */
+    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept {
+        return electrical_attributes_;
+    }
+
   private:
     std::string name_;
     std::string number_;
@@ -113,6 +119,7 @@ class PinDefinition {
     ElectricalSignalDomain signal_domain_;
     ElectricalDriveKind drive_kind_;
     ElectricalPolarity polarity_;
+    ElectricalAttributeMap electrical_attributes_;
 };
 
 /** Provenance for a reusable definition imported from a library. */

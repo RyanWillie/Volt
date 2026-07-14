@@ -61,7 +61,8 @@ TEST_CASE("Circuit instantiates component pins from the component definition") {
     const auto anode = definition_pins[0];
     const auto cathode = definition_pins[1];
 
-    const auto component = circuit.instantiate_component(led, volt::ReferenceDesignator{"D1"});
+    const auto component = circuit.instantiate_component(
+        led, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"D1"}});
     const auto pins = volt::queries::pins_for(circuit, component);
 
     CHECK(component == volt::ComponentId{0});
@@ -83,8 +84,10 @@ TEST_CASE("Circuit instantiates components with instance properties") {
         volt::test::define_component(circuit, "Resistor", {volt::test::passive_pin("1", "1")});
 
     const auto component = circuit.instantiate_component(
-        resistor, volt::ReferenceDesignator{"R1"},
-        volt::PropertyMap{{volt::PropertyKey{"value"}, volt::PropertyValue{"330 ohm"}}});
+        resistor, volt::ComponentInstanceSpec{
+                      .reference = volt::ReferenceDesignator{"R1"},
+                      .properties = volt::PropertyMap{
+                          {volt::PropertyKey{"value"}, volt::PropertyValue{"330 ohm"}}}});
 
     CHECK(circuit.get(component).properties().get(volt::PropertyKey{"value"}) ==
           volt::PropertyValue{"330 ohm"});
@@ -94,7 +97,8 @@ TEST_CASE("Circuit finds component pins by definition name and number") {
     volt::Circuit circuit;
     const auto led = volt::test::define_component(
         circuit, "LED", {volt::test::passive_pin("A", "1"), volt::test::passive_pin("K", "2")});
-    const auto component = circuit.instantiate_component(led, volt::ReferenceDesignator{"D1"});
+    const auto component = circuit.instantiate_component(
+        led, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"D1"}});
     const auto pins = volt::queries::pins_for(circuit, component);
 
     const auto by_name = volt::queries::pin_by_name(circuit, component, "A");
@@ -111,9 +115,11 @@ TEST_CASE("Circuit finds component pins by definition name and number") {
 TEST_CASE("Circuit rejects authoring lookups for missing component IDs") {
     volt::Circuit circuit;
 
-    CHECK_THROWS_AS(circuit.instantiate_component(volt::ComponentDefId{5},
-                                                  volt::ReferenceDesignator{"U_MISSING"}),
-                    std::out_of_range);
+    CHECK_THROWS_AS(
+        circuit.instantiate_component(
+            volt::ComponentDefId{5},
+            volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U_MISSING"}}),
+        std::out_of_range);
     CHECK_THROWS_AS(volt::queries::pins_for(circuit, volt::ComponentId{5}), std::out_of_range);
     CHECK_THROWS_AS(volt::queries::pin_by_name(circuit, volt::ComponentId{5}, "A"),
                     std::out_of_range);

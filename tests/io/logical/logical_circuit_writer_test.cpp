@@ -244,6 +244,64 @@ TEST_CASE("Logical circuit writer emits design intent") {
               {{{"component", "component:0"}, {"dnp", true}, {"selection_override", true}}}));
 }
 
+TEST_CASE("Logical circuit persistence preserves first-authored intent and assignment order") {
+    volt::Circuit circuit;
+    const auto definition = circuit.define_component(volt::ComponentSpec{
+        .name = "Resistor",
+        .pins = {volt::PinSpec{.name = "1", .number = "1"}},
+    });
+    const auto first_component = circuit.instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
+    const auto second_component = circuit.instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R2"}});
+    const auto first_pin = volt::queries::pins_for(circuit, first_component).front();
+    const auto second_pin = volt::queries::pins_for(circuit, second_component).front();
+    const auto first_net = circuit.add_net(volt::NetSpec{.name = volt::NetName{"A"}});
+    const auto second_net = circuit.add_net(volt::NetSpec{.name = volt::NetName{"B"}});
+    const auto net_class = circuit.define_net_class(
+        volt::NetClassSpec{.net_class = volt::NetClass{volt::NetClassName{"Signal"}}});
+
+    circuit.update(second_net, volt::MarkIntentionalStub{});
+    circuit.update(first_net, volt::MarkIntentionalStub{});
+    circuit.mark_no_connect(second_pin);
+    circuit.mark_no_connect(first_pin);
+    circuit.update(second_component, volt::SetAssemblyIntent{.dnp = true});
+    circuit.update(first_component, volt::SetAssemblyIntent{.selection_override = true});
+    circuit.update(second_net, volt::AssignNetClass{net_class});
+    circuit.update(first_net, volt::AssignNetClass{net_class});
+
+    const auto serialized = volt::io::write_logical_circuit(circuit);
+    const auto output = nlohmann::json::parse(serialized);
+
+    CHECK(output["design_intent"]["stub_nets"] == nlohmann::json::array({"net:1", "net:0"}));
+    CHECK(output["design_intent"]["no_connect_pins"] == nlohmann::json::array({"pin:1", "pin:0"}));
+    CHECK(output["design_intent"]["component_assembly"][0]["component"] == "component:1");
+    CHECK(output["design_intent"]["component_assembly"][1]["component"] == "component:0");
+    CHECK(output["net_classes"]["net_assignments"] ==
+          nlohmann::json::array({{{"net", "net:1"}, {"net_class", "net_class:0"}},
+                                 {{"net", "net:0"}, {"net_class", "net_class:0"}}}));
+
+    const auto restored = volt::io::read_logical_circuit_text(serialized);
+
+    CHECK(restored.get(second_net).intentional_stub_order() ==
+          circuit.get(second_net).intentional_stub_order());
+    CHECK(restored.get(first_net).intentional_stub_order() ==
+          circuit.get(first_net).intentional_stub_order());
+    CHECK(restored.get(second_pin).intentional_no_connect_order() ==
+          circuit.get(second_pin).intentional_no_connect_order());
+    CHECK(restored.get(first_pin).intentional_no_connect_order() ==
+          circuit.get(first_pin).intentional_no_connect_order());
+    CHECK(restored.get(second_component).assembly_intent_order() ==
+          circuit.get(second_component).assembly_intent_order());
+    CHECK(restored.get(first_component).assembly_intent_order() ==
+          circuit.get(first_component).assembly_intent_order());
+    CHECK(restored.get(second_net).net_class_assignment_order() ==
+          circuit.get(second_net).net_class_assignment_order());
+    CHECK(restored.get(first_net).net_class_assignment_order() ==
+          circuit.get(first_net).net_class_assignment_order());
+    CHECK(volt::io::write_logical_circuit(restored) == serialized);
+}
+
 TEST_CASE("Logical circuit writer emits override-only component assembly intent") {
     volt::Circuit circuit;
     const auto component_def = circuit.define_component(volt::ComponentSpec{
@@ -402,8 +460,8 @@ TEST_CASE("Logical circuit writer emits hierarchy module scaffold") {
                                        volt::PortRole::PowerInput}},
     });
     const auto port = circuit.get(module).ports().front();
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"BUCK_A"}});
     const auto parent_net =
         circuit.add_net(volt::NetSpec{volt::NetName{"VIN"}, volt::NetKind::Power});
     [[maybe_unused]] const auto binding = circuit.bind_port(instance, port, parent_net);

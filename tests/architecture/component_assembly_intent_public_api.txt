@@ -1,0 +1,6 @@
+include <optional>
+include <volt/core/ids.hpp>
+
+ComponentAssemblyIntent(ComponentId component, std::optional<bool> dnp, bool selection_override) : component_{component}, dnp_{dnp}, selection_override_{selection_override} {} [[nodiscard]] ComponentId component() const noexcept
+[[nodiscard]] const std::optional<bool> &dnp() const noexcept
+[[nodiscard]] bool selection_override() const noexcept

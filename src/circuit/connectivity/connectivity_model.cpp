@@ -1,49 +1,58 @@
-#include <volt/circuit/connectivity/connectivity_model.hpp>
+#include <volt/circuit/circuit.hpp>
 
 #include <volt/core/errors.hpp>
 
-#include "../circuit_storage.hpp"
-
 #include <algorithm>
-#include <cstddef>
-#include <memory>
 #include <optional>
-#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace volt {
 
-ConnectivityModel::ConnectivityModel()
-    : ConnectivityModel{std::make_shared<detail::ConnectivityState>()} {}
+Circuit::ConnectivityState::ConnectivityState(ConnectivityState &&other) noexcept
+    : pin_definitions{std::exchange(other.pin_definitions, {})},
+      component_definitions{std::exchange(other.component_definitions, {})},
+      components{std::exchange(other.components, {})}, pins{std::exchange(other.pins, {})},
+      nets{std::exchange(other.nets, {})},
+      components_by_reference{std::exchange(other.components_by_reference, {})},
+      nets_by_name{std::exchange(other.nets_by_name, {})},
+      component_definition_by_pin{std::exchange(other.component_definition_by_pin, {})},
+      pins_by_component{std::exchange(other.pins_by_component, {})},
+      net_by_pin{std::exchange(other.net_by_pin, {})},
+      next_stub_order{std::exchange(other.next_stub_order, 0)},
+      next_no_connect_order{std::exchange(other.next_no_connect_order, 0)},
+      next_assembly_intent_order{std::exchange(other.next_assembly_intent_order, 0)},
+      next_net_class_assignment_order{std::exchange(other.next_net_class_assignment_order, 0)} {}
 
-ConnectivityModel::ConnectivityModel(std::shared_ptr<const detail::ConnectivityState> state)
-    : state_{std::move(state)} {}
-
-ConnectivityModel::ConnectivityModel(const ConnectivityModel &other)
-    : ConnectivityModel{std::make_shared<detail::ConnectivityState>(other.state())} {}
-
-ConnectivityModel::ConnectivityModel(ConnectivityModel &&other) noexcept = default;
-
-ConnectivityModel &ConnectivityModel::operator=(const ConnectivityModel &other) {
+Circuit::ConnectivityState &
+Circuit::ConnectivityState::operator=(ConnectivityState &&other) noexcept {
     if (this != &other) {
-        state_ = std::make_shared<detail::ConnectivityState>(other.state());
+        pin_definitions = std::exchange(other.pin_definitions, {});
+        component_definitions = std::exchange(other.component_definitions, {});
+        components = std::exchange(other.components, {});
+        pins = std::exchange(other.pins, {});
+        nets = std::exchange(other.nets, {});
+        components_by_reference = std::exchange(other.components_by_reference, {});
+        nets_by_name = std::exchange(other.nets_by_name, {});
+        component_definition_by_pin = std::exchange(other.component_definition_by_pin, {});
+        pins_by_component = std::exchange(other.pins_by_component, {});
+        net_by_pin = std::exchange(other.net_by_pin, {});
+        next_stub_order = std::exchange(other.next_stub_order, 0);
+        next_no_connect_order = std::exchange(other.next_no_connect_order, 0);
+        next_assembly_intent_order = std::exchange(other.next_assembly_intent_order, 0);
+        next_net_class_assignment_order = std::exchange(other.next_net_class_assignment_order, 0);
     }
     return *this;
 }
 
-ConnectivityModel &ConnectivityModel::operator=(ConnectivityModel &&other) noexcept = default;
-
-ConnectivityModel::~ConnectivityModel() = default;
-
-[[nodiscard]] PinDefId Circuit::ConnectivityStorage::add_pin_definition(PinDefinition definition) {
-    const auto id = mutable_state().pin_definitions.insert(std::move(definition));
-    mutable_state().component_definition_by_pin.emplace_back();
+[[nodiscard]] PinDefId Circuit::ConnectivityState::add_pin_definition(PinDefinition definition) {
+    const auto id = pin_definitions.insert(std::move(definition));
+    component_definition_by_pin.emplace_back();
     return id;
 }
 
 [[nodiscard]] ComponentDefId
-Circuit::ConnectivityStorage::add_component_definition(ComponentDefinition definition) {
+Circuit::ConnectivityState::add_component_definition(ComponentDefinition definition) {
     auto seen_pins = std::vector<PinDefId>{};
     for (const auto pin : definition.pins()) {
         require_pin_definition(pin);
@@ -51,7 +60,7 @@ Circuit::ConnectivityStorage::add_component_definition(ComponentDefinition defin
             throw KernelArgumentError{ErrorCode::InvalidArgument,
                                       "Component definition contains a duplicate pin definition"};
         }
-        if (state().component_definition_by_pin[pin.index()].has_value()) {
+        if (component_definition_by_pin[pin.index()].has_value()) {
             throw KernelLogicError{ErrorCode::CrossReferenceViolation,
                                    "Pin definition already belongs to a component definition",
                                    EntityRef::pin_def(pin)};
@@ -59,20 +68,14 @@ Circuit::ConnectivityStorage::add_component_definition(ComponentDefinition defin
         seen_pins.push_back(pin);
     }
 
-    const auto id = mutable_state().component_definitions.insert(std::move(definition));
+    const auto id = component_definitions.insert(std::move(definition));
     for (const auto pin : seen_pins) {
-        mutable_state().component_definition_by_pin[pin.index()] = id;
+        component_definition_by_pin[pin.index()] = id;
     }
     return id;
 }
 
-[[nodiscard]] bool
-Circuit::ConnectivityStorage::pin_definition_is_owned(PinDefId pin_definition) const {
-    require_pin_definition(pin_definition);
-    return state().component_definition_by_pin[pin_definition.index()].has_value();
-}
-
-[[nodiscard]] ComponentId Circuit::ConnectivityStorage::add_component(ComponentInstance component) {
+[[nodiscard]] ComponentId Circuit::ConnectivityState::add_component(ComponentInstance component) {
     require_component_definition(component.definition());
     if (component_by_reference(component.reference()).has_value()) {
         throw KernelLogicError{ErrorCode::DuplicateName,
@@ -80,17 +83,17 @@ Circuit::ConnectivityStorage::pin_definition_is_owned(PinDefId pin_definition) c
     }
 
     auto reference = component.reference().value();
-    const auto id = mutable_state().components.insert(std::move(component));
-    mutable_state().components_by_reference.emplace(std::move(reference), id);
-    mutable_state().pins_by_component.emplace_back();
+    const auto id = components.insert(std::move(component));
+    components_by_reference.emplace(std::move(reference), id);
+    pins_by_component.emplace_back();
     return id;
 }
 
-[[nodiscard]] PinId Circuit::ConnectivityStorage::add_pin(PinInstance pin) {
+[[nodiscard]] PinId Circuit::ConnectivityState::add_pin(PinInstance pin) {
     require_component(pin.component());
     require_pin_definition(pin.definition());
     const auto &component_definition =
-        state().component_definitions.get(state().components.get(pin.component()).definition());
+        component_definitions.get(components.get(pin.component()).definition());
     const auto &definition_pins = component_definition.pins();
     if (std::find(definition_pins.begin(), definition_pins.end(), pin.definition()) ==
         definition_pins.end()) {
@@ -102,52 +105,53 @@ Circuit::ConnectivityStorage::pin_definition_is_owned(PinDefId pin_definition) c
                                "Component pin definition is already materialized"};
     }
 
-    const auto id = mutable_state().pins.insert(pin);
-    mutable_state().pins_by_component[pin.component().index()].push_back(id);
-    mutable_state().net_by_pin.emplace_back();
+    const auto id = pins.insert(pin);
+    pins_by_component[pin.component().index()].push_back(id);
+    net_by_pin.emplace_back();
     return id;
 }
 
-[[nodiscard]] NetId Circuit::ConnectivityStorage::add_net(Net net) {
+[[nodiscard]] NetId Circuit::ConnectivityState::add_net(Net net) {
     if (net_by_name(net.name()).has_value()) {
         throw KernelLogicError{ErrorCode::DuplicateName, "Net name already exists"};
     }
 
     for (const auto pin : net.pins()) {
         require_pin(pin);
-        if (net_of(pin).has_value()) {
+        if (net_of_existing_pin(pin).has_value()) {
             throw KernelLogicError{ErrorCode::InvalidState,
                                    "Pin is already connected to another net"};
         }
     }
 
     auto name = net.name().value();
-    const auto id = mutable_state().nets.insert(std::move(net));
-    mutable_state().nets_by_name.emplace(std::move(name), id);
-    for (const auto pin : mutable_state().nets.get(id).pins()) {
-        mutable_state().net_by_pin[pin.index()] = id;
+    const auto id = nets.insert(std::move(net));
+    nets_by_name.emplace(std::move(name), id);
+    for (const auto pin : nets.get(id).pins()) {
+        net_by_pin[pin.index()] = id;
     }
     return id;
 }
 
-[[nodiscard]] ComponentId Circuit::ConnectivityStorage::instantiate_component(
-    ComponentDefId definition, ReferenceDesignator reference, PropertyMap properties) {
+[[nodiscard]] ComponentId
+Circuit::ConnectivityState::instantiate_component(ComponentDefId definition,
+                                                  ComponentInstanceSpec spec) {
     require_component_definition(definition);
 
-    const auto component =
-        add_component(ComponentInstance{definition, std::move(reference), std::move(properties)});
-    for (const auto pin_definition_id : component_definition(definition).pins()) {
+    const auto component = add_component(
+        ComponentInstance{definition, std::move(spec.reference), std::move(spec.properties)});
+    for (const auto pin_definition_id : component_definitions.get(definition).pins()) {
         [[maybe_unused]] const auto pin = add_pin(PinInstance{component, pin_definition_id});
     }
 
     return component;
 }
 
-bool Circuit::ConnectivityStorage::connect(NetId net, PinId pin) {
+bool Circuit::ConnectivityState::connect(NetId net, PinId pin) {
     require_net(net);
     require_pin(pin);
 
-    const auto existing_net = net_of(pin);
+    const auto existing_net = net_of_existing_pin(pin);
     if (existing_net.has_value()) {
         if (existing_net.value() == net) {
             return false;
@@ -156,70 +160,129 @@ bool Circuit::ConnectivityStorage::connect(NetId net, PinId pin) {
         throw KernelLogicError{ErrorCode::InvalidState, "Pin is already connected to another net"};
     }
 
-    const auto changed = mutable_state().nets.get(net).connect(pin);
+    const auto changed = nets.get(net).connect(pin);
     if (changed) {
-        mutable_state().net_by_pin[pin.index()] = net;
+        net_by_pin[pin.index()] = net;
     }
     return changed;
 }
 
-bool Circuit::ConnectivityStorage::disconnect(PinId pin) {
+bool Circuit::ConnectivityState::disconnect(PinId pin) {
     require_pin(pin);
 
-    const auto existing_net = net_of(pin);
+    const auto existing_net = net_of_existing_pin(pin);
     if (!existing_net.has_value()) {
         return false;
     }
 
-    const auto changed = mutable_state().nets.get(existing_net.value()).disconnect(pin);
+    const auto changed = nets.get(existing_net.value()).disconnect(pin);
     if (changed) {
-        mutable_state().net_by_pin[pin.index()] = std::nullopt;
+        net_by_pin[pin.index()] = std::nullopt;
     }
     return changed;
 }
 
-void Circuit::ConnectivityStorage::set_component_property(ComponentId component, PropertyKey key,
-                                                          PropertyValue value) {
+bool Circuit::ConnectivityState::mark_intentional_stub(NetId net) {
+    const auto &stored = nets.get(net);
+    if (stored.intentional_stub()) {
+        return false;
+    }
+    replace_net(net, stored.with_intentional_stub(next_stub_order));
+    ++next_stub_order;
+    return true;
+}
+
+void Circuit::ConnectivityState::mark_intentional_no_connect(PinId pin) {
+    const auto &stored = pins.get(pin);
+    if (stored.intentional_no_connect()) {
+        return;
+    }
+    replace_pin(pin, stored.with_intentional_no_connect(next_no_connect_order));
+    ++next_no_connect_order;
+}
+
+void Circuit::ConnectivityState::set_component_assembly_intent(
+    ComponentId component, std::optional<bool> dnp, std::optional<bool> selection_override) {
+    const auto &stored = components.get(component);
+    const auto had_intent = stored.assembly_intent_order().has_value();
+    auto updated = stored.with_assembly_intent(dnp, selection_override, next_assembly_intent_order);
+    const auto added_intent = !had_intent && updated.assembly_intent_order().has_value();
+    replace_component(component, std::move(updated));
+    if (added_intent) {
+        ++next_assembly_intent_order;
+    }
+}
+
+bool Circuit::ConnectivityState::assign_net_class(NetId net, NetClassId net_class) {
+    const auto &stored = nets.get(net);
+    if (stored.net_class() == net_class) {
+        return false;
+    }
+    const auto first_assignment = !stored.net_class_assignment_order().has_value();
+    replace_net(net, stored.with_net_class(net_class, next_net_class_assignment_order));
+    if (first_assignment) {
+        ++next_net_class_assignment_order;
+    }
+    return true;
+}
+
+void Circuit::ConnectivityState::set_component_property(ComponentId component, PropertyKey key,
+                                                        PropertyValue value) {
     require_component(component);
-    auto &stored = mutable_state().components.get(component);
+    auto &stored = components.get(component);
     stored = stored.with_property(std::move(key), std::move(value));
 }
 
-[[nodiscard]] std::optional<NetId> ConnectivityModel::net_of(PinId pin) const {
-    require_pin(pin);
-    return net_of_existing_pin(pin);
+void Circuit::ConnectivityState::replace_pin_definition(PinDefId id, PinDefinition definition) {
+    require_pin_definition(id);
+    pin_definitions.get(id) = std::move(definition);
+}
+
+void Circuit::ConnectivityState::replace_component(ComponentId id, ComponentInstance component) {
+    require_component(id);
+    components.get(id) = std::move(component);
+}
+
+void Circuit::ConnectivityState::replace_pin(PinId id, PinInstance pin) {
+    require_pin(id);
+    pins.get(id) = std::move(pin);
+}
+
+void Circuit::ConnectivityState::replace_net(NetId id, Net net) {
+    require_net(id);
+    nets.get(id) = std::move(net);
 }
 
 [[nodiscard]] std::optional<ComponentId>
-ConnectivityModel::component_by_reference(const ReferenceDesignator &reference) const {
-    const auto found = state().components_by_reference.find(reference.value());
-    if (found == state().components_by_reference.end()) {
+Circuit::ConnectivityState::component_by_reference(const ReferenceDesignator &reference) const {
+    const auto found = components_by_reference.find(reference.value());
+    if (found == components_by_reference.end()) {
         return std::nullopt;
     }
 
     return found->second;
 }
 
-[[nodiscard]] std::optional<NetId> ConnectivityModel::net_by_name(const NetName &name) const {
-    const auto found = state().nets_by_name.find(name.value());
-    if (found == state().nets_by_name.end()) {
+[[nodiscard]] std::optional<NetId>
+Circuit::ConnectivityState::net_by_name(const NetName &name) const {
+    const auto found = nets_by_name.find(name.value());
+    if (found == nets_by_name.end()) {
         return std::nullopt;
     }
 
     return found->second;
 }
 
-[[nodiscard]] std::vector<PinId> ConnectivityModel::pins_for(ComponentId component) const {
+[[nodiscard]] std::vector<PinId> Circuit::ConnectivityState::pins_for(ComponentId component) const {
     require_component(component);
 
-    return state().pins_by_component[component.index()];
+    return pins_by_component[component.index()];
 }
 
-[[nodiscard]] std::optional<PinId> ConnectivityModel::pin_by_name(ComponentId component,
-                                                                  std::string_view name) const {
+[[nodiscard]] std::optional<PinId>
+Circuit::ConnectivityState::pin_by_definition(ComponentId component, PinDefId definition) const {
     for (const auto pin_id : pins_for(component)) {
-        const auto definition = state().pins.get(pin_id).definition();
-        if (state().pin_definitions.get(definition).name() == name) {
+        if (pins.get(pin_id).definition() == definition) {
             return pin_id;
         }
     }
@@ -227,112 +290,48 @@ ConnectivityModel::component_by_reference(const ReferenceDesignator &reference) 
     return std::nullopt;
 }
 
-[[nodiscard]] std::optional<PinId> ConnectivityModel::pin_by_definition(ComponentId component,
-                                                                        PinDefId definition) const {
-    for (const auto pin_id : pins_for(component)) {
-        if (state().pins.get(pin_id).definition() == definition) {
-            return pin_id;
-        }
-    }
-
-    return std::nullopt;
-}
-
-[[nodiscard]] std::optional<PinId> ConnectivityModel::pin_by_number(ComponentId component,
-                                                                    std::string_view number) const {
-    for (const auto pin_id : pins_for(component)) {
-        const auto definition = state().pins.get(pin_id).definition();
-        if (state().pin_definitions.get(definition).number() == number) {
-            return pin_id;
-        }
-    }
-
-    return std::nullopt;
-}
-
-[[nodiscard]] const PinDefinition &ConnectivityModel::pin_definition(PinDefId id) const {
-    return state().pin_definitions.get(id);
-}
-
-[[nodiscard]] const ComponentDefinition &
-ConnectivityModel::component_definition(ComponentDefId id) const {
-    return state().component_definitions.get(id);
-}
-
-[[nodiscard]] const ComponentInstance &ConnectivityModel::component(ComponentId id) const {
-    return state().components.get(id);
-}
-
-[[nodiscard]] const PinInstance &ConnectivityModel::pin(PinId id) const {
-    return state().pins.get(id);
-}
-
-[[nodiscard]] const Net &ConnectivityModel::net(NetId id) const { return state().nets.get(id); }
-
-[[nodiscard]] std::size_t ConnectivityModel::pin_definition_count() const noexcept {
-    return state().pin_definitions.size();
-}
-
-[[nodiscard]] std::size_t ConnectivityModel::component_definition_count() const noexcept {
-    return state().component_definitions.size();
-}
-
-[[nodiscard]] std::size_t ConnectivityModel::component_count() const noexcept {
-    return state().components.size();
-}
-
-[[nodiscard]] std::size_t ConnectivityModel::pin_count() const noexcept {
-    return state().pins.size();
-}
-
-[[nodiscard]] std::size_t ConnectivityModel::net_count() const noexcept {
-    return state().nets.size();
-}
-
-void ConnectivityModel::require_pin_definition(PinDefId pin_definition) const {
-    if (!state().pin_definitions.contains(pin_definition)) {
+void Circuit::ConnectivityState::require_pin_definition(PinDefId pin_definition) const {
+    if (!pin_definitions.contains(pin_definition)) {
         throw KernelRangeError{ErrorCode::UnknownEntity,
                                "Pin definition ID does not belong to this circuit",
                                EntityRef::pin_def(pin_definition)};
     }
 }
 
-void ConnectivityModel::require_component_definition(ComponentDefId component_definition) const {
-    if (!state().component_definitions.contains(component_definition)) {
+void Circuit::ConnectivityState::require_component_definition(
+    ComponentDefId component_definition) const {
+    if (!component_definitions.contains(component_definition)) {
         throw KernelRangeError{ErrorCode::UnknownEntity,
                                "Component definition ID does not belong to this circuit",
                                EntityRef::component_def(component_definition)};
     }
 }
 
-void ConnectivityModel::require_component(ComponentId component) const {
-    if (!state().components.contains(component)) {
+void Circuit::ConnectivityState::require_component(ComponentId component) const {
+    if (!components.contains(component)) {
         throw KernelRangeError{ErrorCode::UnknownEntity,
                                "Component ID does not belong to this circuit",
                                EntityRef::component(component)};
     }
 }
 
-void ConnectivityModel::require_pin(PinId pin) const {
-    if (!state().pins.contains(pin)) {
+void Circuit::ConnectivityState::require_pin(PinId pin) const {
+    if (!pins.contains(pin)) {
         throw KernelRangeError{ErrorCode::UnknownEntity, "Pin ID does not belong to this circuit",
                                EntityRef::pin(pin)};
     }
 }
 
-void ConnectivityModel::require_net(NetId net) const {
-    if (!state().nets.contains(net)) {
+void Circuit::ConnectivityState::require_net(NetId net) const {
+    if (!nets.contains(net)) {
         throw KernelRangeError{ErrorCode::UnknownEntity, "Net ID does not belong to this circuit",
                                EntityRef::net(net)};
     }
 }
 
-[[nodiscard]] const detail::ConnectivityState &ConnectivityModel::state() const noexcept {
-    return *state_;
-}
-
-[[nodiscard]] std::optional<NetId> ConnectivityModel::net_of_existing_pin(PinId pin) const {
-    return state().net_by_pin[pin.index()];
+[[nodiscard]] std::optional<NetId>
+Circuit::ConnectivityState::net_of_existing_pin(PinId pin) const {
+    return net_by_pin[pin.index()];
 }
 
 } // namespace volt

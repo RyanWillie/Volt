@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -11,12 +10,6 @@
 #include <volt/core/quantities.hpp>
 
 namespace volt {
-
-class Circuit;
-
-namespace detail {
-struct NetClassesState;
-}
 
 /** Semantic copper-layer restriction that scales with any board layer count. */
 enum class NetClassLayerScope {
@@ -219,59 +212,6 @@ class NetClass {
 struct NetClassSpec {
     /** Validated net-class intent to commit. */
     NetClass net_class;
-};
-
-/**
- * Owns net classes and deterministic net-to-net-class assignments.
- *
- * Responsibility: stores kernel-owned net-class (netclass) intent — named electrical/physical
- *   constraint parameters — and which logical nets they apply to.
- * Invariants: net-class names are stable and unique; assignments reference existing nets.
- * Collaborators: composed by Circuit; the constraint parameters are read by both ERC (voltage)
- *   and DRC (clearance) checkers; persisted through logical-circuit IO; acyclic.
- */
-class NetClasses {
-  public:
-    /** Construct empty net-class storage. */
-    NetClasses();
-    /** Copy net-class state. */
-    NetClasses(const NetClasses &other);
-    /** Move net-class state. */
-    NetClasses(NetClasses &&other) noexcept;
-    /** Copy net-class state. */
-    NetClasses &operator=(const NetClasses &other);
-    /** Move net-class state. */
-    NetClasses &operator=(NetClasses &&other) noexcept;
-    /** Destroy net-class state. */
-    ~NetClasses();
-
-    /** Return a net class by stable ID. */
-    [[nodiscard]] const NetClass &net_class(NetClassId id) const;
-
-    /** Return the net class with the requested name, if present. */
-    [[nodiscard]] std::optional<NetClassId> net_class_by_name(const NetClassName &name) const;
-
-    /** Return the net class assigned to a logical net, if present. */
-    [[nodiscard]] std::optional<NetClassId> net_class_for_net(NetId net) const noexcept;
-
-    /** Return deterministic net-to-net-class assignments. */
-    [[nodiscard]] const std::vector<std::pair<NetId, NetClassId>> &
-    net_class_assignments() const noexcept;
-
-    /** Return the number of net classes. */
-    [[nodiscard]] std::size_t net_class_count() const noexcept;
-
-    /** Require that a net class ID belongs to this model. */
-    void require_net_class(NetClassId net_class) const;
-
-  protected:
-    /** Construct a read-only facade over owner-private storage. */
-    explicit NetClasses(std::shared_ptr<const detail::NetClassesState> state);
-
-  private:
-    [[nodiscard]] const detail::NetClassesState &state() const noexcept;
-
-    std::shared_ptr<const detail::NetClassesState> state_;
 };
 
 } // namespace volt

@@ -4,26 +4,24 @@
 #include <concepts>
 #include <cstddef>
 #include <iterator>
-#include <memory>
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include <volt/circuit/connectivity/connectivity_model.hpp>
 #include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/circuit/connectivity/instances.hpp>
 #include <volt/circuit/connectivity/nets.hpp>
 #include <volt/circuit/constraints/net_classes.hpp>
-#include <volt/circuit/detail/subsystem_storage.hpp>
-#include <volt/circuit/electrical/electrical_model.hpp>
 #include <volt/circuit/hierarchy/hierarchy.hpp>
-#include <volt/circuit/hierarchy/hierarchy_model.hpp>
 #include <volt/circuit/intent/design_intent.hpp>
 #include <volt/circuit/parts/parts.hpp>
 #include <volt/circuit/updates.hpp>
+#include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
 
 namespace volt {
@@ -116,17 +114,14 @@ struct LogicalCircuitRestorationPlan;
 /**
  * Canonical logical circuit model and aggregate root of the kernel.
  *
- * Responsibility: composes and coordinates the connectivity, hierarchy, electrical,
- *   design-intent, and net-class subsystems; owns only the structural primitives and the
- *   cross-subsystem invariants no single subsystem can enforce alone.
- * Invariants: cross-subsystem references are pre-flighted before any subsystem mutates, so a
- *   partial operation cannot leave invalid kernel state; structural violations throw.
- * Collaborators: composes the *Model subsystems; consumed read-only (const Circuit&) by
- *   validation/ERC, IO, and the Schematic/Board projections. See
- *   docs/superpowers/specs/2026-06-02-volt-kernel-architecture-design.md and
- *   docs/design/adr-append-only-kernel.md.
+ * Responsibility: owns canonical logical entities, relationships, typed electrical meaning,
+ *   hierarchy, design intent, and net-class assignments.
+ * Invariants: cross-entity references are pre-flighted before mutation, so a partial operation
+ *   cannot leave invalid kernel state; structural violations throw.
+ * Collaborators: consumed read-only by validation, IO, and schematic/PCB projections. See
+ *   docs/design/adr-circuit-aggregate-api.md and docs/design/adr-append-only-kernel.md.
  */
-class Circuit {
+class Circuit final {
   public:
     /** Atomically commit one complete reusable component definition. */
     [[nodiscard]] ComponentDefId define_component(ComponentSpec spec);
@@ -134,37 +129,29 @@ class Circuit {
     /** Atomically commit one complete reusable module definition. */
     [[nodiscard]] ModuleDefId define_module(ModuleSpec spec);
 
+    /** Atomically commit one complete reusable net-class definition. */
+    [[nodiscard]] NetClassId define_net_class(NetClassSpec spec);
+
     /** Atomically instantiate a component and every ordered pin in its definition. */
     [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition,
                                                     ComponentInstanceSpec spec);
 
+    /** Atomically instantiate a root module and all of its concrete entities. */
+    [[nodiscard]] ModuleInstanceId instantiate_module(ModuleDefId definition,
+                                                      ModuleInstanceSpec spec);
+
     /** Atomically add an unconnected canonical net from a complete typed input. */
     [[nodiscard]] NetId add_net(NetSpec spec);
-
-    /** Atomically commit one complete reusable net-class definition. */
-    [[nodiscard]] NetClassId define_net_class(NetClassSpec spec);
-
-    /** Instantiate a module at the root and create concrete nets for its template-local nets. */
-    [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition,
-                                                           ModuleInstanceName name);
-
-    /** Record an explicit connectivity edge from an instance-local port net to a parent net. */
-    [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port,
-                                          NetId parent_net);
-
-    /**
-     * Instantiate a component definition and create concrete pins for each ordered pin
-     * definition.
-     */
-    [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition,
-                                                    ReferenceDesignator reference,
-                                                    PropertyMap properties = {});
 
     /** Connect an existing pin to an existing net; returns true when the circuit changed. */
     bool connect(NetId net, PinId pin);
 
     /** Disconnect an existing pin from its current net; returns true when the circuit changed. */
     bool disconnect(PinId pin);
+
+    /** Record an explicit connectivity edge from an instance-local port net to a parent net. */
+    [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port,
+                                          NetId parent_net);
 
     /** Apply one closed typed progressive update to a component instance. */
     void update(ComponentId component, ComponentUpdate change);
@@ -189,85 +176,81 @@ class Circuit {
     /** Return the net containing a valid concrete pin, or nullopt when it is disconnected. */
     [[nodiscard]] std::optional<NetId> net_of(PinId pin) const;
 
-    /** Return the selected physical implementation for a component, if one has been assigned. */
-    [[nodiscard]] const std::optional<PhysicalPart> &
-    selected_physical_part(ComponentId component) const;
-
-    /** Return typed electrical attributes for an existing component instance. */
-    [[nodiscard]] const ElectricalAttributeMap &
-    component_electrical_attributes(ComponentId component) const;
-
-    /** Return typed electrical attributes for an existing reusable pin definition. */
-    [[nodiscard]] const ElectricalAttributeMap &
-    pin_definition_electrical_attributes(PinDefId pin_definition) const;
-
-    /** Return typed electrical attributes for an existing net. */
-    [[nodiscard]] const ElectricalAttributeMap &net_electrical_attributes(NetId net) const;
-
-    /** Return module-local pin connections for one module definition. */
-    [[nodiscard]] std::vector<ModulePinConnection> module_pin_connections(ModuleDefId module) const;
-
-    /** Return concrete net origins for one module instance in module template-net order. */
-    [[nodiscard]] std::vector<std::pair<TemplateNetDefId, NetId>>
-    module_net_origins(ModuleInstanceId instance) const;
-
-    /** Return concrete component origins for one module instance in module component order. */
-    [[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>>
-    module_component_origins(ModuleInstanceId instance) const;
-
-    /** Return whether this net has explicit author intent as a named/exported stub. */
-    [[nodiscard]] bool is_intentional_stub_net(NetId net) const;
-
-    /** Return whether this concrete pin has explicit no-connect author intent. */
-    [[nodiscard]] bool is_intentional_no_connect_pin(PinId pin) const;
-
-    /** Return explicit component DNP intent, if one has been authored. */
-    [[nodiscard]] std::optional<bool> component_dnp(ComponentId component) const;
-
-    /** Return whether this component has selected-part override intent. */
-    [[nodiscard]] bool is_component_selection_override(ComponentId component) const;
-
-    /** Return intentional stub-net assertions in deterministic insertion order. */
-    [[nodiscard]] const std::vector<NetId> &intentional_stub_nets() const noexcept;
-
-    /** Return intentional no-connect pin assertions in deterministic insertion order. */
-    [[nodiscard]] const std::vector<PinId> &intentional_no_connect_pins() const noexcept;
-
-    /** Return component assembly intent in deterministic insertion order. */
-    [[nodiscard]] const std::vector<ComponentAssemblyIntent> &
-    component_assembly_intents() const noexcept;
-
-    /** Return a net class by stable name, if one exists. */
-    [[nodiscard]] std::optional<NetClassId> net_class_by_name(const NetClassName &name) const;
-
-    /** Return the assigned net class for a net, if one exists. */
-    [[nodiscard]] std::optional<NetClassId> net_class_for_net(NetId net) const;
-
-    /** Return net-class net assignments in deterministic insertion order. */
-    [[nodiscard]] const std::vector<std::pair<NetId, NetClassId>> &
-    net_class_assignments() const noexcept;
-
   private:
     friend Circuit
     io::detail::restore_logical_circuit(io::detail::LogicalCircuitRestorationPlan plan);
 
-    struct ConnectivityStorage
-        : detail::SubsystemStorage<ConnectivityModel, detail::ConnectivityState> {
+    struct ConnectivityState {
+        ConnectivityState() = default;
+        ConnectivityState(const ConnectivityState &) = default;
+        ConnectivityState &operator=(const ConnectivityState &) = default;
+        ConnectivityState(ConnectivityState &&other) noexcept;
+        ConnectivityState &operator=(ConnectivityState &&other) noexcept;
+
+        EntityTable<PinDefinition, PinDefId> pin_definitions;
+        EntityTable<ComponentDefinition, ComponentDefId> component_definitions;
+        EntityTable<ComponentInstance, ComponentId> components;
+        EntityTable<PinInstance, PinId> pins;
+        EntityTable<Net, NetId> nets;
+        std::unordered_map<std::string, ComponentId> components_by_reference;
+        std::unordered_map<std::string, NetId> nets_by_name;
+        std::vector<std::optional<ComponentDefId>> component_definition_by_pin;
+        std::vector<std::vector<PinId>> pins_by_component;
+        std::vector<std::optional<NetId>> net_by_pin;
+        std::size_t next_stub_order = 0;
+        std::size_t next_no_connect_order = 0;
+        std::size_t next_assembly_intent_order = 0;
+        std::size_t next_net_class_assignment_order = 0;
+
         [[nodiscard]] PinDefId add_pin_definition(PinDefinition definition);
         [[nodiscard]] ComponentDefId add_component_definition(ComponentDefinition definition);
-        [[nodiscard]] bool pin_definition_is_owned(PinDefId pin_definition) const;
         [[nodiscard]] ComponentId add_component(ComponentInstance component);
         [[nodiscard]] PinId add_pin(PinInstance pin);
         [[nodiscard]] NetId add_net(Net net);
         [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition,
-                                                        ReferenceDesignator reference,
-                                                        PropertyMap properties = {});
+                                                        ComponentInstanceSpec spec);
         bool connect(NetId net, PinId pin);
         bool disconnect(PinId pin);
+        bool mark_intentional_stub(NetId net);
+        void mark_intentional_no_connect(PinId pin);
+        void set_component_assembly_intent(ComponentId component, std::optional<bool> dnp,
+                                           std::optional<bool> selection_override);
+        bool assign_net_class(NetId net, NetClassId net_class);
         void set_component_property(ComponentId component, PropertyKey key, PropertyValue value);
+        void replace_pin_definition(PinDefId id, PinDefinition definition);
+        void replace_component(ComponentId id, ComponentInstance component);
+        void replace_pin(PinId id, PinInstance pin);
+        void replace_net(NetId id, Net net);
+
+        [[nodiscard]] std::optional<ComponentId>
+        component_by_reference(const ReferenceDesignator &reference) const;
+        [[nodiscard]] std::optional<NetId> net_by_name(const NetName &name) const;
+        [[nodiscard]] std::vector<PinId> pins_for(ComponentId component) const;
+        [[nodiscard]] std::optional<PinId> pin_by_definition(ComponentId component,
+                                                             PinDefId definition) const;
+        void require_pin_definition(PinDefId id) const;
+        void require_component_definition(ComponentDefId id) const;
+        void require_component(ComponentId id) const;
+        void require_pin(PinId id) const;
+        void require_net(NetId id) const;
+        [[nodiscard]] std::optional<NetId> net_of_existing_pin(PinId pin) const;
     };
 
-    struct HierarchyStorage : detail::SubsystemStorage<HierarchyModel, detail::HierarchyState> {
+    struct HierarchyState {
+        HierarchyState() = default;
+        HierarchyState(const HierarchyState &) = default;
+        HierarchyState &operator=(const HierarchyState &) = default;
+        HierarchyState(HierarchyState &&other) noexcept;
+        HierarchyState &operator=(HierarchyState &&other) noexcept;
+
+        EntityTable<ModuleDefinition, ModuleDefId> module_definitions;
+        EntityTable<TemplateNetDefinition, TemplateNetDefId> template_net_definitions;
+        EntityTable<ModuleComponentTemplate, ModuleComponentId> module_component_templates;
+        EntityTable<PortDefinition, PortDefId> port_definitions;
+        EntityTable<ModuleInstance, ModuleInstanceId> module_instances;
+        EntityTable<PortBinding, PortBindingId> port_bindings;
+        std::unordered_map<std::string, ModuleInstanceId> module_instances_by_name;
+
         [[nodiscard]] ModuleDefId add_module_definition(ModuleDefinition definition);
         [[nodiscard]] TemplateNetDefId add_template_net(ModuleDefId module,
                                                         TemplateNetDefinition net);
@@ -276,52 +259,72 @@ class Circuit {
                                                              ModuleComponentTemplate component);
         bool connect_module_pin(ModuleDefId module, TemplateNetDefId net,
                                 ModuleComponentId component, PinDefId pin);
-        [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition,
-                                                               ModuleInstanceName name);
-        [[nodiscard]] ModuleInstanceId restore_root_module_instance(
-            ModuleDefId definition, ModuleInstanceName name,
-            const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
-            const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins);
-        void record_module_net_origin(ModuleInstanceId instance, TemplateNetDefId template_net,
-                                      NetId concrete_net);
-        void record_module_component_origin(ModuleInstanceId instance, ModuleComponentId component,
-                                            ComponentId concrete_component);
+        [[nodiscard]] ModuleInstanceId add_module_instance(ModuleInstance instance);
         [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port,
                                               NetId internal_net, NetId parent_net);
+
+        [[nodiscard]] std::optional<ModuleDefId>
+        module_definition_by_name(const ModuleName &name) const;
+        [[nodiscard]] std::optional<ModuleInstanceId>
+        module_instance_by_name(const ModuleInstanceName &name) const;
+        [[nodiscard]] std::optional<TemplateNetDefId>
+        template_net_by_name(ModuleDefId module, const NetName &name) const;
+        [[nodiscard]] std::optional<PortDefId> port_by_name(ModuleDefId module,
+                                                            const PortName &name) const;
+        [[nodiscard]] std::optional<ModuleComponentId>
+        module_component_by_reference(ModuleDefId module,
+                                      const ReferenceDesignator &reference) const;
+        [[nodiscard]] std::optional<TemplateNetDefId>
+        template_net_for(ModuleDefId module, ModuleComponentId component, PinDefId pin) const;
+        [[nodiscard]] std::optional<PortBindingId> port_binding_for(ModuleInstanceId instance,
+                                                                    PortDefId port) const;
+        [[nodiscard]] std::optional<NetId> concrete_net_for(ModuleInstanceId instance,
+                                                            TemplateNetDefId template_net) const;
+        [[nodiscard]] bool is_module_origin_net(NetId net) const;
+        void require_module_definition(ModuleDefId id) const;
+        void require_template_net(TemplateNetDefId id) const;
+        void require_port(PortDefId id) const;
+        void require_module_component(ModuleComponentId id) const;
+        void require_module_instance(ModuleInstanceId id) const;
+        void require_template_net_in_module(ModuleDefId module, TemplateNetDefId net) const;
+        void require_port_in_module(ModuleDefId module, PortDefId port) const;
+        void require_module_component_in_module(ModuleDefId module,
+                                                ModuleComponentId component) const;
+        void reset() noexcept;
     };
 
-    struct ElectricalStorage : detail::SubsystemStorage<ElectricalModel, detail::ElectricalState> {
-        [[nodiscard]] static ElectricalAttributeMap
-        preflight_attributes(const std::vector<ElectricalAttributeAssignment> &assignments,
-                             ElectricalAttributeOwner owner);
-        void restore_component_attributes(ComponentId component, ElectricalAttributeMap attributes);
-        void restore_pin_definition_attributes(PinDefId pin_definition,
-                                               ElectricalAttributeMap attributes);
-        void set_component_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
-                                     ElectricalAttributeValue value);
-        void set_pin_definition_attribute(PinDefId pin_definition,
-                                          const ElectricalAttributeSpec &spec,
-                                          ElectricalAttributeValue value);
-        void set_net_attribute(NetId net, const ElectricalAttributeSpec &spec,
-                               ElectricalAttributeValue value);
-        void select_physical_part(ComponentId component, PhysicalPart physical_part,
-                                  const std::vector<PinDefId> &component_pins);
-        void set_selected_part_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
-                                         ElectricalAttributeValue value);
-    };
+    struct NetClassState {
+        NetClassState() = default;
+        NetClassState(const NetClassState &) = default;
+        NetClassState &operator=(const NetClassState &) = default;
+        NetClassState(NetClassState &&other) noexcept;
+        NetClassState &operator=(NetClassState &&other) noexcept;
 
-    struct DesignIntentStorage : detail::SubsystemStorage<DesignIntent, detail::DesignIntentState> {
-        bool mark_intentional_stub_net(NetId net);
-        bool mark_intentional_no_connect_pin(PinId pin);
-        void set_component_dnp(ComponentId component, bool dnp);
-        void set_component_selection_override(ComponentId component, bool override);
-    };
-
-    struct NetClassStorage : detail::SubsystemStorage<NetClasses, detail::NetClassesState> {
+        EntityTable<NetClass, NetClassId> net_classes;
         [[nodiscard]] NetClassId add_net_class(NetClass net_class);
-        [[nodiscard]] bool assign_net_class(NetId net, NetClassId net_class);
+        [[nodiscard]] std::optional<NetClassId> net_class_by_name(const NetClassName &name) const;
+        void require_net_class(NetClassId id) const;
     };
 
+    [[nodiscard]] static ElectricalAttributeMap
+    preflight_attributes(const std::vector<ElectricalAttributeAssignment> &assignments,
+                         ElectricalAttributeOwner owner);
+    static void require_attribute_owner(const ElectricalAttributeSpec &spec,
+                                        ElectricalAttributeOwner expected);
+    static void
+    require_physical_part_matches_component_definition(const std::vector<PinDefId> &component_pins,
+                                                       const PhysicalPart &physical_part);
+    void restore_component_attributes(ComponentId component, ElectricalAttributeMap attributes);
+    void restore_pin_definition_attributes(PinDefId pin_definition,
+                                           ElectricalAttributeMap attributes);
+    void set_component_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
+                                 ElectricalAttributeValue value);
+    void set_net_attribute(NetId net, const ElectricalAttributeSpec &spec,
+                           ElectricalAttributeValue value);
+    void select_physical_part(ComponentId component, PhysicalPart physical_part,
+                              const std::vector<PinDefId> &component_pins);
+    void set_selected_part_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
+                                     ElectricalAttributeValue value);
     void require_pin_definition(PinDefId pin_definition) const;
 
     void require_component_definition(ComponentDefId component_definition) const;
@@ -330,30 +333,9 @@ class Circuit {
 
     void require_module_definition(ModuleDefId module) const;
 
-    void require_template_net(TemplateNetDefId net) const;
-
-    void require_port(PortDefId port) const;
-
-    void require_module_component(ModuleComponentId component) const;
-
-    void require_module_instance(ModuleInstanceId instance) const;
-
     void require_template_net_in_module(ModuleDefId module, TemplateNetDefId net) const;
 
-    void require_port_in_module(ModuleDefId module, PortDefId port) const;
-
     void require_module_component_in_module(ModuleDefId module, ModuleComponentId component) const;
-
-    [[nodiscard]] bool require_template_net_in_module_if_present(ModuleDefId module,
-                                                                 TemplateNetDefId net) const {
-        return hierarchy_.template_net_belongs_to_module(module, net);
-    }
-
-    [[nodiscard]] bool
-    require_module_component_in_module_if_present(ModuleDefId module,
-                                                  ModuleComponentId component) const;
-
-    void require_pin_in_module_component(ModuleComponentId component, PinDefId pin) const;
 
     void require_restored_module_connectivity_matches_template(
         ModuleDefId definition, const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
@@ -365,18 +347,14 @@ class Circuit {
 
     void require_net_class(NetClassId net_class) const;
 
-    [[nodiscard]] std::optional<NetId> net_of_existing_pin(PinId pin) const;
-
     [[nodiscard]] ModuleInstanceId restore_root_module_instance(
         ModuleDefId definition, ModuleInstanceName name,
         const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
         const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins);
 
-    ConnectivityStorage connectivity_;
-    HierarchyStorage hierarchy_;
-    ElectricalStorage electrical_;
-    DesignIntentStorage intent_;
-    NetClassStorage net_classes_;
+    ConnectivityState connectivity_;
+    HierarchyState hierarchy_;
+    NetClassState net_classes_;
 };
 
 /**
@@ -462,58 +440,58 @@ template <typename Id> class CircuitEntityRange {
 
 template <CircuitEntityId Id> [[nodiscard]] const entity_type_t<Id> &Circuit::get(Id id) const {
     if constexpr (std::same_as<Id, PinDefId>) {
-        return connectivity_.pin_definition(id);
+        return connectivity_.pin_definitions.get(id);
     } else if constexpr (std::same_as<Id, ComponentDefId>) {
-        return connectivity_.component_definition(id);
+        return connectivity_.component_definitions.get(id);
     } else if constexpr (std::same_as<Id, ComponentId>) {
-        return connectivity_.component(id);
+        return connectivity_.components.get(id);
     } else if constexpr (std::same_as<Id, PinId>) {
-        return connectivity_.pin(id);
+        return connectivity_.pins.get(id);
     } else if constexpr (std::same_as<Id, NetId>) {
-        return connectivity_.net(id);
+        return connectivity_.nets.get(id);
     } else if constexpr (std::same_as<Id, ModuleDefId>) {
-        return hierarchy_.module_definition(id);
+        return hierarchy_.module_definitions.get(id);
     } else if constexpr (std::same_as<Id, TemplateNetDefId>) {
-        return hierarchy_.template_net_definition(id);
+        return hierarchy_.template_net_definitions.get(id);
     } else if constexpr (std::same_as<Id, PortDefId>) {
-        return hierarchy_.port_definition(id);
+        return hierarchy_.port_definitions.get(id);
     } else if constexpr (std::same_as<Id, ModuleComponentId>) {
-        return hierarchy_.module_component_template(id);
+        return hierarchy_.module_component_templates.get(id);
     } else if constexpr (std::same_as<Id, ModuleInstanceId>) {
-        return hierarchy_.module_instance(id);
+        return hierarchy_.module_instances.get(id);
     } else if constexpr (std::same_as<Id, PortBindingId>) {
-        return hierarchy_.port_binding(id);
+        return hierarchy_.port_bindings.get(id);
     } else {
-        return net_classes_.net_class(id);
+        return net_classes_.net_classes.get(id);
     }
 }
 
 template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> Circuit::all() const & {
     std::size_t size = 0;
     if constexpr (std::same_as<Id, PinDefId>) {
-        size = connectivity_.pin_definition_count();
+        size = connectivity_.pin_definitions.size();
     } else if constexpr (std::same_as<Id, ComponentDefId>) {
-        size = connectivity_.component_definition_count();
+        size = connectivity_.component_definitions.size();
     } else if constexpr (std::same_as<Id, ComponentId>) {
-        size = connectivity_.component_count();
+        size = connectivity_.components.size();
     } else if constexpr (std::same_as<Id, PinId>) {
-        size = connectivity_.pin_count();
+        size = connectivity_.pins.size();
     } else if constexpr (std::same_as<Id, NetId>) {
-        size = connectivity_.net_count();
+        size = connectivity_.nets.size();
     } else if constexpr (std::same_as<Id, ModuleDefId>) {
-        size = hierarchy_.module_definition_count();
+        size = hierarchy_.module_definitions.size();
     } else if constexpr (std::same_as<Id, TemplateNetDefId>) {
-        size = hierarchy_.template_net_definition_count();
+        size = hierarchy_.template_net_definitions.size();
     } else if constexpr (std::same_as<Id, PortDefId>) {
-        size = hierarchy_.port_definition_count();
+        size = hierarchy_.port_definitions.size();
     } else if constexpr (std::same_as<Id, ModuleComponentId>) {
-        size = hierarchy_.module_component_count();
+        size = hierarchy_.module_component_templates.size();
     } else if constexpr (std::same_as<Id, ModuleInstanceId>) {
-        size = hierarchy_.module_instance_count();
+        size = hierarchy_.module_instances.size();
     } else if constexpr (std::same_as<Id, PortBindingId>) {
-        size = hierarchy_.port_binding_count();
+        size = hierarchy_.port_bindings.size();
     } else {
-        size = net_classes_.net_class_count();
+        size = net_classes_.net_classes.size();
     }
     return entity_range_t<Id>{*this, size};
 }

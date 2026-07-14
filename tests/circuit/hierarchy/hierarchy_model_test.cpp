@@ -1,47 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <concepts>
 #include <stdexcept>
 #include <utility>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/hierarchy/hierarchy_model.hpp>
 
 namespace {
-
-template <typename Model>
-concept CanRestoreRootModuleInstance = requires(
-    Model model, volt::ModuleDefId definition, volt::ModuleInstanceName name,
-    std::vector<std::pair<volt::TemplateNetDefId, volt::NetId>> net_origins,
-    std::vector<std::pair<volt::ModuleComponentId, volt::ComponentId>> component_origins) {
-    model.restore_root_module_instance(definition, std::move(name), net_origins, component_origins);
-};
-
-template <typename Model>
-concept CanRecordModuleNetOrigin =
-    requires(Model model, volt::ModuleInstanceId instance, volt::TemplateNetDefId template_net,
-             volt::NetId concrete_net) {
-        model.record_module_net_origin(instance, template_net, concrete_net);
-    };
-
-template <typename Model>
-concept CanRecordModuleComponentOrigin =
-    requires(Model model, volt::ModuleInstanceId instance, volt::ModuleComponentId component,
-             volt::ComponentId concrete_component) {
-        model.record_module_component_origin(instance, component, concrete_component);
-    };
-
-template <typename Model>
-concept CanBindPort = requires(Model model, volt::ModuleInstanceId instance, volt::PortDefId port,
-                               volt::NetId internal_net, volt::NetId parent_net) {
-    model.bind_port(instance, port, internal_net, parent_net);
-};
-
-static_assert(!CanRestoreRootModuleInstance<volt::HierarchyModel>);
-static_assert(!CanRecordModuleNetOrigin<volt::HierarchyModel>);
-static_assert(!CanRecordModuleComponentOrigin<volt::HierarchyModel>);
-static_assert(!CanBindPort<volt::HierarchyModel>);
 
 struct HierarchyFixture {
     volt::Circuit circuit;
@@ -107,8 +72,8 @@ TEST_CASE("Circuit complete modules reject duplicate names within local hierarch
 TEST_CASE("Circuit records module instances with deterministic aggregate origins") {
     auto fixture = make_hierarchy_fixture();
 
-    const auto instance =
-        fixture.circuit.instantiate_root_module(fixture.module, volt::ModuleInstanceName{"DIV_A"});
+    const auto instance = fixture.circuit.instantiate_module(
+        fixture.module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"DIV_A"}});
     CHECK(instance == volt::ModuleInstanceId{0});
     CHECK(fixture.circuit.get(instance).name() == volt::ModuleInstanceName{"DIV_A"});
     CHECK(fixture.circuit.get(instance).definition() == fixture.module);
@@ -117,11 +82,12 @@ TEST_CASE("Circuit records module instances with deterministic aggregate origins
 
 TEST_CASE("Circuit rejects duplicate root module instance names") {
     auto fixture = make_hierarchy_fixture();
-    [[maybe_unused]] const auto instance =
-        fixture.circuit.instantiate_root_module(fixture.module, volt::ModuleInstanceName{"DIV_A"});
+    [[maybe_unused]] const auto instance = fixture.circuit.instantiate_module(
+        fixture.module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"DIV_A"}});
 
     CHECK_THROWS_AS(
-        fixture.circuit.instantiate_root_module(fixture.module, volt::ModuleInstanceName{"DIV_A"}),
+        fixture.circuit.instantiate_module(
+            fixture.module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"DIV_A"}}),
         std::logic_error);
     CHECK(fixture.circuit.all<volt::ModuleInstanceId>().size() == 1);
 }

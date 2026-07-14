@@ -106,8 +106,8 @@ TEST_CASE("Real-board ERC matrix covers hierarchy and module-port boundaries") {
                                        volt::PortRole::PowerInput}},
     });
     const auto port = fixture.circuit.get(module).ports()[0];
-    const auto instance =
-        fixture.circuit.instantiate_root_module(module, volt::ModuleInstanceName{"SENSOR_A"});
+    const auto instance = fixture.circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"SENSOR_A"}});
 
     const auto report = volt::validate_circuit(fixture.circuit);
 

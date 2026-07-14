@@ -95,8 +95,8 @@ TEST_CASE("Circuit queries inspect hierarchy views through const Circuit") {
     const auto port = circuit.get(module).ports().front();
     const auto component = circuit.get(module).components().front();
     const auto parent_net = volt::test::add_net(circuit, "PARENT");
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"DIV_A"}});
     const auto binding = circuit.bind_port(instance, port, parent_net);
 
     CHECK(volt::queries::module_definition_by_name(circuit, volt::ModuleName{"Divider"}) == module);
@@ -161,8 +161,8 @@ TEST_CASE("Circuit hierarchy queries preserve model-owned validation contracts")
     const auto second_port = circuit.get(second_module).ports().front();
 
     const auto parent_net = volt::test::add_net(circuit, "PARENT");
-    const auto first_instance =
-        circuit.instantiate_root_module(first_module, volt::ModuleInstanceName{"FIRST_A"});
+    const auto first_instance = circuit.instantiate_module(
+        first_module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"FIRST_A"}});
     [[maybe_unused]] const auto binding = circuit.bind_port(first_instance, first_port, parent_net);
 
     try {
@@ -180,5 +180,28 @@ TEST_CASE("Circuit hierarchy queries preserve model-owned validation contracts")
     } catch (const volt::KernelLogicError &error) {
         CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
         CHECK(std::string{error.what()} == "Port does not belong to module definition");
+    }
+}
+
+TEST_CASE("Module-origin membership queries preserve generic read errors for invalid IDs") {
+    const auto circuit = volt::Circuit{};
+
+    try {
+        static_cast<void>(volt::queries::is_module_origin_net(circuit, volt::NetId{99}));
+        FAIL("Invalid net ID must throw");
+    } catch (const volt::KernelRangeError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        CHECK(std::string{error.what()} == "Volt entity id is out of range");
+        CHECK_FALSE(error.entity().has_value());
+    }
+
+    try {
+        static_cast<void>(
+            volt::queries::is_module_origin_component(circuit, volt::ComponentId{99}));
+        FAIL("Invalid component ID must throw");
+    } catch (const volt::KernelRangeError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        CHECK(std::string{error.what()} == "Volt entity id is out of range");
+        CHECK_FALSE(error.entity().has_value());
     }
 }

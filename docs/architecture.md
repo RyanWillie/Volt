@@ -448,7 +448,8 @@ belong to the circuit.
 
 The public boundary is one cohesive, small `Circuit` aggregate API based on complete typed
 specs, irreducible graph operations, closed typed updates, generic `get`/`all` reads, and free
-derived queries. Private subsystem storage remains an implementation detail. See
+derived queries. Private canonical tables and indexes are stored directly by `Circuit`; there
+are no public subsystem containers or shared facade-storage adapters. See
 [ADR: Typed Circuit Aggregate API](design/adr-circuit-aggregate-api.md).
 
 The generic read boundary covers every stable-ID logical entity family. `get(id)` preserves
@@ -456,9 +457,9 @@ the typed unknown-entity failure contract, while `all<Id>()` returns a determini
 range of const entity references. That range borrows the `Circuit`: it cannot be created from
 a temporary and is invalidated by structural mutation. `net_of(PinId)` is the root's
 irreducible relationship read. Named lookup, pin lookup, hierarchy traversal, origins, and
-other derived reads remain non-friend `volt::queries` free functions over `const Circuit&`;
-they compose the public read primitives without exposing `ConnectivityModel` or
-`HierarchyModel` handles.
+typed electrical/intent inspection, and other derived reads remain non-friend
+`volt::queries` free functions over `const Circuit&`; they compose the public read
+primitives without privileged storage access.
 
 `Circuit` also enforces the core connectivity invariant that a concrete pin belongs to
 zero or one net. Deeper design-quality checks are reported by validation layers. Examples

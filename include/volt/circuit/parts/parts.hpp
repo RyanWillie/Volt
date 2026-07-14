@@ -15,8 +15,6 @@
 
 namespace volt {
 
-class ElectricalModel;
-
 /** Manufacturer-specific ordering identity for a selected physical part. */
 class ManufacturerPart {
   public:

@@ -94,4 +94,57 @@ module_component_origins(const Circuit &circuit, ModuleInstanceId instance);
 [[nodiscard]] std::optional<PinId> pin_by_number(const Circuit &circuit, ComponentId component,
                                                  std::string_view number);
 
+/** Return the selected physical implementation for a component, if one has been assigned. */
+[[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part(const Circuit &circuit,
+                                                                        ComponentId component);
+
+/** Return typed electrical attributes for an existing component instance. */
+[[nodiscard]] const ElectricalAttributeMap &component_electrical_attributes(const Circuit &circuit,
+                                                                            ComponentId component);
+
+/** Return typed electrical attributes for an existing reusable pin definition. */
+[[nodiscard]] const ElectricalAttributeMap &
+pin_definition_electrical_attributes(const Circuit &circuit, PinDefId pin_definition);
+
+/** Return typed electrical attributes for an existing net. */
+[[nodiscard]] const ElectricalAttributeMap &net_electrical_attributes(const Circuit &circuit,
+                                                                      NetId net);
+
+/** Return module-local pin connections for one module definition. */
+[[nodiscard]] std::vector<ModulePinConnection> module_pin_connections(const Circuit &circuit,
+                                                                      ModuleDefId module);
+
+/** Return whether this net has explicit author intent as a named/exported stub. */
+[[nodiscard]] bool is_intentional_stub_net(const Circuit &circuit, NetId net);
+
+/** Return whether this concrete pin has explicit no-connect author intent. */
+[[nodiscard]] bool is_intentional_no_connect_pin(const Circuit &circuit, PinId pin);
+
+/** Return explicit component DNP intent, if one has been authored. */
+[[nodiscard]] std::optional<bool> component_dnp(const Circuit &circuit, ComponentId component);
+
+/** Return whether this component has selected-part override intent. */
+[[nodiscard]] bool is_component_selection_override(const Circuit &circuit, ComponentId component);
+
+/** Return intentional stub-net assertions in first-authored insertion order. */
+[[nodiscard]] std::vector<NetId> intentional_stub_nets(const Circuit &circuit);
+
+/** Return intentional no-connect assertions in first-authored insertion order. */
+[[nodiscard]] std::vector<PinId> intentional_no_connect_pins(const Circuit &circuit);
+
+/** Return component assembly intent in first-authored insertion order. */
+[[nodiscard]] std::vector<ComponentAssemblyIntent>
+component_assembly_intents(const Circuit &circuit);
+
+/** Return a net class by stable name, if one exists. */
+[[nodiscard]] std::optional<NetClassId> net_class_by_name(const Circuit &circuit,
+                                                          const NetClassName &name);
+
+/** Return the assigned net class for a net, if one exists. */
+[[nodiscard]] std::optional<NetClassId> net_class_for_net(const Circuit &circuit, NetId net);
+
+/** Return net-class assignments in first-authored insertion order. */
+[[nodiscard]] std::vector<std::pair<NetId, NetClassId>>
+net_class_assignments(const Circuit &circuit);
+
 } // namespace volt::queries

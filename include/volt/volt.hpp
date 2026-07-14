@@ -10,7 +10,6 @@
 #include <volt/circuit/connectivity/nets.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/constraints/net_classes.hpp>
-#include <volt/circuit/electrical/electrical_model.hpp>
 #include <volt/circuit/hierarchy/hierarchy.hpp>
 #include <volt/circuit/intent/design_intent.hpp>
 #include <volt/circuit/parts/part_definition.hpp>

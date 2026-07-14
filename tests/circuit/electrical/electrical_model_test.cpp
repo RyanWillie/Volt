@@ -1,57 +1,17 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <concepts>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/electrical/electrical_model.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 
 #include <support/circuit_test_helpers.hpp>
 
 namespace {
-
-template <typename Model>
-concept CanSetComponentAttribute =
-    requires(Model model, volt::ComponentId component, const volt::ElectricalAttributeSpec &spec,
-             volt::ElectricalAttributeValue value) {
-        model.set_component_attribute(component, spec, value);
-    };
-
-template <typename Model>
-concept CanSetPinDefinitionAttribute =
-    requires(Model model, volt::PinDefId pin_definition, const volt::ElectricalAttributeSpec &spec,
-             volt::ElectricalAttributeValue value) {
-        model.set_pin_definition_attribute(pin_definition, spec, value);
-    };
-
-template <typename Model>
-concept CanSetNetAttribute =
-    requires(Model model, volt::NetId net, const volt::ElectricalAttributeSpec &spec,
-             volt::ElectricalAttributeValue value) { model.set_net_attribute(net, spec, value); };
-
-template <typename Model>
-concept CanSelectPhysicalPart =
-    requires(Model model, volt::ComponentId component, volt::PhysicalPart part,
-             std::vector<volt::PinDefId> pins) {
-        model.select_physical_part(component, std::move(part), pins);
-    };
-
-template <typename Model>
-concept CanSetSelectedPartAttribute =
-    requires(Model model, volt::ComponentId component, const volt::ElectricalAttributeSpec &spec,
-             volt::ElectricalAttributeValue value) {
-        model.set_selected_part_attribute(component, spec, value);
-    };
-
-static_assert(!CanSetComponentAttribute<volt::ElectricalModel>);
-static_assert(!CanSetPinDefinitionAttribute<volt::ElectricalModel>);
-static_assert(!CanSetNetAttribute<volt::ElectricalModel>);
-static_assert(!CanSelectPhysicalPart<volt::ElectricalModel>);
-static_assert(!CanSetSelectedPartAttribute<volt::ElectricalModel>);
 
 volt::PhysicalPart make_resistor_physical_part(volt::PinDefId first_pin,
                                                volt::PinDefId second_pin) {
@@ -115,8 +75,9 @@ TEST_CASE("Circuit stores typed electrical attributes by owner kind") {
             },
     });
     const auto first_pin = circuit.get(component_definition).pins()[0];
-    const auto component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
+    const auto component = circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
     const auto net =
         circuit.add_net(volt::NetSpec{.name = volt::NetName{"VCC"}, .kind = volt::NetKind::Power});
     circuit.update(component,
@@ -127,14 +88,14 @@ TEST_CASE("Circuit stores typed electrical attributes by owner kind") {
                             net_voltage, volt::ElectricalAttributeValue{
                                              volt::Quantity{volt::UnitDimension::Voltage, 3.3}}});
 
-    CHECK(circuit.component_electrical_attributes(component)
+    CHECK(volt::queries::component_electrical_attributes(circuit, component)
               .get(volt::ElectricalAttributeName{"resistance"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Resistance, 330.0});
-    CHECK(circuit.pin_definition_electrical_attributes(first_pin)
+    CHECK(volt::queries::pin_definition_electrical_attributes(circuit, first_pin)
               .get(volt::ElectricalAttributeName{"voltage_range"})
               .as_range()
               .dimension() == volt::UnitDimension::Voltage);
-    CHECK(circuit.net_electrical_attributes(net)
+    CHECK(volt::queries::net_electrical_attributes(circuit, net)
               .get(volt::ElectricalAttributeName{"voltage"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 3.3});
 }
@@ -143,8 +104,9 @@ TEST_CASE("Circuit rejects electrical attributes for the wrong owner kind") {
     volt::Circuit circuit;
     const auto component_definition =
         volt::test::define_component(circuit, "Resistor", {volt::test::passive_pin("1", "1")});
-    const auto component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
+    const auto component = circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
     const auto net_voltage = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"voltage"},
         volt::ElectricalAttributeOwner::Net,
@@ -177,8 +139,9 @@ TEST_CASE("Circuit owns selected physical parts and selected-part attributes") {
     const auto &pins = circuit.get(component_definition).pins();
     const auto first_pin = pins[0];
     const auto second_pin = pins[1];
-    const auto component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
+    const auto component = circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
     const auto voltage_rating = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"voltage_rating"},
         volt::ElectricalAttributeOwner::SelectedPart,
@@ -192,8 +155,8 @@ TEST_CASE("Circuit owns selected physical parts and selected-part attributes") {
                                   voltage_rating, volt::ElectricalAttributeValue{volt::Quantity{
                                                       volt::UnitDimension::Voltage, 75.0}}});
 
-    REQUIRE(circuit.selected_physical_part(component).has_value());
-    CHECK(circuit.selected_physical_part(component)
+    REQUIRE(volt::queries::selected_physical_part(circuit, component).has_value());
+    CHECK(volt::queries::selected_physical_part(circuit, component)
               ->electrical_attributes()
               .get(volt::ElectricalAttributeName{"voltage_rating"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 75.0});
@@ -209,8 +172,9 @@ TEST_CASE("Circuit rejects selected parts that do not match component pins") {
     const auto &pins = circuit.get(component_definition).pins();
     const auto first_pin = pins[0];
     const auto extra_pin = circuit.get(extra_definition).pins().front();
-    const auto component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
+    const auto component = circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
 
     CHECK_THROWS_AS(circuit.update(component, volt::SelectPhysicalPart{make_resistor_physical_part(
                                                   first_pin, extra_pin)}),
@@ -248,8 +212,9 @@ TEST_CASE("Circuit rejects selected-part attributes without selected-part metada
     volt::Circuit circuit;
     const auto component_definition =
         volt::test::define_component(circuit, "Resistor", {volt::test::passive_pin("1", "1")});
-    const auto component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
+    const auto component = circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
     const auto voltage_rating = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"voltage_rating"},
         volt::ElectricalAttributeOwner::SelectedPart,

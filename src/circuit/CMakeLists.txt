@@ -12,10 +12,8 @@ add_library(
     electrical/electrical_model.cpp
     hierarchy/hierarchy.cpp
     hierarchy/hierarchy_model.cpp
-    intent/design_intent.cpp
     parts/part_definition.cpp
     parts/parts.cpp
-    subsystem_storage.cpp
     validation/validation.cpp
 )
 add_library(Volt::Circuit ALIAS volt_circuit)

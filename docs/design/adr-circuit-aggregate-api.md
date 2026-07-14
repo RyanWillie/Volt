@@ -11,11 +11,13 @@ domain-shaped surface built from complete typed specifications,
 irreducible graph operations, typed progressive updates, generic typed reads, and free
 derived queries.
 
-Private subsystem storage does not create public subsystem owners. Borrowed mutation facades,
-per-table getters and counts, public restoration mechanics, and generic mutation handles are
-outside the accepted boundary.
+Subsystem container shells and storage adapters do not create alternate public or private
+logical owners. Borrowed mutation facades, per-table getters and counts, public restoration
+mechanics, and generic mutation handles are outside the accepted boundary.
 
-The intended public shape is approximately fifteen declarations:
+The accepted public shape is fifteen operations expressed by sixteen declarations. The extra
+declaration is the deleted rvalue overload of `all()`, which prevents a borrowed range from a
+temporary `Circuit`:
 
 ```cpp
 class Circuit final {
@@ -45,14 +47,18 @@ class Circuit final {
 
     template <typename Id>
         requires CircuitEntityId<Id>
-    [[nodiscard]] entity_range_t<Id> all() const;
+    [[nodiscard]] entity_range_t<Id> all() const &;
+
+    template <typename Id>
+        requires CircuitEntityId<Id>
+    [[nodiscard]] entity_range_t<Id> all() const && = delete;
 
     [[nodiscard]] std::optional<NetId> net_of(PinId pin) const;
 };
 ```
 
-Names may be refined while implementing the contract, but the categories and public API
-budget are architectural requirements. A new root method is admitted only when it is an
+The names, categories, and sixteen-declaration public API budget are architectural
+requirements. A new root method is admitted only when it is an
 irreducible structural operation that cannot be expressed through a complete typed spec,
 a typed update, generic `get`/`all`, or a free query.
 
@@ -73,9 +79,11 @@ Schematic and PCB models reference this logical truth but do not create, merge, 
 reinterpret nets. Validation and analysis consume `const Circuit&`. Python and importers
 lower syntax or external data into the same typed kernel operations.
 
-Private storage may remain decomposed into connectivity, hierarchy, electrical, intent,
-and net-class state. That decomposition is an implementation detail and does not create
-public subsystem owners.
+`Circuit` stores canonical entity tables and indexes directly in private connectivity,
+hierarchy, and net-class state. Electrical meaning, selected parts, assembly intent,
+no-connect intent, intentional-stub intent, net-class assignments, and module provenance live
+on their owning canonical entities. This private decomposition does not create another owner,
+subsystem API, or replacement facade family.
 
 ## Complete Definitions
 
@@ -127,11 +135,12 @@ No per-instance `PinId` electrical-attribute model is introduced by this ADR.
 deterministic range-for iteration and `size()` without a separate getter and count method
 for every table. `net_of(PinId)` remains a fundamental relationship primitive.
 
-Lookup by name/reference, pin lookup, hierarchy traversal, origin lookup, net-class
-resolution, adjacency, and other derived reads remain free functions in `volt::queries`
-over `const Circuit&`. They return `optional` when absence is normal. They must not require
-public `ConnectivityModel` or `HierarchyModel` accessors. An indexed internal
-implementation may be retained where measurement justifies it without exposing storage.
+Lookup by name/reference, pin lookup, hierarchy traversal, origin lookup, typed electrical
+inspection, selected-part inspection, design-intent inspection, net-class resolution,
+adjacency, and other derived reads remain free functions in `volt::queries` over
+`const Circuit&`. They return `optional` when absence is normal. They compose `get` and `all`
+without privileged storage access. An indexed internal implementation may be retained where
+measurement justifies it without exposing storage.
 
 ## Error Contract
 
@@ -179,8 +188,9 @@ The native GitHub dependency graph under #261 is the execution source of truth:
    incrementally.
 6. [#265](https://github.com/RyanWillie/Volt/issues/265) migrates Python bindings after
    [#238](https://github.com/RyanWillie/Volt/issues/238).
-7. [#266](https://github.com/RyanWillie/Volt/issues/266) deletes the facades and replaces
-   architecture enforcement.
+7. [#266](https://github.com/RyanWillie/Volt/issues/266) deletes the subsystem shells and
+   shared facade-storage plumbing, removes the superseded construction and specialized-read
+   root surface, and locks the final sixteen-declaration contract in architecture enforcement.
 8. [#267](https://github.com/RyanWillie/Volt/issues/267) proves semantic, persistence,
    diagnostic, Python, and CI parity.
 

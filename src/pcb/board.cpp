@@ -32,7 +32,7 @@ resolved_placement_footprints(const Board &board, const FootprintLibrary &footpr
         const auto placement_id = ComponentPlacementId{index};
         const auto &component_placement = board.placement(placement_id);
         const auto &selected_part =
-            board.circuit().selected_physical_part(component_placement.component());
+            volt::queries::selected_physical_part(board.circuit(), component_placement.component());
         if (!selected_part.has_value()) {
             continue;
         }
@@ -291,7 +291,8 @@ Board::route_endpoint_net(const BoardRouteEndpoint &endpoint,
     }
 
     const auto &component_placement = placement(endpoint.placement.value());
-    const auto &selected_part = circuit().selected_physical_part(component_placement.component());
+    const auto &selected_part =
+        volt::queries::selected_physical_part(circuit(), component_placement.component());
     if (!selected_part.has_value()) {
         throw KernelArgumentError{ErrorCode::InvalidState,
                                   "Board route endpoint component has no selected physical part",
@@ -505,7 +506,7 @@ namespace {
                                                    "Component has no board placement", component));
         }
 
-        if (!board.circuit().selected_physical_part(component).has_value()) {
+        if (!volt::queries::selected_physical_part(board.circuit(), component).has_value()) {
             report.add(detail::board_component_diagnostic(
                 DiagnosticCode{"PCB_COMPONENT_MISSING_SELECTED_PART"},
                 "Component requires a selected physical part for board placement", component));
@@ -515,7 +516,8 @@ namespace {
     for (std::size_t index = 0; index < board.placement_count(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
         const auto &placement = board.placement(placement_id);
-        const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+        const auto &selected_part =
+            volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {
             continue;
         }

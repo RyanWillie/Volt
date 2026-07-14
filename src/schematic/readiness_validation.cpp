@@ -344,7 +344,7 @@ void validate_no_connect_markers(const Schematic &schematic, SheetId sheet_id, c
 
 void validate_missing_no_connect_markers(const Schematic &schematic, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
-    for (const auto pin_id : circuit.intentional_no_connect_pins()) {
+    for (const auto pin_id : volt::queries::intentional_no_connect_pins(circuit)) {
         if (schematic_has_no_connect_marker_for_pin(schematic, pin_id)) {
             continue;
         }

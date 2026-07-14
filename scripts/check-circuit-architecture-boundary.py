@@ -8,6 +8,7 @@ import ast
 import re
 import sys
 import textwrap
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -50,6 +51,74 @@ REJECTED_TOKENS = (
     "NetClassMutator",
     "MutatorKey",
 )
+REMOVED_CIRCUIT_SUBSYSTEM_SYMBOLS = frozenset(
+    {
+        "ConnectivityModel",
+        "HierarchyModel",
+        "ElectricalModel",
+        "DesignIntent",
+        "NetClasses",
+        "SubsystemStorage",
+    }
+)
+FORBIDDEN_PUBLIC_CIRCUIT_HEADERS = frozenset(
+    {
+        "include/volt/circuit/connectivity/connectivity_model.hpp",
+        "include/volt/circuit/detail/subsystem_storage.hpp",
+        "include/volt/circuit/electrical/electrical_model.hpp",
+        "include/volt/circuit/hierarchy/hierarchy_model.hpp",
+    }
+)
+CIRCUIT_FACADE_TERMINOLOGY_PATTERN = re.compile(r"\bfacades?\b", flags=re.IGNORECASE)
+CIRCUIT_PUBLIC_SHELL_NAME_PATTERN = re.compile(
+    r"\b(?:class|struct)\s+(?:\[\[(?:(?!\]\])[\s\S])*\]\]\s*)*"
+    r"([A-Za-z_]\w*(?:Model|Storage|Store|Container|Facade|Subsystem|Repository))\b"
+)
+CIRCUIT_PUBLIC_STORAGE_PATTERN = re.compile(
+    r"\bEntityTable\s*<|\b(?:shared_ptr|unique_ptr)\s*<"
+    r"|\b[A-Za-z_]\w*(?:State|Storage|Store)\b"
+    r"|\b(?:std::)?(?:vector|deque|list|map|unordered_map)\s*<[^;{}]*\b(?:PinDefinition|ComponentDefinition|ComponentInstance|PinInstance|Net|ModuleDefinition|TemplateNetDefinition|PortDefinition|ModuleComponentTemplate|ModuleInstance|PortBinding|NetClass)\b"
+)
+CIRCUIT_PUBLIC_TYPE_DECLARATION_PATTERN = re.compile(
+    r"\b(enum\s+class|class|struct)\s+"
+    r"(?:\[\[(?:(?!\]\])[\s\S])*\]\]\s*)*([A-Za-z_]\w*)\b"
+    r"|\busing\s+(?:\[\[(?:(?!\]\])[\s\S])*\]\]\s*)*([A-Za-z_]\w*)\s*"
+    r"(?:\[\[(?:(?!\]\])[\s\S])*\]\]\s*)*="
+)
+CIRCUIT_PUBLIC_TYPE_SNAPSHOT = ALLOWLIST_DIR / "circuit_public_types.txt"
+CIRCUIT_OWNER_MUTATOR_PATTERN = re.compile(
+    r"\b(?:add|append|assign|attach|bind|clear|connect|create|define|detach|disconnect|emplace|erase|insert|instantiate|link|mark|merge|push|record|remove|replace|restore|split|unlink|update)(?:_[A-Za-z_]\w*)?\s*\("
+)
+CIRCUIT_NON_ROOT_OWNER_MUTATOR_ALLOWLIST = {
+    (
+        "include/volt/circuit/connectivity/nets.hpp",
+        "bool connect(PinId pin);",
+    ): "Net values retain local pin-list behavior; Circuit owns every canonical Net as const state.",
+    (
+        "include/volt/circuit/connectivity/nets.hpp",
+        "bool disconnect(PinId pin);",
+    ): "Net values retain local pin-list behavior; Circuit owns every canonical Net as const state.",
+}
+CIRCUIT_PUBLIC_STORAGE_ALLOWLIST = {
+    (
+        "include/volt/circuit/hierarchy/hierarchy.hpp",
+        "std::vector<TemplateNetDefinition> template_nets = {};",
+    ): "ModuleSpec is one complete definition input, not canonical storage.",
+    (
+        "include/volt/circuit/hierarchy/hierarchy.hpp",
+        "std::vector<ModuleComponentTemplate> components = {};",
+    ): "ModuleSpec is one complete definition input, not canonical storage.",
+}
+RETAINED_CIRCUIT_DOMAIN_SNAPSHOTS = {
+    "component_assembly_intent": (
+        "ComponentAssemblyIntent",
+        ROOT / "include" / "volt" / "circuit" / "intent" / "design_intent.hpp",
+    ),
+    "net_class": (
+        "NetClass",
+        ROOT / "include" / "volt" / "circuit" / "constraints" / "net_classes.hpp",
+    ),
+}
 FRIEND_TYPE_PREFIXES = ("friend " "class ", "friend " "struct ")
 
 PRIVILEGED_FRIEND_ALLOWLIST = {
@@ -73,18 +142,18 @@ PRIVILEGED_FRIEND_ALLOWLIST = {
 
 PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {}
 
+CIRCUIT_PUBLIC_DECLARATION_COUNT = 16
 CIRCUIT_PUBLIC_METHOD_DECLARATIONS = frozenset(
     """
 [[nodiscard]] ComponentDefId define_component(ComponentSpec spec)
 [[nodiscard]] ModuleDefId define_module(ModuleSpec spec)
-[[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ComponentInstanceSpec spec)
-[[nodiscard]] NetId add_net(NetSpec spec)
 [[nodiscard]] NetClassId define_net_class(NetClassSpec spec)
-[[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition, ModuleInstanceName name)
-[[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port, NetId parent_net)
-[[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ReferenceDesignator reference, PropertyMap properties = {})
+[[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ComponentInstanceSpec spec)
+[[nodiscard]] ModuleInstanceId instantiate_module(ModuleDefId definition, ModuleInstanceSpec spec)
+[[nodiscard]] NetId add_net(NetSpec spec)
 bool connect(NetId net, PinId pin)
 bool disconnect(PinId pin)
+[[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port, NetId parent_net)
 void update(ComponentId component, ComponentUpdate change)
 void update(NetId net, NetUpdate change)
 void mark_no_connect(PinId pin)
@@ -92,6 +161,13 @@ template <CircuitEntityId Id> [[nodiscard]] const entity_type_t<Id> &get(Id id) 
 template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const &
 template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const && = delete
 [[nodiscard]] std::optional<NetId> net_of(PinId pin) const
+""".strip().splitlines()
+)
+
+CIRCUIT_LEGACY_PUBLIC_DECLARATIONS = frozenset(
+    """
+[[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition, ModuleInstanceName name)
+[[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ReferenceDesignator reference, PropertyMap properties = {})
 [[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part(ComponentId component) const
 [[nodiscard]] const ElectricalAttributeMap &component_electrical_attributes(ComponentId component) const
 [[nodiscard]] const ElectricalAttributeMap &pin_definition_electrical_attributes(PinDefId pin_definition) const
@@ -110,6 +186,28 @@ template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const && = 
 [[nodiscard]] std::optional<NetClassId> net_class_for_net(NetId net) const
 [[nodiscard]] const std::vector<std::pair<NetId, NetClassId>> &net_class_assignments() const noexcept
 """.strip().splitlines()
+)
+
+CIRCUIT_STORAGE_SHAPED_READ_NAMES = frozenset(
+    {
+        "selected_physical_part",
+        "component_electrical_attributes",
+        "pin_definition_electrical_attributes",
+        "net_electrical_attributes",
+        "module_pin_connections",
+        "module_net_origins",
+        "module_component_origins",
+        "is_intentional_stub_net",
+        "is_intentional_no_connect_pin",
+        "component_dnp",
+        "is_component_selection_override",
+        "intentional_stub_nets",
+        "intentional_no_connect_pins",
+        "component_assembly_intents",
+        "net_class_by_name",
+        "net_class_for_net",
+        "net_class_assignments",
+    }
 )
 
 CIRCUIT_ENTITY_RANGE_PUBLIC_DECLARATIONS = frozenset(
@@ -156,69 +254,17 @@ PYTHON_BINDING_SOURCE_DIR = ROOT / "src" / "python"
 SUBMODEL_STORAGE_ACCESSORS = {"mutable_state", "state"}
 
 SUBMODEL_MUTATORS = {
-    "ConnectivityModel": (
-        ROOT / "include" / "volt" / "circuit" / "connectivity" / "connectivity_model.hpp",
-        {
-            "add_pin_definition",
-            "add_component_definition",
-            "add_component",
-            "add_pin",
-            "add_net",
-            "instantiate_component",
-            "connect",
-            "disconnect",
-            "set_component_property",
-        },
-    ),
     "ComponentInstance": (
         ROOT / "include" / "volt" / "circuit" / "connectivity" / "instances.hpp",
         {"set_property"},
-    ),
-    "NetClasses": (
-        ROOT / "include" / "volt" / "circuit" / "constraints" / "net_classes.hpp",
-        {"add_net_class", "assign_net_class"},
-    ),
-    "ElectricalModel": (
-        ROOT / "include" / "volt" / "circuit" / "electrical" / "electrical_model.hpp",
-        {
-            "set_component_attribute",
-            "set_pin_definition_attribute",
-            "set_net_attribute",
-            "select_physical_part",
-            "set_selected_part_attribute",
-        },
     ),
     "PhysicalPart": (
         ROOT / "include" / "volt" / "circuit" / "parts" / "parts.hpp",
         {"set_electrical_attribute"},
     ),
-    "DesignIntent": (
-        ROOT / "include" / "volt" / "circuit" / "intent" / "design_intent.hpp",
-        {
-            "mark_intentional_stub_net",
-            "mark_intentional_no_connect_pin",
-            "set_component_dnp",
-            "set_component_selection_override",
-        },
-    ),
     "ModuleDefinition": (
         ROOT / "include" / "volt" / "circuit" / "hierarchy" / "hierarchy.hpp",
         {"add_template_net", "add_port", "add_component"},
-    ),
-    "HierarchyModel": (
-        ROOT / "include" / "volt" / "circuit" / "hierarchy" / "hierarchy_model.hpp",
-        {
-            "add_module_definition",
-            "add_template_net",
-            "add_port_definition",
-            "instantiate_root_module",
-            "add_module_component",
-            "connect_module_pin",
-            "restore_root_module_instance",
-            "record_module_net_origin",
-            "record_module_component_origin",
-            "bind_port",
-        },
     ),
     "BoardPlacementModel": (
         ROOT / "include" / "volt" / "pcb" / "placement" / "board_placement_model.hpp",
@@ -299,16 +345,6 @@ SUBMODEL_MUTATORS = {
 }
 
 SUBMODEL_DERIVATION_ALLOWLIST = {
-    ("include/volt/circuit/circuit.hpp", "ConnectivityStorage", "ConnectivityModel"):
-        "Circuit-private storage adapter exposes connectivity mutation only to Circuit.",
-    ("include/volt/circuit/circuit.hpp", "HierarchyStorage", "HierarchyModel"):
-        "Circuit-private storage adapter exposes hierarchy mutation only to Circuit.",
-    ("include/volt/circuit/circuit.hpp", "ElectricalStorage", "ElectricalModel"):
-        "Circuit-private storage adapter exposes electrical mutation only to Circuit.",
-    ("include/volt/circuit/circuit.hpp", "DesignIntentStorage", "DesignIntent"):
-        "Circuit-private storage adapter exposes design-intent mutation only to Circuit.",
-    ("include/volt/circuit/circuit.hpp", "NetClassStorage", "NetClasses"):
-        "Circuit-private storage adapter exposes net-class mutation only to Circuit.",
     ("include/volt/pcb/board.hpp", "StructureStorage", "BoardStructureModel"):
         "Board-private storage adapter exposes board structure mutation only to Board.",
     ("include/volt/pcb/board.hpp", "FootprintStorage", "BoardFootprintModel"):
@@ -324,11 +360,6 @@ SUBMODEL_DERIVATION_ALLOWLIST = {
     ("include/volt/schematic/schematic.hpp", "ItemStorage", "SchematicItemsModel"):
         "Schematic-private storage adapter exposes item mutation only to Schematic.",
     (
-        "src/circuit/circuit_storage.hpp",
-        "ModuleDefinitionStorage",
-        "ModuleDefinition",
-    ): "Circuit source-private storage adapter exposes module membership mutation only after root preflight.",
-    (
         "src/schematic/schematic_storage.hpp",
         "SheetStorage",
         "Sheet",
@@ -341,8 +372,6 @@ SUBMODEL_DERIVATION_ALLOWLIST = {
 }
 
 PRIVATE_STORAGE_HEADER_ALLOWLIST = {
-    "src/circuit/circuit_storage.hpp": ("src/circuit/",),
-    "src/circuit/subsystem_storage_impl.hpp": ("src/circuit/",),
     "src/pcb/board_storage.hpp": ("src/pcb/",),
     "src/pcb/routing/board_spatial_index_storage.hpp": ("src/pcb/routing/",),
     "src/schematic/schematic_storage.hpp": ("src/schematic/",),
@@ -465,6 +494,17 @@ def code_files() -> list[Path]:
 def architecture_code_files() -> list[Path]:
     files: list[Path] = []
     for directory in ARCHITECTURE_CODE_DIRS:
+        if not directory.exists():
+            continue
+        for path in directory.rglob("*"):
+            if path.suffix in {".cpp", ".hpp", ".h"}:
+                files.append(path)
+    return sorted(files)
+
+
+def circuit_architecture_files() -> list[Path]:
+    files: list[Path] = []
+    for directory in (ROOT / "include" / "volt" / "circuit", ROOT / "src" / "circuit"):
         if not directory.exists():
             continue
         for path in directory.rglob("*"):
@@ -991,12 +1031,229 @@ def raw_structural_throw_lines(text: str) -> list[tuple[int, str]]:
     return lines
 
 
+def exact_identifier_lines(text: str, identifiers: frozenset[str]) -> list[tuple[int, str, str]]:
+    matches: list[tuple[int, str, str]] = []
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        for identifier in sorted(identifiers):
+            if re.search(rf"\b{re.escape(identifier)}\b", line):
+                matches.append((line_number, identifier, line.strip()))
+    return matches
+
+
+def circuit_facade_terminology_lines(text: str) -> list[tuple[int, str]]:
+    return [
+        (line_number, line.strip())
+        for line_number, line in enumerate(text.splitlines(), start=1)
+        if CIRCUIT_FACADE_TERMINOLOGY_PATTERN.search(line)
+    ]
+
+
+def circuit_public_shell_names(text: str) -> list[str]:
+    stripped = strip_cpp_comments_and_strings_preserve_lines(text)
+    return CIRCUIT_PUBLIC_SHELL_NAME_PATTERN.findall(stripped)
+
+
+def circuit_public_storage_lines(text: str) -> list[tuple[int, str]]:
+    stripped = strip_cpp_comments_and_strings_preserve_lines(text)
+    original_lines = text.splitlines()
+    matches: list[tuple[int, str]] = []
+    for match in CIRCUIT_PUBLIC_STORAGE_PATTERN.finditer(stripped):
+        line_number = stripped.count("\n", 0, match.start()) + 1
+        matches.append((line_number, original_lines[line_number - 1].strip()))
+    return matches
+
+
+def circuit_owner_mutator_lines(text: str) -> list[tuple[int, str]]:
+    stripped = strip_cpp_comments_and_strings_preserve_lines(text)
+    original_lines = text.splitlines()
+    matches: list[tuple[int, str]] = []
+    for match in CIRCUIT_OWNER_MUTATOR_PATTERN.finditer(stripped):
+        line_number = stripped.count("\n", 0, match.start()) + 1
+        matches.append((line_number, original_lines[line_number - 1].strip()))
+    return matches
+
+
+def is_public_circuit_header(path: Path) -> bool:
+    public_circuit_root = ROOT / "include" / "volt" / "circuit"
+    return path.suffix in {".h", ".hpp"} and path.is_relative_to(public_circuit_root)
+
+
+def public_circuit_headers() -> list[Path]:
+    public_circuit_root = ROOT / "include" / "volt" / "circuit"
+    return sorted(path for path in public_circuit_root.rglob("*") if is_public_circuit_header(path))
+
+
+def circuit_public_type_declarations(path: Path, text: str) -> list[str]:
+    stripped = strip_cpp_comments_and_strings_preserve_lines(text)
+    declarations: list[str] = []
+    for match in CIRCUIT_PUBLIC_TYPE_DECLARATION_PATTERN.finditer(stripped):
+        if match.group(3) is not None:
+            kind = "using"
+            name = match.group(3)
+        else:
+            kind = re.sub(r"\s+", " ", match.group(1))
+            name = match.group(2)
+        declarations.append(f"{relative(path)}|{kind}|{name}")
+    return declarations
+
+
+def circuit_public_type_inventory_failures(
+    actual: list[str], expected: list[str]
+) -> list[str]:
+    failures: list[str] = []
+    actual_counts = Counter(actual)
+    expected_counts = Counter(expected)
+    for declaration in sorted((actual_counts - expected_counts).elements()):
+        failures.append(
+            "unapproved public Circuit-header type declaration; canonical logical ownership "
+            f"must remain with Circuit: {declaration}"
+        )
+    for declaration in sorted((expected_counts - actual_counts).elements()):
+        failures.append(f"approved public Circuit-header type declaration is missing: {declaration}")
+    return failures
+
+
+def exact_allowlist_occurrence_failures(
+    found: Counter[tuple[str, str]], allowlist: dict[tuple[str, str], str], label: str
+) -> list[str]:
+    failures: list[str] = []
+    for key, reason in sorted(allowlist.items()):
+        if not reason.strip():
+            failures.append(f"{label} allowlist entry {key!r} needs a reason")
+        count = found[key]
+        if count != 1:
+            failures.append(
+                f"{label} allowlist entry {key!r} matched {count} times; expected exactly once"
+            )
+    return failures
+
+
+def is_forbidden_public_circuit_header(path: str | Path) -> bool:
+    normalized = Path(path).as_posix()
+    return normalized in FORBIDDEN_PUBLIC_CIRCUIT_HEADERS
+
+
 def check_rejected_tokens(failures: list[str]) -> None:
     for path in code_files():
         text = read(path)
         for token in REJECTED_TOKENS:
             if token in text:
                 fail(f"{relative(path)} contains rejected architecture token {token}", failures)
+
+
+def check_no_removed_circuit_architecture(failures: list[str]) -> None:
+    for path in code_files():
+        first_match_by_symbol: dict[str, tuple[int, str]] = {}
+        for line_number, symbol, line in exact_identifier_lines(read(path), REMOVED_CIRCUIT_SUBSYSTEM_SYMBOLS):
+            first_match_by_symbol.setdefault(symbol, (line_number, line))
+        for symbol, (line_number, line) in sorted(first_match_by_symbol.items()):
+            fail(
+                f"{relative(path)}:{line_number} references removed public Circuit subsystem "
+                f"symbol {symbol}: {line}",
+                failures,
+            )
+
+    for header in sorted(FORBIDDEN_PUBLIC_CIRCUIT_HEADERS):
+        if (ROOT / header).exists():
+            fail(
+                f"{header} is forbidden public Circuit storage plumbing; storage must remain "
+                "inside the Circuit implementation boundary",
+                failures,
+            )
+
+    found_storage_allowlisted: Counter[tuple[str, str]] = Counter()
+    for path in public_circuit_headers():
+        names = circuit_public_shell_names(read(path))
+        if names:
+            fail(
+                f"{relative(path)} declares replacement public Circuit shell {names[0]}; "
+                "canonical storage belongs only to Circuit",
+                failures,
+            )
+        if path == ROOT_TYPES["Circuit"]:
+            continue
+        for line_number, line in circuit_public_storage_lines(read(path)):
+            key = (relative(path), line)
+            if key in CIRCUIT_PUBLIC_STORAGE_ALLOWLIST:
+                found_storage_allowlisted[key] += 1
+                continue
+            fail(
+                f"{relative(path)}:{line_number} exposes public Circuit storage plumbing: "
+                f"{line}",
+                failures,
+            )
+
+    failures.extend(
+        exact_allowlist_occurrence_failures(
+            found_storage_allowlisted,
+            CIRCUIT_PUBLIC_STORAGE_ALLOWLIST,
+            "public Circuit storage",
+        )
+    )
+
+    for path in circuit_architecture_files():
+        matches = circuit_facade_terminology_lines(read(path))
+        if matches:
+            line_number, line = matches[0]
+            fail(
+                f"{relative(path)}:{line_number} retains obsolete Circuit facade terminology: "
+                f"{line}",
+                failures,
+            )
+
+
+def check_circuit_public_type_inventory(failures: list[str]) -> None:
+    if not CIRCUIT_PUBLIC_TYPE_SNAPSHOT.exists():
+        fail(f"{relative(CIRCUIT_PUBLIC_TYPE_SNAPSHOT)} is missing", failures)
+        return
+
+    actual = [
+        declaration
+        for path in public_circuit_headers()
+        for declaration in circuit_public_type_declarations(path, read(path))
+    ]
+    expected = [
+        line.rstrip()
+        for line in read(CIRCUIT_PUBLIC_TYPE_SNAPSHOT).splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
+    failures.extend(circuit_public_type_inventory_failures(actual, expected))
+
+    for path in public_circuit_headers():
+        stripped = strip_cpp_comments_and_strings_preserve_lines(read(path))
+        match = re.search(r"\btypedef\b", stripped)
+        if match is not None:
+            line_number = stripped.count("\n", 0, match.start()) + 1
+            fail(
+                f"{relative(path)}:{line_number} uses an unapproved typedef in the public "
+                "Circuit header boundary",
+                failures,
+            )
+
+
+def check_no_non_root_circuit_owners(failures: list[str]) -> None:
+    found_allowlisted: Counter[tuple[str, str]] = Counter()
+    for path in public_circuit_headers():
+        if path == ROOT_TYPES["Circuit"]:
+            continue
+        for line_number, line in circuit_owner_mutator_lines(read(path)):
+            key = (relative(path), line)
+            if key in CIRCUIT_NON_ROOT_OWNER_MUTATOR_ALLOWLIST:
+                found_allowlisted[key] += 1
+                continue
+            fail(
+                f"{relative(path)}:{line_number} exposes an unapproved root-like mutator "
+                f"outside Circuit: {line}",
+                failures,
+            )
+
+    failures.extend(
+        exact_allowlist_occurrence_failures(
+            found_allowlisted,
+            CIRCUIT_NON_ROOT_OWNER_MUTATOR_ALLOWLIST,
+            "non-root Circuit mutator",
+        )
+    )
 
 
 def check_no_kernel_mutation_access(failures: list[str]) -> None:
@@ -1062,6 +1319,7 @@ def check_public_api_snapshots(failures: list[str]) -> None:
         class_name.lower(): (class_name, header_path)
         for class_name, header_path in ROOT_TYPES.items()
     }
+    snapshots.update(RETAINED_CIRCUIT_DOMAIN_SNAPSHOTS)
     for snapshot_name, (class_name, header_path) in snapshots.items():
         allowlist = ALLOWLIST_DIR / f"{snapshot_name}_public_api.txt"
         if not allowlist.exists():
@@ -1133,17 +1391,101 @@ def check_no_raw_structural_throws(failures: list[str]) -> None:
             )
 
 
+def circuit_contract_configuration_failures(
+    approved: frozenset[str] = CIRCUIT_PUBLIC_METHOD_DECLARATIONS,
+    legacy: frozenset[str] = CIRCUIT_LEGACY_PUBLIC_DECLARATIONS,
+    expected_count: int = CIRCUIT_PUBLIC_DECLARATION_COUNT,
+) -> list[str]:
+    failures: list[str] = []
+    if len(approved) != expected_count:
+        failures.append(
+            f"Circuit approved declaration set has {len(approved)} entries; expected "
+            f"{expected_count}"
+        )
+
+    overlap = sorted(approved & legacy)
+    for declaration in overlap:
+        failures.append(
+            "Circuit declaration is both approved and legacy, so the retired surface could "
+            f"regrow: {declaration}"
+        )
+
+    for declaration in sorted(approved):
+        name = declaration_function_name(declaration)
+        if name in CIRCUIT_STORAGE_SHAPED_READ_NAMES:
+            failures.append(
+                "Circuit approved declaration set contains storage-shaped derived read "
+                f"{name}: {declaration}"
+            )
+    return failures
+
+
 def circuit_public_method_admission_failures(header_text: str) -> list[str]:
     failures: list[str] = []
-    for declaration in public_surface_declarations_from_header(
-        "Circuit", header_text, {"public", "protected"}
-    ):
+
+    stripped_header = strip_cpp_comments_and_strings_preserve_lines(header_text)
+    class_match = re.search(r"\bclass\s+Circuit\b([^;{]*)\{", stripped_header)
+    if class_match is None:
+        failures.append("Circuit must be declared exactly as `class Circuit final`")
+        return failures
+
+    class_suffix = re.sub(r"\s+", " ", class_match.group(1)).strip()
+    if class_suffix != "final":
+        failures.append(
+            "Circuit must be declared exactly as `class Circuit final` with no base classes"
+        )
+
+    public_declarations = public_surface_declarations_from_header(
+        "Circuit", header_text, {"public"}
+    )
+    protected_declarations = public_surface_declarations_from_header(
+        "Circuit", header_text, {"protected"}
+    )
+
+    declaration_counts = Counter(public_declarations)
+    for declaration in sorted(CIRCUIT_PUBLIC_METHOD_DECLARATIONS):
+        count = declaration_counts[declaration]
+        if count == 0:
+            failures.append(
+                "Circuit public contract is missing approved declaration: " f"{declaration}"
+            )
+        elif count > 1:
+            failures.append(
+                "Circuit public contract duplicates approved declaration: " f"{declaration}"
+            )
+
+    if len(public_declarations) != CIRCUIT_PUBLIC_DECLARATION_COUNT:
+        failures.append(
+            f"Circuit public contract has {len(public_declarations)} declarations; expected "
+            f"exactly {CIRCUIT_PUBLIC_DECLARATION_COUNT}"
+        )
+
+    for declaration in public_declarations:
+        name = declaration_function_name(declaration)
+        if name in CIRCUIT_STORAGE_SHAPED_READ_NAMES:
+            failures.append(
+                "Circuit public storage-shaped derived read belongs in a typed free "
+                f"query: {declaration}"
+            )
+            continue
+        if declaration in CIRCUIT_LEGACY_PUBLIC_DECLARATIONS:
+            failures.append(
+                "Circuit public declaration is a retired pre-1.0 construction or read "
+                f"surface: {declaration}"
+            )
+            continue
         if declaration not in CIRCUIT_PUBLIC_METHOD_DECLARATIONS:
             failures.append(
-                "Circuit public/protected declaration is outside the approved typed aggregate "
+                "Circuit public declaration is outside the approved typed aggregate "
                 "contract: "
                 f"{declaration}"
             )
+
+    for declaration in protected_declarations:
+        failures.append(
+            "Circuit protected declaration is outside the public typed aggregate contract: "
+            f"{declaration}"
+        )
     return failures
 
 
@@ -1502,19 +1844,154 @@ def run_self_tests() -> int:
         == SUBMODEL_STORAGE_ACCESSORS,
         "public/protected submodel storage accessors must be observable",
     )
+    removed_shell_sample = textwrap.dedent(
+        """
+        class ConnectivityModel {};
+        class HierarchyModel {};
+        class ElectricalModel {};
+        class DesignIntent {};
+        class NetClasses {};
+        template <typename View, typename State> class SubsystemStorage {};
+        """
+    )
+    removed_shell_matches = exact_identifier_lines(
+        removed_shell_sample, REMOVED_CIRCUIT_SUBSYSTEM_SYMBOLS
+    )
+    require_self_test(
+        {symbol for _, symbol, _ in removed_shell_matches}
+        == REMOVED_CIRCUIT_SUBSYSTEM_SYMBOLS,
+        "every retired public Circuit subsystem/storage shell must be reported",
+    )
+    allowed_domain_type_sample = textwrap.dedent(
+        """
+        class NetClass {};
+        class ComponentAssemblyIntent {};
+        """
+    )
+    require_self_test(
+        not exact_identifier_lines(
+            allowed_domain_type_sample, REMOVED_CIRCUIT_SUBSYSTEM_SYMBOLS
+        ),
+        "public domain value/entity types must not be mistaken for retired subsystem shells",
+    )
+    facade_terminology_sample = textwrap.dedent(
+        """
+        class Facade {};
+        // read-only facade
+        // borrowed facades
+        """
+    )
+    require_self_test(
+        len(circuit_facade_terminology_lines(facade_terminology_sample)) == 3,
+        "Circuit facade terminology must be observable in identifiers and comments",
+    )
+    require_self_test(
+        not circuit_facade_terminology_lines("void facade_connector();"),
+        "unrelated identifiers containing the letters facade must not be reported",
+    )
+    replacement_shell_sample = textwrap.dedent(
+        """
+        class LogicalModel {};
+        struct NetStorage {};
+        class CircuitRepository {};
+        class [[nodiscard]] AttributedStorage {};
+        class PartModel3D {};
+        """
+    )
+    require_self_test(
+        circuit_public_shell_names(replacement_shell_sample)
+        == ["LogicalModel", "NetStorage", "CircuitRepository", "AttributedStorage"],
+        "renamed public model, storage, and repository shells must be reported",
+    )
+    public_storage_samples = [
+        "EntityTable\n<Net, NetId> nets;",
+        "std::shared_ptr<\ndetail::LogicalState> state;",
+        "std::unique_ptr<\ndetail::LogicalImpl> implementation;",
+        "std::vector<Net> nets;",
+        "detail::LogicalState state;",
+    ]
+    require_self_test(
+        all(circuit_public_storage_lines(sample) for sample in public_storage_samples),
+        "canonical tables, state, entity collections, and pointer-owned implementations must "
+        "each be reported",
+    )
+    public_type_sample_path = ROOT / "include" / "volt" / "circuit" / "sample.h"
+    approved_public_type_sample = "class Net {};"
+    replacement_public_type_sample = textwrap.dedent(
+        """
+        class Net {};
+        class [[nodiscard]] LogicalGraph {
+            std::vector<Net> nets;
+            detail::LogicalState state;
+        };
+        using LogicalStorage [[deprecated]] = std::vector<Net>;
+        """
+    )
+    approved_public_types = circuit_public_type_declarations(
+        public_type_sample_path, approved_public_type_sample
+    )
+    replacement_public_types = circuit_public_type_declarations(
+        public_type_sample_path, replacement_public_type_sample
+    )
+    public_type_failures = circuit_public_type_inventory_failures(
+        replacement_public_types, approved_public_types
+    )
+    require_self_test(
+        len(public_type_failures) == 2
+        and any("LogicalGraph" in failure for failure in public_type_failures)
+        and any("LogicalStorage" in failure for failure in public_type_failures),
+        "renamed public owners and storage aliases must fail the exact type inventory",
+    )
+    require_self_test(
+        circuit_owner_mutator_lines("NetId append_net(Net net);")
+        and circuit_owner_mutator_lines(
+            "void record_module_net_origin(TemplateNetDefId origin, NetId concrete);"
+        )
+        and not circuit_owner_mutator_lines("ComponentId component() const;"),
+        "root-like and retired restoration mutators on public domain types must be reported",
+    )
+    duplicate_allowlist_key = ("include/volt/circuit/sample.hpp", "bool connect(PinId pin);")
+    duplicate_allowlist_failures = exact_allowlist_occurrence_failures(
+        Counter({duplicate_allowlist_key: 2}),
+        {duplicate_allowlist_key: "One documented local-value mutation."},
+        "sample",
+    )
+    require_self_test(
+        len(duplicate_allowlist_failures) == 1
+        and "matched 2 times" in duplicate_allowlist_failures[0]
+        and not exact_allowlist_occurrence_failures(
+            Counter({duplicate_allowlist_key: 1}),
+            {duplicate_allowlist_key: "One documented local-value mutation."},
+            "sample",
+        ),
+        "allowlisted storage and mutator declarations must match exactly once",
+    )
+    require_self_test(
+        is_public_circuit_header(public_type_sample_path)
+        and is_public_circuit_header(public_type_sample_path.with_suffix(".hpp"))
+        and not is_public_circuit_header(public_type_sample_path.with_suffix(".cpp")),
+        "public Circuit type and storage enforcement must cover both .h and .hpp headers",
+    )
+    require_self_test(
+        all(is_forbidden_public_circuit_header(path) for path in FORBIDDEN_PUBLIC_CIRCUIT_HEADERS)
+        and not is_forbidden_public_circuit_header(
+            "include/volt/circuit/constraints/net_classes.hpp"
+        ),
+        "all removed public Circuit model/storage headers must stay forbidden",
+    )
     submodel_derivation_sample = textwrap.dedent(
         """
-        struct TestConnectivityModel : volt::ConnectivityModel {
+        struct TestBoardPlacementModel : volt::BoardPlacementModel {
           public:
-            using ConnectivityModel::add_net;
+            using BoardPlacementModel::place_component;
         };
         """
     )
     sample_derivations = submodel_derivations(Path("tests/sample.cpp"), submodel_derivation_sample)
     require_self_test(
         any(
-            derivation.derived == "TestConnectivityModel"
-            and derivation.base == "ConnectivityModel"
+            derivation.derived == "TestBoardPlacementModel"
+            and derivation.base == "BoardPlacementModel"
             for derivation in sample_derivations
         ),
         "subclasses of mutating submodels must be reported as derivation escape hatches",
@@ -1621,7 +2098,7 @@ def run_self_tests() -> int:
 
     circuit_admission_sample = textwrap.dedent(
         """
-        class Circuit {
+        class Circuit final {
           public:
             template <CircuitEntityId Id> [[nodiscard]] const entity_type_t<Id> &get(Id id) const;
             ComponentId add_component(ComponentInstance component);
@@ -1640,21 +2117,114 @@ def run_self_tests() -> int:
     )
     admission_failures = circuit_public_method_admission_failures(circuit_admission_sample)
     require_self_test(
-        len(admission_failures) == 8
-        and any("add_component" in failure for failure in admission_failures)
+        any("add_component" in failure for failure in admission_failures)
         and any("const Net &get" in failure for failure in admission_failures)
         and any("NetId add_net(Net net)" in failure for failure in admission_failures)
         and any("void update(EntityRef" in failure for failure in admission_failures)
         and any("ConnectivityModel connectivity" in failure for failure in admission_failures)
         and any("using RawMutationHandle" in failure for failure in admission_failures)
         and any("struct Mutator" in failure for failure in admission_failures)
-        and any("ConnectivityModel &connectivity" in failure for failure in admission_failures),
+        and any("ConnectivityModel &connectivity" in failure for failure in admission_failures)
+        and any("missing approved declaration" in failure for failure in admission_failures)
+        and any("expected exactly 16" in failure for failure in admission_failures),
         "new names, same-name overloads, exposed fields, aliases, nested mutation handles, and "
         "protected access outside the typed contract must fail admission",
     )
+    approved_circuit_sample = "class Circuit final { public:\n" + ";\n".join(
+        sorted(CIRCUIT_PUBLIC_METHOD_DECLARATIONS)
+    ) + ";\n};"
     require_self_test(
-        not circuit_public_method_admission_failures(read(ROOT_TYPES["Circuit"])),
-        "the approved Circuit declaration set must admit the repository header",
+        not circuit_public_method_admission_failures(approved_circuit_sample),
+        "the final 16-declaration Circuit contract must admit its exact approved surface",
+    )
+
+    missing_final_failures = circuit_public_method_admission_failures(
+        approved_circuit_sample.replace("class Circuit final", "class Circuit", 1)
+    )
+    require_self_test(
+        any("class Circuit final" in failure for failure in missing_final_failures),
+        "Circuit admission must reject a root that is no longer final",
+    )
+    inherited_circuit_failures = circuit_public_method_admission_failures(
+        approved_circuit_sample.replace(
+            "class Circuit final", "class Circuit final : public CircuitBase", 1
+        )
+    )
+    require_self_test(
+        any("no base classes" in failure for failure in inherited_circuit_failures),
+        "Circuit admission must reject facade or storage inheritance on the root",
+    )
+
+    missing_declaration = "[[nodiscard]] std::optional<NetId> net_of(PinId pin) const"
+    missing_declaration_sample = "class Circuit final { public:\n" + ";\n".join(
+        sorted(CIRCUIT_PUBLIC_METHOD_DECLARATIONS - {missing_declaration})
+    ) + ";\n};"
+    missing_declaration_failures = circuit_public_method_admission_failures(
+        missing_declaration_sample
+    )
+    require_self_test(
+        any(
+            "missing approved declaration" in failure and missing_declaration in failure
+            for failure in missing_declaration_failures
+        ),
+        "Circuit admission must reject an incomplete approved declaration set",
+    )
+
+    duplicated_declaration = "bool connect(NetId net, PinId pin)"
+    duplicated_declaration_sample = "class Circuit final { public:\n" + ";\n".join(
+        [*sorted(CIRCUIT_PUBLIC_METHOD_DECLARATIONS), duplicated_declaration]
+    ) + ";\n};"
+    duplicated_declaration_failures = circuit_public_method_admission_failures(
+        duplicated_declaration_sample
+    )
+    require_self_test(
+        any(
+            "duplicates approved declaration" in failure and duplicated_declaration in failure
+            for failure in duplicated_declaration_failures
+        ),
+        "Circuit admission must reject duplicated approved declarations",
+    )
+
+    retired_circuit_surface_sample = "class Circuit final { public:\n" + ";\n".join(
+        [
+            "[[nodiscard]] ModuleInstanceId instantiate_module(ModuleDefId definition, "
+            "ModuleInstanceSpec spec)",
+            *sorted(CIRCUIT_LEGACY_PUBLIC_DECLARATIONS),
+        ]
+    ) + ";\n};"
+    retired_surface_failures = circuit_public_method_admission_failures(
+        retired_circuit_surface_sample
+    )
+    retired_declaration_failures = [
+        failure
+        for failure in retired_surface_failures
+        if "retired pre-1.0" in failure or "storage-shaped derived read" in failure
+    ]
+    require_self_test(
+        len(retired_declaration_failures) == len(CIRCUIT_LEGACY_PUBLIC_DECLARATIONS)
+        and all(
+            any(name in failure for failure in retired_declaration_failures)
+            for name in CIRCUIT_STORAGE_SHAPED_READ_NAMES
+        )
+        and any("instantiate_root_module" in failure for failure in retired_declaration_failures)
+        and any(
+            "ReferenceDesignator reference" in failure
+            for failure in retired_declaration_failures
+        ),
+        "old construction overloads and every storage-shaped root read must fail admission",
+    )
+    require_self_test(
+        not circuit_contract_configuration_failures(),
+        "the final approved Circuit declarations must match the 16-entry budget and stay "
+        "disjoint from the retired surface",
+    )
+    legacy_overlap_sample = next(iter(CIRCUIT_LEGACY_PUBLIC_DECLARATIONS))
+    overlap_failures = circuit_contract_configuration_failures(
+        frozenset({legacy_overlap_sample}), frozenset({legacy_overlap_sample}), 1
+    )
+    require_self_test(
+        any("both approved and legacy" in failure for failure in overlap_failures),
+        "checker configuration must reject declarations admitted into both final and legacy sets",
     )
 
     range_escape_sample = read(ROOT_TYPES["Circuit"]).replace(
@@ -1738,11 +2308,15 @@ def run_self_tests() -> int:
 def run_checks() -> int:
     failures: list[str] = []
     check_rejected_tokens(failures)
+    check_no_removed_circuit_architecture(failures)
     check_no_kernel_mutation_access(failures)
     check_no_broad_type_friends(failures)
     check_no_flat_pcb_public_headers(failures)
     check_privileged_friends_are_allowlisted(failures)
     check_public_api_snapshots(failures)
+    check_circuit_public_type_inventory(failures)
+    check_no_non_root_circuit_owners(failures)
+    failures.extend(circuit_contract_configuration_failures())
     check_circuit_public_method_admission(failures)
     check_circuit_range_construction(failures)
     check_python_connectivity_semantics(failures)

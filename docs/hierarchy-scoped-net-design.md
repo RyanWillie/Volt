@@ -169,8 +169,10 @@ const auto vinPort = ports[0];
 const auto voutPort = ports[1];
 const auto gndPort = ports[2];
 
-auto buckA = circuit.instantiate_root_module(buck, ModuleInstanceName{"BUCK_A"});
-auto buckB = circuit.instantiate_root_module(buck, ModuleInstanceName{"BUCK_B"});
+auto buckA = circuit.instantiate_module(
+    buck, ModuleInstanceSpec{.name = ModuleInstanceName{"BUCK_A"}});
+auto buckB = circuit.instantiate_module(
+    buck, ModuleInstanceSpec{.name = ModuleInstanceName{"BUCK_B"}});
 
 circuit.bind_port(buckA, vinPort, vinNet);
 circuit.bind_port(buckA, gndPort, gndNet);

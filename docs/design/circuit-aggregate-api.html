@@ -129,7 +129,7 @@
   </section>
 
   <div class="metric-grid" aria-label="Decision summary">
-    <div class="metric"><strong>≈15</strong><span>intended root declarations, defended as a budget</span></div>
+    <div class="metric"><strong>16</strong><span>root declarations: 15 operations plus one deleted temporary-range overload</span></div>
     <div class="metric"><strong>1</strong><span>canonical logical authority and invariant boundary</span></div>
     <div class="metric"><strong>0</strong><span>public storage facades, raw restore hooks, or generic entity mutation handles</span></div>
   </div>
@@ -168,9 +168,10 @@
     <li><strong>Python owns</strong> ergonomic syntax and handles, but lowers every meaningful operation into the kernel.</li>
     <li><strong>Validation and analysis own</strong> read-only computation and diagnostics, not model state.</li>
   </ul>
+  <p><code>Circuit</code> stores canonical tables and indexes directly in private connectivity, hierarchy, and net-class state. Electrical meaning, selected parts, intent, net-class assignments, and module provenance live on their owning entities; there is no replacement subsystem owner or storage-adapter family.</p>
 
   <h2>Target public API</h2>
-  <p>This is the architectural shape. Strong type names may be refined during implementation, but categories may not expand casually.</p>
+  <p>This is the accepted sixteen-declaration contract. It exposes fifteen operations; the deleted rvalue overload is the explicit safety declaration that prevents a borrowed range from a temporary.</p>
   <pre><code>class Circuit final {
   public:
     // Complete reusable definitions.
@@ -198,7 +199,10 @@
     const entity_type_t&lt;Id&gt;&amp; get(Id) const;
 
     template &lt;typename Id&gt; requires CircuitEntityId&lt;Id&gt;
-    entity_range_t&lt;Id&gt; all() const;
+    entity_range_t&lt;Id&gt; all() const &amp;;
+
+    template &lt;typename Id&gt; requires CircuitEntityId&lt;Id&gt;
+    entity_range_t&lt;Id&gt; all() const &amp;&amp; = delete;
 
     std::optional&lt;NetId&gt; net_of(PinId) const;
 };</code></pre>
@@ -248,7 +252,7 @@ using NetUpdate = std::variant&lt;
       <p>One deterministic range primitive with range-for and <code>size()</code>, replacing per-table getter/count pairs.</p>
     </div>
   </div>
-  <p>Name/reference lookup, pin lookup, hierarchy traversal, origins, net-class resolution, adjacency, and other derived reads stay in <code>volt::queries</code>. They consume <code>const Circuit&amp;</code>, return <code>optional</code> when absence is normal, and do not expose <code>ConnectivityModel</code> or <code>HierarchyModel</code>.</p>
+  <p>Name/reference lookup, pin lookup, hierarchy traversal, origins, typed electrical and intent inspection, selected-part inspection, net-class resolution, adjacency, and other derived reads stay in <code>volt::queries</code>. They consume <code>const Circuit&amp;</code>, compose <code>get</code> and <code>all</code>, and return <code>optional</code> when absence is normal.</p>
 
   <h2>Error and idempotency contract</h2>
   <table>
@@ -336,7 +340,7 @@ design.write("led.volt.json")</code></pre>
     <div class="phase"><div class="number">3</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/263">#263 — Generic reads and free queries</a></strong><p>Add <code>get</code>, <code>all</code>, and fundamental relationships; remove the need for public subsystem query models.</p></div></div>
     <div class="phase"><div class="number">4</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/264">#264 — Migrate C++ adapters and tests</a></strong><p>Move setup helpers and suites incrementally so facade deletion is not a thousand-call-site big bang.</p></div></div>
     <div class="phase"><div class="number">5</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/265">#265 — Migrate Python bindings</a></strong><p>Preserve the user-facing API and lower through the new kernel contract after urgent ownership/atomicity issue <a href="https://github.com/RyanWillie/Volt/issues/238">#238</a>.</p></div></div>
-    <div class="phase"><div class="number">6</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/266">#266 — Delete facades and enforce the boundary</a></strong><p>Removes the five mutators, passkey, raw public restoration, duplicate reads/counts, query-model leaks, snapshots, and migration-only guidance.</p></div></div>
+    <div class="phase"><div class="number">6</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/266">#266 — Finalize and enforce the boundary</a></strong><p>Removes the subsystem shells and shared facade-storage plumbing, retires superseded construction and specialized root reads, and locks the final sixteen-declaration contract.</p></div></div>
     <div class="phase"><div class="number">7</div><div class="phase-body"><strong><a href="https://github.com/RyanWillie/Volt/issues/267">#267 — Prove parity and complete</a></strong><p>Verify every semantic field, diagnostic, persistence contract, Python workflow, sanitizer, docs build, platform, and CI gate.</p></div></div>
   </div>
 
