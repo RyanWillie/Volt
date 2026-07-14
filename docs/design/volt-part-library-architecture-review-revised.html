@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light">
-  <meta name="description" content="Revised focused architecture review for a C++-owned Volt part library built around ComponentDefinition, nested PinDefinitions, exact PartDefinition, and ComponentInstance selection.">
+  <meta name="description" content="Revised focused architecture review for a C++-owned Volt part library with exact part selection, canonical Voltage and Current constraints, and extensible typed feature composition.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='7' y='7' width='18' height='18' rx='3' fill='%231c3b34'/%3E%3Cpath d='M2 10h5M2 16h5M2 22h5M25 10h5M25 16h5M25 22h5M10 2v5M16 2v5M22 2v5M10 25v5M16 25v5M22 25v5' stroke='%23e58a24' stroke-width='2'/%3E%3C/svg%3E">
   <title>Volt part libraries - one contract, one part, one path</title>
   <style>
@@ -105,7 +105,7 @@
     .hero {
       position: relative;
       isolation: isolate;
-      min-height: 94svh;
+      min-height: auto;
       padding: max(1.4rem, env(safe-area-inset-top)) max(1.1rem, env(safe-area-inset-right)) max(2rem, env(safe-area-inset-bottom)) max(1.1rem, env(safe-area-inset-left));
       overflow: hidden;
       display: grid;
@@ -284,6 +284,15 @@
       font-size: 0.7rem;
       line-height: 1.5;
     }
+    .mobile-toc {
+      width: min(var(--content), calc(100% - 2rem));
+      margin: 1rem auto 0;
+      padding: 0 1rem;
+      background: var(--paper-deep);
+    }
+    .mobile-toc summary { color: var(--forest); }
+    .mobile-toc nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.35rem 1rem; padding-bottom: 1rem; }
+    .mobile-toc a { display: flex; align-items: center; min-height: 2.75rem; color: var(--ink-soft); font-size: 0.76rem; text-decoration: none; }
     article { min-width: 0; }
     section {
       scroll-margin-top: 1.5rem;
@@ -447,7 +456,7 @@
     .plane-node strong { display: block; font-size: 0.83rem; }
     .plane-node span { display: block; margin-top: 0.16rem; color: var(--ink-soft); font-size: 0.67rem; }
     .plane-node.accent { border-color: var(--orange); background: var(--orange-soft); }
-    .flow-arrow { padding: 0.7rem 0; color: var(--orange); font-family: var(--mono); font-size: 1.4rem; text-align: center; }
+    .flow-arrow { padding: 0.7rem 0; color: var(--orange); font-family: var(--mono); font-size: 1.4rem; text-align: center; transform: rotate(90deg); }
     .closure-flow {
       margin: 1.4rem 0;
       display: grid;
@@ -526,7 +535,7 @@
     .artifact-node.primary { border-color: var(--forest); }
     .artifact-node.asset { border-color: var(--orange); }
     .artifact-node.snapshot { border-color: var(--moss); }
-    .artifact-map .artifact-arrow { color: var(--orange); font-family: var(--mono); font-size: 1.4rem; text-align: center; }
+    .artifact-map .artifact-arrow { color: var(--orange); font-family: var(--mono); font-size: 1.4rem; text-align: center; transform: rotate(90deg); }
 
     .gate-list { margin: 2rem 0; counter-reset: gate; }
     .gate {
@@ -590,6 +599,7 @@
     footer a { color: oklch(84% 0.125 74); }
 
     @media (min-width: 44rem) {
+      .hero { min-height: 94svh; }
       .hero-grid { grid-template-columns: minmax(0, 1.25fr) minmax(18rem, 0.75fr); }
       .hero-bottom { display: flex; align-items: end; gap: 1.5rem; }
       .hero-bottom dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); flex: 1; }
@@ -614,6 +624,7 @@
       .api-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .api-block.wide { grid-column: 1 / -1; }
       .artifact-map { grid-template-columns: 1fr auto 1.2fr auto 1fr; align-items: center; }
+      .flow-arrow, .artifact-map .artifact-arrow { transform: none; }
       .slice { grid-template-columns: 3.2rem minmax(10rem, 0.55fr) minmax(0, 1.3fr); }
       .slice .stop { grid-column: 3; }
     }
@@ -626,6 +637,7 @@
       }
       .page { grid-template-columns: 12.5rem minmax(0, 1fr); }
       .rail { position: sticky; top: 1.75rem; display: block; max-height: calc(100vh - 3.5rem); padding: 3.5rem 0; overflow: auto; }
+      .mobile-toc { display: none; }
     }
 
     @media (pointer: coarse) {
@@ -664,7 +676,7 @@
       <div>
         <div class="eyebrow">Part libraries · revised model · companion to #269</div>
         <h1>One contract. One part. One path.</h1>
-        <p class="hero-deck">Model a component once: its <strong>definition contains accurate pin definitions</strong>; an exact part implements that contract; each design occurrence selects the immutable part it uses.</p>
+        <p class="hero-deck">Model a component once: its <strong>definition contains accurate pins and typed feature bindings</strong>; an exact part implements that contract with canonical electrical constraints; each occurrence selects the immutable part it uses.</p>
       </div>
       <div class="chip-figure" aria-hidden="true">
         <div class="chip">
@@ -678,11 +690,30 @@
     <div class="hero-bottom">
       <dl>
         <div><dt>Review snapshot</dt><dd>origin/main @ 2d0e7e03</dd></div>
-        <div><dt>Recommendation</dt><dd>Three concepts + one native consumption path</dd></div>
+        <div><dt>Recommendation</dt><dd>Three concepts + canonical V/I semantics + one native path</dd></div>
         <div><dt>Scope</dt><dd>Architecture only · no ADR or product change</dd></div>
       </dl>
     </div>
   </header>
+
+  <details class="mobile-toc">
+    <summary>Jump to a section</summary>
+    <nav aria-label="Mobile review navigation">
+      <a href="#decision">Decision</a>
+      <a href="#evidence">Current evidence</a>
+      <a href="#vocabulary">Three-concept model</a>
+      <a href="#planes">Three planes</a>
+      <a href="#electrical">Electrical ownership</a>
+      <a href="#simulation">Simulation boundary</a>
+      <a href="#apis">Target APIs</a>
+      <a href="#workflow">Library workflow</a>
+      <a href="#artifacts">Artifact closure</a>
+      <a href="#verification">Verification</a>
+      <a href="#migration">Implementation order</a>
+      <a href="#boundaries">Proposed / open</a>
+      <a href="#sources">Evidence notes</a>
+    </nav>
+  </details>
 
   <div class="page">
     <aside class="rail" aria-label="Review navigation">
@@ -710,11 +741,11 @@
         <section id="decision">
           <span class="section-kicker">01 · Target decision</span>
           <h2>One declaration per exact part. One native path.</h2>
-          <p class="section-lead">Adopt a first-class, C++-owned part-library system with a deliberately small semantic model. Python remains the pleasant declaration surface; native definitions, validation and compiled artifacts remain the portable meaning.</p>
+          <p class="section-lead">Adopt a first-class, C++-owned part-library system with a deliberately small primary vocabulary and a typed semantic substrate that can grow. Python remains the pleasant declaration surface; native definitions, validation and compiled artifacts remain the portable meaning.</p>
 
           <div class="rule-note">
             <strong>Gold target: author a shared contract once, publish each exact part once, select it by digest.</strong>
-            <p><code>ComponentDefinition</code> owns the reusable logical contract and contains its <code>PinDefinition</code>s. <code>PartDefinition</code> is one exact manufacturer implementation of that contract. <code>ComponentInstance</code> is one occurrence in a design and records its chosen part reference. These are three lifecycle roles, not three ways a library author must describe the same device.</p>
+            <p><code>ComponentDefinition</code> owns the reusable logical contract and contains its <code>PinDefinition</code>s and typed feature bindings. <code>PartDefinition</code> is one exact manufacturer implementation of that contract. <code>ComponentInstance</code> is one occurrence in a design and records its chosen part reference. These are three lifecycle roles, not three ways a library author must describe the same device.</p>
           </div>
 
           <div class="decision-ribbon">
@@ -723,7 +754,8 @@
             <div><span>03 / CONSUME</span><h3>Immutable closure</h3><p class="small">Projects snapshot only the selected parts and assets required by their builds.</p></div>
           </div>
 
-          <div class="note success"><strong>Normal exact-part authoring is one declaration.</strong> A part may reference a shared component contract such as <code>resistor.v1</code>, or declare a unique contract inline for an MCU. The native builder interns that contract; the author does not manually create a second competing definition.</div>
+          <div class="note success"><strong>Normal authoring declares each meaning once.</strong> A reusable component contract is declared once; every exact part is then declared once against it. A convenience builder may nest a genuinely unique contract inside one exact-part declaration, but the explicit examples below keep the two lifecycle roles visible.</div>
+          <div class="note"><strong>Closed canonical core; open feature composition.</strong> Libraries may compose versioned features around zero, one, two or many logical pins, but any meaning required by core ERC must lower to the same kernel-owned subject, observable and constraint semantics. The first implementation slice supports only canonical <code>Voltage</code> and <code>Current</code>; later quantities extend the substrate without changing the three primary concepts.</div>
           <div class="note"><strong>Reading key.</strong> Section 02 is <strong>NOW</strong>: evidence from exact main. Sections 01 and 03–12 are the <strong>TARGET</strong> proposed for approval. Target nouns and APIs are intentionally concrete, but they are not claims about current code or accepted ADRs.</div>
           <div class="note"><strong>Companion relationship.</strong> The broader <a href="volt-post-circuit-architecture-review-revised.html">post-Circuit review</a> remains the owner of the three-plane project architecture, multiple Boards, <code>CompiledBoard</code>, typed artifact graph, selected exports and C++-first bundle API. This review supplies the reusable-part boundary. A separate full refactor plan follows only after this focused model is approved.</div>
         </section>
@@ -781,8 +813,9 @@
             <div class="concept-card contract">
               <span class="concept-kind">Reusable logical contract</span>
               <h3>ComponentDefinition</h3>
-              <p>Defines what the device is electrically: its logical interface, facts every implementation must supply, allowed or required instance-input shapes, component-wide invariants and relationships across terminals.</p>
+              <p>Defines what the device is electrically: its logical interface, features every implementation must satisfy, allowed or required instance-input shapes, and reusable relationships across terminals.</p>
               <div class="nested-record"><span>contains</span><strong>PinDefinition[]</strong><small>stable logical key · requirement · terminal · direction · signal · drive · polarity · reusable constraints</small></div>
+              <div class="nested-record"><span>contains</span><strong>FeatureBinding[]</strong><small>versioned schema · named terminal roles · canonical constraint requirements</small></div>
             </div>
             <div class="concept-relation">← occurrence of</div>
             <div class="concept-card instance">
@@ -795,20 +828,21 @@
             <div class="concept-card part">
               <span class="concept-kind">Exact implementation</span>
               <h3>PartDefinition</h3>
-              <p>One manufacturer + MPN that implements the component contract with exact device facts, per-pin capabilities, package mapping, provenance and required assets.</p>
+              <p>One manufacturer + MPN that implements the component contract with exact canonical constraints and characteristics, per-pin physical mapping, provenance and required assets.</p>
               <div class="nested-record"><span>implements →</span><strong>ComponentDefinitionRef</strong><small>contains the digest of one immutable logical contract</small></div>
               <div class="nested-record"><span>attaches</span><strong>footprint · GLB/STEP · optional simulation</strong><small>plus an explicit exact-part symbol override only when required</small></div>
             </div>
           </div>
 
-          <div class="concept-rule"><strong><code>PartDefinition</code> — implements exactly one → <code>ComponentDefinition</code>.</strong> <code>ComponentInstance</code> is an occurrence of that component and may select the exact part. The normal part author writes one part declaration; a shared contract is authored once, while a unique inline contract is compiled and interned by C++.</div>
+          <div class="concept-rule"><strong><code>PartDefinition</code> — implements exactly one → <code>ComponentDefinition</code>.</strong> <code>ComponentInstance</code> is an occurrence of that component and may select the exact part. Shared contracts and exact implementations are each authored once; optional nested source syntax does not create a second persisted ownership model.</div>
 
           <h3>Supporting machinery, not more meanings of “part”</h3>
           <div class="definition-list">
             <div class="definition"><span class="definition-index">A</span><div><h3>PinDefinition</h3><code>nested contract data</code></div><p>Genuine kernel data because every connected <code>PinInstance</code> needs stable reusable identity, semantics and diagnostic context. Exact package-pin numbers and tighter per-pin limits are supplied by the implementing part, keyed to the logical pin.</p></div>
-            <div class="definition"><span class="definition-index">B</span><div><h3>Projection attachments</h3><code>symbol · footprint · 3D · simulation</code></div><p>The default logical schematic symbol belongs to <code>ComponentDefinition</code>. Exact footprint, package mapping, 3D and simulation attachments belong to <code>PartDefinition</code>; an exact-part symbol variant is an explicit override, never a second default owner.</p></div>
-            <div class="definition"><span class="definition-index">C</span><div><h3>PartLibraryBundle</h3><code>packaging</code></div><p>The immutable published closure of definitions, references, required assets and evidence. It is distribution, not a fourth domain entity.</p></div>
-            <div class="definition"><span class="definition-index">D</span><div><h3>ModuleDefinition</h3><code>separate reusable circuit</code></div><p>A multi-component circuit or reference design. It consumes components and parts; it is intentionally outside the atomic part vocabulary.</p></div>
+            <div class="definition"><span class="definition-index">B</span><div><h3>Typed feature graph</h3><code>nested semantic data</code></div><p>A feature binds a versioned schema to named logical-pin roles and may cover the whole part, one pin, a directed path, a supply domain or a pin group. Its exact implementation emits canonical constraints and typed extension characteristics. Features group meaning; they do not redefine <code>Voltage</code>, <code>Current</code> or other kernel observables.</p></div>
+            <div class="definition"><span class="definition-index">C</span><div><h3>Projection attachments</h3><code>symbol · footprint · 3D · simulation</code></div><p>The default logical schematic symbol belongs to <code>ComponentDefinition</code>. Exact footprint, package mapping, 3D and simulation attachments belong to <code>PartDefinition</code>; an exact-part symbol variant is an explicit override, never a second default owner.</p></div>
+            <div class="definition"><span class="definition-index">D</span><div><h3>PartLibraryBundle</h3><code>packaging</code></div><p>The immutable published closure of definitions, references, required assets and evidence. It is distribution, not a fourth domain entity.</p></div>
+            <div class="definition"><span class="definition-index">E</span><div><h3>ModuleDefinition</h3><code>separate reusable circuit</code></div><p>A multi-component circuit or reference design. It consumes components and parts; it is intentionally outside the atomic part vocabulary.</p></div>
           </div>
 
           <div class="note warning"><strong>Manufacturing readiness stays visible.</strong> An unresolved <code>ComponentDefinition</code> is allowed during logical exploration. It must fail Board/BOM readiness until a compatible exact <code>PartDefinition</code> is pinned. A manufacturable part never means “some resistor in this family”.</div>
@@ -860,65 +894,104 @@
         </section>
 
         <section id="electrical">
-          <span class="section-kicker">05 · Target electrical ownership</span>
-          <h2>Put every fact on exactly one owner.</h2>
-          <p class="section-lead">Critical electrical facts are normal native data. Anything needed for selection, validation, ERC or future simulation is typed, kernel-owned, serializable and inspectable after Python is gone.</p>
+          <span class="section-kicker">05 · Target electrical semantics</span>
+          <h2>Closed canonical core. Open feature composition.</h2>
+          <p class="section-lead">A feature is an ergonomic grouping, not a private electrical dialect. Every value needed by core selection or ERC lowers to one kernel-owned subject, observable, meaning, value and condition set; exact parts and custom libraries cannot redefine those semantics with near-synonym keys.</p>
 
           <div class="rule-note">
-            <strong>Authoring → native build → canonical bundle → native reopen → selected instance must preserve electrical meaning and ownership exactly.</strong>
-            <p>Unknown values stay unknown. The library produces completeness diagnostics; it never guesses from a category string, net name, filename or an agent’s likely interpretation of a datasheet.</p>
+            <strong>Authoring → native build → canonical bundle → native reopen → ERC must preserve and query the same semantic records.</strong>
+            <p>Unknown values stay unknown. Core validation never infers electrical meaning from a feature name, pin label, category string or Python keyword.</p>
           </div>
 
           <div class="table-wrap">
             <table>
               <thead><tr><th>Owner</th><th>Owns</th><th>Examples</th><th>Boundary</th></tr></thead>
               <tbody>
-                <tr><td><code>ComponentDefinition</code>, including <code>PinDefinition[]</code></td><td>The reusable logical contract: stable terminal identities and semantics, an implementation-fact schema, a separate instance-input schema, and component-wide or cross-pin relationships.</td><td>Every resistor part supplies resistance and tolerance; an unresolved instance may request a resistance. A regulator occurrence may supply configured output voltage.</td><td>Malformed schemas and dangling logical-pin references reject. Unsatisfied occurrence intent remains diagnosable.</td></tr>
-                <tr><td><code>PartDefinition</code></td><td>One exact MPN’s intrinsic facts, exact component-wide capabilities, exact per-pin capabilities and package/projection mapping.</td><td>10 kΩ ±1%; rated power; supply and I/O ranges; manufacturer pin numbers; logical-pin → footprint-pad mapping.</td><td>Malformed typed values and invalid mappings reject. Missing, implausible or unproven facts are library diagnostics and publish gates.</td></tr>
-                <tr><td><code>ComponentInstance</code></td><td>Occurrence state: connections, independently authored requested/configured intent, assembly state and one exact <code>LibraryPartRef</code> whose digest is integral.</td><td>An unresolved <code>R17</code> requests 10 kΩ; configured gain; operating voltage; DNP; a narrow explicit override.</td><td>Unknown refs or a selected part implementing another contract reject at mutation. Intent-versus-capability mismatch is a diagnostic.</td></tr>
+                <tr><td><code>ComponentDefinition</code></td><td>Stable <code>PinKey</code>s, named relations such as paths/domains/groups, feature-schema bindings, required canonical characteristic shapes and a separate instance-input schema.</td><td>An LED binds a diode-junction feature to <code>A</code>/<code>K</code>; an MCU binds a supply-consumer feature to its <code>3V3</code>/<code>GND</code> domain.</td><td>Unknown schemas, invalid terminal-role cardinality and dangling pin/relation references reject.</td></tr>
+                <tr><td><code>PartDefinition</code></td><td>One exact MPN’s canonical electrical records, typed extension characteristics, logical-pin → package-terminal and terminal → footprint-pad bindings, assets and provenance.</td><td>Accepted 3.0–3.6 V; requires a 500 mA-capable source; LED junction voltage at a stated current; manufacturer terminal numbers.</td><td>Bad units, invalid conditions and mappings reject. Missing or conflicting device data is diagnosed and may block catalogue publication.</td></tr>
+                <tr><td><code>ComponentInstance</code></td><td>Connections, independently authored requirements/configuration, assembly state and one integrity-bearing exact <code>LibraryPartRef</code>.</td><td>Required load, configured output voltage, DNP and an exact selected part.</td><td>Contract mismatch rejects. Instance requirement versus selected-part capability remains a diagnostic.</td></tr>
               </tbody>
             </table>
           </div>
 
-          <div class="note"><strong>Selection requirements are not copied ratings.</strong> An unresolved instance may carry an acceptance constraint used to find a part. Direct <code>design.add(exact_part)</code> does not restate that part’s nominal facts. If a requirement remains after selection, it is independently authored design intent checked against the referenced part—not a cached duplicate of its rating.</div>
+          <div class="note"><strong>Selection requirements are not copied ratings.</strong> An unresolved instance may carry a requirement used to find a part. Direct <code>design.add(exact_part)</code> does not restate intrinsic values. Any requirement retained after selection remains independently authored design intent checked against the referenced part.</div>
 
-          <div class="note warning"><strong>Pin identity needs one clean seam.</strong> The target <code>PinDefinition</code> has a stable logical <code>PinKey</code>. The exact manufacturer package-pin number and footprint-pad mapping belong to <code>PartDefinition</code>. Current <code>PinDefinition.number</code> can mean logical or package number; migration must separate those meanings rather than hide the conflation.</div>
+          <div class="note warning"><strong>Physical identity needs two explicit seams.</strong> <code>PinDefinition</code> owns a stable logical <code>PinKey</code>. The exact <code>PartDefinition</code> owns <code>PinKey → [PackageTerminalKey]</code>, then <code>PackageTerminalKey → [FootprintPadKey]</code> for its selected footprint; the footprint artifact owns pad definitions and geometry. Same-labelled terminals and pads may be authoring shorthand, never stored identity. Current <code>PinDefinition.number</code> can mean logical or package number, so migration must separate those meanings.</div>
 
-          <div class="triad">
-            <div class="semantic-bucket"><h3>Always kernel data</h3><p>Typed values, tolerances, ranges, logical pin semantics, cross-pin relationships, exact MPN, package/pad mapping, provenance and the selected integrity-bearing ref.</p></div>
-            <div class="semantic-bucket optional"><h3>Optional attachment</h3><p>Vendor or approximate simulation models, 3D interchange, measured evidence and analysis-specific parameter sets.</p></div>
-            <div class="semantic-bucket never"><h3>Never inferred truth</h3><p>Values guessed from names, category strings, convenient defaults, distributor listings or solved simulation outputs.</p></div>
-          </div>
-
-          <h3>The contract defines shape; the part supplies exact truth</h3>
-          <p>A resistor contract can require resistance, tolerance, rated power and maximum working voltage. A regulator contract can require supply/output ranges, output-current capability and correctly typed power pins. Invariants shared by every implementation belong to <code>ComponentDefinition</code>; exact values and tighter limits belong to <code>PartDefinition</code>. No universal field list needs to pretend every datasheet curve is a scalar.</p>
-
-          <pre><code><span class="comment">// Illustrative target model. Names are not accepted API.</span>
-ComponentDefinition resistor_v1 {
-  pins: [A: passive, B: passive],
-  required_part_facts: [
-    resistance, tolerance, rated_power, maximum_working_voltage
-  ],
-  optional_instance_inputs: [desired_resistance]
+          <h3>One generic record shape; two canonical observables first</h3>
+          <pre><code><span class="comment">// Illustrative native substrate. Names are not accepted API.</span>
+ElectricalRecord {
+  subject:    ElectricalSubjectRef,
+  observable: CanonicalObservableId,
+  meaning:    Characteristic | AcceptedRange | ProvidedRange |
+              AbsoluteLimit | Requirement | Capability,
+  value:      Quantity | Range | Tolerance,
+  conditions: ConditionSet,
+  evidence:   optional EvidenceRef
 }
 
-PartDefinition RC0402FR_0710KL implements resistor_v1 {
-  resistance: 10 kohm,
-  tolerance: 1 percent,
-  rated_power: 62.5 mW,
-  maximum_working_voltage: 50 V
-}
-
-ComponentInstance R17 {
-  selected_part: ryan/parts:RC0402FR_0710KL@sha256:…
+FeatureBinding {
+  key:       FeatureKey,
+  schema:    FeatureSchemaRef,
+  terminals: named role → [PinKey],
+  relations: optional named relation refs
 }</code></pre>
 
-          <div class="rule-note">
-            <strong>IC pin example: logical role first, exact limits and mapping second.</strong>
-            <p><code>ComponentDefinition</code> declares logical <code>VIN</code> as a required power input. One implementing <code>PartDefinition</code> records <code>VIN</code> recommended at 2.7–5.5 V, absolute maximum 6 V, and maps that one logical <code>PinKey</code> to its manufacturer package pin or pins and then to footprint pad or pads. One logical terminal may intentionally fan out to multiple physical pins/pads; the mapping remains explicit and native-validated.</p>
+          <pre><code><span class="comment">// The first slice admits only electrically framed subjects.</span>
+ElectricalSubjectRef =
+    FramedPin       { pin, reference }
+  | DirectedRelation { relation, positive_role, negative_role }
+  | SupplyDomain   { positive_pins, return_pins };
+
+<span class="comment">// Bare "voltage on pin P" and unsigned "current through path X"
+// are invalid records, not values for ERC to guess about.</span></code></pre>
+
+          <p>The first vertical slice registers only canonical <code>Voltage</code> and <code>Current</code>. That is intentionally narrow: it proves versioned semantic identity, units, explicit reference and direction, conditions, feature mapping, serialization, query and ERC consumption before adding Power, Time/Frequency, Temperature, R/L/C or other observables. Later observables may admit additional subject shapes only when their native schema defines unambiguous semantics.</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Layer</th><th>Extension rule</th><th>Example</th><th>Core ERC treatment</th></tr></thead>
+              <tbody>
+                <tr><td>Canonical electrical semantics</td><td>Closed, versioned and C++-owned.</td><td><code>Voltage</code>, <code>Current</code>, accepted range, provided range, requirement, capability, absolute limit.</td><td>Queried directly; feature names are irrelevant.</td></tr>
+                <tr><td>Feature schemas</td><td>Open and composable, but standard meaning must map to canonical records.</td><td>Supply consumer/source, diode junction, digital-I/O bank.</td><td>Consumes the emitted canonical records and schema conformance.</td></tr>
+                <tr><td>Namespaced extension characteristics</td><td>Preserved and typed; they cannot impersonate a canonical concept.</td><td>Optical wavelength, antenna implementation, vendor-specific mode data.</td><td>Ignored by generic ERC unless an explicit canonical mapping or native evaluator exists.</td></tr>
+              </tbody>
+            </table>
           </div>
 
-          <div class="note danger"><strong>Current gap, first migration priority:</strong> exact main does not yet implement this relationship. Its <code>ComponentDefinition</code> lacks the proposed component-wide/cross-pin contract; <code>PartDefinition</code> copies its own pin records; Python constructs an empty native part-level attribute map. Packaging that meaning first would merely make the incompleteness portable.</div>
+          <div class="note"><strong>Feature conformance is a native join, not convention.</strong> The builder substitutes each <code>FeatureBinding</code>’s terminal and relation roles into its schema’s expected canonical subjects, then matches exact-part records by stable <code>(subject, observable, meaning, condition-key)</code>. Typed extension values persist their <code>(FeatureSchemaId, CharacteristicId)</code>. Dangling or duplicate singular bindings reject structurally; missing schema-required records reject an implementation, while optional catalogue completeness remains diagnosable and may be promoted to an official publish gate.</div>
+
+          <h3>Voltage and Current already exercise the whole architecture</h3>
+          <pre><code><span class="comment">// Exact ESP32 implementation records.</span>
+subject main_supply = domain(positive=[pin("3V3")],
+                             returns=[pin("GND")]);
+
+record(main_supply, Voltage, AcceptedRange, 3.0 V .. 3.6 V);
+record(main_supply, Voltage, AbsoluteLimit, -0.3 V .. 3.6 V);
+record(main_supply, Current, Requirement, minimum_source_capacity(0.5 A));
+
+<span class="comment">// Exact regulator output records.</span>
+record(regulator_output, Voltage, ProvidedRange, 3.2 V .. 3.4 V);
+record(regulator_output, Current, Capability, continuous(0.6 A));
+
+<span class="comment">// ERC compares canonical records, not component classes:</span>
+provided_voltage ⊆ accepted_voltage
+provided_current ≥ required_current</code></pre>
+
+          <div class="note"><strong>Relations carry orientation; instances project them onto Circuit connectivity.</strong> A directed relation owns its terminal-role order, so voltage polarity, signed current and forward/reverse qualifiers are interpreted relative to that order. At instantiation, C++ maps the relation’s local <code>PinKey</code>s through the <code>ComponentInstance</code> pins to Circuit nets and domains. ERC compares resolved source and consumer records there; no Python helper or feature name participates in the result.</div>
+
+          <div class="rule-note">
+            <strong>A feature helper may use friendly vocabulary; the artifact may not.</strong>
+            <p>A custom helper may accept <code>vin_range</code>, but it must serialize the canonical accepted <code>Voltage</code> range on a referenced supply domain. A second custom key such as <code>input_supply</code> does not satisfy ERC readiness. Conflicting canonical records remain visible and diagnosable rather than silently choosing one.</p>
+          </div>
+
+          <div class="triad">
+            <div class="semantic-bucket"><h3>Always kernel data</h3><p>Stable subjects, canonical observable IDs, meanings, dimensioned values, operating conditions, feature bindings, exact identity, mappings and provenance.</p></div>
+            <div class="semantic-bucket optional"><h3>Separate attachment</h3><p>Vendor or approximate simulation models, 3D interchange, measured evidence and analysis-specific parameter sets.</p></div>
+            <div class="semantic-bucket never"><h3>Never hidden meaning</h3><p>Free-form <code>.facts(**kwargs)</code>, Python callbacks, name inference, silently aliased synonyms or solved simulation outputs copied into the part.</p></div>
+          </div>
+
+          <div class="note danger"><strong>Current gap, first migration priority:</strong> exact main has typed scalar/range/tolerance storage but no stable subject/feature binding, operating-condition model or canonical cross-pin/domain semantics. <code>ComponentDefinition</code> and <code>PartDefinition</code> also lack the proposed native implementation relationship. Packaging the existing maps first would only make the semantic split portable.</div>
         </section>
 
         <section id="simulation">
@@ -927,7 +1000,7 @@ ComponentInstance R17 {
           <p class="section-lead">Typed ratings are not a simulator model. The catalogue should preserve both without coupling Volt’s canonical meaning to SPICE, IBIS, an internal solver or a Python callback.</p>
 
           <div class="simulation-flow" role="img" aria-label="Canonical circuit and exact part data combine with an optional simulation attachment in a service that emits separate analysis results">
-            <div class="sim-node"><small>Canonical inputs</small><strong>Circuit connectivity + PartDefinition facts</strong></div>
+            <div class="sim-node"><small>Canonical inputs</small><strong>Circuit connectivity + part characteristics and constraints</strong></div>
             <div class="flow-arrow">→</div>
             <div class="sim-node model"><small>Simulation service</small><strong>consumes optional model attachment + hashed backend payloads</strong></div>
             <div class="flow-arrow">→</div>
@@ -961,13 +1034,13 @@ ComponentInstance R17 {
 
           <pre><code>PartDefinition
 ├── implements → ComponentDefinition
-├── typed intrinsic attributes
-├── exact per-pin capabilities and package mapping
+├── canonical electrical records + extension characteristics
+├── exact logical-pin → package-terminal → footprint-pad bindings
 ├── symbol / footprint / 3D references
 └── optional SimulationModelRef
       ├── model artifact digest
       ├── logical PinKey → model-terminal bindings
-      └── model-parameter → typed-attribute bindings
+      └── model-parameter → characteristic bindings
              │
              ▼
       volt.simulation_model
@@ -987,8 +1060,27 @@ ComponentInstance R17 {
 
           <div class="api-grid">
             <div class="api-block">
-              <h3>C++ library core <span>illustrative</span></h3>
-              <pre><code>class <span class="type">PartLibraryBuilder</span> {
+              <h3>C++ semantic substrate <span>illustrative</span></h3>
+              <pre><code>struct <span class="type">ElectricalRecordSpec</span> {
+  ElectricalSubjectRef subject;
+  CanonicalObservableId observable;
+  ConstraintMeaning meaning;
+  ElectricalValue value;
+  ConditionSet conditions;
+};
+
+struct <span class="type">FeatureSchemaSpec</span> {
+  FeatureSchemaKey key;
+  std::vector&lt;TerminalRoleSpec&gt; roles;
+  std::vector&lt;CanonicalRecordRequirement&gt; record_requirements;
+};
+
+namespace canonical {
+  CanonicalObservableId voltage();
+  CanonicalObservableId current();
+}
+
+class <span class="type">PartLibraryBuilder</span> {
 public:
   ComponentDefinitionRef add_component(
       ComponentDefinitionSpec);
@@ -997,124 +1089,158 @@ public:
   LibraryBuildResult build(LibraryIdentity);
 };
 
-ComponentDefinitionRef resistor =
-    standard_components::resistor_v1();
-
-builder.add_part(
-    PartDefinitionSpec{
-      .key = <span class="literal">"yageo/RC0402FR-0710KL"</span>,
-      .implements = resistor,
-      .electrical = exact_facts,
-      .package_pins = package_mapping,
-    },
-    assets);
-
 class <span class="type">PartLibraryBundle</span> {
 public:
   static PartLibraryBundle open(const path&amp;);
-  const LibraryManifest&amp; manifest() const;
   LibraryPartRef require(PartKey) const;
   std::vector&lt;PartSummary&gt; find(PartQuery) const;
   ContentHash digest() const;
 };
 
-ResolvedPart resolve_part(
-    const InstanceRequirements&amp;,
-    LibraryPartRef exact_part);
-
 ComponentId instantiate(
     Circuit&amp;, LibraryPartRef, ReferenceDesignator,
     InstanceRequirements = {});
-<span class="comment">// instantiate validates the implemented contract and records
-// the exact ref; it does not copy intrinsic part truth.</span></code></pre>
+<span class="comment">// C++ validates schema, subject, units, conditions,
+// contract identity and exact selection.</span></code></pre>
             </div>
             <div class="api-block">
-              <h3>Python library source <span>thin lowering</span></h3>
-              <pre><code>from volt_standard import components
-
-LIB = volt.Library(
+              <h3>Python source <span>thin typed lowering</span></h3>
+              <pre><code>LIB = volt.Library(
     <span class="literal">"ryan/parts"</span>, version=<span class="literal">"1.0.0"</span>
 )
 
-R_10K_0402 = LIB.part(
-    <span class="literal">"yageo/RC0402FR-0710KL"</span>,
-    component=components.resistor_v1,
-    manufacturer=<span class="literal">"Yageo"</span>,
-    mpn=<span class="literal">"RC0402FR-0710KL"</span>,
-    package=<span class="literal">"0402"</span>,
-    electrical=volt.electrical(
-        resistance=10 * kohm,
-        tolerance=percent(1),
-        rated_power=62.5 * mW,
-        maximum_working_voltage=50 * V,
+esp = LIB.define_component(
+    <span class="literal">"espressif/esp32-s3-wroom-1.v1"</span>,
+    pins={
+        <span class="literal">"GND"</span>: volt.Pin.ground(),
+        <span class="literal">"3V3"</span>: volt.Pin.power_input(),
+        <span class="literal">"EN"</span>: volt.Pin.digital_input(),
+        <span class="literal">"GPIO4"</span>: volt.Pin.digital_io(),
+        <span class="comment"># ...every remaining terminal...</span>
+    },
+    relations={
+        <span class="literal">"main_supply"</span>: volt.supply_domain(
+            positive=[<span class="literal">"3V3"</span>], returns=[<span class="literal">"GND"</span>]
+        )
+    },
+    features={
+        <span class="literal">"supply"</span>: volt.features.supply_consumer(
+            domain=<span class="literal">"main_supply"</span>
+        )
+    },
+)
+
+main = esp.relation(<span class="literal">"main_supply"</span>)
+
+ESP32_S3_WROOM_1_N8 = LIB.part(
+    <span class="literal">"espressif/ESP32-S3-WROOM-1-N8"</span>,
+    component=esp,
+    manufacturer=<span class="literal">"Espressif"</span>,
+    mpn=<span class="literal">"ESP32-S3-WROOM-1-N8"</span>,
+    package=<span class="literal">"ESP32-S3-WROOM-1"</span>,
+    package_terminals={
+        esp.pin(<span class="literal">"GND"</span>): [<span class="literal">"1"</span>, <span class="literal">"40"</span>],
+        esp.pin(<span class="literal">"3V3"</span>): <span class="literal">"2"</span>,
+        esp.pin(<span class="literal">"EN"</span>): <span class="literal">"3"</span>,
+        esp.pin(<span class="literal">"GPIO4"</span>): <span class="literal">"4"</span>,
+        <span class="comment"># ...every remaining declared pin...</span>
+    },
+    electrical=[
+        volt.accepted_voltage(main, 3.0 * V, 3.6 * V),
+        volt.required_current(
+            main, source_capacity=0.5 * A
+        ),
+    ],
+    footprint=volt.bind_footprint(
+        esp32_wroom_1,
+        terminal_to_pads={<span class="literal">"1"</span>: [<span class="literal">"1"</span>], <span class="literal">"2"</span>: [<span class="literal">"2"</span>], <span class="literal">"3"</span>: [<span class="literal">"3"</span>], <span class="comment"># ...</span>},
     ),
-    footprint=ipc_0402,
-    model_3d=model_0402,
-    simulation=ideal_resistor_model,
+    model_3d=esp32_wroom_1_glb,
 )</code></pre>
             </div>
           </div>
 
-          <h3>Custom component contracts are defined once, not once per MPN</h3>
+          <h3>Logical handles are declared before exact values use them</h3>
           <div class="api-grid">
             <div class="api-block">
-              <h3>Common case <span>reuse a standard contract</span></h3>
-              <pre><code>from volt_standard import components
-
-R_10K_0402 = LIB.part(
-    <span class="literal">"yageo/RC0402FR-0710KL"</span>,
-    component=components.resistor_v1,
-    manufacturer=<span class="literal">"Yageo"</span>,
-    mpn=<span class="literal">"RC0402FR-0710KL"</span>,
-    package=<span class="literal">"0402"</span>,
-    electrical=exact_resistor_facts,
-    footprint=ipc_0402,
+              <h3>LED component contract <span>define once</span></h3>
+              <pre><code>LED = LIB.define_component(
+    <span class="literal">"volt/led.v1"</span>,
+    pins={
+        <span class="literal">"A"</span>: volt.Pin.passive(),
+        <span class="literal">"K"</span>: volt.Pin.passive(),
+    },
+    relations={
+        <span class="literal">"junction"</span>: volt.directed_path(
+            from_pin=<span class="literal">"A"</span>, to_pin=<span class="literal">"K"</span>
+        )
+    },
+    features={
+        <span class="literal">"diode"</span>: volt.features.diode_junction(
+            path=<span class="literal">"junction"</span>
+        )
+    },
 )</code></pre>
             </div>
             <div class="api-block">
-              <h3>Shared custom case <span>define once</span></h3>
-              <pre><code>sensor_v1 = LIB.define_component(
-    <span class="literal">"ryan/sensor.v1"</span>,
-    pins={
-        <span class="literal">"VDD"</span>: volt.Pin.power_in(...),
-        <span class="literal">"GND"</span>: volt.Pin.power_return(...),
-        <span class="literal">"OUT"</span>: volt.Pin.analog_out(...),
-    },
-    relationships=[...],
-)
+              <h3>Exact LED <span>implements the contract</span></h3>
+              <pre><code>junction = LED.relation(<span class="literal">"junction"</span>)
 
-SENSOR_A = LIB.part(
-    <span class="literal">"vendor/SENSOR-A"</span>,
-    component=sensor_v1,
-    manufacturer=<span class="literal">"Vendor"</span>,
-    mpn=<span class="literal">"SENSOR-A"</span>,
-    package=<span class="literal">"LGA-8"</span>,
-    electrical=exact_sensor_facts,
-    ...,
+LTST_C190KRKT = LIB.part(
+    <span class="literal">"liteon/LTST-C190KRKT"</span>,
+    component=LED,
+    manufacturer=<span class="literal">"Lite-On"</span>,
+    mpn=<span class="literal">"LTST-C190KRKT"</span>,
+    package=<span class="literal">"0603"</span>,
+    package_terminals={
+        LED.pin(<span class="literal">"A"</span>): <span class="literal">"2"</span>,
+        LED.pin(<span class="literal">"K"</span>): <span class="literal">"1"</span>,
+    },
+    electrical=[
+        volt.voltage_characteristic(
+            junction,
+            minimum=1.6 * V,
+            typical=2.0 * V,
+            maximum=2.4 * V,
+            at=volt.current(junction, 20 * mA),
+        ),
+        volt.absolute_current_limit(
+            junction, forward=25 * mA
+        ),
+        volt.absolute_voltage_limit(
+            junction, reverse=5 * V
+        ),
+    ],
+    footprint=volt.bind_footprint(
+        led_0603,
+        terminal_to_pads={<span class="literal">"1"</span>: [<span class="literal">"1"</span>], <span class="literal">"2"</span>: [<span class="literal">"2"</span>]},
+    ),
 )</code></pre>
             </div>
             <div class="api-block wide">
-              <h3>Unique custom case <span>one declaration</span></h3>
-              <pre><code>SENSOR_PROTOTYPE = LIB.part(
-    <span class="literal">"ryan/SENSOR-PROTOTYPE"</span>,
-    component=volt.inline_component(
-        pins={
-            <span class="literal">"VDD"</span>: volt.Pin.power_in(...),
-            <span class="literal">"GND"</span>: volt.Pin.power_return(...),
-            <span class="literal">"OUT"</span>: volt.Pin.analog_out(...),
-        },
-        relationships=[...],
-    ),
-    manufacturer=<span class="literal">"Ryan Labs"</span>,
-    mpn=<span class="literal">"SENSOR-PROTOTYPE-A"</span>,
-    package=<span class="literal">"LGA-8"</span>,
-    electrical=exact_prototype_facts,
-    footprint=prototype_footprint,
+              <h3>Advanced extension <span>maps to the canonical core</span></h3>
+              <pre><code>isolated_load_v1 = LIB.define_feature_schema(
+    <span class="literal">"ryan/isolated-load.v1"</span>,
+    terminal_roles={
+        <span class="literal">"positive"</span>: volt.one_or_more_pins(),
+        <span class="literal">"return"</span>: volt.one_or_more_pins(),
+    },
+    canonical_requirements=[
+        volt.requires.accepted_voltage(
+            subject=volt.domain(<span class="literal">"positive"</span>, <span class="literal">"return"</span>)
+        ),
+        volt.requires.current_requirement(
+            subject=volt.domain(<span class="literal">"positive"</span>, <span class="literal">"return"</span>)
+        ),
+    ],
+    extensions=[
+        ryan.characteristics.isolation_barrier_class
+    ],
 )</code></pre>
             </div>
           </div>
 
-          <p class="small">All examples are target syntax. C++ normalizes and interns standard, shared-custom and inline-unique contracts; Python does not create a second semantic path.</p>
+          <p class="small">All examples are target syntax, not current API. Numeric values are representative API-shape examples, not verified extraction from the named manufacturers’ datasheets; publishable exact parts must attach field-level evidence. Standard helpers and custom schemas lower through the same C++ records. The LED’s forward voltage and current limit belong to its directed junction, not arbitrarily to one pin; optional optical data remains a typed extension until a canonical optical observable is deliberately added.</p>
 
           <h3>Exact use is the shortest path</h3>
           <div class="api-grid">
@@ -1126,31 +1252,28 @@ u1 = design.add(
     ref=<span class="literal">"U1"</span>,
 )
 
-r1 = design.add(
-    std.yageo.RC0402FR_0710KL,
-    ref=<span class="literal">"R1"</span>,
+d1 = design.add(
+    std.liteon.LTST_C190KRKT,
+    ref=<span class="literal">"D1"</span>,
 )</code></pre>
             </div>
             <div class="api-block">
-              <pre><code>from volt import units
-from volt_standard import parts as std
-from ryan_parts import preferred
-
-r1 = design.add(
-    preferred.R_10K_0402,
-    ref=<span class="literal">"R1"</span>,
+              <pre><code>design.connect(
+    vdd, u1.pin(<span class="literal">"3V3"</span>)
+)
+design.connect(
+    gnd, u1.pin(<span class="literal">"GND"</span>), d1.pin(<span class="literal">"K"</span>)
+)
+design.connect(
+    status_led, d1.pin(<span class="literal">"A"</span>)
 )
 
-matches = std.resistors.find(
-    resistance=10 * units.kohm,
-    package=<span class="literal">"0402"</span>,
-)
-candidate = matches.require_one()</code></pre>
+diagnostics = design.validate_erc()</code></pre>
             </div>
           </div>
 
           <div class="note warning"><strong>No silent selection.</strong> A query returns ranked exact candidates. The design pins one. A personal or team library can expose versioned preferred aliases so normal authoring stays one line without hiding procurement intent.</div>
-          <div class="note"><strong>No separate integrity ritual.</strong> <code>LibraryPartRef</code> is one integrity-bearing value containing namespace, library version, part key, library digest and part digest; the digest is not a second field beside it. Instantiating it automatically adds the required asset closure to the project snapshot. This name deliberately avoids the existing logical <code>PartRef</code> vocabulary.</div>
+          <div class="note"><strong>No separate integrity ritual.</strong> <code>LibraryPartRef</code> is new target vocabulary for one integrity-bearing published-part value containing namespace, library version, part key, library digest and part digest; the digest is not a second field beside it. Instantiating it automatically adds the required asset closure to the project snapshot. Exact main defines no runtime <code>PartRef</code> type; the authoring design only documents that name prospectively for a lightweight committed-component handle.</div>
         </section>
 
         <section id="workflow">
@@ -1246,7 +1369,7 @@ volt library render yageo/RC0402FR-0710KL --output review/</code></pre>
 
           <div class="split">
             <div class="panel good">
-              <h3>Runtime bundle includes</h3>
+              <h3>Published library bundle includes</h3>
               <ul>
                 <li>canonical definitions and schemas;</li>
                 <li>every referenced projection and actual asset byte;</li>
@@ -1256,18 +1379,18 @@ volt library render yageo/RC0402FR-0710KL --output review/</code></pre>
               </ul>
             </div>
             <div class="panel danger">
-              <h3>Runtime bundle excludes</h3>
+              <h3>Published library bundle excludes</h3>
               <ul>
                 <li>source Python and test dependencies;</li>
                 <li>every render, screenshot, CI log and oracle diff;</li>
                 <li>live stock, price and distributor offers;</li>
                 <li>generated CAD tooling or regenerated model output;</li>
-                <li>parts the consuming project did not use.</li>
+                <li>project-specific sourcing snapshots and compiled outputs.</li>
               </ul>
             </div>
           </div>
 
-          <p>Library releases contain the whole published catalogue. A selected part’s closure begins at its <code>PartDefinition</code>, follows the immutable reference to its <code>ComponentDefinition</code>, then includes only required attachments and asset bytes. Project bundles vendor that transitive closure. Updating a source dependency creates new compiled outputs; previous <code>CompiledBoard</code> artifacts remain untouched.</p>
+          <p><strong>These are two different closures.</strong> A <code>PartLibraryBundle</code> contains the whole published catalogue and its referenced assets. A project snapshot begins at each selected <code>PartDefinition</code>, follows the immutable reference to its <code>ComponentDefinition</code>, and vendors only those transitive closures. Updating a source dependency creates new compiled outputs; previous <code>CompiledBoard</code> artifacts remain untouched.</p>
           <div class="note"><strong>Sourcing stays separate.</strong> Manufacturer identity and approved exact alternates belong to the catalogue. Distributor SKU, price, stock and quote time remain project-owned sourcing snapshots, so market churn cannot change a canonical part hash.</div>
         </section>
 
@@ -1278,13 +1401,14 @@ volt library render yageo/RC0402FR-0710KL --output review/</code></pre>
 
           <div class="gate-list">
             <div class="gate"><h3>Deterministic build</h3><p>Build source twice in clean environments; manifests, canonical entries and asset digests match byte-for-byte.</p><span class="gate-tag">gate · digest equality</span></div>
-            <div class="gate"><h3>Native reopen and round-trip</h3><p>Open the emitted bundle through public C++, preserve each part → component relationship and every typed fact, then serialize equivalent canonical meaning without Python.</p><span class="gate-tag">gate · no authoring runtime</span></div>
-            <div class="gate"><h3>Structural integrity</h3><p>Reject missing component contracts, malformed units, duplicate keys, dangling logical-pin refs, bad package-pin/pad mappings, missing asset bytes and digest mismatches.</p><span class="gate-tag">gate · invalid state impossible</span></div>
-            <div class="gate"><h3>Contract implementation</h3><p>Prove every exact part implements one existing component contract and every exact per-pin fact or mapping keys to one of that contract’s stable logical pins.</p><span class="gate-tag">gate · relationship intact</span></div>
-            <div class="gate"><h3>Electrical completeness</h3><p>Run the versioned contract for each device class; prove required typed facts exist and exact-part capabilities satisfy representative instance intent.</p><span class="gate-tag">gate · typed meaning preserved</span></div>
+            <div class="gate"><h3>Native reopen and round-trip</h3><p>Open the emitted bundle through public C++, preserve each part → component relationship, feature binding and canonical electrical record, then serialize equivalent meaning without Python.</p><span class="gate-tag">gate · no authoring runtime</span></div>
+            <div class="gate"><h3>Structural integrity</h3><p>Reject missing component contracts, malformed units, duplicate keys, dangling logical-pin refs, bad logical-pin/package-terminal or terminal/pad bindings, missing asset bytes and digest mismatches.</p><span class="gate-tag">gate · invalid state impossible</span></div>
+            <div class="gate"><h3>Contract implementation</h3><p>Prove every exact part implements one existing component contract; each feature satisfies its terminal roles; every subject and package mapping resolves to stable logical pins or relations.</p><span class="gate-tag">gate · relationship intact</span></div>
+            <div class="gate"><h3>Canonical interoperability</h3><p>Author equivalent Voltage/Current meaning through standard and custom feature helpers, reopen both, and prove they resolve to the same canonical observable and constraint IDs rather than private synonyms.</p><span class="gate-tag">gate · one electrical language</span></div>
+            <div class="gate"><h3>Voltage and Current ERC</h3><p>Prove under/overvoltage, insufficient source-current capability, absolute-limit and condition-qualified junction cases from canonical records on pins, paths and supply domains.</p><span class="gate-tag">gate · first vertical slice</span></div>
             <div class="gate"><h3>Selection compatibility and no copies</h3><p>Reject selecting a part that implements another component contract. Persist the exact integrity-bearing ref and prove intrinsic ratings are resolved from it, never silently copied into divergent instance state.</p><span class="gate-tag">gate · one source of truth</span></div>
             <div class="gate"><h3>Projection lineup</h3><p>Every logical pin appears correctly in symbols and maps to intentional footprint pads; 3D and optional simulation terminal transforms line up.</p><span class="gate-tag">gate · cross-domain consistency</span></div>
-            <div class="gate"><h3>Representative fixture builds</h3><p>Instantiate public entries through real bindings and compile Circuit, Schematic, multiple Boards, <code>CompiledBoard</code>, BOM and CPL outputs.</p><span class="gate-tag">gate · end-to-end consumption</span></div>
+            <div class="gate"><h3>Representative fixture builds</h3><p>Dogfood at least an LED, regulator/source and ESP32-class module through real bindings; compile Circuit, Schematic, multiple Boards, <code>CompiledBoard</code>, BOM and CPL outputs.</p><span class="gate-tag">gate · end-to-end consumption</span></div>
             <div class="gate"><h3>Visual and independent oracle review</h3><p>Render symbols, footprints and 3D placement; compare risky geometry against an independently derived witness. Automation assists but does not replace review.</p><span class="gate-tag">gate · geometry confidence</span></div>
             <div class="gate"><h3>Release evidence</h3><p>Record provenance, licence, model fidelity, render review and hardware-validation attestations against immutable digests.</p><span class="gate-tag">gate · inspectable trust</span></div>
           </div>
@@ -1294,23 +1418,23 @@ volt library render yageo/RC0402FR-0710KL --output review/</code></pre>
 
         <section id="migration">
           <span class="section-kicker">11 · Target focused implementation order</span>
-          <h2>Ten bounded slices. Fix the relationship first.</h2>
-          <p class="section-lead">This is the implementation order for part libraries, not the later full-project refactor plan. Do not build a polished archive around today’s dual semantics: establish the contract, implementation and selection seam first.</p>
+          <h2>Ten bounded slices. Prove Voltage and Current first.</h2>
+          <p class="section-lead">This is the implementation order for part libraries, not the later full-project refactor plan. Establish the generic subject/feature/record substrate and one useful ERC vertical before packaging today’s dual semantics.</p>
 
           <div class="migration">
             <div class="slice"><span class="slice-number">00</span><h3>Freeze current dual behaviour</h3><p>Snapshot the three explicit routes—<code>Design.define_component</code>, legacy <code>Library.component</code> and modern <code>Library.part</code>/<code>Part</code>—plus built-in helpers, diagnostics, hashes and v4 goldens.</p><span class="stop">Stop gate: exact-main inventories and reproducible fixtures expose both current lowering paths.</span></div>
-            <div class="slice"><span class="slice-number">01</span><h3>Complete the logical contract</h3><p>Add typed component-wide and cross-pin contract data to <code>ComponentDefinition</code>; give nested <code>PinDefinition</code>s stable logical keys; complete Python dimension coverage.</p><span class="stop">Stop gate: malformed logical contracts reject and every typed contract fact round-trips through public C++.</span></div>
-            <div class="slice"><span class="slice-number">02</span><h3>Make exact parts implement, not duplicate</h3><p>Replace copied <code>PartPin(PinDefinition, attributes)</code> meaning with one immutable component-contract reference plus exact per-pin refinements and package mapping.</p><span class="stop">Stop gate: native reopen proves part → component identity, complete exact facts and valid logical-pin mappings.</span></div>
-            <div class="slice"><span class="slice-number">03</span><h3>Pin exact selection in <code>ComponentInstance</code></h3><p>Add native <code>LibraryPartRef</code>; validate contract compatibility at selection; resolve intrinsic facts instead of copying <code>PhysicalPart</code> truth. Route Python through this C++ operation.</p><span class="stop">Stop gate: source and reopened parts instantiate through one native path with no divergent intrinsic state.</span></div>
+            <div class="slice"><span class="slice-number">01</span><h3>Land the semantic substrate with V/I</h3><p>Add stable logical <code>PinKey</code>s, explicitly framed pin, directed-relation and supply-domain subjects, versioned feature schemas and canonical <code>ElectricalRecord</code>s. Implement only Voltage and Current with meanings, conditions and native query.</p><span class="stop">Stop gate: malformed schemas/records reject; standard and custom helpers reopen as identical canonical V/I meaning through public C++.</span></div>
+            <div class="slice"><span class="slice-number">02</span><h3>Make exact parts implement, not duplicate</h3><p>Add the immutable component-contract reference; replace copied <code>PartPin(PinDefinition, attributes)</code> meaning with feature implementations, canonical exact records, logical-pin → package-terminal bindings and terminal → footprint-pad bindings.</p><span class="stop">Stop gate: native reopen proves part → component identity, feature conformance, complete V/I records and valid physical mappings.</span></div>
+            <div class="slice"><span class="slice-number">03</span><h3>Pin exact selection and prove canonical ERC</h3><p>Add native <code>LibraryPartRef</code>, validate contract compatibility and resolve intrinsic part records rather than copying <code>PhysicalPart</code> truth. Project each part-local framed pin, directed relation and supply domain through instance pins onto Circuit connectivity. Route Python through this C++ operation.</p><span class="stop">Stop gate: exact regulator/source → ESP32 and LED fixtures emit under/overvoltage plus insufficient and aggregated continuous-current diagnostics through one native path, before library packaging begins.</span></div>
             <div class="slice"><span class="slice-number">04</span><h3>Add the native library aggregate</h3><p>Introduce <code>PartLibraryBuilder</code>, manifest identity, stable keys, duplicate checks, public query and explicit exact resolution.</p><span class="stop">Stop gate: C++ alone builds, validates, queries and instantiates an in-memory catalogue.</span></div>
             <div class="slice"><span class="slice-number">05</span><h3>Make asset closure and bundle real</h3><p>Make symbols and footprints loadable artifacts; hash actual GLB/STEP and optional simulation bytes; implement deterministic <code>PartLibraryBundle</code> codecs.</p><span class="stop">Stop gate: missing bytes reject and source build/prebuilt reopen preserve every entry and asset digest.</span></div>
             <div class="slice"><span class="slice-number">06</span><h3>Lock and snapshot project dependencies</h3><p>Record library/version/key/digests automatically and vendor only the selected part → component → asset closure into ProjectBundle and compiled handoffs.</p><span class="stop">Stop gate: the project reopens offline; earlier CompiledBoards remain byte-stable after library upgrades.</span></div>
             <div class="slice"><span class="slice-number">07</span><h3>Add standalone CLI and package workflow</h3><p>Deliver build, check, test, inspect and render over source and prebuilt bundles; support pinned path/Git dependencies and <code>volt.lock</code>.</p><span class="stop">Stop gate: inspection never executes authoring Python and CLI error/JSON contracts are stable.</span></div>
-            <div class="slice"><span class="slice-number">08</span><h3>Dogfood, then retire duplicate routes</h3><p>Migrate all 17 shipped STM32 entries and 11 manual example selections, prove parity, then deprecate <code>LibraryComponent</code>, copied selection and ad hoc lowering.</p><span class="stop">Stop gate: real examples, bundles, Boards, BOM/CPL and renders pass before any deletion.</span></div>
-            <div class="slice"><span class="slice-number">09</span><h3>Pilot <code>volt-standard-parts</code></h3><p>Publish a small high-confidence catalogue of common passives/packages, connectors, diodes, regulators, selected MCUs and packaged radio/system modules with complete evidence.</p><span class="stop">Stop gate: every pilot part is native-loadable, licensed, deterministic, board/BOM ready, rendered and independently reviewed.</span></div>
+            <div class="slice"><span class="slice-number">08</span><h3>Dogfood, then retire duplicate routes</h3><p>Expand the early V/I proof through real shipped definitions, then migrate all 17 STM32 entries and 11 manual example selections before deprecating copied selection and ad hoc lowering.</p><span class="stop">Stop gate: canonical ERC, real examples, bundles, Boards, BOM/CPL and renders pass before any deletion.</span></div>
+            <div class="slice"><span class="slice-number">09</span><h3>Pilot <code>volt-standard-parts</code></h3><p>Publish a small high-confidence catalogue limited to connectors, LEDs/diodes, regulators and supply parts, selected MCUs, and packaged modules whose publish contract is expressible with the V/I slice. Defer passives that require canonical R/L/C values.</p><span class="stop">Stop gate: every pilot part is native-loadable, licensed, deterministic, board/BOM ready, rendered and independently reviewed.</span></div>
           </div>
 
-          <div class="note"><strong>Simulation follows the stable library contract.</strong> The first later slice should reopen at least one passive and one IC <code>SimulationModelDefinition</code> with exact terminal/parameter mappings. It is deliberately not a prerequisite for the core catalogue.</div>
+          <div class="note"><strong>Expansion follows evidence.</strong> Power, Time/Frequency, Temperature, R/L/C and richer value shapes are later observable slices over the same subject/feature/record substrate; their order is decided from concrete diagnostics. Simulation then attaches to stable pins, relations and characteristics rather than becoming the canonical part model.</div>
         </section>
 
         <section id="boundaries">
@@ -1324,6 +1448,7 @@ volt library render yageo/RC0402FR-0710KL --output review/</code></pre>
               <ul>
                 <li>Exactly three primary concepts: <code>ComponentDefinition</code>, exact <code>PartDefinition</code> and <code>ComponentInstance</code>.</li>
                 <li><code>PinDefinition[]</code> is nested logical-contract data, not a fourth meaning of “part”.</li>
+                <li>The nested typed feature graph is supporting semantic machinery, not another primary part concept.</li>
                 <li>One exact part implements one component contract; one instance selects it through one integrity-bearing exact ref.</li>
                 <li>There is no separate selected-occurrence owner and no permanent copy of intrinsic part truth on each instance.</li>
                 <li>Assets, models, bundles and results are attachments, packaging or outputs—not peer part concepts.</li>
@@ -1331,7 +1456,11 @@ volt library render yageo/RC0402FR-0710KL --output review/</code></pre>
                 <li>Visible authoring, service and artifact planes.</li>
                 <li>C++ owns part meaning, validation, codecs, loading, query, resolution and artifact construction.</li>
                 <li>Python is a concise declaration and typed-handle surface.</li>
-                <li>Typed electrical characteristics are first-class canonical part data.</li>
+                <li>Closed canonical electrical semantics and open feature composition: helpers may vary, but ERC consumes one native language.</li>
+                <li>The first canonical observable slice is Voltage and Current on explicitly framed pins, directed relations and declared supply domains; bare pin voltage and unsigned path current are invalid.</li>
+                <li>Every canonical record carries subject, observable, meaning, typed value and optional operating conditions/evidence.</li>
+                <li>Free-form <code>.facts(**kwargs)</code> and Python-owned electrical callbacks are not canonical part APIs.</li>
+                <li>Namespaced extension characteristics remain preserved but do not satisfy core ERC unless explicitly mapped.</li>
                 <li>Optional simulation models are separate hashed projections.</li>
                 <li>Queries return candidates; persisted design state pins an exact part digest.</li>
                 <li>Personal/team and official libraries share one format and test contract.</li>
@@ -1345,12 +1474,16 @@ volt library render yageo/RC0402FR-0710KL --output review/</code></pre>
               <h3>Still open, with recommendation</h3>
               <ol>
                 <li><strong>Contract granularity:</strong> use semantic/pinout compatibility contracts, not one universal “regulator” or “MCU” contract.</li>
-                <li><strong>Exact per-pin storage:</strong> key a private refinement record by stable logical <code>PinKey</code>; do not expose <code>PartPin</code> as peer vocabulary.</li>
+                <li><strong>Exact physical-pin storage:</strong> key logical-pin → package-terminal mapping by stable <code>PinKey</code>, then bind package terminals explicitly to footprint pads; keep electrical constraints on framed pin, directed relation and domain subjects and do not expose <code>PartPin</code> as peer vocabulary.</li>
                 <li><strong>Portable component identity:</strong> immutable content digest inside bundles, with a readable stable key alongside it.</li>
                 <li><strong>Contract evolution:</strong> begin with exact component-contract identity; define any v1→v2 compatibility or adapter mechanism only with explicit, testable semantics.</li>
                 <li><strong>One part, multiple contracts:</strong> support one canonical contract initially; defer explicit adapters until a real case proves the need.</li>
-                <li><strong>Cross-pin constraints:</strong> bound and version the expression vocabulary before accepting arbitrary formulas or Python callbacks.</li>
-                <li><strong>Instance overrides:</strong> define a narrow typed allowlist for occurrence intent; intrinsic MPN facts can never drift.</li>
+                <li><strong>Initial meaning set:</strong> finalize the v1 meanings and merge/cardinality rules for accepted/provided ranges, characteristics, requirements, capabilities and absolute limits.</li>
+                <li><strong>Conditions and expressions:</strong> begin with literal Voltage/Current conditions and bounded reference/scale expressions; do not accept arbitrary formulas or Python callbacks.</li>
+                <li><strong>Conflicts:</strong> define when multiple conditioned records coexist, when compatible constraints intersect and when contradictory single-valued meaning blocks publication.</li>
+                <li><strong>Current aggregation:</strong> begin with compatible continuous-current requirements in one resolved supply domain; define peak, duty-cycle, operating-mode and mutually exclusive load semantics before aggregating those records.</li>
+                <li><strong>Next observables:</strong> choose Power, Time/Frequency, Temperature and R/L/C order only from proven ERC, selection or simulation-readiness use cases.</li>
+                <li><strong>Instance overrides:</strong> define a narrow typed allowlist for occurrence intent; intrinsic MPN characteristics can never drift.</li>
                 <li><strong>Physical bundle:</strong> deterministic archive for distribution plus exploded developer inspection.</li>
                 <li><strong><code>volt.part</code> schema migration:</strong> decide v5 versus another explicit successor, retain v4 reading during migration, and provide deterministic old-artifact conversion.</li>
                 <li><strong>Human and integrity versions:</strong> semver names releases for people; immutable content digests identify every component contract, part and asset.</li>
