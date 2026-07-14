@@ -1,0 +1,1483 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Revised focused architecture review for a C++-owned Volt part library built around ComponentDefinition, nested PinDefinitions, exact PartDefinition, and ComponentInstance selection.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='7' y='7' width='18' height='18' rx='3' fill='%231c3b34'/%3E%3Cpath d='M2 10h5M2 16h5M2 22h5M25 10h5M25 16h5M25 22h5M10 2v5M16 2v5M22 2v5M10 25v5M16 25v5M22 25v5' stroke='%23e58a24' stroke-width='2'/%3E%3C/svg%3E">
+  <title>Volt part libraries - one contract, one part, one path</title>
+  <style>
+    :root {
+      --paper: oklch(96% 0.016 82);
+      --paper-deep: oklch(92% 0.025 82);
+      --surface: oklch(98% 0.012 82);
+      --ink: oklch(24% 0.035 170);
+      --ink-soft: oklch(46% 0.028 170);
+      --forest: oklch(31% 0.065 168);
+      --forest-2: oklch(39% 0.08 168);
+      --moss: oklch(68% 0.105 145);
+      --orange: oklch(69% 0.145 65);
+      --orange-soft: oklch(90% 0.07 78);
+      --red: oklch(51% 0.13 28);
+      --red-soft: oklch(91% 0.045 28);
+      --line: oklch(81% 0.025 85);
+      --code: oklch(23% 0.038 168);
+      --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      --body: "Avenir Next", Avenir, "Gill Sans", "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --radius: 1.15rem;
+      --shadow: 0 1.4rem 3.8rem oklch(24% 0.035 170 / 0.12);
+      --content: 76rem;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; overflow-x: clip; }
+    body {
+      margin: 0;
+      min-width: 20rem;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--body);
+      font-size: 1rem;
+      line-height: 1.58;
+      text-rendering: optimizeLegibility;
+    }
+
+    a { color: var(--forest-2); text-underline-offset: 0.2em; }
+    a:hover { color: var(--red); }
+    code, pre, .mono { font-family: var(--mono); font-variant-ligatures: none; }
+    code:not(pre code) {
+      padding: 0.08em 0.32em;
+      border: 1px solid oklch(31% 0.065 168 / 0.13);
+      border-radius: 0.32em;
+      background: oklch(98% 0.012 82 / 0.72);
+      font-size: 0.9em;
+    }
+    pre {
+      margin: 1.2rem 0;
+      padding: 1.25rem;
+      overflow: auto;
+      border: 1px solid oklch(86% 0.018 168 / 0.14);
+      border-radius: 0.8rem;
+      background: var(--code);
+      color: oklch(94% 0.018 145);
+      font-size: 0.8rem;
+      line-height: 1.62;
+      box-shadow: inset 0 1px oklch(100% 0 0 / 0.06);
+    }
+    pre .comment { color: oklch(72% 0.035 170); }
+    pre .type { color: oklch(80% 0.115 145); }
+    pre .literal { color: oklch(82% 0.12 74); }
+    pre .fn { color: oklch(78% 0.105 210); }
+    h1, h2, h3, h4 { margin: 0; color: var(--forest); line-height: 1.08; }
+    h1, h2 { font-family: var(--display); font-weight: 650; letter-spacing: -0.035em; }
+    h1 { max-width: 11ch; color: var(--surface); font-size: clamp(3.25rem, 9.5vw, 7.4rem); }
+    h2 { max-width: 18ch; font-size: clamp(2.35rem, 5.5vw, 4.7rem); }
+    h3 { font-size: 1.13rem; letter-spacing: -0.01em; }
+    h4 { font-size: 0.92rem; letter-spacing: 0.02em; text-transform: uppercase; }
+    p { margin: 0.78rem 0; max-width: 72ch; }
+    ul, ol { padding-left: 1.25rem; }
+    li + li { margin-top: 0.38rem; }
+    strong { color: var(--forest); }
+    ::selection { background: var(--orange-soft); color: var(--forest); }
+
+    .skip-link {
+      position: fixed;
+      z-index: 200;
+      top: 0.75rem;
+      left: 0.75rem;
+      padding: 0.7rem 1rem;
+      background: var(--surface);
+      color: var(--forest);
+      transform: translateY(-180%);
+    }
+    .skip-link:focus { transform: none; }
+    #reading-progress {
+      position: fixed;
+      z-index: 150;
+      inset: 0 auto auto 0;
+      width: 0;
+      height: 0.25rem;
+      background: var(--orange);
+    }
+
+    .hero {
+      position: relative;
+      isolation: isolate;
+      min-height: 94svh;
+      padding: max(1.4rem, env(safe-area-inset-top)) max(1.1rem, env(safe-area-inset-right)) max(2rem, env(safe-area-inset-bottom)) max(1.1rem, env(safe-area-inset-left));
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      background:
+        linear-gradient(100deg, oklch(25% 0.055 168 / 0.98), oklch(31% 0.065 168 / 0.95)),
+        var(--forest);
+      color: oklch(92% 0.018 145);
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      inset: 0;
+      opacity: 0.22;
+      background-image:
+        linear-gradient(90deg, transparent 0 4.94rem, oklch(88% 0.11 68 / 0.25) 4.94rem 5rem, transparent 5rem),
+        linear-gradient(0deg, transparent 0 4.94rem, oklch(88% 0.11 68 / 0.16) 4.94rem 5rem, transparent 5rem);
+      background-size: 5rem 5rem;
+      mask-image: linear-gradient(90deg, transparent, black 38%, black);
+    }
+    .hero::after {
+      content: "LIBRARY / 01";
+      position: absolute;
+      z-index: -1;
+      right: -0.22em;
+      bottom: -0.2em;
+      color: oklch(92% 0.018 145 / 0.045);
+      font-family: var(--mono);
+      font-size: clamp(4rem, 12vw, 11rem);
+      font-weight: 800;
+      letter-spacing: -0.08em;
+      white-space: nowrap;
+    }
+    .hero-top,
+    .hero-bottom {
+      width: min(var(--content), 100%);
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      font-size: 0.7rem;
+      font-weight: 760;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .brand { display: inline-flex; align-items: center; gap: 0.7rem; }
+    .brand-mark {
+      width: 1.5rem;
+      aspect-ratio: 1;
+      background: var(--orange);
+      clip-path: polygon(45% 0, 100% 0, 66% 42%, 88% 42%, 29% 100%, 42% 57%, 12% 57%);
+    }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.52rem;
+      padding: 0.42rem 0.72rem;
+      border: 1px solid oklch(94% 0.018 145 / 0.24);
+      border-radius: 999px;
+    }
+    .status::before { content: ""; width: 0.48rem; height: 0.48rem; border-radius: 50%; background: var(--orange); }
+    .hero-grid {
+      width: min(var(--content), 100%);
+      margin: auto;
+      padding: clamp(3rem, 8vh, 7rem) 0;
+      display: grid;
+      gap: 3rem;
+      align-items: center;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.1rem;
+      color: oklch(84% 0.125 74);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.17em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 2.6rem; height: 2px; background: currentColor; }
+    .hero-deck {
+      max-width: 43rem;
+      margin-top: 1.6rem;
+      color: oklch(84% 0.025 160);
+      font-family: var(--display);
+      font-size: clamp(1.2rem, 2.2vw, 1.72rem);
+      line-height: 1.42;
+    }
+    .hero-deck strong { color: oklch(96% 0.025 82); }
+    .chip-figure {
+      position: relative;
+      width: min(26rem, 82vw);
+      aspect-ratio: 1;
+      margin: 0 auto;
+      display: grid;
+      place-items: center;
+    }
+    .chip-figure::before,
+    .chip-figure::after {
+      content: "";
+      position: absolute;
+      border: 1px solid oklch(84% 0.125 74 / 0.36);
+      border-radius: 50%;
+    }
+    .chip-figure::before { inset: 4%; }
+    .chip-figure::after { inset: 17%; border-style: dashed; border-color: oklch(74% 0.09 145 / 0.4); }
+    .chip {
+      position: relative;
+      width: 53%;
+      aspect-ratio: 1;
+      padding: 1.6rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid oklch(92% 0.018 145 / 0.24);
+      border-radius: 1.3rem;
+      background: oklch(21% 0.04 168);
+      box-shadow: 0 1.8rem 5rem oklch(15% 0.04 168 / 0.45);
+      transform: rotate(-4deg);
+    }
+    .chip::before,
+    .chip::after {
+      content: "";
+      position: absolute;
+      inset: 12% -18%;
+      z-index: -1;
+      background: repeating-linear-gradient(0deg, transparent 0 1.12rem, var(--orange) 1.12rem 1.42rem, transparent 1.42rem 2.35rem);
+    }
+    .chip::after { inset: -18% 12%; background: repeating-linear-gradient(90deg, transparent 0 1.12rem, var(--orange) 1.12rem 1.42rem, transparent 1.42rem 2.35rem); }
+    .chip small { color: oklch(74% 0.09 145); font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.14em; }
+    .chip strong { color: oklch(95% 0.025 82); font-family: var(--display); font-size: clamp(1.4rem, 3.2vw, 2.25rem); font-weight: 600; line-height: 1.02; }
+    .chip .digest { color: oklch(79% 0.11 74); font-family: var(--mono); font-size: 0.58rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hero-bottom { display: block; border-top: 1px solid oklch(94% 0.018 145 / 0.18); padding-top: 1rem; }
+    .hero-bottom dl { margin: 0; display: grid; gap: 0.75rem; }
+    .hero-bottom div { min-width: 0; }
+    .hero-bottom dt { color: oklch(70% 0.025 160); font-size: 0.59rem; }
+    .hero-bottom dd { margin: 0.2rem 0 0; color: oklch(94% 0.018 145); font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0; text-transform: none; overflow-wrap: anywhere; }
+
+    .page {
+      width: min(88rem, 100%);
+      margin: 0 auto;
+      padding: 0 clamp(1rem, 3.5vw, 3.2rem);
+      display: grid;
+      gap: clamp(2rem, 5vw, 5rem);
+      align-items: start;
+    }
+    .rail { display: none; }
+    .rail-label {
+      margin-bottom: 0.8rem;
+      color: var(--red);
+      font-size: 0.66rem;
+      font-weight: 800;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+    .rail nav { border-left: 1px solid var(--line); }
+    .rail a {
+      display: block;
+      padding: 0.4rem 0 0.4rem 0.9rem;
+      border-left: 3px solid transparent;
+      color: var(--ink-soft);
+      font-size: 0.74rem;
+      text-decoration: none;
+      transform: translateX(-1px);
+    }
+    .rail a:hover,
+    .rail a.active { border-left-color: var(--orange); color: var(--forest); }
+    .rail-note {
+      margin-top: 1.3rem;
+      padding: 0.9rem;
+      background: var(--paper-deep);
+      color: var(--ink-soft);
+      font-size: 0.7rem;
+      line-height: 1.5;
+    }
+    article { min-width: 0; }
+    section {
+      scroll-margin-top: 1.5rem;
+      padding: clamp(4.5rem, 9vw, 8rem) 0;
+      border-bottom: 1px solid var(--line);
+    }
+    section:last-child { border-bottom: 0; }
+    .section-kicker {
+      display: block;
+      margin-bottom: 0.8rem;
+      color: var(--red);
+      font-size: 0.69rem;
+      font-weight: 800;
+      letter-spacing: 0.17em;
+      text-transform: uppercase;
+    }
+    .section-lead {
+      max-width: 47rem;
+      margin: 1.25rem 0 2.4rem;
+      color: var(--ink-soft);
+      font-family: var(--display);
+      font-size: clamp(1.14rem, 2vw, 1.45rem);
+      line-height: 1.48;
+    }
+    .small { color: var(--ink-soft); font-size: 0.8rem; }
+    .caption { margin-top: 0.65rem; color: var(--ink-soft); font-size: 0.72rem; line-height: 1.48; }
+    .rule-note {
+      margin: 2rem 0;
+      padding: clamp(1.4rem, 4vw, 2.5rem);
+      border-left: 0.45rem solid var(--orange);
+      background: var(--forest);
+      color: oklch(87% 0.025 160);
+      box-shadow: var(--shadow);
+    }
+    .rule-note strong { color: oklch(97% 0.018 82); font-family: var(--display); font-size: clamp(1.35rem, 2.6vw, 2.1rem); font-weight: 620; }
+    .rule-note p { max-width: 60rem; }
+
+    .decision-ribbon {
+      margin-top: 2.3rem;
+      display: grid;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .decision-ribbon > div { padding: 1.25rem 0; }
+    .decision-ribbon > div + div { border-top: 1px solid var(--line); }
+    .decision-ribbon span { color: var(--orange); font-family: var(--mono); font-size: 0.68rem; font-weight: 800; }
+    .decision-ribbon h3 { margin: 0.4rem 0; }
+
+    .ledger {
+      display: grid;
+      margin: 2.4rem 0;
+      border-top: 2px solid var(--forest);
+      border-bottom: 1px solid var(--line);
+    }
+    .metric { padding: 1.25rem 0; border-bottom: 1px solid var(--line); }
+    .metric:last-child { border-bottom: 0; }
+    .metric dt { color: var(--ink-soft); font-size: 0.66rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .metric dd { margin: 0.25rem 0 0; color: var(--forest); font-family: var(--display); font-size: clamp(2rem, 5vw, 3.6rem); line-height: 1; }
+    .metric p { margin: 0.45rem 0 0; color: var(--ink-soft); font-size: 0.75rem; }
+
+    .table-wrap { margin: 1.5rem 0; overflow-x: auto; border-top: 2px solid var(--forest); }
+    table { width: 100%; border-collapse: collapse; min-width: 42rem; font-size: 0.82rem; }
+    th, td { padding: 0.85rem 0.8rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--forest); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; }
+    td:first-child { color: var(--forest); font-weight: 750; }
+    tr:last-child td { border-bottom: 0; }
+    .state-gap { color: var(--red); font-weight: 750; }
+    .state-seed { color: var(--forest-2); font-weight: 750; }
+
+    .definition-list { margin: 2rem 0; border-top: 2px solid var(--forest); }
+    .definition {
+      display: grid;
+      gap: 0.65rem;
+      padding: 1.4rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .definition-index { color: var(--orange); font-family: var(--mono); font-size: 0.7rem; }
+    .definition code { justify-self: start; }
+    .definition p { margin: 0; color: var(--ink-soft); }
+
+    .concept-map {
+      margin: 2.4rem 0;
+      display: grid;
+      gap: 0.75rem;
+      align-items: stretch;
+    }
+    .concept-card {
+      min-width: 0;
+      padding: 1.3rem;
+      border-top: 0.34rem solid var(--forest);
+      background: var(--surface);
+    }
+    .concept-card.part { border-top-color: var(--orange); }
+    .concept-card.instance { border-top-color: var(--moss); }
+    .concept-card .concept-kind {
+      display: block;
+      margin-bottom: 0.45rem;
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+    .concept-card h3 { font-family: var(--display); font-size: clamp(1.4rem, 2.5vw, 1.9rem); }
+    .concept-card > p { color: var(--ink-soft); font-size: 0.82rem; }
+    .nested-record {
+      margin-top: 1rem;
+      padding: 0.8rem;
+      border: 1px solid var(--line);
+      background: var(--paper);
+    }
+    .nested-record span,
+    .nested-record small { display: block; color: var(--ink-soft); font-size: 0.67rem; }
+    .nested-record strong { display: block; margin: 0.12rem 0; }
+    .concept-relation {
+      display: grid;
+      place-items: center;
+      min-height: 2.5rem;
+      color: var(--orange);
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .concept-rule {
+      margin: 1.3rem 0;
+      padding: 1.1rem;
+      border: 1px solid var(--forest);
+      background: var(--paper-deep);
+      font-family: var(--display);
+      font-size: clamp(1.05rem, 2vw, 1.3rem);
+    }
+    .concept-rule code { font-family: var(--mono); font-size: 0.82em; }
+
+    .architecture {
+      margin: 2.2rem 0;
+      padding: clamp(1rem, 3vw, 2rem);
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(90deg, transparent 0 2.95rem, oklch(69% 0.145 65 / 0.08) 2.95rem 3rem, transparent 3rem),
+        var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .plane {
+      position: relative;
+      display: grid;
+      gap: 0.8rem;
+      padding: 1.2rem 0;
+      border-bottom: 1px dashed var(--line);
+    }
+    .plane:last-child { border-bottom: 0; }
+    .plane-label { color: var(--red); font-size: 0.65rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+    .plane-nodes { display: grid; gap: 0.55rem; }
+    .plane-node {
+      padding: 0.75rem 0.85rem;
+      border: 1px solid var(--line);
+      background: var(--paper);
+    }
+    .plane-node strong { display: block; font-size: 0.83rem; }
+    .plane-node span { display: block; margin-top: 0.16rem; color: var(--ink-soft); font-size: 0.67rem; }
+    .plane-node.accent { border-color: var(--orange); background: var(--orange-soft); }
+    .flow-arrow { padding: 0.7rem 0; color: var(--orange); font-family: var(--mono); font-size: 1.4rem; text-align: center; }
+    .closure-flow {
+      margin: 1.4rem 0;
+      display: grid;
+      gap: 0.5rem;
+    }
+    .closure-node {
+      padding: 0.9rem 1rem;
+      border-left: 0.28rem solid var(--forest);
+      background: var(--paper-deep);
+    }
+    .closure-node strong { display: block; }
+    .closure-node span { color: var(--ink-soft); font-size: 0.75rem; }
+
+    .triad,
+    .split { display: grid; gap: 1rem; margin: 1.8rem 0; }
+    .semantic-bucket,
+    .panel {
+      padding: 1.25rem;
+      border-top: 0.28rem solid var(--forest);
+      background: var(--surface);
+    }
+    .semantic-bucket.optional { border-top-color: var(--orange); }
+    .semantic-bucket.never { border-top-color: var(--red); }
+    .semantic-bucket p,
+    .panel p { color: var(--ink-soft); font-size: 0.82rem; }
+    .panel.good { border-top-color: var(--moss); }
+    .panel.caution { border-top-color: var(--orange); }
+    .panel.danger { border-top-color: var(--red); }
+    .panel ul, .panel ol { font-size: 0.82rem; }
+
+    .simulation-flow {
+      margin: 2rem 0;
+      display: grid;
+      gap: 0.65rem;
+    }
+    .sim-node {
+      padding: 1rem;
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .sim-node.model { border-color: var(--orange); background: var(--orange-soft); }
+    .sim-node.result { border-color: var(--moss); }
+    .sim-node small { display: block; color: var(--red); font-size: 0.62rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .sim-node strong { display: block; margin-top: 0.25rem; }
+
+    .api-grid { display: grid; gap: 1.2rem; margin: 1.8rem 0; }
+    .api-block h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+    .api-block h3 span { color: var(--red); font-family: var(--mono); font-size: 0.62rem; font-weight: 500; }
+
+    .tree {
+      margin: 1.4rem 0;
+      padding: 1.15rem;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      line-height: 1.72;
+      white-space: pre;
+    }
+    .tree .dim { color: var(--ink-soft); }
+
+    .artifact-map {
+      margin: 2rem 0;
+      display: grid;
+      gap: 0.75rem;
+    }
+    .artifact-column { display: grid; gap: 0.55rem; }
+    .artifact-node {
+      padding: 0.9rem 1rem;
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .artifact-node small { display: block; color: var(--red); font-size: 0.61rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .artifact-node strong { display: block; margin-top: 0.2rem; font-size: 0.83rem; }
+    .artifact-node.primary { border-color: var(--forest); }
+    .artifact-node.asset { border-color: var(--orange); }
+    .artifact-node.snapshot { border-color: var(--moss); }
+    .artifact-map .artifact-arrow { color: var(--orange); font-family: var(--mono); font-size: 1.4rem; text-align: center; }
+
+    .gate-list { margin: 2rem 0; counter-reset: gate; }
+    .gate {
+      position: relative;
+      display: grid;
+      gap: 0.55rem;
+      padding: 1.2rem 0 1.2rem 3.2rem;
+      border-bottom: 1px solid var(--line);
+      counter-increment: gate;
+    }
+    .gate:first-child { border-top: 2px solid var(--forest); }
+    .gate::before {
+      content: counter(gate, decimal-leading-zero);
+      position: absolute;
+      top: 1.2rem;
+      left: 0;
+      color: var(--orange);
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      font-weight: 800;
+    }
+    .gate p { margin: 0; color: var(--ink-soft); font-size: 0.82rem; }
+    .gate-tag { justify-self: start; padding: 0.26rem 0.5rem; background: var(--paper-deep); color: var(--forest); font-family: var(--mono); font-size: 0.62rem; }
+
+    .migration { margin: 2rem 0; }
+    .slice {
+      display: grid;
+      gap: 0.55rem;
+      padding: 1.25rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .slice:first-child { border-top: 2px solid var(--forest); }
+    .slice-number { color: var(--orange); font-family: var(--mono); font-size: 0.7rem; }
+    .slice p { margin: 0; color: var(--ink-soft); font-size: 0.82rem; }
+    .slice .stop { color: var(--forest-2); font-size: 0.75rem; font-weight: 700; }
+
+    .note {
+      margin: 1.5rem 0;
+      padding: 1rem 1.1rem;
+      border-left: 0.3rem solid var(--forest);
+      background: var(--paper-deep);
+      font-size: 0.82rem;
+    }
+    .note.warning { border-left-color: var(--orange); }
+    .note.danger { border-left-color: var(--red); background: var(--red-soft); }
+    .note.success { border-left-color: var(--moss); }
+
+    details { margin: 1rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    details + details { margin-top: -1rem; border-top: 0; }
+    summary { padding: 1rem 0; cursor: pointer; color: var(--forest); font-weight: 750; }
+    details > div { padding: 0 0 1rem; }
+    details ul { font-size: 0.8rem; }
+
+    footer {
+      padding: 3rem max(1rem, env(safe-area-inset-right)) max(3rem, env(safe-area-inset-bottom));
+      background: var(--forest);
+      color: oklch(80% 0.025 160);
+    }
+    footer > div { width: min(var(--content), 100%); margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; }
+    footer strong { color: oklch(96% 0.025 82); }
+    footer a { color: oklch(84% 0.125 74); }
+
+    @media (min-width: 44rem) {
+      .hero-grid { grid-template-columns: minmax(0, 1.25fr) minmax(18rem, 0.75fr); }
+      .hero-bottom { display: flex; align-items: end; gap: 1.5rem; }
+      .hero-bottom dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); flex: 1; }
+      .decision-ribbon { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .decision-ribbon > div { padding: 1.25rem; }
+      .decision-ribbon > div + div { border-top: 0; border-left: 1px solid var(--line); }
+      .ledger { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .metric { padding: 1.25rem; border-right: 1px solid var(--line); border-bottom: 0; }
+      .metric:last-child { border-right: 0; }
+      .definition { grid-template-columns: 2.8rem minmax(10rem, 0.7fr) minmax(0, 1.4fr); align-items: start; }
+      .definition code { grid-column: 2; }
+      .definition p { grid-column: 3; grid-row: 1 / span 2; }
+      .concept-map { grid-template-columns: minmax(0, 1fr) 6rem minmax(0, 1fr) 5.4rem minmax(0, 1fr); }
+      .plane { grid-template-columns: 8rem minmax(0, 1fr); }
+      .plane-nodes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .closure-flow { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .closure-node { border-left: 0; border-top: 0.28rem solid var(--forest); }
+      .triad { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .simulation-flow { grid-template-columns: 1fr auto 1.2fr auto 1fr; align-items: stretch; }
+      .simulation-flow .flow-arrow { display: grid; place-items: center; }
+      .api-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .api-block.wide { grid-column: 1 / -1; }
+      .artifact-map { grid-template-columns: 1fr auto 1.2fr auto 1fr; align-items: center; }
+      .slice { grid-template-columns: 3.2rem minmax(10rem, 0.55fr) minmax(0, 1.3fr); }
+      .slice .stop { grid-column: 3; }
+    }
+
+    @media (min-width: 64rem) {
+      body {
+        background:
+          linear-gradient(90deg, transparent 0 3.95rem, oklch(69% 0.145 65 / 0.13) 3.95rem 4rem, transparent 4rem),
+          var(--paper);
+      }
+      .page { grid-template-columns: 12.5rem minmax(0, 1fr); }
+      .rail { position: sticky; top: 1.75rem; display: block; max-height: calc(100vh - 3.5rem); padding: 3.5rem 0; overflow: auto; }
+    }
+
+    @media (pointer: coarse) {
+      .rail a, summary, a { min-height: 2.75rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+
+    @media print {
+      body { background: var(--surface); }
+      #reading-progress, .rail, .chip-figure { display: none; }
+      .hero { min-height: auto; color: var(--ink); background: var(--surface); border-bottom: 2px solid var(--forest); }
+      .hero h1, .hero-deck strong, .hero-bottom dd { color: var(--forest); }
+      .hero-deck, .hero-bottom, .hero-top { color: var(--ink); }
+      .page { display: block; width: 100%; }
+      section { break-inside: avoid; padding: 2rem 0; }
+      a { color: inherit; text-decoration: none; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to review</a>
+  <div id="reading-progress" aria-hidden="true"></div>
+
+  <header class="hero" id="top">
+    <div class="hero-top">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>Volt architecture</span></div>
+      <div class="status">Revised focused review</div>
+    </div>
+
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">Part libraries · revised model · companion to #269</div>
+        <h1>One contract. One part. One path.</h1>
+        <p class="hero-deck">Model a component once: its <strong>definition contains accurate pin definitions</strong>; an exact part implements that contract; each design occurrence selects the immutable part it uses.</p>
+      </div>
+      <div class="chip-figure" aria-hidden="true">
+        <div class="chip">
+          <small>PART LIBRARY / TARGET</small>
+          <strong>define<br>implement<br>select</strong>
+          <span class="digest">sha256:9f1c...7e42</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-bottom">
+      <dl>
+        <div><dt>Review snapshot</dt><dd>origin/main @ 2d0e7e03</dd></div>
+        <div><dt>Recommendation</dt><dd>Three concepts + one native consumption path</dd></div>
+        <div><dt>Scope</dt><dd>Architecture only · no ADR or product change</dd></div>
+      </dl>
+    </div>
+  </header>
+
+  <div class="page">
+    <aside class="rail" aria-label="Review navigation">
+      <div class="rail-label">Read once</div>
+      <nav>
+        <a href="#decision">Decision</a>
+        <a href="#evidence">Current evidence</a>
+        <a href="#vocabulary">Three-concept model</a>
+        <a href="#planes">Three planes</a>
+        <a href="#electrical">Electrical ownership</a>
+        <a href="#simulation">Simulation boundary</a>
+        <a href="#apis">Target APIs</a>
+        <a href="#workflow">Library workflow</a>
+        <a href="#artifacts">Artifact closure</a>
+        <a href="#verification">Verification</a>
+        <a href="#migration">Focused implementation order</a>
+        <a href="#boundaries">Proposed / open</a>
+        <a href="#sources">Evidence notes</a>
+      </nav>
+      <div class="rail-note">This revised page refines only the part-library seam. It preserves the original focused draft, does not replace the post-Circuit review, and is not the full refactor plan.</div>
+    </aside>
+
+    <main id="content">
+      <article>
+        <section id="decision">
+          <span class="section-kicker">01 · Target decision</span>
+          <h2>One declaration per exact part. One native path.</h2>
+          <p class="section-lead">Adopt a first-class, C++-owned part-library system with a deliberately small semantic model. Python remains the pleasant declaration surface; native definitions, validation and compiled artifacts remain the portable meaning.</p>
+
+          <div class="rule-note">
+            <strong>Gold target: author a shared contract once, publish each exact part once, select it by digest.</strong>
+            <p><code>ComponentDefinition</code> owns the reusable logical contract and contains its <code>PinDefinition</code>s. <code>PartDefinition</code> is one exact manufacturer implementation of that contract. <code>ComponentInstance</code> is one occurrence in a design and records its chosen part reference. These are three lifecycle roles, not three ways a library author must describe the same device.</p>
+          </div>
+
+          <div class="decision-ribbon">
+            <div><span>01 / DEFINE</span><h3>Declarative source</h3><p class="small">Python or C++ declarations, generators, assets and ordinary unit tests.</p></div>
+            <div><span>02 / COMPILE</span><h3>Native services</h3><p class="small">C++ validates, hashes, queries, resolves and emits the library bundle.</p></div>
+            <div><span>03 / CONSUME</span><h3>Immutable closure</h3><p class="small">Projects snapshot only the selected parts and assets required by their builds.</p></div>
+          </div>
+
+          <div class="note success"><strong>Normal exact-part authoring is one declaration.</strong> A part may reference a shared component contract such as <code>resistor.v1</code>, or declare a unique contract inline for an MCU. The native builder interns that contract; the author does not manually create a second competing definition.</div>
+          <div class="note"><strong>Reading key.</strong> Section 02 is <strong>NOW</strong>: evidence from exact main. Sections 01 and 03–12 are the <strong>TARGET</strong> proposed for approval. Target nouns and APIs are intentionally concrete, but they are not claims about current code or accepted ADRs.</div>
+          <div class="note"><strong>Companion relationship.</strong> The broader <a href="volt-post-circuit-architecture-review-revised.html">post-Circuit review</a> remains the owner of the three-plane project architecture, multiple Boards, <code>CompiledBoard</code>, typed artifact graph, selected exports and C++-first bundle API. This review supplies the reusable-part boundary. A separate full refactor plan follows only after this focused model is approved.</div>
+        </section>
+
+        <section id="evidence">
+          <span class="section-kicker">02 · Current evidence</span>
+          <h2>The nouns exist. Their relationship does not.</h2>
+          <p class="section-lead">Exact-main evidence shows a substantial native part artifact and serious tests, but Circuit consumption follows a separate reconstruction path. The revised target connects existing concepts; it does not declare the current model complete.</p>
+
+          <dl class="ledger">
+            <div class="metric"><dt>Native part surface</dt><dd>14 + 2</dd><p>Fourteen public value classes and two enums around <code>PartDefinition</code>.</p></div>
+            <div class="metric"><dt>Focused tests</dt><dd>55 + 40</dd><p>Python component/library tests plus native part, IO and authoring cases.</p></div>
+            <div class="metric"><dt>Shipped catalogue</dt><dd>17 / 0</dd><p>Seventeen legacy <code>Library.component</code> entries; zero modern <code>Library.part</code> entries.</p></div>
+            <div class="metric"><dt>Portable library</dt><dd>0</dd><p>No native manifest, bundle reader/writer, resolver or library CLI.</p></div>
+          </dl>
+
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Surface</th><th>Evidence now</th><th>Architectural gap</th></tr></thead>
+              <tbody>
+                <tr><td>Canonical part</td><td><span class="state-seed"><code>volt.part</code> v4</span> reads, writes, hashes and validates native <code>PartDefinition</code>.</td><td>No native collection, manifest, dependency graph or asset-complete bundle.</td></tr>
+                <tr><td>Logical contract</td><td><code>ComponentDefinition</code> references kernel-owned <code>PinDefinition</code>s with terminal semantics and typed pin attributes.</td><td><span class="state-gap">It has no typed component-wide requirement schema or cross-pin contract today.</span></td></tr>
+                <tr><td>Python library</td><td>Immutable <code>Part</code>, <code>Library.part</code>, families and in-memory <code>LibraryResult</code>.</td><td><span class="state-gap">Build orchestration and payload assembly remain Python-owned.</span></td></tr>
+                <tr><td>Electrical ratings</td><td>C++ <code>PartDefinition</code> already owns a typed <code>ElectricalAttributeMap</code>.</td><td><span class="state-gap"><code>Part.ratings</code> is opaque Python data and is dropped by both current routes: artifact build and design instantiation.</span></td></tr>
+                <tr><td>Exact passive value</td><td><code>Design.R/C/L</code> lower typed values into component-instance attributes.</td><td><span class="state-gap">Imported <code>Part(value="10K")</code> remains a generic property string, not typed resistance.</span></td></tr>
+                <tr><td>Consumption</td><td><code>Design.instantiate(Part)</code> reconstructs a component and calls <code>select_part</code> through Python.</td><td>No canonical part hash reaches Circuit; no digest-addressed native library-part handle reaches the kernel; modules cannot consume modern parts cleanly.</td></tr>
+                <tr><td>Project</td><td><code>Project.use_library</code> has one test caller and folds diagnostics.</td><td>No dependency lock, consumed-part inventory, offline reopen or automatic snapshot.</td></tr>
+                <tr><td>Assets</td><td>Symbols, footprints and 3D references exist across current models.</td><td>Symbol geometry is not bundled; library 3D hashing covers metadata rather than the actual asset bytes.</td></tr>
+                <tr><td>Real usage</td><td>Examples contain 19 direct <code>define_component</code> and 11 manual <code>select_part</code> calls.</td><td>Three explicit routes - <code>define_component</code>, legacy <code>Library.component</code> and modern <code>Library.part</code> - coexist with built-in helpers; the modern path is not dogfooded.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="tree" aria-label="Current duplicate lowering paths from one Python Part"><strong>Python Part</strong>
+├── Library.build()
+│   └── standalone native PartDefinition
+│       ├── copied PartPin / PinDefinition values
+│       └── volt.part bytes + digest
+└── Design.instantiate()
+    ├── reconstructed Circuit ComponentDefinition + PinDefinitions
+    └── ComponentInstance + copied inline PhysicalPart
+
+<span class="dim">The built artifact and its digest are not consumed by the design path.</span></div>
+
+          <div class="note danger"><strong>The shipped <code>stm32_usb_buck</code> example demonstrates the risk.</strong> Its generic resistor is backed by a specific 10 kΩ Yageo MPN, then reused for 330 Ω, 10 kΩ and 100 kΩ instances. Capacitors follow the same pattern. A string value can disagree with the selected orderable part without a native compatibility check.</div>
+          <p class="small">Counts above were reproduced against <code>origin/main</code> commit <code>2d0e7e03df12a53cb69b2915df867433e10084dd</code>. They describe evidence, not an API budget.</p>
+        </section>
+
+        <section id="vocabulary">
+          <span class="section-kicker">03 · Target three-concept model</span>
+          <h2>The vocabulary is smaller than the implementation.</h2>
+          <p class="section-lead">Only three concepts belong in the primary mental model. Pins are accurate, first-class kernel data, but they are contained by the component contract rather than presented as another way to define a part.</p>
+
+          <div class="concept-map" role="img" aria-label="A ComponentInstance is an occurrence of a ComponentDefinition and selects a PartDefinition that implements the same component contract">
+            <div class="concept-card contract">
+              <span class="concept-kind">Reusable logical contract</span>
+              <h3>ComponentDefinition</h3>
+              <p>Defines what the device is electrically: its logical interface, facts every implementation must supply, allowed or required instance-input shapes, component-wide invariants and relationships across terminals.</p>
+              <div class="nested-record"><span>contains</span><strong>PinDefinition[]</strong><small>stable logical key · requirement · terminal · direction · signal · drive · polarity · reusable constraints</small></div>
+            </div>
+            <div class="concept-relation">← occurrence of</div>
+            <div class="concept-card instance">
+              <span class="concept-kind">One design occurrence</span>
+              <h3>ComponentInstance</h3>
+              <p><code>R17</code> or <code>U1</code>: concrete pins and connections, requested configuration, DNP/assembly intent and one optional exact selected part reference.</p>
+              <div class="nested-record"><span>records</span><strong>LibraryPartRef</strong><small>contains namespace, version, key and digest; not a second copy of intrinsic truth</small></div>
+            </div>
+            <div class="concept-relation">selects →</div>
+            <div class="concept-card part">
+              <span class="concept-kind">Exact implementation</span>
+              <h3>PartDefinition</h3>
+              <p>One manufacturer + MPN that implements the component contract with exact device facts, per-pin capabilities, package mapping, provenance and required assets.</p>
+              <div class="nested-record"><span>implements →</span><strong>ComponentDefinitionRef</strong><small>contains the digest of one immutable logical contract</small></div>
+              <div class="nested-record"><span>attaches</span><strong>footprint · GLB/STEP · optional simulation</strong><small>plus an explicit exact-part symbol override only when required</small></div>
+            </div>
+          </div>
+
+          <div class="concept-rule"><strong><code>PartDefinition</code> — implements exactly one → <code>ComponentDefinition</code>.</strong> <code>ComponentInstance</code> is an occurrence of that component and may select the exact part. The normal part author writes one part declaration; a shared contract is authored once, while a unique inline contract is compiled and interned by C++.</div>
+
+          <h3>Supporting machinery, not more meanings of “part”</h3>
+          <div class="definition-list">
+            <div class="definition"><span class="definition-index">A</span><div><h3>PinDefinition</h3><code>nested contract data</code></div><p>Genuine kernel data because every connected <code>PinInstance</code> needs stable reusable identity, semantics and diagnostic context. Exact package-pin numbers and tighter per-pin limits are supplied by the implementing part, keyed to the logical pin.</p></div>
+            <div class="definition"><span class="definition-index">B</span><div><h3>Projection attachments</h3><code>symbol · footprint · 3D · simulation</code></div><p>The default logical schematic symbol belongs to <code>ComponentDefinition</code>. Exact footprint, package mapping, 3D and simulation attachments belong to <code>PartDefinition</code>; an exact-part symbol variant is an explicit override, never a second default owner.</p></div>
+            <div class="definition"><span class="definition-index">C</span><div><h3>PartLibraryBundle</h3><code>packaging</code></div><p>The immutable published closure of definitions, references, required assets and evidence. It is distribution, not a fourth domain entity.</p></div>
+            <div class="definition"><span class="definition-index">D</span><div><h3>ModuleDefinition</h3><code>separate reusable circuit</code></div><p>A multi-component circuit or reference design. It consumes components and parts; it is intentionally outside the atomic part vocabulary.</p></div>
+          </div>
+
+          <div class="note warning"><strong>Manufacturing readiness stays visible.</strong> An unresolved <code>ComponentDefinition</code> is allowed during logical exploration. It must fail Board/BOM readiness until a compatible exact <code>PartDefinition</code> is pinned. A manufacturable part never means “some resistor in this family”.</div>
+        </section>
+
+        <section id="planes">
+          <span class="section-kicker">04 · Target three-plane fit</span>
+          <h2>The same architecture appears in the library code.</h2>
+          <p class="section-lead">The catalogue is not a fourth project plane. It is an independently buildable producer whose artifact feeds the normal authoring and compile lifecycle.</p>
+
+          <div class="architecture" role="img" aria-label="Part-library authoring, native service and artifact planes feeding an exact consumed-part project snapshot">
+            <div class="plane">
+              <div class="plane-label">Authoring plane</div>
+              <div class="plane-nodes">
+                <div class="plane-node"><strong>Python declarations</strong><span>concise typed authoring</span></div>
+                <div class="plane-node"><strong>C++ declarations</strong><span>language-neutral source path</span></div>
+                <div class="plane-node"><strong>Generators + assets</strong><span>footprints · GLB/STEP · models</span></div>
+                <div class="plane-node"><strong>Unit tests</strong><span>pytest · Catch2 · fixtures</span></div>
+              </div>
+            </div>
+            <div class="plane">
+              <div class="plane-label">Service plane</div>
+              <div class="plane-nodes">
+                <div class="plane-node"><strong>compile_library</strong><span>normalize · resolve · hash</span></div>
+                <div class="plane-node"><strong>validate_library</strong><span>structure · semantics · readiness</span></div>
+                <div class="plane-node"><strong>query / resolve</strong><span>rank candidates · pin exact choice</span></div>
+                <div class="plane-node"><strong>render / compare</strong><span>review evidence · oracle diff</span></div>
+              </div>
+            </div>
+            <div class="plane">
+              <div class="plane-label">Artifact plane</div>
+              <div class="plane-nodes">
+                <div class="plane-node accent"><strong>PartLibraryBundle</strong><span>manifest + canonical entries</span></div>
+                <div class="plane-node"><strong>ComponentDefinition ← PartDefinition</strong><span>logical contract implemented by an exact part</span></div>
+                <div class="plane-node"><strong>Projection assets</strong><span>symbol · footprint · GLB/STEP</span></div>
+                <div class="plane-node"><strong>Attestations</strong><span>evidence keyed to immutable hashes</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="closure-flow" aria-label="Consumed part closure flow">
+            <div class="closure-node"><strong>Library bundle</strong><span>whole published catalogue</span></div>
+            <div class="closure-node"><strong>Exact LibraryPartRef</strong><span>key + library + part digest</span></div>
+            <div class="closure-node"><strong>ComponentInstance selects</strong><span>contract identity + intent checked natively</span></div>
+            <div class="closure-node"><strong>Project snapshot</strong><span>only used definitions and assets</span></div>
+          </div>
+
+          <p>The final snapshot fans out to multiple historical <code>CompiledBoard</code> artifacts, BOM/CPL, Vault/BoardScene and selected exports. Later library releases cannot mutate any of them.</p>
+        </section>
+
+        <section id="electrical">
+          <span class="section-kicker">05 · Target electrical ownership</span>
+          <h2>Put every fact on exactly one owner.</h2>
+          <p class="section-lead">Critical electrical facts are normal native data. Anything needed for selection, validation, ERC or future simulation is typed, kernel-owned, serializable and inspectable after Python is gone.</p>
+
+          <div class="rule-note">
+            <strong>Authoring → native build → canonical bundle → native reopen → selected instance must preserve electrical meaning and ownership exactly.</strong>
+            <p>Unknown values stay unknown. The library produces completeness diagnostics; it never guesses from a category string, net name, filename or an agent’s likely interpretation of a datasheet.</p>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Owner</th><th>Owns</th><th>Examples</th><th>Boundary</th></tr></thead>
+              <tbody>
+                <tr><td><code>ComponentDefinition</code>, including <code>PinDefinition[]</code></td><td>The reusable logical contract: stable terminal identities and semantics, an implementation-fact schema, a separate instance-input schema, and component-wide or cross-pin relationships.</td><td>Every resistor part supplies resistance and tolerance; an unresolved instance may request a resistance. A regulator occurrence may supply configured output voltage.</td><td>Malformed schemas and dangling logical-pin references reject. Unsatisfied occurrence intent remains diagnosable.</td></tr>
+                <tr><td><code>PartDefinition</code></td><td>One exact MPN’s intrinsic facts, exact component-wide capabilities, exact per-pin capabilities and package/projection mapping.</td><td>10 kΩ ±1%; rated power; supply and I/O ranges; manufacturer pin numbers; logical-pin → footprint-pad mapping.</td><td>Malformed typed values and invalid mappings reject. Missing, implausible or unproven facts are library diagnostics and publish gates.</td></tr>
+                <tr><td><code>ComponentInstance</code></td><td>Occurrence state: connections, independently authored requested/configured intent, assembly state and one exact <code>LibraryPartRef</code> whose digest is integral.</td><td>An unresolved <code>R17</code> requests 10 kΩ; configured gain; operating voltage; DNP; a narrow explicit override.</td><td>Unknown refs or a selected part implementing another contract reject at mutation. Intent-versus-capability mismatch is a diagnostic.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="note"><strong>Selection requirements are not copied ratings.</strong> An unresolved instance may carry an acceptance constraint used to find a part. Direct <code>design.add(exact_part)</code> does not restate that part’s nominal facts. If a requirement remains after selection, it is independently authored design intent checked against the referenced part—not a cached duplicate of its rating.</div>
+
+          <div class="note warning"><strong>Pin identity needs one clean seam.</strong> The target <code>PinDefinition</code> has a stable logical <code>PinKey</code>. The exact manufacturer package-pin number and footprint-pad mapping belong to <code>PartDefinition</code>. Current <code>PinDefinition.number</code> can mean logical or package number; migration must separate those meanings rather than hide the conflation.</div>
+
+          <div class="triad">
+            <div class="semantic-bucket"><h3>Always kernel data</h3><p>Typed values, tolerances, ranges, logical pin semantics, cross-pin relationships, exact MPN, package/pad mapping, provenance and the selected integrity-bearing ref.</p></div>
+            <div class="semantic-bucket optional"><h3>Optional attachment</h3><p>Vendor or approximate simulation models, 3D interchange, measured evidence and analysis-specific parameter sets.</p></div>
+            <div class="semantic-bucket never"><h3>Never inferred truth</h3><p>Values guessed from names, category strings, convenient defaults, distributor listings or solved simulation outputs.</p></div>
+          </div>
+
+          <h3>The contract defines shape; the part supplies exact truth</h3>
+          <p>A resistor contract can require resistance, tolerance, rated power and maximum working voltage. A regulator contract can require supply/output ranges, output-current capability and correctly typed power pins. Invariants shared by every implementation belong to <code>ComponentDefinition</code>; exact values and tighter limits belong to <code>PartDefinition</code>. No universal field list needs to pretend every datasheet curve is a scalar.</p>
+
+          <pre><code><span class="comment">// Illustrative target model. Names are not accepted API.</span>
+ComponentDefinition resistor_v1 {
+  pins: [A: passive, B: passive],
+  required_part_facts: [
+    resistance, tolerance, rated_power, maximum_working_voltage
+  ],
+  optional_instance_inputs: [desired_resistance]
+}
+
+PartDefinition RC0402FR_0710KL implements resistor_v1 {
+  resistance: 10 kohm,
+  tolerance: 1 percent,
+  rated_power: 62.5 mW,
+  maximum_working_voltage: 50 V
+}
+
+ComponentInstance R17 {
+  selected_part: ryan/parts:RC0402FR_0710KL@sha256:…
+}</code></pre>
+
+          <div class="rule-note">
+            <strong>IC pin example: logical role first, exact limits and mapping second.</strong>
+            <p><code>ComponentDefinition</code> declares logical <code>VIN</code> as a required power input. One implementing <code>PartDefinition</code> records <code>VIN</code> recommended at 2.7–5.5 V, absolute maximum 6 V, and maps that one logical <code>PinKey</code> to its manufacturer package pin or pins and then to footprint pad or pads. One logical terminal may intentionally fan out to multiple physical pins/pads; the mapping remains explicit and native-validated.</p>
+          </div>
+
+          <div class="note danger"><strong>Current gap, first migration priority:</strong> exact main does not yet implement this relationship. Its <code>ComponentDefinition</code> lacks the proposed component-wide/cross-pin contract; <code>PartDefinition</code> copies its own pin records; Python constructs an empty native part-level attribute map. Packaging that meaning first would merely make the incompleteness portable.</div>
+        </section>
+
+        <section id="simulation">
+          <span class="section-kicker">06 · Target simulation boundary</span>
+          <h2>Simulation-ready, not simulation-specific.</h2>
+          <p class="section-lead">Typed ratings are not a simulator model. The catalogue should preserve both without coupling Volt’s canonical meaning to SPICE, IBIS, an internal solver or a Python callback.</p>
+
+          <div class="simulation-flow" role="img" aria-label="Canonical circuit and exact part data combine with an optional simulation attachment in a service that emits separate analysis results">
+            <div class="sim-node"><small>Canonical inputs</small><strong>Circuit connectivity + PartDefinition facts</strong></div>
+            <div class="flow-arrow">→</div>
+            <div class="sim-node model"><small>Simulation service</small><strong>consumes optional model attachment + hashed backend payloads</strong></div>
+            <div class="flow-arrow">→</div>
+            <div class="sim-node result"><small>Analysis artifact</small><strong>SimulationGraph + SimulationResult</strong></div>
+          </div>
+
+          <div class="split">
+            <div class="panel good">
+              <h3>Model attachment owns</h3>
+              <ul>
+                <li>model kind and supported analyses;</li>
+                <li>terminal schema and logical <code>PinKey</code> bindings;</li>
+                <li>typed parameter bindings and corners;</li>
+                <li>fidelity: ideal, approximate, vendor or measured;</li>
+                <li>limitations, provenance, licence and content digest;</li>
+                <li>backend payload refs such as SPICE, IBIS or S-parameter files.</li>
+              </ul>
+            </div>
+            <div class="panel caution">
+              <h3>Readiness diagnostics own</h3>
+              <ul>
+                <li>no model for the requested analysis;</li>
+                <li>model terminals or units do not line up;</li>
+                <li>required part attributes are missing;</li>
+                <li>backend cannot represent the chosen model;</li>
+                <li>model fidelity or ignored effects are insufficient;</li>
+                <li>PCB parasitics are absent when a case expects them.</li>
+              </ul>
+            </div>
+          </div>
+
+          <pre><code>PartDefinition
+├── implements → ComponentDefinition
+├── typed intrinsic attributes
+├── exact per-pin capabilities and package mapping
+├── symbol / footprint / 3D references
+└── optional SimulationModelRef
+      ├── model artifact digest
+      ├── logical PinKey → model-terminal bindings
+      └── model-parameter → typed-attribute bindings
+             │
+             ▼
+      volt.simulation_model
+      ├── terminal and parameter schemas
+      ├── supported analyses and fidelity
+      ├── provenance, limits and licence
+      └── hashed backend payload references</code></pre>
+
+          <div class="note"><strong>Scope line:</strong> this review reserves the correct attachment boundary; it does not implement a solver, SPICE integration or simulation API. Absence of a model cannot invalidate an otherwise useful schematic/PCB/BOM part. It only affects <code>validate_for_simulation(requested_analysis)</code>.</div>
+          <p>Simulation reduces uncertainty; it does not prove a physical product. Hardware validation and manufacturing evidence remain the loop-closing proof, and their attestations must state exactly what was tested.</p>
+        </section>
+
+        <section id="apis">
+          <span class="section-kicker">07 · Target APIs</span>
+          <h2>Native semantics, pleasant handles.</h2>
+          <p class="section-lead">The exact names are illustrative. The invariant is fixed: build, validation, loading, querying, resolution, instantiation and artifact closure are public C++ operations; Python only lowers and orchestrates them.</p>
+
+          <div class="api-grid">
+            <div class="api-block">
+              <h3>C++ library core <span>illustrative</span></h3>
+              <pre><code>class <span class="type">PartLibraryBuilder</span> {
+public:
+  ComponentDefinitionRef add_component(
+      ComponentDefinitionSpec);
+  PartDefinitionRef add_part(
+      PartDefinitionSpec, PartAssetSet);
+  LibraryBuildResult build(LibraryIdentity);
+};
+
+ComponentDefinitionRef resistor =
+    standard_components::resistor_v1();
+
+builder.add_part(
+    PartDefinitionSpec{
+      .key = <span class="literal">"yageo/RC0402FR-0710KL"</span>,
+      .implements = resistor,
+      .electrical = exact_facts,
+      .package_pins = package_mapping,
+    },
+    assets);
+
+class <span class="type">PartLibraryBundle</span> {
+public:
+  static PartLibraryBundle open(const path&amp;);
+  const LibraryManifest&amp; manifest() const;
+  LibraryPartRef require(PartKey) const;
+  std::vector&lt;PartSummary&gt; find(PartQuery) const;
+  ContentHash digest() const;
+};
+
+ResolvedPart resolve_part(
+    const InstanceRequirements&amp;,
+    LibraryPartRef exact_part);
+
+ComponentId instantiate(
+    Circuit&amp;, LibraryPartRef, ReferenceDesignator,
+    InstanceRequirements = {});
+<span class="comment">// instantiate validates the implemented contract and records
+// the exact ref; it does not copy intrinsic part truth.</span></code></pre>
+            </div>
+            <div class="api-block">
+              <h3>Python library source <span>thin lowering</span></h3>
+              <pre><code>from volt_standard import components
+
+LIB = volt.Library(
+    <span class="literal">"ryan/parts"</span>, version=<span class="literal">"1.0.0"</span>
+)
+
+R_10K_0402 = LIB.part(
+    <span class="literal">"yageo/RC0402FR-0710KL"</span>,
+    component=components.resistor_v1,
+    manufacturer=<span class="literal">"Yageo"</span>,
+    mpn=<span class="literal">"RC0402FR-0710KL"</span>,
+    package=<span class="literal">"0402"</span>,
+    electrical=volt.electrical(
+        resistance=10 * kohm,
+        tolerance=percent(1),
+        rated_power=62.5 * mW,
+        maximum_working_voltage=50 * V,
+    ),
+    footprint=ipc_0402,
+    model_3d=model_0402,
+    simulation=ideal_resistor_model,
+)</code></pre>
+            </div>
+          </div>
+
+          <h3>Custom component contracts are defined once, not once per MPN</h3>
+          <div class="api-grid">
+            <div class="api-block">
+              <h3>Common case <span>reuse a standard contract</span></h3>
+              <pre><code>from volt_standard import components
+
+R_10K_0402 = LIB.part(
+    <span class="literal">"yageo/RC0402FR-0710KL"</span>,
+    component=components.resistor_v1,
+    manufacturer=<span class="literal">"Yageo"</span>,
+    mpn=<span class="literal">"RC0402FR-0710KL"</span>,
+    package=<span class="literal">"0402"</span>,
+    electrical=exact_resistor_facts,
+    footprint=ipc_0402,
+)</code></pre>
+            </div>
+            <div class="api-block">
+              <h3>Shared custom case <span>define once</span></h3>
+              <pre><code>sensor_v1 = LIB.define_component(
+    <span class="literal">"ryan/sensor.v1"</span>,
+    pins={
+        <span class="literal">"VDD"</span>: volt.Pin.power_in(...),
+        <span class="literal">"GND"</span>: volt.Pin.power_return(...),
+        <span class="literal">"OUT"</span>: volt.Pin.analog_out(...),
+    },
+    relationships=[...],
+)
+
+SENSOR_A = LIB.part(
+    <span class="literal">"vendor/SENSOR-A"</span>,
+    component=sensor_v1,
+    manufacturer=<span class="literal">"Vendor"</span>,
+    mpn=<span class="literal">"SENSOR-A"</span>,
+    package=<span class="literal">"LGA-8"</span>,
+    electrical=exact_sensor_facts,
+    ...,
+)</code></pre>
+            </div>
+            <div class="api-block wide">
+              <h3>Unique custom case <span>one declaration</span></h3>
+              <pre><code>SENSOR_PROTOTYPE = LIB.part(
+    <span class="literal">"ryan/SENSOR-PROTOTYPE"</span>,
+    component=volt.inline_component(
+        pins={
+            <span class="literal">"VDD"</span>: volt.Pin.power_in(...),
+            <span class="literal">"GND"</span>: volt.Pin.power_return(...),
+            <span class="literal">"OUT"</span>: volt.Pin.analog_out(...),
+        },
+        relationships=[...],
+    ),
+    manufacturer=<span class="literal">"Ryan Labs"</span>,
+    mpn=<span class="literal">"SENSOR-PROTOTYPE-A"</span>,
+    package=<span class="literal">"LGA-8"</span>,
+    electrical=exact_prototype_facts,
+    footprint=prototype_footprint,
+)</code></pre>
+            </div>
+          </div>
+
+          <p class="small">All examples are target syntax. C++ normalizes and interns standard, shared-custom and inline-unique contracts; Python does not create a second semantic path.</p>
+
+          <h3>Exact use is the shortest path</h3>
+          <div class="api-grid">
+            <div class="api-block">
+              <pre><code>from volt_standard import parts as std
+
+u1 = design.add(
+    std.espressif.ESP32_S3_WROOM_1_N8,
+    ref=<span class="literal">"U1"</span>,
+)
+
+r1 = design.add(
+    std.yageo.RC0402FR_0710KL,
+    ref=<span class="literal">"R1"</span>,
+)</code></pre>
+            </div>
+            <div class="api-block">
+              <pre><code>from volt import units
+from volt_standard import parts as std
+from ryan_parts import preferred
+
+r1 = design.add(
+    preferred.R_10K_0402,
+    ref=<span class="literal">"R1"</span>,
+)
+
+matches = std.resistors.find(
+    resistance=10 * units.kohm,
+    package=<span class="literal">"0402"</span>,
+)
+candidate = matches.require_one()</code></pre>
+            </div>
+          </div>
+
+          <div class="note warning"><strong>No silent selection.</strong> A query returns ranked exact candidates. The design pins one. A personal or team library can expose versioned preferred aliases so normal authoring stays one line without hiding procurement intent.</div>
+          <div class="note"><strong>No separate integrity ritual.</strong> <code>LibraryPartRef</code> is one integrity-bearing value containing namespace, library version, part key, library digest and part digest; the digest is not a second field beside it. Instantiating it automatically adds the required asset closure to the project snapshot. This name deliberately avoids the existing logical <code>PartRef</code> vocabulary.</div>
+        </section>
+
+        <section id="workflow">
+          <span class="section-kicker">08 · Target library workflow</span>
+          <h2>A personal catalogue behaves like a serious software package.</h2>
+          <p class="section-lead">The source repository is pleasant to edit and test. Most personal libraries import standard component contracts and author exact parts only; <code>components.py</code> exists for genuinely new logical contracts. The published product remains language-neutral.</p>
+
+          <h3>Smallest useful personal library</h3>
+          <div class="tree" aria-label="Minimal personal part-library source layout"><strong>my-parts/</strong>
+├── volt.toml                    <span class="dim"># identity + standard-library dependency</span>
+├── parts.py                    <span class="dim"># exact declarations using standard contracts</span>
+└── tests/
+    └── test_parts.py           <span class="dim"># native build + selected fixture checks</span></div>
+
+          <h3>Scale the layout only when the catalogue earns it</h3>
+
+          <div class="tree" aria-label="Recommended personal part-library source repository layout"><strong>ryan-parts/</strong>
+├── volt.toml                    <span class="dim"># library identity, entrypoint, dependencies</span>
+├── pyproject.toml               <span class="dim"># Python authoring/test package only</span>
+├── src/ryan_parts/
+│   ├── library.py              <span class="dim"># LIB declaration</span>
+│   ├── components.py           <span class="dim"># exceptional custom logical contracts</span>
+│   ├── parts.py                <span class="dim"># exact part declarations; imports standard contracts</span>
+│   └── preferred.py            <span class="dim"># stable exact aliases</span>
+├── assets/
+│   ├── footprints/
+│   ├── models3d/
+│   └── simulation/
+├── tests/
+│   ├── test_passives.py
+│   ├── test_esp32_pin_map.py
+│   └── test_compiled_fixtures.py
+├── examples/
+│   └── esp32_minimal.py
+└── dist/
+    └── ryan-parts.voltlib       <span class="dim"># generated, portable product</span></div>
+
+          <pre><code><span class="comment"># Authoring-source tests.</span>
+pytest
+
+<span class="comment"># Native contracts and bundle lifecycle.</span>
+volt library check .
+volt library build . --output dist/ryan-parts.voltlib
+volt library test dist/ryan-parts.voltlib
+volt library inspect dist/ryan-parts.voltlib
+volt library render yageo/RC0402FR-0710KL --output review/</code></pre>
+
+          <div class="split">
+            <div class="panel good"><h3>Personal and team libraries</h3><p>Use local/editable path or pinned Git dependencies. The project lock records the exact built digest. A thin package can preserve <code>from ryan_parts import preferred</code> while loading native <code>LibraryPartRef</code> handles.</p></div>
+            <div class="panel caution"><h3>Official catalogue</h3><p>Live in a separate, curated <code>volt-standard-parts</code> repository with its own release cadence, licensing, review evidence and immutable bundles. Start narrow and excellent.</p></div>
+          </div>
+
+          <p>Published consumers do not execute library authoring source. Editable development may rebuild it first, but both paths must produce byte-identical canonical entries. A future registry indexes signed bundles; it never becomes an alternate owner of part meaning.</p>
+        </section>
+
+        <section id="artifacts">
+          <span class="section-kicker">09 · Target artifact closure</span>
+          <h2>Ship what runtime needs. Keep evidence beside it.</h2>
+          <p class="section-lead">A proper library artifact may contain canonical JSON internally, but users consume one versioned bundle with declared media types and hashes - not a loose <code>.volt.json</code> development file or an opaque Python object graph.</p>
+
+          <div class="artifact-map" role="img" aria-label="A library bundle resolves an exact part and snapshots only the used closure into a project bundle and compiled boards">
+            <div class="artifact-column">
+              <div class="artifact-node primary"><small>Published catalogue</small><strong>PartLibraryBundle</strong></div>
+              <div class="artifact-node"><small>Index</small><strong>manifest + keys + versions + digests</strong></div>
+            </div>
+            <div class="artifact-arrow">→</div>
+            <div class="artifact-column">
+              <div class="artifact-node primary"><small>Exact selection</small><strong>PartDefinition</strong></div>
+              <div class="artifact-node"><small>Implements</small><strong>referenced ComponentDefinition</strong></div>
+              <div class="artifact-node asset"><small>Required assets</small><strong>symbol + footprint + GLB/STEP + optional simulation</strong></div>
+            </div>
+            <div class="artifact-arrow">→</div>
+            <div class="artifact-column">
+              <div class="artifact-node snapshot"><small>Consumed closure</small><strong>ProjectBundle + volt.lock</strong></div>
+              <div class="artifact-node snapshot"><small>Historical outputs</small><strong>CompiledBoards · BOM/CPL · views · exports</strong></div>
+            </div>
+          </div>
+
+          <h3>Logical bundle contents</h3>
+          <div class="tree" aria-label="Logical contents of a PartLibraryBundle"><strong>ryan-parts.voltlib</strong>
+├── manifest                    <span class="dim"># namespace, version, compatibility, licence, digest index</span>
+├── definitions/
+│   ├── components/&lt;digest&gt;    <span class="dim"># reusable logical contracts</span>
+│   └── parts/&lt;digest&gt;         <span class="dim"># exact canonical PartDefinition artifacts</span>
+├── projections/
+│   ├── symbols/&lt;digest&gt;
+│   └── footprints/&lt;digest&gt;
+├── assets/
+│   ├── models3d/&lt;digest&gt;.glb  <span class="dim"># viewer-ready bytes</span>
+│   ├── models3d/&lt;digest&gt;.step <span class="dim"># optional mechanical interchange</span>
+│   └── simulation/&lt;digest&gt;    <span class="dim"># optional backend payloads</span>
+└── attestations                <span class="dim"># compact evidence refs keyed to immutable digests</span></div>
+
+          <div class="split">
+            <div class="panel good">
+              <h3>Runtime bundle includes</h3>
+              <ul>
+                <li>canonical definitions and schemas;</li>
+                <li>every referenced projection and actual asset byte;</li>
+                <li>licence and provenance needed to consume them;</li>
+                <li>compact verification state keyed to content hashes;</li>
+                <li>dependency and compatibility metadata.</li>
+              </ul>
+            </div>
+            <div class="panel danger">
+              <h3>Runtime bundle excludes</h3>
+              <ul>
+                <li>source Python and test dependencies;</li>
+                <li>every render, screenshot, CI log and oracle diff;</li>
+                <li>live stock, price and distributor offers;</li>
+                <li>generated CAD tooling or regenerated model output;</li>
+                <li>parts the consuming project did not use.</li>
+              </ul>
+            </div>
+          </div>
+
+          <p>Library releases contain the whole published catalogue. A selected part’s closure begins at its <code>PartDefinition</code>, follows the immutable reference to its <code>ComponentDefinition</code>, then includes only required attachments and asset bytes. Project bundles vendor that transitive closure. Updating a source dependency creates new compiled outputs; previous <code>CompiledBoard</code> artifacts remain untouched.</p>
+          <div class="note"><strong>Sourcing stays separate.</strong> Manufacturer identity and approved exact alternates belong to the catalogue. Distributor SKU, price, stock and quote time remain project-owned sourcing snapshots, so market churn cannot change a canonical part hash.</div>
+        </section>
+
+        <section id="verification">
+          <span class="section-kicker">10 · Target verification contract</span>
+          <h2>“Testable on its own” is a publish contract.</h2>
+          <p class="section-lead">Normal pytest/Catch2 tests remain transparent author-authored evidence. Native gates prove that the shipped artifact, not merely the source declarations, carries the promised meaning.</p>
+
+          <div class="gate-list">
+            <div class="gate"><h3>Deterministic build</h3><p>Build source twice in clean environments; manifests, canonical entries and asset digests match byte-for-byte.</p><span class="gate-tag">gate · digest equality</span></div>
+            <div class="gate"><h3>Native reopen and round-trip</h3><p>Open the emitted bundle through public C++, preserve each part → component relationship and every typed fact, then serialize equivalent canonical meaning without Python.</p><span class="gate-tag">gate · no authoring runtime</span></div>
+            <div class="gate"><h3>Structural integrity</h3><p>Reject missing component contracts, malformed units, duplicate keys, dangling logical-pin refs, bad package-pin/pad mappings, missing asset bytes and digest mismatches.</p><span class="gate-tag">gate · invalid state impossible</span></div>
+            <div class="gate"><h3>Contract implementation</h3><p>Prove every exact part implements one existing component contract and every exact per-pin fact or mapping keys to one of that contract’s stable logical pins.</p><span class="gate-tag">gate · relationship intact</span></div>
+            <div class="gate"><h3>Electrical completeness</h3><p>Run the versioned contract for each device class; prove required typed facts exist and exact-part capabilities satisfy representative instance intent.</p><span class="gate-tag">gate · typed meaning preserved</span></div>
+            <div class="gate"><h3>Selection compatibility and no copies</h3><p>Reject selecting a part that implements another component contract. Persist the exact integrity-bearing ref and prove intrinsic ratings are resolved from it, never silently copied into divergent instance state.</p><span class="gate-tag">gate · one source of truth</span></div>
+            <div class="gate"><h3>Projection lineup</h3><p>Every logical pin appears correctly in symbols and maps to intentional footprint pads; 3D and optional simulation terminal transforms line up.</p><span class="gate-tag">gate · cross-domain consistency</span></div>
+            <div class="gate"><h3>Representative fixture builds</h3><p>Instantiate public entries through real bindings and compile Circuit, Schematic, multiple Boards, <code>CompiledBoard</code>, BOM and CPL outputs.</p><span class="gate-tag">gate · end-to-end consumption</span></div>
+            <div class="gate"><h3>Visual and independent oracle review</h3><p>Render symbols, footprints and 3D placement; compare risky geometry against an independently derived witness. Automation assists but does not replace review.</p><span class="gate-tag">gate · geometry confidence</span></div>
+            <div class="gate"><h3>Release evidence</h3><p>Record provenance, licence, model fidelity, render review and hardware-validation attestations against immutable digests.</p><span class="gate-tag">gate · inspectable trust</span></div>
+          </div>
+
+          <div class="note warning"><strong>Publishable versus loadable.</strong> Malformed artifacts fail at the native read boundary. Incomplete but structurally valid parts stay inspectable and emit diagnostics. The official catalogue’s release policy promotes selected diagnostics to blocking publish gates without making bad design intent structurally unloadable.</div>
+        </section>
+
+        <section id="migration">
+          <span class="section-kicker">11 · Target focused implementation order</span>
+          <h2>Ten bounded slices. Fix the relationship first.</h2>
+          <p class="section-lead">This is the implementation order for part libraries, not the later full-project refactor plan. Do not build a polished archive around today’s dual semantics: establish the contract, implementation and selection seam first.</p>
+
+          <div class="migration">
+            <div class="slice"><span class="slice-number">00</span><h3>Freeze current dual behaviour</h3><p>Snapshot the three explicit routes—<code>Design.define_component</code>, legacy <code>Library.component</code> and modern <code>Library.part</code>/<code>Part</code>—plus built-in helpers, diagnostics, hashes and v4 goldens.</p><span class="stop">Stop gate: exact-main inventories and reproducible fixtures expose both current lowering paths.</span></div>
+            <div class="slice"><span class="slice-number">01</span><h3>Complete the logical contract</h3><p>Add typed component-wide and cross-pin contract data to <code>ComponentDefinition</code>; give nested <code>PinDefinition</code>s stable logical keys; complete Python dimension coverage.</p><span class="stop">Stop gate: malformed logical contracts reject and every typed contract fact round-trips through public C++.</span></div>
+            <div class="slice"><span class="slice-number">02</span><h3>Make exact parts implement, not duplicate</h3><p>Replace copied <code>PartPin(PinDefinition, attributes)</code> meaning with one immutable component-contract reference plus exact per-pin refinements and package mapping.</p><span class="stop">Stop gate: native reopen proves part → component identity, complete exact facts and valid logical-pin mappings.</span></div>
+            <div class="slice"><span class="slice-number">03</span><h3>Pin exact selection in <code>ComponentInstance</code></h3><p>Add native <code>LibraryPartRef</code>; validate contract compatibility at selection; resolve intrinsic facts instead of copying <code>PhysicalPart</code> truth. Route Python through this C++ operation.</p><span class="stop">Stop gate: source and reopened parts instantiate through one native path with no divergent intrinsic state.</span></div>
+            <div class="slice"><span class="slice-number">04</span><h3>Add the native library aggregate</h3><p>Introduce <code>PartLibraryBuilder</code>, manifest identity, stable keys, duplicate checks, public query and explicit exact resolution.</p><span class="stop">Stop gate: C++ alone builds, validates, queries and instantiates an in-memory catalogue.</span></div>
+            <div class="slice"><span class="slice-number">05</span><h3>Make asset closure and bundle real</h3><p>Make symbols and footprints loadable artifacts; hash actual GLB/STEP and optional simulation bytes; implement deterministic <code>PartLibraryBundle</code> codecs.</p><span class="stop">Stop gate: missing bytes reject and source build/prebuilt reopen preserve every entry and asset digest.</span></div>
+            <div class="slice"><span class="slice-number">06</span><h3>Lock and snapshot project dependencies</h3><p>Record library/version/key/digests automatically and vendor only the selected part → component → asset closure into ProjectBundle and compiled handoffs.</p><span class="stop">Stop gate: the project reopens offline; earlier CompiledBoards remain byte-stable after library upgrades.</span></div>
+            <div class="slice"><span class="slice-number">07</span><h3>Add standalone CLI and package workflow</h3><p>Deliver build, check, test, inspect and render over source and prebuilt bundles; support pinned path/Git dependencies and <code>volt.lock</code>.</p><span class="stop">Stop gate: inspection never executes authoring Python and CLI error/JSON contracts are stable.</span></div>
+            <div class="slice"><span class="slice-number">08</span><h3>Dogfood, then retire duplicate routes</h3><p>Migrate all 17 shipped STM32 entries and 11 manual example selections, prove parity, then deprecate <code>LibraryComponent</code>, copied selection and ad hoc lowering.</p><span class="stop">Stop gate: real examples, bundles, Boards, BOM/CPL and renders pass before any deletion.</span></div>
+            <div class="slice"><span class="slice-number">09</span><h3>Pilot <code>volt-standard-parts</code></h3><p>Publish a small high-confidence catalogue of common passives/packages, connectors, diodes, regulators, selected MCUs and packaged radio/system modules with complete evidence.</p><span class="stop">Stop gate: every pilot part is native-loadable, licensed, deterministic, board/BOM ready, rendered and independently reviewed.</span></div>
+          </div>
+
+          <div class="note"><strong>Simulation follows the stable library contract.</strong> The first later slice should reopen at least one passive and one IC <code>SimulationModelDefinition</code> with exact terminal/parameter mappings. It is deliberately not a prerequisite for the core catalogue.</div>
+        </section>
+
+        <section id="boundaries">
+          <span class="section-kicker">12 · Target decisions and boundaries</span>
+          <h2>The recommendation is concrete. Approval and implementation details remain open.</h2>
+          <p class="section-lead">The proposed user-level architecture no longer needs an A/B/C choice. If approved, remaining decisions can be resolved per bounded slice without reopening the three-concept ownership model.</p>
+
+          <div class="split">
+            <div class="panel good">
+              <h3>Proposed for approval</h3>
+              <ul>
+                <li>Exactly three primary concepts: <code>ComponentDefinition</code>, exact <code>PartDefinition</code> and <code>ComponentInstance</code>.</li>
+                <li><code>PinDefinition[]</code> is nested logical-contract data, not a fourth meaning of “part”.</li>
+                <li>One exact part implements one component contract; one instance selects it through one integrity-bearing exact ref.</li>
+                <li>There is no separate selected-occurrence owner and no permanent copy of intrinsic part truth on each instance.</li>
+                <li>Assets, models, bundles and results are attachments, packaging or outputs—not peer part concepts.</li>
+                <li>The default logical symbol belongs to the component contract; exact footprint, package mapping, 3D and simulation attachments belong to the exact part.</li>
+                <li>Visible authoring, service and artifact planes.</li>
+                <li>C++ owns part meaning, validation, codecs, loading, query, resolution and artifact construction.</li>
+                <li>Python is a concise declaration and typed-handle surface.</li>
+                <li>Typed electrical characteristics are first-class canonical part data.</li>
+                <li>Optional simulation models are separate hashed projections.</li>
+                <li>Queries return candidates; persisted design state pins an exact part digest.</li>
+                <li>Personal/team and official libraries share one format and test contract.</li>
+                <li>Local/Git dependencies first; registry later and outside the kernel.</li>
+                <li>Projects snapshot only consumed parts and assets.</li>
+                <li>GLB is viewer-ready; STEP is optional interchange.</li>
+                <li>Verification attestations key to immutable part hashes.</li>
+              </ul>
+            </div>
+            <div class="panel caution">
+              <h3>Still open, with recommendation</h3>
+              <ol>
+                <li><strong>Contract granularity:</strong> use semantic/pinout compatibility contracts, not one universal “regulator” or “MCU” contract.</li>
+                <li><strong>Exact per-pin storage:</strong> key a private refinement record by stable logical <code>PinKey</code>; do not expose <code>PartPin</code> as peer vocabulary.</li>
+                <li><strong>Portable component identity:</strong> immutable content digest inside bundles, with a readable stable key alongside it.</li>
+                <li><strong>Contract evolution:</strong> begin with exact component-contract identity; define any v1→v2 compatibility or adapter mechanism only with explicit, testable semantics.</li>
+                <li><strong>One part, multiple contracts:</strong> support one canonical contract initially; defer explicit adapters until a real case proves the need.</li>
+                <li><strong>Cross-pin constraints:</strong> bound and version the expression vocabulary before accepting arbitrary formulas or Python callbacks.</li>
+                <li><strong>Instance overrides:</strong> define a narrow typed allowlist for occurrence intent; intrinsic MPN facts can never drift.</li>
+                <li><strong>Physical bundle:</strong> deterministic archive for distribution plus exploded developer inspection.</li>
+                <li><strong><code>volt.part</code> schema migration:</strong> decide v5 versus another explicit successor, retain v4 reading during migration, and provide deterministic old-artifact conversion.</li>
+                <li><strong>Human and integrity versions:</strong> semver names releases for people; immutable content digests identify every component contract, part and asset.</li>
+                <li><strong>Python exports and resolution:</strong> typed names plus explicit discovery; path/Git/package dependencies in <code>volt.toml</code>, exact digests in <code>volt.lock</code>.</li>
+                <li><strong>Alternates:</strong> refs to separately defined exact parts, not unverified bare MPN strings.</li>
+                <li><strong>Simulation and official scope:</strong> design the first licensed payload set separately; begin the official catalogue as a small evidence-rich pilot.</li>
+              </ol>
+            </div>
+          </div>
+
+          <h3>Explicitly unchanged</h3>
+          <div class="definition-list">
+            <div class="definition"><span class="definition-index">A</span><div><h3>Kernel ownership</h3></div><p>Circuit remains append-only logical owner. Schematic and Board remain presentation and physical projections; neither creates or reinterprets connectivity.</p></div>
+            <div class="definition"><span class="definition-index">B</span><div><h3>Part selection</h3></div><p>Exact selected-part intent remains logical/design-owned, not Board-owned. BOM/CPL and manufacturing project from it.</p></div>
+            <div class="definition"><span class="definition-index">C</span><div><h3>Project architecture</h3></div><p>One project may produce multiple named Boards. Each <code>CompiledBoard</code> is an immutable historical artifact keyed by its inputs.</p></div>
+            <div class="definition"><span class="definition-index">D</span><div><h3>Export posture</h3></div><p>KiCad and other outputs remain selected adapters. Native artifacts stay authoritative; no exporter or viewer becomes an alternate part owner.</p></div>
+            <div class="definition"><span class="definition-index">E</span><div><h3>Runtime discipline</h3></div><p>No CAD generator executes during ordinary project consumption. No registry, live distributor service or package manager enters the kernel.</p></div>
+            <div class="definition"><span class="definition-index">F</span><div><h3>Change control</h3></div><p>This page is a proposal and companion review. It changes no accepted ADR, product code, issue state or GitHub state.</p></div>
+            <div class="definition"><span class="definition-index">G</span><div><h3>Full refactor plan</h3></div><p>Not created in this step. It waits for approval of this focused part-library model, then becomes a separate cross-project plan for chief-of-staff handoff.</p></div>
+          </div>
+        </section>
+
+        <section id="sources">
+          <span class="section-kicker">13 · Evidence notes</span>
+          <h2>Reproducible, local and bounded.</h2>
+          <p class="section-lead">The recommendation combines the agreed post-Circuit direction with exact-main code evidence, current Volt design contracts and limited ecosystem comparison. The reading key and section kickers distinguish exact-main evidence from the proposed target.</p>
+
+          <details open>
+            <summary>Primary Volt design sources</summary>
+            <div>
+              <ul>
+                <li><a href="../part-library-design.md">Existing part-library design proposal</a> - correct core premise, partly implemented and partly stale.</li>
+                <li><a href="../typed-electrical-semantics.md">Typed electrical semantics</a> - current owners, units, validation boundary and simulation-ready principle.</li>
+                <li><a href="simulation-feature-guide-2026-05-28.html">Simulation feature guide</a> - backend-neutral model contracts and result ownership.</li>
+                <li><a href="volt-post-circuit-architecture-review-revised.html">Revised post-Circuit architecture review</a> - authoring/service/artifact planes, multiple Boards, CompiledBoard and bundle direction.</li>
+                <li><a href="../../AGENTS.md">Repository architecture rules</a> - structural invalidity versus diagnosable bad design, append-only kernel and C++ ownership.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary>Primary implementation evidence</summary>
+            <div>
+              <ul>
+                <li><a href="../../include/volt/circuit/parts/part_definition.hpp"><code>PartDefinition</code> and projection references</a>.</li>
+                <li><a href="../../include/volt/core/electrical_attributes.hpp">Typed electrical attribute owners, value kinds and map</a>.</li>
+                <li><a href="../../src/io/parts/part_definition_reader.cpp">Native <code>volt.part</code> reader</a> and <a href="../../src/io/parts/part_definition_writer.cpp">writer/hash</a>.</li>
+                <li><a href="../../python/volt/part.py">Python <code>Part</code></a>, <a href="../../python/volt/library.py"><code>Library</code></a> and <a href="../../python/volt/library_result.py">current in-memory build result</a>.</li>
+                <li><a href="../../src/python/binding_part_definition_conversions.hpp">Python-to-native part conversion</a> - current empty part-level attribute map.</li>
+                <li><a href="../../python/volt/project.py"><code>Project.use_library</code></a> - diagnostics-only current behaviour.</li>
+                <li><a href="../../python/volt/libraries/stm32_usb_buck.py">Shipped legacy STM32 benchmark catalogue</a>.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary>Limited ecosystem lessons</summary>
+            <div>
+              <ul>
+                <li><a href="https://docs.kicad.org/master/en/eeschema/eeschema.html">KiCad schematic libraries</a> and <a href="https://docs.kicad.org/master/en/pcbnew/pcbnew.html">PCB libraries</a>: explicit project snapshots are useful; hidden global precedence and loosely coordinated assets are not the Volt target.</li>
+                <li><a href="https://klc.kicad.org/">KiCad Library Convention</a>: automation, visual review and conventions complement one another.</li>
+                <li><a href="https://docs.atopile.io/atopile-0.14.x/essentials/4-packages">atopile packages</a>: local/Git/versioned package mechanics and exact-versus-abstract components are relevant; Volt should retain its C++ kernel and ordinary unit-test contract.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary>Count reproduction</summary>
+            <div>
+              <pre><code>git grep -c <span class="literal">'TEST_CASE'</span> origin/main -- \
+  tests/authoring/component_library_test.cpp \
+  tests/circuit/parts/part_definition_test.cpp \
+  tests/circuit/parts/parts_test.cpp \
+  tests/io/parts/part_definition_io_test.cpp
+
+git show origin/main:python/tests/test_component_library.py \
+  | rg -c <span class="literal">'^def test_'</span>
+
+git show origin/main:python/volt/libraries/stm32_usb_buck.py \
+  | rg -c <span class="literal">'LIB\.component\('</span>
+
+git grep -n <span class="literal">'define_component('</span> origin/main -- examples
+git grep -n <span class="literal">'select_part('</span> origin/main -- examples</code></pre>
+            </div>
+          </details>
+
+          <div class="note success"><strong>Review integrity:</strong> this revision adds only the comparison file <code>volt-part-library-architecture-review-revised.html</code>. The original focused review remains preserved at its unsuffixed filename; all original, unsuffixed and revised post-Circuit reports remain untouched. No full refactor plan, product code, accepted ADR, commit, PR, issue, comment, label or other GitHub state was changed.</div>
+        </section>
+      </article>
+    </main>
+  </div>
+
+  <footer>
+    <div>
+      <span><strong>Volt part libraries</strong> · revised focused architecture review · 14 July 2026</span>
+      <a href="#top">Back to top</a>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const progress = document.getElementById('reading-progress');
+      const links = Array.from(document.querySelectorAll('.rail a'));
+      const sections = links
+        .map(function (link) { return document.querySelector(link.getAttribute('href')); })
+        .filter(Boolean);
+
+      function updateProgress() {
+        const root = document.documentElement;
+        const available = root.scrollHeight - root.clientHeight;
+        const ratio = available > 0 ? root.scrollTop / available : 0;
+        progress.style.width = Math.min(100, Math.max(0, ratio * 100)) + '%';
+      }
+
+      const observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          links.forEach(function (link) {
+            link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id);
+          });
+        });
+      }, { rootMargin: '-22% 0px -68% 0px', threshold: 0 });
+
+      sections.forEach(function (section) { observer.observe(section); });
+      document.addEventListener('scroll', updateProgress, { passive: true });
+      updateProgress();
+    }());
+  </script>
+</body>
+</html>
