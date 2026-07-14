@@ -3,14 +3,16 @@
 This directory holds standalone HTML design notes, data-contract references, and dated
 planning documents that were exported as self-contained pages.
 
-They are kept for history and rationale, but they are **not** the canonical documentation
-surface. Living documentation lives as Markdown in [`docs/`](../) (and is consumed by
+Most are kept for history and rationale rather than as the canonical documentation surface.
+Living documentation normally lives as Markdown in [`docs/`](../) (and is consumed by
 Doxygen, which ingests `*.md` and `*.hpp` only) and as the Mintlify site under
 [`docs-site/`](../../docs-site). This Markdown index makes the artifacts discoverable, but
-the HTML exports themselves are not part of any generated output.
+the HTML exports themselves are not part of any generated output. The two maintainer-approved
+architecture references listed below are deliberate exceptions and remain authoritative for
+program direction until their decisions are superseded by focused ADRs.
 
-When the content of one of these notes becomes a stable, maintained contract, prefer
-promoting it into a Markdown document under `docs/` rather than editing the exported HTML.
+When the content of another note becomes a stable, maintained contract, prefer promoting it
+into a Markdown document under `docs/` rather than editing the exported HTML.
 
 ## Data-contract and convention references
 
@@ -24,6 +26,12 @@ promoting it into a Markdown document under `docs/` rather than editing the expo
   compiled build artifacts
 - [`adr-circuit-aggregate-api.md`](adr-circuit-aggregate-api.md) — replace storage-shaped
   Circuit facades with a small typed aggregate API
+- [`volt-post-circuit-architecture-review.html`](volt-post-circuit-architecture-review.html)
+  — approved owner-aligned Schematic/Board, `CompiledBoard`, artifact graph, bundle and
+  project-tooling direction; focused ADRs freeze exact implementation contracts
+- [`volt-part-library-architecture-review.html`](volt-part-library-architecture-review.html)
+  — approved component/part identity, canonical Voltage/Current semantics, native library
+  bundle and exact-selection direction; focused ADRs freeze exact implementation contracts
 
 ## Design notes and explorations
 

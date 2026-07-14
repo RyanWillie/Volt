@@ -1,0 +1,1442 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Evidence-based post-Circuit architecture and usability review for Volt issue #269.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23f2a526' d='M18 1 6 18h8l-2 13 14-19h-9z'/%3E%3C/svg%3E">
+  <title>Volt after Circuit — architecture &amp; usability review</title>
+  <style>
+    :root {
+      --paper: #f4f0e7;
+      --paper-strong: #fffdf7;
+      --paper-dim: #e9e2d5;
+      --ink: #172735;
+      --ink-soft: #52616c;
+      --navy: #10283b;
+      --navy-2: #193b52;
+      --amber: #f2a526;
+      --amber-pale: #f8e3b8;
+      --teal: #177b79;
+      --teal-pale: #d7ebe6;
+      --brick: #aa493b;
+      --brick-pale: #f0d8d1;
+      --rule: #cfc5b4;
+      --code: #0b1d2a;
+      --shadow: 0 18px 50px rgba(16, 40, 59, 0.12);
+      --radius: 18px;
+      --body: "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
+      --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; overflow-x: clip; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(242, 165, 38, 0.09), transparent 24rem),
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--body);
+      line-height: 1.58;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: var(--teal); text-underline-offset: 0.18em; }
+    a:hover { color: var(--brick); }
+    code, pre { font-family: var(--mono); }
+    code:not(pre code) {
+      padding: 0.08em 0.34em;
+      border: 1px solid rgba(16, 40, 59, 0.13);
+      border-radius: 0.35em;
+      background: rgba(255, 253, 247, 0.72);
+      font-size: 0.9em;
+    }
+    pre {
+      margin: 1.15rem 0;
+      padding: 1.1rem 1.2rem;
+      overflow: auto;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      background: var(--code);
+      color: #e8f0f2;
+      font-size: 0.82rem;
+      line-height: 1.55;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+    pre .muted { color: #8da4b0; }
+    pre .accent { color: #ffc96a; }
+    pre .type { color: #72d4c6; }
+    pre .comment { color: #8099a5; }
+    h1, h2, h3, h4 { margin: 0; color: var(--navy); line-height: 1.08; }
+    h1, h2 { font-family: var(--display); font-weight: 650; letter-spacing: -0.035em; }
+    h1 { max-width: 920px; color: #fffaf0; font-size: clamp(3rem, 8vw, 6.7rem); }
+    h2 { font-size: clamp(2.25rem, 5vw, 4.35rem); }
+    h3 { font-size: 1.15rem; letter-spacing: -0.01em; }
+    h4 { font-size: 0.95rem; letter-spacing: 0.01em; }
+    p { margin: 0.75rem 0; }
+    ul, ol { padding-left: 1.25rem; }
+    li + li { margin-top: 0.38rem; }
+    strong { color: var(--navy); }
+    ::selection { background: var(--amber-pale); color: var(--navy); }
+
+    #reading-progress {
+      position: fixed;
+      z-index: 80;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--amber), #ffd37c, var(--teal));
+      box-shadow: 0 0 14px rgba(242, 165, 38, 0.52);
+    }
+
+    .hero {
+      position: relative;
+      isolation: isolate;
+      min-height: 92vh;
+      padding: clamp(2rem, 6vw, 5.8rem) max(1.25rem, calc((100vw - 1280px) / 2));
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background:
+        linear-gradient(118deg, rgba(16, 40, 59, 0.96), rgba(16, 40, 59, 0.91)),
+        repeating-linear-gradient(90deg, transparent 0 78px, rgba(255,255,255,.035) 79px 80px),
+        var(--navy);
+      color: #eef3ef;
+    }
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      border: 2px solid rgba(242, 165, 38, 0.38);
+      border-left: 0;
+      border-radius: 0 110px 110px 0;
+      transform: rotate(-8deg);
+    }
+    .hero::before { width: 52vw; height: 20vw; right: -13vw; top: 10vh; }
+    .hero::after { width: 40vw; height: 11vw; right: -8vw; top: 33vh; border-color: rgba(23, 123, 121, 0.5); }
+    .hero-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      font-size: 0.75rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .brand { display: flex; align-items: center; gap: 0.7rem; font-weight: 750; }
+    .bolt {
+      width: 1.7rem;
+      aspect-ratio: 1;
+      clip-path: polygon(50% 0, 100% 0, 66% 43%, 89% 43%, 28% 100%, 42% 56%, 14% 56%);
+      background: var(--amber);
+    }
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.42rem 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .status-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--amber); }
+    .hero-copy { padding: clamp(3rem, 9vh, 7rem) 0 2rem; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.7rem;
+      margin-bottom: 1.25rem;
+      color: #ffd487;
+      font-size: 0.74rem;
+      font-weight: 750;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 2.4rem; height: 2px; background: currentColor; }
+    .hero-deck {
+      max-width: 780px;
+      margin: 1.8rem 0 0;
+      color: #cbd8dc;
+      font-family: var(--display);
+      font-size: clamp(1.25rem, 2.2vw, 1.7rem);
+      line-height: 1.4;
+    }
+    .hero-deck strong { color: #fff6e1; }
+    .hero-meta {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border-top: 1px solid rgba(255,255,255,.18);
+    }
+    .hero-meta div { padding: 1.1rem 1.2rem 0 0; }
+    .hero-meta dt { color: #8eabb7; font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; }
+    .hero-meta dd { margin: 0.25rem 0 0; font-size: 0.82rem; color: #f5eee0; overflow-wrap: anywhere; }
+
+    .shell {
+      width: min(1380px, 100%);
+      margin: 0 auto;
+      padding: 0 clamp(1rem, 3vw, 2.5rem);
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: clamp(2rem, 5vw, 6rem);
+      align-items: start;
+    }
+    .rail {
+      position: sticky;
+      top: 2.25rem;
+      max-height: calc(100vh - 4.5rem);
+      padding: 2rem 0;
+      overflow: auto;
+    }
+    .rail-label {
+      margin-bottom: 0.8rem;
+      color: var(--brick);
+      font-size: 0.67rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .rail nav { border-left: 1px solid var(--rule); }
+    .rail a {
+      display: block;
+      padding: 0.42rem 0 0.42rem 1rem;
+      color: var(--ink-soft);
+      font-size: 0.78rem;
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transform: translateX(-1px);
+    }
+    .rail a:hover, .rail a.active { color: var(--navy); border-left-color: var(--amber); }
+    .rail-note {
+      margin-top: 1.4rem;
+      padding: 0.9rem;
+      border-radius: 10px;
+      background: var(--paper-dim);
+      color: var(--ink-soft);
+      font-size: 0.7rem;
+      line-height: 1.45;
+    }
+    article { min-width: 0; }
+    section {
+      scroll-margin-top: 1.5rem;
+      padding: clamp(4.5rem, 9vw, 8rem) 0;
+      border-bottom: 1px solid var(--rule);
+    }
+    section:last-child { border-bottom: 0; }
+    .section-kicker {
+      display: block;
+      margin-bottom: 0.8rem;
+      color: var(--brick);
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .section-lead {
+      max-width: 820px;
+      margin: 1.4rem 0 2.5rem;
+      color: var(--ink-soft);
+      font-family: var(--display);
+      font-size: clamp(1.15rem, 2vw, 1.42rem);
+      line-height: 1.48;
+    }
+    .small { color: var(--ink-soft); font-size: 0.82rem; }
+    .caption { margin-top: 0.65rem; color: var(--ink-soft); font-size: 0.72rem; line-height: 1.5; }
+
+    .verdict {
+      position: relative;
+      margin: 2.2rem 0 2.8rem;
+      padding: clamp(1.6rem, 4vw, 3rem);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      background: var(--navy);
+      color: #dbe6e8;
+      box-shadow: var(--shadow);
+    }
+    .verdict::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 7px; background: var(--amber); }
+    .verdict h3 { max-width: 850px; color: #fff6e3; font-family: var(--display); font-size: clamp(1.55rem, 3vw, 2.35rem); }
+    .verdict p { max-width: 870px; }
+    .decision-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      margin: 2rem 0;
+      overflow: hidden;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--rule);
+    }
+    .decision-row > div { padding: 1.4rem; background: var(--paper-strong); }
+    .decision-row h3 { margin-bottom: 0.65rem; }
+    .decision-row .do h3::before, .decision-row .keep h3::before, .decision-row .defer h3::before {
+      display: inline-grid;
+      width: 1.45rem;
+      height: 1.45rem;
+      margin-right: 0.55rem;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      font-size: 0.7rem;
+    }
+    .decision-row .do h3::before { content: "1"; background: var(--teal); }
+    .decision-row .keep h3::before { content: "2"; background: var(--navy); }
+    .decision-row .defer h3::before { content: "3"; background: var(--brick); }
+
+    .gate {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 2rem;
+      margin: 2.25rem 0;
+      padding: 1.6rem;
+      border: 1px solid #d6c08f;
+      border-radius: var(--radius);
+      background: linear-gradient(120deg, var(--amber-pale), rgba(255,253,247,.7));
+    }
+    .gate-status { font-family: var(--display); font-size: 2rem; line-height: 1.1; color: var(--navy); }
+    .tag {
+      display: inline-block;
+      padding: 0.28rem 0.6rem;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      font-size: 0.64rem;
+      font-weight: 780;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .tag.teal { color: var(--teal); background: var(--teal-pale); }
+    .tag.amber { color: #77500b; background: #fff1cf; }
+    .tag.brick { color: var(--brick); background: var(--brick-pale); }
+    .tag.navy { color: var(--navy); background: #dce5e8; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1rem;
+      margin: 2rem 0 2.8rem;
+    }
+    .metric {
+      min-height: 155px;
+      padding: 1.25rem;
+      border-top: 4px solid var(--navy);
+      background: var(--paper-strong);
+      box-shadow: 0 8px 25px rgba(16,40,59,.06);
+    }
+    .metric:nth-child(2n) { border-top-color: var(--teal); }
+    .metric:nth-child(3n) { border-top-color: var(--amber); }
+    .metric dt { color: var(--ink-soft); font-size: 0.68rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+    .metric dd { margin: 0.25rem 0 0; color: var(--navy); font-family: var(--display); font-size: 2.65rem; line-height: 1; }
+    .metric p { margin: .6rem 0 0; color: var(--ink-soft); font-size: 0.72rem; line-height: 1.4; }
+
+    .table-wrap { margin: 1.4rem 0 2rem; overflow-x: auto; border: 1px solid var(--rule); border-radius: 12px; background: var(--paper-strong); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th, td { padding: 0.8rem 0.9rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--rule); }
+    th { background: var(--navy); color: #f6f1e8; font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: rgba(242,165,38,.07); }
+    td.num { font-family: var(--mono); color: var(--navy); white-space: nowrap; }
+    .risk-high { color: var(--brick); font-weight: 750; }
+    .recommended td { background: rgba(23,123,121,.08); }
+    .recommended td:first-child { box-shadow: inset 5px 0 0 var(--teal); }
+
+    .split {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(1.25rem, 3vw, 2.5rem);
+      margin: 2rem 0;
+    }
+    .panel { padding: 1.5rem; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--paper-strong); }
+    .panel h3 { margin-bottom: 0.8rem; }
+    .panel.good { border-top: 5px solid var(--teal); }
+    .panel.caution { border-top: 5px solid var(--brick); }
+    .panel.neutral { border-top: 5px solid var(--navy); }
+    .panel.amber { border-top: 5px solid var(--amber); }
+
+    .flow {
+      margin: 2rem 0;
+      padding: clamp(1.2rem, 3vw, 2rem);
+      border-radius: var(--radius);
+      background: #e6e0d3;
+    }
+    .flow-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch; gap: 1.8rem; }
+    .flow-node {
+      position: relative;
+      display: grid;
+      min-height: 112px;
+      padding: 1rem;
+      place-content: center;
+      border: 1px solid rgba(16,40,59,.18);
+      border-radius: 12px;
+      background: var(--paper-strong);
+      text-align: center;
+    }
+    .flow-node::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -1.45rem;
+      color: var(--teal);
+      font-size: 1.35rem;
+      transform: translateY(-50%);
+    }
+    .flow-node:last-child::after { display: none; }
+    .flow-node strong { display: block; font-size: 0.88rem; }
+    .flow-node span { margin-top: .3rem; color: var(--ink-soft); font-size: .67rem; }
+    .flow-node.hot { color: white; border-color: var(--navy); background: var(--navy); }
+    .flow-node.hot strong { color: #fff3d8; }
+    .flow-node.hot span { color: #bdd0d7; }
+
+    .ownership {
+      display: grid;
+      grid-template-columns: 1fr 72px 1fr 72px 1fr;
+      align-items: stretch;
+      margin: 2.2rem 0;
+    }
+    .owner {
+      padding: 1.4rem;
+      border: 2px solid var(--navy);
+      border-radius: var(--radius);
+      background: var(--paper-strong);
+    }
+    .owner:nth-of-type(3) { border-color: var(--teal); }
+    .owner:nth-of-type(5) { border-color: var(--amber); }
+    .owner small { display: block; margin-bottom: .4rem; color: var(--ink-soft); font-size: .65rem; letter-spacing: .1em; text-transform: uppercase; }
+    .owner h3 { margin-bottom: .65rem; }
+    .relation { display: grid; place-content: center; color: var(--ink-soft); font-size: .65rem; text-align: center; }
+    .relation::before { content: "→"; display: block; color: var(--brick); font-size: 1.5rem; }
+
+    .lesson-list { list-style: none; padding: 0; }
+    .lesson-list li { position: relative; padding-left: 1.9rem; }
+    .lesson-list li::before { position: absolute; left: 0; top: .02rem; font-weight: 800; }
+    .good .lesson-list li::before { content: "✓"; color: var(--teal); }
+    .caution .lesson-list li::before { content: "×"; color: var(--brick); }
+
+    .option {
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr) 170px;
+      gap: 1.25rem;
+      padding: 1.6rem 0;
+      border-top: 1px solid var(--rule);
+      align-items: start;
+    }
+    .option:last-child { border-bottom: 1px solid var(--rule); }
+    .option-index { color: var(--brick); font-family: var(--display); font-size: 3rem; line-height: 1; }
+    .option-score { font-size: .72rem; }
+    .score-line { display: flex; justify-content: space-between; gap: .8rem; padding: .3rem 0; border-bottom: 1px dotted var(--rule); }
+    .option.recommend { margin: 0 -1.2rem; padding: 1.6rem 1.2rem; border-radius: 14px; background: var(--teal-pale); }
+
+    .architecture {
+      margin: 2.2rem 0;
+      padding: 1rem;
+      border-radius: var(--radius);
+      background: var(--navy);
+      color: #e8f0ef;
+      box-shadow: var(--shadow);
+    }
+    .plane {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 1rem;
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.14);
+    }
+    .plane:last-child { border-bottom: 0; }
+    .plane-label { color: #ffc765; font-size: .67rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+    .plane-nodes { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: .7rem; }
+    .plane-node { padding: .85rem; border: 1px solid rgba(255,255,255,.17); border-radius: 9px; background: rgba(255,255,255,.055); }
+    .plane-node strong { color: #fff6e6; font-size: .78rem; }
+    .plane-node span { display: block; margin-top: .3rem; color: #abc2ca; font-size: .65rem; }
+    .plane-node.accent { border-color: var(--amber); background: rgba(242,165,38,.12); }
+
+    .api-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: baseline;
+      margin-top: 2.6rem;
+    }
+    .budget { color: var(--brick); font-family: var(--mono); font-size: .75rem; }
+    .note {
+      margin: 1.5rem 0;
+      padding: 1rem 1.15rem;
+      border-left: 4px solid var(--amber);
+      background: rgba(248,227,184,.48);
+      font-size: .82rem;
+    }
+    .warning { border-left-color: var(--brick); background: rgba(240,216,209,.55); }
+    .success { border-left-color: var(--teal); background: rgba(215,235,230,.65); }
+
+    .tree {
+      margin: 1.5rem 0;
+      padding: 1.3rem;
+      border-radius: 12px;
+      background: var(--paper-strong);
+      border: 1px solid var(--rule);
+      font-family: var(--mono);
+      font-size: .78rem;
+      line-height: 1.65;
+      white-space: pre-wrap;
+    }
+    .tree strong { color: var(--teal); }
+
+    .artifact-map {
+      display: grid;
+      grid-template-columns: 1fr 90px 1.35fr;
+      gap: 1rem;
+      align-items: stretch;
+      margin: 2rem 0;
+    }
+    .artifact-column { display: grid; gap: .75rem; }
+    .artifact-node { padding: .9rem 1rem; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper-strong); }
+    .artifact-node small { display: block; color: var(--ink-soft); font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; }
+    .artifact-node strong { font-size: .82rem; }
+    .artifact-node.model { border-left: 5px solid var(--navy); }
+    .artifact-node.derived { border-left: 5px solid var(--teal); }
+    .artifact-node.delivery { border-left: 5px solid var(--amber); }
+    .artifact-arrow { display: grid; place-items: center; color: var(--brick); font-size: 2rem; }
+
+    .timeline { position: relative; margin: 2.2rem 0; padding-left: 2.2rem; }
+    .timeline::before { content: ""; position: absolute; left: .62rem; top: .6rem; bottom: .6rem; width: 2px; background: linear-gradient(var(--amber), var(--teal)); }
+    .slice { position: relative; padding: 0 0 1.8rem 1.2rem; }
+    .slice::before { content: attr(data-step); position: absolute; left: -2.25rem; top: 0; display: grid; width: 1.25rem; height: 1.25rem; place-items: center; border-radius: 50%; background: var(--navy); color: white; font-family: var(--mono); font-size: .62rem; box-shadow: 0 0 0 5px var(--paper); }
+    .slice h3 { margin-bottom: .35rem; }
+    .slice p { margin: .35rem 0; color: var(--ink-soft); font-size: .84rem; }
+    .gate-pill { display: inline-block; margin-top: .35rem; padding: .28rem .55rem; border-radius: 5px; background: var(--teal-pale); color: #105c5b; font-size: .66rem; font-weight: 750; }
+
+    .checklist { columns: 2; column-gap: 2.5rem; padding: 0; list-style: none; }
+    .checklist li { break-inside: avoid; position: relative; margin: 0 0 .85rem; padding-left: 1.7rem; }
+    .checklist li::before { content: "□"; position: absolute; left: 0; color: var(--teal); font-size: 1.1rem; line-height: 1.2; }
+
+    details { margin: 1rem 0; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper-strong); }
+    summary { cursor: pointer; padding: 1rem 1.1rem; color: var(--navy); font-weight: 750; }
+    details > div { padding: 0 1.1rem 1.1rem; }
+    .source-list { columns: 2; column-gap: 2rem; font-size: .78rem; }
+    .source-list li { break-inside: avoid; margin-bottom: .6rem; }
+    .method { padding: 1.2rem; border: 1px dashed var(--rule); border-radius: 10px; color: var(--ink-soft); font-size: .78rem; }
+    footer {
+      padding: 3rem max(1.25rem, calc((100vw - 1280px) / 2));
+      background: var(--navy);
+      color: #acc1c9;
+      font-size: .72rem;
+    }
+    footer strong { color: #fff2d6; }
+
+    @media (max-width: 1040px) {
+      .shell { grid-template-columns: 1fr; }
+      .rail { display: none; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow-row { grid-template-columns: minmax(0, 1fr); gap: 1.6rem; }
+      .flow-node::after { top: auto; right: 50%; bottom: -1.45rem; transform: translateX(50%) rotate(90deg); }
+      .plane-nodes { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    @media (max-width: 720px) {
+      .hero { min-height: 100svh; }
+      .hero-top { align-items: flex-start; }
+      .status-chip { max-width: 11rem; }
+      .hero-meta { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .decision-row, .gate, .split { grid-template-columns: minmax(0, 1fr); }
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .metric { min-height: 130px; }
+      .ownership { grid-template-columns: minmax(0, 1fr); gap: .8rem; }
+      .relation::before { transform: rotate(90deg); }
+      .option { grid-template-columns: 60px 1fr; }
+      .option-score { grid-column: 2; }
+      .option.recommend { margin: 0; padding: 1.4rem; }
+      .architecture { padding: .45rem; }
+      .plane { grid-template-columns: 1fr; }
+      .plane-nodes { grid-template-columns: minmax(0, 1fr); }
+      .artifact-map { grid-template-columns: minmax(0, 1fr); }
+      .artifact-arrow { transform: rotate(90deg); }
+      .api-header { flex-direction: column; align-items: flex-start; }
+      .checklist, .source-list { columns: 1; }
+      section { padding: 4.3rem 0; }
+    }
+    @media (max-width: 440px) {
+      h1 { font-size: 2.7rem; }
+      .hero-meta { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: 1fr; }
+      .metric { min-height: auto; }
+      .option { grid-template-columns: 1fr; }
+      .option-score { grid-column: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+    @media print {
+      body { background: white; color: black; font-size: 9.5pt; }
+      #reading-progress, .rail { display: none; }
+      .hero { min-height: auto; padding: 2cm 1.4cm; background: var(--navy) !important; print-color-adjust: exact; }
+      .shell { display: block; width: auto; padding: 0 1.2cm; }
+      section { padding: 1.4cm 0; }
+      .verdict, .architecture, pre { print-color-adjust: exact; }
+      a { color: inherit; text-decoration: none; }
+      .panel, .metric, .option, .flow, .architecture, pre, table { break-inside: avoid; }
+      footer { padding: 1cm 1.4cm; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div id="reading-progress" aria-hidden="true"></div>
+
+  <header class="hero" id="top">
+    <div class="hero-top">
+      <div class="brand"><span class="bolt" aria-hidden="true"></span><span>Volt architecture review</span></div>
+      <span class="status-chip"><span class="status-dot" aria-hidden="true"></span>Approved architecture reference · ADRs follow</span>
+    </div>
+    <div class="hero-copy">
+      <span class="eyebrow">Issue #269 · post-Circuit</span>
+      <h1>Keep the owners.<br>Compile the handoff.</h1>
+      <p class="hero-deck">
+        Circuit’s completed migration proved the value of a small typed kernel owner. The next step is <strong>not</strong> to press Schematic, Board, IO, Python, CLI and Project into one generic mould. It is to align each native owner, make the Board handoff complete, and let built artifacts be inspected without executing authoring code again.
+      </p>
+    </div>
+    <dl class="hero-meta">
+      <div><dt>Accepted baseline</dt><dd><code>2d0e7e03df12</code> · PR #288</dd></div>
+      <div><dt>Live issue</dt><dd>#269 · open · roadmap / ready</dd></div>
+      <div><dt>Evidence date</dt><dd>13 July 2026 · Europe/London</dd></div>
+      <div><dt>Disposition</dt><dd>Approved architecture reference</dd></div>
+    </dl>
+  </header>
+
+  <div class="shell">
+    <aside class="rail" aria-label="Report navigation">
+      <div class="rail-label">One-read route</div>
+      <nav>
+        <a href="#decision">Decision brief</a>
+        <a href="#evidence">Evidence</a>
+        <a href="#pressure">Where pressure sits</a>
+        <a href="#workflows">Real workflows</a>
+        <a href="#lessons">Circuit lessons</a>
+        <a href="#options">Options</a>
+        <a href="#target">Gold target</a>
+        <a href="#native-api">Native APIs</a>
+        <a href="#python-project">Python &amp; Project</a>
+        <a href="#artifacts">Artifact contract</a>
+        <a href="#migration">Migration slices</a>
+        <a href="#verification">Verification gates</a>
+        <a href="#boundaries">Unchanged / open</a>
+        <a href="#sources">Evidence appendix</a>
+      </nav>
+      <p class="rail-note">This page records the approved direction and its evidence. Focused ADRs and admitted GitHub issues still control implementation.</p>
+    </aside>
+
+    <article>
+      <section id="decision">
+        <span class="section-kicker">01 · Decision brief</span>
+        <h2>A selective redesign,<br>not a generic replay of Circuit</h2>
+        <p class="section-lead">Adopt a <strong>typed projection + compiled artifact boundary</strong>: retain distinct Circuit, Schematic and Board authoring models; split their native binding ownership; compile Board once into a complete immutable snapshot; separate canonical models from reproducible views; and add a read-only ProjectBundle path.</p>
+
+        <div class="verdict">
+          <h3>Approved direction: Option C — owner-aligned projection aggregates plus a compiled Board and typed artifact graph.</h3>
+          <p>This resolves the measured seams—49/50-declaration roots, a 133-method native façade, 13 hidden footprint-library injections, mixed PCB model/view JSON, and inspect commands that rerun Python—without inventing a universal Workspace, alternate netlist owner, or generic stage graph.</p>
+        </div>
+
+        <div class="decision-row">
+          <div class="do">
+            <h3>Do</h3>
+            <p>Compress storage-shaped C++ reads, separate native owners, introduce <code>CompiledBoard</code>, classify artifacts, and open bundles read-only.</p>
+          </div>
+          <div class="keep">
+            <h3>Keep</h3>
+            <p>Current semantic ownership, fluent Python, fixed public stages, Python-owned run status/bundling, deterministic model formats, and native fabrication authority.</p>
+          </div>
+          <div class="defer">
+            <h3>Defer</h3>
+            <p>Generic user-defined stages, a public low-level Python model API, multiple native binaries, and format breaks until concrete evidence or a focused ADR justifies them.</p>
+          </div>
+        </div>
+
+        <div class="gate">
+          <div>
+            <span class="tag teal">Circuit boundary complete</span>
+            <p class="gate-status">Parity and final API/storage compression are complete.</p>
+          </div>
+          <div>
+            <p><a href="https://github.com/RyanWillie/Volt/issues/261">#261</a> and <a href="https://github.com/RyanWillie/Volt/issues/266">#266</a> are complete. PR #288 finalized the aggregate at 15 callable operations and 16 declarations including the deleted-rvalue safety overload, with 6,681 production Circuit lines. Semantic, persistence, diagnostic, Python and CI parity remain proven under <a href="https://github.com/RyanWillie/Volt/issues/267">#267</a>.</p>
+            <p class="small"><a href="https://github.com/RyanWillie/Volt/issues/269">#269</a> remains open while focused ADRs and the implementation dependency graph are admitted. Option C, public C++ bundle loading, selected exports, <code>CompiledBoard</code>, and multiple named Boards are approved; v1 Boards are complete alternative physical implementations, not implicit assembly partitions.</p>
+          </div>
+        </div>
+
+        <div class="note"><strong>Companion source of truth:</strong> the <a href="volt-part-library-architecture-review.html">part-library architecture reference</a> owns reusable component contracts, exact parts, canonical Voltage/Current semantics, native library bundles and integrity-bearing selection. The two references are intentionally separate and jointly constrain the full refactor program.</div>
+      </section>
+
+      <section id="evidence">
+        <span class="section-kicker">02 · Evidence</span>
+        <h2>The code says where<br>the architecture hurts</h2>
+        <p class="section-lead">Counts are taken from exact-main public API snapshots and lexical caller inventories, then cross-checked against concrete Python, CLI, Project and IO workflows. They are pressure indicators, not a mandate to optimise for the smallest number.</p>
+
+        <dl class="metrics">
+          <div class="metric"><dt>Circuit boundary</dt><dd>15 / 16</dd><p>Callable operations / declarations at the completed PR #288 aggregate boundary.</p></div>
+          <div class="metric"><dt>Native Python façade</dt><dd>133</dd><p>44 logical · 18 module · 25 schematic · 8 validation/BOM · 37 board · 1 serializer.</p></div>
+          <div class="metric"><dt>Pure-Python native calls</dt><dd>139</dd><p>123 unique methods across five implementation files, all routed through <code>Design._circuit</code>.</p></div>
+          <div class="metric"><dt>Project artifact kinds</dt><dd>18</dd><p>Model, render, report, adapter and asset outputs share records without an explicit role.</p></div>
+          <div class="metric"><dt>Fluent Schematic methods</dt><dd>137</dd><p>Five public fluent classes lower to only 25 native schematic primitives: useful ergonomic compression.</p></div>
+          <div class="metric"><dt>Hidden footprint resolution</dt><dd>13</dd><p>Production binding call sites inject the builtin footprint library during Board operations.</p></div>
+          <div class="metric"><dt>CLI surface</dt><dd>7 + 41</dd><p>Seven executable leaf commands and 41 focused tests; every inspect path currently reruns Python.</p></div>
+          <div class="metric"><dt>Tracked project shapes</dt><dd>3 + 0</dd><p>Three staged Project examples all fit design→schematic→board; zero tracked <code>volt.toml</code> files dogfood the CLI lifecycle.</p></div>
+        </dl>
+
+        <div class="note success"><strong>Completed Circuit boundary (#261 / #266):</strong> PR #288 removed the public subsystem shells, facade-inheritance storage plumbing, specialised root reads and superseded construction overloads. The <a href="https://github.com/RyanWillie/Volt/blob/2d0e7e03df12a53cb69b2915df867433e10084dd/tests/architecture/circuit_public_api.txt">final snapshot</a> contains 16 declarations for 15 callable operations. Across tracked <code>.hpp</code>/<code>.cpp</code> files in <code>include/volt/circuit</code> and <code>src/circuit</code>, production code is 6,681 physical lines—728 below the 7,409 pre-migration baseline.</div>
+
+        <h3>Direct root-member use</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Layer</th><th>Schematic calls</th><th>Schematic names / 47</th><th>Files</th><th>Board calls</th><th>Board names / 47</th><th>Files</th></tr></thead>
+            <tbody>
+              <tr><td>Core production</td><td class="num">178</td><td class="num">16</td><td class="num">11</td><td class="num">251</td><td class="num">34</td><td class="num">12</td></tr>
+              <tr><td>IO / adapters</td><td class="num">104</td><td class="num">33</td><td class="num">5</td><td class="num">265</td><td class="num">45</td><td class="num">9</td></tr>
+              <tr><td>Python binding</td><td class="num">38</td><td class="num">29</td><td class="num">1</td><td class="num">30</td><td class="num">23</td><td class="num">1</td></tr>
+              <tr><td>Tests</td><td class="num">546</td><td class="num">38</td><td class="num">12</td><td class="num">852</td><td class="num">45</td><td class="num">16</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="caption">Unique-name denominators exclude constructors and collapse overload declarations; raw calls count direct member call expressions. This is a reproducible lower bound: aliases, templates and indirect helpers may add semantic consumers. IO and tests touching nearly all of Board’s root demonstrate that its surface is actively coupled, not merely historical.</p>
+
+        <div class="split">
+          <div class="panel neutral">
+            <h3>Root APIs are storage-shaped</h3>
+            <p><code>Schematic</code> exposes ten getter/count pairs plus endpoint-resolving authoring overloads. <code>Board</code> exposes ten Board-owned entity tables, singleton reads, footprint/placement lookups, routing sugar and derived geometry/ratsnest queries on one root.</p>
+          </div>
+          <div class="panel amber">
+            <h3>The largest seam is above the roots</h3>
+            <p><code>PyCircuit</code> stores the Circuit, one SchematicDocument, one optional Board, module drafts and synthetic counters. High-level Python is pleasant; its private native owner boundary is not.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="pressure">
+        <span class="section-kicker">03 · Where pressure sits</span>
+        <h2>Meaning is already separated.<br>Lifecycles are not.</h2>
+        <p class="section-lead">Volt’s domain ownership is sound. The friction comes from a monolithic binding owner, optional physical resolution, service algorithms hanging off model roots, and build artifacts that cannot yet stand on their own.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Coupling seam</th><th>Measured evidence</th><th>Architectural implication</th></tr></thead>
+            <tbody>
+              <tr><td>Public storage façades</td><td class="num">7 classes · 0 external production consumers</td><td>Keep storage decomposition private; admit typed root reads instead.</td></tr>
+              <tr><td><code>Volt::IO</code></td><td class="num">21 public headers · 31 translation units · 39 read/write/render/export overloads</td><td>Separate owner-local model codecs from render/report/adapter services.</td></tr>
+              <tr><td>Board IO</td><td class="num">45 / 47 root names · 265 direct calls</td><td>Serialisation is tightly coupled to table layout; migrate with codec goldens.</td></tr>
+              <tr><td>Native Python owner</td><td class="num">133 methods · 3 semantic owners · 1 optional Board</td><td>Split bound state by owner while retaining one extension binary.</td></tr>
+              <tr><td>Board resolution</td><td class="num">13 builtin-library injections</td><td>Create one explicit completeness boundary before fan-out.</td></tr>
+              <tr><td>Project output</td><td class="num">18 kinds · no role/dependency vocabulary</td><td>Add lifecycle roles and a typed artifact graph, not a new EDA owner.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="ownership" role="img" aria-label="Circuit owns logical connectivity; Schematic presents it; Board physically implements it. Schematic and Board borrow Circuit but do not own nets.">
+          <div class="owner">
+            <small>Semantic source</small>
+            <h3>Circuit</h3>
+            <p>Components, pins, nets, hierarchy, intent and validation inputs.</p>
+          </div>
+          <div class="relation">visualised by</div>
+          <div class="owner">
+            <small>Projection owner</small>
+            <h3>Schematic</h3>
+            <p>Symbols, sheets, wires, labels, fields, regions and presentation.</p>
+          </div>
+          <div class="relation">implemented by</div>
+          <div class="owner">
+            <small>Projection owner</small>
+            <h3>Board</h3>
+            <p>Layers, placement, tracks, vias, zones, rooms, text and fabrication geometry.</p>
+          </div>
+        </div>
+        <p class="caption">The arrows express dependency, not mutation authority. Schematic and Board must remain unable to create, merge or split logical nets.</p>
+
+        <div class="flow" role="img" aria-label="Current Python owner and artifact flow">
+          <div class="flow-row">
+            <div class="flow-node"><strong>Fluent Python</strong><span>Design · Schematic · Board</span></div>
+            <div class="flow-node hot"><strong>one PyCircuit</strong><span>133 bound methods · three owners</span></div>
+            <div class="flow-node"><strong>native models</strong><span>Circuit · Schematic · optional Board</span></div>
+            <div class="flow-node hot"><strong>late resolution</strong><span>builtin library injected 13×</span></div>
+            <div class="flow-node"><strong>mixed outputs</strong><span>canonical + caches + renders</span></div>
+          </div>
+        </div>
+
+        <div class="split">
+          <div>
+            <h3>Coupling that should be removed</h3>
+            <ul>
+              <li>Projection mutation routed through a class named and owned as Circuit.</li>
+              <li>Exactly one optional Board enforced by binding state rather than a public product decision.</li>
+              <li>Board validation/render/export depending on lazy Python footprint cache synchronisation.</li>
+              <li>Model codecs, rendering, reports, interop and manufacturing concentrated in <code>Volt::IO</code>.</li>
+              <li>Project artifact writing implemented as hard-coded model-type branches.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Coupling that is intentional</h3>
+            <ul>
+              <li>Schematic and Board retain a live logical Circuit dependency while authoring.</li>
+              <li>Board routing and spatial algorithms operate over Board state.</li>
+              <li>Python keeps ergonomic registries and fluent builders, provided they lower to kernel meaning.</li>
+              <li>Project stages depend on design output through stable <code>BuildContext</code>.</li>
+              <li>Exporters depend on typed compiled inputs, not generic records.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="workflows">
+        <span class="section-kicker">04 · Real workflows</span>
+        <h2>The authoring path works.<br>The reopening path is missing.</h2>
+        <p class="section-lead">Three real Project examples validate the fixed public stage sequence. The usability gap appears after a build: model, diagnostics and info commands reconstruct the project by importing and executing its Python entrypoint because there is no public bundle reader.</p>
+
+        <div class="split">
+          <div class="panel good">
+            <span class="tag teal">Works today</span>
+            <h3 style="margin-top: .9rem;">Author from Python</h3>
+            <pre><code>project = Project("controller")
+
+@project.design
+def design(): ...
+
+@project.schematic
+def schematic(ctx: BuildContext): ...
+
+@project.board
+def board(ctx: BuildContext): ...
+
+result = project.run()</code></pre>
+            <p>All three staged examples fit this model. <code>ProjectResource</code> already carries extra typed authoring inputs without adding arbitrary public stages.</p>
+          </div>
+          <div class="panel caution">
+            <span class="tag brick">Missing today</span>
+            <h3 style="margin-top: .9rem;">Inspect without execution</h3>
+            <pre><code><span class="comment"># Current command semantics:</span>
+volt model --project . --board Main --json
+volt diagnostics --project . --check
+volt info --project . --json
+
+<span class="comment"># Each imports and executes project Python again.</span></code></pre>
+            <p>The accepted Project Framework policy says tools should inspect a result bundle without rerunning Python. Current CLI inspection does not yet satisfy that lifecycle.</p>
+          </div>
+        </div>
+
+        <h3>Realistic target lifecycle</h3>
+        <div class="flow" role="img" aria-label="Target compile-once and inspect-many workflow">
+          <div class="flow-row">
+            <div class="flow-node"><strong>author</strong><span>Python source + libraries</span></div>
+            <div class="flow-node"><strong>run once</strong><span>fixed typed stages</span></div>
+            <div class="flow-node hot"><strong>compile handoffs</strong><span>complete immutable snapshots</span></div>
+            <div class="flow-node"><strong>bundle</strong><span>models + roles + digests</span></div>
+            <div class="flow-node"><strong>inspect many</strong><span>CLI / UI / exporters, no Python</span></div>
+          </div>
+        </div>
+
+        <div class="note success"><strong>Usability principle:</strong> authoring can stay fluent and dynamic; the product of authoring must be typed, complete, deterministic and safe to open independently.</div>
+      </section>
+
+      <section id="lessons">
+        <span class="section-kicker">05 · Circuit lessons</span>
+        <h2>Generalise the discipline,<br>not the silhouette</h2>
+        <p class="section-lead">Circuit’s completed semantic, persistence, diagnostic, Python and API-compression work supplies an operating method and ownership rules. Its small typed boundary, append-only graph shape and transaction semantics are not universal properties of every EDA projection or service.</p>
+
+        <div class="split">
+          <div class="panel good">
+            <h3>Carry forward</h3>
+            <ul class="lesson-list">
+              <li>One native semantic owner per domain.</li>
+              <li>Complete typed compound specs at mutation boundaries.</li>
+              <li>Structural invalidity rejected immediately.</li>
+              <li>Typed IDs and closed, domain-specific updates.</li>
+              <li><code>get/all</code> over stable tables; free derived queries.</li>
+              <li>Borrowed access with explicit lifetime rules.</li>
+              <li>Measured inventories, no-shim migrations and parity gates.</li>
+              <li><code>EntityRef</code> remains reporting-only.</li>
+            </ul>
+          </div>
+          <div class="panel caution">
+            <h3>Do not copy mechanically</h3>
+            <ul class="lesson-list">
+              <li>A single ~15-declaration budget for every rich projection.</li>
+              <li>Append-only semantics for interactive placement and routing edits.</li>
+              <li>Free functions for stateful router/index algorithms.</li>
+              <li>Whole-operation atomicity for every routing workflow.</li>
+              <li>A universal aggregate, common entity base or property bag.</li>
+              <li>A generic stage graph before a real fourth domain needs it.</li>
+              <li>A compiled Board that becomes another owner of connectivity.</li>
+              <li>Flattening high-level Python into low-level C++ vocabulary.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="note warning"><strong>Concrete exception:</strong> <code>BoardRouter::connect</code> is intentionally atomic, while <code>escape</code> intentionally preserves successful per-pad work when another pad fails. Circuit-style whole-call atomicity therefore cannot be a universal Board rule; the operation’s documented contract and tests decide.</div>
+
+        <h3>A compression envelope, not an acceptance target</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Root</th><th>Today</th><th>Credible envelope</th><th>What moves</th><th>What stays</th></tr></thead>
+            <tbody>
+              <tr><td>Schematic</td><td class="num">49 declarations</td><td class="num">≈19</td><td>Endpoint sugar to an authoring helper; name lookup and validation to queries; ten getter/count pairs to generic reads.</td><td>Typed adds, presentation moves, Circuit borrow, sheet/region concepts, constructors.</td></tr>
+              <tr><td>Board</td><td class="num">50 declarations</td><td class="num">≈25</td><td>Route-request sugar to <code>BoardRouter</code>; lookup, pad resolution, projection and ratsnest to services; index counters hidden.</td><td>Typed physical mutations, configuration, identity/units/Circuit, generic reads.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="caption">The envelopes count declaration categories and assume generic typed reads. They should be validated against actual migrated callers; they are not a reason to force unlike operations under vague verbs.</p>
+      </section>
+
+      <section id="options">
+        <span class="section-kicker">06 · Options</span>
+        <h2>Three credible paths</h2>
+        <p class="section-lead">The minimal option reduces operational risk. The aggregate redesign improves native shape. The approved option joins that work to the lifecycle seam that affects actual users and tools.</p>
+
+        <div class="option">
+          <div class="option-index">A</div>
+          <div>
+            <span class="tag amber">Minimal</span>
+            <h3 style="margin-top:.7rem">Harden the current architecture</h3>
+            <p>Add API snapshots/checkers for Schematic and Board, classify bundle records, expose logical/PCB/bundle loading, document PCB canonical/derived fields, and preserve all root/binding shapes.</p>
+            <p><strong>Benefit:</strong> fast, low-disruption usability improvement. <strong>Cost:</strong> the 133-method native owner, storage-shaped roots, repeated footprint resolution and mixed model/view PCB document remain.</p>
+          </div>
+          <div class="option-score">
+            <div class="score-line"><span>Risk</span><strong>Low</strong></div>
+            <div class="score-line"><span>Architecture gain</span><strong>Low</strong></div>
+            <div class="score-line"><span>Workflow gain</span><strong>Medium</strong></div>
+          </div>
+        </div>
+
+        <div class="option">
+          <div class="option-index">B</div>
+          <div>
+            <span class="tag navy">Redesign 1</span>
+            <h3 style="margin-top:.7rem">Owner-aligned projection aggregates</h3>
+            <p>Apply Circuit’s typed-spec/generic-read discipline selectively to Schematic and Board; move derived queries and route/layout algorithms to focused services; split <code>PyCircuit</code> into separate bound owner types while preserving public Python.</p>
+            <p><strong>Benefit:</strong> clear native ownership and smaller root surfaces. <strong>Cost:</strong> does not by itself make Board outputs self-contained or make built bundles safely reopenable.</p>
+          </div>
+          <div class="option-score">
+            <div class="score-line"><span>Risk</span><strong>Medium</strong></div>
+            <div class="score-line"><span>Architecture gain</span><strong>High</strong></div>
+            <div class="score-line"><span>Workflow gain</span><strong>Low–medium</strong></div>
+          </div>
+        </div>
+
+        <div class="option recommend">
+          <div class="option-index">C</div>
+          <div>
+            <span class="tag teal">Approved</span>
+            <h3 style="margin-top:.7rem">Typed projections + compiled artifact boundary</h3>
+            <p>Do B, then add an immutable <code>CompiledBoard</code>, split canonical model codecs from view/render/report/adapters, record artifact roles and dependencies, and add <code>ProjectBundle.open</code> plus CLI <code>--bundle</code> inspection.</p>
+            <p><strong>Benefit:</strong> fixes native ownership and the author→build→inspect lifecycle with one coherent boundary. <strong>Cost:</strong> more slices, binding lifetime work and a deliberate PCB format/version decision.</p>
+          </div>
+          <div class="option-score">
+            <div class="score-line"><span>Risk</span><strong>Medium–high</strong></div>
+            <div class="score-line"><span>Architecture gain</span><strong>High</strong></div>
+            <div class="score-line"><span>Workflow gain</span><strong>High</strong></div>
+          </div>
+        </div>
+
+        <div class="note"><strong>Explicit non-option:</strong> a universal Workspace/entity database/common base plus arbitrary generic stages. It contradicts issue #269’s constraints, has no measured caller pressure, and would blur the semantic ownership the Circuit work made explicit.</div>
+      </section>
+
+      <section id="target">
+        <span class="section-kicker">07 · Gold target</span>
+        <h2>Authoring models above.<br>Compiled truth below.</h2>
+        <p class="section-lead">The target has three planes. Each plane has a different job, and no plane is allowed to quietly acquire another plane’s meaning.</p>
+
+        <div class="architecture" role="img" aria-label="Three-plane target architecture: authoring owners, compile and query services, and durable artifacts">
+          <div class="plane">
+            <div class="plane-label">Authoring plane</div>
+            <div class="plane-nodes">
+              <div class="plane-node"><strong>Circuit</strong><span>logical owner · append-only build</span></div>
+              <div class="plane-node"><strong>Schematic</strong><span>presentation owner · borrows Circuit</span></div>
+              <div class="plane-node"><strong>Board</strong><span>physical owner · borrows Circuit</span></div>
+              <div class="plane-node"><strong>Python DSL</strong><span>ergonomic typed lowering</span></div>
+            </div>
+          </div>
+          <div class="plane">
+            <div class="plane-label">Service plane</div>
+            <div class="plane-nodes">
+              <div class="plane-node"><strong>Queries / validation</strong><span>free or focused read services</span></div>
+              <div class="plane-node"><strong>Router / spatial index</strong><span>stateful Board algorithms</span></div>
+              <div class="plane-node accent"><strong>compile_board</strong><span>resolve once · snapshot · hash</span></div>
+              <div class="plane-node"><strong>model codecs</strong><span>per-owner persistence</span></div>
+            </div>
+          </div>
+          <div class="plane">
+            <div class="plane-label">Artifact plane</div>
+            <div class="plane-nodes">
+              <div class="plane-node accent"><strong>CompiledBoard</strong><span>complete immutable handoff</span></div>
+              <div class="plane-node"><strong>views / renders</strong><span>reproducible projection caches</span></div>
+              <div class="plane-node"><strong>reports / adapters</strong><span>BOM · CPL · KiCad · diagnostics</span></div>
+              <div class="plane-node"><strong>ProjectBundle</strong><span>typed graph · safe reopening</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="split">
+          <div class="panel good">
+            <h3><code>CompiledBoard</code> guarantees</h3>
+            <ul>
+              <li>Every placed footprint definition is resolved and embedded.</li>
+              <li>Physical entities reference a minimal immutable logical dependency snapshot.</li>
+              <li>Source model and resolver inputs have deterministic provenance digests.</li>
+              <li>Validation, SVG, CPL, KiCad and fabrication fan out without external authoring libraries.</li>
+              <li>It cannot mutate or redefine Circuit connectivity.</li>
+            </ul>
+          </div>
+          <div class="panel caution">
+            <h3><code>CompiledBoard</code> is not</h3>
+            <ul>
+              <li>A second editable Board model.</li>
+              <li>A Workspace containing arbitrary entities.</li>
+              <li>A new owner of nets or pin membership.</li>
+              <li>A cache whose staleness is silently tolerated.</li>
+              <li>A reason to move Project orchestration into C++.</li>
+            </ul>
+          </div>
+        </div>
+
+        <p>Board completeness is not greenfield: the current Board already caches footprint-definition snapshots, the PCB writer embeds them, and the reader can round-trip a complete Board byte-identically with an empty library. The approved architecture turns that demonstrated capability into an explicit lifecycle invariant instead of repeating late resolver injection.</p>
+      </section>
+
+      <section id="native-api">
+        <span class="section-kicker">08 · Concrete native shape</span>
+        <h2>Small roots, typed verbs,<br>services where they belong</h2>
+        <p class="section-lead">These signatures are a design target, not an accepted API. The exact spec vocabulary should be resolved in focused Schematic and Board ADRs only after callers are inventoried per migration slice.</p>
+
+        <div class="api-header"><h3>Schematic authoring root</h3><span class="budget">49 → working envelope ≈19</span></div>
+        <pre><code><span class="comment">// Illustrative; complete specs and exact names remain to design.</span>
+class <span class="type">Schematic</span> {
+public:
+  explicit Schematic(const Circuit&amp; circuit);
+
+  SymbolDefinitionId define(SymbolDefinitionSpec spec);
+  SheetId            add(SheetSpec spec);
+  SymbolInstanceId   add(SymbolInstanceSpec spec);
+  WireRunId          add(WireRunSpec spec);
+  NetLabelId         add(NetLabelSpec spec);
+  PowerPortId        add(PowerPortSpec spec);
+  <span class="comment">// ...other irreducible typed presentation entities...</span>
+
+  void move(SymbolMove move);
+  void move(LabelMove move);
+  void move(FieldMove move);
+
+  template&lt;SchematicEntityId Id&gt; const entity_t&lt;Id&gt;&amp; get(Id id) const;
+  template&lt;SchematicEntityId Id&gt; borrowed_range_t&lt;Id&gt; all() const &amp;;
+  const Circuit&amp; circuit() const;
+};
+
+<span class="comment">// Endpoint resolution is authoring sugar, not root ownership.</span>
+WireRunId connect(Schematic&amp;, const Endpoint&amp;, const Endpoint&amp;, WireStyle);
+std::optional&lt;SymbolInstanceId&gt; find_symbol(const Schematic&amp;, std::string_view);</code></pre>
+        <p class="small">Keep typed adds and presentation moves. Move endpoint/terminal conveniences to an editor/helper, name lookup to free queries, document replacement to the owning document wrapper, and getter/count pairs to typed <code>get/all</code>. A strongly typed <code>SheetRegionId</code> is worth resolving because regions are cross-referenced.</p>
+
+        <div class="api-header"><h3>Board authoring and compile boundary</h3><span class="budget">50 → working envelope ≈25</span></div>
+        <pre><code>using <span class="type">BoardUpdate</span> = std::variant&lt;
+    SetLayerStack, SetOutline, SetDesignRules, SetCapabilityProfile&gt;;
+
+class <span class="type">Board</span> {
+public:
+  Board(const Circuit&amp; circuit, BoardName name);
+
+  BoardLayerId  add(BoardLayerSpec spec);
+  PlacementId   add(PlacementSpec spec);
+  TrackId       add(TrackSpec spec);
+  ViaId         add(ViaSpec spec);
+  ZoneId        add(ZoneSpec spec);
+  <span class="comment">// ...other irreducible typed physical entities...</span>
+
+  void configure(BoardUpdate update);
+  void move(PlacementMove move);
+
+  template&lt;BoardEntityId Id&gt; const entity_t&lt;Id&gt;&amp; get(Id id) const;
+  template&lt;BoardEntityId Id&gt; borrowed_range_t&lt;Id&gt; all() const &amp;;
+  const Circuit&amp; circuit() const;
+};
+
+struct <span class="type">CompiledBoard</span> {
+  BoardSnapshot physical;
+  BoardLogicalSnapshot logical_dependencies;
+  std::vector&lt;ResolvedFootprintSnapshot&gt; footprints;
+  BuildProvenance provenance;
+};
+
+CompiledBoard compile_board(
+    const Circuit&amp;, const Board&amp;, const FootprintResolver&amp;);
+
+<span class="comment">// Existing stateful algorithm stays a service.</span>
+BoardRouter router(Board&amp;);
+RatsnestResult compute_ratsnest(const CompiledBoard&amp;);</code></pre>
+        <p class="small">The current route-request overload of <code>add_track</code> belongs on <code>BoardRouter</code>. Footprint/placement lookup, pad resolution, geometry projection and ratsnest calculation are derived queries/services. Routing and spatial indexes may retain stateful object APIs; “free” is not a dogma.</p>
+
+        <div class="note"><strong>Structural boundary:</strong> authoring Board may borrow Circuit and a resolver while it changes. Only successful <code>compile_board</code> yields the complete standalone physical handoff. Missing footprint data is a compile failure with typed diagnostics—not an exporter-time fallback.</div>
+      </section>
+
+      <section id="python-project">
+        <span class="section-kicker">09 · Python, Project &amp; CLI</span>
+        <h2>Preserve the fluent surface.<br>Replace its private owner map.</h2>
+        <p class="section-lead">The 137-to-25 schematic lowering ratio is a success, not bloat. Public Python should remain ergonomic and source-compatible; its native state should stop pretending that Circuit owns Schematic and Board.</p>
+
+        <div class="split">
+          <div>
+            <h3>Private native composition</h3>
+            <pre><code>class Design:
+    _logical: _volt.Circuit
+    _schematic_documents: dict[str, _volt.SchematicDocument]
+    _boards: dict[str, _volt.Board]
+
+<span class="comment"># One _volt extension is sufficient.</span>
+<span class="comment"># Separate bound owner types; free validation/IO/export.</span></code></pre>
+          </div>
+          <div>
+            <h3>Public authoring stays familiar</h3>
+            <pre><code>design = volt.Design("pulse")
+
+schematic = design.schematic
+schematic.wire(mcu["PA0"], sensor["OUT"])
+
+board = design.board
+board.place(mcu, at=(42, 18), rotation=90)
+compiled = board.compile()  <span class="comment"># optional advanced seam</span></code></pre>
+          </div>
+        </div>
+        <p>Native Schematic and Board currently borrow a live <code>Circuit</code>. The binding slice must explicitly retain the logical owner—or apply an equivalent correct pybind lifetime policy—and add destruction-order/cross-design regression tests. Splitting into multiple extension binaries is unnecessary.</p>
+
+        <h3 style="margin-top:2.6rem">Project remains Python-owned and fixed-stage</h3>
+        <div class="tree" aria-label="Recommended advanced Volt source project layout"><strong>controller/</strong>
+├── volt.toml                 <span class="small"># entrypoint + output/profile configuration</span>
+├── main.py                   <span class="small"># Project registration only</span>
+├── design.py                 <span class="small"># logical authoring</span>
+├── schematic.py              <span class="small"># presentation authoring</span>
+├── boards/
+│   └── main.py               <span class="small"># physical authoring</span>
+├── footprints/               <span class="small"># explicit project inputs</span>
+├── profiles/                 <span class="small"># manufacturing capabilities</span>
+└── tests/                    <span class="small"># stage and project tests</span></div>
+        <p class="caption">Keep <code>volt init</code> small and one-file by default. Document this split as the scalable layout; do not make source-file layout part of kernel semantics.</p>
+
+        <h3 style="margin-top:2.6rem">Compile once; inspect without importing</h3>
+        <pre><code><span class="comment"># Authoring/build path — executes configured Python once.</span>
+volt build --project . --output build/controller
+
+<span class="comment"># Artifact path — never imports project source.</span>
+volt info        --bundle build/controller --json
+volt model       --bundle build/controller --board controller:Main --json
+volt diagnostics --bundle build/controller --stage board --check
+volt export manufacturing --bundle build/controller \
+  --board controller:Main --output dist/controller --archive</code></pre>
+        <pre><code>bundle = volt.ProjectBundle.open("build/controller")
+bundle.models(kind="board")
+bundle.artifacts(role="view")
+bundle.diagnostics</code></pre>
+        <p class="small">Exact CLI spelling is open: shared <code>--bundle</code> is shown because it extends existing commands and selectors. A new <code>inspect</code> command is also credible. The invariant is stronger than the syntax: inspection must not execute authoring Python.</p>
+
+        <div class="note warning"><strong>Do not genericise stages now.</strong> All three real Project examples fit design→schematic→board, <code>ProjectResource</code> already carries extra typed inputs, and the accepted policy requires evidence before a custom graph. Admit a typed <code>StageKey[T]</code> only when a real fourth output domain cannot fit without contortion.</div>
+      </section>
+
+      <section id="artifacts">
+        <span class="section-kicker">10 · Artifact contract</span>
+        <h2>Separate what is authored<br>from what can be rebuilt</h2>
+        <p class="section-lead">PCB JSON v3 currently places canonical Board fields, derived geometry and a recomputed viewer pad-resolution cache in one document. The reader checks cache freshness; that proves the roles differ. Make the distinction structural and record it in the bundle graph.</p>
+
+        <div class="artifact-map" role="img" aria-label="Canonical models compile into derived views, renders, reports, adapters and delivery packages">
+          <div class="artifact-column">
+            <div class="artifact-node model"><small>model · authoritative</small><strong>logical.volt.json</strong></div>
+            <div class="artifact-node model"><small>model · authoritative</small><strong>schematic.volt.json</strong></div>
+            <div class="artifact-node model"><small>model · authoritative</small><strong>pcb.volt.json</strong></div>
+          </div>
+          <div class="artifact-arrow">→</div>
+          <div class="artifact-column">
+            <div class="artifact-node derived"><small>view / render · reproducible</small><strong>PCB view JSON · schematic/PCB SVG</strong></div>
+            <div class="artifact-node derived"><small>report · reproducible</small><strong>diagnostics · tests · BOM · CPL</strong></div>
+            <div class="artifact-node derived"><small>adapter / asset</small><strong>KiCad · 3D placements · model assets</strong></div>
+            <div class="artifact-node delivery"><small>delivery · profile-specific</small><strong>native fabrication package + manifest</strong></div>
+          </div>
+        </div>
+
+        <h3>Typed manifest record</h3>
+        <pre><code>struct <span class="type">ArtifactDescriptor</span> {
+  ArtifactId id;
+  ArtifactRole role;  <span class="comment">// model | view | render | report | adapter | asset | delivery</span>
+  std::string kind;
+  std::string format_version;
+  std::string media_type;
+  RelativePath path;
+  Sha256 content_digest;
+  std::vector&lt;ArtifactDependency&gt; depends_on;
+  ProducerInfo producer;
+};</code></pre>
+        <p>Project’s 18 current artifact kinds remain useful; role is an orthogonal lifecycle property. Dependencies and digests let a bundle loader reject stale viewer caches, mixed-build outputs or a compiled Board produced from different logical/physical inputs.</p>
+
+        <h3 style="margin-top:2.6rem">Recommended bundle layout</h3>
+        <div class="tree" aria-label="Recommended ProjectBundle directory layout"><strong>build/controller/</strong>
+├── manifest.volt.json
+├── models/
+│   ├── logical/controller.volt.logical.json
+│   ├── schematic/main.volt.schematic.json
+│   └── pcb/main.volt.pcb.json
+├── views/
+│   ├── schematic/main.volt.schematic-view.json
+│   └── pcb/main.volt.pcb-view.json
+├── renders/
+│   ├── schematic/main.svg
+│   └── pcb/main.svg
+├── reports/
+│   ├── diagnostics.json
+│   ├── tests.json
+│   ├── bom.json
+│   └── cpl.json
+├── adapters/kicad/main.kicad_pcb
+└── assets/models3d/…</div>
+        <p class="caption">Manufacturing remains a separate profile-specific delivery package. Existing v1 bundle paths should remain readable until a deliberate manifest/version migration; this layout is the target shape, not permission for an unversioned break.</p>
+
+        <div class="split">
+          <div class="panel neutral">
+            <h3>Owner-local codecs</h3>
+            <p><code>logical::read/write_document</code>, <code>schematic::read/write_document</code> and <code>pcb::read/write_document</code> sit beside their typed models. They preserve authoritative semantics and lifetime requirements.</p>
+          </div>
+          <div class="panel amber">
+            <h3>Fan-out services</h3>
+            <p>Render, BOM, CPL, KiCad and fabrication consume typed models or <code>CompiledBoard</code>. They are algorithms/adapters, not alternate models and not aggregate mutations.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="migration">
+        <span class="section-kicker">11 · Migration</span>
+        <h2>Eight bounded slices,<br>each with a stop gate</h2>
+        <p class="section-lead">Do not land this as a broad rewrite. Preserve exact behaviour, move one owner or artifact boundary at a time, and delete compatibility paths only after measured callers have moved.</p>
+
+        <div class="timeline">
+          <div class="slice" data-step="0">
+            <h3>Maintainer decisions</h3>
+            <p>Judge the target, name the compiled boundary, decide format/version sequencing, and author focused ADRs only if accepted.</p>
+            <span class="gate-pill">Gate: focused ADRs and admitted dependency graph; no implementation yet</span>
+          </div>
+          <div class="slice" data-step="1">
+            <h3>Freeze inventories and observable behaviour</h3>
+            <p>Check in Schematic/Board public API snapshots, caller allowlists, output goldens and architecture dependency checks.</p>
+            <span class="gate-pill">Gate: inventories reproduce 49/50 declarations and caller baseline</span>
+          </div>
+          <div class="slice" data-step="2">
+            <h3>Split private native owners</h3>
+            <p>Introduce bound <code>Circuit</code>, <code>SchematicDocument</code> and <code>Board</code> types inside one <code>_volt</code> extension. Keep all 113 public Python exports and fluent behaviour.</p>
+            <span class="gate-pill">Gate: lifetime, ownership, exceptions and byte parity</span>
+          </div>
+          <div class="slice" data-step="3">
+            <h3>Refactor Schematic root</h3>
+            <p>Add complete typed specs/generic reads; move endpoint sugar and derived lookup to authoring/query services; migrate measured production, IO, binding and test callers atomically.</p>
+            <span class="gate-pill">Gate: semantic/parity report and zero old callers</span>
+          </div>
+          <div class="slice" data-step="4">
+            <h3>Refactor Board root and resolution</h3>
+            <p>Move route sugar/query surface, formalise footprint snapshot ownership and stop exporter-time builtin-library injection.</p>
+            <span class="gate-pill">Gate: zero 13 hidden injections; routing contracts preserved</span>
+          </div>
+          <div class="slice" data-step="5">
+            <h3>Introduce <code>CompiledBoard</code></h3>
+            <p>Compile once from Circuit + Board + resolver; migrate validation, render, CPL, KiCad and fabrication consumers one by one.</p>
+            <span class="gate-pill">Gate: empty-library independence and exporter equivalence</span>
+          </div>
+          <div class="slice" data-step="6">
+            <h3>Separate PCB model and view</h3>
+            <p>Version the canonical/view split, preserve a deliberate v3 read path, and make stale views disposable without affecting model load.</p>
+            <span class="gate-pill">Gate: deterministic round trips and explicit compatibility policy</span>
+          </div>
+          <div class="slice" data-step="7">
+            <h3>Typed artifact graph and safe opening</h3>
+            <p>Add role/dependency/digest metadata, <code>ProjectBundle.open</code>, and bundle-backed CLI inspection while retaining Python-owned build status.</p>
+            <span class="gate-pill">Gate: inspect commands prove project source is never executed</span>
+          </div>
+          <div class="slice" data-step="8">
+            <h3>Delete migrated compatibility paths</h3>
+            <p>Remove old native forwarding and mixed-service entry points only after all tracked consumers, docs and examples use the target.</p>
+            <span class="gate-pill">Gate: full suite, CI matrix, API checker and final parity report</span>
+          </div>
+        </div>
+
+        <div class="note warning"><strong>Migration rule:</strong> no public compatibility shim that creates a second semantic path. Temporary adapters may exist only inside a bounded slice, with an inventory and deletion gate in that same dependency chain.</div>
+      </section>
+
+      <section id="verification">
+        <span class="section-kicker">12 · Verification</span>
+        <h2>Evidence gates,<br>not confidence statements</h2>
+        <p class="section-lead">The following gates convert the approved direction into independently verifiable work. A slice is not done merely because new APIs exist.</p>
+
+        <ul class="checklist">
+          <li>Public API snapshots and architecture checkers pin every accepted root/binding boundary.</li>
+          <li>Lexical inventories report zero production callers of removed paths.</li>
+          <li>Structural failures leave owner bytes unchanged where operations promise atomicity.</li>
+          <li>Board routing tests preserve both atomic <code>connect</code> and partial-success <code>escape</code> contracts.</li>
+          <li>Logical, Schematic and Board read/write/read plus write/read/write remain deterministic.</li>
+          <li>Compiled Board succeeds with an empty external footprint library and fails clearly when incomplete.</li>
+          <li>Compiled provenance changes when any logical, physical, footprint or capability input changes.</li>
+          <li>Old/new SVG, CPL, KiCad and native fabrication outputs are semantically equivalent before cutover.</li>
+          <li>Stale/missing viewer sidecars never change authoritative model loading.</li>
+          <li>Manifest loader rejects stale dependency digests and mixed-build artifacts.</li>
+          <li>All 18 artifact kinds receive one documented role and complete dependency edges.</li>
+          <li>All 113 public Python exports, typed exception families, codes and entity metadata remain compatible.</li>
+          <li>Binding lifetime/destruction tests cover logical owner retention and cross-design errors.</li>
+          <li>Board persistence/export proves independence from Python-only footprint caches after compilation.</li>
+          <li>41 CLI tests and 46 Project Framework tests remain green.</li>
+          <li>Three staged Project examples and three fluent schematic-sugar examples run end to end.</li>
+          <li>Bundle-backed <code>info/model/diagnostics</code> demonstrate that the Python entrypoint is not imported.</li>
+          <li>CLI JSON schemas, selectors, exit codes and stdout isolation remain stable.</li>
+          <li>Full developer suite, docs, clang-tidy, sanitizers, coverage and supported-platform CI pass.</li>
+        </ul>
+
+        <div class="split">
+          <div class="panel good">
+            <h3>Parity means</h3>
+            <p>Same meaning, diagnostics, ownership failures, serialization and output semantics at the new owner/artifact boundary.</p>
+          </div>
+          <div class="panel caution">
+            <h3>Parity does not mean</h3>
+            <p>Preserving every storage-shaped root method, hidden resolver fallback, mixed cache field, or private <code>PyCircuit</code> forwarding path.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="boundaries">
+        <span class="section-kicker">13 · Boundaries</span>
+        <h2>What is settled.<br>What focused ADRs must freeze.</h2>
+
+        <div class="split">
+          <div class="panel good">
+            <h3>Explicitly unchanged</h3>
+            <ul>
+              <li>Accepted Circuit aggregate ADR and append-only kernel semantics; the final boundary is 15 callable operations and 16 declarations.</li>
+              <li>Completed Circuit semantic, persistence, diagnostic, Python, CI and API/storage-compression work under #261 and #266.</li>
+              <li>Circuit alone owns logical components, pins, nets and pin-to-net membership.</li>
+              <li>Schematic owns presentation; Board owns physical implementation; neither defines the netlist.</li>
+              <li>Bad design intent remains diagnostic; structural invalidity remains a mutation/load boundary failure.</li>
+              <li>Canonical logical, schematic and PCB model documents remain separate and deterministic unless deliberately versioned.</li>
+              <li>Public <code>volt.Design</code>, fluent Schematic/Board authoring and typed Python exceptions remain compatible.</li>
+              <li>Python owns source execution, Project orchestration and developer-facing run status; C++ owns semantic artifact construction, codecs and verified reopening. <code>BuildContext</code> stays stable.</li>
+              <li>Public design→schematic→board stages stay fixed pending measured pain.</li>
+              <li>CLI stays orchestration-only and preserves JSON/stdout/exit-code contracts.</li>
+              <li>KiCad remains one-way interop; native fabrication remains manufacturing authority.</li>
+              <li>No kernel removal APIs, universal entity base, property bag or <code>EntityRef</code> mutation handles.</li>
+            </ul>
+          </div>
+          <div class="panel caution">
+            <h3>Approved direction and bounded ADR choices</h3>
+            <ol>
+              <li><strong>Name and lifetime:</strong> <code>CompiledBoard</code> is approved as an immutable artifact per named Board; D2 freezes its minimal logical dependency snapshot and owning loaded-project lifetime.</li>
+              <li><strong>Invalidation:</strong> eager recompile, explicit compile, or digest-keyed lazy cache?</li>
+              <li><strong>Board cardinality:</strong> multiple named Boards are approved. In v1 they are complete alternative physical implementations of one Design, not implicit assembly partitions.</li>
+              <li><strong>Schematic vocabulary:</strong> exact complete specs, update forms and whether <code>SheetRegionId</code> becomes strongly typed.</li>
+              <li><strong>Binding lifetime:</strong> explicit owner retention versus binding policy details.</li>
+              <li><strong>PCB versioning:</strong> early model/view split with v3 import or defer until bundle loading lands?</li>
+              <li><strong>Manifest evolution:</strong> role vocabulary, schema/version and checksum scope.</li>
+              <li><strong>Bundle API:</strong> a public C++ loader and typed native artifact graph are approved; D3 freezes exact types and read windows.</li>
+              <li><strong>CLI UX:</strong> shared <code>--bundle</code> flags or a new <code>inspect</code> command?</li>
+              <li><strong>Low-level Python:</strong> whether read-only native model inspection is justified later.</li>
+              <li><strong>Generic stages:</strong> the evidence threshold and first concrete domain that would admit <code>StageKey[T]</code>.</li>
+              <li><strong>Delivery defaults:</strong> exports are opt-in; D3/Q4 freeze the default authoritative payload and legacy flat-output transition.</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="verdict">
+          <h3>Approved direction; implementation remains gated</h3>
+          <p>Option C is approved: owner-aligned Circuit/Schematic/named Board models, <code>CompiledBoard</code>, public C++ bundle reopening, a typed artifact graph and selected exports. Keep #269 open until focused ADRs record the remaining bounded choices and an admitted native GitHub dependency graph exists. This architecture reference directs those ADRs; it does not authorize implementation by itself.</p>
+        </div>
+      </section>
+
+      <section id="sources">
+        <span class="section-kicker">14 · Evidence appendix</span>
+        <h2>Reproducible review notes</h2>
+        <p class="section-lead">The original architecture inventory was checked against the exact evidence commit below. Circuit completion and approval status were normalized against merged main at <code>2d0e7e03df12</code>. Historical links remain pinned where they support the measured inventory.</p>
+
+        <details open>
+          <summary>Primary decision sources</summary>
+          <div>
+            <ul class="source-list">
+              <li><a href="https://github.com/RyanWillie/Volt/issues/269">Issue #269 — scope, constraints and open questions</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/issues/266">Issue #266 — completed Circuit API/storage compression</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/2d0e7e03df12a53cb69b2915df867433e10084dd/AGENTS.md">AGENTS.md — kernel and ownership principles</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/2d0e7e03df12a53cb69b2915df867433e10084dd/docs/design/adr-circuit-aggregate-api.md">Circuit aggregate ADR</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/2d0e7e03df12a53cb69b2915df867433e10084dd/docs/design/circuit-semantic-parity.html">Circuit semantic/persistence parity report</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/docs/design/volt-project-framework-v1-policy-decisions-2026-06-06.html">Accepted Project Framework policy</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/docs/design/adr-append-only-kernel.md">Append-only kernel ADR</a></li>
+            </ul>
+          </div>
+        </details>
+
+        <details>
+          <summary>Code and API evidence</summary>
+          <div>
+            <ul class="source-list">
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/tests/architecture/circuit_public_api.txt">Circuit public API snapshot</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/include/volt/circuit/circuit.hpp">Circuit root and facade-inheritance storage plumbing</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/include/volt/circuit/detail/subsystem_storage.hpp">Public detail::SubsystemStorage header</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/tests/architecture/schematic_public_api.txt">Schematic public API snapshot</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/tests/architecture/board_public_api.txt">Board public API snapshot</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/include/volt/schematic/schematic.hpp">Schematic root header</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/include/volt/pcb/board.hpp">Board root header</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/include/volt/pcb/routing/board_router.hpp">BoardRouter contracts</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/src/python/py_circuit.hpp">PyCircuit state and native surface</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/src/python/circuit_bindings.cpp">133 native method registrations</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/python/volt/design.py">Design composition and convenience caches</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/python/volt/project.py">Project graph, artifact writing and manifest</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/python/volt/cli/__init__.py">CLI parsers and execution paths</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/src/io/pcb/pcb_writer.cpp">PCB canonical + geometry + viewer writer</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/src/io/pcb/pcb_reader.cpp">PCB reader and embedded footprint restoration</a></li>
+              <li><a href="https://github.com/RyanWillie/Volt/blob/e8efd21a62b564f9475e50c830abaa47c04c6fb5/tests/io/pcb/pcb_projection_io_test.cpp">Empty-library byte-stable PCB round trip</a></li>
+            </ul>
+          </div>
+        </details>
+
+        <details>
+          <summary>Counting and interpretation method</summary>
+          <div>
+            <div class="method">
+              <p><strong>Evidence commit:</strong> <code>e8efd21a62b564f9475e50c830abaa47c04c6fb5</code>, reviewed from an isolated source snapshot. <strong>Accepted baseline:</strong> <code>2d0e7e03df12a53cb69b2915df867433e10084dd</code>, which completes the Circuit boundary without changing the owner-aligned recommendation.</p>
+              <p><strong>Public declarations:</strong> nonblank declaration lines in the checked-in architecture snapshots; overloads remain separate. Unique callable names collapse overloads and exclude constructors.</p>
+              <p><strong>Circuit completion:</strong> physical lines in tracked <code>.hpp</code>/<code>.cpp</code> files under <code>include/volt/circuit</code> and <code>src/circuit</code>, comparing the 7,409-line pre-migration baseline with the final 6,681-line PR #288 boundary.</p>
+              <p><strong>Caller counts:</strong> direct member call expressions lexically inventoried by code stratum. They are lower bounds and intentionally do not claim semantic call-graph completeness.</p>
+              <p><strong>Python counts:</strong> unique <code>PyCircuit</code> registrations grouped by implementation family; AST/lexical counts for public methods, exports and <code>._circuit</code> call sites.</p>
+              <p><strong>Workflow evidence:</strong> current CLI parser/handlers, Project stage execution, ProjectResult artifact writing, three staged examples and focused CLI/Project tests.</p>
+              <p><strong>IO classification:</strong> reader/writer code, format docs and round-trip tests distinguish authoritative model state from recomputed view/cache/report/adapter outputs.</p>
+              <p><strong>Scope:</strong> static architecture/usability review. No performance benchmark is claimed, and line count is used only as scale evidence—not as a quality metric.</p>
+            </div>
+          </div>
+        </details>
+
+        <div class="note success"><strong>Reference status:</strong> this durable architecture reference records the approved direction and evidence. Product code and accepted ADRs remain unchanged by the document itself; #269 remains open until focused ADRs and the admitted dependency graph are complete.</div>
+      </section>
+    </article>
+  </div>
+
+  <footer>
+    <strong>Volt after Circuit — architecture &amp; usability review</strong><br>
+    Prepared from exact source evidence for #269 and normalized to the completed Circuit baseline. Self-contained approved architecture reference; implementation remains ADR- and issue-gated.
+  </footer>
+
+  <script>
+    (() => {
+      const progress = document.getElementById('reading-progress');
+      const sections = [...document.querySelectorAll('article section[id]')];
+      const links = new Map([...document.querySelectorAll('.rail a')].map(link => [link.getAttribute('href').slice(1), link]));
+
+      const updateProgress = () => {
+        const span = document.documentElement.scrollHeight - window.innerHeight;
+        const ratio = span > 0 ? Math.min(1, Math.max(0, window.scrollY / span)) : 0;
+        progress.style.width = `${ratio * 100}%`;
+      };
+      updateProgress();
+      window.addEventListener('scroll', updateProgress, { passive: true });
+
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+          const visible = entries
+            .filter(entry => entry.isIntersecting)
+            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+          if (!visible) return;
+          links.forEach(link => link.classList.remove('active'));
+          const link = links.get(visible.target.id);
+          if (link) link.classList.add('active');
+        }, { rootMargin: '-18% 0px -68% 0px', threshold: [0, .08, .2] });
+        sections.forEach(section => observer.observe(section));
+      }
+    })();
+  </script>
+</body>
+</html>
