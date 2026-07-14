@@ -68,7 +68,7 @@ ModuleDefinition::ModuleDefinition(ModuleName name, std::vector<TemplateNetDefId
 
 [[nodiscard]] ModuleDefinition
 ModuleDefinition::with_connection(ModulePinConnection connection) && {
-    connections_.push_back(std::move(connection));
+    connections_.push_back(connection);
     return std::move(*this);
 }
 
