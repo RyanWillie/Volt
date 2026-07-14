@@ -46,14 +46,14 @@ void Circuit::restore_pin_definition_attributes(PinDefId pin_definition,
 void Circuit::set_component_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
                                       ElectricalAttributeValue value) {
     require_attribute_owner(spec, ElectricalAttributeOwner::ComponentInstance);
-    connectivity_.replace_component(
-        component, get(component).with_electrical_attribute(spec, std::move(value)));
+    connectivity_.replace_component(component,
+                                    get(component).with_electrical_attribute(spec, value));
 }
 
 void Circuit::set_net_attribute(NetId net, const ElectricalAttributeSpec &spec,
                                 ElectricalAttributeValue value) {
     require_attribute_owner(spec, ElectricalAttributeOwner::Net);
-    connectivity_.replace_net(net, get(net).with_electrical_attribute(spec, std::move(value)));
+    connectivity_.replace_net(net, get(net).with_electrical_attribute(spec, value));
 }
 
 void Circuit::select_physical_part(ComponentId component, PhysicalPart physical_part,
@@ -72,7 +72,7 @@ void Circuit::set_selected_part_attribute(ComponentId component,
                                EntityRef::component(component)};
     }
     connectivity_.replace_component(
-        component, get(component).with_selected_part_electrical_attribute(spec, std::move(value)));
+        component, get(component).with_selected_part_electrical_attribute(spec, value));
 }
 
 void Circuit::require_attribute_owner(const ElectricalAttributeSpec &spec,

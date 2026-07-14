@@ -245,7 +245,7 @@ void Circuit::ConnectivityState::replace_component(ComponentId id, ComponentInst
 
 void Circuit::ConnectivityState::replace_pin(PinId id, PinInstance pin) {
     require_pin(id);
-    pins.get(id) = std::move(pin);
+    pins.get(id) = pin;
 }
 
 void Circuit::ConnectivityState::replace_net(NetId id, Net net) {
