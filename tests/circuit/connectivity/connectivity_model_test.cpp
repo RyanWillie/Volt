@@ -56,8 +56,9 @@ TEST_CASE("Circuit complete definitions preserve deterministic connectivity IDs"
 TEST_CASE("Circuit instantiates complete components and pins deterministically") {
     auto fixture = make_connectivity_fixture();
 
-    const auto component = fixture.circuit.instantiate_component(fixture.component_definition,
-                                                                 volt::ReferenceDesignator{"R1"});
+    const auto component = fixture.circuit.instantiate_component(
+        fixture.component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
     CHECK(component == volt::ComponentId{0});
     CHECK(fixture.circuit.get(component).reference() == volt::ReferenceDesignator{"R1"});
     CHECK(fixture.circuit.all<volt::PinId>().size() == 2);
@@ -70,11 +71,13 @@ TEST_CASE("Circuit instantiates complete components and pins deterministically")
 TEST_CASE("Circuit enforces unique component references") {
     auto fixture = make_connectivity_fixture();
     [[maybe_unused]] const auto first = fixture.circuit.instantiate_component(
-        fixture.component_definition, volt::ReferenceDesignator{"R1"});
+        fixture.component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
 
     try {
-        static_cast<void>(fixture.circuit.instantiate_component(fixture.component_definition,
-                                                                volt::ReferenceDesignator{"R1"}));
+        static_cast<void>(fixture.circuit.instantiate_component(
+            fixture.component_definition,
+            volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}}));
         FAIL("Duplicate component references must throw");
     } catch (const volt::KernelLogicError &error) {
         CHECK(error.code() == volt::ErrorCode::DuplicateName);
@@ -98,8 +101,9 @@ TEST_CASE("Circuit enforces unique net names") {
 
 TEST_CASE("Circuit enforces one net per pin at mutation boundaries") {
     auto fixture = make_connectivity_fixture();
-    const auto component = fixture.circuit.instantiate_component(fixture.component_definition,
-                                                                 volt::ReferenceDesignator{"R1"});
+    const auto component = fixture.circuit.instantiate_component(
+        fixture.component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
     const auto pin = volt::queries::pins_for(fixture.circuit, component).front();
     const auto first_net = fixture.circuit.add_net(volt::NetSpec{.name = volt::NetName{"NET_A"}});
     const auto second_net = fixture.circuit.add_net(volt::NetSpec{.name = volt::NetName{"NET_B"}});

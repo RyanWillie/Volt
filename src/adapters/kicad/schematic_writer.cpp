@@ -2,6 +2,7 @@
 
 #include "format.hpp"
 
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 
 namespace volt::adapters::kicad::detail {
@@ -233,9 +234,10 @@ void write_symbol_instance(std::ostream &out, const Schematic &schematic, Symbol
         property_y += 7.0;
     }
 
-    if (schematic.circuit().selected_physical_part(instance.component()).has_value()) {
-        const auto &footprint =
-            schematic.circuit().selected_physical_part(instance.component())->footprint();
+    const auto &selected_part =
+        volt::queries::selected_physical_part(schematic.circuit(), instance.component());
+    if (selected_part.has_value()) {
+        const auto &footprint = selected_part->footprint();
         write_symbol_property(out, "Footprint", footprint.library() + ":" + footprint.name(),
                               Point{instance.position().x(), property_y});
     }

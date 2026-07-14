@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/validation/validation.hpp>
 #include <volt/io/logical/logical_circuit_reader.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
@@ -101,7 +102,7 @@ TEST_CASE("Logical reader preserves independent connectivity table identity") {
     CHECK(restored.get(volt::ComponentDefId{1}).pins() ==
           std::vector{volt::PinDefId{1}, volt::PinDefId{3}});
     CHECK(restored.get(volt::PinDefId{4}).name() == "Unowned");
-    CHECK(restored.pin_definition_electrical_attributes(volt::PinDefId{4})
+    CHECK(volt::queries::pin_definition_electrical_attributes(restored, volt::PinDefId{4})
               .get(volt::ElectricalAttributeName{"voltage_range"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 5.0});
     const auto rewritten = volt::io::write_logical_circuit(restored);

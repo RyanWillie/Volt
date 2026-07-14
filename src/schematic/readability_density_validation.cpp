@@ -1,5 +1,7 @@
 #include <volt/schematic/readability_density_validation.hpp>
 
+#include <volt/circuit/connectivity/queries.hpp>
+
 namespace volt::detail {
 
 void validate_port_tag_scale(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
@@ -222,7 +224,7 @@ void validate_dense_region_port_tags(const Schematic &schematic, SheetId sheet_i
         ElectricalAttributeName{"resistance"}, ElectricalAttributeName{"capacitance"},
         ElectricalAttributeName{"inductance"}, ElectricalAttributeName{"voltage"},
         ElectricalAttributeName{"current"},    ElectricalAttributeName{"power"}};
-    const auto &attributes = circuit.component_electrical_attributes(component_id);
+    const auto &attributes = volt::queries::component_electrical_attributes(circuit, component_id);
     return std::any_of(
         known_values.begin(), known_values.end(),
         [&attributes](const ElectricalAttributeName &name) { return attributes.contains(name); });

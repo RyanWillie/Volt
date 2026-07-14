@@ -234,12 +234,12 @@ TEST_CASE("Circuit assigns and reads a selected physical part for a component") 
     const auto second_pin = pins[1];
     const auto component = volt::test::instantiate_component(circuit, component_def, "R1");
 
-    CHECK_FALSE(circuit.selected_physical_part(component).has_value());
+    CHECK_FALSE(volt::queries::selected_physical_part(circuit, component).has_value());
 
     circuit.update(component,
                    volt::SelectPhysicalPart{make_resistor_physical_part(first_pin, second_pin)});
 
-    const auto &selected_part = circuit.selected_physical_part(component);
+    const auto &selected_part = volt::queries::selected_physical_part(circuit, component);
     REQUIRE(selected_part.has_value());
     CHECK(selected_part->manufacturer_part().manufacturer() == "Yageo");
     CHECK(selected_part->manufacturer_part().part_number() == "RC0603FR-07330RL");
@@ -257,13 +257,13 @@ TEST_CASE("Circuit stores component assembly intent and selected part alternates
     const auto second_pin = pins[1];
     const auto component = volt::test::instantiate_component(circuit, component_def, "R1");
 
-    CHECK_FALSE(circuit.component_dnp(component).has_value());
+    CHECK_FALSE(volt::queries::component_dnp(circuit, component).has_value());
     circuit.update(component, volt::SetAssemblyIntent{.selection_override = true});
-    CHECK_FALSE(circuit.component_dnp(component).has_value());
-    CHECK(circuit.is_component_selection_override(component));
+    CHECK_FALSE(volt::queries::component_dnp(circuit, component).has_value());
+    CHECK(volt::queries::is_component_selection_override(circuit, component));
     circuit.update(component, volt::SetAssemblyIntent{.selection_override = false});
-    CHECK_FALSE(circuit.is_component_selection_override(component));
-    CHECK(circuit.component_assembly_intents().empty());
+    CHECK_FALSE(volt::queries::is_component_selection_override(circuit, component));
+    CHECK(volt::queries::component_assembly_intents(circuit).empty());
 
     circuit.update(component, volt::SetAssemblyIntent{.dnp = true});
     circuit.update(component, volt::SetAssemblyIntent{.selection_override = true});
@@ -279,10 +279,10 @@ TEST_CASE("Circuit stores component assembly intent and selected part alternates
                                   std::vector<std::string>{"RC0603FR-07330RLA"},
                               }});
 
-    CHECK(circuit.component_dnp(component) == std::optional<bool>{true});
-    CHECK(circuit.is_component_selection_override(component));
-    REQUIRE(circuit.selected_physical_part(component).has_value());
-    CHECK(circuit.selected_physical_part(component)->approved_alternate_mpns() ==
+    CHECK(volt::queries::component_dnp(circuit, component) == std::optional<bool>{true});
+    CHECK(volt::queries::is_component_selection_override(circuit, component));
+    REQUIRE(volt::queries::selected_physical_part(circuit, component).has_value());
+    CHECK(volt::queries::selected_physical_part(circuit, component)->approved_alternate_mpns() ==
           std::vector<std::string>{"RC0603FR-07330RLA"});
 }
 
@@ -308,8 +308,8 @@ TEST_CASE("Circuit sets typed electrical attributes on selected physical parts")
                                   voltage_rating, volt::ElectricalAttributeValue{volt::Quantity{
                                                       volt::UnitDimension::Voltage, 75.0}}});
 
-    REQUIRE(circuit.selected_physical_part(component).has_value());
-    CHECK(circuit.selected_physical_part(component)
+    REQUIRE(volt::queries::selected_physical_part(circuit, component).has_value());
+    CHECK(volt::queries::selected_physical_part(circuit, component)
               .value()
               .electrical_attributes()
               .get(volt::ElectricalAttributeName{"voltage_rating"})
@@ -349,7 +349,7 @@ TEST_CASE("Circuit sets typed electrical attributes on component instances") {
                                   resistance, volt::ElectricalAttributeValue{volt::Quantity{
                                                   volt::UnitDimension::Resistance, 330.0}}});
 
-    CHECK(circuit.component_electrical_attributes(component)
+    CHECK(volt::queries::component_electrical_attributes(circuit, component)
               .get(volt::ElectricalAttributeName{"resistance"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Resistance, 330.0});
 }
@@ -379,9 +379,10 @@ TEST_CASE("Circuit sets typed electrical attributes on pin definitions") {
         circuit.define_component(volt::ComponentSpec{.name = "Supply", .pins = {std::move(pin)}});
     const auto pin_definition = circuit.get(definition).pins().front();
 
-    const auto &stored_range = circuit.pin_definition_electrical_attributes(pin_definition)
-                                   .get(volt::ElectricalAttributeName{"voltage_range"})
-                                   .as_range();
+    const auto &stored_range =
+        volt::queries::pin_definition_electrical_attributes(circuit, pin_definition)
+            .get(volt::ElectricalAttributeName{"voltage_range"})
+            .as_range();
     REQUIRE(stored_range.minimum().has_value());
     REQUIRE(stored_range.maximum().has_value());
     CHECK(stored_range.minimum().value() == volt::Quantity{volt::UnitDimension::Voltage, 4.5});
@@ -403,7 +404,7 @@ TEST_CASE("Circuit sets typed electrical attributes on nets") {
         net, volt::SetNetElectricalAttribute{voltage, volt::ElectricalAttributeValue{volt::Quantity{
                                                           volt::UnitDimension::Voltage, 3.3}}});
 
-    CHECK(circuit.net_electrical_attributes(net)
+    CHECK(volt::queries::net_electrical_attributes(circuit, net)
               .get(volt::ElectricalAttributeName{"voltage"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 3.3});
 }
@@ -543,7 +544,8 @@ TEST_CASE("Circuit rejects selected-part operations for missing components") {
                                    volt::SelectPhysicalPart{
                                        make_resistor_physical_part(first_pin, second_pin)}),
                     std::out_of_range);
-    CHECK_THROWS_AS(circuit.selected_physical_part(volt::ComponentId{99}), std::out_of_range);
+    CHECK_THROWS_AS(volt::queries::selected_physical_part(circuit, volt::ComponentId{99}),
+                    std::out_of_range);
 }
 
 TEST_CASE("Circuit rejects incompatible selected part electrical attributes") {
@@ -607,7 +609,7 @@ TEST_CASE("Circuit rejects selected parts with mappings outside the component de
     CHECK_THROWS_AS(circuit.update(component, volt::SelectPhysicalPart{make_resistor_physical_part(
                                                   first_pin, foreign_pin)}),
                     std::logic_error);
-    CHECK_FALSE(circuit.selected_physical_part(component).has_value());
+    CHECK_FALSE(volt::queries::selected_physical_part(circuit, component).has_value());
 }
 
 TEST_CASE("Circuit rejects selected parts that do not map every component-definition pin") {
@@ -629,7 +631,7 @@ TEST_CASE("Circuit rejects selected parts that do not map every component-defini
 
     CHECK_THROWS_AS(circuit.update(component, volt::SelectPhysicalPart{std::move(incomplete_part)}),
                     std::logic_error);
-    CHECK_FALSE(circuit.selected_physical_part(component).has_value());
+    CHECK_FALSE(volt::queries::selected_physical_part(circuit, component).has_value());
 }
 
 TEST_CASE("Circuit copies keep name lookups independent and uniqueness enforced") {
@@ -683,28 +685,46 @@ TEST_CASE("Moved-from circuits reset to empty and stay safely usable") {
         volt::test::instantiate_component(circuit, component_def, "U1");
     [[maybe_unused]] const auto net =
         circuit.add_net(volt::NetSpec{.name = volt::NetName{"VCC"}, .kind = volt::NetKind::Power});
+    const auto module =
+        circuit.define_module(volt::ModuleSpec{.name = volt::ModuleName{"PowerStage"}});
+    [[maybe_unused]] const auto module_instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"POWER_A"}});
 
     const auto moved = std::move(circuit);
 
     CHECK(moved.all<volt::ComponentId>().size() == 1);
     CHECK(moved.all<volt::NetId>().size() == 1);
+    CHECK(moved.all<volt::ModuleDefId>().size() == 1);
+    CHECK(moved.all<volt::ModuleInstanceId>().size() == 1);
     CHECK(circuit.all<volt::ComponentId>().size() == 0);
     CHECK(circuit.all<volt::PinId>().size() == 0);
     CHECK(circuit.all<volt::NetId>().size() == 0);
+    CHECK(circuit.all<volt::ModuleDefId>().size() == 0);
+    CHECK(circuit.all<volt::ModuleInstanceId>().size() == 0);
     CHECK_FALSE(volt::queries::component_by_reference(circuit, volt::ReferenceDesignator{"U1"})
                     .has_value());
 
     const auto reused_def =
         volt::test::define_component(circuit, "Regulator", {volt::test::passive_pin("VDD", "1")});
-    [[maybe_unused]] const auto reused =
-        circuit.instantiate_component(reused_def, volt::ReferenceDesignator{"U1"});
+    [[maybe_unused]] const auto reused = circuit.instantiate_component(
+        reused_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U1"}});
+    const auto reused_module =
+        circuit.define_module(volt::ModuleSpec{.name = volt::ModuleName{"PowerStage"}});
+    [[maybe_unused]] const auto reused_module_instance = circuit.instantiate_module(
+        reused_module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"POWER_A"}});
     CHECK(circuit.all<volt::ComponentId>().size() == 1);
+    CHECK(circuit.all<volt::ModuleDefId>().size() == 1);
+    CHECK(circuit.all<volt::ModuleInstanceId>().size() == 1);
     CHECK(moved.all<volt::ComponentId>().size() == 1);
 
     volt::Circuit assigned;
     assigned = std::move(circuit);
     CHECK(assigned.all<volt::ComponentId>().size() == 1);
+    CHECK(assigned.all<volt::ModuleDefId>().size() == 1);
+    CHECK(assigned.all<volt::ModuleInstanceId>().size() == 1);
     CHECK(circuit.all<volt::ComponentId>().size() == 0);
+    CHECK(circuit.all<volt::ModuleDefId>().size() == 0);
+    CHECK(circuit.all<volt::ModuleInstanceId>().size() == 0);
     [[maybe_unused]] const auto after_move_assign =
         circuit.add_net(volt::NetSpec{.name = volt::NetName{"VCC"}, .kind = volt::NetKind::Power});
     CHECK(circuit.all<volt::NetId>().size() == 1);
@@ -719,8 +739,9 @@ TEST_CASE("Structural rejections carry machine-readable error codes") {
         volt::test::instantiate_component(circuit, component_def, "U1");
 
     try {
-        [[maybe_unused]] const auto duplicate =
-            circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+        [[maybe_unused]] const auto duplicate = circuit.instantiate_component(
+            component_def,
+            volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U1"}});
         FAIL("Duplicate reference designator must throw");
     } catch (const volt::KernelError &error) {
         CHECK(error.code() == volt::ErrorCode::DuplicateName);

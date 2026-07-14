@@ -20,6 +20,7 @@
 #include "../capabilities/board_capability_profile_io.hpp"
 #include "pcb_feature_io.hpp"
 
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/pcb/pcb_schema.hpp>
@@ -891,7 +892,7 @@ void PcbBoardReader::validate_placement_footprint(const Board &board, ComponentI
         throw KernelLogicError{ErrorCode::UnknownEntity,
                                "PCB placement references missing footprint definition"};
     }
-    const auto &selected_part = circuit_.selected_physical_part(component);
+    const auto &selected_part = volt::queries::selected_physical_part(circuit_, component);
     require_valid_state(selected_part.has_value(),
                         "PCB placement footprint requires selected physical part");
     require_cross_reference(board.footprint_definition(footprint_id).ref() ==
@@ -955,7 +956,7 @@ void PcbBoardReader::validate_viewer_pad_resolution(const Board &board,
         throw KernelLogicError{ErrorCode::UnknownEntity,
                                "PCB viewer pad resolution references missing footprint definition"};
     }
-    const auto &selected_part = circuit_.selected_physical_part(component);
+    const auto &selected_part = volt::queries::selected_physical_part(circuit_, component);
     require_valid_state(selected_part.has_value(),
                         "PCB viewer pad resolution footprint requires selected physical part");
     require_cross_reference(

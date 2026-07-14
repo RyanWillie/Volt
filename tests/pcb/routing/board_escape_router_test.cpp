@@ -57,8 +57,8 @@ struct EscapeBoard {
     const auto definition = circuit.define_component(
         volt::ComponentSpec{.name = "TLC555", .pins = std::move(pin_specs)});
     const auto &pins = circuit.get(definition).pins();
-    const auto component =
-        circuit.instantiate_component(definition, volt::ReferenceDesignator{"U1"});
+    const auto component = circuit.instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U1"}});
 
     auto mappings = std::vector<volt::PinPadMapping>{};
     mappings.reserve(pins.size());
@@ -261,8 +261,8 @@ TEST_CASE("Escape router selects an allowed layer for multi-layer pads", "[pcb][
         circuit.add_net(volt::NetSpec{volt::NetName{"A"}, volt::NetKind::Signal});
     const auto second_net =
         circuit.add_net(volt::NetSpec{volt::NetName{"B"}, volt::NetKind::Signal});
-    const auto component =
-        circuit.instantiate_component(definition, volt::ReferenceDesignator{"J1"});
+    const auto component = circuit.instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"J1"}});
     circuit.connect(first_net,
                     volt::queries::pin_by_definition(circuit, component, first_pin).value());
     circuit.connect(second_net,
@@ -382,8 +382,8 @@ TEST_CASE("Escape router reports pads with no copper layer while escaping other 
         circuit.add_net(volt::NetSpec{volt::NetName{"A"}, volt::NetKind::Signal});
     const auto second_net =
         circuit.add_net(volt::NetSpec{volt::NetName{"B"}, volt::NetKind::Signal});
-    const auto component =
-        circuit.instantiate_component(definition, volt::ReferenceDesignator{"U1"});
+    const auto component = circuit.instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U1"}});
     circuit.connect(first_net,
                     volt::queries::pin_by_definition(circuit, component, first_pin).value());
     circuit.connect(second_net,
@@ -464,7 +464,8 @@ TEST_CASE("Escape router rejects component requests that cannot be attempted", "
     auto layout = make_escape_board(fixture);
     auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
     const auto other = fixture.circuit.instantiate_component(
-        fixture.circuit.get(fixture.component).definition(), volt::ReferenceDesignator{"U2"});
+        fixture.circuit.get(fixture.component).definition(),
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U2"}});
 
     CHECK_THROWS_MATCHES(
         router.escape(other), std::invalid_argument,
@@ -486,8 +487,9 @@ TEST_CASE("Escape router rejects component requests that cannot be attempted", "
         .pins = {signal_pin("A", "1")},
     });
     const auto pin = no_part_circuit.get(no_part_definition).pins()[0];
-    const auto no_part_component =
-        no_part_circuit.instantiate_component(no_part_definition, volt::ReferenceDesignator{"U1"});
+    const auto no_part_component = no_part_circuit.instantiate_component(
+        no_part_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U1"}});
     auto no_part_board = volt::Board{no_part_circuit};
     static_cast<void>(no_part_board.place_component(volt::ComponentPlacement{
         no_part_component, volt::BoardPoint{0.0, 0.0}, volt::BoardRotation::degrees(0.0)}));

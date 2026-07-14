@@ -130,7 +130,8 @@ namespace volt::test {
                                                 definition_pins[0]}},
         .ports = {ModulePortSpec{PortName{"IO"}, NetName{"IO"}, PortRole::Bidirectional, true}},
     });
-    const auto module_instance = circuit.instantiate_root_module(module, ModuleInstanceName{"CH1"});
+    const auto module_instance =
+        circuit.instantiate_module(module, ModuleInstanceSpec{.name = ModuleInstanceName{"CH1"}});
     const auto port = circuit.get(module).ports().front();
     [[maybe_unused]] const auto binding = circuit.bind_port(module_instance, port, bus);
 

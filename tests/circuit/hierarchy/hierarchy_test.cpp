@@ -145,7 +145,7 @@ TEST_CASE("Circuit stores module component templates and template pin connectivi
     CHECK(volt::queries::template_net_for(circuit, module, component, left) == input);
     CHECK(volt::queries::template_net_for(circuit, module, component, right) == output);
     CHECK(circuit.all<volt::ModuleComponentId>().size() == 1);
-    CHECK(circuit.module_pin_connections(module).size() == 2);
+    CHECK(volt::queries::module_pin_connections(circuit, module).size() == 2);
 }
 
 TEST_CASE("Root module instantiation materializes module component templates") {
@@ -177,8 +177,8 @@ TEST_CASE("Root module instantiation materializes module component templates") {
     const auto output = definition.template_nets()[1];
     const auto component = definition.components().front();
 
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"DIV_A"}});
 
     const auto concrete_component =
         volt::queries::concrete_component_for(circuit, instance, component);
@@ -232,16 +232,16 @@ TEST_CASE("Circuit exposes hierarchy inspection views") {
     const auto component = definition.components().front();
 
     const auto parent = volt::test::add_net(circuit, "VIN", volt::NetKind::Power);
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"DIV_A"}});
     const auto binding = circuit.bind_port(instance, port, parent);
 
-    CHECK(circuit.module_pin_connections(module).size() == 2);
-    CHECK(circuit.module_pin_connections(module)[0].net() == input);
-    CHECK(circuit.module_net_origins(instance).size() == 2);
-    CHECK(circuit.module_net_origins(instance)[0].first == input);
-    CHECK(circuit.module_component_origins(instance).size() == 1);
-    CHECK(circuit.module_component_origins(instance)[0].first == component);
+    CHECK(volt::queries::module_pin_connections(circuit, module).size() == 2);
+    CHECK(volt::queries::module_pin_connections(circuit, module)[0].net() == input);
+    CHECK(volt::queries::module_net_origins(circuit, instance).size() == 2);
+    CHECK(volt::queries::module_net_origins(circuit, instance)[0].first == input);
+    CHECK(volt::queries::module_component_origins(circuit, instance).size() == 1);
+    CHECK(volt::queries::module_component_origins(circuit, instance)[0].first == component);
     CHECK(volt::queries::port_bindings_for(circuit, instance) == std::vector{binding});
 }
 
@@ -260,8 +260,10 @@ TEST_CASE("Root module instantiation creates concrete nets for template-local ne
     const auto vin = template_nets[0];
     const auto fb = template_nets[1];
 
-    const auto first = circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
-    const auto second = circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_B"});
+    const auto first = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"BUCK_A"}});
+    const auto second = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"BUCK_B"}});
 
     CHECK(first == volt::ModuleInstanceId{0});
     CHECK(second == volt::ModuleInstanceId{1});
@@ -293,8 +295,8 @@ TEST_CASE("Circuit records port bindings as explicit edges without merging nets"
     });
     const auto vin = circuit.get(module).template_nets().front();
     const auto port = circuit.get(module).ports().front();
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"BUCK_A"}});
     const auto parent_net = volt::test::add_net(circuit, "VIN", volt::NetKind::Power);
 
     const auto binding = circuit.bind_port(instance, port, parent_net);
@@ -320,8 +322,8 @@ TEST_CASE("Circuit rejects duplicate port bindings for one module instance port"
                                        volt::PortRole::PowerInput}},
     });
     const auto port = circuit.get(module).ports().front();
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"BUCK_A"}});
     const auto first_parent = volt::test::add_net(circuit, "VIN", volt::NetKind::Power);
     const auto second_parent = volt::test::add_net(circuit, "VIN_ALT", volt::NetKind::Power);
 
@@ -342,8 +344,8 @@ TEST_CASE("Circuit rejects binding a module port to its own internal net") {
     });
     const auto vin = circuit.get(module).template_nets().front();
     const auto port = circuit.get(module).ports().front();
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"BUCK_A"}});
     const auto internal_net = volt::queries::concrete_net_for(circuit, instance, vin);
     REQUIRE(internal_net.has_value());
 
@@ -362,8 +364,10 @@ TEST_CASE("Root module instantiation preflights concrete net names before mutati
         volt::test::add_net(circuit, "BUCK_A/VIN", volt::NetKind::Power);
     const auto before = volt::io::write_logical_circuit(circuit);
 
-    CHECK_THROWS_AS(circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"}),
-                    std::logic_error);
+    CHECK_THROWS_AS(
+        circuit.instantiate_module(
+            module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"BUCK_A"}}),
+        std::logic_error);
     CHECK(volt::io::write_logical_circuit(circuit) == before);
     CHECK(circuit.all<volt::ModuleInstanceId>().size() == 0);
     CHECK(circuit.all<volt::NetId>().size() == 1);
@@ -382,8 +386,10 @@ TEST_CASE("Root module instantiation preflights concrete component references be
     });
     const auto before = volt::io::write_logical_circuit(circuit);
 
-    CHECK_THROWS_AS(circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"}),
-                    std::logic_error);
+    CHECK_THROWS_AS(
+        circuit.instantiate_module(
+            module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"DIV_A"}}),
+        std::logic_error);
     CHECK(volt::io::write_logical_circuit(circuit) == before);
     CHECK(circuit.all<volt::ModuleInstanceId>().size() == 0);
     CHECK(circuit.all<volt::ComponentId>().size() == 1);
@@ -400,8 +406,8 @@ TEST_CASE("Circuit validation reports unbound required module ports") {
                                        volt::PortRole::PowerInput}},
     });
     const auto port = circuit.get(module).ports().front();
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"BUCK_A"}});
 
     const auto report = volt::validate_circuit(circuit);
 
@@ -423,8 +429,8 @@ TEST_CASE("Circuit validation accepts bound required module ports") {
                                        volt::PortRole::PowerInput}},
     });
     const auto port = circuit.get(module).ports().front();
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"BUCK_A"}});
     const auto parent_net = volt::test::add_net(circuit, "VIN", volt::NetKind::Power);
     [[maybe_unused]] const auto binding = circuit.bind_port(instance, port, parent_net);
 

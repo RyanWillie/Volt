@@ -90,7 +90,7 @@ namespace volt::detail {
     const auto &definition = circuit.get(pin_def_id);
     return definition.connection_requirement() == ConnectionRequirement::MustNotConnect ||
            definition.terminal_kind() == ElectricalTerminalKind::NoConnect ||
-           circuit.is_intentional_no_connect_pin(pin_id);
+           volt::queries::is_intentional_no_connect_pin(circuit, pin_id);
 }
 
 [[nodiscard]] std::optional<SymbolPin> symbol_pin_by_number(const SymbolDefinition &symbol,
@@ -132,7 +132,7 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
 
     for (const auto pin_id : queries::pins_for(circuit, component)) {
         if (queries::net_of(circuit, pin_id).has_value() ||
-            circuit.is_intentional_no_connect_pin(pin_id)) {
+            volt::queries::is_intentional_no_connect_pin(circuit, pin_id)) {
             return true;
         }
     }

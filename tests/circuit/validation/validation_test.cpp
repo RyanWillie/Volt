@@ -196,8 +196,8 @@ TEST_CASE("Circuit validation accepts intentional stub nets") {
     circuit.update(empty_stub, volt::MarkIntentionalStub{});
     circuit.update(single_pin_stub, volt::MarkIntentionalStub{});
 
-    CHECK(circuit.is_intentional_stub_net(empty_stub));
-    CHECK(circuit.is_intentional_stub_net(single_pin_stub));
+    CHECK(volt::queries::is_intentional_stub_net(circuit, empty_stub));
+    CHECK(volt::queries::is_intentional_stub_net(circuit, single_pin_stub));
     CHECK(volt::validate_connectivity(circuit).empty());
 }
 
@@ -217,7 +217,7 @@ TEST_CASE("Circuit validation accepts intentional no-connect pins") {
 
     circuit.mark_no_connect(pin);
 
-    CHECK(circuit.is_intentional_no_connect_pin(pin));
+    CHECK(volt::queries::is_intentional_no_connect_pin(circuit, pin));
     CHECK(volt::validate_connectivity(circuit).empty());
 }
 
@@ -289,8 +289,8 @@ TEST_CASE("Circuit validation treats bound module port nets as connected for net
                                        volt::PortRole::PowerInput}},
     });
     const auto port = circuit.get(module).ports().front();
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"LOAD_A"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"LOAD_A"}});
     const auto parent_component = circuit.instantiate_component(
         parent_component_def,
         volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U2"}});
@@ -331,8 +331,8 @@ TEST_CASE("Circuit validation treats bound module port nets as connected for pow
                                        volt::PortRole::PowerInput}},
     });
     const auto port = circuit.get(module).ports().front();
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"LOAD_A"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"LOAD_A"}});
     const auto regulator = circuit.instantiate_component(
         regulator_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U2"}});
     const auto parent_net =

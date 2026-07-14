@@ -40,9 +40,9 @@ TEST_CASE("LED example builds a valid logical circuit") {
     CHECK(circuit.get(r1.value()).properties().get(volt::PropertyKey{"value"}) ==
           volt::PropertyValue{"330 ohm"});
 
-    const auto &j1_part = circuit.selected_physical_part(j1.value());
-    const auto &r1_part = circuit.selected_physical_part(r1.value());
-    const auto &d1_part = circuit.selected_physical_part(d1.value());
+    const auto &j1_part = volt::queries::selected_physical_part(circuit, j1.value());
+    const auto &r1_part = volt::queries::selected_physical_part(circuit, r1.value());
+    const auto &d1_part = volt::queries::selected_physical_part(circuit, d1.value());
     REQUIRE(j1_part.has_value());
     REQUIRE(r1_part.has_value());
     REQUIRE(d1_part.has_value());

@@ -134,7 +134,9 @@ make_placed_resistors(std::size_t count, volt::FootprintRef footprint = volt::Fo
     components.reserve(count);
     for (std::size_t index = 0; index < count; ++index) {
         const auto component = circuit.instantiate_component(
-            component_definition, volt::ReferenceDesignator{"R" + std::to_string(index + 1U)});
+            component_definition,
+            volt::ComponentInstanceSpec{
+                .reference = volt::ReferenceDesignator{"R" + std::to_string(index + 1U)}});
         circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
                                       volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
                                       volt::PackageRef{"0603"},

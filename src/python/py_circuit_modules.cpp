@@ -322,14 +322,15 @@ std::size_t PyCircuit::instantiate_root_module(std::size_t definition, const std
     auto &requested = module_draft(definition);
     if (requested.committed_id.has_value()) {
         return circuit_
-            .instantiate_root_module(requested.committed_id.value(), volt::ModuleInstanceName{name})
+            .instantiate_module(requested.committed_id.value(),
+                                volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{name}})
             .index();
     }
 
     auto candidate = circuit_;
     const auto candidate_definition = candidate.define_module(requested.spec);
-    const auto instance =
-        candidate.instantiate_root_module(candidate_definition, volt::ModuleInstanceName{name});
+    const auto instance = candidate.instantiate_module(
+        candidate_definition, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{name}});
 
     circuit_ = std::move(candidate);
     requested.committed_id = candidate_definition;
@@ -477,7 +478,7 @@ py::list PyCircuit::module_connections(std::size_t module) const {
 py::list PyCircuit::module_net_origins(std::size_t instance) const {
     auto result = py::list{};
     for (const auto &[template_net, concrete_net] :
-         queries::module_net_origins(circuit_, module_instance_id(instance))) {
+         volt::queries::module_net_origins(circuit_, module_instance_id(instance))) {
         auto item = py::dict{};
         item["template_net"] = public_template_net_index(template_net);
         item["net"] = concrete_net.index();
@@ -489,7 +490,7 @@ py::list PyCircuit::module_net_origins(std::size_t instance) const {
 py::list PyCircuit::module_component_origins(std::size_t instance) const {
     auto result = py::list{};
     for (const auto &[module_component, concrete_component] :
-         queries::module_component_origins(circuit_, module_instance_id(instance))) {
+         volt::queries::module_component_origins(circuit_, module_instance_id(instance))) {
         auto item = py::dict{};
         item["module_component"] = public_module_component_index(module_component);
         item["component"] = concrete_component.index();

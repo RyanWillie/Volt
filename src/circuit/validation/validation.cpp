@@ -74,7 +74,7 @@ namespace volt::detail {
     }
 
     const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
-    const auto &attributes = circuit.net_electrical_attributes(net_id);
+    const auto &attributes = volt::queries::net_electrical_attributes(circuit, net_id);
     if (!attributes.contains(voltage_attribute_name)) {
         return false;
     }
@@ -161,7 +161,7 @@ void validate_pin_connection_requirements(const Circuit &circuit, DiagnosticRepo
             continue;
         }
 
-        if (circuit.is_intentional_no_connect_pin(pin_id)) {
+        if (volt::queries::is_intentional_no_connect_pin(circuit, pin_id)) {
             if (connected_net.has_value()) {
                 report.add(erc_error(erc_diagnostic_codes::PinIntentionalNoConnectIsConnected,
                                      "Intentional no-connect pin is connected",
@@ -246,14 +246,15 @@ void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId net_id
                                             DiagnosticReport &report) {
     const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
     const auto voltage_rating_attribute_name = ElectricalAttributeName{"voltage_rating"};
-    const auto &net_attributes = circuit.net_electrical_attributes(net_id);
+    const auto &net_attributes = volt::queries::net_electrical_attributes(circuit, net_id);
     if (net_attributes.contains(voltage_attribute_name)) {
         const auto &net_voltage_attribute = net_attributes.get(voltage_attribute_name);
         if (net_voltage_attribute.kind() == ElectricalAttributeValueKind::Quantity) {
             const auto net_voltage = std::abs(net_voltage_attribute.as_quantity().value());
             for (const auto pin_id : group_pins) {
                 const auto &pin = circuit.get(pin_id);
-                const auto &selected_part = circuit.selected_physical_part(pin.component());
+                const auto &selected_part =
+                    volt::queries::selected_physical_part(circuit, pin.component());
                 if (!selected_part.has_value() || !selected_part->electrical_attributes().contains(
                                                       voltage_rating_attribute_name)) {
                     continue;
@@ -281,7 +282,7 @@ void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net
                                  const std::vector<PinId> &group_pins, DiagnosticReport &report) {
     const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
     const auto voltage_range_attribute_name = ElectricalAttributeName{"voltage_range"};
-    const auto &net_attributes = circuit.net_electrical_attributes(net_id);
+    const auto &net_attributes = volt::queries::net_electrical_attributes(circuit, net_id);
     if (!net_attributes.contains(voltage_attribute_name)) {
         return;
     }
@@ -300,7 +301,7 @@ void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net
     for (const auto pin_id : group_pins) {
         const auto &pin = circuit.get(pin_id);
         const auto &definition_attributes =
-            circuit.pin_definition_electrical_attributes(pin.definition());
+            volt::queries::pin_definition_electrical_attributes(circuit, pin.definition());
         if (!definition_attributes.contains(voltage_range_attribute_name)) {
             continue;
         }
@@ -336,7 +337,7 @@ void validate_net_class_voltage_limit(const Circuit &circuit, NetId net_id,
     }
 
     const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
-    const auto &net_attributes = circuit.net_electrical_attributes(net_id);
+    const auto &net_attributes = volt::queries::net_electrical_attributes(circuit, net_id);
     if (!net_attributes.contains(voltage_attribute_name)) {
         return;
     }
@@ -428,7 +429,7 @@ void validate_net_shapes(const Circuit &circuit, const NetContinuityView &contin
     for (std::size_t index = 0; index < circuit.all<volt::NetId>().size(); ++index) {
         const auto net_id = NetId{index};
         const auto &net = circuit.get(net_id);
-        if (circuit.is_intentional_stub_net(net_id)) {
+        if (volt::queries::is_intentional_stub_net(circuit, net_id)) {
             continue;
         }
 
@@ -464,7 +465,7 @@ void validate_net_semantics(const Circuit &circuit, const NetContinuityView &con
         const auto has_authored_power_supply =
             continuity.group_has_authored_power_supply(circuit, net_id);
 
-        if (!circuit.is_intentional_stub_net(net_id)) {
+        if (!volt::queries::is_intentional_stub_net(circuit, net_id)) {
             validate_net_shape(net_id, net, group_pins, report);
         }
         validate_power_and_ground_semantics(circuit, net_id, net, group_pins,
@@ -501,7 +502,7 @@ void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &
     for (std::size_t index = 0; index < circuit.all<volt::ComponentId>().size(); ++index) {
         const auto component_id = ComponentId{index};
         const auto &component = circuit.get(component_id);
-        if (!circuit.selected_physical_part(component_id).has_value()) {
+        if (!volt::queries::selected_physical_part(circuit, component_id).has_value()) {
             report.add(Diagnostic{
                 Severity::Error,
                 DiagnosticCode{"PHYSICAL_PART_REQUIRED"},
@@ -519,14 +520,14 @@ void validate_bom_component_readiness(const Circuit &circuit, DiagnosticReport &
         const auto &component = circuit.get(component_id);
         const auto entities = std::vector{EntityRef::component(component_id),
                                           EntityRef::component_def(component.definition())};
-        const auto dnp = circuit.component_dnp(component_id);
+        const auto dnp = volt::queries::component_dnp(circuit, component_id);
         if (!dnp.has_value()) {
             report.add(bom_error(bom_diagnostic_codes::ComponentImplicitDnp,
                                  "Component requires explicit DNP intent for BOM readiness",
                                  entities));
         }
 
-        const auto &selected_part = circuit.selected_physical_part(component_id);
+        const auto &selected_part = volt::queries::selected_physical_part(circuit, component_id);
         if (!dnp.value_or(false) && !selected_part.has_value()) {
             report.add(
                 bom_error(bom_diagnostic_codes::ComponentMissingSelectedPart,

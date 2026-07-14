@@ -264,7 +264,7 @@
           <header><h3>4. Hierarchy definitions, instances, template nets, origins, ports, bindings</h3><span class="status fixed">Proof strengthened</span></header>
           <dl>
             <dt>C++ owner</dt><dd><code>ModuleSpec</code>, template nets, module component templates/connections, ports, <code>ModuleInstance</code>, net/component origins, and <code>PortBinding</code> in <code>hierarchy.hpp</code>.</dd>
-            <dt>Construct / mutate</dt><dd><code>define_module</code>, <code>instantiate_root_module</code>, and <code>bind_port</code>. Root instantiation preflights every concrete name/reference, then commits generated nets, components, pins, origins, and the instance.</dd>
+            <dt>Construct / mutate</dt><dd><code>define_module</code>, <code>instantiate_module</code>, and <code>bind_port</code>. Root instantiation preflights every concrete name/reference, then commits generated nets, components, pins, origins, and the instance.</dd>
             <dt>Inspect</dt><dd>Generic <code>get/all</code>; <code>module_net_origins</code>, <code>module_component_origins</code>, free module/instance/template lookup, <code>port_binding_for</code>, <code>port_bindings_for</code>, and <code>NetContinuityView</code>.</dd>
             <dt>Logical JSON</dt><dd><code>module_definitions</code> and <code>module_instances</code> preserve local nets, components, connections, ports, origins, and bindings. Restoration rejects concrete/template connectivity disagreement.</dd>
             <dt>Diagnostics</dt><dd><code>UNBOUND_REQUIRED_PORT</code> and connectivity shape operate over binding continuity. Structural origin/template mismatches are load failures.</dd>
@@ -295,7 +295,7 @@
           <dl>
             <dt>C++ owner</dt><dd><code>PhysicalPart</code>, <code>ManufacturerPart</code>, package/footprint refs, <code>PinPadMapping</code>, <code>PartModel3D</code>, properties, approved alternate MPNs, and selected-part typed attributes.</dd>
             <dt>Construct / mutate</dt><dd><code>SelectPhysicalPart</code> and <code>SetSelectedPartElectricalAttribute</code> are closed component updates. Mappings are checked against the component definition before replacement.</dd>
-            <dt>Inspect</dt><dd><code>selected_physical_part(ComponentId)</code> and its typed field accessors.</dd>
+            <dt>Inspect</dt><dd><code>queries::selected_physical_part(Circuit, ComponentId)</code> and its typed field accessors.</dd>
             <dt>Logical JSON</dt><dd><code>selected_physical_part</code> preserves manufacturer identity, package, footprint, ordered mappings, model pose, alternates, properties, and ratings.</dd>
             <dt>Diagnostics</dt><dd><code>SELECTED_PART_VOLTAGE_RATING_EXCEEDED</code>; PCB readiness <code>PHYSICAL_PART_REQUIRED</code>; BOM and assembly identity/alternate contracts.</dd>
             <dt>Python</dt><dd><code>Component.select_part</code>, <code>PhysicalPartSpec</code>, library orderable parts, ratings, model assets, alternates, and selection override lower into the same model.</dd>
@@ -308,9 +308,9 @@
         <article class="matrix-card">
           <header><h3>7. DNP and selection-override assembly intent</h3><span class="status covered">Covered</span></header>
           <dl>
-            <dt>C++ owner</dt><dd><code>DesignIntent</code> and <code>ComponentAssemblyIntent</code>.</dd>
+            <dt>C++ owner</dt><dd><code>ComponentInstance</code> stores the authored fields; <code>ComponentAssemblyIntent</code> is the typed derived-query value.</dd>
             <dt>Construct / mutate</dt><dd><code>SetAssemblyIntent</code> is a closed update; it must set DNP or selection-override intent and validates before either non-throwing field commit.</dd>
-            <dt>Inspect</dt><dd><code>component_dnp</code>, <code>is_component_selection_override</code>, and deterministic <code>component_assembly_intents</code>.</dd>
+            <dt>Inspect</dt><dd>Free <code>queries::component_dnp</code>, <code>queries::is_component_selection_override</code>, and deterministic <code>queries::component_assembly_intents</code>.</dd>
             <dt>Logical JSON</dt><dd><code>design_intent.component_assembly</code> preserves component IDs and optional DNP/override booleans.</dd>
             <dt>Diagnostics</dt><dd>DNP controls fitted population and suppresses populated-part/placement requirements in BOM and assembly. Selection override is retained in BOM component/line projections rather than changing assembly population.</dd>
             <dt>Python</dt><dd><code>Component.dnp</code> and <code>select_part(selection_override=…)</code> update the same kernel intent.</dd>
@@ -323,9 +323,9 @@
         <article class="matrix-card">
           <header><h3>8. Explicit no-connect and intentional-stub intent</h3><span class="status covered">Covered</span></header>
           <dl>
-            <dt>C++ owner</dt><dd><code>DesignIntent</code> stores ordered concrete <code>PinId</code> and <code>NetId</code> intent.</dd>
+            <dt>C++ owner</dt><dd><code>PinInstance</code> and <code>Net</code> store their own explicit intent; free queries derive stable typed-ID collections.</dd>
             <dt>Construct / mutate</dt><dd><code>mark_no_connect(PinId)</code> and <code>update(NetId, MarkIntentionalStub)</code>.</dd>
-            <dt>Inspect</dt><dd><code>is_intentional_no_connect_pin</code>, <code>intentional_no_connect_pins</code>, <code>is_intentional_stub_net</code>, and <code>intentional_stub_nets</code>.</dd>
+            <dt>Inspect</dt><dd>Free <code>queries::is_intentional_no_connect_pin</code>, <code>queries::intentional_no_connect_pins</code>, <code>queries::is_intentional_stub_net</code>, and <code>queries::intentional_stub_nets</code>.</dd>
             <dt>Logical JSON</dt><dd><code>design_intent.no_connect_pins</code> and <code>stub_nets</code> restore exact typed references.</dd>
             <dt>Diagnostics</dt><dd>Intent suppresses expected omissions; a connected marked pin emits <code>PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED</code>. Unmarked omissions remain <code>EMPTY_NET</code>, <code>SINGLE_PIN_NET</code>, or <code>UNCONNECTED_REQUIRED_PIN</code>.</dd>
             <dt>Python</dt><dd>Explicit intent methods in <code>Design</code>/<code>Component</code> call the kernel boundary.</dd>
@@ -340,7 +340,7 @@
           <dl>
             <dt>C++ owner</dt><dd><code>NetClass</code>/<code>NetClassSpec</code>: voltage, explicit and derived clearance/width with provenance, via sizes, semantic or named layer restrictions, priority, default net kind, and deterministic assignments.</dd>
             <dt>Construct / mutate</dt><dd><code>define_net_class</code> commits a complete class; <code>AssignNetClass</code> is a closed net update.</dd>
-            <dt>Inspect</dt><dd><code>get/all&lt;NetClassId&gt;</code>, <code>net_class_by_name</code>, <code>net_class_for_net</code>, assignments, and free effective-rule queries.</dd>
+            <dt>Inspect</dt><dd><code>get/all&lt;NetClassId&gt;</code>, free <code>net_class_by_name</code>, <code>net_class_for_net</code>, assignment, and effective-rule queries.</dd>
             <dt>Logical JSON</dt><dd><code>net_classes.classes</code> and <code>net_assignments</code> preserve explicit values, derivation calculator/input provenance, restrictions, priority/defaults, and typed IDs.</dd>
             <dt>Diagnostics</dt><dd><code>NET_CLASS_VOLTAGE_EXCEEDED</code>; PCB DRC width/via/layer rules and capability comparisons.</dd>
             <dt>Python</dt><dd><code>Design.net_class</code>, sizing helpers, and bulk assignment lower into the same class/assignment state.</dd>
@@ -408,7 +408,7 @@
             <tr><td>2–3 · instances, concrete pins, nets, connectivity</td><td><code>write_logical_circuit</code> emits <code>components</code>, <code>pins</code>, and ordered <code>nets[].pins</code></td><td><code>read_components</code>, <code>read_pins</code>, <code>read_nets</code>; restoration calls <code>add_component</code>, <code>add_pin</code>, and <code>add_net</code> on a new local Circuit</td><td><code>Logical circuit reader rejects a pin connected to more than one net</code>; <code>Authoring connect helper preflights the complete pin range before mutating</code>; LED and single-pin goldens</td></tr>
             <tr><td>4 · hierarchy and bindings</td><td><code>write_logical_circuit</code> emits <code>module_definitions</code>/<code>module_instances</code>, origins, and bindings</td><td><code>read_module_definitions</code>, <code>read_module_instances</code>, <code>infer_component_origins</code>; restoration uses <code>add_module_definition</code>, <code>add_template_net</code>, <code>add_module_component</code>, <code>connect_module_pin</code>, <code>add_port_definition</code>, <code>restore_root_module_instance</code>, <code>bind_port</code></td><td>Hierarchy golden; concrete-name byte-atomic tests; <code>Logical circuit reader infers missing module component origins for v1 fixtures</code> locks canonical rewrite and second read/write</td></tr>
             <tr><td>5–6 · typed attributes and physical selection</td><td><code>write_electrical_attributes</code>, <code>write_electrical_attribute_value</code>, <code>write_quantity_payload</code>, <code>write_selected_physical_part</code></td><td><code>electrical_attributes</code>, <code>electrical_attribute_value</code>, <code>physical_part</code>; restoration calls typed electrical restore/set operations and <code>select_physical_part</code></td><td>Typed electrical golden; comprehensive golden; <code>Circuit typed update failures leave canonical bytes unchanged</code></td></tr>
-            <tr><td>7–8 · assembly/no-connect/stub intent</td><td><code>write_logical_circuit</code> emits deterministic <code>design_intent</code> collections</td><td><code>read_design_intent</code>; restoration calls <code>mark_intentional_stub_net</code>, <code>mark_intentional_no_connect_pin</code>, <code>set_component_dnp</code>, <code>set_component_selection_override</code></td><td><code>design_intent_test.cpp</code>, <code>test_design_intent.py</code>, BOM/CPL tests, comprehensive golden</td></tr>
+            <tr><td>7–8 · assembly/no-connect/stub intent</td><td><code>write_logical_circuit</code> emits deterministic <code>design_intent</code> collections</td><td><code>read_design_intent</code>; restoration applies typed stub, no-connect, and combined assembly-intent mutations</td><td><code>design_intent_test.cpp</code>, <code>test_design_intent.py</code>, BOM/CPL tests, comprehensive golden</td></tr>
             <tr><td>9 · net classes</td><td><code>write_net_classes</code> plus <code>write_derived_net_class_rule_value</code></td><td><code>read_net_classes</code>; restoration calls <code>add_net_class</code> and <code>assign_net_class</code></td><td><code>net_classes_test.cpp</code>, logical reader rule tests, comprehensive golden</td></tr>
             <tr><td>10 · IDs, order, typed errors, EntityRef</td><td>Every table is emitted in typed ID order by <code>write_logical_circuit</code>; errors and <code>EntityRef</code> are not persisted design state</td><td><code>LogicalCircuitParser::parse</code>, typed <code>local_id</code>/<code>resolve</code>, and restoration order checks reject prefix/range/table/cross-reference drift</td><td>Independent/interleaved table restoration tests; <code>errors_test.cpp</code>; Python exception translation tests; architecture checker/self-test</td></tr>
             <tr><td>11–12 · validation and projections</td><td>Logical writer persists their Circuit inputs, not derived reports, schematic placement, PCB geometry, or exports</td><td>Authored and restored Circuit values enter the same <code>validate_circuit</code>, <code>validate_for_pcb</code>, BOM, CPL, schematic, board, KiCad, and fabrication consumers</td><td>Real-board diagnostic matrices; projection byte snapshots; PCB/KiCad/export goldens; C++/Python exact LED and single-pin parity</td></tr>
@@ -489,7 +489,7 @@
             <tr><td><code>define_component</code></td><td>Definition + ordered owned pin definitions + pin attributes</td><td>Late invalid/duplicate complete-spec tests compare canonical bytes.</td><td><span class="status covered">Covered</span></td></tr>
             <tr><td><code>define_module</code></td><td>Definition + template nets + components + connections + ports</td><td>Late cross-reference/name failures compare canonical bytes.</td><td><span class="status covered">Covered</span></td></tr>
             <tr><td><code>instantiate_component</code></td><td>Component + complete concrete pin set</td><td>Missing definition and duplicate reference leave bytes unchanged.</td><td><span class="status covered">Covered</span></td></tr>
-            <tr><td><code>instantiate_root_module</code></td><td>Instance + concrete nets/components/pins + origins</td><td>Duplicate instance and concrete net/reference collisions compare canonical bytes.</td><td><span class="status fixed">Proof added</span></td></tr>
+            <tr><td><code>instantiate_module</code></td><td>Instance + concrete nets/components/pins + origins</td><td>Duplicate instance and concrete net/reference collisions compare canonical bytes.</td><td><span class="status fixed">Proof added</span></td></tr>
             <tr><td>C++ bulk <code>authoring::connect</code></td><td>Multiple one-net-per-pin edges</td><td>Late conflict and late invalid pin now preflight the span and compare bytes.</td><td><span class="status fixed">Regression fixed</span></td></tr>
             <tr><td>Closed component/net updates</td><td>Property/attribute/part/intent/class changes</td><td>Typed code/message and byte helper covers every closed variant, including invalid selected-part mapping.</td><td><span class="status fixed">Proof added</span></td></tr>
             <tr><td>Python endpoint and net-class bulk operations</td><td>Sequences of kernel operations from ergonomic syntax</td><td>Late type/owner/state failures preserve serialized bytes.</td><td><span class="status covered">Covered</span></td></tr>
@@ -515,11 +515,11 @@
       <h2>Compatibility and architecture proof</h2>
       <p class="section-intro">Compatibility means supported authoring and downstream behavior remain stable—not that transitional storage-shaped APIs remain public.</p>
       <ul class="checks">
-        <li>Public <code>Circuit</code> exposes complete specs, irreducible graph operations, closed typed updates, generic reads, and free queries.</li>
-        <li>No <code>connectivity()</code>, <code>hierarchy()</code>, <code>electrical()</code>, <code>intent()</code>, or <code>net_classes()</code> facade remains.</li>
+        <li>Public <code>Circuit</code> is locked to sixteen declarations: fifteen domain operations plus the deleted temporary-range overload.</li>
+        <li>No public subsystem container shell, shared subsystem storage adapter, or replacement facade family remains.</li>
         <li>No public passkey, raw restore, per-table stable-ID getter/count, or ordinary compatibility lock remains.</li>
         <li>The sole logical restore authority is a narrow private friend accepting a typed restoration plan.</li>
-        <li>The public method snapshot detects method/order/include drift.</li>
+        <li>The public snapshot and independent admission policy detect method/order/include drift, retired overloads, specialized root reads, and removed shell symbols.</li>
         <li>Independent exact public/protected declaration admission prevents a snapshot update from admitting raw same-name overloads, data members, aliases, nested mutation handles, protected escape hatches, or alternate borrowed-range factories.</li>
         <li>Range constructors are private and checker-enforced; only lvalue <code>Circuit::all</code> can create a correctly sized borrowed range. The checker snapshots the nested iterator's complete public/protected surface so an iterator cannot regrow an alias-, <code>auto</code>-, or <code>decltype</code>-spelled range factory.</li>
         <li><code>EntityRef</code> scanning prevents reporting metadata from becoming a kernel traversal/mutation handle.</li>
@@ -557,7 +557,7 @@
             <tr><td>Complete development lane</td><td><code>cmake --workflow --preset dev</code></td><td>749 / 749 tests passed, including 714 C++ tests, 33 Python tests, 6 example-labelled tests, and 2 docs checks</td></tr>
             <tr><td>Logical persistence</td><td>Reader, writer, round-trip, golden, rich semantic parity, and cross-language cases</td><td>Byte equality and exact diagnostic contracts passed in the complete lane</td></tr>
             <tr><td>Documentation</td><td>Generated Python API docs, docs-site check, and explicit Doxygen <code>docs</code> target</td><td>Passed</td></tr>
-            <tr><td>Static / dynamic</td><td>clang-tidy workflow; ASan/UBSan workflow; clean sequential coverage run and LCOV extraction</td><td>Coverage passed: 716 / 716 tests, 89.3% lines (21,058 / 23,573) and 92.0% functions (4,783 / 5,200). clang-tidy is not installed locally. macOS ASan stops in Catch2 discovery at the sanitizer runtime initialization check; exact-head Linux CI is authoritative for both.</td></tr>
+            <tr><td>Static / dynamic</td><td>clang-tidy workflow; ASan/UBSan workflow; clean sequential coverage run and LCOV extraction</td><td>Coverage passed: 716 / 716 tests, 89.3% lines (21,058 / 23,573) and 92.0% functions (4,783 / 5,200). The local clang-tidy workflow passed all 291 compiled targets. macOS ASan stops in Catch2 discovery at the sanitizer runtime initialization check; exact-head Linux CI is authoritative for sanitizer verification.</td></tr>
             <tr><td>Performance</td><td>C++ resistor-chain benchmark workflow and runtime; targeted review of the Python module transaction</td><td>C++ runtime passed across 100, 1,000, 5,000, and 10,000 component inputs. That benchmark does not exercise Python module instantiation; code review preserves the prior direct path for committed modules and copies only for the first draft commit.</td></tr>
           </tbody>
         </table>

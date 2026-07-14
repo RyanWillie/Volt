@@ -1,7 +1,6 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include <concepts>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -11,6 +10,7 @@
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/connectivity/nets.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/constraints/net_class_resolution.hpp>
 #include <volt/circuit/constraints/net_classes.hpp>
 #include <volt/circuit/validation/validation.hpp>
@@ -23,21 +23,14 @@
 
 namespace {
 
-template <typename Model>
-concept CanAssignNetClass = requires(Model model, volt::NetId net, volt::NetClassId rule) {
-    model.assign_net_class(net, rule);
-};
-
-static_assert(!CanAssignNetClass<volt::NetClasses>);
-
 [[nodiscard]] volt::NetClassId define_net_class(volt::Circuit &circuit, volt::NetClass net_class) {
     return circuit.define_net_class(volt::NetClassSpec{.net_class = std::move(net_class)});
 }
 
 bool assign_net_class(volt::Circuit &circuit, volt::NetId net, volt::NetClassId net_class) {
-    const auto before = circuit.net_class_for_net(net);
+    const auto before = volt::queries::net_class_for_net(circuit, net);
     circuit.update(net, volt::AssignNetClass{net_class});
-    return circuit.net_class_for_net(net) != before;
+    return volt::queries::net_class_for_net(circuit, net) != before;
 }
 
 void set_net_electrical_attribute(volt::Circuit &circuit, volt::NetId net,
@@ -67,7 +60,7 @@ void set_net_electrical_attribute(volt::Circuit &circuit, volt::NetId net,
 
 } // namespace
 
-TEST_CASE("NetClasses stores net classes by stable ID and name") {
+TEST_CASE("Circuit stores net classes by stable ID and name") {
     auto high_voltage = volt::NetClass{volt::NetClassName{"HighVoltage"}};
     high_voltage.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, 60.0});
     high_voltage.set_copper_clearance_mm(0.6);
@@ -84,16 +77,17 @@ TEST_CASE("NetClasses stores net classes by stable ID and name") {
     CHECK(circuit.get(high_voltage_id).maximum_net_voltage()->value() == 60.0);
     REQUIRE(circuit.get(high_voltage_id).copper_clearance_mm().has_value());
     CHECK(circuit.get(high_voltage_id).copper_clearance_mm().value() == 0.6);
-    CHECK(circuit.net_class_by_name(volt::NetClassName{"HighVoltage"}) == high_voltage_id);
-    CHECK(circuit.net_class_by_name(volt::NetClassName{"Logic"}) == logic_id);
+    CHECK(volt::queries::net_class_by_name(circuit, volt::NetClassName{"HighVoltage"}) ==
+          high_voltage_id);
+    CHECK(volt::queries::net_class_by_name(circuit, volt::NetClassName{"Logic"}) == logic_id);
     CHECK_THROWS_AS(circuit.define_net_class(volt::NetClassSpec{
                         .net_class = volt::NetClass{volt::NetClassName{"Logic"}}}),
                     std::logic_error);
 
     const auto unassigned_net = circuit.add_net(
         volt::NetSpec{.name = volt::NetName{"UNASSIGNED"}, .kind = volt::NetKind::Signal});
-    CHECK_FALSE(circuit.net_class_for_net(unassigned_net).has_value());
-    CHECK(circuit.net_class_assignments().empty());
+    CHECK_FALSE(volt::queries::net_class_for_net(circuit, unassigned_net).has_value());
+    CHECK(volt::queries::net_class_assignments(circuit).empty());
 }
 
 TEST_CASE("NetClass rejects malformed local constraints") {
@@ -115,16 +109,21 @@ TEST_CASE("Circuit owns net-class intent and rejects dangling assignments") {
     auto circuit = volt::Circuit{};
     const auto net =
         circuit.add_net(volt::NetSpec{.name = volt::NetName{"VDD"}, .kind = volt::NetKind::Power});
+    const auto second_net =
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VSS"}, .kind = volt::NetKind::Ground});
     const auto net_class = circuit.define_net_class(
         volt::NetClassSpec{.net_class = volt::NetClass{volt::NetClassName{"PowerRails"}}});
 
+    circuit.update(second_net, volt::AssignNetClass{net_class});
     circuit.update(net, volt::AssignNetClass{net_class});
-    CHECK(circuit.net_class_assignments() ==
-          std::vector<std::pair<volt::NetId, volt::NetClassId>>{{net, net_class}});
+    CHECK(volt::queries::net_class_assignments(circuit) ==
+          std::vector<std::pair<volt::NetId, volt::NetClassId>>{{second_net, net_class},
+                                                                {net, net_class}});
     circuit.update(net, volt::AssignNetClass{net_class});
-    CHECK(circuit.net_class_for_net(net) == net_class);
-    CHECK(circuit.net_class_assignments() ==
-          std::vector<std::pair<volt::NetId, volt::NetClassId>>{{net, net_class}});
+    CHECK(volt::queries::net_class_for_net(circuit, net) == net_class);
+    CHECK(volt::queries::net_class_assignments(circuit) ==
+          std::vector<std::pair<volt::NetId, volt::NetClassId>>{{second_net, net_class},
+                                                                {net, net_class}});
 
     CHECK_THROWS_AS(circuit.update(volt::NetId{99}, volt::AssignNetClass{net_class}),
                     std::out_of_range);

@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/core/properties.hpp>
 
@@ -236,7 +237,8 @@ void report_layer_mapping_collision(const Board &board, BoardLayerId current, Bo
 [[nodiscard]] const FootprintDefinition *
 definition_for_placement(const Board &board, const ComponentPlacement &placement,
                          const FootprintLibrary &footprints) {
-    const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+    const auto &selected_part =
+        volt::queries::selected_physical_part(board.circuit(), placement.component());
     if (!selected_part.has_value()) {
         return nullptr;
     }

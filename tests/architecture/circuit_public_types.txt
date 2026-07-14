@@ -1,0 +1,127 @@
+# Approved type declarations across public Circuit headers. Duplicate lines are intentional.
+include/volt/circuit/bom/bom.hpp|class|Bom
+include/volt/circuit/bom/bom.hpp|class|BomComponent
+include/volt/circuit/bom/bom.hpp|class|BomLine
+include/volt/circuit/bom/bom.hpp|class|BomSelectedPart
+include/volt/circuit/bom/bom.hpp|class|BomSourcingSnapshot
+include/volt/circuit/circuit.hpp|class|Circuit
+include/volt/circuit/circuit.hpp|class|Circuit
+include/volt/circuit/circuit.hpp|class|CircuitEntityRange
+include/volt/circuit/circuit.hpp|class|CircuitEntityRange
+include/volt/circuit/circuit.hpp|class|iterator
+include/volt/circuit/circuit.hpp|struct|CircuitEntityDescriptor
+include/volt/circuit/circuit.hpp|struct|CircuitEntityDescriptor
+include/volt/circuit/circuit.hpp|struct|CircuitEntityDescriptor
+include/volt/circuit/circuit.hpp|struct|CircuitEntityDescriptor
+include/volt/circuit/circuit.hpp|struct|CircuitEntityDescriptor
+include/volt/circuit/circuit.hpp|struct|CircuitEntityDescriptor
+include/volt/circuit/circuit.hpp|struct|CircuitEntityDescriptor
+include/volt/circuit/circuit.hpp|struct|CircuitEntityDescriptor
+include/volt/circuit/circuit.hpp|struct|CircuitEntityDescriptor
+include/volt/circuit/circuit.hpp|struct|CircuitEntityDescriptor
+include/volt/circuit/circuit.hpp|struct|CircuitEntityDescriptor
+include/volt/circuit/circuit.hpp|struct|CircuitEntityDescriptor
+include/volt/circuit/circuit.hpp|struct|CircuitEntityDescriptor
+include/volt/circuit/circuit.hpp|struct|ConnectivityState
+include/volt/circuit/circuit.hpp|struct|HierarchyState
+include/volt/circuit/circuit.hpp|struct|LogicalCircuitRestorationPlan
+include/volt/circuit/circuit.hpp|struct|NetClassState
+include/volt/circuit/circuit.hpp|using|difference_type
+include/volt/circuit/circuit.hpp|using|entity_range_t
+include/volt/circuit/circuit.hpp|using|entity_type_t
+include/volt/circuit/circuit.hpp|using|iterator_category
+include/volt/circuit/circuit.hpp|using|iterator_concept
+include/volt/circuit/circuit.hpp|using|pointer
+include/volt/circuit/circuit.hpp|using|reference
+include/volt/circuit/circuit.hpp|using|type
+include/volt/circuit/circuit.hpp|using|type
+include/volt/circuit/circuit.hpp|using|type
+include/volt/circuit/circuit.hpp|using|type
+include/volt/circuit/circuit.hpp|using|type
+include/volt/circuit/circuit.hpp|using|type
+include/volt/circuit/circuit.hpp|using|type
+include/volt/circuit/circuit.hpp|using|type
+include/volt/circuit/circuit.hpp|using|type
+include/volt/circuit/circuit.hpp|using|type
+include/volt/circuit/circuit.hpp|using|type
+include/volt/circuit/circuit.hpp|using|type
+include/volt/circuit/circuit.hpp|using|value_type
+include/volt/circuit/connectivity/definitions.hpp|class|ComponentDefinition
+include/volt/circuit/connectivity/definitions.hpp|class|DefinitionSource
+include/volt/circuit/connectivity/definitions.hpp|class|PinDefinition
+include/volt/circuit/connectivity/definitions.hpp|class|SchematicSymbolReference
+include/volt/circuit/connectivity/definitions.hpp|enum class|ConnectionRequirement
+include/volt/circuit/connectivity/definitions.hpp|enum class|ElectricalDirection
+include/volt/circuit/connectivity/definitions.hpp|enum class|ElectricalDriveKind
+include/volt/circuit/connectivity/definitions.hpp|enum class|ElectricalPolarity
+include/volt/circuit/connectivity/definitions.hpp|enum class|ElectricalSignalDomain
+include/volt/circuit/connectivity/definitions.hpp|enum class|ElectricalTerminalKind
+include/volt/circuit/connectivity/definitions.hpp|struct|ComponentSpec
+include/volt/circuit/connectivity/definitions.hpp|struct|PinSpec
+include/volt/circuit/connectivity/instances.hpp|class|ComponentInstance
+include/volt/circuit/connectivity/instances.hpp|class|PinInstance
+include/volt/circuit/connectivity/instances.hpp|class|ReferenceDesignator
+include/volt/circuit/connectivity/instances.hpp|struct|ComponentInstanceSpec
+include/volt/circuit/connectivity/nets.hpp|class|Net
+include/volt/circuit/connectivity/nets.hpp|class|NetName
+include/volt/circuit/connectivity/nets.hpp|enum class|NetKind
+include/volt/circuit/connectivity/nets.hpp|struct|NetSpec
+include/volt/circuit/constraints/net_class_resolution.hpp|struct|ResolvedNetClassRules
+include/volt/circuit/constraints/net_classes.hpp|class|NetClass
+include/volt/circuit/constraints/net_classes.hpp|class|NetClassName
+include/volt/circuit/constraints/net_classes.hpp|enum class|NetClassDielectricSpacingRule
+include/volt/circuit/constraints/net_classes.hpp|enum class|NetClassLayerScope
+include/volt/circuit/constraints/net_classes.hpp|enum class|NetClassTraceEnvironment
+include/volt/circuit/constraints/net_classes.hpp|struct|DerivedNetClassRuleValue
+include/volt/circuit/constraints/net_classes.hpp|struct|NetClassDerivationInput
+include/volt/circuit/constraints/net_classes.hpp|struct|NetClassRuleDerivation
+include/volt/circuit/constraints/net_classes.hpp|struct|NetClassSpec
+include/volt/circuit/hierarchy/hierarchy.hpp|class|ModuleComponentTemplate
+include/volt/circuit/hierarchy/hierarchy.hpp|class|ModuleDefinition
+include/volt/circuit/hierarchy/hierarchy.hpp|class|ModuleInstance
+include/volt/circuit/hierarchy/hierarchy.hpp|class|ModuleInstanceName
+include/volt/circuit/hierarchy/hierarchy.hpp|class|ModuleName
+include/volt/circuit/hierarchy/hierarchy.hpp|class|ModulePinConnection
+include/volt/circuit/hierarchy/hierarchy.hpp|class|PortBinding
+include/volt/circuit/hierarchy/hierarchy.hpp|class|PortDefinition
+include/volt/circuit/hierarchy/hierarchy.hpp|class|PortName
+include/volt/circuit/hierarchy/hierarchy.hpp|class|TemplateNetDefinition
+include/volt/circuit/hierarchy/hierarchy.hpp|enum class|PortRole
+include/volt/circuit/hierarchy/hierarchy.hpp|struct|ModuleInstanceSpec
+include/volt/circuit/hierarchy/hierarchy.hpp|struct|ModulePinConnectionSpec
+include/volt/circuit/hierarchy/hierarchy.hpp|struct|ModulePortSpec
+include/volt/circuit/hierarchy/hierarchy.hpp|struct|ModuleSpec
+include/volt/circuit/intent/design_intent.hpp|class|ComponentAssemblyIntent
+include/volt/circuit/parts/part_definition.hpp|class|HashedFootprintReference
+include/volt/circuit/parts/part_definition.hpp|class|HashedSchematicSymbolReference
+include/volt/circuit/parts/part_definition.hpp|class|OrderablePart
+include/volt/circuit/parts/part_definition.hpp|class|OrderablePinPadMapping
+include/volt/circuit/parts/part_definition.hpp|class|PartDefinition
+include/volt/circuit/parts/part_definition.hpp|class|PartFootprintMarking
+include/volt/circuit/parts/part_definition.hpp|class|PartFootprintPad
+include/volt/circuit/parts/part_definition.hpp|class|PartFootprintPoint
+include/volt/circuit/parts/part_definition.hpp|class|PartFootprintPolygon
+include/volt/circuit/parts/part_definition.hpp|class|PartIdentity
+include/volt/circuit/parts/part_definition.hpp|class|PartModel3DReference
+include/volt/circuit/parts/part_definition.hpp|class|PartPin
+include/volt/circuit/parts/part_definition.hpp|class|PartProvenance
+include/volt/circuit/parts/part_definition.hpp|class|PartSymbolPin
+include/volt/circuit/parts/part_definition.hpp|enum class|PartFootprintMarkingKind
+include/volt/circuit/parts/part_definition.hpp|enum class|PartFootprintPadRole
+include/volt/circuit/parts/parts.hpp|class|FootprintRef
+include/volt/circuit/parts/parts.hpp|class|ManufacturerPart
+include/volt/circuit/parts/parts.hpp|class|PackageRef
+include/volt/circuit/parts/parts.hpp|class|PartModel3D
+include/volt/circuit/parts/parts.hpp|class|PhysicalPart
+include/volt/circuit/parts/parts.hpp|class|PinPadMapping
+include/volt/circuit/updates.hpp|struct|AssignNetClass
+include/volt/circuit/updates.hpp|struct|MarkIntentionalStub
+include/volt/circuit/updates.hpp|struct|SelectPhysicalPart
+include/volt/circuit/updates.hpp|struct|SetAssemblyIntent
+include/volt/circuit/updates.hpp|struct|SetComponentElectricalAttribute
+include/volt/circuit/updates.hpp|struct|SetComponentProperty
+include/volt/circuit/updates.hpp|struct|SetNetElectricalAttribute
+include/volt/circuit/updates.hpp|struct|SetSelectedPartElectricalAttribute
+include/volt/circuit/updates.hpp|using|ComponentUpdate
+include/volt/circuit/updates.hpp|using|NetUpdate
+include/volt/circuit/validation/validation.hpp|class|NetContinuityView

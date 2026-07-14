@@ -60,8 +60,9 @@ struct TwoResistorCircuit {
     const auto &definition_pins = circuit.get(component_definition).pins();
     const auto first_pin_definition = definition_pins[0];
     const auto second_pin_definition = definition_pins[1];
-    const auto component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
+    const auto component = circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
     const auto first_pin =
         volt::queries::pin_by_definition(circuit, component, first_pin_definition).value();
     const auto second_pin =
@@ -122,7 +123,9 @@ struct TwoResistorCircuit {
     components.reserve(component_count);
     for (std::size_t index = 0; index < component_count; ++index) {
         const auto component = circuit.instantiate_component(
-            component_definition, volt::ReferenceDesignator{"R" + std::to_string(index + 1U)});
+            component_definition,
+            volt::ComponentInstanceSpec{
+                .reference = volt::ReferenceDesignator{"R" + std::to_string(index + 1U)}});
         circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
                                       volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
                                       volt::PackageRef{"0603"},
@@ -163,10 +166,12 @@ struct TwoResistorCircuit {
     const auto &definition_pins = circuit.get(component_definition).pins();
     const auto first_pin_definition = definition_pins[0];
     const auto second_pin_definition = definition_pins[1];
-    const auto first_component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
-    const auto second_component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R2"});
+    const auto first_component = circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
+    const auto second_component = circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R2"}});
 
     for (const auto component : std::vector{first_component, second_component}) {
         circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
@@ -929,11 +934,13 @@ TEST_CASE("Board derives ratsnest edges across bound module port nets") {
     });
     const auto port = circuit.get(module).ports()[0];
     const auto module_component = circuit.get(module).components()[0];
-    const auto instance = circuit.instantiate_root_module(module, volt::ModuleInstanceName{"M"});
+    const auto instance = circuit.instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"M"}});
     const auto internal_component =
         volt::queries::concrete_component_for(circuit, instance, module_component).value();
-    const auto parent_component =
-        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"P1"});
+    const auto parent_component = circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"P1"}});
     const auto parent_net =
         circuit.add_net(volt::NetSpec{volt::NetName{"N"}, volt::NetKind::Signal});
 

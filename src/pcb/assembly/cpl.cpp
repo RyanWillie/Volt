@@ -1,5 +1,6 @@
 #include <volt/pcb/assembly/cpl.hpp>
 
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 
 #include <algorithm>
@@ -81,7 +82,7 @@ find_offset(const std::vector<ResolvedRotationOffset> &offsets, const FootprintR
 }
 
 [[nodiscard]] bool is_populated(const Circuit &circuit, ComponentId component) {
-    return !circuit.component_dnp(component).value_or(false);
+    return !volt::queries::component_dnp(circuit, component).value_or(false);
 }
 
 void append_component_diagnostics(const Board &board, DiagnosticReport &report) {
@@ -93,7 +94,8 @@ void append_component_diagnostics(const Board &board, DiagnosticReport &report) 
         const auto &instance = board.circuit().get(component);
         const auto entities = std::vector{EntityRef::component(component),
                                           EntityRef::component_def(instance.definition())};
-        const auto &selected_part = board.circuit().selected_physical_part(component);
+        const auto &selected_part =
+            volt::queries::selected_physical_part(board.circuit(), component);
         if (!selected_part.has_value()) {
             report.add(assembly_diagnostic(
                 assembly_diagnostic_codes::ComponentMissingSelectedPart,
@@ -173,7 +175,8 @@ Cpl::Cpl(std::vector<CplRow> rows, DiagnosticReport diagnostics)
         auto footprint = std::optional<FootprintRef>{};
         auto part_identity = std::optional<CplPartIdentity>{};
         auto rotation_offset_deg = 0.0;
-        const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+        const auto &selected_part =
+            volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (selected_part.has_value()) {
             footprint = selected_part->footprint();
             part_identity = cpl_part_identity(selected_part.value());

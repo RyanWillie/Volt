@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/pcb/board.hpp>
 
 #include <volt/core/errors.hpp>
@@ -246,7 +247,8 @@ void validate_drill_capability(const Board &board, const BoardCapabilityProfile 
          ++placement_index) {
         const auto placement_id = ComponentPlacementId{placement_index};
         const auto &placement = board.placement(placement_id);
-        const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+        const auto &selected_part =
+            volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {
             continue;
         }

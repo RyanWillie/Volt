@@ -234,7 +234,7 @@ py::list PyCircuit::board_component_footprint_pads(std::size_t component) const 
     static_cast<void>(circuit_.get(component_handle));
 
     auto result = py::list{};
-    const auto &selected_part = circuit_.selected_physical_part(component_handle);
+    const auto &selected_part = volt::queries::selected_physical_part(circuit_, component_handle);
     if (!selected_part.has_value()) {
         return result;
     }

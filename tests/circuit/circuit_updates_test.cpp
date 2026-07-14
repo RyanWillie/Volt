@@ -91,23 +91,23 @@ TEST_CASE("Circuit closed typed updates preserve every progressive semantic") {
 
     CHECK(circuit.get(component).properties().get(volt::PropertyKey{"value"}) ==
           volt::PropertyValue{"330 ohm"});
-    CHECK(circuit.component_electrical_attributes(component)
+    CHECK(volt::queries::component_electrical_attributes(circuit, component)
               .get(volt::ElectricalAttributeName{"resistance"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Resistance, 330.0});
-    REQUIRE(circuit.selected_physical_part(component).has_value());
-    CHECK(circuit.selected_physical_part(component)
+    REQUIRE(volt::queries::selected_physical_part(circuit, component).has_value());
+    CHECK(volt::queries::selected_physical_part(circuit, component)
               ->electrical_attributes()
               .get(volt::ElectricalAttributeName{"voltage_rating"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 75.0});
-    CHECK(circuit.component_dnp(component) == true);
-    CHECK(circuit.is_component_selection_override(component));
-    CHECK(circuit.net_electrical_attributes(net)
+    CHECK(volt::queries::component_dnp(circuit, component) == true);
+    CHECK(volt::queries::is_component_selection_override(circuit, component));
+    CHECK(volt::queries::net_electrical_attributes(circuit, net)
               .get(volt::ElectricalAttributeName{"voltage"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 3.3});
-    CHECK(circuit.net_class_for_net(net) == net_class_id);
-    CHECK(circuit.is_intentional_stub_net(net));
-    CHECK(circuit.is_intentional_no_connect_pin(
-        volt::queries::pin_by_number(circuit, component, "2").value()));
+    CHECK(volt::queries::net_class_for_net(circuit, net) == net_class_id);
+    CHECK(volt::queries::is_intentional_stub_net(circuit, net));
+    CHECK(volt::queries::is_intentional_no_connect_pin(
+        circuit, volt::queries::pin_by_number(circuit, component, "2").value()));
 
     const auto serialized = volt::io::write_logical_circuit(circuit);
     circuit.update(component, volt::SetComponentProperty{volt::PropertyKey{"value"},

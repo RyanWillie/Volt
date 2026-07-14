@@ -29,10 +29,10 @@ TEST_CASE("Reference allocation is deterministic and skips existing references")
     auto circuit = volt::Circuit{};
     const auto resistor = add_resistor_definition(circuit);
 
-    [[maybe_unused]] const auto r1 =
-        circuit.instantiate_component(resistor, volt::ReferenceDesignator{"R1"});
-    [[maybe_unused]] const auto r3 =
-        circuit.instantiate_component(resistor, volt::ReferenceDesignator{"R3"});
+    [[maybe_unused]] const auto r1 = circuit.instantiate_component(
+        resistor, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
+    [[maybe_unused]] const auto r3 = circuit.instantiate_component(
+        resistor, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R3"}});
 
     CHECK(volt::authoring::allocate_reference(circuit, "R") == volt::ReferenceDesignator{"R2"});
 }

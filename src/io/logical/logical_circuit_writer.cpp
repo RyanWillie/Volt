@@ -425,7 +425,8 @@ void write_pin_definition_electrical_attributes(std::ostream &out,
     return "AnyCopper";
 }
 
-void write_net_classes(std::ostream &out, const Circuit &circuit) {
+void write_net_classes(std::ostream &out, const Circuit &circuit,
+                       const std::vector<std::pair<NetId, NetClassId>> &assignments) {
     out << "  \"net_classes\": { \"classes\": [\n";
     for (std::size_t index = 0; index < circuit.all<volt::NetClassId>().size(); ++index) {
         const auto id = NetClassId{index};
@@ -486,13 +487,13 @@ void write_net_classes(std::ostream &out, const Circuit &circuit) {
         out << '\n';
     }
     out << "  ], \"net_assignments\": [";
-    if (!circuit.net_class_assignments().empty()) {
+    if (!assignments.empty()) {
         out << '\n';
-        for (std::size_t index = 0; index < circuit.net_class_assignments().size(); ++index) {
-            const auto [net, net_class] = circuit.net_class_assignments()[index];
+        for (std::size_t index = 0; index < assignments.size(); ++index) {
+            const auto [net, net_class] = assignments[index];
             out << "    { \"net\": " << json_string(net_id(net))
                 << ", \"net_class\": " << json_string(net_class_id(net_class)) << " }";
-            if (index + 1 != circuit.net_class_assignments().size()) {
+            if (index + 1 != assignments.size()) {
                 out << ',';
             }
             out << '\n';
@@ -523,7 +524,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
                    detail::connection_requirement_name(pin.connection_requirement()));
         detail::write_pin_definition_semantics(out, pin);
         detail::write_pin_definition_electrical_attributes(
-            out, circuit.pin_definition_electrical_attributes(id));
+            out, volt::queries::pin_definition_electrical_attributes(circuit, id));
         out << " }";
         if (index + 1 != circuit.all<volt::PinDefId>().size()) {
             out << ',';
@@ -584,14 +585,16 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             << ", \"reference\": " << detail::json_string(component.reference().value())
             << ", \"properties\": ";
         detail::write_properties(out, component.properties());
-        const auto &component_attributes = circuit.component_electrical_attributes(id);
+        const auto &component_attributes =
+            volt::queries::component_electrical_attributes(circuit, id);
         if (!component_attributes.empty()) {
             out << ", \"electrical_attributes\": ";
             detail::write_electrical_attributes(out, component_attributes, "        ", "      ");
         }
-        if (circuit.selected_physical_part(id).has_value()) {
+        const auto &selected_part = volt::queries::selected_physical_part(circuit, id);
+        if (selected_part.has_value()) {
             out << ", \"selected_physical_part\": ";
-            detail::write_selected_physical_part(out, circuit.selected_physical_part(id).value());
+            detail::write_selected_physical_part(out, selected_part.value());
         }
         out << " }";
         if (index + 1 != circuit.all<volt::ComponentId>().size()) {
@@ -631,7 +634,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             }
         }
         out << "]";
-        const auto &net_attributes = circuit.net_electrical_attributes(id);
+        const auto &net_attributes = volt::queries::net_electrical_attributes(circuit, id);
         if (!net_attributes.empty()) {
             out << ", \"electrical_attributes\": ";
             detail::write_electrical_attributes(out, net_attributes, "        ", "      ");
@@ -642,42 +645,44 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         }
         out << '\n';
     }
-    const auto has_design_intent = !circuit.intentional_stub_nets().empty() ||
-                                   !circuit.intentional_no_connect_pins().empty() ||
-                                   !circuit.component_assembly_intents().empty();
+    const auto intentional_stub_nets = volt::queries::intentional_stub_nets(circuit);
+    const auto intentional_no_connect_pins = volt::queries::intentional_no_connect_pins(circuit);
+    const auto component_assembly_intents = volt::queries::component_assembly_intents(circuit);
+    const auto net_class_assignments = volt::queries::net_class_assignments(circuit);
+    const auto has_design_intent = !intentional_stub_nets.empty() ||
+                                   !intentional_no_connect_pins.empty() ||
+                                   !component_assembly_intents.empty();
     const auto has_net_classes =
-        circuit.all<volt::NetClassId>().size() != 0 || !circuit.net_class_assignments().empty();
+        circuit.all<volt::NetClassId>().size() != 0 || !net_class_assignments.empty();
     const auto has_hierarchy = circuit.all<volt::ModuleDefId>().size() != 0 ||
                                circuit.all<volt::ModuleInstanceId>().size() != 0;
     out << ((has_net_classes || has_design_intent || has_hierarchy) ? "  ],\n" : "  ]\n");
 
     if (has_net_classes) {
-        detail::write_net_classes(out, circuit);
+        detail::write_net_classes(out, circuit, net_class_assignments);
         out << ((has_design_intent || has_hierarchy) ? ",\n" : "\n");
     }
 
     if (has_design_intent) {
         out << "  \"design_intent\": { \"stub_nets\": [";
-        for (std::size_t index = 0; index < circuit.intentional_stub_nets().size(); ++index) {
+        for (std::size_t index = 0; index < intentional_stub_nets.size(); ++index) {
             if (index != 0) {
                 out << ", ";
             }
-            out << detail::json_string(detail::net_id(circuit.intentional_stub_nets()[index]));
+            out << detail::json_string(detail::net_id(intentional_stub_nets[index]));
         }
         out << "], \"no_connect_pins\": [";
-        for (std::size_t index = 0; index < circuit.intentional_no_connect_pins().size(); ++index) {
+        for (std::size_t index = 0; index < intentional_no_connect_pins.size(); ++index) {
             if (index != 0) {
                 out << ", ";
             }
-            out << detail::json_string(
-                detail::pin_id(circuit.intentional_no_connect_pins()[index]));
+            out << detail::json_string(detail::pin_id(intentional_no_connect_pins[index]));
         }
         out << "]";
-        if (!circuit.component_assembly_intents().empty()) {
+        if (!component_assembly_intents.empty()) {
             out << ", \"component_assembly\": [";
-            for (std::size_t index = 0; index < circuit.component_assembly_intents().size();
-                 ++index) {
-                const auto &intent = circuit.component_assembly_intents()[index];
+            for (std::size_t index = 0; index < component_assembly_intents.size(); ++index) {
+                const auto &intent = component_assembly_intents[index];
                 if (index != 0U) {
                     out << ", ";
                 }

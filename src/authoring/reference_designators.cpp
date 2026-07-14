@@ -26,7 +26,9 @@ namespace volt::authoring {
 
 [[nodiscard]] ComponentId instantiate(Circuit &circuit, ComponentDefId definition,
                                       ReferenceDesignator reference, PropertyMap properties) {
-    return circuit.instantiate_component(definition, std::move(reference), std::move(properties));
+    return circuit.instantiate_component(
+        definition, ComponentInstanceSpec{.reference = std::move(reference),
+                                          .properties = std::move(properties)});
 }
 
 [[nodiscard]] ComponentId instantiate(Circuit &circuit, ComponentDefId definition,

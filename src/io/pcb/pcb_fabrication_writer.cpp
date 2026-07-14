@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 
 namespace volt::io {
@@ -569,7 +570,8 @@ build_placement_exports(const Board &board, const FootprintLibrary &footprints,
     for (std::size_t index = 0; index < board.placement_count(); ++index) {
         const auto id = ComponentPlacementId{index};
         const auto &placement = board.placement(id);
-        const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+        const auto &selected_part =
+            volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {
             add_fab_critical_warning(
                 loss_report, PcbFabricationLossKind::MissingGeometry, "component.part",

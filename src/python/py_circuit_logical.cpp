@@ -226,7 +226,7 @@ py::list PyCircuit::component_refs() const {
 py::object PyCircuit::component_selected_part_model_3d(std::size_t component) const {
     const auto component_handle = component_id(component);
     static_cast<void>(circuit_.get(component_handle));
-    const auto &selected_part = circuit_.selected_physical_part(component_handle);
+    const auto &selected_part = volt::queries::selected_physical_part(circuit_, component_handle);
     if (!selected_part.has_value()) {
         return py::none{};
     }

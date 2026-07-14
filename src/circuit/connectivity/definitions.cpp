@@ -8,11 +8,12 @@ PinDefinition::PinDefinition(std::string name, std::string number,
                              ConnectionRequirement connection_requirement,
                              ElectricalTerminalKind terminal_kind, ElectricalDirection direction,
                              ElectricalSignalDomain signal_domain, ElectricalDriveKind drive_kind,
-                             ElectricalPolarity polarity)
+                             ElectricalPolarity polarity,
+                             ElectricalAttributeMap electrical_attributes)
     : name_{std::move(name)}, number_{std::move(number)},
       connection_requirement_{connection_requirement}, terminal_kind_{terminal_kind},
       direction_{direction}, signal_domain_{signal_domain}, drive_kind_{drive_kind},
-      polarity_{polarity} {
+      polarity_{polarity}, electrical_attributes_{std::move(electrical_attributes)} {
     if (name_.empty()) {
         throw KernelArgumentError{ErrorCode::InvalidArgument,
                                   "Pin definition name must not be empty"};

@@ -192,8 +192,10 @@ circuit.connect(voutInternal, circuit.template_pin(reg, "VOUT"));
 circuit.connect(sw, circuit.template_pin(reg, "SW"));
 circuit.connect(fb, circuit.template_pin(reg, "FB"));
 
-auto buckA = circuit.instantiate_root_module(buck, InstanceName{"BUCK_A"});
-auto buckB = circuit.instantiate_root_module(buck, InstanceName{"BUCK_B"});
+auto buckA = circuit.instantiate_module(
+    buck, ModuleInstanceSpec{.name = ModuleInstanceName{"BUCK_A"}});
+auto buckB = circuit.instantiate_module(
+    buck, ModuleInstanceSpec{.name = ModuleInstanceName{"BUCK_B"}});
 
 circuit.bind_port(buckA, vinPort, vinNet);
 circuit.bind_port(buckA, gndPort, gndNet);

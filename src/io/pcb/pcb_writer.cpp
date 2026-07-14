@@ -7,6 +7,7 @@
 #include <string_view>
 #include <variant>
 
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/pcb/projection/board_geometry_projection.hpp>
 
@@ -73,7 +74,8 @@ collect_footprint_definitions(const Board &board, const FootprintLibrary &footpr
 
     for (std::size_t index = 0; index < board.placement_count(); ++index) {
         const auto &placement = board.placement(ComponentPlacementId{index});
-        const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+        const auto &selected_part =
+            volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {
             continue;
         }
@@ -451,7 +453,8 @@ void write_placements(std::ostream &out, const Board &board,
     for (std::size_t index = 0; index < board.placement_count(); ++index) {
         const auto id = ComponentPlacementId{index};
         const auto &placement = board.placement(id);
-        const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+        const auto &selected_part =
+            volt::queries::selected_physical_part(board.circuit(), placement.component());
         auto footprint = std::optional<FootprintDefId>{};
         if (selected_part.has_value()) {
             footprint = find_footprint_definition(definitions, selected_part->footprint());
@@ -635,7 +638,8 @@ void write_pad_resolution(std::ostream &out, const Board &board,
         << ",\n";
     out << "        \"component\": " << json_string(encode_local_id(resolution.component()))
         << ",\n";
-    const auto &selected_part = board.circuit().selected_physical_part(resolution.component());
+    const auto &selected_part =
+        volt::queries::selected_physical_part(board.circuit(), resolution.component());
     const auto footprint = selected_part.has_value()
                                ? find_footprint_definition(definitions, selected_part->footprint())
                                : std::nullopt;
@@ -766,7 +770,8 @@ void write_viewer(std::ostream &out, const Board &board,
     out << "    \"pad_resolutions\": [\n";
     for (std::size_t index = 0; index < resolutions.size(); ++index) {
         const auto &resolution = resolutions[index];
-        const auto &selected_part = board.circuit().selected_physical_part(resolution.component());
+        const auto &selected_part =
+            volt::queries::selected_physical_part(board.circuit(), resolution.component());
         const auto footprint_id =
             selected_part.has_value()
                 ? find_footprint_definition(definitions, selected_part->footprint())

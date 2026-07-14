@@ -1,185 +1,89 @@
-#include <volt/circuit/electrical/electrical_model.hpp>
+#include <volt/circuit/circuit.hpp>
 
 #include <volt/core/errors.hpp>
 
-#include "../circuit_storage.hpp"
-
 #include <algorithm>
-#include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
 namespace volt {
 
-namespace {
-
-[[nodiscard]] const ElectricalAttributeMap &empty_attributes() noexcept {
-    static const auto empty = ElectricalAttributeMap{};
-    return empty;
-}
-
-[[nodiscard]] const std::optional<PhysicalPart> &empty_selected_part() noexcept {
-    static const auto empty = std::optional<PhysicalPart>{};
-    return empty;
-}
-
-} // namespace
-
-ElectricalModel::ElectricalModel() : ElectricalModel{std::make_shared<detail::ElectricalState>()} {}
-
-ElectricalModel::ElectricalModel(std::shared_ptr<const detail::ElectricalState> state)
-    : state_{std::move(state)} {}
-
-ElectricalModel::ElectricalModel(const ElectricalModel &other)
-    : ElectricalModel{std::make_shared<detail::ElectricalState>(other.state())} {}
-
-ElectricalModel::ElectricalModel(ElectricalModel &&other) noexcept = default;
-
-ElectricalModel &ElectricalModel::operator=(const ElectricalModel &other) {
-    if (this != &other) {
-        state_ = std::make_shared<detail::ElectricalState>(other.state());
-    }
-    return *this;
-}
-
-ElectricalModel &ElectricalModel::operator=(ElectricalModel &&other) noexcept = default;
-
-ElectricalModel::~ElectricalModel() = default;
-
-[[nodiscard]] ElectricalAttributeMap Circuit::ElectricalStorage::preflight_attributes(
-    const std::vector<ElectricalAttributeAssignment> &assignments, ElectricalAttributeOwner owner) {
+[[nodiscard]] ElectricalAttributeMap
+Circuit::preflight_attributes(const std::vector<ElectricalAttributeAssignment> &assignments,
+                              ElectricalAttributeOwner owner) {
     auto attributes = ElectricalAttributeMap{};
     for (const auto &assignment : assignments) {
-        detail::require_attribute_owner(assignment.spec, owner);
+        require_attribute_owner(assignment.spec, owner);
         attributes.set(assignment.spec, assignment.value);
     }
     return attributes;
 }
 
-void Circuit::ElectricalStorage::restore_component_attributes(ComponentId component,
-                                                              ElectricalAttributeMap attributes) {
-    if (!attributes.empty()) {
-        detail::mutable_attributes(mutable_state().component_attributes, component) =
-            std::move(attributes);
-    }
-}
-
-void Circuit::ElectricalStorage::restore_pin_definition_attributes(
-    PinDefId pin_definition, ElectricalAttributeMap attributes) {
-    if (!attributes.empty()) {
-        detail::mutable_attributes(mutable_state().pin_definition_attributes, pin_definition) =
-            std::move(attributes);
-    }
-}
-
-void Circuit::ElectricalStorage::set_component_attribute(ComponentId component,
-                                                         const ElectricalAttributeSpec &spec,
-                                                         ElectricalAttributeValue value) {
-    detail::require_attribute_owner(spec, ElectricalAttributeOwner::ComponentInstance);
-    detail::mutable_attributes(mutable_state().component_attributes, component).set(spec, value);
-}
-
-void Circuit::ElectricalStorage::set_pin_definition_attribute(PinDefId pin_definition,
-                                                              const ElectricalAttributeSpec &spec,
-                                                              ElectricalAttributeValue value) {
-    detail::require_attribute_owner(spec, ElectricalAttributeOwner::PinSpec);
-    detail::mutable_attributes(mutable_state().pin_definition_attributes, pin_definition)
-        .set(spec, value);
-}
-
-void Circuit::ElectricalStorage::set_net_attribute(NetId net, const ElectricalAttributeSpec &spec,
-                                                   ElectricalAttributeValue value) {
-    detail::require_attribute_owner(spec, ElectricalAttributeOwner::Net);
-    detail::mutable_attributes(mutable_state().net_attributes, net).set(spec, value);
-}
-
-void Circuit::ElectricalStorage::select_physical_part(ComponentId component,
-                                                      PhysicalPart physical_part,
-                                                      const std::vector<PinDefId> &component_pins) {
-    detail::require_physical_part_matches_component_definition(component_pins, physical_part);
-    const auto existing =
-        std::find_if(mutable_state().selected_physical_parts.begin(),
-                     mutable_state().selected_physical_parts.end(),
-                     [component](const auto &entry) { return entry.first == component; });
-    if (existing == mutable_state().selected_physical_parts.end()) {
-        mutable_state().selected_physical_parts.emplace_back(
-            component, std::optional<PhysicalPart>{std::move(physical_part)});
+void Circuit::restore_component_attributes(ComponentId component,
+                                           ElectricalAttributeMap attributes) {
+    if (attributes.empty()) {
         return;
     }
-
-    existing->second = std::move(physical_part);
+    const auto &stored = get(component);
+    connectivity_.replace_component(component,
+                                    ComponentInstance{stored.definition(), stored.reference(),
+                                                      stored.properties(), std::move(attributes)});
 }
 
-void Circuit::ElectricalStorage::set_selected_part_attribute(ComponentId component,
-                                                             const ElectricalAttributeSpec &spec,
-                                                             ElectricalAttributeValue value) {
-    detail::require_attribute_owner(spec, ElectricalAttributeOwner::SelectedPart);
-    const auto existing =
-        std::find_if(mutable_state().selected_physical_parts.begin(),
-                     mutable_state().selected_physical_parts.end(),
-                     [component](const auto &entry) { return entry.first == component; });
-    if (existing == mutable_state().selected_physical_parts.end()) {
+void Circuit::restore_pin_definition_attributes(PinDefId pin_definition,
+                                                ElectricalAttributeMap attributes) {
+    if (attributes.empty()) {
+        return;
+    }
+    const auto &stored = get(pin_definition);
+    connectivity_.replace_pin_definition(
+        pin_definition,
+        PinDefinition{stored.name(), stored.number(), stored.connection_requirement(),
+                      stored.terminal_kind(), stored.direction(), stored.signal_domain(),
+                      stored.drive_kind(), stored.polarity(), std::move(attributes)});
+}
+
+void Circuit::set_component_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
+                                      ElectricalAttributeValue value) {
+    require_attribute_owner(spec, ElectricalAttributeOwner::ComponentInstance);
+    connectivity_.replace_component(component,
+                                    get(component).with_electrical_attribute(spec, value));
+}
+
+void Circuit::set_net_attribute(NetId net, const ElectricalAttributeSpec &spec,
+                                ElectricalAttributeValue value) {
+    require_attribute_owner(spec, ElectricalAttributeOwner::Net);
+    connectivity_.replace_net(net, get(net).with_electrical_attribute(spec, value));
+}
+
+void Circuit::select_physical_part(ComponentId component, PhysicalPart physical_part,
+                                   const std::vector<PinDefId> &component_pins) {
+    require_physical_part_matches_component_definition(component_pins, physical_part);
+    connectivity_.replace_component(
+        component, get(component).with_selected_physical_part(std::move(physical_part)));
+}
+
+void Circuit::set_selected_part_attribute(ComponentId component,
+                                          const ElectricalAttributeSpec &spec,
+                                          ElectricalAttributeValue value) {
+    require_attribute_owner(spec, ElectricalAttributeOwner::SelectedPart);
+    if (!get(component).selected_physical_part().has_value()) {
         throw KernelLogicError{ErrorCode::InvalidState, "Component has no selected physical part",
                                EntityRef::component(component)};
     }
-
-    existing->second = existing->second->with_electrical_attribute(spec, value);
+    connectivity_.replace_component(
+        component, get(component).with_selected_part_electrical_attribute(spec, value));
 }
 
-[[nodiscard]] const ElectricalAttributeMap &
-ElectricalModel::component_attributes(ComponentId component) const noexcept {
-    return attributes(state().component_attributes, component);
-}
-
-[[nodiscard]] const ElectricalAttributeMap &
-ElectricalModel::pin_definition_attributes(PinDefId pin_definition) const noexcept {
-    return attributes(state().pin_definition_attributes, pin_definition);
-}
-
-[[nodiscard]] const ElectricalAttributeMap &
-ElectricalModel::net_attributes(NetId net) const noexcept {
-    return attributes(state().net_attributes, net);
-}
-
-[[nodiscard]] const std::optional<PhysicalPart> &
-ElectricalModel::selected_physical_part(ComponentId component) const noexcept {
-    const auto existing =
-        std::find_if(state().selected_physical_parts.begin(), state().selected_physical_parts.end(),
-                     [component](const auto &entry) { return entry.first == component; });
-    if (existing == state().selected_physical_parts.end()) {
-        return empty_selected_part();
-    }
-
-    return existing->second;
-}
-
-template <typename Id>
-[[nodiscard]] const ElectricalAttributeMap &
-ElectricalModel::attributes(const std::vector<std::pair<Id, ElectricalAttributeMap>> &entries,
-                            Id owner) noexcept {
-    const auto existing = std::find_if(entries.begin(), entries.end(),
-                                       [owner](const auto &entry) { return entry.first == owner; });
-    if (existing == entries.end()) {
-        return empty_attributes();
-    }
-
-    return existing->second;
-}
-
-[[nodiscard]] const detail::ElectricalState &ElectricalModel::state() const noexcept {
-    return *state_;
-}
-
-void detail::require_attribute_owner(const ElectricalAttributeSpec &spec,
-                                     ElectricalAttributeOwner expected) {
+void Circuit::require_attribute_owner(const ElectricalAttributeSpec &spec,
+                                      ElectricalAttributeOwner expected) {
     if (spec.owner() != expected) {
         throw KernelLogicError{ErrorCode::InvalidArgument,
                                "Electrical attribute spec owner is not valid here"};
     }
 }
 
-void detail::require_physical_part_matches_component_definition(
+void Circuit::require_physical_part_matches_component_definition(
     const std::vector<PinDefId> &component_pins, const PhysicalPart &physical_part) {
     for (const auto &mapping : physical_part.pin_pad_mappings()) {
         if (std::find(component_pins.begin(), component_pins.end(), mapping.pin()) ==

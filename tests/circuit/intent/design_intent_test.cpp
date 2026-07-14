@@ -1,26 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <concepts>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
-#include <volt/circuit/intent/design_intent.hpp>
-
-namespace {
-
-template <typename Model>
-concept CanMarkIntentionalStubNet =
-    requires(Model model, volt::NetId net) { model.update(net, volt::MarkIntentionalStub{}); };
-
-template <typename Model>
-concept CanMarkIntentionalNoConnectPin =
-    requires(Model model, volt::PinId pin) { model.mark_no_connect(pin); };
-
-static_assert(!CanMarkIntentionalStubNet<volt::DesignIntent>);
-static_assert(!CanMarkIntentionalNoConnectPin<volt::DesignIntent>);
-
-} // namespace
 
 TEST_CASE("Circuit records intentional stub nets idempotently in deterministic order") {
     volt::Circuit circuit;
@@ -28,13 +11,13 @@ TEST_CASE("Circuit records intentional stub nets idempotently in deterministic o
     const auto second = circuit.add_net(volt::NetSpec{.name = volt::NetName{"STUB_B"}});
     const auto unmarked = circuit.add_net(volt::NetSpec{.name = volt::NetName{"NORMAL"}});
 
-    circuit.update(first, volt::MarkIntentionalStub{});
     circuit.update(second, volt::MarkIntentionalStub{});
     circuit.update(first, volt::MarkIntentionalStub{});
+    circuit.update(first, volt::MarkIntentionalStub{});
 
-    CHECK(circuit.is_intentional_stub_net(first));
-    CHECK_FALSE(circuit.is_intentional_stub_net(unmarked));
-    CHECK(circuit.intentional_stub_nets() == std::vector{first, second});
+    CHECK(volt::queries::is_intentional_stub_net(circuit, first));
+    CHECK_FALSE(volt::queries::is_intentional_stub_net(circuit, unmarked));
+    CHECK(volt::queries::intentional_stub_nets(circuit) == std::vector{second, first});
 }
 
 TEST_CASE("Circuit records intentional no-connect pins idempotently in deterministic order") {
@@ -71,11 +54,39 @@ TEST_CASE("Circuit records intentional no-connect pins idempotently in determini
     const auto unmarked =
         volt::queries::pin_by_definition(circuit, component, unmarked_definition).value();
 
-    circuit.mark_no_connect(first);
     circuit.mark_no_connect(second);
     circuit.mark_no_connect(first);
+    circuit.mark_no_connect(first);
 
-    CHECK(circuit.is_intentional_no_connect_pin(first));
-    CHECK_FALSE(circuit.is_intentional_no_connect_pin(unmarked));
-    CHECK(circuit.intentional_no_connect_pins() == std::vector{first, second});
+    CHECK(volt::queries::is_intentional_no_connect_pin(circuit, first));
+    CHECK_FALSE(volt::queries::is_intentional_no_connect_pin(circuit, unmarked));
+    CHECK(volt::queries::intentional_no_connect_pins(circuit) == std::vector{second, first});
+}
+
+TEST_CASE("Circuit preserves first-authored component assembly-intent order") {
+    volt::Circuit circuit;
+    const auto definition = circuit.define_component(volt::ComponentSpec{
+        .name = "Resistor",
+        .pins = {volt::PinSpec{.name = "1", .number = "1"}},
+    });
+    const auto first = circuit.instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
+    const auto second = circuit.instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R2"}});
+
+    circuit.update(second, volt::SetAssemblyIntent{.selection_override = true});
+    circuit.update(first, volt::SetAssemblyIntent{.dnp = true});
+
+    auto intents = volt::queries::component_assembly_intents(circuit);
+    REQUIRE(intents.size() == 2);
+    CHECK(intents[0].component() == second);
+    CHECK(intents[1].component() == first);
+
+    circuit.update(second, volt::SetAssemblyIntent{.selection_override = false});
+    circuit.update(second, volt::SetAssemblyIntent{.selection_override = true});
+
+    intents = volt::queries::component_assembly_intents(circuit);
+    REQUIRE(intents.size() == 2);
+    CHECK(intents[0].component() == first);
+    CHECK(intents[1].component() == second);
 }

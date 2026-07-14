@@ -247,9 +247,11 @@ SelectedPhysicalPart
     voltage_rating = selected-part rating used by current ERC checks
     current_rating, power_rating, and related limits = planned follow-ups
 
-DesignIntent
-  intentional no-connect pins
-  intentional stub nets
+PinInstance
+  intentional_no_connect
+
+Net
+  intentional_stub
 ```
 
 Named supply nets such as `+12V`, `+5V`, `+3V3`, `VDDA`, and `VCC` are represented as
