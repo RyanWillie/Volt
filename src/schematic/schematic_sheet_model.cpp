@@ -42,7 +42,13 @@ Schematic::SheetStorage &Schematic::SheetStorage::operator=(const SheetStorage &
                                    EntityRef::sheet(id)};
         }
     }
-    return mutable_state().sheets.insert(detail::SheetStorage{std::move(sheet)});
+
+    const auto region_count = sheet.regions().size();
+    const auto id = mutable_state().sheets.insert(detail::SheetStorage{std::move(sheet)});
+    for (std::size_t index = 0; index < region_count; ++index) {
+        static_cast<void>(mutable_state().regions.insert(detail::SheetRegionLocation{id, index}));
+    }
+    return id;
 }
 
 [[nodiscard]] SheetRegionId Schematic::SheetStorage::add_sheet_region(SheetId sheet_id,

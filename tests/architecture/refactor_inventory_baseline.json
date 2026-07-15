@@ -1232,7 +1232,7 @@
             "unique_name_count": 12
           },
           "tests": {
-            "count": 907,
+            "count": 912,
             "files": [
               "tests/adapters/kicad_pcb_writer_test.cpp",
               "tests/adapters/kicad_schematic_writer_test.cpp",

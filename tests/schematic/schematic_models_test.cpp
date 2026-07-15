@@ -80,3 +80,20 @@ TEST_CASE("Schematic owns sheets and authored regions behind generic typed reads
         },
         volt::ErrorCode::DuplicateName, "Sheet region name already exists");
 }
+
+TEST_CASE("Schematic indexes regions already present on an added sheet") {
+    auto circuit = volt::Circuit{};
+    auto source = volt::Schematic{circuit};
+    const auto source_sheet = source.add_sheet(volt::Sheet{"Source"});
+    static_cast<void>(source.add_sheet_region(
+        source_sheet,
+        volt::SheetRegion{"power", "Power", volt::SheetRegionBounds{0.0, 0.0, 20.0, 10.0}}));
+
+    auto target = volt::Schematic{circuit};
+    const auto target_sheet = target.add_sheet(source.get(source_sheet));
+
+    REQUIRE(target.all<volt::SheetRegionId>().size() == 1);
+    const auto region = volt::queries::sheet_region_by_name(target, target_sheet, "power");
+    REQUIRE(region.has_value());
+    CHECK(target.get(region.value()).title() == "Power");
+}
