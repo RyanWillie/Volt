@@ -308,7 +308,9 @@ template <typename Id> class SchematicEntityRange {
             return previous;
         }
 
-        friend bool operator==(const iterator &, const iterator &) = default;
+        [[nodiscard]] bool operator==(const iterator &other) const noexcept {
+            return schematic_ == other.schematic_ && index_ == other.index_;
+        }
 
         iterator(const Schematic &schematic, std::size_t index) noexcept
             : schematic_{&schematic}, index_{index} {}
@@ -326,13 +328,13 @@ template <typename Id> class SchematicEntityRange {
 
     [[nodiscard]] std::size_t size() const noexcept { return size_; }
 
+    SchematicEntityRange(const Schematic &schematic, std::size_t size) noexcept {
+        schematic_ = &schematic;
+        size_ = size;
+    }
+
   private:
-    friend schematic_entity_range_t<Id> Schematic::all<Id>() const &;
-
-    SchematicEntityRange(const Schematic &schematic, std::size_t size) noexcept
-        : schematic_{&schematic}, size_{size} {}
-
-    const Schematic *schematic_;
+    const Schematic *schematic_ = nullptr;
     std::size_t size_ = 0;
 };
 

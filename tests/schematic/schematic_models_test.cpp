@@ -60,7 +60,10 @@ TEST_CASE("Schematic owns sheets and authored regions behind generic typed reads
     const auto region = schematic.add_sheet_region(
         sheet, volt::SheetRegion{"power", "Power", volt::SheetRegionBounds{0.0, 0.0, 20.0, 10.0}});
 
-    CHECK(schematic.all<volt::SheetId>().size() == 1);
+    const auto sheets = schematic.all<volt::SheetId>();
+    CHECK(sheets.size() == 1);
+    CHECK(sheets.begin() == sheets.begin());
+    CHECK(sheets.begin() != sheets.end());
     CHECK(schematic.get(region).name() == "power");
     const auto &query_owner = std::as_const(schematic);
     CHECK(volt::queries::sheet_by_name(query_owner, "Main") == sheet);

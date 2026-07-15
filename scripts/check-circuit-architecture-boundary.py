@@ -133,10 +133,6 @@ FRIEND_TYPE_PREFIXES = ("friend " "class ", "friend " "struct ")
 
 PRIVILEGED_FRIEND_ALLOWLIST = {
     (
-        "include/volt/schematic/schematic.hpp",
-        "friend schematic_entity_range_t<Id> Schematic::all<Id>() const &",
-    ): "Schematic::all is the sole factory for correctly sized borrowed presentation ranges.",
-    (
         "include/volt/circuit/circuit.hpp",
         "friend entity_range_t<Id> Circuit::all<Id>() const &",
     ): "Circuit::all is the sole factory for correctly sized borrowed entity ranges.",
@@ -333,7 +329,15 @@ SCHEMATIC_STORAGE_SHAPED_READ_NAMES = frozenset(
     }
 )
 
-SCHEMATIC_ENTITY_RANGE_PUBLIC_DECLARATIONS = CIRCUIT_ENTITY_RANGE_PUBLIC_DECLARATIONS
+SCHEMATIC_ENTITY_RANGE_PUBLIC_DECLARATIONS = frozenset(
+    {
+        "class iterator",
+        "[[nodiscard]] iterator begin() const noexcept",
+        "[[nodiscard]] iterator end() const noexcept",
+        "[[nodiscard]] std::size_t size() const noexcept",
+        "SchematicEntityRange(const Schematic &schematic, std::size_t size) noexcept",
+    }
+)
 
 SCHEMATIC_ENTITY_RANGE_ITERATOR_PUBLIC_SURFACE = (
     "using value_type = schematic_entity_type_t<Id>; "
@@ -347,7 +351,8 @@ SCHEMATIC_ENTITY_RANGE_ITERATOR_PUBLIC_SURFACE = (
     "[[nodiscard]] pointer operator->() const { return &**this; } "
     "iterator &operator++() { ++index_; return *this; } "
     "iterator operator++(int) { auto previous = *this; ++*this; return previous; } "
-    "friend bool operator==(const iterator &, const iterator &) = default; "
+    "[[nodiscard]] bool operator==(const iterator &other) const noexcept "
+    "{ return schematic_ == other.schematic_ && index_ == other.index_; } "
     "iterator(const Schematic &schematic, std::size_t index) noexcept "
     ": schematic_{&schematic}, index_{index} {} "
     "iterator(const Schematic &&, std::size_t) = delete;"
