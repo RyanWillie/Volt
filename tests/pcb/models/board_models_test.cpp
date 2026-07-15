@@ -16,6 +16,7 @@
 #include <volt/pcb/footprints/board_footprint_model.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
 #include <volt/pcb/placement/board_placement_model.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
 #include <volt/pcb/structure/board_structure_model.hpp>
 
@@ -141,8 +142,8 @@ TEST_CASE("BoardFootprintModel dedupes identical cached definitions and rejects 
     CHECK(board.cache_footprint_definition(volt::passive_0603_footprint()) == first);
     CHECK(board.footprint_definition(first) == volt::passive_0603_footprint());
     CHECK(board.footprint_definition_count() == 1);
-    CHECK(board.footprint_definition_id(volt::FootprintRef{"passives", "R_0603_1608Metric"}) ==
-          first);
+    CHECK(volt::queries::footprint_definition_id(
+              board, volt::FootprintRef{"passives", "R_0603_1608Metric"}) == first);
 
     auto conflict = volt::FootprintDefinition{
         volt::FootprintRef{"passives", "R_0603_1608Metric"},

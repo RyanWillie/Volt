@@ -10,6 +10,7 @@
 #include <volt/pcb/layers/board_layers.hpp>
 #include <volt/pcb/placement/board_placement_model.hpp>
 #include <volt/pcb/projection/board_geometry_projection.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 #include <volt/pcb/routing/board_router.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
 #include <volt/pcb/structure/board_structure_model.hpp>

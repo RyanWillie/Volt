@@ -16,6 +16,7 @@
 
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 namespace volt::io {
 namespace {
@@ -563,8 +564,9 @@ void report_invalid_pad_resolution(const Board &board, const PadResolution &reso
 [[nodiscard]] std::vector<PlacementExport>
 build_placement_exports(const Board &board, const FootprintLibrary &footprints,
                         PcbFabricationLossReport &loss_report) {
-    const auto resolution_footprints = volt::detail::board_resolution_footprints(board, footprints);
-    const auto resolutions = board.resolve_pads(resolution_footprints);
+    const auto resolution_footprints =
+        volt::queries::board_resolution_footprints(board, footprints);
+    const auto resolutions = volt::queries::resolve_pads(board, resolution_footprints);
     auto exports = std::vector<PlacementExport>{};
 
     for (std::size_t index = 0; index < board.placement_count(); ++index) {

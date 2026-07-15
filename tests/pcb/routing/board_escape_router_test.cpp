@@ -15,6 +15,7 @@
 #include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 #include <volt/pcb/routing/board_router.hpp>
 
 namespace {
@@ -309,7 +310,8 @@ TEST_CASE("Escape router selects an allowed layer for multi-layer pads", "[pcb][
 TEST_CASE("Escape router reports blocked pads without hiding partial success", "[pcb][escape]") {
     auto fixture = make_soic_fixture();
     auto layout = make_escape_board(fixture);
-    const auto pad_resolutions = layout.board.resolve_pads(volt::builtin_footprint_library());
+    const auto pad_resolutions =
+        volt::queries::resolve_pads(layout.board, volt::builtin_footprint_library());
     const auto pad_one =
         std::find_if(pad_resolutions.begin(), pad_resolutions.end(),
                      [](const volt::PadResolution &pad) { return pad.pad_label() == "1"; });

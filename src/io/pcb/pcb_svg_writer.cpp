@@ -4,6 +4,7 @@
 
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 namespace volt::io::detail {
 
@@ -150,7 +151,7 @@ void write_pcb_svg_number(std::ostream &out, double value) {
             library.add(definition);
             continue;
         }
-        if (::volt::detail::footprint_library_definition_conflicts(*existing, definition)) {
+        if (::volt::queries::footprint_definition_conflicts(*existing, definition)) {
             throw KernelLogicError{
                 ErrorCode::InvalidState,
                 "Board footprint definition conflicts with footprint library definition"};
@@ -168,7 +169,7 @@ resolve_definition_for_placement(const Board &board, const ComponentPlacement &p
         return nullptr;
     }
 
-    const auto cached = board.footprint_definition_id(selected_part->footprint());
+    const auto cached = queries::footprint_definition_id(board, selected_part->footprint());
     if (cached.has_value()) {
         return &board.footprint_definition(cached.value());
     }
@@ -747,7 +748,8 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
                 if (entity.kind() == EntityKind::ComponentPlacement) {
                     placement_id = ComponentPlacementId{entity.index()};
                 } else {
-                    placement_id = board.placement_for_component(ComponentId{entity.index()});
+                    placement_id =
+                        queries::placement_for_component(board, ComponentId{entity.index()});
                 }
                 if (!placement_id.has_value() || placement_id->index() >= board.placement_count()) {
                     continue;
@@ -778,14 +780,15 @@ void write_pcb_placement_svg(std::ostream &out, const Board &board,
                              const FootprintLibrary &footprints, PcbPlacementSvgOptions options) {
     const auto preview_footprints = detail::preview_footprint_library(board, footprints);
     const auto diagnostics = validate_board(board, preview_footprints);
-    const auto footprint_geometries = board.project_footprint_geometries(preview_footprints);
+    const auto footprint_geometries =
+        queries::project_footprint_geometries(board, preview_footprints);
     auto bounds = detail::bounds_from_board(board, preview_footprints, footprint_geometries);
     detail::include_selected_diagnostic_overlay_bounds(bounds, board, diagnostics, options);
     const auto width = detail::preview_width(bounds);
     const auto height = detail::preview_height(bounds, board, diagnostics, options);
     const auto translate_x = detail::pcb_svg_margin_mm - bounds.min_x;
     const auto translate_y = detail::pcb_svg_margin_mm - bounds.min_y;
-    const auto resolutions = board.resolve_pads(preview_footprints);
+    const auto resolutions = queries::resolve_pads(board, preview_footprints);
     const auto ratsnest_edges = derive_ratsnest_edges(board.circuit(), resolutions);
     const auto has_copper = board.track_count() != 0U || board.via_count() != 0U;
     const auto has_zones = board.zone_count() != 0U;

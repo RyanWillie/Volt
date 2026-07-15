@@ -83,10 +83,6 @@ class Board {
     /** Add a routed copper track over an existing logical net and board copper layer. */
     [[nodiscard]] BoardTrackId add_track(BoardTrack track);
 
-    /** Add a routed copper track, resolving pad endpoint intent against the board projection. */
-    [[nodiscard]] BoardTrackRouteResult add_track(BoardTrackRouteRequest request,
-                                                  const FootprintLibrary &footprints);
-
     /** Add a routed copper via over an existing logical net and board copper layer span. */
     [[nodiscard]] BoardViaId add_via(BoardVia via);
 
@@ -140,10 +136,6 @@ class Board {
     /** Return the number of cached footprint definitions. */
     [[nodiscard]] std::size_t footprint_definition_count() const noexcept;
 
-    /** Return a cached footprint definition ID for a library-qualified reference, if present. */
-    [[nodiscard]] std::optional<FootprintDefId>
-    footprint_definition_id(const FootprintRef &ref) const noexcept;
-
     /** Return a placement by board-local ID. */
     [[nodiscard]] const ComponentPlacement &placement(ComponentPlacementId id) const;
 
@@ -187,21 +179,6 @@ class Board {
 
     /** Return the number of board text primitives. */
     [[nodiscard]] std::size_t text_count() const noexcept;
-
-    /** Return the placement ID for a component, if present. */
-    [[nodiscard]] std::optional<ComponentPlacementId>
-    placement_for_component(ComponentId component) const noexcept;
-
-    /** Derive pad-to-pin/net resolution for all placed components. */
-    [[nodiscard]] std::vector<PadResolution> resolve_pads(const FootprintLibrary &footprints) const;
-
-    /** Derive board-space footprint courtyard/body polygons for all resolved placements. */
-    [[nodiscard]] std::vector<ProjectedFootprintGeometry>
-    project_footprint_geometries(const FootprintLibrary &footprints) const;
-
-    /** Derive deterministic unrouted ratsnest edges for all placed multi-pad nets. */
-    [[nodiscard]] std::vector<RatsnestEdge>
-    ratsnest_edges(const FootprintLibrary &footprints) const;
 
   private:
     struct StructureStorage : BoardStructureModel {
@@ -288,18 +265,6 @@ class Board {
 
     void require_copper_layer(BoardLayerId layer_id) const;
 
-    [[nodiscard]] std::optional<NetId> route_endpoint_net(const BoardRouteEndpoint &endpoint,
-                                                          const FootprintLibrary &footprints) const;
-
-    [[nodiscard]] NetId route_track_net(const BoardTrackRouteRequest &request,
-                                        const FootprintLibrary &footprints) const;
-
-    void append_pad_resolutions(ComponentPlacementId placement_id,
-                                const ComponentPlacement &component_placement,
-                                const FootprintDefinition &definition,
-                                const std::vector<FootprintPadBinding> &bindings,
-                                std::vector<PadResolution> &resolutions) const;
-
     const Circuit *circuit_;
     BoardName name_;
     BoardUnits units_{BoardUnits::Millimeters};
@@ -311,13 +276,6 @@ class Board {
 };
 
 namespace detail {
-
-[[nodiscard]] FootprintLibrary board_resolution_footprints(const Board &board,
-                                                           const FootprintLibrary &footprints);
-
-[[nodiscard]] bool
-footprint_library_definition_conflicts(const FootprintDefinition &board_definition,
-                                       const FootprintDefinition &library_definition);
 
 [[nodiscard]] Diagnostic board_diagnostic(DiagnosticCode code, std::string message,
                                           std::vector<EntityRef> entities = {});

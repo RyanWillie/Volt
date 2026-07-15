@@ -142,6 +142,9 @@ class BoardRouter {
     /** Resolve the copper sizing and allowed layers a net would route with. */
     [[nodiscard]] BoardRouteParameters resolve_parameters(NetId net) const;
 
+    /** Commit one endpoint-aware routed track after resolving its existing logical net. */
+    [[nodiscard]] BoardTrackRouteResult add_track(BoardTrackRouteRequest request);
+
     /** Attempt to connect two points on a net, committing tracks/vias on success. */
     [[nodiscard]] BoardRouteResult connect(const BoardRouteRequest &request);
 

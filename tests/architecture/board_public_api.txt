@@ -32,7 +32,6 @@ void set_capability_profile(BoardCapabilityProfile profile)
 [[nodiscard]] FootprintDefId cache_footprint_definition(FootprintDefinition footprint)
 [[nodiscard]] ComponentPlacementId place_component(ComponentPlacement placement)
 [[nodiscard]] BoardTrackId add_track(BoardTrack track)
-[[nodiscard]] BoardTrackRouteResult add_track(BoardTrackRouteRequest request, const FootprintLibrary &footprints)
 [[nodiscard]] BoardViaId add_via(BoardVia via)
 [[nodiscard]] BoardZoneId add_zone(BoardZone zone)
 [[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout)
@@ -48,7 +47,6 @@ void set_capability_profile(BoardCapabilityProfile profile)
 [[nodiscard]] std::size_t feature_count() const noexcept
 [[nodiscard]] const FootprintDefinition &footprint_definition(FootprintDefId id) const
 [[nodiscard]] std::size_t footprint_definition_count() const noexcept
-[[nodiscard]] std::optional<FootprintDefId> footprint_definition_id(const FootprintRef &ref) const noexcept
 [[nodiscard]] const ComponentPlacement &placement(ComponentPlacementId id) const
 [[nodiscard]] std::size_t placement_count() const noexcept
 [[nodiscard]] const BoardTrack &track(BoardTrackId id) const
@@ -63,7 +61,3 @@ void set_capability_profile(BoardCapabilityProfile profile)
 [[nodiscard]] std::size_t room_count() const noexcept
 [[nodiscard]] const BoardText &text(BoardTextId id) const
 [[nodiscard]] std::size_t text_count() const noexcept
-[[nodiscard]] std::optional<ComponentPlacementId> placement_for_component(ComponentId component) const noexcept
-[[nodiscard]] std::vector<PadResolution> resolve_pads(const FootprintLibrary &footprints) const
-[[nodiscard]] std::vector<ProjectedFootprintGeometry> project_footprint_geometries(const FootprintLibrary &footprints) const
-[[nodiscard]] std::vector<RatsnestEdge> ratsnest_edges(const FootprintLibrary &footprints) const
