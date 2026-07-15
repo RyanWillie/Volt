@@ -26,6 +26,11 @@ into a Markdown document under `docs/` rather than editing the exported HTML.
   compiled build artifacts
 - [`adr-circuit-aggregate-api.md`](adr-circuit-aggregate-api.md) — replace storage-shaped
   Circuit facades with a small typed aggregate API
+- [`adr-part-semantics-and-identity.md`](adr-part-semantics-and-identity.md) — freeze
+  component contracts, exact-part identity, integrity-bearing selection, and canonical
+  v1 Voltage/Current semantics
+- [`adr-projection-ownership-and-compiled-board.md`](adr-projection-ownership-and-compiled-board.md)
+  — freeze projection ownership, named Boards, and the immutable `CompiledBoard` contract
 - [`adr-project-bundle-artifact-graph.md`](adr-project-bundle-artifact-graph.md) — ProjectBundle
   v2 typed artifact graph, dependency lock, safe native reopening, and opt-in exports
 - [`volt-post-circuit-architecture-review.html`](volt-post-circuit-architecture-review.html)

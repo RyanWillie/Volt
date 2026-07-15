@@ -104,7 +104,7 @@ struct SchematicArtifactIdentity {
 
 struct BoardArtifactIdentity {
     DesignKey design;
-    BoardKey board;
+    BoardName board;
 };
 
 struct BoardSceneArtifactIdentity {
@@ -297,10 +297,11 @@ Any other kind/owner pairing rejects.
 
 - Logical models use their stable design key.
 - Schematics use `(design key, schematic key)`.
-- Authoring Boards use `(design key, board key)`.
-- `CompiledBoard` uses its owner-defined identity: design key, board key, and provenance
-  digest. That provenance is computed from pre-bundle compile inputs and must not include
-  a ProjectBundle build/bundle digest, artifact ID, descriptor, or serialized-byte digest.
+- Authoring Boards use their `(DesignKey, BoardName)` pair.
+- `CompiledBoard` uses its owner-defined identity: the persisted Design-scoped source
+  `BoardName` and provenance digest. That provenance is computed from pre-bundle compile
+  inputs and must not include a ProjectBundle build/bundle digest, artifact ID, descriptor,
+  or serialized-byte digest.
 - `BoardScene` uses the exact `CompiledBoard` identity it views; kind distinguishes it from
   that compiled artifact.
 - Project diagnostics and project tests use reserved project singleton keys.
@@ -415,6 +416,13 @@ The lock has these semantics:
   selection with the same library namespace/version, library digest, part key, and part
   digest. Its `vendored_part` must be the exact `PartDefinition` `ArtifactRef` with that
   identity, and every locked selection is referenced by at least one logical model.
+- Absence is not a lock entry: an instance with no `LibraryPartRef` contributes no
+  selected-part closure root, and reopening never synthesizes one. DNP and unplaced
+  instances remain in each `CompiledBoard` logical snapshot, and their status alone is not
+  a bundle structural failure; DNP does not require a selection. Any persisted non-empty
+  reference, including one on a DNP or unplaced instance, remains exact selected-part truth
+  and must satisfy the resolution and lock rule above. An ordinary model may retain an
+  unresolved reference, but it cannot enter a completed self-contained v2 bundle.
 - The library table admits every immutable `PartLibraryBundle` origin named by a reachable
   vendored artifact or by a `LibraryAssetRef` persisted in a reachable definition. A part
   may depend on a component contract or asset from another admitted library; cross-library
@@ -424,9 +432,10 @@ The lock has these semantics:
 - Artifact dependency edges are the sole closure topology. Closure roots are the union of
   external component definitions referenced directly by logical models and locked selected
   part artifacts. Their exact transitive graph contains referenced component contracts,
-  default or explicit-override symbols, footprints, and every selected-part GLB. Shared
-  members with the same origin-bearing ID are stored once. Missing or unrelated vendored
-  closure members reject.
+  default or explicit-override symbols, footprints, and only the GLB assets actually consumed
+  by at least one `CompiledBoard` under its declared `models3d` capability. Shared members
+  with the same origin-bearing ID are stored once. Missing or unrelated vendored closure
+  members reject.
 - STEP bytes are not part of the default closure. They appear only when selected as an
   export. The owning part payload must persist their complete `LibraryAssetRef`, including
   locked origin and content digest. That persisted ref admits the origin even when no STEP
@@ -449,26 +458,30 @@ the required inspection views and reports needed for offline inspection and Vaul
 - exactly one `CompiledBoard` for every named authoring Board;
 - exactly one compact `BoardScene` for every `CompiledBoard`;
 - exactly one project diagnostics report and one project-tests report;
-- the exact reachable component/part/symbol/footprint/GLB closure rooted at logical
-  external-component references and selected parts.
+- the exact reachable component/part/symbol/footprint closure rooted at logical
+  external-component references and selected parts; and
+- the exact union of GLB assets consumed by the `CompiledBoard` values under their declared
+  `models3d` capabilities.
 
 A project may produce no Schematic or no Board. In that case the corresponding set is
 empty; the loader must not invent one. A project result with a Board that did not produce
 its one complete compiled result and scene is not writable as v2. Historical revisions live
 in separate immutable ProjectBundles, not beside the current result in one build. Each
-scene's GLB references must be a subset of the selected GLB closure. Multiple Boards remain
-complete alternatives, not assembly partitions, harness members, or implicit BOM splits.
+scene's GLB references must be a subset of its own `CompiledBoard`'s consumed GLB closure;
+without `models3d`, that set and the scene's GLB references are empty. Multiple Boards
+remain complete alternatives, not assembly partitions, harness members, or implicit BOM
+splits.
 
 The required graph relationships are:
 
 | Artifact | Required direct dependencies |
 | --- | --- |
 | component definition | its default symbol definition |
-| selected part definition | its exact component definition, footprint, explicit symbol override if present, and required GLB attachments |
+| selected part definition | its exact component definition, footprint, explicit symbol override if present, and the GLB attachments from that part consumed by any `CompiledBoard` in this graph |
 | logical model | every external component definition and selected part definition referenced by its instances |
 | Schematic | its one logical model |
 | authoring Board | its one logical model |
-| `CompiledBoard` | the exact logical model, authoring Board, and vendored definition/asset `ArtifactRef`s declared as direct inputs by its owner codec |
+| `CompiledBoard` | the exact logical model, authoring Board, and only the vendored definition/asset `ArtifactRef`s in its owner-declared consumed selected part/asset closure |
 | `BoardScene` | its one `CompiledBoard` and every referenced part GLB asset |
 | diagnostics/tests | exactly the artifacts evaluated by the report |
 | selected export | exactly the authoritative models, compiled boards, or assets consumed by its exporter |
@@ -483,13 +496,14 @@ the decoded `CompiledBoardIdentity`.
 
 `BoardScene` has role `view`. It carries compact render/selection data and stable references
 back to identities in one exact `CompiledBoard` revision; it may carry display transforms
-and material information required by Vault. It references separately stored GLB assets by
-`ArtifactRef`, never by an unchecked raw path.
+and material information required by Vault. It references zero or more separately stored GLB
+assets by `ArtifactRef`, never by an unchecked raw path, and every such asset must belong to
+that `CompiledBoard`'s consumed `models3d` closure.
 
 It must not copy or redefine Circuit connectivity, Board entities, selected-part truth,
 footprint definitions, or compilation rules. It cannot be used as an authoritative input
 to reconstruct or mutate a Board or `CompiledBoard`. Whole-board GLB is a separate opt-in
-render and is not the scene or a replacement for the referenced part GLB closure.
+render and is not the scene or a replacement for referenced part GLBs.
 
 ## Opt-In Export Selection
 
@@ -771,6 +785,12 @@ Implementation is admitted only with tests that prove:
 - output path or sibling cardinality changes do not silently redefine `ArtifactId`;
 - compiled provenance and component/part semantic identities remain distinct from serialized
   byte digests and validate against their exact graph edges;
+- an absent exact-part selection contributes no lock row or closure root and remains absent
+  after reopen; DNP or unplaced status alone remains non-structural, while a non-empty
+  unresolved selection prevents v2 writing;
+- a `CompiledBoard` without `models3d` contributes no GLB assets or scene GLB references,
+  while one with `models3d` contributes exactly its consumed GLB closure and each scene
+  references only its own compiled subset;
 - each required kind has the fixed role and cardinality, and exact direct-edge sets reject
   both missing and extraneous dependencies;
 - absolute, parent, drive/UNC, backslash, trailing-dot, device-name, case-alias,
