@@ -1,3 +1,4 @@
+# Review evidence only: update intentionally to expose an API delta; this file does not approve it.
 include <concepts>
 include <cstddef>
 include <iterator>

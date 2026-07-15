@@ -1,4 +1,4 @@
-# Approved type declarations across public Circuit headers. Duplicate lines are intentional.
+# Expected public type inventory for Circuit ownership checks. Duplicates are intentional.
 include/volt/circuit/bom/bom.hpp|class|Bom
 include/volt/circuit/bom/bom.hpp|class|BomComponent
 include/volt/circuit/bom/bom.hpp|class|BomLine
