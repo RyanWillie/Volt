@@ -8,6 +8,7 @@ import ast
 import hashlib
 import json
 import re
+import subprocess
 import sys
 import textwrap
 from collections import Counter, defaultdict
@@ -57,6 +58,14 @@ BYTE_GOLDEN_PATHS = (
     "examples/stm32_usb_buck/artifacts/stm32_usb_buck.kicad_pcb",
     "examples/stm32_usb_buck/artifacts/stm32_usb_buck.pcb.svg",
     "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/pcb/STM32-USB-Buck-PCB.volt.pcb.json",
+)
+
+F1_LF_PATHS = tuple(
+    dict.fromkeys(
+        [path.relative_to(ROOT).as_posix() for path in PUBLIC_SNAPSHOTS.values()]
+        + list(SEMANTIC_GOLDEN_PATHS)
+        + list(BYTE_GOLDEN_PATHS)
+    )
 )
 
 COUNTING_RULES = [
@@ -159,6 +168,35 @@ def code_files(*, suffixes: set[str], roots: Iterable[str] = SOURCE_DIRS) -> lis
 
 def sha256_bytes(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def parse_check_attr_eol(output: bytes) -> dict[str, str]:
+    fields = output.split(b"\0")
+    if fields[-1] == b"":
+        fields.pop()
+    if len(fields) % 3:
+        raise AssertionError("git check-attr returned malformed NUL-delimited output")
+    return {
+        fields[index].decode("utf-8"): fields[index + 2].decode("utf-8")
+        for index in range(0, len(fields), 3)
+        if fields[index + 1] == b"eol"
+    }
+
+
+def require_lf_checkout_paths() -> None:
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "check-attr", "-z", "eol", "--", *F1_LF_PATHS],
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode:
+        raise AssertionError(f"git check-attr failed: {result.stderr.decode('utf-8', errors='replace')}")
+    attributes = parse_check_attr_eol(result.stdout)
+    missing = [path for path in F1_LF_PATHS if attributes.get(path) != "lf"]
+    if missing:
+        raise AssertionError(
+            "Gate F1 byte-hashed paths must be checked out with LF line endings: " + ", ".join(missing)
+        )
 
 
 def snapshot_declarations(path: Path) -> list[str]:
@@ -797,6 +835,7 @@ def compare(expected: object, actual: object, path: str = "root") -> list[str]:
 
 
 def run_checks() -> int:
+    require_lf_checkout_paths()
     actual = collect_inventory()
     if not BASELINE_PATH.exists():
         print(
@@ -834,6 +873,11 @@ def require(condition: bool, message: str) -> None:
 
 
 def run_self_tests() -> int:
+    require(
+        parse_check_attr_eol(b"one\0eol\0lf\0two\0eol\0unspecified\0")
+        == {"one": "lf", "two": "unspecified"},
+        "check-attr output must preserve each checked path's eol policy",
+    )
     sample_snapshot = textwrap.dedent(
         """
         include <vector>

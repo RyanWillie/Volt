@@ -1,3 +1,10 @@
 # ProjectResult bundles hash and copy 3D model assets byte-for-byte.
 *.step binary
 *.stp binary
+
+# Gate F1 hashes these checked-in snapshots and fixtures byte-for-byte.
+tests/architecture/*_public_api.txt text eol=lf
+tests/fixtures/semantic_parity.volt.json text eol=lf
+tests/fixtures/ap1117.part.volt.json text eol=lf
+tests/fixtures/native_fabrication_control* text eol=lf
+examples/stm32_usb_buck/artifacts/** text eol=lf
