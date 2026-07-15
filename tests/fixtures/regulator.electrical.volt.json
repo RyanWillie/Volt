@@ -1,0 +1,77 @@
+{
+  "format": "volt.electrical_records",
+  "version": 1,
+  "semantic_model_version": 1,
+  "pin_count": 3,
+  "records": [
+    {
+      "semantic_key": "sha256:0cc102c28db2cd8554efd6b5862ef2c8da0db818603effbf53b6218b72081f14",
+      "subject": {
+        "kind": "supply_domain",
+        "positive_pins": [
+          2
+        ],
+        "return_pins": [
+          1
+        ]
+      },
+      "observable": "current",
+      "meaning": "capability",
+      "value": {
+        "kind": "continuous_current",
+        "dimension": "current",
+        "value": 0.6
+      },
+      "conditions": [],
+      "evidence": [
+        "sha256:0894af960b66b3dcb8915a29390effa48277242d915c723c5aa571bc3014dc28"
+      ]
+    },
+    {
+      "semantic_key": "sha256:3b06559e174597cf4214ede341018df2bbe61bb3d7615dfa9de7b285835e0393",
+      "subject": {
+        "kind": "supply_domain",
+        "positive_pins": [
+          2
+        ],
+        "return_pins": [
+          1
+        ]
+      },
+      "observable": "voltage",
+      "meaning": "provided_range",
+      "value": {
+        "kind": "range",
+        "dimension": "voltage",
+        "minimum": 3.2,
+        "maximum": 3.4
+      },
+      "conditions": [
+        {
+          "subject": {
+            "kind": "framed_pin",
+            "pin": 0,
+            "reference": 1
+          },
+          "observable": "voltage",
+          "predicate": {
+            "kind": "range",
+            "minimum": {
+              "kind": "literal",
+              "dimension": "voltage",
+              "value": 4.5
+            },
+            "maximum": {
+              "kind": "literal",
+              "dimension": "voltage",
+              "value": 12.0
+            }
+          }
+        }
+      ],
+      "evidence": [
+        "sha256:0894af960b66b3dcb8915a29390effa48277242d915c723c5aa571bc3014dc28"
+      ]
+    }
+  ]
+}

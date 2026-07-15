@@ -30,6 +30,7 @@ add_executable(
     circuit/connectivity/queries_test.cpp
     circuit/constraints/net_classes_test.cpp
     circuit/electrical/electrical_model_test.cpp
+    circuit/electrical/electrical_records_test.cpp
     circuit/hierarchy/hierarchy_model_test.cpp
     circuit/hierarchy/hierarchy_test.cpp
     circuit/intent/design_intent_test.cpp
@@ -55,6 +56,7 @@ add_executable(
     io/logical/logical_circuit_round_trip_test.cpp
     io/logical/logical_circuit_writer_test.cpp
     io/parts/part_definition_io_test.cpp
+    io/parts/electrical_records_io_test.cpp
     io/pcb/pcb_fabrication_writer_test.cpp
     io/pcb/pcb_projection_io_test.cpp
     io/pcb/pcb_svg_writer_test.cpp
