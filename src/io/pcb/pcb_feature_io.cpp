@@ -162,9 +162,9 @@ void read_features(Board &board, const nlohmann::json &board_json) {
 
 void write_features(std::ostream &out, const Board &board) {
     out << "    \"features\": [\n";
-    for (std::size_t index = 0; index < board.feature_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardFeatureId>().size(); ++index) {
         const auto id = BoardFeatureId{index};
-        const auto &feature = board.feature(id);
+        const auto &feature = board.get(id);
         out << "      {\"id\": " << json_string(encode_local_id(id))
             << ", \"kind\": " << json_string(board_feature_kind_name(feature.kind()))
             << ", \"label\": " << json_string(feature.label());
@@ -212,7 +212,7 @@ void write_features(std::ostream &out, const Board &board) {
             break;
         }
         out << '}';
-        if (index + 1U != board.feature_count()) {
+        if (index + 1U != board.all<volt::BoardFeatureId>().size()) {
             out << ',';
         }
         out << '\n';

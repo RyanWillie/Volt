@@ -31,6 +31,12 @@ namespace {
     return detail::BoardCopperShapeKind::Segment;
 }
 
+[[nodiscard]] bool same_physical_shape(const detail::BoardCopperShape &lhs,
+                                       const detail::BoardCopperShape &rhs) {
+    return lhs.kind == rhs.kind && lhs.net == rhs.net && lhs.layers == rhs.layers &&
+           lhs.points == rhs.points && lhs.radius_mm == rhs.radius_mm;
+}
+
 [[nodiscard]] std::optional<double>
 shape_outline_actual_clearance(const detail::BoardCopperShape &shape, const BoardOutline &outline) {
     if (shape.kind == detail::BoardCopperShapeKind::Disc) {
@@ -212,7 +218,9 @@ BoardSpatialIndex::BoardSpatialIndex(const Board &board,
     mutable_state().shapes = std::move(shapes);
     mutable_state().conservative_clearance_mm = detail::maximum_required_copper_clearance(board);
     mutable_state().cell_size_mm = 1.0;
-    mutable_state().expected_geometry_mutation_count = board.geometry_mutation_count();
+    mutable_state().geometry_snapshot = board.all<BoardLayerId>();
+    mutable_state().expected_track_count = board.all<BoardTrackId>().size();
+    mutable_state().expected_via_count = board.all<BoardViaId>().size();
 
     mutable_state().boxes.reserve(state().shapes.size());
     for (const auto &shape : state().shapes) {
@@ -235,7 +243,7 @@ void BoardSpatialIndex::ensure_conservative_bound_current() const {
 }
 
 void BoardSpatialIndex::ensure_geometry_current() const {
-    if (state().board->geometry_mutation_count() != state().expected_geometry_mutation_count) {
+    if (!state().geometry_snapshot.value().is_current()) {
         throw KernelLogicError{
             ErrorCode::InvalidState,
             "Board spatial index is stale; board geometry changed outside the index"};
@@ -272,8 +280,8 @@ void BoardSpatialIndex::validate_shape(const detail::BoardCopperShape &shape) co
                                   "Board spatial index shape layers must be unique"};
     }
     for (const auto layer : shape.layers) {
-        if (layer.index() >= state().board->layer_count() ||
-            state().board->layer(layer).role() != BoardLayerRole::Copper) {
+        if (layer.index() >= state().board->all<volt::BoardLayerId>().size() ||
+            state().board->get(layer).role() != BoardLayerRole::Copper) {
             throw KernelArgumentError{
                 ErrorCode::CrossReferenceViolation,
                 "Board spatial index shape layers must be board copper layers",
@@ -324,7 +332,55 @@ void BoardSpatialIndex::index_shape(std::size_t shape_index) {
 }
 
 void BoardSpatialIndex::insert(BoardSpatialQueryShape shape) {
-    insert(to_copper_shape(std::move(shape)));
+    auto copper_shape = to_copper_shape(std::move(shape));
+    if (state().geometry_snapshot.value().is_current()) {
+        append_shape(std::move(copper_shape));
+        return;
+    }
+
+    const auto current_track_count = state().board->all<BoardTrackId>().size();
+    const auto current_via_count = state().board->all<BoardViaId>().size();
+    auto appended_shape = std::optional<detail::BoardCopperShape>{};
+    if (state().geometry_snapshot.value().advanced_once() &&
+        current_track_count == state().expected_track_count + 1U &&
+        current_via_count == state().expected_via_count) {
+        const auto &track = state().board->get(BoardTrackId{current_track_count - 1U});
+        if (track.points().size() == 2U) {
+            appended_shape = detail::BoardCopperShape{
+                detail::BoardCopperShapeKind::Segment,
+                track.net(),
+                std::vector{track.layer()},
+                {},
+                track.points(),
+                track.width_mm() / 2.0,
+                std::nullopt,
+            };
+        }
+    } else if (state().geometry_snapshot.value().advanced_once() &&
+               current_track_count == state().expected_track_count &&
+               current_via_count == state().expected_via_count + 1U) {
+        const auto &via = state().board->get(BoardViaId{current_via_count - 1U});
+        appended_shape = detail::BoardCopperShape{
+            detail::BoardCopperShapeKind::Disc,
+            via.net(),
+            detail::via_copper_layers(*state().board, via),
+            {},
+            std::vector{via.position()},
+            via.annular_diameter_mm() / 2.0,
+            std::nullopt,
+        };
+    }
+
+    if (!appended_shape.has_value() || !same_physical_shape(copper_shape, *appended_shape)) {
+        throw KernelLogicError{
+            ErrorCode::InvalidState,
+            "Board spatial index is stale; board geometry changed outside the index"};
+    }
+
+    append_shape(std::move(copper_shape));
+    mutable_state().geometry_snapshot = state().board->all<BoardLayerId>();
+    mutable_state().expected_track_count = current_track_count;
+    mutable_state().expected_via_count = current_via_count;
 }
 
 void BoardSpatialIndex::append_shape(detail::BoardCopperShape shape) {
@@ -335,34 +391,6 @@ void BoardSpatialIndex::append_shape(detail::BoardCopperShape shape) {
     mutable_state().shapes.push_back(std::move(shape));
     index_shape(shape_index);
 }
-
-void BoardSpatialIndex::insert(detail::BoardCopperShape shape) {
-    ensure_geometry_current();
-    append_shape(std::move(shape));
-}
-
-void BoardRouter::SpatialIndexStorage::insert_after_board_mutation(
-    BoardSpatialQueryShape shape, std::size_t previous_geometry_mutation_count) {
-    detail::insert_after_board_mutation(*this, std::move(shape), previous_geometry_mutation_count);
-}
-
-namespace detail {
-
-void insert_after_board_mutation(BoardSpatialIndex &index, BoardSpatialQueryShape shape,
-                                 std::size_t previous_geometry_mutation_count) {
-    if (index.state().expected_geometry_mutation_count != previous_geometry_mutation_count ||
-        index.state().board->geometry_mutation_count() != previous_geometry_mutation_count + 1U) {
-        throw KernelLogicError{
-            ErrorCode::InvalidState,
-            "Board spatial index mirror insert must follow exactly one board geometry mutation"};
-    }
-
-    index.append_shape(BoardSpatialIndex::to_copper_shape(std::move(shape)));
-    index.mutable_state().expected_geometry_mutation_count =
-        index.state().board->geometry_mutation_count();
-}
-
-} // namespace detail
 
 [[nodiscard]] std::vector<std::size_t>
 BoardSpatialIndex::candidate_obstacles(const BoardSpatialQueryShape &candidate) const {
@@ -491,10 +519,10 @@ BoardSpatialIndex::query_legality(const detail::BoardCopperShape &candidate,
         }
     }
 
-    for (std::size_t keepout_index = 0; keepout_index < state().board->keepout_count();
-         ++keepout_index) {
+    for (std::size_t keepout_index = 0;
+         keepout_index < state().board->all<volt::BoardKeepoutId>().size(); ++keepout_index) {
         const auto keepout_id = BoardKeepoutId{keepout_index};
-        const auto &keepout = state().board->keepout(keepout_id);
+        const auto &keepout = state().board->get(keepout_id);
         if (!detail::keepout_restricts(keepout, keepout_restriction)) {
             continue;
         }
@@ -538,8 +566,8 @@ namespace detail {
             result = std::max(result, clearance.value());
         }
     }
-    for (std::size_t index = 0; index < board.room_count(); ++index) {
-        const auto clearance = board.room(BoardRoomId{index}).copper_clearance_mm();
+    for (std::size_t index = 0; index < board.all<volt::BoardRoomId>().size(); ++index) {
+        const auto clearance = board.get(BoardRoomId{index}).copper_clearance_mm();
         if (clearance.has_value()) {
             result = std::max(result, clearance.value());
         }

@@ -4,9 +4,9 @@ namespace volt::io::detail {
 
 void write_board_rooms(std::ostream &out, const Board &board, bool trailing_comma) {
     out << "    \"rooms\": [\n";
-    for (std::size_t index = 0; index < board.room_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardRoomId>().size(); ++index) {
         const auto id = BoardRoomId{index};
-        const auto &room = board.room(id);
+        const auto &room = board.get(id);
         out << "      {\"id\": " << json_string(encode_local_id(id))
             << ", \"name\": " << json_string(room.name()) << ", \"outline\": ";
         write_board_points(out, room.outline().vertices());
@@ -24,7 +24,7 @@ void write_board_rooms(std::ostream &out, const Board &board, bool trailing_comm
             write_number(out, room.track_width_mm().value());
         }
         out << '}';
-        if (index + 1U != board.room_count()) {
+        if (index + 1U != board.all<volt::BoardRoomId>().size()) {
             out << ',';
         }
         out << '\n';

@@ -1,26 +1,103 @@
 #pragma once
 
+#include <concepts>
 #include <cstddef>
-#include <memory>
+#include <iterator>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/core/diagnostics.hpp>
+#include <volt/core/entity_table.hpp>
 #include <volt/pcb/copper/board_copper.hpp>
-#include <volt/pcb/copper/board_copper_model.hpp>
 #include <volt/pcb/features/board_features.hpp>
-#include <volt/pcb/footprints/board_footprint_model.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
 #include <volt/pcb/geometry/board_geometry.hpp>
 #include <volt/pcb/geometry/board_outline.hpp>
 #include <volt/pcb/layers/board_layers.hpp>
-#include <volt/pcb/placement/board_placement_model.hpp>
-#include <volt/pcb/structure/board_structure_model.hpp>
+#include <volt/pcb/placement/board_placement_updates.hpp>
 
 namespace volt {
+
+class Board;
+
+/// @cond
+namespace detail {
+
+enum class BoardEntityRangeState {
+    Current,
+    AdvancedOnce,
+    Stale,
+};
+
+using BoardEntityRangeStateCheck =
+    BoardEntityRangeState (*)(const void *context, std::size_t expected_generation) noexcept;
+
+template <typename Id> struct BoardEntityDescriptor;
+template <typename Id> class BoardEntityRange;
+
+template <> struct BoardEntityDescriptor<BoardLayerId> {
+    using type = BoardLayer;
+};
+
+template <> struct BoardEntityDescriptor<BoardFeatureId> {
+    using type = BoardFeature;
+};
+
+template <> struct BoardEntityDescriptor<FootprintDefId> {
+    using type = FootprintDefinition;
+};
+
+template <> struct BoardEntityDescriptor<ComponentPlacementId> {
+    using type = ComponentPlacement;
+};
+
+template <> struct BoardEntityDescriptor<BoardTrackId> {
+    using type = BoardTrack;
+};
+
+template <> struct BoardEntityDescriptor<BoardViaId> {
+    using type = BoardVia;
+};
+
+template <> struct BoardEntityDescriptor<BoardZoneId> {
+    using type = BoardZone;
+};
+
+template <> struct BoardEntityDescriptor<BoardKeepoutId> {
+    using type = BoardKeepout;
+};
+
+template <> struct BoardEntityDescriptor<BoardRoomId> {
+    using type = BoardRoom;
+};
+
+template <> struct BoardEntityDescriptor<BoardTextId> {
+    using type = BoardText;
+};
+
+} // namespace detail
+
+/// @endcond
+
+/** True when an ID names one of Board's canonical physical entity tables. */
+template <typename Id>
+concept BoardEntityId =
+    std::same_as<Id, BoardLayerId> || std::same_as<Id, BoardFeatureId> ||
+    std::same_as<Id, FootprintDefId> || std::same_as<Id, ComponentPlacementId> ||
+    std::same_as<Id, BoardTrackId> || std::same_as<Id, BoardViaId> ||
+    std::same_as<Id, BoardZoneId> || std::same_as<Id, BoardKeepoutId> ||
+    std::same_as<Id, BoardRoomId> || std::same_as<Id, BoardTextId>;
+
+/** Canonical physical entity type selected by a Board-owned stable ID. */
+template <BoardEntityId Id>
+using board_entity_type_t = typename detail::BoardEntityDescriptor<Id>::type;
+
+/** Borrowed deterministic range selected by a Board-owned stable ID. */
+template <BoardEntityId Id> using board_entity_range_t = detail::BoardEntityRange<Id>;
 
 /**
  * PCB board projection over a logical circuit, and aggregate root of the board model.
@@ -50,11 +127,6 @@ class Board {
 
     /** Return the logical circuit this board projects. */
     [[nodiscard]] const Circuit &circuit() const noexcept { return *circuit_; }
-
-    /** Return a monotonically increasing counter bumped on every board geometry mutation. */
-    [[nodiscard]] std::size_t geometry_mutation_count() const noexcept {
-        return geometry_mutation_count_;
-    }
 
     /** Add a board layer, rejecting duplicate board-local layer names. */
     [[nodiscard]] BoardLayerId add_layer(BoardLayer layer);
@@ -98,165 +170,61 @@ class Board {
     /** Add board text on an existing board layer. */
     [[nodiscard]] BoardTextId add_text(BoardText text);
 
-    /** Return a board layer by board-local ID. */
-    [[nodiscard]] const BoardLayer &layer(BoardLayerId id) const { return structure_.layer(id); }
-
-    /** Return the number of board layers. */
-    [[nodiscard]] std::size_t layer_count() const noexcept { return structure_.layer_count(); }
+    /** Move one existing component placement without changing its logical identity. */
+    void move(BoardPlacementMove change);
 
     /** Return the current layer stack, if assigned. */
-    [[nodiscard]] const std::optional<LayerStack> &layer_stack() const noexcept;
+    [[nodiscard]] const std::optional<LayerStack> &layer_stack() const noexcept {
+        return structure_.layer_stack;
+    }
 
     /** Return the board outline, if assigned. */
     [[nodiscard]] const std::optional<BoardOutline> &outline() const noexcept {
-        return structure_.outline();
+        return structure_.outline;
     }
 
     /** Return board-owned design rules used by DRC validation. */
     [[nodiscard]] const BoardDesignRules &design_rules() const noexcept {
-        return structure_.design_rules();
+        return structure_.design_rules;
     }
 
     /** Return the optional capability profile snapshot set on this board. */
     [[nodiscard]] const std::optional<BoardCapabilityProfile> &capability_profile() const noexcept {
-        return structure_.capability_profile();
+        return structure_.capability_profile;
     }
 
-    /** Return a board feature by ID. */
-    [[nodiscard]] const BoardFeature &feature(BoardFeatureId id) const {
-        return structure_.feature(id);
-    }
+    /** Return a canonical physical entity selected by its strongly typed stable ID. */
+    template <BoardEntityId Id> [[nodiscard]] const board_entity_type_t<Id> &get(Id id) const;
 
-    /** Return the number of stored board features. */
-    [[nodiscard]] std::size_t feature_count() const noexcept { return structure_.feature_count(); }
-
-    /** Return a cached footprint definition by board-local ID. */
-    [[nodiscard]] const FootprintDefinition &footprint_definition(FootprintDefId id) const;
-
-    /** Return the number of cached footprint definitions. */
-    [[nodiscard]] std::size_t footprint_definition_count() const noexcept;
-
-    /** Return a placement by board-local ID. */
-    [[nodiscard]] const ComponentPlacement &placement(ComponentPlacementId id) const;
-
-    /** Return the number of component placements. */
-    [[nodiscard]] std::size_t placement_count() const noexcept {
-        return placements_.placement_count();
-    }
-
-    /** Return a routed copper track by board-local ID. */
-    [[nodiscard]] const BoardTrack &track(BoardTrackId id) const { return copper_.track(id); }
-
-    /** Return the number of routed copper tracks. */
-    [[nodiscard]] std::size_t track_count() const noexcept { return copper_.track_count(); }
-
-    /** Return a routed copper via by board-local ID. */
-    [[nodiscard]] const BoardVia &via(BoardViaId id) const { return copper_.via(id); }
-
-    /** Return the number of routed copper vias. */
-    [[nodiscard]] std::size_t via_count() const noexcept { return copper_.via_count(); }
-
-    /** Return a copper zone by board-local ID. */
-    [[nodiscard]] const BoardZone &zone(BoardZoneId id) const { return copper_.zone(id); }
-
-    /** Return the number of copper zones. */
-    [[nodiscard]] std::size_t zone_count() const noexcept { return copper_.zone_count(); }
-
-    /** Return a keepout by board-local ID. */
-    [[nodiscard]] const BoardKeepout &keepout(BoardKeepoutId id) const;
-
-    /** Return the number of keepouts. */
-    [[nodiscard]] std::size_t keepout_count() const noexcept;
-
-    /** Return a board room by board-local ID. */
-    [[nodiscard]] const BoardRoom &room(BoardRoomId id) const;
-
-    /** Return the number of board rooms. */
-    [[nodiscard]] std::size_t room_count() const noexcept;
-
-    /** Return board text by board-local ID. */
-    [[nodiscard]] const BoardText &text(BoardTextId id) const;
-
-    /** Return the number of board text primitives. */
-    [[nodiscard]] std::size_t text_count() const noexcept;
+    /** Return a borrowed deterministic range over one canonical physical entity family. */
+    template <BoardEntityId Id> [[nodiscard]] board_entity_range_t<Id> all() const &;
+    template <BoardEntityId Id> [[nodiscard]] board_entity_range_t<Id> all() const && = delete;
 
   private:
-    struct StructureStorage : BoardStructureModel {
-        StructureStorage();
-        StructureStorage(const StructureStorage &other);
-        StructureStorage(StructureStorage &&other) noexcept = default;
-        StructureStorage &operator=(const StructureStorage &other);
-        StructureStorage &operator=(StructureStorage &&other) noexcept = default;
-
-        [[nodiscard]] BoardLayerId add_layer(BoardLayer layer);
-        void set_layer_stack(LayerStack stack);
-        void set_outline(BoardOutline outline);
-        void set_design_rules(BoardDesignRules rules);
-        void set_capability_profile(BoardCapabilityProfile profile);
-        [[nodiscard]] BoardFeatureId add_feature(BoardFeature feature);
-
-      private:
-        explicit StructureStorage(std::shared_ptr<detail::BoardStructureState> state);
-        [[nodiscard]] detail::BoardStructureState &mutable_state() noexcept;
-        [[nodiscard]] const detail::BoardStructureState &state() const noexcept;
-
-        std::shared_ptr<detail::BoardStructureState> state_;
+    struct StructureState {
+        EntityTable<BoardLayer, BoardLayerId> layers;
+        std::optional<LayerStack> layer_stack;
+        std::optional<BoardOutline> outline;
+        BoardDesignRules design_rules;
+        std::optional<BoardCapabilityProfile> capability_profile;
+        EntityTable<BoardFeature, BoardFeatureId> features;
     };
 
-    struct FootprintStorage : BoardFootprintModel {
-        FootprintStorage();
-        FootprintStorage(const FootprintStorage &other);
-        FootprintStorage(FootprintStorage &&other) noexcept = default;
-        FootprintStorage &operator=(const FootprintStorage &other);
-        FootprintStorage &operator=(FootprintStorage &&other) noexcept = default;
-
-        [[nodiscard]] FootprintDefId cache_footprint_definition(FootprintDefinition footprint);
-
-      private:
-        explicit FootprintStorage(std::shared_ptr<detail::BoardFootprintState> state);
-        [[nodiscard]] detail::BoardFootprintState &mutable_state() noexcept;
-        [[nodiscard]] const detail::BoardFootprintState &state() const noexcept;
-
-        std::shared_ptr<detail::BoardFootprintState> state_;
+    struct FootprintState {
+        EntityTable<FootprintDefinition, FootprintDefId> definitions;
     };
 
-    struct PlacementStorage : BoardPlacementModel {
-        PlacementStorage();
-        PlacementStorage(const PlacementStorage &other);
-        PlacementStorage(PlacementStorage &&other) noexcept = default;
-        PlacementStorage &operator=(const PlacementStorage &other);
-        PlacementStorage &operator=(PlacementStorage &&other) noexcept = default;
-
-        [[nodiscard]] ComponentPlacementId place_component(ComponentPlacement placement);
-
-      private:
-        explicit PlacementStorage(std::shared_ptr<detail::BoardPlacementState> state);
-        [[nodiscard]] detail::BoardPlacementState &mutable_state() noexcept;
-        [[nodiscard]] const detail::BoardPlacementState &state() const noexcept;
-
-        std::shared_ptr<detail::BoardPlacementState> state_;
+    struct PlacementState {
+        EntityTable<ComponentPlacement, ComponentPlacementId> placements;
     };
 
-    struct CopperStorage : BoardCopperModel {
-        CopperStorage();
-        CopperStorage(const CopperStorage &other);
-        CopperStorage(CopperStorage &&other) noexcept = default;
-        CopperStorage &operator=(const CopperStorage &other);
-        CopperStorage &operator=(CopperStorage &&other) noexcept = default;
-
-        [[nodiscard]] BoardTrackId add_track(BoardTrack track);
-        [[nodiscard]] BoardViaId add_via(BoardVia via);
-        [[nodiscard]] BoardZoneId add_zone(BoardZone zone);
-        [[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout);
-        [[nodiscard]] BoardRoomId add_room(BoardRoom room);
-        [[nodiscard]] BoardTextId add_text(BoardText text);
-
-      private:
-        explicit CopperStorage(std::shared_ptr<detail::BoardCopperState> state);
-        [[nodiscard]] detail::BoardCopperState &mutable_state() noexcept;
-        [[nodiscard]] const detail::BoardCopperState &state() const noexcept;
-
-        std::shared_ptr<detail::BoardCopperState> state_;
+    struct CopperState {
+        EntityTable<BoardTrack, BoardTrackId> tracks;
+        EntityTable<BoardVia, BoardViaId> vias;
+        EntityTable<BoardZone, BoardZoneId> zones;
+        EntityTable<BoardKeepout, BoardKeepoutId> keepouts;
+        EntityTable<BoardRoom, BoardRoomId> rooms;
+        EntityTable<BoardText, BoardTextId> texts;
     };
 
     void require_layer(BoardLayerId layer) const;
@@ -265,15 +233,165 @@ class Board {
 
     void require_copper_layer(BoardLayerId layer_id) const;
 
+    template <BoardEntityId Id> [[nodiscard]] std::size_t entity_count() const noexcept;
+
+    [[nodiscard]] static detail::BoardEntityRangeState
+    entity_range_state(const void *context, std::size_t expected_generation) noexcept {
+        const auto current_generation = static_cast<const Board *>(context)->geometry_generation_;
+        if (current_generation == expected_generation) {
+            return detail::BoardEntityRangeState::Current;
+        }
+        if (current_generation == expected_generation + 1U) {
+            return detail::BoardEntityRangeState::AdvancedOnce;
+        }
+        return detail::BoardEntityRangeState::Stale;
+    }
+
     const Circuit *circuit_;
     BoardName name_;
     BoardUnits units_{BoardUnits::Millimeters};
-    std::size_t geometry_mutation_count_ = 0;
-    StructureStorage structure_;
-    FootprintStorage footprint_cache_;
-    PlacementStorage placements_;
-    CopperStorage copper_;
+    std::size_t geometry_generation_ = 0;
+    StructureState structure_;
+    FootprintState footprint_cache_;
+    PlacementState placements_;
+    CopperState copper_;
 };
+
+/**
+ * Non-owning forward range over one Board physical entity family.
+ *
+ * Iterators keep a pointer to the Board, so destroying or structurally mutating the Board
+ * invalidates the range and its iterators. Creating a range from a temporary Board is deleted.
+ */
+/// @cond
+namespace detail {
+
+template <typename Id> class BoardEntityRange {
+  public:
+    class iterator {
+      public:
+        using value_type = board_entity_type_t<Id>;
+        using difference_type = std::ptrdiff_t;
+        using reference = const value_type &;
+        using pointer = const value_type *;
+        using iterator_concept = std::forward_iterator_tag;
+        using iterator_category = std::forward_iterator_tag;
+
+        iterator() = default;
+
+        [[nodiscard]] reference operator*() const { return board_->get(Id{index_}); }
+
+        [[nodiscard]] pointer operator->() const { return &**this; }
+
+        iterator &operator++() {
+            ++index_;
+            return *this;
+        }
+
+        iterator operator++(int) {
+            auto previous = *this;
+            ++*this;
+            return previous;
+        }
+
+        bool operator==(const iterator &) const = default;
+
+        iterator(const Board &board, std::size_t index) noexcept : board_{&board}, index_{index} {}
+
+        iterator(const Board &&, std::size_t) = delete;
+
+      private:
+        const Board *board_ = nullptr;
+        std::size_t index_ = 0;
+    };
+
+    [[nodiscard]] iterator begin() const noexcept { return iterator{*board_, 0}; }
+
+    [[nodiscard]] iterator end() const noexcept { return iterator{*board_, size_}; }
+
+    [[nodiscard]] std::size_t size() const noexcept { return size_; }
+
+    [[nodiscard]] bool is_current() const noexcept {
+        return state_check_(state_context_, expected_generation_) == BoardEntityRangeState::Current;
+    }
+
+    [[nodiscard]] bool advanced_once() const noexcept {
+        return state_check_(state_context_, expected_generation_) ==
+               BoardEntityRangeState::AdvancedOnce;
+    }
+
+    BoardEntityRange(const Board &board, std::size_t size, const void *state_context,
+                     std::size_t expected_generation,
+                     BoardEntityRangeStateCheck state_check) noexcept
+        : board_{&board}, size_{size}, state_context_{state_context},
+          expected_generation_{expected_generation}, state_check_{state_check} {}
+
+  private:
+    const Board *board_;
+    std::size_t size_ = 0;
+    const void *state_context_;
+    std::size_t expected_generation_ = 0;
+    BoardEntityRangeStateCheck state_check_;
+};
+
+} // namespace detail
+
+/// @endcond
+
+template <BoardEntityId Id> [[nodiscard]] const board_entity_type_t<Id> &Board::get(Id id) const {
+    if constexpr (std::same_as<Id, BoardLayerId>) {
+        return structure_.layers.get(id);
+    } else if constexpr (std::same_as<Id, BoardFeatureId>) {
+        return structure_.features.get(id);
+    } else if constexpr (std::same_as<Id, FootprintDefId>) {
+        return footprint_cache_.definitions.get(id);
+    } else if constexpr (std::same_as<Id, ComponentPlacementId>) {
+        return placements_.placements.get(id);
+    } else if constexpr (std::same_as<Id, BoardTrackId>) {
+        return copper_.tracks.get(id);
+    } else if constexpr (std::same_as<Id, BoardViaId>) {
+        return copper_.vias.get(id);
+    } else if constexpr (std::same_as<Id, BoardZoneId>) {
+        return copper_.zones.get(id);
+    } else if constexpr (std::same_as<Id, BoardKeepoutId>) {
+        return copper_.keepouts.get(id);
+    } else if constexpr (std::same_as<Id, BoardRoomId>) {
+        return copper_.rooms.get(id);
+    } else {
+        return copper_.texts.get(id);
+    }
+}
+
+template <BoardEntityId Id> [[nodiscard]] std::size_t Board::entity_count() const noexcept {
+    std::size_t size = 0;
+    if constexpr (std::same_as<Id, BoardLayerId>) {
+        size = structure_.layers.size();
+    } else if constexpr (std::same_as<Id, BoardFeatureId>) {
+        size = structure_.features.size();
+    } else if constexpr (std::same_as<Id, FootprintDefId>) {
+        size = footprint_cache_.definitions.size();
+    } else if constexpr (std::same_as<Id, ComponentPlacementId>) {
+        size = placements_.placements.size();
+    } else if constexpr (std::same_as<Id, BoardTrackId>) {
+        size = copper_.tracks.size();
+    } else if constexpr (std::same_as<Id, BoardViaId>) {
+        size = copper_.vias.size();
+    } else if constexpr (std::same_as<Id, BoardZoneId>) {
+        size = copper_.zones.size();
+    } else if constexpr (std::same_as<Id, BoardKeepoutId>) {
+        size = copper_.keepouts.size();
+    } else if constexpr (std::same_as<Id, BoardRoomId>) {
+        size = copper_.rooms.size();
+    } else {
+        size = copper_.texts.size();
+    }
+    return size;
+}
+
+template <BoardEntityId Id> [[nodiscard]] board_entity_range_t<Id> Board::all() const & {
+    return board_entity_range_t<Id>{*this, entity_count<Id>(), this, geometry_generation_,
+                                    &Board::entity_range_state};
+}
 
 namespace detail {
 

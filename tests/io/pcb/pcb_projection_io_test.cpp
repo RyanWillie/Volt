@@ -305,16 +305,14 @@ TEST_CASE("PCB projection writer and reader round-trip footprint package geometr
     const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
 
     CHECK(volt::io::write_pcb_board(restored, empty_library) == text);
-    REQUIRE(restored.footprint_definition(volt::FootprintDefId{0}).courtyard().has_value());
-    CHECK(restored.footprint_definition(volt::FootprintDefId{0}).courtyard()->vertices()[1] ==
+    REQUIRE(restored.get(volt::FootprintDefId{0}).courtyard().has_value());
+    CHECK(restored.get(volt::FootprintDefId{0}).courtyard()->vertices()[1] ==
           volt::FootprintPoint{1.2, -0.8});
-    REQUIRE(
-        restored.footprint_definition(volt::FootprintDefId{0}).fabrication_outline().has_value());
-    CHECK(restored.footprint_definition(volt::FootprintDefId{0})
-              .fabrication_outline()
-              ->vertices()[2] == volt::FootprintPoint{0.8, 0.4});
-    REQUIRE(restored.footprint_definition(volt::FootprintDefId{0}).markings().size() == 2);
-    CHECK(restored.footprint_definition(volt::FootprintDefId{0}).markings()[1].kind() ==
+    REQUIRE(restored.get(volt::FootprintDefId{0}).fabrication_outline().has_value());
+    CHECK(restored.get(volt::FootprintDefId{0}).fabrication_outline()->vertices()[2] ==
+          volt::FootprintPoint{0.8, 0.4});
+    REQUIRE(restored.get(volt::FootprintDefId{0}).markings().size() == 2);
+    CHECK(restored.get(volt::FootprintDefId{0}).markings()[1].kind() ==
           volt::FootprintMarkingKind::PinOne);
 
     auto closed_courtyard = document;
@@ -373,11 +371,11 @@ TEST_CASE("PCB projection writer and reader round-trip generic board features") 
 
     const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
     CHECK(volt::io::write_pcb_board(restored, volt::builtin_footprint_library()) == text);
-    CHECK(restored.feature(volt::BoardFeatureId{1}).hole().drill_diameter_mm() == 1.0);
-    CHECK(restored.feature(volt::BoardFeatureId{2}).slot().width_mm() == 1.5);
-    CHECK(restored.feature(volt::BoardFeatureId{3}).cutout().outline().size() == 4);
-    CHECK(restored.feature(volt::BoardFeatureId{4}).circle().diameter_mm() == 1.0);
-    CHECK(restored.feature(volt::BoardFeatureId{5}).hole().drill_diameter_mm() == 2.0);
+    CHECK(restored.get(volt::BoardFeatureId{1}).hole().drill_diameter_mm() == 1.0);
+    CHECK(restored.get(volt::BoardFeatureId{2}).slot().width_mm() == 1.5);
+    CHECK(restored.get(volt::BoardFeatureId{3}).cutout().outline().size() == 4);
+    CHECK(restored.get(volt::BoardFeatureId{4}).circle().diameter_mm() == 1.0);
+    CHECK(restored.get(volt::BoardFeatureId{5}).hole().drill_diameter_mm() == 2.0);
 }
 
 TEST_CASE("PCB projection JSON emits deterministic bare-board 3D geometry") {
@@ -515,11 +513,10 @@ TEST_CASE("PCB projection reader round-trips board metadata, placements, and pad
     CHECK(restored.layer_stack()->board_thickness_mm() == 1.6);
     REQUIRE(restored.outline().has_value());
     CHECK(restored.outline()->vertices()[2] == volt::BoardPoint{50.0, 30.0});
-    CHECK(restored.feature(volt::BoardFeatureId{0}).hole().drill_diameter_mm() == 3.2);
-    CHECK(restored.footprint_definition(volt::FootprintDefId{0})
-              .pad(volt::FootprintPadId{0})
-              .size() == volt::FootprintSize{0.80, 0.95});
-    CHECK(restored.placement(volt::ComponentPlacementId{0}).component() == fixture.component);
+    CHECK(restored.get(volt::BoardFeatureId{0}).hole().drill_diameter_mm() == 3.2);
+    CHECK(restored.get(volt::FootprintDefId{0}).pad(volt::FootprintPadId{0}).size() ==
+          volt::FootprintSize{0.80, 0.95});
+    CHECK(restored.get(volt::ComponentPlacementId{0}).component() == fixture.component);
 }
 
 TEST_CASE("PCB projection writer and reader round-trip copper tracks and vias") {
@@ -564,8 +561,8 @@ TEST_CASE("PCB projection writer and reader round-trip copper tracks and vias") 
 
     const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
     CHECK(volt::io::write_pcb_board(restored, volt::builtin_footprint_library()) == text);
-    CHECK(restored.track(volt::BoardTrackId{0}).points()[2] == volt::BoardPoint{12.0, 8.0});
-    CHECK(restored.via(volt::BoardViaId{0}).end_layer() == volt::BoardLayerId{1});
+    CHECK(restored.get(volt::BoardTrackId{0}).points()[2] == volt::BoardPoint{12.0, 8.0});
+    CHECK(restored.get(volt::BoardViaId{0}).end_layer() == volt::BoardLayerId{1});
 }
 
 TEST_CASE("PCB projection writer and reader round-trip zones, keepouts, rooms, and board text") {
@@ -663,18 +660,18 @@ TEST_CASE("PCB projection writer and reader round-trip zones, keepouts, rooms, a
 
     const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text_json);
     CHECK(volt::io::write_pcb_board(restored, volt::builtin_footprint_library()) == text_json);
-    CHECK(restored.zone(volt::BoardZoneId{0}).priority() == 5);
-    CHECK(restored.keepout(volt::BoardKeepoutId{0}).restrictions() ==
+    CHECK(restored.get(volt::BoardZoneId{0}).priority() == 5);
+    CHECK(restored.get(volt::BoardKeepoutId{0}).restrictions() ==
           std::vector{volt::BoardKeepoutRestriction::Copper,
                       volt::BoardKeepoutRestriction::Placement});
-    CHECK(restored.room(volt::BoardRoomId{0}).name() == "BGA escape");
-    REQUIRE(restored.room(volt::BoardRoomId{0}).copper_clearance_mm().has_value());
-    REQUIRE(restored.room(volt::BoardRoomId{0}).track_width_mm().has_value());
-    CHECK(restored.room(volt::BoardRoomId{0}).copper_clearance_mm().value() == 0.075);
-    CHECK(restored.room(volt::BoardRoomId{0}).track_width_mm().value() == 0.10);
-    CHECK(restored.room(volt::BoardRoomId{1}).priority() == 0);
-    CHECK_FALSE(restored.room(volt::BoardRoomId{1}).track_width_mm().has_value());
-    CHECK(restored.text(volt::BoardTextId{0}).text() == "REV A");
+    CHECK(restored.get(volt::BoardRoomId{0}).name() == "BGA escape");
+    REQUIRE(restored.get(volt::BoardRoomId{0}).copper_clearance_mm().has_value());
+    REQUIRE(restored.get(volt::BoardRoomId{0}).track_width_mm().has_value());
+    CHECK(restored.get(volt::BoardRoomId{0}).copper_clearance_mm().value() == 0.075);
+    CHECK(restored.get(volt::BoardRoomId{0}).track_width_mm().value() == 0.10);
+    CHECK(restored.get(volt::BoardRoomId{1}).priority() == 0);
+    CHECK_FALSE(restored.get(volt::BoardRoomId{1}).track_width_mm().has_value());
+    CHECK(restored.get(volt::BoardTextId{0}).text() == "REV A");
 }
 
 TEST_CASE("PCB projection writer and reader round-trip board design rules") {
@@ -1622,8 +1619,8 @@ TEST_CASE("PCB projection round-trips stackup copper weight and dielectrics") {
           nlohmann::json::array({{{"thickness_mm", 1.51}, {"relative_permittivity", 4.6}}}));
 
     const auto loaded = volt::io::read_pcb_board_text(fixture.circuit, text);
-    CHECK(loaded.layer(front).copper_weight_oz() == 1.0);
-    CHECK(loaded.layer(back).copper_weight_oz() == 2.0);
+    CHECK(loaded.get(front).copper_weight_oz() == 1.0);
+    CHECK(loaded.get(back).copper_weight_oz() == 2.0);
     REQUIRE(loaded.layer_stack().has_value());
     REQUIRE(loaded.layer_stack()->dielectrics().size() == 1);
     CHECK(loaded.layer_stack()->dielectrics().front().thickness_mm() == 1.51);

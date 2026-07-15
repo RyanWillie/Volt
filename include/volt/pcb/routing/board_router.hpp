@@ -157,13 +157,6 @@ class BoardRouter {
     [[nodiscard]] BoardEscapeResult escape(ComponentId component);
 
   private:
-    class SpatialIndexStorage : public BoardSpatialIndex {
-      public:
-        using BoardSpatialIndex::BoardSpatialIndex;
-        void insert_after_board_mutation(BoardSpatialQueryShape shape,
-                                         std::size_t previous_geometry_mutation_count);
-    };
-
     /** One copper segment a candidate route would commit on a single layer. */
     struct SegmentStep {
         /** Layer the segment is routed on. */
@@ -210,9 +203,11 @@ class BoardRouter {
     void commit(const Candidate &candidate, const BoardRouteRequest &request,
                 const BoardRouteParameters &params, BoardRouteResult &result);
 
+    [[nodiscard]] BoardSpatialIndex &index() const;
+
     Board *board_;
     FootprintLibrary footprints_;
-    SpatialIndexStorage index_;
+    mutable std::optional<BoardSpatialIndex> index_;
 };
 
 } // namespace volt

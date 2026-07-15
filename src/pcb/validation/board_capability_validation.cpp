@@ -187,7 +187,7 @@ void validate_stackup_capability(const Board &board, const BoardCapabilityProfil
     const auto &stack = board.layer_stack().value();
     auto copper_layer_count = 0;
     for (const auto layer_id : stack.layers()) {
-        if (board.layer(layer_id).role() == BoardLayerRole::Copper) {
+        if (board.get(layer_id).role() == BoardLayerRole::Copper) {
             ++copper_layer_count;
         }
     }
@@ -213,7 +213,7 @@ void validate_stackup_capability(const Board &board, const BoardCapabilityProfil
     }
 
     for (const auto layer_id : stack.layers()) {
-        const auto &layer = board.layer(layer_id);
+        const auto &layer = board.get(layer_id);
         if (layer.role() != BoardLayerRole::Copper || !layer.copper_weight_oz().has_value()) {
             continue;
         }
@@ -235,18 +235,18 @@ void validate_drill_capability(const Board &board, const BoardCapabilityProfile 
     }
     const auto range = profile.drill_diameter_range_mm().value();
 
-    for (std::size_t index = 0; index < board.via_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardViaId>().size(); ++index) {
         const auto via_id = BoardViaId{index};
-        report_capability_range(report, board.via(via_id).drill_diameter_mm(), range,
+        report_capability_range(report, board.get(via_id).drill_diameter_mm(), range,
                                 drc_diagnostic_codes::DrillDiameterOutsideCapability,
                                 drc_diagnostic_codes::DrillDiameterAtCapabilityLimit,
                                 "Via drill diameter", std::vector{EntityRef::board_via(via_id)});
     }
 
-    for (std::size_t placement_index = 0; placement_index < board.placement_count();
-         ++placement_index) {
+    for (std::size_t placement_index = 0;
+         placement_index < board.all<volt::ComponentPlacementId>().size(); ++placement_index) {
         const auto placement_id = ComponentPlacementId{placement_index};
-        const auto &placement = board.placement(placement_id);
+        const auto &placement = board.get(placement_id);
         const auto &selected_part =
             volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {
@@ -291,14 +291,14 @@ struct RoomCapabilityMinimums {
     }
 
     for (const auto layer_id : room.layers()) {
-        const auto &layer = board.layer(layer_id);
+        const auto &layer = board.get(layer_id);
         if (!layer.copper_weight_oz().has_value()) {
             return result;
         }
     }
 
     for (const auto layer_id : room.layers()) {
-        const auto weight = board.layer(layer_id).copper_weight_oz().value();
+        const auto weight = board.get(layer_id).copper_weight_oz().value();
         auto applicable = std::optional<BoardCapabilityCopperWeightRefinement>{};
         for (const auto &refinement : profile.copper_weight_refinements()) {
             if (refinement.copper_weight_oz <= weight + board_drc_epsilon) {
@@ -317,9 +317,9 @@ struct RoomCapabilityMinimums {
 
 void validate_room_capability(const Board &board, const BoardCapabilityProfile &profile,
                               DiagnosticReport &report) {
-    for (std::size_t index = 0; index < board.room_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardRoomId>().size(); ++index) {
         const auto room_id = BoardRoomId{index};
-        const auto &room = board.room(room_id);
+        const auto &room = board.get(room_id);
         const auto minimums = room_capability_minimums(board, profile, room);
         const auto entities = std::vector{EntityRef::board_room(room_id)};
         const auto prefix = std::string{"Room '"} + room.name() + "' ";

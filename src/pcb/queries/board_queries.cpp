@@ -24,12 +24,12 @@ struct ResolvedPlacementFootprint {
 [[nodiscard]] std::vector<ResolvedPlacementFootprint>
 resolved_placement_footprints(const Board &board, const FootprintLibrary &footprints) {
     auto resolved = std::vector<ResolvedPlacementFootprint>{};
-    resolved.reserve(board.placement_count());
+    resolved.reserve(board.all<volt::ComponentPlacementId>().size());
 
     const auto resolution_footprints = board_resolution_footprints(board, footprints);
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
-        const auto &component_placement = board.placement(placement_id);
+        const auto &component_placement = board.get(placement_id);
         const auto &selected_part =
             selected_physical_part(board.circuit(), component_placement.component());
         if (!selected_part.has_value()) {
@@ -125,7 +125,7 @@ project_markings(const ComponentPlacement &placement,
                                   "Board route pad endpoints require placement and pad IDs"};
     }
 
-    const auto &component_placement = board.placement(endpoint.placement.value());
+    const auto &component_placement = board.get(endpoint.placement.value());
     const auto &selected_part =
         selected_physical_part(board.circuit(), component_placement.component());
     if (!selected_part.has_value()) {
@@ -161,9 +161,9 @@ project_markings(const ComponentPlacement &placement,
 
 [[nodiscard]] std::optional<FootprintDefId>
 footprint_definition_id(const Board &board, const FootprintRef &ref) noexcept {
-    for (std::size_t index = 0; index < board.footprint_definition_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::FootprintDefId>().size(); ++index) {
         const auto id = FootprintDefId{index};
-        if (board.footprint_definition(id).ref() == ref) {
+        if (board.get(id).ref() == ref) {
             return id;
         }
     }
@@ -172,9 +172,9 @@ footprint_definition_id(const Board &board, const FootprintRef &ref) noexcept {
 
 [[nodiscard]] std::optional<ComponentPlacementId>
 placement_for_component(const Board &board, ComponentId component) noexcept {
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto id = ComponentPlacementId{index};
-        if (board.placement(id).component() == component) {
+        if (board.get(id).component() == component) {
             return id;
         }
     }
@@ -190,8 +190,8 @@ placement_for_component(const Board &board, ComponentId component) noexcept {
 [[nodiscard]] FootprintLibrary board_resolution_footprints(const Board &board,
                                                            const FootprintLibrary &footprints) {
     auto library = FootprintLibrary{};
-    for (std::size_t index = 0; index < board.footprint_definition_count(); ++index) {
-        library.add(board.footprint_definition(FootprintDefId{index}));
+    for (std::size_t index = 0; index < board.all<volt::FootprintDefId>().size(); ++index) {
+        library.add(board.get(FootprintDefId{index}));
     }
     for (const auto &definition : footprints.definitions()) {
         const auto *existing = library.find(definition.ref());

@@ -17,54 +17,86 @@ namespace volt {
 Board::Board(const Circuit &circuit, BoardName name) : circuit_{&circuit}, name_{std::move(name)} {}
 
 [[nodiscard]] BoardLayerId Board::add_layer(BoardLayer layer) {
-    const auto id = structure_.add_layer(std::move(layer));
-    ++geometry_mutation_count_;
+    for (const auto &existing : all<BoardLayerId>()) {
+        if (existing.name() == layer.name()) {
+            throw KernelLogicError{ErrorCode::DuplicateName, "Board layer name already exists"};
+        }
+    }
+    const auto id = structure_.layers.insert(std::move(layer));
+    ++geometry_generation_;
     return id;
 }
 
 void Board::set_layer_stack(LayerStack stack) {
-    structure_.set_layer_stack(std::move(stack));
-    ++geometry_mutation_count_;
+    auto copper_count = std::size_t{0};
+    for (const auto layer : stack.layers()) {
+        require_layer(layer);
+        if (get(layer).role() == BoardLayerRole::Copper) {
+            ++copper_count;
+        }
+    }
+    if (!stack.dielectrics().empty() && stack.dielectrics().size() + 1U != copper_count) {
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
+            "Layer stack dielectrics must sit between adjacent copper layers"};
+    }
+    structure_.layer_stack = std::move(stack);
+    ++geometry_generation_;
 }
 
 void Board::set_outline(BoardOutline outline) {
-    structure_.set_outline(std::move(outline));
-    ++geometry_mutation_count_;
+    structure_.outline = std::move(outline);
+    ++geometry_generation_;
 }
 
-void Board::set_design_rules(BoardDesignRules rules) { structure_.set_design_rules(rules); }
+void Board::set_design_rules(BoardDesignRules rules) { structure_.design_rules = std::move(rules); }
 
 void Board::set_capability_profile(BoardCapabilityProfile profile) {
-    structure_.set_capability_profile(std::move(profile));
+    structure_.capability_profile = std::move(profile);
 }
 
 [[nodiscard]] BoardFeatureId Board::add_feature(BoardFeature feature) {
-    const auto id = structure_.add_feature(std::move(feature));
-    ++geometry_mutation_count_;
+    const auto id = structure_.features.insert(std::move(feature));
+    ++geometry_generation_;
     return id;
 }
 
 [[nodiscard]] FootprintDefId Board::cache_footprint_definition(FootprintDefinition footprint) {
-    const auto count_before = footprint_cache_.footprint_definition_count();
-    const auto id = footprint_cache_.cache_footprint_definition(std::move(footprint));
-    if (footprint_cache_.footprint_definition_count() != count_before) {
-        ++geometry_mutation_count_;
+    for (std::size_t index = 0; index < all<FootprintDefId>().size(); ++index) {
+        const auto id = FootprintDefId{index};
+        const auto &existing = get(id);
+        if (existing.ref() != footprint.ref()) {
+            continue;
+        }
+        if (existing == footprint) {
+            return id;
+        }
+        throw KernelLogicError{ErrorCode::DuplicateName,
+                               "Board footprint definition conflicts with existing definition"};
     }
+    const auto id = footprint_cache_.definitions.insert(std::move(footprint));
+    ++geometry_generation_;
     return id;
 }
 
 [[nodiscard]] ComponentPlacementId Board::place_component(ComponentPlacement placement) {
     static_cast<void>(circuit().get(placement.component()));
-    const auto id = placements_.place_component(placement);
-    ++geometry_mutation_count_;
+    for (const auto &existing : all<ComponentPlacementId>()) {
+        if (existing.component() == placement.component()) {
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Component already has a board placement"};
+        }
+    }
+    const auto id = placements_.placements.insert(placement);
+    ++geometry_generation_;
     return id;
 }
 
 [[nodiscard]] BoardTrackId Board::add_track(BoardTrack track) {
     require_net(track.net());
     require_copper_layer(track.layer());
-    const auto id = copper_.add_track(std::move(track));
-    ++geometry_mutation_count_;
+    const auto id = copper_.tracks.insert(std::move(track));
+    ++geometry_generation_;
     return id;
 }
 
@@ -72,8 +104,8 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
     require_net(via.net());
     require_copper_layer(via.start_layer());
     require_copper_layer(via.end_layer());
-    const auto id = copper_.add_via(via);
-    ++geometry_mutation_count_;
+    const auto id = copper_.vias.insert(via);
+    ++geometry_generation_;
     return id;
 }
 
@@ -83,14 +115,14 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
     }
     for (const auto layer_id : zone.layers()) {
         require_layer(layer_id);
-        if (layer(layer_id).role() != BoardLayerRole::Copper) {
+        if (get(layer_id).role() != BoardLayerRole::Copper) {
             throw KernelLogicError{ErrorCode::CrossReferenceViolation,
                                    "Board copper zones require copper layers",
                                    EntityRef::board_layer(layer_id)};
         }
     }
-    const auto id = copper_.add_zone(std::move(zone));
-    ++geometry_mutation_count_;
+    const auto id = copper_.zones.insert(std::move(zone));
+    ++geometry_generation_;
     return id;
 }
 
@@ -98,8 +130,8 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
     for (const auto layer : keepout.layers()) {
         require_layer(layer);
     }
-    const auto id = copper_.add_keepout(std::move(keepout));
-    ++geometry_mutation_count_;
+    const auto id = copper_.keepouts.insert(std::move(keepout));
+    ++geometry_generation_;
     return id;
 }
 
@@ -107,55 +139,44 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
     for (const auto layer : room.layers()) {
         require_layer(layer);
     }
-    const auto id = copper_.add_room(std::move(room));
-    ++geometry_mutation_count_;
+    for (const auto &existing : all<BoardRoomId>()) {
+        if (existing.name() == room.name()) {
+            throw KernelLogicError{ErrorCode::DuplicateName, "Board room name already exists"};
+        }
+    }
+    const auto id = copper_.rooms.insert(std::move(room));
+    ++geometry_generation_;
     return id;
 }
 
 [[nodiscard]] BoardTextId Board::add_text(BoardText text) {
     require_layer(text.layer());
-    const auto id = copper_.add_text(std::move(text));
-    ++geometry_mutation_count_;
+    const auto id = copper_.texts.insert(std::move(text));
+    ++geometry_generation_;
     return id;
 }
 
-[[nodiscard]] const std::optional<LayerStack> &Board::layer_stack() const noexcept {
-    return structure_.layer_stack();
+void Board::move(BoardPlacementMove change) {
+    const auto &current = get(change.placement);
+    auto replacement = ComponentPlacement{current.component(), change.position, change.rotation,
+                                          change.side, current.locked()};
+    placements_.placements.get(change.placement) = replacement;
+    ++geometry_generation_;
 }
 
-[[nodiscard]] const FootprintDefinition &Board::footprint_definition(FootprintDefId id) const {
-    return footprint_cache_.footprint_definition(id);
+void Board::require_layer(BoardLayerId layer) const {
+    if (layer.index() >= all<BoardLayerId>().size()) {
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Board layer ID does not belong to this board",
+                               EntityRef::board_layer(layer)};
+    }
 }
-
-[[nodiscard]] std::size_t Board::footprint_definition_count() const noexcept {
-    return footprint_cache_.footprint_definition_count();
-}
-
-[[nodiscard]] const ComponentPlacement &Board::placement(ComponentPlacementId id) const {
-    return placements_.placement(id);
-}
-
-[[nodiscard]] const BoardKeepout &Board::keepout(BoardKeepoutId id) const {
-    return copper_.keepout(id);
-}
-
-[[nodiscard]] std::size_t Board::keepout_count() const noexcept { return copper_.keepout_count(); }
-
-[[nodiscard]] const BoardRoom &Board::room(BoardRoomId id) const { return copper_.room(id); }
-
-[[nodiscard]] std::size_t Board::room_count() const noexcept { return copper_.room_count(); }
-
-[[nodiscard]] const BoardText &Board::text(BoardTextId id) const { return copper_.text(id); }
-
-[[nodiscard]] std::size_t Board::text_count() const noexcept { return copper_.text_count(); }
-
-void Board::require_layer(BoardLayerId layer) const { structure_.require_layer(layer); }
 
 void Board::require_net(NetId net) const { static_cast<void>(circuit().get(net)); }
 
 void Board::require_copper_layer(BoardLayerId layer_id) const {
     require_layer(layer_id);
-    if (layer(layer_id).role() != BoardLayerRole::Copper) {
+    if (get(layer_id).role() != BoardLayerRole::Copper) {
         throw KernelLogicError{ErrorCode::CrossReferenceViolation,
                                "Board copper primitives require copper layers",
                                EntityRef::board_layer(layer_id)};
@@ -196,7 +217,7 @@ namespace {
     auto conflicts = std::vector<BoardLayerId>{};
     auto first_bottom = std::optional<BoardLayerId>{};
     for (const auto layer_id : board.layer_stack()->layers()) {
-        const auto side = board.layer(layer_id).side();
+        const auto side = board.get(layer_id).side();
         if (side == BoardLayerSide::Bottom && !first_bottom.has_value()) {
             first_bottom = layer_id;
             continue;
@@ -240,9 +261,9 @@ namespace {
             layer_entities(conflicts)));
     }
 
-    for (std::size_t index = 0; index < board.feature_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardFeatureId>().size(); ++index) {
         const auto feature_id = BoardFeatureId{index};
-        const auto &feature = board.feature(feature_id);
+        const auto &feature = board.get(feature_id);
         if (feature_role_expected(feature.kind()) && feature.role().empty()) {
             report.add(detail::board_warning(DiagnosticCode{"PCB_BOARD_FEATURE_ROLE_MISSING"},
                                              "Board feature is missing mechanical role metadata",
@@ -272,9 +293,9 @@ namespace {
         }
     }
 
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
-        const auto &placement = board.placement(placement_id);
+        const auto &placement = board.get(placement_id);
         const auto &selected_part =
             volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {

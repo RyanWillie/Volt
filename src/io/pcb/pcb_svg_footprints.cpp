@@ -66,10 +66,10 @@ void write_projected_footprint_polygon(std::ostream &out, std::string_view class
 [[nodiscard]] bool projected_geometry_selected(const Board &board,
                                                const ProjectedFootprintGeometry &geometry,
                                                PcbPlacementSvgOptions options) {
-    if (geometry.placement().index() >= board.placement_count()) {
+    if (geometry.placement().index() >= board.all<volt::ComponentPlacementId>().size()) {
         return false;
     }
-    return placement_selected(board, board.placement(geometry.placement()), options);
+    return placement_selected(board, board.get(geometry.placement()), options);
 }
 
 void write_projected_footprint_polygon_layer(
@@ -306,9 +306,9 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
     out << "    <g class=\"layer layer-footprints\">\n";
     write_package_geometry_layers(out, board, footprint_geometries, options);
     out << "      <g class=\"layer layer-pads\">\n";
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
-        const auto &placement = board.placement(placement_id);
+        const auto &placement = board.get(placement_id);
         const auto *definition = resolve_definition_for_placement(board, placement, footprints);
         if (definition == nullptr) {
             continue;
@@ -370,9 +370,9 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
     }
     out << "      </g>\n";
     out << "      <g class=\"layer layer-reference-designators\">\n";
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
-        const auto &placement = board.placement(placement_id);
+        const auto &placement = board.get(placement_id);
         const auto *definition = resolve_definition_for_placement(board, placement, footprints);
         if (definition == nullptr || !placement_selected(board, placement, options) ||
             reference_designator_suppressed(diagnostics, placement_id)) {

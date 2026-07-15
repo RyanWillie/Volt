@@ -28,7 +28,9 @@ struct BoardSpatialIndexState {
     std::vector<BoardSpatialIndexCell> cells;
     double conservative_clearance_mm = 0.0;
     double cell_size_mm = 1.0;
-    std::size_t expected_geometry_mutation_count = 0;
+    std::optional<board_entity_range_t<BoardLayerId>> geometry_snapshot;
+    std::size_t expected_track_count = 0;
+    std::size_t expected_via_count = 0;
 };
 
 } // namespace volt::detail

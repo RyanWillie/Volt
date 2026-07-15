@@ -762,10 +762,10 @@ TEST_CASE("PCB SVG writer surfaces board diagnostics without mutating projection
     auto fixture = make_resistor_circuit(false);
     auto board = make_preview_board(fixture);
 
-    const auto placements_before = board.placement_count();
+    const auto placements_before = board.all<volt::ComponentPlacementId>().size();
     const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
 
-    CHECK(board.placement_count() == placements_before);
+    CHECK(board.all<volt::ComponentPlacementId>().size() == placements_before);
     CHECK(svg.find("data-diagnostic-code=\"PCB_COMPONENT_MISSING_SELECTED_PART\"") !=
           std::string::npos);
     CHECK(svg.find("data-entities=\"component:0\"") != std::string::npos);

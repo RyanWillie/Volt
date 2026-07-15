@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <concepts>
 #include <cstddef>
 #include <limits>
 #include <optional>
@@ -12,38 +11,11 @@
 #include <volt/circuit/circuit.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/pcb/board.hpp>
-#include <volt/pcb/copper/board_copper_model.hpp>
-#include <volt/pcb/footprints/board_footprint_model.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
-#include <volt/pcb/placement/board_placement_model.hpp>
 #include <volt/pcb/queries/board_queries.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
-#include <volt/pcb/structure/board_structure_model.hpp>
 
 namespace {
-
-template <typename Model>
-concept CanPlaceComponent =
-    requires(Model model, volt::ComponentPlacement placement) { model.place_component(placement); };
-
-template <typename Model>
-concept CanAddTrack = requires(Model model, volt::BoardTrack track) { model.add_track(track); };
-
-template <typename Model>
-concept CanAddVia = requires(Model model, volt::BoardVia via) { model.add_via(via); };
-
-template <typename Model>
-concept CanAddZone = requires(Model model, volt::BoardZone zone) { model.add_zone(zone); };
-
-template <typename Model>
-concept CanAddKeepout =
-    requires(Model model, volt::BoardKeepout keepout) { model.add_keepout(keepout); };
-
-template <typename Model>
-concept CanAddRoom = requires(Model model, volt::BoardRoom room) { model.add_room(room); };
-
-template <typename Model>
-concept CanAddText = requires(Model model, volt::BoardText text) { model.add_text(text); };
 
 template <typename Model>
 concept CanInsertAfterBoardMutation =
@@ -51,18 +23,11 @@ concept CanInsertAfterBoardMutation =
         model.insert_after_board_mutation(shape, mutation_count);
     };
 
-static_assert(!CanPlaceComponent<volt::BoardPlacementModel>);
-static_assert(!CanAddTrack<volt::BoardCopperModel>);
-static_assert(!CanAddVia<volt::BoardCopperModel>);
-static_assert(!CanAddZone<volt::BoardCopperModel>);
-static_assert(!CanAddKeepout<volt::BoardCopperModel>);
-static_assert(!CanAddRoom<volt::BoardCopperModel>);
-static_assert(!CanAddText<volt::BoardCopperModel>);
 static_assert(!CanInsertAfterBoardMutation<volt::BoardSpatialIndex>);
 
 } // namespace
 
-TEST_CASE("BoardStructureModel owns layers, stack, outline, rules, and features") {
+TEST_CASE("Board owns layers, stack, outline, rules, and features") {
     auto circuit = volt::Circuit{};
     auto board = volt::Board{circuit};
     const auto front = board.add_layer(
@@ -76,14 +41,14 @@ TEST_CASE("BoardStructureModel owns layers, stack, outline, rules, and features"
     const auto feature = board.add_feature(
         volt::BoardFeature::hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2, false, "mounting"));
 
-    CHECK(board.layer_count() == 2);
-    CHECK(board.layer(front).name() == "F.Cu");
+    CHECK(board.all<volt::BoardLayerId>().size() == 2);
+    CHECK(board.get(front).name() == "F.Cu");
     REQUIRE(board.layer_stack().has_value());
     CHECK(board.layer_stack()->layers() == std::vector{front, back});
     REQUIRE(board.outline().has_value());
     CHECK(board.design_rules().minimum_track_width_mm() == 0.18);
-    CHECK(board.feature(feature).kind() == volt::BoardFeatureKind::Hole);
-    CHECK(board.feature(feature).role() == "mounting");
+    CHECK(board.get(feature).kind() == volt::BoardFeatureKind::Hole);
+    CHECK(board.get(feature).role() == "mounting");
 
     CHECK_THROWS_AS(board.add_layer(volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper,
                                                      volt::BoardLayerSide::Top}),
@@ -134,14 +99,14 @@ TEST_CASE("PCB board model structural rejections carry machine-readable error co
     }
 }
 
-TEST_CASE("BoardFootprintModel dedupes identical cached definitions and rejects conflicts") {
+TEST_CASE("Board dedupes identical cached footprint definitions and rejects conflicts") {
     auto circuit = volt::Circuit{};
     auto board = volt::Board{circuit};
     const auto first = board.cache_footprint_definition(volt::passive_0603_footprint());
 
     CHECK(board.cache_footprint_definition(volt::passive_0603_footprint()) == first);
-    CHECK(board.footprint_definition(first) == volt::passive_0603_footprint());
-    CHECK(board.footprint_definition_count() == 1);
+    CHECK(board.get(first) == volt::passive_0603_footprint());
+    CHECK(board.all<volt::FootprintDefId>().size() == 1);
     CHECK(volt::queries::footprint_definition_id(
               board, volt::FootprintRef{"passives", "R_0603_1608Metric"}) == first);
 
@@ -154,7 +119,7 @@ TEST_CASE("BoardFootprintModel dedupes identical cached definitions and rejects 
     CHECK_THROWS_AS(board.cache_footprint_definition(std::move(conflict)), std::logic_error);
 }
 
-TEST_CASE("BoardFootprintModel treats footprint courtyard and body geometry as cache identity") {
+TEST_CASE("Board treats footprint courtyard and body geometry as cache identity") {
     const auto pad = volt::FootprintPad::surface_mount(
         "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.0, 0.0},
         volt::FootprintSize{0.5, 0.5}, volt::FootprintLayerSet::front_smd());
@@ -473,8 +438,8 @@ TEST_CASE("Board rejects duplicate room names and missing room layers") {
 
     const auto room = board.add_room(volt::BoardRoom{"BGA escape", outline, std::vector{front}});
     CHECK(room == volt::BoardRoomId{0});
-    CHECK(board.room_count() == 1);
-    CHECK(board.room(room).name() == "BGA escape");
+    CHECK(board.all<volt::BoardRoomId>().size() == 1);
+    CHECK(board.get(room).name() == "BGA escape");
 
     CHECK_THROWS_AS(board.add_room(volt::BoardRoom{"BGA escape", outline, std::vector{front}}),
                     std::logic_error);

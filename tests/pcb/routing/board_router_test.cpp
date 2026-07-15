@@ -88,8 +88,8 @@ struct FourLayerBoard {
 [[nodiscard]] std::vector<std::tuple<double, double, double, double>>
 track_geometry(const volt::Board &board) {
     auto geometry = std::vector<std::tuple<double, double, double, double>>{};
-    for (std::size_t index = 0; index < board.track_count(); ++index) {
-        const auto &track = board.track(volt::BoardTrackId{index});
+    for (std::size_t index = 0; index < board.all<volt::BoardTrackId>().size(); ++index) {
+        const auto &track = board.get(volt::BoardTrackId{index});
         const auto &points = track.points();
         geometry.emplace_back(points.front().x_mm(), points.front().y_mm(), points.back().x_mm(),
                               points.back().y_mm());
@@ -104,8 +104,9 @@ track_geometry(const volt::Board &board) {
 }
 
 void check_tracks_are_octilinear(const volt::Board &board) {
-    for (std::size_t track_index = 0; track_index < board.track_count(); ++track_index) {
-        const auto &points = board.track(volt::BoardTrackId{track_index}).points();
+    for (std::size_t track_index = 0; track_index < board.all<volt::BoardTrackId>().size();
+         ++track_index) {
+        const auto &points = board.get(volt::BoardTrackId{track_index}).points();
         for (std::size_t point_index = 1; point_index < points.size(); ++point_index) {
             INFO("track " << track_index << " segment " << (point_index - 1));
             CHECK(is_octilinear_segment(points[point_index - 1], points[point_index]));
@@ -127,9 +128,9 @@ TEST_CASE("Router connects a clear straight path with one track", "[pcb][router]
     REQUIRE(result.routed);
     REQUIRE(result.tracks.size() == 1U);
     REQUIRE(result.vias.empty());
-    REQUIRE(layout.board.track_count() == 1U);
+    REQUIRE(layout.board.all<volt::BoardTrackId>().size() == 1U);
 
-    const auto &track = layout.board.track(result.tracks.front());
+    const auto &track = layout.board.get(result.tracks.front());
     CHECK(track.net() == fixture.signal_net);
     CHECK(track.layer() == layout.front);
     CHECK(track.points().front() == volt::BoardPoint{10.0, 20.0});
@@ -235,7 +236,7 @@ TEST_CASE("Router routes across layers with a via", "[pcb][router]") {
     REQUIRE(result.routed);
     REQUIRE(result.vias.size() == 1U);
 
-    const auto &via = layout.board.via(result.vias.front());
+    const auto &via = layout.board.get(result.vias.front());
     CHECK(via.net() == fixture.signal_net);
     CHECK(((via.start_layer() == layout.front && via.end_layer() == layout.back) ||
            (via.start_layer() == layout.back && via.end_layer() == layout.front)));
@@ -263,8 +264,8 @@ TEST_CASE("Router rejects a via blocked on an intermediate stack layer", "[pcb][
     REQUIRE_FALSE(result.blockers.empty());
     CHECK(result.blockers.front().kind == volt::BoardSpatialBlockerKind::Keepout);
     CHECK(result.blockers.front().layer == layout.inner1);
-    CHECK(layout.board.track_count() == 0U);
-    CHECK(layout.board.via_count() == 0U);
+    CHECK(layout.board.all<volt::BoardTrackId>().size() == 0U);
+    CHECK(layout.board.all<volt::BoardViaId>().size() == 0U);
 }
 
 TEST_CASE("Router output is deterministic for a given board state", "[pcb][router]") {
@@ -297,8 +298,8 @@ TEST_CASE("Router reports blockers and leaves the board unchanged on failure", "
         std::vector{layout.front}, std::vector{volt::BoardKeepoutRestriction::Copper}}));
 
     auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
-    const auto track_count_before = layout.board.track_count();
-    const auto via_count_before = layout.board.via_count();
+    const auto track_count_before = layout.board.all<volt::BoardTrackId>().size();
+    const auto via_count_before = layout.board.all<volt::BoardViaId>().size();
 
     const auto result = router.connect(
         volt::BoardRouteRequest{fixture.signal_net, volt::BoardPoint{10.0, 20.0},
@@ -312,8 +313,8 @@ TEST_CASE("Router reports blockers and leaves the board unchanged on failure", "
     CHECK(result.blockers.front().keepout.has_value());
     CHECK(result.blockers.front().layer == layout.front);
 
-    CHECK(layout.board.track_count() == track_count_before);
-    CHECK(layout.board.via_count() == via_count_before);
+    CHECK(layout.board.all<volt::BoardTrackId>().size() == track_count_before);
+    CHECK(layout.board.all<volt::BoardViaId>().size() == via_count_before);
 }
 
 TEST_CASE("Router rejects structurally invalid endpoint layers", "[pcb][router]") {
@@ -331,8 +332,8 @@ TEST_CASE("Router rejects structurally invalid endpoint layers", "[pcb][router]"
                         fixture.signal_net, volt::BoardPoint{10.0, 20.0},
                         volt::BoardPoint{40.0, 20.0}, silkscreen, layout.front}),
                     std::invalid_argument);
-    CHECK(layout.board.track_count() == 0U);
-    CHECK(layout.board.via_count() == 0U);
+    CHECK(layout.board.all<volt::BoardTrackId>().size() == 0U);
+    CHECK(layout.board.all<volt::BoardViaId>().size() == 0U);
 }
 
 TEST_CASE("Router respects net-class width, via size, and allowed layers", "[pcb][router]") {
@@ -360,7 +361,7 @@ TEST_CASE("Router respects net-class width, via size, and allowed layers", "[pcb
             volt::BoardRouteRequest{fixture.signal_net, volt::BoardPoint{10.0, 20.0},
                                     volt::BoardPoint{40.0, 20.0}, layout.front, layout.front});
         REQUIRE(result.routed);
-        CHECK(layout.board.track(result.tracks.front()).width_mm() == Catch::Approx(0.6));
+        CHECK(layout.board.get(result.tracks.front()).width_mm() == Catch::Approx(0.6));
         const auto report = volt::validate_board(layout.board, volt::builtin_footprint_library());
         CHECK(copper_drc_codes(report).empty());
     }
@@ -370,7 +371,7 @@ TEST_CASE("Router respects net-class width, via size, and allowed layers", "[pcb
             volt::BoardRouteRequest{fixture.signal_net, volt::BoardPoint{10.0, 20.0},
                                     volt::BoardPoint{40.0, 20.0}, layout.back, layout.back});
         CHECK_FALSE(result.routed);
-        CHECK(layout.board.track_count() == 0U);
+        CHECK(layout.board.all<volt::BoardTrackId>().size() == 0U);
     }
 }
 
@@ -396,8 +397,8 @@ TEST_CASE("Router refuses vias whose copper span crosses a disallowed layer", "[
     CHECK_FALSE(result.routed);
     CHECK(result.tracks.empty());
     CHECK(result.vias.empty());
-    CHECK(layout.board.track_count() == 0U);
-    CHECK(layout.board.via_count() == 0U);
+    CHECK(layout.board.all<volt::BoardTrackId>().size() == 0U);
+    CHECK(layout.board.all<volt::BoardViaId>().size() == 0U);
 }
 
 TEST_CASE("Router floors net-class sizes at board design minima", "[pcb][router]") {
@@ -426,9 +427,9 @@ TEST_CASE("Router floors net-class sizes at board design minima", "[pcb][router]
     REQUIRE(result.routed);
     REQUIRE(result.tracks.size() == 1U);
     REQUIRE(result.vias.size() == 1U);
-    CHECK(layout.board.track(result.tracks.front()).width_mm() == Catch::Approx(0.35));
-    CHECK(layout.board.via(result.vias.front()).drill_diameter_mm() == Catch::Approx(0.30));
-    CHECK(layout.board.via(result.vias.front()).annular_diameter_mm() == Catch::Approx(0.70));
+    CHECK(layout.board.get(result.tracks.front()).width_mm() == Catch::Approx(0.35));
+    CHECK(layout.board.get(result.vias.front()).drill_diameter_mm() == Catch::Approx(0.30));
+    CHECK(layout.board.get(result.vias.front()).annular_diameter_mm() == Catch::Approx(0.70));
     const auto report = volt::validate_board(layout.board, volt::builtin_footprint_library());
     CHECK(copper_drc_codes(report).empty());
 }
@@ -450,7 +451,7 @@ TEST_CASE("Router respects room-local track width overrides", "[pcb][router]") {
 
     REQUIRE(result.routed);
     REQUIRE(result.tracks.size() == 1U);
-    CHECK(layout.board.track(result.tracks.front()).width_mm() == Catch::Approx(0.70));
+    CHECK(layout.board.get(result.tracks.front()).width_mm() == Catch::Approx(0.70));
     const auto report = volt::validate_board(layout.board, volt::builtin_footprint_library());
     CHECK(copper_drc_codes(report).empty());
 }

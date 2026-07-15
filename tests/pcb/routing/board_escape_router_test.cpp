@@ -139,18 +139,18 @@ TEST_CASE("Escape router fans out SOIC pads into deterministic room-backed stubs
                       [](const volt::BoardEscapePadResult &pad) { return pad.escaped; }));
     CAPTURE(result.pads.size());
     CAPTURE(escaped_count);
-    CAPTURE(layout.board.room_count());
-    CAPTURE(layout.board.track_count());
+    CAPTURE(layout.board.all<volt::BoardRoomId>().size());
+    CAPTURE(layout.board.all<volt::BoardTrackId>().size());
     REQUIRE(result.complete());
     REQUIRE(result.room.has_value());
     REQUIRE(result.pads.size() == 8U);
-    const auto &room = layout.board.room(result.room.value());
+    const auto &room = layout.board.get(result.room.value());
     CHECK(room.name() == "escape-U1-at-20.000-20.000");
     REQUIRE(room.copper_clearance_mm().has_value());
     CHECK(room.copper_clearance_mm().value() == Catch::Approx(0.21));
     CHECK_FALSE(room.track_width_mm().has_value());
-    CHECK(layout.board.track_count() == 8U);
-    CHECK(layout.board.via_count() == 0U);
+    CHECK(layout.board.all<volt::BoardTrackId>().size() == 8U);
+    CHECK(layout.board.all<volt::BoardViaId>().size() == 0U);
 
     for (const auto &pad : result.pads) {
         INFO("pad " << pad.pad_label);
@@ -160,7 +160,7 @@ TEST_CASE("Escape router fans out SOIC pads into deterministic room-backed stubs
         CHECK(pad.vias.empty());
         CHECK(pad.blockers.empty());
 
-        const auto &track = layout.board.track(pad.tracks.front());
+        const auto &track = layout.board.get(pad.tracks.front());
         CHECK(track.net() == pad.net.value());
         CHECK(track.layer() == layout.front);
         CHECK(track.width_mm() == Catch::Approx(0.21));
@@ -205,7 +205,7 @@ TEST_CASE("Escape router resolves stub width from net-class rules", "[pcb][escap
     const auto *pad_one = find_pad(result, "1");
     REQUIRE(pad_one != nullptr);
     REQUIRE(pad_one->tracks.size() == 1U);
-    CHECK(layout.board.track(pad_one->tracks.front()).width_mm() == Catch::Approx(0.30));
+    CHECK(layout.board.get(pad_one->tracks.front()).width_mm() == Catch::Approx(0.30));
 }
 
 TEST_CASE("Generated escape room does not relax stricter net-class clearance", "[pcb][escape]") {
@@ -222,7 +222,7 @@ TEST_CASE("Generated escape room does not relax stricter net-class clearance", "
 
     REQUIRE(result.complete());
     REQUIRE(result.room.has_value());
-    CHECK_FALSE(layout.board.room(result.room.value()).copper_clearance_mm().has_value());
+    CHECK_FALSE(layout.board.get(result.room.value()).copper_clearance_mm().has_value());
 
     static_cast<void>(layout.board.add_track(volt::BoardTrack{
         fixture.nets[0], layout.front,
@@ -303,7 +303,7 @@ TEST_CASE("Escape router selects an allowed layer for multi-layer pads", "[pcb][
     for (const auto &pad : result.pads) {
         INFO("pad " << pad.pad_label);
         REQUIRE(pad.tracks.size() == 1U);
-        CHECK(board.track(pad.tracks.front()).layer() == back);
+        CHECK(board.get(pad.tracks.front()).layer() == back);
     }
 }
 
@@ -342,7 +342,7 @@ TEST_CASE("Escape router reports blocked pads without hiding partial success", "
         std::count_if(result.pads.begin(), result.pads.end(),
                       [](const volt::BoardEscapePadResult &pad) { return pad.escaped; }));
     CHECK(escaped_count == 7U);
-    CHECK(layout.board.track_count() == escaped_count);
+    CHECK(layout.board.all<volt::BoardTrackId>().size() == escaped_count);
 }
 
 TEST_CASE("Escape router reports per-pad unconnected pins without hiding partial success",
@@ -367,7 +367,7 @@ TEST_CASE("Escape router reports per-pad unconnected pins without hiding partial
         std::count_if(result.pads.begin(), result.pads.end(),
                       [](const volt::BoardEscapePadResult &pad) { return pad.escaped; }));
     CHECK(escaped_count == 7U);
-    CHECK(layout.board.track_count() == escaped_count);
+    CHECK(layout.board.all<volt::BoardTrackId>().size() == escaped_count);
 }
 
 TEST_CASE("Escape router reports pads with no copper layer while escaping other pads",
@@ -430,8 +430,8 @@ TEST_CASE("Escape router reports pads with no copper layer while escaping other 
     CHECK_FALSE(no_copper->escaped);
     CHECK(no_copper->failure_reason == volt::BoardEscapeFailureReason::NoCopperLayer);
     CHECK(no_copper->tracks.empty());
-    CHECK(board.track_count() == 1U);
-    CHECK(board.track(escaped->tracks.front()).layer() == front);
+    CHECK(board.all<volt::BoardTrackId>().size() == 1U);
+    CHECK(board.get(escaped->tracks.front()).layer() == front);
 }
 
 TEST_CASE("Escape router reports pads disallowed by net-class layer scope", "[pcb][escape]") {
@@ -458,7 +458,7 @@ TEST_CASE("Escape router reports pads disallowed by net-class layer scope", "[pc
         std::count_if(result.pads.begin(), result.pads.end(),
                       [](const volt::BoardEscapePadResult &pad) { return pad.escaped; }));
     CHECK(escaped_count == 7U);
-    CHECK(layout.board.track_count() == escaped_count);
+    CHECK(layout.board.all<volt::BoardTrackId>().size() == escaped_count);
 }
 
 TEST_CASE("Escape router rejects component requests that cannot be attempted", "[pcb][escape]") {

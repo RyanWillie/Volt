@@ -74,9 +74,9 @@ drc_warning(std::string_view code, std::string message, std::vector<EntityRef> e
 [[nodiscard]] std::vector<BoardLayerId> placement_side_layers(const Board &board,
                                                               BoardSide placement_side) {
     auto layers = std::vector<BoardLayerId>{};
-    for (std::size_t index = 0; index < board.layer_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardLayerId>().size(); ++index) {
         const auto layer = BoardLayerId{index};
-        if (layer_side_matches_placement(board.layer(layer).side(), placement_side)) {
+        if (layer_side_matches_placement(board.get(layer).side(), placement_side)) {
             layers.push_back(layer);
         }
     }

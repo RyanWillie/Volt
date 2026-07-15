@@ -58,9 +58,9 @@ find_footprint_definition(const std::vector<FootprintDefinition> &definitions,
 [[nodiscard]] std::vector<FootprintDefinition>
 collect_footprint_definitions(const Board &board, const FootprintLibrary &footprints) {
     auto definitions = std::vector<FootprintDefinition>{};
-    definitions.reserve(board.footprint_definition_count());
-    for (std::size_t index = 0; index < board.footprint_definition_count(); ++index) {
-        definitions.push_back(board.footprint_definition(FootprintDefId{index}));
+    definitions.reserve(board.all<volt::FootprintDefId>().size());
+    for (std::size_t index = 0; index < board.all<volt::FootprintDefId>().size(); ++index) {
+        definitions.push_back(board.get(FootprintDefId{index}));
     }
 
     for (const auto &definition : footprints.definitions()) {
@@ -73,8 +73,8 @@ collect_footprint_definitions(const Board &board, const FootprintLibrary &footpr
         }
     }
 
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
-        const auto &placement = board.placement(ComponentPlacementId{index});
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
+        const auto &placement = board.get(ComponentPlacementId{index});
         const auto &selected_part =
             volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {
@@ -178,9 +178,9 @@ void write_board_layers(std::ostream &out, const std::vector<BoardLayerId> &laye
 
 void write_layers(std::ostream &out, const Board &board) {
     out << "    \"layers\": [\n";
-    for (std::size_t index = 0; index < board.layer_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardLayerId>().size(); ++index) {
         const auto id = BoardLayerId{index};
-        const auto &layer = board.layer(id);
+        const auto &layer = board.get(id);
         out << "      {\"id\": " << json_string(encode_local_id(id))
             << ", \"name\": " << json_string(layer.name())
             << ", \"role\": " << json_string(board_layer_role_name(layer.role()))
@@ -193,7 +193,7 @@ void write_layers(std::ostream &out, const Board &board) {
             write_number(out, layer.copper_weight_oz().value());
         }
         out << '}';
-        if (index + 1U != board.layer_count()) {
+        if (index + 1U != board.all<volt::BoardLayerId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -451,9 +451,9 @@ void write_rules(std::ostream &out, const Board &board) {
 void write_placements(std::ostream &out, const Board &board,
                       const std::vector<FootprintDefinition> &definitions, bool trailing_comma) {
     out << "    \"placements\": [\n";
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto id = ComponentPlacementId{index};
-        const auto &placement = board.placement(id);
+        const auto &placement = board.get(id);
         const auto &selected_part =
             volt::queries::selected_physical_part(board.circuit(), placement.component());
         auto footprint = std::optional<FootprintDefId>{};
@@ -475,7 +475,7 @@ void write_placements(std::ostream &out, const Board &board,
         write_number(out, placement.rotation().degrees());
         out << ", \"side\": " << json_string(board_side_name(placement.side()))
             << ", \"locked\": " << (placement.locked() ? "true" : "false") << '}';
-        if (index + 1U != board.placement_count()) {
+        if (index + 1U != board.all<volt::ComponentPlacementId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -489,9 +489,9 @@ void write_placements(std::ostream &out, const Board &board,
 
 void write_tracks(std::ostream &out, const Board &board, bool trailing_comma) {
     out << "    \"tracks\": [\n";
-    for (std::size_t index = 0; index < board.track_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardTrackId>().size(); ++index) {
         const auto id = BoardTrackId{index};
-        const auto &track = board.track(id);
+        const auto &track = board.get(id);
         out << "      {\"id\": " << json_string(encode_local_id(id))
             << ", \"net\": " << json_string(encode_local_id(track.net()))
             << ", \"layer\": " << json_string(encode_local_id(track.layer())) << ", \"points\": [";
@@ -504,7 +504,7 @@ void write_tracks(std::ostream &out, const Board &board, bool trailing_comma) {
         out << "], \"width_mm\": ";
         write_number(out, track.width_mm());
         out << '}';
-        if (index + 1U != board.track_count()) {
+        if (index + 1U != board.all<volt::BoardTrackId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -518,9 +518,9 @@ void write_tracks(std::ostream &out, const Board &board, bool trailing_comma) {
 
 void write_vias(std::ostream &out, const Board &board, bool trailing_comma) {
     out << "    \"vias\": [\n";
-    for (std::size_t index = 0; index < board.via_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardViaId>().size(); ++index) {
         const auto id = BoardViaId{index};
-        const auto &via = board.via(id);
+        const auto &via = board.get(id);
         out << "      {\"id\": " << json_string(encode_local_id(id))
             << ", \"net\": " << json_string(encode_local_id(via.net())) << ", \"position\": ";
         write_board_point(out, via.position());
@@ -531,7 +531,7 @@ void write_vias(std::ostream &out, const Board &board, bool trailing_comma) {
         out << ", \"annular_diameter_mm\": ";
         write_number(out, via.annular_diameter_mm());
         out << '}';
-        if (index + 1U != board.via_count()) {
+        if (index + 1U != board.all<volt::BoardViaId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -545,9 +545,9 @@ void write_vias(std::ostream &out, const Board &board, bool trailing_comma) {
 
 void write_board_zones(std::ostream &out, const Board &board, bool trailing_comma) {
     out << "    \"zones\": [\n";
-    for (std::size_t index = 0; index < board.zone_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardZoneId>().size(); ++index) {
         const auto id = BoardZoneId{index};
-        const auto &zone = board.zone(id);
+        const auto &zone = board.get(id);
         out << "      {\"id\": " << json_string(encode_local_id(id)) << ", \"outline\": ";
         write_board_points(out, zone.outline());
         out << ", \"layers\": ";
@@ -560,7 +560,7 @@ void write_board_zones(std::ostream &out, const Board &board, bool trailing_comm
         }
         out << ", \"fill\": " << json_string(board_zone_fill_name(zone.fill()))
             << ", \"priority\": " << zone.priority() << '}';
-        if (index + 1U != board.zone_count()) {
+        if (index + 1U != board.all<volt::BoardZoneId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -574,9 +574,9 @@ void write_board_zones(std::ostream &out, const Board &board, bool trailing_comm
 
 void write_board_keepouts(std::ostream &out, const Board &board, bool trailing_comma) {
     out << "    \"keepouts\": [\n";
-    for (std::size_t index = 0; index < board.keepout_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardKeepoutId>().size(); ++index) {
         const auto id = BoardKeepoutId{index};
-        const auto &keepout = board.keepout(id);
+        const auto &keepout = board.get(id);
         out << "      {\"id\": " << json_string(encode_local_id(id)) << ", \"outline\": ";
         write_board_points(out, keepout.outline());
         out << ", \"layers\": ";
@@ -591,7 +591,7 @@ void write_board_keepouts(std::ostream &out, const Board &board, bool trailing_c
                 board_keepout_restriction_name(keepout.restrictions()[restriction_index]));
         }
         out << "]}";
-        if (index + 1U != board.keepout_count()) {
+        if (index + 1U != board.all<volt::BoardKeepoutId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -605,9 +605,9 @@ void write_board_keepouts(std::ostream &out, const Board &board, bool trailing_c
 
 void write_board_texts(std::ostream &out, const Board &board, bool trailing_comma) {
     out << "    \"texts\": [\n";
-    for (std::size_t index = 0; index < board.text_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardTextId>().size(); ++index) {
         const auto id = BoardTextId{index};
-        const auto &text = board.text(id);
+        const auto &text = board.get(id);
         out << "      {\"id\": " << json_string(encode_local_id(id))
             << ", \"text\": " << json_string(text.text()) << ", \"position\": ";
         write_board_point(out, text.position());
@@ -616,7 +616,7 @@ void write_board_texts(std::ostream &out, const Board &board, bool trailing_comm
         out << ", \"layer\": " << json_string(encode_local_id(text.layer())) << ", \"size_mm\": ";
         write_number(out, text.size_mm());
         out << ", \"locked\": " << (text.locked() ? "true" : "false") << '}';
-        if (index + 1U != board.text_count()) {
+        if (index + 1U != board.all<volt::BoardTextId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -829,33 +829,42 @@ void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibra
     detail::write_features(out, board);
     detail::write_footprint_definitions(out, definitions);
     detail::write_placements(out, board, definitions,
-                             board.track_count() != 0U || board.via_count() != 0U ||
-                                 board.zone_count() != 0U || board.keepout_count() != 0U ||
-                                 board.room_count() != 0U || board.text_count() != 0U);
-    if (board.track_count() != 0U) {
+                             board.all<volt::BoardTrackId>().size() != 0U ||
+                                 board.all<volt::BoardViaId>().size() != 0U ||
+                                 board.all<volt::BoardZoneId>().size() != 0U ||
+                                 board.all<volt::BoardKeepoutId>().size() != 0U ||
+                                 board.all<volt::BoardRoomId>().size() != 0U ||
+                                 board.all<volt::BoardTextId>().size() != 0U);
+    if (board.all<volt::BoardTrackId>().size() != 0U) {
         detail::write_tracks(out, board,
-                             board.via_count() != 0U || board.zone_count() != 0U ||
-                                 board.keepout_count() != 0U || board.room_count() != 0U ||
-                                 board.text_count() != 0U);
+                             board.all<volt::BoardViaId>().size() != 0U ||
+                                 board.all<volt::BoardZoneId>().size() != 0U ||
+                                 board.all<volt::BoardKeepoutId>().size() != 0U ||
+                                 board.all<volt::BoardRoomId>().size() != 0U ||
+                                 board.all<volt::BoardTextId>().size() != 0U);
     }
-    if (board.via_count() != 0U) {
+    if (board.all<volt::BoardViaId>().size() != 0U) {
         detail::write_vias(out, board,
-                           board.zone_count() != 0U || board.keepout_count() != 0U ||
-                               board.room_count() != 0U || board.text_count() != 0U);
+                           board.all<volt::BoardZoneId>().size() != 0U ||
+                               board.all<volt::BoardKeepoutId>().size() != 0U ||
+                               board.all<volt::BoardRoomId>().size() != 0U ||
+                               board.all<volt::BoardTextId>().size() != 0U);
     }
-    if (board.zone_count() != 0U) {
+    if (board.all<volt::BoardZoneId>().size() != 0U) {
         detail::write_board_zones(out, board,
-                                  board.keepout_count() != 0U || board.room_count() != 0U ||
-                                      board.text_count() != 0U);
+                                  board.all<volt::BoardKeepoutId>().size() != 0U ||
+                                      board.all<volt::BoardRoomId>().size() != 0U ||
+                                      board.all<volt::BoardTextId>().size() != 0U);
     }
-    if (board.keepout_count() != 0U) {
+    if (board.all<volt::BoardKeepoutId>().size() != 0U) {
         detail::write_board_keepouts(out, board,
-                                     board.room_count() != 0U || board.text_count() != 0U);
+                                     board.all<volt::BoardRoomId>().size() != 0U ||
+                                         board.all<volt::BoardTextId>().size() != 0U);
     }
-    if (board.room_count() != 0U) {
-        detail::write_board_rooms(out, board, board.text_count() != 0U);
+    if (board.all<volt::BoardRoomId>().size() != 0U) {
+        detail::write_board_rooms(out, board, board.all<volt::BoardTextId>().size() != 0U);
     }
-    if (board.text_count() != 0U) {
+    if (board.all<volt::BoardTextId>().size() != 0U) {
         detail::write_board_texts(out, board, false);
     }
     out << "  },\n";

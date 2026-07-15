@@ -341,20 +341,20 @@ TEST_CASE("Board stores metadata, layers, outline, features, and placements") {
     REQUIRE(board.layer_stack().has_value());
     CHECK(board.layer_stack()->layers() == std::vector{front, back});
     REQUIRE(board.outline().has_value());
-    CHECK(board.feature(feature).kind() == volt::BoardFeatureKind::Hole);
-    CHECK(board.feature(feature).hole().drill_diameter_mm() == 3.2);
-    CHECK(board.feature(feature).role() == "mounting");
-    CHECK(board.feature(slot).slot().width_mm() == 1.5);
-    CHECK(board.feature(slot).role() == "mounting");
-    CHECK(board.feature(cutout).cutout().outline().size() == 4);
-    CHECK(board.feature(cutout).role() == "access");
-    CHECK(board.feature(circle).circle().side() == volt::BoardSide::Top);
-    CHECK(board.feature(circle).role() == "fiducial");
-    CHECK(board.placement(placement).component() == fixture.component);
-    CHECK(board.placement(placement).position() == volt::BoardPoint{25.0, 15.0});
-    CHECK(board.placement(placement).rotation() == volt::BoardRotation::degrees(90.0));
-    CHECK(board.placement(placement).side() == volt::BoardSide::Top);
-    CHECK(board.placement(placement).locked());
+    CHECK(board.get(feature).kind() == volt::BoardFeatureKind::Hole);
+    CHECK(board.get(feature).hole().drill_diameter_mm() == 3.2);
+    CHECK(board.get(feature).role() == "mounting");
+    CHECK(board.get(slot).slot().width_mm() == 1.5);
+    CHECK(board.get(slot).role() == "mounting");
+    CHECK(board.get(cutout).cutout().outline().size() == 4);
+    CHECK(board.get(cutout).role() == "access");
+    CHECK(board.get(circle).circle().side() == volt::BoardSide::Top);
+    CHECK(board.get(circle).role() == "fiducial");
+    CHECK(board.get(placement).component() == fixture.component);
+    CHECK(board.get(placement).position() == volt::BoardPoint{25.0, 15.0});
+    CHECK(board.get(placement).rotation() == volt::BoardRotation::degrees(90.0));
+    CHECK(board.get(placement).side() == volt::BoardSide::Top);
+    CHECK(board.get(placement).locked());
 }
 
 TEST_CASE("Board stores kernel-owned copper tracks and vias over existing nets and layers") {
@@ -380,23 +380,23 @@ TEST_CASE("Board stores kernel-owned copper tracks and vias over existing nets a
     const auto via = board.add_via(
         volt::BoardVia{fixture.first_net, volt::BoardPoint{12.0, 8.0}, front, back, 0.30, 0.70});
 
-    REQUIRE(board.track_count() == 1);
+    REQUIRE(board.all<volt::BoardTrackId>().size() == 1);
     CHECK(track == volt::BoardTrackId{0});
-    CHECK(board.track(track).net() == fixture.first_net);
-    CHECK(board.track(track).layer() == front);
-    CHECK(board.track(track).points() == std::vector{volt::BoardPoint{5.0, 5.0},
-                                                     volt::BoardPoint{12.0, 5.0},
-                                                     volt::BoardPoint{12.0, 8.0}});
-    CHECK(board.track(track).width_mm() == 0.25);
+    CHECK(board.get(track).net() == fixture.first_net);
+    CHECK(board.get(track).layer() == front);
+    CHECK(board.get(track).points() == std::vector{volt::BoardPoint{5.0, 5.0},
+                                                   volt::BoardPoint{12.0, 5.0},
+                                                   volt::BoardPoint{12.0, 8.0}});
+    CHECK(board.get(track).width_mm() == 0.25);
 
-    REQUIRE(board.via_count() == 1);
+    REQUIRE(board.all<volt::BoardViaId>().size() == 1);
     CHECK(via == volt::BoardViaId{0});
-    CHECK(board.via(via).net() == fixture.first_net);
-    CHECK(board.via(via).position() == volt::BoardPoint{12.0, 8.0});
-    CHECK(board.via(via).start_layer() == front);
-    CHECK(board.via(via).end_layer() == back);
-    CHECK(board.via(via).drill_diameter_mm() == 0.30);
-    CHECK(board.via(via).annular_diameter_mm() == 0.70);
+    CHECK(board.get(via).net() == fixture.first_net);
+    CHECK(board.get(via).position() == volt::BoardPoint{12.0, 8.0});
+    CHECK(board.get(via).start_layer() == front);
+    CHECK(board.get(via).end_layer() == back);
+    CHECK(board.get(via).drill_diameter_mm() == 0.30);
+    CHECK(board.get(via).annular_diameter_mm() == 0.70);
 }
 
 TEST_CASE("Board stores kernel-owned zones, keepouts, and board text") {
@@ -433,30 +433,30 @@ TEST_CASE("Board stores kernel-owned zones, keepouts, and board text") {
     const auto text = board.add_text(volt::BoardText{
         "REV A", volt::BoardPoint{3.0, 9.0}, volt::BoardRotation::degrees(0.0), silk, 1.2, true});
 
-    REQUIRE(board.zone_count() == 1);
+    REQUIRE(board.all<volt::BoardZoneId>().size() == 1);
     CHECK(zone == volt::BoardZoneId{0});
-    CHECK(board.zone(zone).outline() ==
+    CHECK(board.get(zone).outline() ==
           std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0},
                       volt::BoardPoint{8.0, 6.0}, volt::BoardPoint{1.0, 6.0}});
-    CHECK(board.zone(zone).layers() == std::vector{front});
-    CHECK(board.zone(zone).net() == fixture.first_net);
-    CHECK(board.zone(zone).fill() == volt::BoardZoneFill::Solid);
-    CHECK(board.zone(zone).priority() == 10);
+    CHECK(board.get(zone).layers() == std::vector{front});
+    CHECK(board.get(zone).net() == fixture.first_net);
+    CHECK(board.get(zone).fill() == volt::BoardZoneFill::Solid);
+    CHECK(board.get(zone).priority() == 10);
 
-    REQUIRE(board.keepout_count() == 1);
+    REQUIRE(board.all<volt::BoardKeepoutId>().size() == 1);
     CHECK(keepout == volt::BoardKeepoutId{0});
-    CHECK(board.keepout(keepout).layers() == std::vector{front});
-    CHECK(board.keepout(keepout).restrictions() ==
+    CHECK(board.get(keepout).layers() == std::vector{front});
+    CHECK(board.get(keepout).restrictions() ==
           std::vector{volt::BoardKeepoutRestriction::Copper, volt::BoardKeepoutRestriction::Via});
 
-    REQUIRE(board.text_count() == 1);
+    REQUIRE(board.all<volt::BoardTextId>().size() == 1);
     CHECK(text == volt::BoardTextId{0});
-    CHECK(board.text(text).text() == "REV A");
-    CHECK(board.text(text).position() == volt::BoardPoint{3.0, 9.0});
-    CHECK(board.text(text).rotation() == volt::BoardRotation::degrees(0.0));
-    CHECK(board.text(text).layer() == silk);
-    CHECK(board.text(text).size_mm() == 1.2);
-    CHECK(board.text(text).locked());
+    CHECK(board.get(text).text() == "REV A");
+    CHECK(board.get(text).position() == volt::BoardPoint{3.0, 9.0});
+    CHECK(board.get(text).rotation() == volt::BoardRotation::degrees(0.0));
+    CHECK(board.get(text).layer() == silk);
+    CHECK(board.get(text).size_mm() == 1.2);
+    CHECK(board.get(text).locked());
 }
 
 TEST_CASE("Board stores kernel-owned design rules") {
@@ -533,7 +533,7 @@ TEST_CASE("Board rejects structurally invalid board and placement mutations") {
     CHECK(board.cache_footprint_definition(volt::passive_0603_footprint()) == footprint);
     CHECK_THROWS_AS(board.cache_footprint_definition(conflicting_passive_0603_footprint()),
                     std::logic_error);
-    CHECK_THROWS_AS(board.footprint_definition(volt::FootprintDefId{99}), std::out_of_range);
+    CHECK_THROWS_AS(board.get(volt::FootprintDefId{99}), std::out_of_range);
     CHECK_THROWS_AS(
         board.add_feature(volt::BoardFeature::hole("BAD", volt::BoardPoint{1.0, 1.0}, -1.0)),
         std::invalid_argument);
@@ -740,8 +740,8 @@ TEST_CASE("BoardRouter resolves routed track nets from pad endpoint intent") {
 
     CHECK(routed.net == fixture.shared_net);
     CHECK(routed.track == volt::BoardTrackId{0});
-    CHECK(board.track(routed.track).net() == fixture.shared_net);
-    CHECK(board.track(routed.track).points() ==
+    CHECK(board.get(routed.track).net() == fixture.shared_net);
+    CHECK(board.get(routed.track).points() ==
           std::vector{volt::BoardPoint{10.75, 10.0}, volt::BoardPoint{19.25, 10.0}});
 }
 
@@ -766,7 +766,7 @@ TEST_CASE("BoardRouter rejects route endpoint intent that cannot resolve one log
                         0.25,
                     }),
                     std::logic_error);
-    CHECK(board.track_count() == 0U);
+    CHECK(board.all<volt::BoardTrackId>().size() == 0U);
 
     CHECK_THROWS_AS(router.add_track(volt::BoardTrackRouteRequest{
                         std::nullopt,
@@ -814,7 +814,7 @@ TEST_CASE("BoardRouter validates explicit route net overrides against pad endpoi
     });
 
     CHECK(routed.net == fixture.first_net);
-    CHECK(board.track(routed.track).net() == fixture.first_net);
+    CHECK(board.get(routed.track).net() == fixture.first_net);
 
     CHECK_THROWS_AS(router.add_track(volt::BoardTrackRouteRequest{
                         std::optional<volt::NetId>{fixture.second_net},

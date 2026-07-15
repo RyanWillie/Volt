@@ -164,11 +164,11 @@ Cpl::Cpl(std::vector<CplRow> rows, DiagnosticReport diagnostics)
 
     const auto offsets = resolve_rotation_offsets(options);
     auto rows = std::vector<CplRow>{};
-    rows.reserve(board.placement_count());
+    rows.reserve(board.all<volt::ComponentPlacementId>().size());
 
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
-        const auto &placement = board.placement(placement_id);
+        const auto &placement = board.get(placement_id);
         if (!is_populated(board.circuit(), placement.component())) {
             continue;
         }

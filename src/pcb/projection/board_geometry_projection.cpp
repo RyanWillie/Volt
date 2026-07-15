@@ -12,7 +12,7 @@ namespace {
 [[nodiscard]] double layer_z_mm(const Board &board, const LayerStack &stack,
                                 std::size_t stack_index) {
     const auto layer_id = stack.layers()[stack_index];
-    const auto &layer = board.layer(layer_id);
+    const auto &layer = board.get(layer_id);
     const auto half_thickness = stack.board_thickness_mm() / 2.0;
     switch (layer.side()) {
     case BoardLayerSide::Top:
@@ -42,7 +42,7 @@ void append_stackup(const Board &board, BoardGeometryProjection &projection) {
     projection.stackup.reserve(stack.layers().size());
     for (std::size_t index = 0; index < stack.layers().size(); ++index) {
         const auto layer_id = stack.layers()[index];
-        const auto &layer = board.layer(layer_id);
+        const auto &layer = board.get(layer_id);
         projection.stackup.push_back(BoardGeometryStackLayer{
             layer_id,
             index,
@@ -113,12 +113,12 @@ void append_feature(BoardGeometryProjection &projection, BoardFeatureId id,
 }
 
 void append_features(const Board &board, BoardGeometryProjection &projection) {
-    projection.openings.reserve(board.feature_count());
-    projection.cutouts.reserve(board.feature_count());
-    projection.surface_features.reserve(board.feature_count());
-    for (std::size_t index = 0; index < board.feature_count(); ++index) {
+    projection.openings.reserve(board.all<volt::BoardFeatureId>().size());
+    projection.cutouts.reserve(board.all<volt::BoardFeatureId>().size());
+    projection.surface_features.reserve(board.all<volt::BoardFeatureId>().size());
+    for (std::size_t index = 0; index < board.all<volt::BoardFeatureId>().size(); ++index) {
         const auto id = BoardFeatureId{index};
-        append_feature(projection, id, board.feature(id));
+        append_feature(projection, id, board.get(id));
     }
 }
 

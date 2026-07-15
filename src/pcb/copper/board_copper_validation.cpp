@@ -29,9 +29,9 @@ namespace volt::detail {
 void validate_track_widths(const Board &board, DiagnosticReport &report) {
     const auto &rules = board.design_rules();
     const auto rooms = BoardRoomRuleResolver{board};
-    for (std::size_t index = 0; index < board.track_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardTrackId>().size(); ++index) {
         const auto track_id = BoardTrackId{index};
-        const auto &track = board.track(track_id);
+        const auto &track = board.get(track_id);
         if (track.width_mm() + board_drc_epsilon < rules.minimum_track_width_mm()) {
             report.add(drc_diagnostic(
                 drc_diagnostic_codes::TrackWidthBelowMinimum,
@@ -69,9 +69,9 @@ void validate_track_widths(const Board &board, DiagnosticReport &report) {
 
 void validate_via_rules(const Board &board, DiagnosticReport &report) {
     const auto &rules = board.design_rules();
-    for (std::size_t index = 0; index < board.via_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardViaId>().size(); ++index) {
         const auto via_id = BoardViaId{index};
-        const auto &via = board.via(via_id);
+        const auto &via = board.get(via_id);
         if (via.drill_diameter_mm() + board_drc_epsilon < rules.minimum_via_drill_diameter_mm()) {
             report.add(
                 drc_diagnostic(drc_diagnostic_codes::ViaDrillBelowMinimum,
@@ -137,14 +137,14 @@ void validate_net_class_layers(const Board &board, DiagnosticReport &report) {
         if (!net_rules.allowed_layer_names.empty()) {
             return std::find(net_rules.allowed_layer_names.begin(),
                              net_rules.allowed_layer_names.end(),
-                             board.layer(layer).name()) != net_rules.allowed_layer_names.end();
+                             board.get(layer).name()) != net_rules.allowed_layer_names.end();
         }
-        return layer_scope_allows(net_rules.layer_scope, board.layer(layer).side());
+        return layer_scope_allows(net_rules.layer_scope, board.get(layer).side());
     };
 
-    for (std::size_t index = 0; index < board.track_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardTrackId>().size(); ++index) {
         const auto track_id = BoardTrackId{index};
-        const auto &track = board.track(track_id);
+        const auto &track = board.get(track_id);
         const auto net_rules = resolve_net_class_rules(board.circuit(), track.net());
         if (layer_allowed(net_rules, track.layer())) {
             continue;
@@ -157,9 +157,9 @@ void validate_net_class_layers(const Board &board, DiagnosticReport &report) {
                                   track_overlays(track, track_id)));
     }
 
-    for (std::size_t index = 0; index < board.zone_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardZoneId>().size(); ++index) {
         const auto zone_id = BoardZoneId{index};
-        const auto &zone = board.zone(zone_id);
+        const auto &zone = board.get(zone_id);
         if (!zone.net().has_value()) {
             continue;
         }
@@ -217,9 +217,10 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
     const auto &outline = board.outline().value();
     const auto outline_clearance =
         board.design_rules().clearance_mm(BoardClearanceKind::Zone, BoardClearanceKind::BoardEdge);
-    for (std::size_t zone_index = 0; zone_index < board.zone_count(); ++zone_index) {
+    for (std::size_t zone_index = 0; zone_index < board.all<volt::BoardZoneId>().size();
+         ++zone_index) {
         const auto zone_id = BoardZoneId{zone_index};
-        const auto &zone = board.zone(zone_id);
+        const auto &zone = board.get(zone_id);
         if (zone.net().has_value() ||
             outline_contains_polygon(outline, zone.outline(), outline_clearance)) {
             continue;
@@ -289,9 +290,10 @@ first_common_keepout_layer(const BoardKeepout &keepout, const std::vector<BoardL
 
 void validate_keepout_copper_shapes(const Board &board, const std::vector<BoardCopperShape> &shapes,
                                     DiagnosticReport &report) {
-    for (std::size_t keepout_index = 0; keepout_index < board.keepout_count(); ++keepout_index) {
+    for (std::size_t keepout_index = 0; keepout_index < board.all<volt::BoardKeepoutId>().size();
+         ++keepout_index) {
         const auto keepout_id = BoardKeepoutId{keepout_index};
-        const auto &keepout = board.keepout(keepout_id);
+        const auto &keepout = board.get(keepout_id);
         if (!keepout_restricts(keepout, BoardKeepoutRestriction::Copper)) {
             continue;
         }
@@ -312,15 +314,17 @@ void validate_keepout_copper_shapes(const Board &board, const std::vector<BoardC
 }
 
 void validate_keepout_zones(const Board &board, DiagnosticReport &report) {
-    for (std::size_t keepout_index = 0; keepout_index < board.keepout_count(); ++keepout_index) {
+    for (std::size_t keepout_index = 0; keepout_index < board.all<volt::BoardKeepoutId>().size();
+         ++keepout_index) {
         const auto keepout_id = BoardKeepoutId{keepout_index};
-        const auto &keepout = board.keepout(keepout_id);
+        const auto &keepout = board.get(keepout_id);
         if (!keepout_restricts(keepout, BoardKeepoutRestriction::Copper)) {
             continue;
         }
-        for (std::size_t zone_index = 0; zone_index < board.zone_count(); ++zone_index) {
+        for (std::size_t zone_index = 0; zone_index < board.all<volt::BoardZoneId>().size();
+             ++zone_index) {
             const auto zone_id = BoardZoneId{zone_index};
-            const auto &zone = board.zone(zone_id);
+            const auto &zone = board.get(zone_id);
             const auto layer = first_common_keepout_layer(keepout, zone.layers());
             if (!layer.has_value() ||
                 polygon_polygon_distance(zone.outline(), keepout.outline()) > board_drc_epsilon) {
@@ -339,15 +343,17 @@ void validate_keepout_zones(const Board &board, DiagnosticReport &report) {
 }
 
 void validate_keepout_vias(const Board &board, DiagnosticReport &report) {
-    for (std::size_t keepout_index = 0; keepout_index < board.keepout_count(); ++keepout_index) {
+    for (std::size_t keepout_index = 0; keepout_index < board.all<volt::BoardKeepoutId>().size();
+         ++keepout_index) {
         const auto keepout_id = BoardKeepoutId{keepout_index};
-        const auto &keepout = board.keepout(keepout_id);
+        const auto &keepout = board.get(keepout_id);
         if (!keepout_restricts(keepout, BoardKeepoutRestriction::Via)) {
             continue;
         }
-        for (std::size_t via_index = 0; via_index < board.via_count(); ++via_index) {
+        for (std::size_t via_index = 0; via_index < board.all<volt::BoardViaId>().size();
+             ++via_index) {
             const auto via_id = BoardViaId{via_index};
-            const auto &via = board.via(via_id);
+            const auto &via = board.get(via_id);
             const auto layers = via_copper_layers(board, via);
             const auto layer = first_common_keepout_layer(keepout, layers);
             if (!layer.has_value() || point_polygon_distance(via.position(), keepout.outline()) >
@@ -363,16 +369,17 @@ void validate_keepout_vias(const Board &board, DiagnosticReport &report) {
 }
 
 void validate_keepout_placements(const Board &board, DiagnosticReport &report) {
-    for (std::size_t keepout_index = 0; keepout_index < board.keepout_count(); ++keepout_index) {
+    for (std::size_t keepout_index = 0; keepout_index < board.all<volt::BoardKeepoutId>().size();
+         ++keepout_index) {
         const auto keepout_id = BoardKeepoutId{keepout_index};
-        const auto &keepout = board.keepout(keepout_id);
+        const auto &keepout = board.get(keepout_id);
         if (!keepout_restricts(keepout, BoardKeepoutRestriction::Placement)) {
             continue;
         }
-        for (std::size_t placement_index = 0; placement_index < board.placement_count();
-             ++placement_index) {
+        for (std::size_t placement_index = 0;
+             placement_index < board.all<volt::ComponentPlacementId>().size(); ++placement_index) {
             const auto placement_id = ComponentPlacementId{placement_index};
-            const auto &placement = board.placement(placement_id);
+            const auto &placement = board.get(placement_id);
             if (point_polygon_distance(placement.position(), keepout.outline()) >
                 board_drc_epsilon) {
                 continue;

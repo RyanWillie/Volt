@@ -413,9 +413,9 @@ class GerberWriter {
 void report_enabled_copper_layers_outside_stack(const Board &board,
                                                 const std::vector<BoardLayerId> &stack_copper,
                                                 PcbFabricationLossReport &loss_report) {
-    for (std::size_t index = 0; index < board.layer_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardLayerId>().size(); ++index) {
         const auto layer_id = BoardLayerId{index};
-        const auto &layer = board.layer(layer_id);
+        const auto &layer = board.get(layer_id);
         if (!layer.enabled() || layer.role() != BoardLayerRole::Copper) {
             continue;
         }
@@ -442,7 +442,7 @@ build_copper_layer_exports(const Board &board, PcbFabricationLossReport &loss_re
 
     auto stack_copper = std::vector<BoardLayerId>{};
     for (const auto layer_id : board.layer_stack()->layers()) {
-        const auto &layer = board.layer(layer_id);
+        const auto &layer = board.get(layer_id);
         if (layer.enabled() && layer.role() == BoardLayerRole::Copper) {
             stack_copper.push_back(layer_id);
         }
@@ -456,8 +456,8 @@ build_copper_layer_exports(const Board &board, PcbFabricationLossReport &loss_re
         return {};
     }
 
-    const auto &top_layer = board.layer(stack_copper.front());
-    const auto &bottom_layer = board.layer(stack_copper.back());
+    const auto &top_layer = board.get(stack_copper.front());
+    const auto &bottom_layer = board.get(stack_copper.back());
     if (top_layer.side() != BoardLayerSide::Top || bottom_layer.side() != BoardLayerSide::Bottom) {
         add_fab_critical_warning(
             loss_report, PcbFabricationLossKind::UnsupportedLayer, "board.layer_stack.outer_sides",
@@ -468,7 +468,7 @@ build_copper_layer_exports(const Board &board, PcbFabricationLossReport &loss_re
     }
 
     for (std::size_t index = 1; index + 1 < stack_copper.size(); ++index) {
-        if (board.layer(stack_copper[index]).side() == BoardLayerSide::Inner) {
+        if (board.get(stack_copper[index]).side() == BoardLayerSide::Inner) {
             continue;
         }
         add_fab_critical_warning(
@@ -494,9 +494,9 @@ void report_unsupported_copper_content(const Board &board,
         return;
     }
 
-    for (std::size_t index = 0; index < board.track_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardTrackId>().size(); ++index) {
         const auto track_id = BoardTrackId{index};
-        const auto &track = board.track(track_id);
+        const auto &track = board.get(track_id);
         if (is_exported_copper_layer(copper_layers, track.layer())) {
             continue;
         }
@@ -506,9 +506,9 @@ void report_unsupported_copper_content(const Board &board,
             std::vector{EntityRef::board_track(track_id), EntityRef::board_layer(track.layer())});
     }
 
-    for (std::size_t index = 0; index < board.zone_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardZoneId>().size(); ++index) {
         const auto zone_id = BoardZoneId{index};
-        const auto &zone = board.zone(zone_id);
+        const auto &zone = board.get(zone_id);
         for (const auto layer_id : zone.layers()) {
             if (is_exported_copper_layer(copper_layers, layer_id)) {
                 continue;
@@ -520,9 +520,9 @@ void report_unsupported_copper_content(const Board &board,
         }
     }
 
-    for (std::size_t index = 0; index < board.via_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardViaId>().size(); ++index) {
         const auto via_id = BoardViaId{index};
-        const auto &via = board.via(via_id);
+        const auto &via = board.get(via_id);
         if (is_exported_copper_layer(copper_layers, via.start_layer()) &&
             is_exported_copper_layer(copper_layers, via.end_layer())) {
             continue;
@@ -569,9 +569,9 @@ build_placement_exports(const Board &board, const FootprintLibrary &footprints,
     const auto resolutions = volt::queries::resolve_pads(board, resolution_footprints);
     auto exports = std::vector<PlacementExport>{};
 
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto id = ComponentPlacementId{index};
-        const auto &placement = board.placement(id);
+        const auto &placement = board.get(id);
         const auto &selected_part =
             volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {
@@ -669,23 +669,23 @@ void write_pad_shape(GerberWriter &writer, ComponentPlacementId placement_id,
 void write_copper_layer(GerberWriter &writer, const Board &board, BoardLayerId layer_id,
                         const std::vector<PlacementExport> &placements,
                         PcbFabricationLossReport &loss_report) {
-    for (std::size_t index = 0; index < board.track_count(); ++index) {
-        const auto &track = board.track(BoardTrackId{index});
+    for (std::size_t index = 0; index < board.all<volt::BoardTrackId>().size(); ++index) {
+        const auto &track = board.get(BoardTrackId{index});
         if (track.layer() == layer_id) {
             writer.draw_polyline(track.points(), track.width_mm(), false);
         }
     }
 
-    for (std::size_t index = 0; index < board.via_count(); ++index) {
-        const auto &via = board.via(BoardViaId{index});
+    for (std::size_t index = 0; index < board.all<volt::BoardViaId>().size(); ++index) {
+        const auto &via = board.get(BoardViaId{index});
         const auto layers = volt::detail::via_copper_layers(board, via);
         if (std::find(layers.begin(), layers.end(), layer_id) != layers.end()) {
             writer.flash_circle(via.position(), via.annular_diameter_mm());
         }
     }
 
-    for (std::size_t index = 0; index < board.zone_count(); ++index) {
-        const auto &zone = board.zone(BoardZoneId{index});
+    for (std::size_t index = 0; index < board.all<volt::BoardZoneId>().size(); ++index) {
+        const auto &zone = board.get(BoardZoneId{index});
         if (std::find(zone.layers().begin(), zone.layers().end(), layer_id) !=
             zone.layers().end()) {
             writer.draw_region(zone.outline());
@@ -754,9 +754,9 @@ void write_mask_or_paste_layer(GerberWriter &writer, const std::vector<Placement
             }
         }
     }
-    for (std::size_t index = 0; index < board.text_count(); ++index) {
-        const auto &text = board.text(BoardTextId{index});
-        const auto &layer = board.layer(text.layer());
+    for (std::size_t index = 0; index < board.all<volt::BoardTextId>().size(); ++index) {
+        const auto &text = board.get(BoardTextId{index});
+        const auto &layer = board.get(text.layer());
         if (layer.role() == BoardLayerRole::Silkscreen && layer_matches_side(layer, side)) {
             return true;
         }
@@ -766,10 +766,10 @@ void write_mask_or_paste_layer(GerberWriter &writer, const std::vector<Placement
 
 void report_unsupported_board_text_layers(const Board &board,
                                           PcbFabricationLossReport &loss_report) {
-    for (std::size_t index = 0; index < board.text_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardTextId>().size(); ++index) {
         const auto text_id = BoardTextId{index};
-        const auto &text = board.text(text_id);
-        const auto &layer = board.layer(text.layer());
+        const auto &text = board.get(text_id);
+        const auto &layer = board.get(text.layer());
         if (layer.role() == BoardLayerRole::Silkscreen) {
             continue;
         }
@@ -863,10 +863,10 @@ void write_silkscreen_layer(GerberWriter &writer, const Board &board,
         }
     }
 
-    for (std::size_t index = 0; index < board.text_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardTextId>().size(); ++index) {
         const auto text_id = BoardTextId{index};
-        const auto &text = board.text(text_id);
-        const auto &layer = board.layer(text.layer());
+        const auto &text = board.get(text_id);
+        const auto &layer = board.get(text.layer());
         if (layer.role() != BoardLayerRole::Silkscreen) {
             continue;
         }
@@ -890,9 +890,9 @@ void write_silkscreen_layer(GerberWriter &writer, const Board &board,
 }
 
 void report_unsupported_board_features(const Board &board, PcbFabricationLossReport &loss_report) {
-    for (std::size_t index = 0; index < board.feature_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardFeatureId>().size(); ++index) {
         const auto feature_id = BoardFeatureId{index};
-        const auto &feature = board.feature(feature_id);
+        const auto &feature = board.get(feature_id);
         if (feature.kind() == BoardFeatureKind::Slot) {
             add_fab_critical_warning(
                 loss_report, PcbFabricationLossKind::UnsupportedGeometry, "board.feature.slot",
@@ -914,9 +914,9 @@ void report_unsupported_board_features(const Board &board, PcbFabricationLossRep
 
 void append_board_feature_drills(const Board &board, std::vector<DrillHit> &drills,
                                  PcbFabricationLossReport &loss_report) {
-    for (std::size_t index = 0; index < board.feature_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardFeatureId>().size(); ++index) {
         const auto feature_id = BoardFeatureId{index};
-        const auto &feature = board.feature(feature_id);
+        const auto &feature = board.get(feature_id);
         if (feature.kind() != BoardFeatureKind::Hole) {
             continue;
         }
@@ -936,8 +936,8 @@ void append_board_feature_drills(const Board &board, std::vector<DrillHit> &dril
 }
 
 void append_via_drills(const Board &board, std::vector<DrillHit> &drills) {
-    for (std::size_t index = 0; index < board.via_count(); ++index) {
-        const auto &via = board.via(BoardViaId{index});
+    for (std::size_t index = 0; index < board.all<volt::BoardViaId>().size(); ++index) {
+        const auto &via = board.get(BoardViaId{index});
         drills.push_back(DrillHit{via.position(), via.drill_diameter_mm(), true});
     }
 }

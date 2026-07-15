@@ -143,7 +143,7 @@ board_escape_failure_reason_name(volt::BoardEscapeFailureReason reason) {
 [[nodiscard]] inline double layer_z_mm(const volt::Board &board, const volt::LayerStack &stack,
                                        std::size_t stack_index) {
     const auto layer_id = stack.layers()[stack_index];
-    const auto &layer = board.layer(layer_id);
+    const auto &layer = board.get(layer_id);
     const auto half_thickness = stack.board_thickness_mm() / 2.0;
     switch (layer.side()) {
     case volt::BoardLayerSide::Top:
