@@ -1,6 +1,7 @@
 add_library(
     volt_schematic
     default_symbols.cpp
+    endpoint_authoring.cpp
     geometry.cpp
     layout.cpp
     presentation_geometry.cpp

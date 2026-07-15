@@ -1052,7 +1052,7 @@
         },
         "schematic": {
           "core_production": {
-            "count": 283,
+            "count": 285,
             "files": [
               "src/pcb/assembly/cpl.cpp",
               "src/pcb/board.cpp",
@@ -1062,6 +1062,7 @@
               "src/pcb/routing/board_spatial_index.cpp",
               "src/pcb/validation/board_capability_validation.cpp",
               "src/pcb/validation/board_visual_validation.cpp",
+              "src/schematic/endpoint_authoring.cpp",
               "src/schematic/layout.cpp",
               "src/schematic/presentation_geometry.cpp",
               "src/schematic/readability_collision_validation.cpp",
@@ -1099,23 +1100,20 @@
               "power_port",
               "replace_with",
               "sheet",
-              "sheet_by_name",
               "sheet_count",
               "sheet_port",
               "sheet_region",
-              "sheet_region_by_name",
               "symbol_definition",
-              "symbol_definition_by_name",
               "symbol_definition_count",
               "symbol_field",
               "symbol_instance",
               "symbol_instance_count",
               "wire_run"
             ],
-            "unique_name_count": 33
+            "unique_name_count": 30
           },
           "io_adapters": {
-            "count": 148,
+            "count": 147,
             "files": [
               "src/adapters/kicad/pcb_writer.cpp",
               "src/adapters/kicad/schematic_writer.cpp",
@@ -1154,7 +1152,6 @@
               "sheet_count",
               "sheet_port",
               "sheet_port_count",
-              "sheet_region_by_name",
               "symbol_definition",
               "symbol_definition_count",
               "symbol_field",
@@ -1164,45 +1161,37 @@
               "wire_run",
               "wire_run_count"
             ],
-            "unique_name_count": 33
+            "unique_name_count": 32
           },
           "python_binding": {
-            "count": 40,
+            "count": 36,
             "files": [
               "src/python/py_circuit_schematic.cpp"
             ],
             "names": [
               "add_junction",
-              "add_junction_for_endpoint",
               "add_net_label",
-              "add_net_label_for_endpoint",
               "add_no_connect_marker",
               "add_sheet",
               "add_sheet_port",
-              "add_sheet_port_for_endpoint",
               "add_sheet_region",
               "add_symbol_definition",
               "add_symbol_field",
               "add_terminal_marker",
-              "add_terminal_marker_for_endpoint",
               "add_wire_run",
-              "add_wire_run_for_endpoints",
               "junction",
               "net_label",
               "place_symbol",
               "power_port",
               "sheet",
-              "sheet_by_name",
               "sheet_count",
               "sheet_port",
               "sheet_region",
-              "sheet_region_by_name",
               "symbol_definition",
-              "symbol_definition_by_name",
               "symbol_instance",
               "wire_run"
             ],
-            "unique_name_count": 29
+            "unique_name_count": 21
           },
           "tests": {
             "count": 566,
@@ -1224,7 +1213,6 @@
             "names": [
               "add_junction",
               "add_net_label",
-              "add_net_label_for_endpoint",
               "add_no_connect_marker",
               "add_power_port",
               "add_sheet",
@@ -1233,7 +1221,6 @@
               "add_symbol_definition",
               "add_symbol_field",
               "add_wire_run",
-              "add_wire_run_for_endpoints",
               "circuit",
               "junction",
               "junction_count",
@@ -1246,13 +1233,10 @@
               "power_port_count",
               "replace_with",
               "sheet",
-              "sheet_by_name",
               "sheet_count",
               "sheet_port",
               "sheet_port_count",
-              "sheet_region_by_name",
               "symbol_definition",
-              "symbol_definition_by_name",
               "symbol_definition_count",
               "symbol_field",
               "symbol_field_count",
@@ -1261,7 +1245,7 @@
               "wire_run",
               "wire_run_count"
             ],
-            "unique_name_count": 38
+            "unique_name_count": 33
           }
         }
       },
@@ -1679,29 +1663,23 @@
           ]
         },
         "Schematic": {
-          "declaration_count": 49,
-          "include_count": 16,
+          "declaration_count": 40,
+          "include_count": 14,
           "path": "tests/architecture/schematic_public_api.txt",
-          "sha256": "e944ffc65e7c3314c31c9d433247d146b8c50be9965c70476e0edbe8fc9190d7",
+          "sha256": "c138d817fb4249c82594b53ab49dc75b72f79d59daae2f86d7b637cece50964c",
           "unique_callable_names": [
             "Schematic",
             "add_junction",
-            "add_junction_for_endpoint",
             "add_net_label",
-            "add_net_label_for_endpoint",
             "add_no_connect_marker",
             "add_power_port",
-            "add_power_port_for_endpoint",
             "add_sheet",
             "add_sheet_port",
-            "add_sheet_port_for_endpoint",
             "add_sheet_region",
             "add_symbol_definition",
             "add_symbol_field",
             "add_terminal_marker",
-            "add_terminal_marker_for_endpoint",
             "add_wire_run",
-            "add_wire_run_for_endpoints",
             "circuit",
             "junction",
             "junction_count",
@@ -1717,14 +1695,11 @@
             "power_port_count",
             "replace_with",
             "sheet",
-            "sheet_by_name",
             "sheet_count",
             "sheet_port",
             "sheet_port_count",
             "sheet_region",
-            "sheet_region_by_name",
             "symbol_definition",
-            "symbol_definition_by_name",
             "symbol_definition_count",
             "symbol_field",
             "symbol_field_count",

@@ -2,8 +2,10 @@
 
 #include <concepts>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
+#include <volt/schematic/queries.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/schematic_items_model.hpp>
 #include <volt/schematic/schematic_library_model.hpp>
@@ -123,8 +125,9 @@ TEST_CASE("SchematicLibraryModel owns unique symbol definitions") {
     CHECK(symbol == volt::SymbolDefId{0});
     CHECK(schematic.symbol_definition_count() == 1);
     CHECK(schematic.symbol_definition(symbol).name() == "Resistor");
-    CHECK(schematic.symbol_definition_by_name("Resistor") == symbol);
-    CHECK_FALSE(schematic.symbol_definition_by_name("Missing").has_value());
+    const auto &query_owner = std::as_const(schematic);
+    CHECK(volt::queries::symbol_definition_by_name(query_owner, "Resistor") == symbol);
+    CHECK_FALSE(volt::queries::symbol_definition_by_name(query_owner, "Missing").has_value());
     CHECK_THROWS_AS(schematic.add_symbol_definition(make_resistor_symbol()), std::logic_error);
     check_kernel_error(
         [&] { static_cast<void>(schematic.add_symbol_definition(make_resistor_symbol())); },
@@ -139,8 +142,9 @@ TEST_CASE("SchematicSheetModel owns sheets and authored regions") {
         sheet, volt::SheetRegion{"power", "Power", volt::SheetRegionBounds{0.0, 0.0, 20.0, 10.0}});
 
     CHECK(schematic.sheet_count() == 1);
-    CHECK(schematic.sheet_by_name("Main") == sheet);
-    CHECK(schematic.sheet_region_by_name(sheet, "power") == region);
+    const auto &query_owner = std::as_const(schematic);
+    CHECK(volt::queries::sheet_by_name(query_owner, "Main") == sheet);
+    CHECK(volt::queries::sheet_region_by_name(query_owner, sheet, "power") == region);
     CHECK_THROWS_AS(schematic.add_sheet(volt::Sheet{"Main"}), std::logic_error);
     CHECK_THROWS_AS(schematic.add_sheet_region(
                         sheet, volt::SheetRegion{"power", "Power",
