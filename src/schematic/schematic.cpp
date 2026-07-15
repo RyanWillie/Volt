@@ -410,17 +410,6 @@ SymbolField::SymbolField(SymbolInstanceId symbol_instance, std::string name, std
 
 Schematic::Schematic(const Circuit &circuit) : circuit_{circuit} {}
 
-void Schematic::replace_with(Schematic replacement) {
-    if (&replacement.circuit() != &circuit_) {
-        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
-                               "Schematic replacement must reference the same logical circuit"};
-    }
-
-    library_ = std::move(replacement.library_);
-    sheets_ = std::move(replacement.sheets_);
-    items_ = std::move(replacement.items_);
-}
-
 [[nodiscard]] SymbolDefId Schematic::add_symbol_definition(SymbolDefinition definition) {
     return library_.add_symbol_definition(std::move(definition));
 }
@@ -429,71 +418,67 @@ void Schematic::replace_with(Schematic replacement) {
     return sheets_.add_sheet(std::move(sheet));
 }
 
-[[nodiscard]] std::size_t Schematic::add_sheet_region(SheetId sheet, SheetRegion region) {
+[[nodiscard]] SheetRegionId Schematic::add_sheet_region(SheetId sheet, SheetRegion region) {
     return sheets_.add_sheet_region(sheet, std::move(region));
 }
 
 [[nodiscard]] SymbolInstanceId Schematic::place_symbol(SheetId sheet, SymbolInstance instance) {
-    require_sheet(sheet);
-    require_symbol_definition(instance.symbol_definition());
+    sheets_.require(sheet);
+    library_.require(instance.symbol_definition());
     static_cast<void>(circuit_.get(instance.component()));
     require_symbol_matches_component(instance.symbol_definition(), instance.component());
     require_authored_region(sheet, instance.authored_region());
 
-    const auto id = items_.add_symbol_instance(instance);
+    const auto id = items_.add(instance);
     sheets_.add_symbol_instance(sheet, id);
     return id;
 }
 
 [[nodiscard]] JunctionId Schematic::add_junction(SheetId sheet, Junction junction) {
-    require_sheet(sheet);
+    sheets_.require(sheet);
     static_cast<void>(circuit_.get(junction.net()));
     require_authored_region(sheet, junction.authored_region());
     require_junction_does_not_touch_different_net(sheet, junction);
 
-    const auto id = items_.add_junction(junction);
+    const auto id = items_.add(junction);
     sheets_.add_junction(sheet, id);
     return id;
 }
 
 [[nodiscard]] PowerPortId Schematic::add_power_port(SheetId sheet, PowerPort port) {
-    require_sheet(sheet);
+    sheets_.require(sheet);
     static_cast<void>(circuit_.get(port.net()));
     require_authored_region(sheet, port.authored_region());
 
-    const auto id = items_.add_power_port(std::move(port));
+    const auto id = items_.add(std::move(port));
     sheets_.add_power_port(sheet, id);
     return id;
 }
 
-[[nodiscard]] PowerPortId Schematic::add_terminal_marker(SheetId sheet, PowerPort marker) {
-    return add_power_port(sheet, std::move(marker));
-}
-
 [[nodiscard]] NoConnectMarkerId Schematic::add_no_connect_marker(SheetId sheet,
                                                                  NoConnectMarker marker) {
-    require_sheet(sheet);
+    sheets_.require(sheet);
     static_cast<void>(circuit_.get(marker.pin()));
     require_authored_region(sheet, marker.authored_region());
 
-    const auto id = items_.add_no_connect_marker(std::move(marker));
+    const auto id = items_.add(std::move(marker));
     sheets_.add_no_connect_marker(sheet, id);
     return id;
 }
 
 [[nodiscard]] SheetPortId Schematic::add_sheet_port(SheetId sheet, SheetPort port) {
-    require_sheet(sheet);
+    sheets_.require(sheet);
     static_cast<void>(circuit_.get(port.net()));
     require_authored_region(sheet, port.authored_region());
 
-    const auto id = items_.add_sheet_port(std::move(port));
+    const auto id = items_.add(std::move(port));
     sheets_.add_sheet_port(sheet, id);
     return id;
 }
 
 [[nodiscard]] SymbolFieldId Schematic::add_symbol_field(SheetId sheet, SymbolField field) {
-    require_sheet(sheet);
-    require_symbol_instance(field.symbol_instance());
+    sheets_.require(sheet);
+    items_.require(field.symbol_instance());
     require_authored_region(sheet, field.authored_region());
     if (!sheet_contains_symbol_instance(sheet, field.symbol_instance())) {
         throw KernelLogicError{ErrorCode::CrossReferenceViolation,
@@ -501,89 +486,39 @@ void Schematic::replace_with(Schematic replacement) {
                                EntityRef::symbol_instance(field.symbol_instance())};
     }
 
-    const auto id = items_.add_symbol_field(std::move(field));
+    const auto id = items_.add(std::move(field));
     sheets_.add_symbol_field(sheet, id);
     return id;
 }
 
 [[nodiscard]] WireRunId Schematic::add_wire_run(SheetId sheet, WireRun wire) {
-    require_sheet(sheet);
+    sheets_.require(sheet);
     static_cast<void>(circuit_.get(wire.net()));
     require_authored_region(sheet, wire.authored_region());
     require_wire_run_does_not_collide_with_different_net(sheet, wire);
 
-    const auto id = items_.add_wire_run(std::move(wire));
+    const auto id = items_.add(std::move(wire));
     sheets_.add_wire_run(sheet, id);
     return id;
 }
 
 [[nodiscard]] NetLabelId Schematic::add_net_label(SheetId sheet, NetLabel label) {
-    require_sheet(sheet);
+    sheets_.require(sheet);
     static_cast<void>(circuit_.get(label.net()));
     require_authored_region(sheet, label.authored_region());
 
-    const auto id = items_.add_net_label(std::move(label));
+    const auto id = items_.add(std::move(label));
     sheets_.add_net_label(sheet, id);
     return id;
 }
 
-[[nodiscard]] const SymbolDefinition &Schematic::symbol_definition(SymbolDefId id) const {
-    return library_.symbol_definition(id);
-}
-
-[[nodiscard]] const SheetRegion &Schematic::sheet_region(SheetId sheet, std::size_t region) const {
-    return sheets_.sheet_region(sheet, region);
-}
-
-[[nodiscard]] const SymbolInstance &Schematic::symbol_instance(SymbolInstanceId id) const {
-    return items_.symbol_instance(id);
-}
-
-void Schematic::move_net_label_text(NetLabelId id, Point position) {
-    items_.move_net_label_text(id, position);
-}
-
-void Schematic::move_power_port_label(PowerPortId id, Point position) {
-    items_.move_power_port_label(id, position);
-}
-
-[[nodiscard]] const NoConnectMarker &Schematic::no_connect_marker(NoConnectMarkerId id) const {
-    return items_.no_connect_marker(id);
-}
-
-[[nodiscard]] const SymbolField &Schematic::symbol_field(SymbolFieldId id) const {
-    return items_.symbol_field(id);
-}
-
-void Schematic::move_symbol_field(SymbolFieldId id, Point position) {
-    items_.move_symbol_field(id, position);
-}
-
-[[nodiscard]] std::size_t Schematic::symbol_definition_count() const noexcept {
-    return library_.symbol_definition_count();
-}
-
-[[nodiscard]] std::size_t Schematic::symbol_instance_count() const noexcept {
-    return items_.symbol_instance_count();
-}
-
-[[nodiscard]] std::size_t Schematic::no_connect_marker_count() const noexcept {
-    return items_.no_connect_marker_count();
-}
-
-void Schematic::require_sheet(SheetId sheet) const { sheets_.require_sheet(sheet); }
-
-void Schematic::require_symbol_definition(SymbolDefId symbol_definition) const {
-    library_.require_symbol_definition(symbol_definition);
-}
-
-void Schematic::require_symbol_instance(SymbolInstanceId instance) const {
-    items_.require_symbol_instance(instance);
+void Schematic::move(SchematicMove change) {
+    std::visit([this](auto move) { items_.move(move); }, change);
 }
 
 void Schematic::require_authored_region(SheetId sheet,
                                         const std::optional<std::size_t> &region) const {
-    if (region.has_value() && region.value() >= sheets_.sheet(sheet).regions().size()) {
+    if (region.has_value() && region.value() >= sheets_.get(sheet).regions().size()) {
         throw KernelRangeError{ErrorCode::UnknownEntity,
                                "Authored schematic region does not belong to this sheet"};
     }
@@ -591,7 +526,7 @@ void Schematic::require_authored_region(SheetId sheet,
 
 void Schematic::require_symbol_matches_component(SymbolDefId symbol_definition,
                                                  ComponentId component) const {
-    const auto &symbol = library_.symbol_definition(symbol_definition);
+    const auto &symbol = library_.get(symbol_definition);
     for (const auto &pin : symbol.pins()) {
         if (!queries::pin_by_number(circuit_, component, pin.number()).has_value()) {
             throw KernelLogicError{ErrorCode::CrossReferenceViolation,
@@ -603,7 +538,7 @@ void Schematic::require_symbol_matches_component(SymbolDefId symbol_definition,
 
 [[nodiscard]] bool Schematic::sheet_contains_symbol_instance(SheetId sheet,
                                                              SymbolInstanceId instance) const {
-    for (const auto candidate : sheets_.sheet(sheet).symbol_instances()) {
+    for (const auto candidate : sheets_.get(sheet).symbol_instances()) {
         if (candidate == instance) {
             return true;
         }
@@ -623,8 +558,8 @@ void Schematic::require_symbol_matches_component(SymbolDefId symbol_definition,
 
 [[nodiscard]] bool Schematic::has_junction_on_segments(SheetId sheet, SchematicSegment first,
                                                        SchematicSegment second) const {
-    for (const auto junction_id : sheets_.sheet(sheet).junctions()) {
-        const auto &junction = items_.junction(junction_id);
+    for (const auto junction_id : sheets_.get(sheet).junctions()) {
+        const auto &junction = items_.get(junction_id);
         if (point_on_schematic_segment(junction.position(), first) &&
             point_on_schematic_segment(junction.position(), second)) {
             return true;
@@ -635,8 +570,8 @@ void Schematic::require_symbol_matches_component(SymbolDefId symbol_definition,
 
 void Schematic::require_junction_does_not_touch_different_net(SheetId sheet,
                                                               const Junction &junction) const {
-    for (const auto wire_id : sheets_.sheet(sheet).wire_runs()) {
-        const auto &wire = items_.wire_run(wire_id);
+    for (const auto wire_id : sheets_.get(sheet).wire_runs()) {
+        const auto &wire = items_.get(wire_id);
         if (wire.net() != junction.net() && wire_contains_point(wire, junction.position())) {
             throw KernelLogicError{ErrorCode::InvalidState,
                                    "Schematic junction collides with a different logical net",
@@ -647,8 +582,8 @@ void Schematic::require_junction_does_not_touch_different_net(SheetId sheet,
 
 void Schematic::require_wire_run_does_not_collide_with_different_net(SheetId sheet,
                                                                      const WireRun &wire) const {
-    for (const auto existing_id : sheets_.sheet(sheet).wire_runs()) {
-        const auto &existing = items_.wire_run(existing_id);
+    for (const auto existing_id : sheets_.get(sheet).wire_runs()) {
+        const auto &existing = items_.get(existing_id);
         if (existing.net() == wire.net()) {
             continue;
         }

@@ -202,8 +202,8 @@ void write_label(std::ostream &out, const Schematic &schematic, const NetLabel &
 
 void write_symbol_instance(std::ostream &out, const Schematic &schematic, SymbolInstanceId id,
                            std::size_t index) {
-    const auto &instance = schematic.symbol_instance(id);
-    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    const auto &instance = schematic.get(id);
+    const auto &symbol = schematic.get(instance.symbol_definition());
     const auto &component = schematic.circuit().get(instance.component());
     const auto &definition = schematic.circuit().get(component.definition());
 
@@ -266,14 +266,14 @@ namespace volt::adapters::kicad {
 
 [[nodiscard]] SchematicExportResult write_flat_schematic(const Schematic &schematic) {
     auto result = SchematicExportResult{};
-    if (schematic.sheet_count() > 1U) {
+    if (schematic.all<volt::SheetId>().size() > 1U) {
         result.loss_report.add_warning(
             LossKind::UnsupportedConstruct, "sheet",
             "The first KiCad writer subset exports only the first flat schematic sheet");
     }
 
-    for (std::size_t index = 0; index < schematic.symbol_definition_count(); ++index) {
-        detail::report_unsupported_primitives(schematic.symbol_definition(SymbolDefId{index}),
+    for (std::size_t index = 0; index < schematic.all<volt::SymbolDefId>().size(); ++index) {
+        detail::report_unsupported_primitives(schematic.get(SymbolDefId{index}),
                                               result.loss_report);
     }
 
@@ -284,19 +284,18 @@ namespace volt::adapters::kicad {
     out << "  (uuid \"00000000-0000-0000-0000-000000000000\")\n";
     out << "  (paper \"A4\")\n";
     out << "  (lib_symbols\n";
-    for (std::size_t index = 0; index < schematic.symbol_definition_count(); ++index) {
-        detail::write_library_symbol(out, schematic.symbol_definition(SymbolDefId{index}));
+    for (std::size_t index = 0; index < schematic.all<volt::SymbolDefId>().size(); ++index) {
+        detail::write_library_symbol(out, schematic.get(SymbolDefId{index}));
     }
     out << "  )\n";
 
-    if (schematic.sheet_count() != 0U) {
-        const auto &sheet = schematic.sheet(SheetId{0});
+    if (schematic.all<volt::SheetId>().size() != 0U) {
+        const auto &sheet = schematic.get(SheetId{0});
         for (std::size_t index = 0; index < sheet.wire_runs().size(); ++index) {
-            detail::write_wire(out, schematic.wire_run(sheet.wire_runs()[index]), index);
+            detail::write_wire(out, schematic.get(sheet.wire_runs()[index]), index);
         }
         for (std::size_t index = 0; index < sheet.net_labels().size(); ++index) {
-            detail::write_label(out, schematic, schematic.net_label(sheet.net_labels()[index]),
-                                index);
+            detail::write_label(out, schematic, schematic.get(sheet.net_labels()[index]), index);
         }
         for (std::size_t index = 0; index < sheet.symbol_instances().size(); ++index) {
             detail::write_symbol_instance(out, schematic, sheet.symbol_instances()[index], index);

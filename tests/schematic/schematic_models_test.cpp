@@ -1,130 +1,49 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <concepts>
+#include <iterator>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include <volt/schematic/queries.hpp>
 #include <volt/schematic/schematic.hpp>
-#include <volt/schematic/schematic_items_model.hpp>
-#include <volt/schematic/schematic_library_model.hpp>
-#include <volt/schematic/schematic_sheet_model.hpp>
 
 #include "schematic_test_helpers.hpp"
 
 namespace {
 
-template <typename Model>
-concept HasMutableSheetAccessor = requires(Model model, volt::SheetId sheet) {
-    { model.sheet(sheet) } -> std::same_as<volt::Sheet &>;
-};
+template <typename Schematic>
+concept CanReadTemporarySchematicRange =
+    requires(Schematic schematic) { std::move(schematic).template all<volt::SheetId>(); };
 
-template <typename Model>
-concept CanAddSheetSymbolInstance =
-    requires(Model model, volt::SheetId sheet, volt::SymbolInstanceId instance) {
-        model.add_symbol_instance(sheet, instance);
-    };
-
-template <typename Model>
-concept CanAddSheetWireRun = requires(Model model, volt::SheetId sheet, volt::WireRunId wire) {
-    model.add_wire_run(sheet, wire);
-};
-
-template <typename Model>
-concept CanAddSheetNetLabel = requires(Model model, volt::SheetId sheet, volt::NetLabelId label) {
-    model.add_net_label(sheet, label);
-};
-
-template <typename Model>
-concept CanAddSheetJunction =
-    requires(Model model, volt::SheetId sheet, volt::JunctionId junction) {
-        model.add_junction(sheet, junction);
-    };
-
-template <typename Model>
-concept CanAddSheetPowerPort = requires(Model model, volt::SheetId sheet, volt::PowerPortId port) {
-    model.add_power_port(sheet, port);
-};
-
-template <typename Model>
-concept CanAddSheetNoConnect =
-    requires(Model model, volt::SheetId sheet, volt::NoConnectMarkerId marker) {
-        model.add_no_connect_marker(sheet, marker);
-    };
-
-template <typename Model>
-concept CanAddSheetPortMembership =
-    requires(Model model, volt::SheetId sheet, volt::SheetPortId port) {
-        model.add_sheet_port(sheet, port);
-    };
-
-template <typename Model>
-concept CanAddSheetSymbolField =
-    requires(Model model, volt::SheetId sheet, volt::SymbolFieldId field) {
-        model.add_symbol_field(sheet, field);
-    };
-
-template <typename Model>
-concept CanAddSchematicSymbolInstance =
-    requires(Model model, volt::SymbolInstance instance) { model.add_symbol_instance(instance); };
-
-template <typename Model>
-concept CanAddSchematicWireRun =
-    requires(Model model, volt::WireRun wire) { model.add_wire_run(wire); };
-
-template <typename Model>
-concept CanAddSchematicNetLabel =
-    requires(Model model, volt::NetLabel label) { model.add_net_label(label); };
-
-template <typename Model>
-concept CanAddSchematicJunction =
-    requires(Model model, volt::Junction junction) { model.add_junction(junction); };
-
-template <typename Model>
-concept CanAddSchematicPowerPort =
-    requires(Model model, volt::PowerPort port) { model.add_power_port(port); };
-
-template <typename Model>
-concept CanAddSchematicNoConnect =
-    requires(Model model, volt::NoConnectMarker marker) { model.add_no_connect_marker(marker); };
-
-template <typename Model>
-concept CanAddSchematicSheetPort =
-    requires(Model model, volt::SheetPort port) { model.add_sheet_port(port); };
-
-template <typename Model>
-concept CanAddSchematicSymbolField =
-    requires(Model model, volt::SymbolField field) { model.add_symbol_field(field); };
-
-static_assert(!HasMutableSheetAccessor<volt::SchematicSheetModel>);
-static_assert(!CanAddSheetSymbolInstance<volt::SchematicSheetModel>);
-static_assert(!CanAddSheetWireRun<volt::SchematicSheetModel>);
-static_assert(!CanAddSheetNetLabel<volt::SchematicSheetModel>);
-static_assert(!CanAddSheetJunction<volt::SchematicSheetModel>);
-static_assert(!CanAddSheetPowerPort<volt::SchematicSheetModel>);
-static_assert(!CanAddSheetNoConnect<volt::SchematicSheetModel>);
-static_assert(!CanAddSheetPortMembership<volt::SchematicSheetModel>);
-static_assert(!CanAddSheetSymbolField<volt::SchematicSheetModel>);
-static_assert(!CanAddSchematicSymbolInstance<volt::SchematicItemsModel>);
-static_assert(!CanAddSchematicWireRun<volt::SchematicItemsModel>);
-static_assert(!CanAddSchematicNetLabel<volt::SchematicItemsModel>);
-static_assert(!CanAddSchematicJunction<volt::SchematicItemsModel>);
-static_assert(!CanAddSchematicPowerPort<volt::SchematicItemsModel>);
-static_assert(!CanAddSchematicNoConnect<volt::SchematicItemsModel>);
-static_assert(!CanAddSchematicSheetPort<volt::SchematicItemsModel>);
-static_assert(!CanAddSchematicSymbolField<volt::SchematicItemsModel>);
+static_assert(volt::SchematicEntityId<volt::SymbolDefId>);
+static_assert(volt::SchematicEntityId<volt::SheetId>);
+static_assert(volt::SchematicEntityId<volt::SheetRegionId>);
+static_assert(volt::SchematicEntityId<volt::SymbolInstanceId>);
+static_assert(volt::SchematicEntityId<volt::WireRunId>);
+static_assert(volt::SchematicEntityId<volt::NetLabelId>);
+static_assert(volt::SchematicEntityId<volt::JunctionId>);
+static_assert(volt::SchematicEntityId<volt::PowerPortId>);
+static_assert(volt::SchematicEntityId<volt::NoConnectMarkerId>);
+static_assert(volt::SchematicEntityId<volt::SheetPortId>);
+static_assert(volt::SchematicEntityId<volt::SymbolFieldId>);
+static_assert(!volt::SchematicEntityId<volt::NetId>);
+static_assert(!CanReadTemporarySchematicRange<volt::Schematic>);
+static_assert(std::forward_iterator<volt::schematic_entity_range_t<volt::SheetId>::iterator>);
+static_assert(std::same_as<volt::schematic_entity_type_t<volt::SheetId>, volt::Sheet>);
 
 } // namespace
 
-TEST_CASE("SchematicLibraryModel owns unique symbol definitions") {
+TEST_CASE("Schematic owns unique symbol definitions behind generic typed reads") {
     auto circuit = volt::Circuit{};
     auto schematic = volt::Schematic{circuit};
     const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
 
     CHECK(symbol == volt::SymbolDefId{0});
-    CHECK(schematic.symbol_definition_count() == 1);
-    CHECK(schematic.symbol_definition(symbol).name() == "Resistor");
+    CHECK(schematic.all<volt::SymbolDefId>().size() == 1);
+    CHECK(schematic.get(symbol).name() == "Resistor");
     const auto &query_owner = std::as_const(schematic);
     CHECK(volt::queries::symbol_definition_by_name(query_owner, "Resistor") == symbol);
     CHECK_FALSE(volt::queries::symbol_definition_by_name(query_owner, "Missing").has_value());
@@ -134,14 +53,18 @@ TEST_CASE("SchematicLibraryModel owns unique symbol definitions") {
         volt::ErrorCode::DuplicateName, "Symbol definition name already exists");
 }
 
-TEST_CASE("SchematicSheetModel owns sheets and authored regions") {
+TEST_CASE("Schematic owns sheets and authored regions behind generic typed reads") {
     auto circuit = volt::Circuit{};
     auto schematic = volt::Schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
     const auto region = schematic.add_sheet_region(
         sheet, volt::SheetRegion{"power", "Power", volt::SheetRegionBounds{0.0, 0.0, 20.0, 10.0}});
 
-    CHECK(schematic.sheet_count() == 1);
+    const auto sheets = schematic.all<volt::SheetId>();
+    CHECK(sheets.size() == 1);
+    CHECK(sheets.begin() == sheets.begin());
+    CHECK(sheets.begin() != sheets.end());
+    CHECK(schematic.get(region).name() == "power");
     const auto &query_owner = std::as_const(schematic);
     CHECK(volt::queries::sheet_by_name(query_owner, "Main") == sheet);
     CHECK(volt::queries::sheet_region_by_name(query_owner, sheet, "power") == region);
@@ -159,4 +82,21 @@ TEST_CASE("SchematicSheetModel owns sheets and authored regions") {
                                          volt::SheetRegionBounds{0.0, 0.0, 20.0, 10.0}}));
         },
         volt::ErrorCode::DuplicateName, "Sheet region name already exists");
+}
+
+TEST_CASE("Schematic indexes regions already present on an added sheet") {
+    auto circuit = volt::Circuit{};
+    auto source = volt::Schematic{circuit};
+    const auto source_sheet = source.add_sheet(volt::Sheet{"Source"});
+    static_cast<void>(source.add_sheet_region(
+        source_sheet,
+        volt::SheetRegion{"power", "Power", volt::SheetRegionBounds{0.0, 0.0, 20.0, 10.0}}));
+
+    auto target = volt::Schematic{circuit};
+    const auto target_sheet = target.add_sheet(source.get(source_sheet));
+
+    REQUIRE(target.all<volt::SheetRegionId>().size() == 1);
+    const auto region = volt::queries::sheet_region_by_name(target, target_sheet, "power");
+    REQUIRE(region.has_value());
+    CHECK(target.get(region.value()).title() == "Power");
 }

@@ -3,11 +3,14 @@
 #include <algorithm>
 #include <cstddef>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/connectivity/component_contract.hpp>
+#include <volt/core/content_hash.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
@@ -174,10 +177,16 @@ class SchematicSymbolReference {
 /** Reusable logical component definition made from pin definition IDs. */
 class ComponentDefinition {
   public:
-    /** Construct a component definition with a name, ordered pin definitions, and properties. */
-    ComponentDefinition(std::string name, std::vector<PinDefId> pins, PropertyMap properties = {},
-                        std::optional<DefinitionSource> source = std::nullopt,
-                        std::vector<SchematicSymbolReference> schematic_symbols = {});
+    /**
+     * Build one immutable component definition from complete ordered pin content and one
+     * optional explicitly authored portable contract.
+     */
+    [[nodiscard]] static ComponentDefinition
+    make(std::string name, std::span<const PinDefinition> pin_definitions,
+         std::vector<PinDefId> pins, PropertyMap properties = {},
+         std::optional<DefinitionSource> source = std::nullopt,
+         std::vector<SchematicSymbolReference> schematic_symbols = {},
+         std::optional<ComponentContractSpec> contract = std::nullopt);
 
     /** Return the reusable component name, such as Resistor or LED. */
     [[nodiscard]] const std::string &name() const noexcept { return name_; }
@@ -194,7 +203,18 @@ class ComponentDefinition {
     /** Return schematic symbol choices available for this component definition. */
     [[nodiscard]] const std::vector<SchematicSymbolReference> &schematic_symbols() const noexcept;
 
+    /** Return the normalized portable semantic contract. */
+    [[nodiscard]] const ComponentContract &contract() const noexcept { return contract_; }
+
+    /** Return the deterministic immutable identity of all accepted component content. */
+    [[nodiscard]] const ContentHash &content_identity() const noexcept { return content_identity_; }
+
   private:
+    ComponentDefinition(std::string name, std::vector<PinDefId> pins, PropertyMap properties,
+                        std::optional<DefinitionSource> source,
+                        std::vector<SchematicSymbolReference> schematic_symbols,
+                        ComponentContract contract, ContentHash content_identity);
+
     void require_unique_schematic_symbol_variants() const;
 
     std::string name_;
@@ -202,6 +222,8 @@ class ComponentDefinition {
     PropertyMap properties_;
     std::optional<DefinitionSource> source_;
     std::vector<SchematicSymbolReference> schematic_symbols_;
+    ComponentContract contract_;
+    ContentHash content_identity_;
 };
 
 /** Complete data-only reusable pin definition input owned by a ComponentSpec. */
@@ -238,6 +260,8 @@ struct ComponentSpec {
     std::optional<DefinitionSource> source = std::nullopt;
     /** Ordered schematic symbol choices. */
     std::vector<SchematicSymbolReference> schematic_symbols = {};
+    /** Optional explicitly authored portable identity and feature-binding contract. */
+    std::optional<ComponentContractSpec> contract = std::nullopt;
 };
 
 } // namespace volt

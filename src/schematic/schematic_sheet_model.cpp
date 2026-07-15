@@ -1,4 +1,4 @@
-#include <volt/schematic/schematic_sheet_model.hpp>
+#include <volt/schematic/schematic.hpp>
 
 #include <volt/core/errors.hpp>
 
@@ -6,47 +6,22 @@
 
 #include <cstddef>
 #include <memory>
-#include <string>
 #include <utility>
 
 namespace volt {
-
-SchematicSheetModel::SchematicSheetModel()
-    : SchematicSheetModel{std::make_shared<detail::SchematicSheetState>()} {}
-
-SchematicSheetModel::SchematicSheetModel(std::shared_ptr<const detail::SchematicSheetState> state)
-    : state_{std::move(state)} {}
-
-SchematicSheetModel::SchematicSheetModel(const SchematicSheetModel &other)
-    : SchematicSheetModel{std::make_shared<detail::SchematicSheetState>(other.state())} {}
-
-SchematicSheetModel::SchematicSheetModel(SchematicSheetModel &&other) noexcept = default;
-
-SchematicSheetModel &SchematicSheetModel::operator=(const SchematicSheetModel &other) {
-    if (this != &other) {
-        state_ = std::make_shared<detail::SchematicSheetState>(other.state());
-    }
-    return *this;
-}
-
-SchematicSheetModel &SchematicSheetModel::operator=(SchematicSheetModel &&other) noexcept = default;
-
-SchematicSheetModel::~SchematicSheetModel() = default;
 
 Schematic::SheetStorage::SheetStorage()
     : SheetStorage{std::make_shared<detail::SchematicSheetState>()} {}
 
 Schematic::SheetStorage::SheetStorage(std::shared_ptr<detail::SchematicSheetState> state)
-    : SchematicSheetModel{state}, state_{std::move(state)} {}
+    : state_{std::move(state)} {}
 
 Schematic::SheetStorage::SheetStorage(const SheetStorage &other)
     : SheetStorage{std::make_shared<detail::SchematicSheetState>(other.state())} {}
 
 Schematic::SheetStorage &Schematic::SheetStorage::operator=(const SheetStorage &other) {
     if (this != &other) {
-        auto replacement =
-            SheetStorage{std::make_shared<detail::SchematicSheetState>(other.state())};
-        *this = std::move(replacement);
+        state_ = std::make_shared<detail::SchematicSheetState>(other.state());
     }
     return *this;
 }
@@ -60,100 +35,88 @@ Schematic::SheetStorage &Schematic::SheetStorage::operator=(const SheetStorage &
 }
 
 [[nodiscard]] SheetId Schematic::SheetStorage::add_sheet(Sheet sheet) {
-    const auto existing = sheet_by_name(sheet.name());
-    if (existing.has_value()) {
-        throw KernelLogicError{ErrorCode::DuplicateName, "Sheet name already exists",
-                               EntityRef::sheet(existing.value())};
-    }
-
-    return mutable_state().sheets.insert(detail::SheetStorage{std::move(sheet)});
-}
-
-[[nodiscard]] std::size_t Schematic::SheetStorage::add_sheet_region(SheetId sheet_id,
-                                                                    SheetRegion region) {
-    require_sheet(sheet_id);
-    auto &sheet_ref = mutable_state().sheets.get(sheet_id);
-    if (sheet_ref.region_by_name(region.name()).has_value()) {
-        throw KernelLogicError{ErrorCode::DuplicateName, "Sheet region name already exists"};
-    }
-
-    return sheet_ref.add_region(std::move(region));
-}
-
-void Schematic::SheetStorage::add_symbol_instance(SheetId sheet_id, SymbolInstanceId instance) {
-    mutable_state().sheets.get(sheet_id).add_symbol_instance(instance);
-}
-
-void Schematic::SheetStorage::add_wire_run(SheetId sheet_id, WireRunId wire) {
-    mutable_state().sheets.get(sheet_id).add_wire_run(wire);
-}
-
-void Schematic::SheetStorage::add_net_label(SheetId sheet_id, NetLabelId label) {
-    mutable_state().sheets.get(sheet_id).add_net_label(label);
-}
-
-void Schematic::SheetStorage::add_junction(SheetId sheet_id, JunctionId junction) {
-    mutable_state().sheets.get(sheet_id).add_junction(junction);
-}
-
-void Schematic::SheetStorage::add_power_port(SheetId sheet_id, PowerPortId port) {
-    mutable_state().sheets.get(sheet_id).add_power_port(port);
-}
-
-void Schematic::SheetStorage::add_no_connect_marker(SheetId sheet_id, NoConnectMarkerId marker) {
-    mutable_state().sheets.get(sheet_id).add_no_connect_marker(marker);
-}
-
-void Schematic::SheetStorage::add_sheet_port(SheetId sheet_id, SheetPortId port) {
-    mutable_state().sheets.get(sheet_id).add_sheet_port(port);
-}
-
-void Schematic::SheetStorage::add_symbol_field(SheetId sheet_id, SymbolFieldId field) {
-    mutable_state().sheets.get(sheet_id).add_symbol_field(field);
-}
-
-[[nodiscard]] std::optional<SheetId>
-SchematicSheetModel::sheet_by_name(const std::string &name) const {
     for (std::size_t index = 0; index < state().sheets.size(); ++index) {
         const auto id = SheetId{index};
-        if (state().sheets.get(id).name() == name) {
-            return id;
+        if (state().sheets.get(id).name() == sheet.name()) {
+            throw KernelLogicError{ErrorCode::DuplicateName, "Sheet name already exists",
+                                   EntityRef::sheet(id)};
         }
     }
 
-    return std::nullopt;
+    const auto region_count = sheet.regions().size();
+    const auto id = mutable_state().sheets.insert(detail::SheetStorage{std::move(sheet)});
+    for (std::size_t index = 0; index < region_count; ++index) {
+        static_cast<void>(mutable_state().regions.insert(detail::SheetRegionLocation{id, index}));
+    }
+    return id;
 }
 
-[[nodiscard]] std::optional<std::size_t>
-SchematicSheetModel::sheet_region_by_name(SheetId sheet_id, const std::string &name) const {
-    require_sheet(sheet_id);
-    return state().sheets.get(sheet_id).region_by_name(name);
+[[nodiscard]] SheetRegionId Schematic::SheetStorage::add_sheet_region(SheetId sheet_id,
+                                                                      SheetRegion region) {
+    require(sheet_id);
+    auto &sheet = mutable_state().sheets.get(sheet_id);
+    if (sheet.region_by_name(region.name()).has_value()) {
+        throw KernelLogicError{ErrorCode::DuplicateName, "Sheet region name already exists"};
+    }
+
+    const auto index = sheet.add_region(std::move(region));
+    return mutable_state().regions.insert(detail::SheetRegionLocation{sheet_id, index});
 }
 
-[[nodiscard]] const Sheet &SchematicSheetModel::sheet(SheetId id) const {
+void Schematic::SheetStorage::add_symbol_instance(SheetId sheet, SymbolInstanceId instance) {
+    mutable_state().sheets.get(sheet).add_symbol_instance(instance);
+}
+
+void Schematic::SheetStorage::add_wire_run(SheetId sheet, WireRunId wire) {
+    mutable_state().sheets.get(sheet).add_wire_run(wire);
+}
+
+void Schematic::SheetStorage::add_net_label(SheetId sheet, NetLabelId label) {
+    mutable_state().sheets.get(sheet).add_net_label(label);
+}
+
+void Schematic::SheetStorage::add_junction(SheetId sheet, JunctionId junction) {
+    mutable_state().sheets.get(sheet).add_junction(junction);
+}
+
+void Schematic::SheetStorage::add_power_port(SheetId sheet, PowerPortId port) {
+    mutable_state().sheets.get(sheet).add_power_port(port);
+}
+
+void Schematic::SheetStorage::add_no_connect_marker(SheetId sheet, NoConnectMarkerId marker) {
+    mutable_state().sheets.get(sheet).add_no_connect_marker(marker);
+}
+
+void Schematic::SheetStorage::add_sheet_port(SheetId sheet, SheetPortId port) {
+    mutable_state().sheets.get(sheet).add_sheet_port(port);
+}
+
+void Schematic::SheetStorage::add_symbol_field(SheetId sheet, SymbolFieldId field) {
+    mutable_state().sheets.get(sheet).add_symbol_field(field);
+}
+
+[[nodiscard]] const Sheet &Schematic::SheetStorage::get(SheetId id) const {
     return state().sheets.get(id);
 }
 
-[[nodiscard]] const SheetRegion &SchematicSheetModel::sheet_region(SheetId sheet_id,
-                                                                   std::size_t region) const {
-    require_sheet(sheet_id);
-    return state().sheets.get(sheet_id).region(region);
+[[nodiscard]] const SheetRegion &Schematic::SheetStorage::get(SheetRegionId id) const {
+    const auto &location = state().regions.get(id);
+    return state().sheets.get(location.sheet).region(location.index);
 }
 
-[[nodiscard]] std::size_t SchematicSheetModel::sheet_count() const noexcept {
+[[nodiscard]] std::size_t Schematic::SheetStorage::size(SheetId) const noexcept {
     return state().sheets.size();
 }
 
-void SchematicSheetModel::require_sheet(SheetId sheet_id) const {
-    if (!state().sheets.contains(sheet_id)) {
-        throw KernelRangeError{ErrorCode::UnknownEntity,
-                               "Sheet ID does not belong to this schematic",
-                               EntityRef::sheet(sheet_id)};
-    }
+[[nodiscard]] std::size_t Schematic::SheetStorage::size(SheetRegionId) const noexcept {
+    return state().regions.size();
 }
 
-[[nodiscard]] const detail::SchematicSheetState &SchematicSheetModel::state() const noexcept {
-    return *state_;
+void Schematic::SheetStorage::require(SheetId id) const {
+    if (!state().sheets.contains(id)) {
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Sheet ID does not belong to this schematic", EntityRef::sheet(id)};
+    }
 }
 
 } // namespace volt

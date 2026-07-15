@@ -100,23 +100,21 @@ TEST_CASE("Schematic reader loads projection JSON over a logical circuit") {
 
     const auto schematic = volt::io::read_schematic_text(schematic_json().dump(), circuit);
 
-    REQUIRE(schematic.symbol_definition_count() == 1);
-    REQUIRE(schematic.sheet_count() == 1);
-    REQUIRE(schematic.symbol_instance_count() == 1);
-    REQUIRE(schematic.wire_run_count() == 1);
-    REQUIRE(schematic.net_label_count() == 1);
-    CHECK(schematic.symbol_definition(volt::SymbolDefId{0}).name() == "Resistor");
-    CHECK(schematic.symbol_definition(volt::SymbolDefId{0}).pins()[1].anchor() ==
-          volt::Point{20.0, 0.0});
-    CHECK(schematic.sheet(volt::SheetId{0}).symbol_instances() ==
+    REQUIRE(schematic.all<volt::SymbolDefId>().size() == 1);
+    REQUIRE(schematic.all<volt::SheetId>().size() == 1);
+    REQUIRE(schematic.all<volt::SymbolInstanceId>().size() == 1);
+    REQUIRE(schematic.all<volt::WireRunId>().size() == 1);
+    REQUIRE(schematic.all<volt::NetLabelId>().size() == 1);
+    CHECK(schematic.get(volt::SymbolDefId{0}).name() == "Resistor");
+    CHECK(schematic.get(volt::SymbolDefId{0}).pins()[1].anchor() == volt::Point{20.0, 0.0});
+    CHECK(schematic.get(volt::SheetId{0}).symbol_instances() ==
           std::vector{volt::SymbolInstanceId{0}});
-    CHECK(schematic.symbol_instance(volt::SymbolInstanceId{0}).component() == component);
-    CHECK(schematic.symbol_instance(volt::SymbolInstanceId{0}).position() ==
-          volt::Point{40.0, 20.0});
-    CHECK(schematic.sheet(volt::SheetId{0}).wire_runs() == std::vector{volt::WireRunId{0}});
-    CHECK(schematic.sheet(volt::SheetId{0}).net_labels() == std::vector{volt::NetLabelId{0}});
-    CHECK(schematic.wire_run(volt::WireRunId{0}).net() == net);
-    CHECK(schematic.net_label(volt::NetLabelId{0}).net() == net);
+    CHECK(schematic.get(volt::SymbolInstanceId{0}).component() == component);
+    CHECK(schematic.get(volt::SymbolInstanceId{0}).position() == volt::Point{40.0, 20.0});
+    CHECK(schematic.get(volt::SheetId{0}).wire_runs() == std::vector{volt::WireRunId{0}});
+    CHECK(schematic.get(volt::SheetId{0}).net_labels() == std::vector{volt::NetLabelId{0}});
+    CHECK(schematic.get(volt::WireRunId{0}).net() == net);
+    CHECK(schematic.get(volt::NetLabelId{0}).net() == net);
 }
 
 TEST_CASE("Schematic reader loads optional net label display text") {
@@ -131,9 +129,9 @@ TEST_CASE("Schematic reader loads optional net label display text") {
 
     const auto schematic = volt::io::read_schematic_text(fixture.dump(), circuit);
 
-    REQUIRE(schematic.net_label_count() == 1);
-    CHECK(schematic.net_label(volt::NetLabelId{0}).label() == std::optional<std::string>{"SWDIO"});
-    CHECK(schematic.net_label(volt::NetLabelId{0}).text_position() == volt::Point{18.0, 14.0});
+    REQUIRE(schematic.all<volt::NetLabelId>().size() == 1);
+    CHECK(schematic.get(volt::NetLabelId{0}).label() == std::optional<std::string>{"SWDIO"});
+    CHECK(schematic.get(volt::NetLabelId{0}).text_position() == volt::Point{18.0, 14.0});
 }
 
 TEST_CASE("Schematic reader loads explicit text presentation metadata") {
@@ -163,20 +161,20 @@ TEST_CASE("Schematic reader loads explicit text presentation metadata") {
 
     const auto schematic = volt::io::read_schematic_text(fixture.dump(), circuit);
 
-    const auto &primitive = std::get<volt::SymbolText>(
-        schematic.symbol_definition(volt::SymbolDefId{0}).primitives()[4]);
+    const auto &primitive =
+        std::get<volt::SymbolText>(schematic.get(volt::SymbolDefId{0}).primitives()[4]);
     CHECK(primitive.style().horizontal_alignment() == volt::TextHorizontalAlignment::Start);
     CHECK(primitive.style().vertical_alignment() == volt::TextVerticalAlignment::Top);
     REQUIRE(primitive.style().font_size().has_value());
     CHECK(primitive.style().font_size().value() == 3.25);
 
-    const auto &label = schematic.net_label(volt::NetLabelId{0});
+    const auto &label = schematic.get(volt::NetLabelId{0});
     CHECK(label.style().horizontal_alignment() == volt::TextHorizontalAlignment::End);
     CHECK(label.style().vertical_alignment() == volt::TextVerticalAlignment::Bottom);
     REQUIRE(label.style().font_size().has_value());
     CHECK(label.style().font_size().value() == 4.0);
 
-    const auto &field = schematic.symbol_field(volt::SymbolFieldId{0});
+    const auto &field = schematic.get(volt::SymbolFieldId{0});
     CHECK(field.style().horizontal_alignment() == volt::TextHorizontalAlignment::Start);
     CHECK(field.style().vertical_alignment() == volt::TextVerticalAlignment::Top);
     REQUIRE(field.style().font_size().has_value());
@@ -273,20 +271,20 @@ TEST_CASE("Schematic reader loads professional primitives over logical IDs") {
 
     const auto schematic = volt::io::read_schematic_text(fixture.dump(), circuit);
 
-    CHECK(schematic.sheet(volt::SheetId{0}).metadata().title() == "Power sheet");
-    CHECK(schematic.sheet(volt::SheetId{0}).metadata().size().width() == 420.0);
-    CHECK(schematic.wire_run(volt::WireRunId{0}).route_intent() == volt::RouteIntent::Orthogonal);
-    CHECK(schematic.junction_count() == 1);
-    CHECK(schematic.power_port_count() == 2);
-    CHECK(schematic.no_connect_marker_count() == 1);
-    CHECK(schematic.sheet_port_count() == 1);
-    CHECK(schematic.symbol_field_count() == 1);
-    CHECK(schematic.junction(volt::JunctionId{0}).net() == vcc);
-    CHECK(schematic.power_port(volt::PowerPortId{1}).net() == gnd);
-    CHECK(schematic.no_connect_marker(volt::NoConnectMarkerId{0}).pin() == no_connect_pin);
-    CHECK(schematic.no_connect_marker(volt::NoConnectMarkerId{0}).reason() == "not populated");
-    CHECK(schematic.sheet_port(volt::SheetPortId{0}).name() == "VIN");
-    CHECK(schematic.symbol_field(volt::SymbolFieldId{0}).value() == "10k");
+    CHECK(schematic.get(volt::SheetId{0}).metadata().title() == "Power sheet");
+    CHECK(schematic.get(volt::SheetId{0}).metadata().size().width() == 420.0);
+    CHECK(schematic.get(volt::WireRunId{0}).route_intent() == volt::RouteIntent::Orthogonal);
+    CHECK(schematic.all<volt::JunctionId>().size() == 1);
+    CHECK(schematic.all<volt::PowerPortId>().size() == 2);
+    CHECK(schematic.all<volt::NoConnectMarkerId>().size() == 1);
+    CHECK(schematic.all<volt::SheetPortId>().size() == 1);
+    CHECK(schematic.all<volt::SymbolFieldId>().size() == 1);
+    CHECK(schematic.get(volt::JunctionId{0}).net() == vcc);
+    CHECK(schematic.get(volt::PowerPortId{1}).net() == gnd);
+    CHECK(schematic.get(volt::NoConnectMarkerId{0}).pin() == no_connect_pin);
+    CHECK(schematic.get(volt::NoConnectMarkerId{0}).reason() == "not populated");
+    CHECK(schematic.get(volt::SheetPortId{0}).name() == "VIN");
+    CHECK(schematic.get(volt::SymbolFieldId{0}).value() == "10k");
     CHECK(circuit.get(vcc).pins().empty());
     CHECK(circuit.get(gnd).pins().empty());
 }
@@ -320,7 +318,7 @@ TEST_CASE("Schematic reader loads drawing page metadata and named regions") {
           {"style", {{"accent", "orange"}}}}});
 
     const auto schematic = volt::io::read_schematic_text(fixture.dump(), circuit);
-    const auto &sheet = schematic.sheet(volt::SheetId{0});
+    const auto &sheet = schematic.get(volt::SheetId{0});
 
     CHECK(sheet.metadata().orientation() == volt::SheetOrientation::Landscape);
     CHECK(sheet.metadata().frame().margins().left() == 12.0);

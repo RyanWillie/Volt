@@ -36,8 +36,9 @@ TEST_CASE("Schematic readability reports dense port tags in authored regions") {
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
-    const auto region = schematic.add_sheet_region(
-        sheet, volt::SheetRegion{"mcu", "MCU", volt::SheetRegionBounds{20.0, 20.0, 120.0, 120.0}});
+    static_cast<void>(schematic.add_sheet_region(
+        sheet, volt::SheetRegion{"mcu", "MCU", volt::SheetRegionBounds{20.0, 20.0, 120.0, 120.0}}));
+    const auto region = schematic.get(sheet).region_by_name("mcu").value();
 
     auto ports = std::vector<volt::SheetPortId>{};
     for (std::size_t index = 0; index < 12U; ++index) {

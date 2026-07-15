@@ -44,6 +44,7 @@ struct PortBindingIdTag;
 struct NetClassIdTag;
 struct SymbolDefIdTag;
 struct SheetIdTag;
+struct SheetRegionIdTag;
 struct SymbolInstanceIdTag;
 struct WireRunIdTag;
 struct NetLabelIdTag;
@@ -95,6 +96,8 @@ using NetClassId = EntityId<detail::NetClassIdTag>;
 using SymbolDefId = EntityId<detail::SymbolDefIdTag>;
 /** ID for a schematic sheet projection. */
 using SheetId = EntityId<detail::SheetIdTag>;
+/** ID for a named schematic presentation region. */
+using SheetRegionId = EntityId<detail::SheetRegionIdTag>;
 /** ID for a placed schematic symbol instance. */
 using SymbolInstanceId = EntityId<detail::SymbolInstanceIdTag>;
 /** ID for a schematic wire run projection over a canonical net. */

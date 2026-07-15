@@ -73,6 +73,10 @@ The landed foundation includes:
 - `ElectricalAttributeSpec`, `ElectricalAttributeValue`, and `ElectricalAttributeMap`
 - the canonical `ElectricalRecordSet` substrate for Voltage and Current
 - explicitly framed pin, directed-relation, and supply-domain subjects
+- immutable component contracts with stable `ComponentKey`, contract-local `PinKey`, named
+  relation/domain identities, typed feature schemas, and cardinality-checked bindings
+- deterministic component content identity and logical-circuit persistence for explicitly
+  authored contracts
 - characteristic, accepted/provided range, absolute-limit, continuous requirement, and
   continuous capability meanings
 - typed Unknown, normalized tolerance/envelope/range values, bounded conditions, immutable
@@ -95,10 +99,10 @@ The important architectural result is that Python and JSON are no longer the onl
 where these facts exist. The kernel can inspect, serialize, and validate them directly.
 
 The canonical record substrate is intentionally separate from the older named electrical
-attribute maps. It is the accepted language for future part-contract and exact-part work;
-P2 and P3 will bind it into stable component and part identities. This slice does not
-reinterpret or migrate existing logical-circuit attributes or the current `volt.part` v4
-artifact.
+attribute maps. Component contracts now bind its required shapes to stable subjects; P3
+will bind actual records and exact physical implementation into part identity. This work
+does not reinterpret or migrate existing logical-circuit attributes or the current
+`volt.part` v4 artifact.
 
 ## Quantities And Attributes
 
@@ -170,8 +174,9 @@ loaded circuit structurally invalid.
 ## Canonical Voltage And Current Records
 
 `ElectricalRecordSet` is an append-only native owner over one ordered component pin
-contract. P1 uses typed record-set-local pin indices. Stable `PinKey`, relation/domain keys,
-feature schemas, and bindings belong to P2 and are not duplicated here.
+contract. P1 uses typed record-set-local pin indices. Component contracts give those
+subjects portable `PinKey`, relation, and domain identities without turning a feature name
+into another electrical record language.
 
 Every canonical record contains:
 
@@ -227,9 +232,50 @@ inputs.
 The standalone `volt.electrical_records` v1 document records its separate semantic-model
 version, ordered pin count, semantic keys, canonical values, conditions, and evidence. The
 reader verifies keys and rejects unsupported versions or malformed records before returning
-an owner. The deterministic bytes are the P1 content-hash input. Integrating those records
-into component identity, exact part identity, library bundles, or circuit ERC belongs to
-later approved slices.
+an owner. The deterministic bytes are the P1 content-hash input. Component contracts bind
+the record shapes an implementing part must provide; actual records, exact part identity,
+library bundles, and circuit ERC belong to later approved slices.
+
+## Stable Component Contracts And Feature Bindings
+
+`ComponentDefinition` owns one normalized immutable `ComponentContract`. Existing simple
+component authoring lowers through the same model using the component name as its readable
+`ComponentKey` and deterministic ordered legacy `PinKey` values. This preserves repeated
+display pin names without treating names or package numbers as identity. Explicit authoring
+may instead provide stable keys, named subjects, schemas, and bindings.
+
+The portable identity layers are distinct:
+
+```text
+ComponentKey
+  ordered PinKey -> ordered PinDefinition content
+  named framed-pin, directed-relation, and supply-domain subjects
+  named feature schemas -> ordered roles + explicit cardinality + P1 record shapes
+  named feature bindings -> one schema + one named subject + role-to-PinKey assignments
+```
+
+`PinKey` is local to one component contract. It is not a `PinDefId`, display-only package
+number, package terminal, footprint pad, or `EntityRef`. Subject names are similarly typed
+and local to the contract. Every subject and binding must reference known keys, role
+bindings must satisfy `exactly_one` or `one_or_more`, and the role assignments must exactly
+match the subject orientation or domain membership. Missing, duplicate, foreign, or
+cardinality-invalid content rejects before `Circuit::define_component` commits any rows.
+
+Feature schemas declare required canonical record shapes only as
+`(ElectricalObservable, ElectricalMeaning)` pairs bound to a named subject. The standard
+supply-consumer, supply-source, and diode-junction helpers construct ordinary
+`FeatureSchema` values. A custom schema with the same normalized content therefore produces
+the same component identity. Conversely, a familiar feature name or namespaced extension
+with no required record shapes contributes no core ERC requirement and cannot substitute
+for P1 records.
+
+Component content identity is SHA-256 over semantic-model version, component key, ordered
+pin keys and complete pin content, immutable provenance, symbol references, normalized
+named subjects, feature schemas, and bindings. Ordered pins and ordered schema roles remain
+semantic. Named collections, domain members, binding roles, and required record sets are
+normalized by stable key after duplicate rejection. Display names, arbitrary metadata
+properties, build-local `PinDefId` values, and authoring route are excluded, so standard and
+custom lowering of the same accepted content have the same identity.
 
 ## Pin Semantics
 
@@ -557,8 +603,8 @@ Explicitly deferred:
 
 The accepted post-Circuit part program keeps the remaining ownership changes separate:
 
-1. P2 adds stable `PinKey`, relation/domain keys, feature schemas, bindings, and component
-   content identity over this substrate.
+1. P2 provides stable `PinKey`, relation/domain keys, feature schemas, bindings, and
+   component content identity over this substrate.
 2. P3 makes one exact `PartDefinition` implement one component identity and persists the
    canonical records with exact physical mappings.
 3. P4 adds native catalogue construction and exact resolution.

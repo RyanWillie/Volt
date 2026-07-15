@@ -16,7 +16,7 @@ void add_readability_diagnostic(DiagnosticReport &report, Severity severity,
 readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     auto objects = std::vector<ReadabilityObject>{};
     for (const auto instance_id : sheet.symbol_instances()) {
-        const auto &instance = schematic.symbol_instance(instance_id);
+        const auto &instance = schematic.get(instance_id);
         objects.push_back(ReadabilityObject{ReadabilityObjectKind::SymbolInstance,
                                             EntityRef::symbol_instance(instance_id),
                                             std::vector{EntityRef::component(instance.component())},
@@ -24,14 +24,14 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
                                             instance.authored_region(), instance_id});
     }
     for (const auto wire_id : sheet.wire_runs()) {
-        const auto &wire = schematic.wire_run(wire_id);
+        const auto &wire = schematic.get(wire_id);
         objects.push_back(ReadabilityObject{ReadabilityObjectKind::WireRun,
                                             EntityRef::wire_run(wire_id),
                                             std::vector{EntityRef::net(wire.net())},
                                             wire_run_bounds(wire), wire.authored_region()});
     }
     for (const auto label_id : sheet.net_labels()) {
-        const auto &label = schematic.net_label(label_id);
+        const auto &label = schematic.get(label_id);
         const auto &net = schematic.circuit().get(label.net());
         objects.push_back(
             ReadabilityObject{ReadabilityObjectKind::NetLabel, EntityRef::net_label(label_id),
@@ -42,7 +42,7 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
                               label.authored_region()});
     }
     for (const auto junction_id : sheet.junctions()) {
-        const auto &junction = schematic.junction(junction_id);
+        const auto &junction = schematic.get(junction_id);
         objects.push_back(ReadabilityObject{
             ReadabilityObjectKind::Junction,
             EntityRef::junction(junction_id),
@@ -52,7 +52,7 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
         });
     }
     for (const auto port_id : sheet.power_ports()) {
-        const auto &port = schematic.power_port(port_id);
+        const auto &port = schematic.get(port_id);
         const auto &net = schematic.circuit().get(port.net());
         const auto label = port.label().value_or(net.name().value());
         objects.push_back(ReadabilityObject{
@@ -61,21 +61,21 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
             port.authored_region(), std::nullopt, port_id});
     }
     for (const auto marker_id : sheet.no_connect_markers()) {
-        const auto &marker = schematic.no_connect_marker(marker_id);
+        const auto &marker = schematic.get(marker_id);
         objects.push_back(ReadabilityObject{
             ReadabilityObjectKind::NoConnectMarker, EntityRef::no_connect_marker(marker_id),
             std::vector{EntityRef::pin(marker.pin())}, no_connect_marker_bounds(marker),
             marker.authored_region()});
     }
     for (const auto port_id : sheet.sheet_ports()) {
-        const auto &port = schematic.sheet_port(port_id);
+        const auto &port = schematic.get(port_id);
         objects.push_back(ReadabilityObject{ReadabilityObjectKind::SheetPort,
                                             EntityRef::sheet_port(port_id),
                                             std::vector{EntityRef::net(port.net())},
                                             sheet_port_bounds(port), port.authored_region()});
     }
     for (const auto field_id : sheet.symbol_fields()) {
-        const auto &field = schematic.symbol_field(field_id);
+        const auto &field = schematic.get(field_id);
         objects.push_back(
             ReadabilityObject{ReadabilityObjectKind::SymbolField, EntityRef::symbol_field(field_id),
                               std::vector{EntityRef::symbol_instance(field.symbol_instance())},
@@ -90,7 +90,7 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
 readability_tags_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     auto tags = std::vector<ReadabilityTagObject>{};
     for (const auto port_id : sheet.power_ports()) {
-        const auto &port = schematic.power_port(port_id);
+        const auto &port = schematic.get(port_id);
         const auto &net = schematic.circuit().get(port.net());
         const auto label = port.label().value_or(net.name().value());
         tags.push_back(ReadabilityTagObject{
@@ -103,7 +103,7 @@ readability_tags_for_sheet(const Schematic &schematic, const Sheet &sheet) {
         });
     }
     for (const auto port_id : sheet.sheet_ports()) {
-        const auto &port = schematic.sheet_port(port_id);
+        const auto &port = schematic.get(port_id);
         tags.push_back(ReadabilityTagObject{
             EntityRef::sheet_port(port_id),
             std::vector{EntityRef::net(port.net())},
@@ -120,7 +120,7 @@ readability_tags_for_sheet(const Schematic &schematic, const Sheet &sheet) {
 readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     auto texts = std::vector<ReadabilityTextObject>{};
     for (const auto label_id : sheet.net_labels()) {
-        const auto &label = schematic.net_label(label_id);
+        const auto &label = schematic.get(label_id);
         const auto &net = schematic.circuit().get(label.net());
         texts.push_back(ReadabilityTextObject{
             ReadabilityTextKind::NetLabel,
@@ -135,7 +135,7 @@ readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
         });
     }
     for (const auto field_id : sheet.symbol_fields()) {
-        const auto &field = schematic.symbol_field(field_id);
+        const auto &field = schematic.get(field_id);
         texts.push_back(ReadabilityTextObject{
             ReadabilityTextKind::SymbolField,
             EntityRef::symbol_field(field_id),
@@ -148,8 +148,8 @@ readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
         });
     }
     for (const auto instance_id : sheet.symbol_instances()) {
-        const auto &instance = schematic.symbol_instance(instance_id);
-        const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+        const auto &instance = schematic.get(instance_id);
+        const auto &symbol = schematic.get(instance.symbol_definition());
         for (const auto &primitive : symbol.primitives()) {
             if (!std::holds_alternative<SymbolText>(primitive)) {
                 continue;
@@ -171,7 +171,7 @@ readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
         }
     }
     for (const auto port_id : sheet.power_ports()) {
-        const auto &port = schematic.power_port(port_id);
+        const auto &port = schematic.get(port_id);
         const auto &net = schematic.circuit().get(port.net());
         const auto label = port.label().value_or(net.name().value());
         const auto bounds = power_port_label_bounds(port, label);
@@ -186,7 +186,7 @@ readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
         });
     }
     for (const auto port_id : sheet.sheet_ports()) {
-        const auto &port = schematic.sheet_port(port_id);
+        const auto &port = schematic.get(port_id);
         const auto bounds = sheet_port_label_bounds(port);
         texts.push_back(ReadabilityTextObject{
             ReadabilityTextKind::SheetPortLabel,
@@ -210,7 +210,7 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
         if (!bounds.has_value()) {
             continue;
         }
-        const auto &instance = schematic.symbol_instance(instance_id);
+        const auto &instance = schematic.get(instance_id);
         objects.push_back(ReadabilityCollisionObject{
             ReadabilityCollisionKind::SymbolBody,
             EntityRef::symbol_instance(instance_id),
@@ -225,7 +225,7 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
     }
 
     for (const auto wire_id : sheet.wire_runs()) {
-        const auto &wire = schematic.wire_run(wire_id);
+        const auto &wire = schematic.get(wire_id);
         for (std::size_t point_index = 1; point_index < wire.points().size(); ++point_index) {
             const auto segment =
                 SchematicSegment{wire.points()[point_index - 1U], wire.points()[point_index]};
@@ -256,7 +256,7 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
     }
 
     for (const auto port_id : sheet.power_ports()) {
-        const auto &port = schematic.power_port(port_id);
+        const auto &port = schematic.get(port_id);
         objects.push_back(ReadabilityCollisionObject{
             ReadabilityCollisionKind::TerminalGlyph,
             EntityRef::power_port(port_id),
@@ -270,7 +270,7 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
     }
 
     for (const auto junction_id : sheet.junctions()) {
-        const auto &junction = schematic.junction(junction_id);
+        const auto &junction = schematic.get(junction_id);
         objects.push_back(ReadabilityCollisionObject{
             ReadabilityCollisionKind::Junction,
             EntityRef::junction(junction_id),
@@ -284,7 +284,7 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
     }
 
     for (const auto marker_id : sheet.no_connect_markers()) {
-        const auto &marker = schematic.no_connect_marker(marker_id);
+        const auto &marker = schematic.get(marker_id);
         const auto &pin = schematic.circuit().get(marker.pin());
         objects.push_back(ReadabilityCollisionObject{
             ReadabilityCollisionKind::NoConnectMarker,
@@ -301,7 +301,7 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
     }
 
     for (const auto port_id : sheet.sheet_ports()) {
-        const auto &port = schematic.sheet_port(port_id);
+        const auto &port = schematic.get(port_id);
         objects.push_back(ReadabilityCollisionObject{
             ReadabilityCollisionKind::SheetPort,
             EntityRef::sheet_port(port_id),
@@ -320,8 +320,8 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
 [[nodiscard]] bool power_port_attaches_to_symbol_pin(const Schematic &schematic,
                                                      const PowerPort &port,
                                                      SymbolInstanceId symbol_id) {
-    const auto &instance = schematic.symbol_instance(symbol_id);
-    const auto &definition = schematic.symbol_definition(instance.symbol_definition());
+    const auto &instance = schematic.get(symbol_id);
+    const auto &definition = schematic.get(instance.symbol_definition());
     const auto &circuit = schematic.circuit();
     for (const auto &symbol_pin : definition.pins()) {
         const auto pin = queries::pin_by_number(circuit, instance.component(), symbol_pin.number());
@@ -351,7 +351,7 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
         return false;
     }
 
-    const auto &port = schematic.power_port(object.power_port.value());
+    const auto &port = schematic.get(object.power_port.value());
     return power_port_attaches_to_symbol_pin(schematic, port, symbol.symbol_instance.value());
 }
 

@@ -117,9 +117,10 @@ TEST_CASE("Schematic readability reports objects outside their authored region")
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
-    const auto region = schematic.add_sheet_region(
+    static_cast<void>(schematic.add_sheet_region(
         sheet,
-        volt::SheetRegion{"power", "Power", volt::SheetRegionBounds{10.0, 10.0, 20.0, 20.0}});
+        volt::SheetRegion{"power", "Power", volt::SheetRegionBounds{10.0, 10.0, 20.0, 20.0}}));
+    const auto region = schematic.get(sheet).region_by_name("power").value();
     const auto label =
         schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{35.0, 15.0},
                                                       volt::SchematicOrientation::Right, region});
@@ -139,12 +140,14 @@ TEST_CASE("Schematic readability reports overlapping authored region content bou
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
-    const auto first_region = schematic.add_sheet_region(
+    static_cast<void>(schematic.add_sheet_region(
         sheet,
-        volt::SheetRegion{"logic", "Logic", volt::SheetRegionBounds{10.0, 10.0, 40.0, 40.0}});
-    const auto second_region = schematic.add_sheet_region(
+        volt::SheetRegion{"logic", "Logic", volt::SheetRegionBounds{10.0, 10.0, 40.0, 40.0}}));
+    static_cast<void>(schematic.add_sheet_region(
         sheet, volt::SheetRegion{"connectors", "Connectors",
-                                 volt::SheetRegionBounds{30.0, 10.0, 40.0, 40.0}});
+                                 volt::SheetRegionBounds{30.0, 10.0, 40.0, 40.0}}));
+    const auto first_region = schematic.get(sheet).region_by_name("logic").value();
+    const auto second_region = schematic.get(sheet).region_by_name("connectors").value();
     const auto first_label = schematic.add_net_label(
         sheet, volt::NetLabel{net, volt::Point{28.0, 20.0}, volt::SchematicOrientation::Right,
                               first_region, "AAAAAA"});
@@ -169,12 +172,14 @@ TEST_CASE("Schematic readability accepts adjacent authored region content bounds
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
-    const auto first_region = schematic.add_sheet_region(
+    static_cast<void>(schematic.add_sheet_region(
         sheet,
-        volt::SheetRegion{"logic", "Logic", volt::SheetRegionBounds{10.0, 10.0, 20.0, 20.0}});
-    const auto second_region = schematic.add_sheet_region(
+        volt::SheetRegion{"logic", "Logic", volt::SheetRegionBounds{10.0, 10.0, 20.0, 20.0}}));
+    static_cast<void>(schematic.add_sheet_region(
         sheet, volt::SheetRegion{"connectors", "Connectors",
-                                 volt::SheetRegionBounds{40.0, 10.0, 20.0, 20.0}});
+                                 volt::SheetRegionBounds{40.0, 10.0, 20.0, 20.0}}));
+    const auto first_region = schematic.get(sheet).region_by_name("logic").value();
+    const auto second_region = schematic.get(sheet).region_by_name("connectors").value();
     static_cast<void>(schematic.add_net_label(
         sheet, volt::NetLabel{net, volt::Point{12.0, 20.0}, volt::SchematicOrientation::Right,
                               first_region, "A"}));
@@ -193,12 +198,14 @@ TEST_CASE("Schematic readability keeps region spills distinct from region conten
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
-    const auto first_region = schematic.add_sheet_region(
+    static_cast<void>(schematic.add_sheet_region(
         sheet,
-        volt::SheetRegion{"logic", "Logic", volt::SheetRegionBounds{10.0, 10.0, 20.0, 20.0}});
-    const auto second_region = schematic.add_sheet_region(
+        volt::SheetRegion{"logic", "Logic", volt::SheetRegionBounds{10.0, 10.0, 20.0, 20.0}}));
+    static_cast<void>(schematic.add_sheet_region(
         sheet, volt::SheetRegion{"connectors", "Connectors",
-                                 volt::SheetRegionBounds{70.0, 10.0, 20.0, 20.0}});
+                                 volt::SheetRegionBounds{70.0, 10.0, 20.0, 20.0}}));
+    const auto first_region = schematic.get(sheet).region_by_name("logic").value();
+    const auto second_region = schematic.get(sheet).region_by_name("connectors").value();
     static_cast<void>(schematic.add_net_label(
         sheet, volt::NetLabel{net, volt::Point{35.0, 20.0}, volt::SchematicOrientation::Right,
                               first_region, "A"}));
@@ -332,13 +339,13 @@ TEST_CASE("Schematic text layout moves net labels away from wire keepouts") {
     const auto label = schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{40.0, 40.0}});
     const auto wire = schematic.add_wire_run(
         sheet, volt::WireRun{net, std::vector{volt::Point{42.0, 39.4}, volt::Point{58.0, 39.4}}});
-    const auto wire_points_before = schematic.wire_run(wire).points();
+    const auto wire_points_before = schematic.get(wire).points();
 
     volt::layout_schematic_text(schematic);
 
-    CHECK(schematic.wire_run(wire).points() == wire_points_before);
-    CHECK(schematic.net_label(label).position() == volt::Point{40.0, 40.0});
-    CHECK_FALSE(schematic.net_label(label).text_position() == volt::Point{40.0, 40.0});
+    CHECK(schematic.get(wire).points() == wire_points_before);
+    CHECK(schematic.get(label).position() == volt::Point{40.0, 40.0});
+    CHECK_FALSE(schematic.get(label).text_position() == volt::Point{40.0, 40.0});
     CHECK_FALSE(report_has_code(volt::validate_schematic_readability(schematic),
                                 "SCHEMATIC_TEXT_TOUCHES_WIRE"));
 }
@@ -357,7 +364,7 @@ TEST_CASE("Schematic text layout moves symbol fields away from their owning symb
 
     volt::layout_schematic_text(schematic);
 
-    CHECK_FALSE(schematic.symbol_field(field).position() == volt::Point{54.0, 50.0});
+    CHECK_FALSE(schematic.get(field).position() == volt::Point{54.0, 50.0});
     CHECK_FALSE(report_has_code(volt::validate_schematic_readability(schematic),
                                 "SCHEMATIC_TEXT_TOUCHES_SYMBOL"));
 }

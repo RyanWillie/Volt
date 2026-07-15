@@ -73,8 +73,14 @@ struct SchematicLibraryState {
     EntityTable<SymbolDefinition, SymbolDefId> symbol_definitions;
 };
 
+struct SheetRegionLocation {
+    SheetId sheet;
+    std::size_t index;
+};
+
 struct SchematicSheetState {
     EntityTable<SheetStorage, SheetId> sheets;
+    EntityTable<SheetRegionLocation, SheetRegionId> regions;
 };
 
 struct SchematicItemsState {

@@ -5,6 +5,7 @@
 #include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/bom/bom.hpp>
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/connectivity/component_contract.hpp>
 #include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/circuit/connectivity/instances.hpp>
 #include <volt/circuit/connectivity/nets.hpp>
@@ -58,8 +59,5 @@
 #include <volt/schematic/layout.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/schematic_document.hpp>
-#include <volt/schematic/schematic_items_model.hpp>
-#include <volt/schematic/schematic_library_model.hpp>
-#include <volt/schematic/schematic_sheet_model.hpp>
 #include <volt/schematic/symbols.hpp>
 #include <volt/schematic/validation.hpp>

@@ -183,7 +183,7 @@ class SchematicReader {
         const std::vector<std::pair<SheetId, std::vector<std::string>>> &expected_by_sheet,
         const std::map<std::string, Id> &ids, SheetIds sheet_ids, const char *message) const {
         for (const auto &[sheet, expected_ids] : expected_by_sheet) {
-            require(sheet_ids(schematic_.sheet(sheet)) == resolve_all(ids, expected_ids), message);
+            require(sheet_ids(schematic_.get(sheet)) == resolve_all(ids, expected_ids), message);
         }
     }
 
@@ -648,7 +648,7 @@ SchematicReader::authored_region(SheetId sheet, const nlohmann::json &object) co
         throw KernelLogicError{ErrorCode::UnknownEntity,
                                "Authored region reference points to a missing sheet region"};
     }
-    return region.value();
+    return schematic_.get(sheet).region_by_name(name).value();
 }
 
 void SchematicReader::append_sheet_references(const nlohmann::json &sheet_object,
