@@ -267,16 +267,16 @@ class ElectricalValue {
     explicit ElectricalValue(Quantity value) : value_{value} {}
 
     /** Construct a characteristic envelope. */
-    explicit ElectricalValue(CharacteristicEnvelope value) : value_{std::move(value)} {}
+    explicit ElectricalValue(CharacteristicEnvelope value) : value_{value} {}
 
     /** Construct a one- or two-sided quantity range. */
-    explicit ElectricalValue(QuantityRange value) : value_{std::move(value)} {}
+    explicit ElectricalValue(QuantityRange value) : value_{value} {}
 
     /** Construct a non-negative continuous Current value. */
-    explicit ElectricalValue(ContinuousCurrent value) : value_{std::move(value)} {}
+    explicit ElectricalValue(ContinuousCurrent value) : value_{value} {}
 
     /** Construct an authoring-only nominal and tolerance input. */
-    explicit ElectricalValue(TolerancedQuantity value) : value_{std::move(value)} {}
+    explicit ElectricalValue(TolerancedQuantity value) : value_{value} {}
 
     /** Return the closed value variant. */
     [[nodiscard]] ElectricalValueKind kind() const noexcept;

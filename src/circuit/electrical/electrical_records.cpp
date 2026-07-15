@@ -470,14 +470,13 @@ void validate_references(const std::vector<ElectricalRecord> &records) {
 ElectricalRecord ElectricalRecord::from(ElectricalRecordSpec spec) {
     spec.conditions = normalize_conditions(std::move(spec.conditions));
     spec.evidence = normalize_evidence(std::move(spec.evidence));
-    spec.value =
-        normalize_value(spec.observable, spec.meaning, spec.subject, std::move(spec.value));
+    spec.value = normalize_value(spec.observable, spec.meaning, spec.subject, spec.value);
     return ElectricalRecord{ElectricalSemanticKey{sha256_content_hash(semantic_key_input(
                                 spec.subject, spec.observable, spec.meaning, spec.conditions))},
                             std::move(spec.subject),
                             spec.observable,
                             spec.meaning,
-                            std::move(spec.value),
+                            spec.value,
                             std::move(spec.conditions),
                             std::move(spec.evidence)};
 }
@@ -559,7 +558,7 @@ CharacteristicEnvelope::CharacteristicEnvelope(Quantity minimum, Quantity typica
 }
 
 TolerancedQuantity::TolerancedQuantity(Quantity nominal, Tolerance tolerance)
-    : nominal_{nominal}, tolerance_{std::move(tolerance)} {
+    : nominal_{nominal}, tolerance_{tolerance} {
     if (!tolerance_matches_nominal(*this)) {
         throw KernelArgumentError{ErrorCode::InvalidArgument,
                                   "Tolerance dimension does not match nominal quantity"};
@@ -705,8 +704,8 @@ ElectricalRecordSpec voltage_record(ElectricalSubject subject, ElectricalMeaning
                                     std::vector<ElectricalCondition> conditions,
                                     std::vector<ContentHash> evidence) {
     return ElectricalRecordSpec{
-        std::move(subject), ElectricalObservable::Voltage, meaning,
-        std::move(value),   std::move(conditions),         std::move(evidence)};
+        std::move(subject), ElectricalObservable::Voltage, meaning, value, std::move(conditions),
+        std::move(evidence)};
 }
 
 ElectricalRecordSpec current_record(ElectricalSubject subject, ElectricalMeaning meaning,
@@ -714,8 +713,8 @@ ElectricalRecordSpec current_record(ElectricalSubject subject, ElectricalMeaning
                                     std::vector<ElectricalCondition> conditions,
                                     std::vector<ContentHash> evidence) {
     return ElectricalRecordSpec{
-        std::move(subject), ElectricalObservable::Current, meaning,
-        std::move(value),   std::move(conditions),         std::move(evidence)};
+        std::move(subject), ElectricalObservable::Current, meaning, value, std::move(conditions),
+        std::move(evidence)};
 }
 
 ElectricalSemanticKey electrical_semantic_key(ElectricalRecordSpec record) {
@@ -728,7 +727,7 @@ ElectricalRecord::ElectricalRecord(ElectricalSemanticKey semantic_key, Electrica
                                    std::vector<ElectricalCondition> conditions,
                                    std::vector<ContentHash> evidence)
     : semantic_key_{std::move(semantic_key)}, subject_{std::move(subject)}, observable_{observable},
-      meaning_{meaning}, value_{std::move(value)}, conditions_{std::move(conditions)},
+      meaning_{meaning}, value_{value}, conditions_{std::move(conditions)},
       evidence_{std::move(evidence)} {}
 
 ElectricalRecordSet::ElectricalRecordSet(std::size_t pin_count,
@@ -858,7 +857,7 @@ ElectricalRecordGroup ElectricalRecordGroup::from(std::vector<ElectricalRecord> 
         first.conditions(),
         std::move(source_records),
         status,
-        std::move(effective),
+        effective,
         has_unknown,
         normalize_evidence(std::move(evidence))};
 }
@@ -872,7 +871,7 @@ ElectricalRecordGroup::ElectricalRecordGroup(ElectricalSemanticKey semantic_key,
                                              bool has_unknown, std::vector<ContentHash> evidence)
     : semantic_key_{std::move(semantic_key)}, selector_{std::move(selector)},
       conditions_{std::move(conditions)}, source_records_{std::move(source_records)},
-      status_{status}, effective_value_{std::move(effective_value)}, has_unknown_{has_unknown},
+      status_{status}, effective_value_{effective_value}, has_unknown_{has_unknown},
       evidence_{std::move(evidence)} {}
 
 DiagnosticReport validate_electrical_records(const ElectricalRecordSet &records) {
