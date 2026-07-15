@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
 #include <cstddef>
 #include <optional>
 #include <utility>
@@ -119,7 +120,21 @@ TEST_CASE("Board queries expose deterministic lookup, resolution, geometry, and 
     auto fixture = make_query_fixture();
     auto layout = make_query_board(fixture);
     const auto empty_library = volt::FootprintLibrary{};
-    const auto geometry_mutations = layout.board.geometry_mutation_count();
+    const auto entity_counts = [&layout]() {
+        return std::array{
+            layout.board.all<volt::BoardLayerId>().size(),
+            layout.board.all<volt::BoardFeatureId>().size(),
+            layout.board.all<volt::FootprintDefId>().size(),
+            layout.board.all<volt::ComponentPlacementId>().size(),
+            layout.board.all<volt::BoardTrackId>().size(),
+            layout.board.all<volt::BoardViaId>().size(),
+            layout.board.all<volt::BoardZoneId>().size(),
+            layout.board.all<volt::BoardKeepoutId>().size(),
+            layout.board.all<volt::BoardRoomId>().size(),
+            layout.board.all<volt::BoardTextId>().size(),
+        };
+    };
+    const auto counts_before = entity_counts();
 
     CHECK(volt::queries::footprint_definition_id(
               layout.board, volt::FootprintRef{"tests", "OnePad"}) == layout.footprint);
@@ -167,7 +182,7 @@ TEST_CASE("Board queries expose deterministic lookup, resolution, geometry, and 
     CHECK(first_ratsnest[0].to().placement() == layout.second_placement);
     CHECK(second_ratsnest[0].from().placement() == first_ratsnest[0].from().placement());
     CHECK(second_ratsnest[0].to().placement() == first_ratsnest[0].to().placement());
-    CHECK(layout.board.geometry_mutation_count() == geometry_mutations);
+    CHECK(entity_counts() == counts_before);
 }
 
 TEST_CASE("BoardRouter owns endpoint route sugar and rejects before mutation", "[pcb][router]") {
@@ -185,12 +200,12 @@ TEST_CASE("BoardRouter owns endpoint route sugar and rejects before mutation", "
 
     CHECK_THROWS(
         router.add_track(volt::BoardTrackRouteRequest{other_net, layout.front, endpoints, 0.25}));
-    CHECK(layout.board.track_count() == 0U);
+    CHECK(layout.board.all<volt::BoardTrackId>().size() == 0U);
 
     const auto result =
         router.add_track(volt::BoardTrackRouteRequest{std::nullopt, layout.front, endpoints, 0.25});
     CHECK(result.net == fixture.shared_net);
     CHECK(result.track == volt::BoardTrackId{0});
-    CHECK(layout.board.track_count() == 1U);
-    CHECK(layout.board.track(result.track).net() == fixture.shared_net);
+    CHECK(layout.board.all<volt::BoardTrackId>().size() == 1U);
+    CHECK(layout.board.get(result.track).net() == fixture.shared_net);
 }

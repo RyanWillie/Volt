@@ -195,9 +195,9 @@ std::size_t PyCircuit::board_place_component(std::size_t component, double x, do
 py::list PyCircuit::board_placement_refs() const {
     auto result = py::list{};
     const auto &board = board_projection();
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto placement_id = volt::ComponentPlacementId{index};
-        const auto &placement = board.placement(placement_id);
+        const auto &placement = board.get(placement_id);
         auto item = py::dict{};
         item["index"] = placement_id.index();
         item["component"] = placement.component().index();
@@ -219,7 +219,7 @@ py::list PyCircuit::board_stackup() const {
     const auto &stack = board.layer_stack().value();
     for (std::size_t index = 0; index < stack.layers().size(); ++index) {
         const auto layer_id = stack.layers()[index];
-        const auto &layer = board.layer(layer_id);
+        const auto &layer = board.get(layer_id);
         auto item = py::dict{};
         item["index"] = layer_id.index();
         item["name"] = layer.name();
@@ -312,7 +312,7 @@ py::dict PyCircuit::board_add_track_for_route(std::optional<std::size_t> net, st
 }
 
 std::size_t PyCircuit::board_track_net(std::size_t track) const {
-    return board_projection().track(volt::BoardTrackId{track}).net().index();
+    return board_projection().get(volt::BoardTrackId{track}).net().index();
 }
 
 std::size_t PyCircuit::board_add_via(std::size_t net, double x, double y, std::size_t start_layer,

@@ -20,7 +20,7 @@ BoardRoomRuleResolver::track_width_override(const BoardTrack &track) const {
     if (!room_id.has_value()) {
         return std::nullopt;
     }
-    return RoomRuleValue{board_.room(room_id.value()).track_width_mm().value(), room_id.value()};
+    return RoomRuleValue{board_.get(room_id.value()).track_width_mm().value(), room_id.value()};
 }
 
 [[nodiscard]] double BoardRoomRuleResolver::effective_track_width_mm(
@@ -45,7 +45,7 @@ BoardRoomRuleResolver::copper_clearance_override(const BoardCopperShape &lhs,
     if (!room_id.has_value()) {
         return std::nullopt;
     }
-    return RoomRuleValue{board_.room(room_id.value()).copper_clearance_mm().value(),
+    return RoomRuleValue{board_.get(room_id.value()).copper_clearance_mm().value(),
                          room_id.value()};
 }
 
@@ -53,9 +53,9 @@ BoardRoomRuleResolver::copper_clearance_override(const BoardCopperShape &lhs,
 BoardRoomRuleResolver::track_width_room(BoardLayerId layer, const std::vector<BoardPoint> &points,
                                         double width_mm) const {
     auto result = std::optional<BoardRoomId>{};
-    for (std::size_t index = 0; index < board_.room_count(); ++index) {
+    for (std::size_t index = 0; index < board_.all<volt::BoardRoomId>().size(); ++index) {
         const auto room_id = BoardRoomId{index};
-        const auto &room = board_.room(room_id);
+        const auto &room = board_.get(room_id);
         if (!room.track_width_mm().has_value() ||
             !track_satisfies_room(layer, points, width_mm, room)) {
             continue;
@@ -71,9 +71,9 @@ BoardRoomRuleResolver::track_width_room(BoardLayerId layer, const std::vector<Bo
 BoardRoomRuleResolver::copper_clearance_room(const BoardCopperShape &lhs,
                                              const BoardCopperShape &rhs) const {
     auto result = std::optional<BoardRoomId>{};
-    for (std::size_t index = 0; index < board_.room_count(); ++index) {
+    for (std::size_t index = 0; index < board_.all<volt::BoardRoomId>().size(); ++index) {
         const auto room_id = BoardRoomId{index};
-        const auto &room = board_.room(room_id);
+        const auto &room = board_.get(room_id);
         if (!room.copper_clearance_mm().has_value() || !shape_satisfies_room(lhs, room) ||
             !shape_satisfies_room(rhs, room)) {
             continue;
@@ -121,8 +121,8 @@ BoardRoomRuleResolver::track_satisfies_room(BoardLayerId layer,
 
 [[nodiscard]] bool BoardRoomRuleResolver::room_has_higher_precedence(BoardRoomId candidate,
                                                                      BoardRoomId current) const {
-    const auto candidate_priority = board_.room(candidate).priority();
-    const auto current_priority = board_.room(current).priority();
+    const auto candidate_priority = board_.get(candidate).priority();
+    const auto current_priority = board_.get(current).priority();
     return candidate_priority > current_priority ||
            (candidate_priority == current_priority && candidate.index() < current.index());
 }

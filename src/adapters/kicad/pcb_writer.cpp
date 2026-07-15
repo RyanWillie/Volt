@@ -166,21 +166,21 @@ void add_fab_critical_warning(LossReport &loss_report, LossKind kind, std::strin
 void report_layer_mapping_collision(const Board &board, BoardLayerId current, BoardLayerId existing,
                                     const PcbLayer &candidate, LossReport &loss_report) {
     auto message = std::ostringstream{};
-    message << "Board layer '" << board.layer(current).name() << "' also maps to KiCad layer '"
-            << candidate.name << "', already claimed by board layer '"
-            << board.layer(existing).name() << "'; constructs on the duplicate layer are omitted";
+    message << "Board layer '" << board.get(current).name() << "' also maps to KiCad layer '"
+            << candidate.name << "', already claimed by board layer '" << board.get(existing).name()
+            << "'; constructs on the duplicate layer are omitted";
     add_fab_critical_warning(loss_report, LossKind::UnsupportedConstruct, "board.layer.mapping",
                              message.str());
 }
 
 [[nodiscard]] LayerMap build_layer_map(const Board &board, LossReport &loss_report) {
     auto layer_map = LayerMap{};
-    layer_map.board_layers.resize(board.layer_count());
+    layer_map.board_layers.resize(board.all<volt::BoardLayerId>().size());
     auto kicad_layer_owners = std::map<int, BoardLayerId>{};
 
-    for (std::size_t index = 0; index < board.layer_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardLayerId>().size(); ++index) {
         const auto id = BoardLayerId{index};
-        const auto layer = candidate_layer_for(board.layer(id));
+        const auto layer = candidate_layer_for(board.get(id));
         if (!layer.has_value()) {
             continue;
         }
@@ -246,7 +246,7 @@ definition_for_placement(const Board &board, const ComponentPlacement &placement
 
     const auto cached = queries::footprint_definition_id(board, selected_part->footprint());
     if (cached.has_value()) {
-        return &board.footprint_definition(cached.value());
+        return &board.get(cached.value());
     }
     return footprints.find(selected_part->footprint());
 }
@@ -417,9 +417,9 @@ void write_board_hole(std::ostream &out, const BoardFeature &feature, BoardFeatu
 }
 
 void write_board_features(std::ostream &out, const Board &board, LossReport &loss_report) {
-    for (std::size_t index = 0; index < board.feature_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardFeatureId>().size(); ++index) {
         const auto id = BoardFeatureId{index};
-        const auto &feature = board.feature(id);
+        const auto &feature = board.get(id);
         if (feature.kind() == BoardFeatureKind::Hole) {
             if (feature.hole().plated()) {
                 add_fab_critical_warning(
@@ -457,9 +457,9 @@ build_placement_exports(const Board &board, const FootprintLibrary &footprints,
     const auto resolutions = queries::resolve_pads(board, footprints);
     auto exports = std::vector<PlacementExport>{};
 
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto id = ComponentPlacementId{index};
-        const auto &placement = board.placement(id);
+        const auto &placement = board.get(id);
         if (placement.side() != BoardSide::Top) {
             add_fab_critical_warning(
                 loss_report, LossKind::UnsupportedConstruct, "component_placement.side",
@@ -570,8 +570,9 @@ void write_component_footprints(std::ostream &out, const Board &board,
 
 void write_tracks(std::ostream &out, const Board &board, const LayerMap &layer_map,
                   LossReport &loss_report) {
-    for (std::size_t track_index = 0; track_index < board.track_count(); ++track_index) {
-        const auto &track = board.track(BoardTrackId{track_index});
+    for (std::size_t track_index = 0; track_index < board.all<volt::BoardTrackId>().size();
+         ++track_index) {
+        const auto &track = board.get(BoardTrackId{track_index});
         const auto layer = layer_map.find(track.layer());
         if (!layer.has_value() || layer->kind != "signal") {
             add_fab_critical_warning(
@@ -607,8 +608,8 @@ void write_tracks(std::ostream &out, const Board &board, const LayerMap &layer_m
 
 void write_vias(std::ostream &out, const Board &board, const LayerMap &layer_map,
                 LossReport &loss_report) {
-    for (std::size_t index = 0; index < board.via_count(); ++index) {
-        const auto &via = board.via(BoardViaId{index});
+    for (std::size_t index = 0; index < board.all<volt::BoardViaId>().size(); ++index) {
+        const auto &via = board.get(BoardViaId{index});
         const auto start_layer = layer_map.find(via.start_layer());
         const auto end_layer = layer_map.find(via.end_layer());
         if (!start_layer.has_value() || !end_layer.has_value() || start_layer->kind != "signal" ||
@@ -671,9 +672,10 @@ void write_zone(std::ostream &out, const Board &board, BoardZoneId id, const Boa
 
 void write_zones(std::ostream &out, const Board &board, const LayerMap &layer_map,
                  LossReport &loss_report) {
-    for (std::size_t zone_index = 0; zone_index < board.zone_count(); ++zone_index) {
+    for (std::size_t zone_index = 0; zone_index < board.all<volt::BoardZoneId>().size();
+         ++zone_index) {
         const auto zone_id = BoardZoneId{zone_index};
-        const auto &zone = board.zone(zone_id);
+        const auto &zone = board.get(zone_id);
         for (const auto layer_id : zone.layers()) {
             const auto layer = layer_map.find(layer_id);
             if (!layer.has_value() || layer->kind != "signal") {
@@ -720,11 +722,11 @@ void report_unmapped_text_layer(const BoardLayer &layer, LossReport &loss_report
 
 void write_texts(std::ostream &out, const Board &board, const LayerMap &layer_map,
                  LossReport &loss_report) {
-    for (std::size_t index = 0; index < board.text_count(); ++index) {
-        const auto &text = board.text(BoardTextId{index});
+    for (std::size_t index = 0; index < board.all<volt::BoardTextId>().size(); ++index) {
+        const auto &text = board.get(BoardTextId{index});
         const auto layer = layer_map.find(text.layer());
         if (!layer.has_value()) {
-            report_unmapped_text_layer(board.layer(text.layer()), loss_report);
+            report_unmapped_text_layer(board.get(text.layer()), loss_report);
             continue;
         }
 
@@ -768,7 +770,7 @@ void write_outline(std::ostream &out, const Board &board) {
 }
 
 void report_unsupported_board_constructs(const Board &board, LossReport &loss_report) {
-    for (std::size_t index = 0; index < board.keepout_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardKeepoutId>().size(); ++index) {
         add_fab_critical_warning(
             loss_report, LossKind::UnsupportedConstruct, "board.keepout",
             "The first KiCad PCB writer subset does not export board keepouts");

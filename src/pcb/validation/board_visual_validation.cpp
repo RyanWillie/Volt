@@ -77,7 +77,7 @@ struct ReferenceDesignatorVisualExtent {
 [[nodiscard]] std::optional<PlacementVisualExtent>
 placement_visual_extent(const Board &board, const FootprintLibrary &footprints,
                         ComponentPlacementId placement_id) {
-    const auto &placement = board.placement(placement_id);
+    const auto &placement = board.get(placement_id);
     const auto &selected_part =
         volt::queries::selected_physical_part(board.circuit(), placement.component());
     if (!selected_part.has_value()) {
@@ -142,11 +142,11 @@ box_bounds(const std::vector<BoardPoint> &corners) {
 }
 
 [[nodiscard]] TextVisualExtent text_visual_extent(const Board &board, BoardTextId text_id) {
-    const auto &text = board.text(text_id);
+    const auto &text = board.get(text_id);
     const auto corners = text_box_corners(text);
     const auto [min, max] = box_bounds(corners);
     return TextVisualExtent{
-        text_id, text.layer(), board.layer(text.layer()).side(), text.text(), corners, min, max};
+        text_id, text.layer(), board.get(text.layer()).side(), text.text(), corners, min, max};
 }
 
 [[nodiscard]] bool extents_overlap(const PlacementVisualExtent &lhs,
@@ -176,7 +176,7 @@ box_bounds(const std::vector<BoardPoint> &corners) {
                                                                  BoardSide side) {
     if (board.layer_stack().has_value()) {
         for (const auto layer_id : board.layer_stack()->layers()) {
-            const auto layer_side = board.layer(layer_id).side();
+            const auto layer_side = board.get(layer_id).side();
             if ((side == BoardSide::Top && layer_side == BoardLayerSide::Top) ||
                 (side == BoardSide::Bottom && layer_side == BoardLayerSide::Bottom)) {
                 return std::vector{layer_id};
@@ -184,9 +184,9 @@ box_bounds(const std::vector<BoardPoint> &corners) {
         }
     }
 
-    for (std::size_t index = 0; index < board.layer_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardLayerId>().size(); ++index) {
         const auto layer_id = BoardLayerId{index};
-        const auto layer_side = board.layer(layer_id).side();
+        const auto layer_side = board.get(layer_id).side();
         if ((side == BoardSide::Top && layer_side == BoardLayerSide::Top) ||
             (side == BoardSide::Bottom && layer_side == BoardLayerSide::Bottom)) {
             return std::vector{layer_id};
@@ -382,8 +382,8 @@ reference_label_overlay(const ReferenceDesignatorVisualExtent &extent, const Boa
 [[nodiscard]] std::vector<PlacementVisualExtent>
 collect_placement_visual_extents(const Board &board, const FootprintLibrary &footprints) {
     auto extents = std::vector<PlacementVisualExtent>{};
-    extents.reserve(board.placement_count());
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+    extents.reserve(board.all<volt::ComponentPlacementId>().size());
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto extent = placement_visual_extent(board, footprints, ComponentPlacementId{index});
         if (extent.has_value()) {
             extents.push_back(extent.value());
@@ -394,8 +394,8 @@ collect_placement_visual_extents(const Board &board, const FootprintLibrary &foo
 
 [[nodiscard]] std::vector<TextVisualExtent> collect_text_visual_extents(const Board &board) {
     auto extents = std::vector<TextVisualExtent>{};
-    extents.reserve(board.text_count());
-    for (std::size_t index = 0; index < board.text_count(); ++index) {
+    extents.reserve(board.all<volt::BoardTextId>().size());
+    for (std::size_t index = 0; index < board.all<volt::BoardTextId>().size(); ++index) {
         extents.push_back(text_visual_extent(board, BoardTextId{index}));
     }
     return extents;
@@ -404,10 +404,10 @@ collect_placement_visual_extents(const Board &board, const FootprintLibrary &foo
 [[nodiscard]] std::vector<PadVisualGeometry>
 collect_pad_visual_geometry(const Board &board, const FootprintLibrary &footprints) {
     auto pads = std::vector<PadVisualGeometry>{};
-    for (std::size_t placement_index = 0; placement_index < board.placement_count();
-         ++placement_index) {
+    for (std::size_t placement_index = 0;
+         placement_index < board.all<volt::ComponentPlacementId>().size(); ++placement_index) {
         const auto placement_id = ComponentPlacementId{placement_index};
-        const auto &placement = board.placement(placement_id);
+        const auto &placement = board.get(placement_id);
         const auto &selected_part =
             volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {
@@ -448,11 +448,11 @@ reference_designator_extent(const Board &board, const ComponentPlacement &placem
 [[nodiscard]] std::vector<ReferenceDesignatorVisualExtent>
 collect_reference_designator_extents(const Board &board, const FootprintLibrary &footprints) {
     auto labels = std::vector<ReferenceDesignatorVisualExtent>{};
-    labels.reserve(board.placement_count());
-    for (std::size_t placement_index = 0; placement_index < board.placement_count();
-         ++placement_index) {
+    labels.reserve(board.all<volt::ComponentPlacementId>().size());
+    for (std::size_t placement_index = 0;
+         placement_index < board.all<volt::ComponentPlacementId>().size(); ++placement_index) {
         const auto placement_id = ComponentPlacementId{placement_index};
-        const auto &placement = board.placement(placement_id);
+        const auto &placement = board.get(placement_id);
         const auto &selected_part =
             volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {
@@ -472,7 +472,7 @@ collect_reference_designator_extents(const Board &board, const FootprintLibrary 
     if (!board.outline().has_value()) {
         return false;
     }
-    return !outline_contains_polygon(*board.outline(), text_box_corners(board.text(extent.text)),
+    return !outline_contains_polygon(*board.outline(), text_box_corners(board.get(extent.text)),
                                      0.0);
 }
 
@@ -522,10 +522,10 @@ void validate_text_package_obstructions(const Board &board,
 void validate_text_hole_obstructions(const Board &board, const std::vector<TextVisualExtent> &texts,
                                      DiagnosticReport &report) {
     for (const auto &text : texts) {
-        for (std::size_t feature_index = 0; feature_index < board.feature_count();
-             ++feature_index) {
+        for (std::size_t feature_index = 0;
+             feature_index < board.all<volt::BoardFeatureId>().size(); ++feature_index) {
             const auto feature_id = BoardFeatureId{feature_index};
-            const auto &feature = board.feature(feature_id);
+            const auto &feature = board.get(feature_id);
             if (feature.kind() != BoardFeatureKind::Hole || !text_intersects_hole(text, feature)) {
                 continue;
             }

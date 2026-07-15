@@ -431,7 +431,7 @@ TEST_CASE("Board visual validation reports overlapping placement footprint exten
     CHECK(
         find_diagnostic(report, std::string{volt::pcb_visual_diagnostic_codes::PlacementOverlap}) ==
         visual_overlaps.front());
-    CHECK(board.placement(third).component() == fixture.components[2]);
+    CHECK(board.get(third).component() == fixture.components[2]);
 }
 
 TEST_CASE("Board visual validation orders placement overlaps by placement pair") {

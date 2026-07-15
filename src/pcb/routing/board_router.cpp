@@ -97,7 +97,7 @@ void append_path_shape(std::vector<std::vector<BoardPoint>> &paths,
 }
 
 [[nodiscard]] BoardLayerSide layer_side(const Board &board, BoardLayerId layer) {
-    return board.layer(layer).side();
+    return board.get(layer).side();
 }
 
 [[nodiscard]] bool layer_scope_permits(NetClassLayerScope scope, BoardLayerSide side) {
@@ -279,7 +279,14 @@ void apply_escape_room_overrides(const Board &board, BoardRoom &room) {
 }
 
 BoardRouter::BoardRouter(Board &board, const FootprintLibrary &footprints)
-    : board_{&board}, footprints_{footprints}, index_{board, footprints_} {}
+    : board_{&board}, footprints_{footprints} {}
+
+[[nodiscard]] BoardSpatialIndex &BoardRouter::index() const {
+    if (!index_.has_value()) {
+        index_.emplace(*board_, footprints_);
+    }
+    return index_.value();
+}
 
 [[nodiscard]] bool BoardEscapeResult::complete() const noexcept {
     return !pads.empty() &&
@@ -288,19 +295,19 @@ BoardRouter::BoardRouter(Board &board, const FootprintLibrary &footprints)
 }
 
 [[nodiscard]] bool BoardRouter::layer_allowed(NetId net, BoardLayerId layer) const {
-    if (board_->layer(layer).role() != BoardLayerRole::Copper) {
+    if (board_->get(layer).role() != BoardLayerRole::Copper) {
         return false;
     }
     const auto rules = resolve_net_class_rules(board_->circuit(), net);
     if (!rules.allowed_layer_names.empty()) {
         return std::find(rules.allowed_layer_names.begin(), rules.allowed_layer_names.end(),
-                         board_->layer(layer).name()) != rules.allowed_layer_names.end();
+                         board_->get(layer).name()) != rules.allowed_layer_names.end();
     }
     return layer_scope_permits(rules.layer_scope, layer_side(*board_, layer));
 }
 
 void BoardRouter::require_routable_layer(BoardLayerId layer) const {
-    if (board_->layer(layer).role() != BoardLayerRole::Copper) {
+    if (board_->get(layer).role() != BoardLayerRole::Copper) {
         throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
                                   "Board router endpoint layer must be a copper layer",
                                   EntityRef::board_layer(layer)};
@@ -319,7 +326,7 @@ void BoardRouter::require_routable_layer(BoardLayerId layer) const {
     params.via_drill_mm = via_size.drill_diameter_mm;
     params.via_diameter_mm = via_size.annular_diameter_mm;
 
-    for (std::size_t index = 0; index < board_->layer_count(); ++index) {
+    for (std::size_t index = 0; index < board_->all<volt::BoardLayerId>().size(); ++index) {
         const auto layer = BoardLayerId{index};
         if (layer_allowed(net, layer)) {
             params.allowed_layers.push_back(layer);
@@ -338,7 +345,7 @@ void BoardRouter::require_routable_layer(BoardLayerId layer) const {
 
     const auto track =
         board_->add_track(BoardTrack{net, request.layer, std::move(points), request.width_mm});
-    index_ = SpatialIndexStorage{*board_, footprints_};
+    index_.reset();
     return BoardTrackRouteResult{track, net};
 }
 
@@ -480,7 +487,7 @@ BoardRouter::evaluate(const Candidate &candidate, const BoardRouteRequest &reque
             std::vector{segment.start, segment.end}, width_mm / 2.0, BoardClearanceKind::Track,
             BoardKeepoutRestriction::Copper,
         };
-        const auto result = index_.query_legality(shape);
+        const auto result = index().query_legality(shape);
         if (!result.legal) {
             return result.blockers;
         }
@@ -501,7 +508,7 @@ BoardRouter::evaluate(const Candidate &candidate, const BoardRouteRequest &reque
             BoardClearanceKind::Via,
             BoardKeepoutRestriction::Via,
         };
-        const auto result = index_.query_legality(shape);
+        const auto result = index().query_legality(shape);
         if (!result.legal) {
             return result.blockers;
         }
@@ -522,22 +529,18 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         }
         const auto width_mm =
             track_width_for_segment(*board_, segment.layer, segment.start, segment.end, params);
-        const auto previous_geometry_mutation_count = board_->geometry_mutation_count();
         const auto track_id = board_->add_track(BoardTrack{
             request.net, segment.layer, std::vector{segment.start, segment.end}, width_mm});
-        index_.insert_after_board_mutation(
-            escape_segment_shape(request.net, segment.layer, segment.start, segment.end, width_mm),
-            previous_geometry_mutation_count);
+        index().insert(
+            escape_segment_shape(request.net, segment.layer, segment.start, segment.end, width_mm));
         result.tracks.push_back(track_id);
     }
 
     for (const auto &via : candidate.vias) {
-        const auto previous_geometry_mutation_count = board_->geometry_mutation_count();
         const auto via_id =
             board_->add_via(BoardVia{request.net, via.position, via.start_layer, via.end_layer,
                                      params.via_drill_mm, params.via_diameter_mm});
-        index_.insert_after_board_mutation(committed_via_shape(*board_, board_->via(via_id)),
-                                           previous_geometry_mutation_count);
+        index().insert(committed_via_shape(*board_, board_->get(via_id)));
         result.vias.push_back(via_id);
     }
 }
@@ -593,7 +596,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
                                   EntityRef::component(component)};
     }
     result.placement = placement_id;
-    const auto &placement = board_->placement(placement_id.value());
+    const auto &placement = board_->get(placement_id.value());
 
     const auto &selected_part = volt::queries::selected_physical_part(board_->circuit(), component);
     if (!selected_part.has_value()) {
@@ -676,7 +679,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         };
         apply_escape_room_overrides(*board_, room);
         result.room = board_->add_room(std::move(room));
-        index_ = SpatialIndexStorage{*board_, footprints_};
+        index_.reset();
     }
 
     for (const auto &candidate : candidates) {
@@ -688,7 +691,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
                 *board_, candidate.layer, pad.pad_position, endpoint, candidate.params);
             const auto shape = escape_segment_shape(pad.net.value(), candidate.layer,
                                                     pad.pad_position, endpoint, width_mm);
-            const auto legality = index_.query_legality(shape);
+            const auto legality = index().query_legality(shape);
             if (!legality.legal) {
                 if (!primary_blockers.has_value()) {
                     primary_blockers = legality.blockers;
@@ -696,11 +699,10 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
                 continue;
             }
 
-            const auto previous_geometry_mutation_count = board_->geometry_mutation_count();
             const auto track_id =
                 board_->add_track(BoardTrack{pad.net.value(), candidate.layer,
                                              std::vector{pad.pad_position, endpoint}, width_mm});
-            index_.insert_after_board_mutation(shape, previous_geometry_mutation_count);
+            index().insert(shape);
             pad.endpoint = endpoint;
             pad.escaped = true;
             pad.failure_reason = BoardEscapeFailureReason::None;

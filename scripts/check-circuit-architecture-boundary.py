@@ -144,10 +144,6 @@ PRIVILEGED_FRIEND_ALLOWLIST = {
         "include/volt/pcb/routing/board_spatial_index.hpp",
         "friend void detail::validate_copper_clearance(const Board &board, const std::vector<detail::BoardCopperShape> &shapes, DiagnosticReport &report)",
     ): "Board copper DRC currently reuses the spatial index's internal shape snapshot.",
-    (
-        "include/volt/pcb/routing/board_spatial_index.hpp",
-        "friend void detail::insert_after_board_mutation(BoardSpatialIndex &index, BoardSpatialQueryShape shape, std::size_t previous_geometry_mutation_count)",
-    ): "BoardRouter mirrors an accepted board mutation into its private runtime spatial index.",
 }
 
 PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {}
@@ -387,18 +383,6 @@ SUBMODEL_MUTATORS = {
         ROOT / "include" / "volt" / "circuit" / "hierarchy" / "hierarchy.hpp",
         {"add_template_net", "add_port", "add_component"},
     ),
-    "BoardPlacementModel": (
-        ROOT / "include" / "volt" / "pcb" / "placement" / "board_placement_model.hpp",
-        {"place_component"},
-    ),
-    "BoardCopperModel": (
-        ROOT / "include" / "volt" / "pcb" / "copper" / "board_copper_model.hpp",
-        {"add_track", "add_via", "add_zone", "add_keepout", "add_room", "add_text"},
-    ),
-    "BoardSpatialIndex": (
-        ROOT / "include" / "volt" / "pcb" / "routing" / "board_spatial_index.hpp",
-        {"insert_after_board_mutation"},
-    ),
     "Sheet": (
         ROOT / "include" / "volt" / "schematic" / "schematic_sheet.hpp",
         {
@@ -413,46 +397,17 @@ SUBMODEL_MUTATORS = {
             "add_symbol_field",
         },
     ),
-    "BoardStructureModel": (
-        ROOT / "include" / "volt" / "pcb" / "structure" / "board_structure_model.hpp",
-        {
-            "add_layer",
-            "set_layer_stack",
-            "set_outline",
-            "set_design_rules",
-            "set_capability_profile",
-            "add_feature",
-        },
-    ),
-    "BoardFootprintModel": (
-        ROOT / "include" / "volt" / "pcb" / "footprints" / "board_footprint_model.hpp",
-        {"cache_footprint_definition"},
-    ),
 }
 
 SUBMODEL_DERIVATION_ALLOWLIST = {
-    ("include/volt/pcb/board.hpp", "StructureStorage", "BoardStructureModel"):
-        "Board-private storage adapter exposes board structure mutation only to Board.",
-    ("include/volt/pcb/board.hpp", "FootprintStorage", "BoardFootprintModel"):
-        "Board-private storage adapter exposes footprint cache mutation only to Board.",
-    ("include/volt/pcb/board.hpp", "PlacementStorage", "BoardPlacementModel"):
-        "Board-private storage adapter exposes placement mutation only to Board.",
-    ("include/volt/pcb/board.hpp", "CopperStorage", "BoardCopperModel"):
-        "Board-private storage adapter exposes copper mutation only to Board.",
     (
         "src/schematic/schematic_storage.hpp",
         "SheetStorage",
         "Sheet",
     ): "Schematic source-private storage adapter exposes sheet membership mutation only after Schematic preflight.",
-    (
-        "include/volt/pcb/routing/board_router.hpp",
-        "SpatialIndexStorage",
-        "BoardSpatialIndex",
-    ): "BoardRouter-private storage adapter mirrors committed Board copper into its runtime spatial index.",
 }
 
 PRIVATE_STORAGE_HEADER_ALLOWLIST = {
-    "src/pcb/board_storage.hpp": ("src/pcb/",),
     "src/pcb/routing/board_spatial_index_storage.hpp": ("src/pcb/routing/",),
     "src/schematic/schematic_storage.hpp": ("src/schematic/",),
 }
@@ -2235,17 +2190,17 @@ def run_self_tests() -> int:
     )
     submodel_derivation_sample = textwrap.dedent(
         """
-        struct TestBoardPlacementModel : volt::BoardPlacementModel {
+        struct TestSheet : volt::Sheet {
           public:
-            using BoardPlacementModel::place_component;
+            using Sheet::add_region;
         };
         """
     )
     sample_derivations = submodel_derivations(Path("tests/sample.cpp"), submodel_derivation_sample)
     require_self_test(
         any(
-            derivation.derived == "TestBoardPlacementModel"
-            and derivation.base == "BoardPlacementModel"
+            derivation.derived == "TestSheet"
+            and derivation.base == "Sheet"
             for derivation in sample_derivations
         ),
         "subclasses of mutating submodels must be reported as derivation escape hatches",

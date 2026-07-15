@@ -93,13 +93,6 @@ struct BoardSpatialQueryResult {
                                          const BoardSpatialQueryResult &rhs) = default;
 };
 
-class BoardSpatialIndex;
-
-namespace detail {
-void insert_after_board_mutation(BoardSpatialIndex &index, BoardSpatialQueryShape shape,
-                                 std::size_t previous_geometry_mutation_count);
-} // namespace detail
-
 /**
  * Runtime-only spatial index over normalized board copper shapes.
  *
@@ -155,16 +148,11 @@ class BoardSpatialIndex {
     detail::validate_copper_clearance(const Board &board,
                                       const std::vector<detail::BoardCopperShape> &shapes,
                                       DiagnosticReport &report);
-    friend void detail::insert_after_board_mutation(BoardSpatialIndex &index,
-                                                    BoardSpatialQueryShape shape,
-                                                    std::size_t previous_geometry_mutation_count);
-
     BoardSpatialIndex(const Board &board, std::vector<detail::BoardCopperShape> shapes);
     BoardSpatialIndex(const Board &&board, std::vector<detail::BoardCopperShape> shapes) = delete;
 
     [[nodiscard]] detail::BoardSpatialIndexState &mutable_state() noexcept;
     [[nodiscard]] const detail::BoardSpatialIndexState &state() const noexcept;
-
     std::unique_ptr<detail::BoardSpatialIndexState> state_;
 
     [[nodiscard]] static bool cell_less(const detail::BoardSpatialIndexCell &lhs,
@@ -201,8 +189,6 @@ class BoardSpatialIndex {
     void validate_shape(const detail::BoardCopperShape &shape) const;
 
     void append_shape(detail::BoardCopperShape shape);
-
-    void insert(detail::BoardCopperShape shape);
 
     [[nodiscard]] std::vector<std::size_t>
     candidate_obstacles(const detail::BoardCopperShape &candidate) const;

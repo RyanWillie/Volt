@@ -314,17 +314,17 @@ struct LedBadgeCircuit {
 
 [[nodiscard]] std::size_t exported_segment_count(const volt::Board &board) {
     auto count = std::size_t{0};
-    for (std::size_t index = 0; index < board.track_count(); ++index) {
-        count += board.track(volt::BoardTrackId{index}).points().size() - 1U;
+    for (std::size_t index = 0; index < board.all<volt::BoardTrackId>().size(); ++index) {
+        count += board.get(volt::BoardTrackId{index}).points().size() - 1U;
     }
     return count;
 }
 
 [[nodiscard]] std::size_t exported_pad_count(const volt::Board &board) {
-    auto count = board.feature_count();
+    auto count = board.all<volt::BoardFeatureId>().size();
     const auto library = volt::builtin_footprint_library();
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
-        const auto &placement = board.placement(volt::ComponentPlacementId{index});
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
+        const auto &placement = board.get(volt::ComponentPlacementId{index});
         const auto &part =
             volt::queries::selected_physical_part(board.circuit(), placement.component()).value();
         const auto *definition = library.find(part.footprint());
@@ -420,10 +420,11 @@ TEST_CASE("KiCad PCB writer pins a routed multi-net golden board") {
     CHECK(result.text ==
           volt::adapters::kicad::write_board(board, volt::builtin_footprint_library()).text);
     CHECK(count_occurrences(result.text, "(footprint ") ==
-          board.placement_count() + board.feature_count());
+          board.all<volt::ComponentPlacementId>().size() +
+              board.all<volt::BoardFeatureId>().size());
     CHECK(count_occurrences(result.text, "(pad ") == exported_pad_count(board));
     CHECK(count_occurrences(result.text, "(segment\n") == exported_segment_count(board));
-    CHECK(count_occurrences(result.text, "(via\n") == board.via_count());
+    CHECK(count_occurrences(result.text, "(via\n") == board.all<volt::BoardViaId>().size());
     CHECK(count_occurrences(result.text, "\n  (net ") ==
           board.circuit().all<volt::NetId>().size() + 1U);
     CHECK(result.text.find("(net 1 \"VCC\")") != std::string::npos);

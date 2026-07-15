@@ -145,7 +145,7 @@ void append_unique_layer(std::vector<BoardLayerId> &layers, BoardLayerId layer) 
             const auto first = std::min(start.value(), end.value());
             const auto last = std::max(start.value(), end.value());
             for (std::size_t index = first; index <= last; ++index) {
-                if (board.layer(layers[index]).role() == BoardLayerRole::Copper) {
+                if (board.get(layers[index]).role() == BoardLayerRole::Copper) {
                     append_unique_layer(result, layers[index]);
                 }
             }
@@ -162,9 +162,9 @@ void append_unique_layer(std::vector<BoardLayerId> &layers, BoardLayerId layer) 
 pad_copper_layers(const Board &board, const FootprintPad &pad, BoardSide placement_side) {
     auto result = std::vector<BoardLayerId>{};
     if (pad.layers().is_through_hole()) {
-        for (std::size_t index = 0; index < board.layer_count(); ++index) {
+        for (std::size_t index = 0; index < board.all<volt::BoardLayerId>().size(); ++index) {
             const auto layer_id = BoardLayerId{index};
-            if (board.layer(layer_id).role() == BoardLayerRole::Copper) {
+            if (board.get(layer_id).role() == BoardLayerRole::Copper) {
                 result.push_back(layer_id);
             }
         }
@@ -175,9 +175,9 @@ pad_copper_layers(const Board &board, const FootprintPad &pad, BoardSide placeme
     const auto back_copper = pad.layers().contains(FootprintLayer::BackCopper);
     const auto maps_to_top = placement_side == BoardSide::Top ? front_copper : back_copper;
     const auto maps_to_bottom = placement_side == BoardSide::Top ? back_copper : front_copper;
-    for (std::size_t index = 0; index < board.layer_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardLayerId>().size(); ++index) {
         const auto layer_id = BoardLayerId{index};
-        const auto &layer = board.layer(layer_id);
+        const auto &layer = board.get(layer_id);
         if (layer.role() != BoardLayerRole::Copper) {
             continue;
         }
@@ -203,9 +203,10 @@ find_board_pad_resolution(const std::vector<PadResolution> &resolutions,
 }
 
 void append_track_shapes(const Board &board, std::vector<BoardCopperShape> &shapes) {
-    for (std::size_t track_index = 0; track_index < board.track_count(); ++track_index) {
+    for (std::size_t track_index = 0; track_index < board.all<volt::BoardTrackId>().size();
+         ++track_index) {
         const auto track_id = BoardTrackId{track_index};
-        const auto &track = board.track(track_id);
+        const auto &track = board.get(track_id);
         for (std::size_t point_index = 1; point_index < track.points().size(); ++point_index) {
             shapes.push_back(BoardCopperShape{
                 BoardCopperShapeKind::Segment,
@@ -221,9 +222,9 @@ void append_track_shapes(const Board &board, std::vector<BoardCopperShape> &shap
 }
 
 void append_via_shapes(const Board &board, std::vector<BoardCopperShape> &shapes) {
-    for (std::size_t via_index = 0; via_index < board.via_count(); ++via_index) {
+    for (std::size_t via_index = 0; via_index < board.all<volt::BoardViaId>().size(); ++via_index) {
         const auto via_id = BoardViaId{via_index};
-        const auto &via = board.via(via_id);
+        const auto &via = board.get(via_id);
         shapes.push_back(BoardCopperShape{
             BoardCopperShapeKind::Disc,
             via.net(),
@@ -237,9 +238,10 @@ void append_via_shapes(const Board &board, std::vector<BoardCopperShape> &shapes
 }
 
 void append_zone_shapes(const Board &board, std::vector<BoardCopperShape> &shapes) {
-    for (std::size_t zone_index = 0; zone_index < board.zone_count(); ++zone_index) {
+    for (std::size_t zone_index = 0; zone_index < board.all<volt::BoardZoneId>().size();
+         ++zone_index) {
         const auto zone_id = BoardZoneId{zone_index};
-        const auto &zone = board.zone(zone_id);
+        const auto &zone = board.get(zone_id);
         if (!zone.net().has_value()) {
             continue;
         }
@@ -258,10 +260,10 @@ void append_zone_shapes(const Board &board, std::vector<BoardCopperShape> &shape
 void append_pad_shapes(const Board &board, const FootprintLibrary &footprints,
                        const std::vector<PadResolution> &resolutions,
                        std::vector<BoardCopperShape> &shapes) {
-    for (std::size_t placement_index = 0; placement_index < board.placement_count();
-         ++placement_index) {
+    for (std::size_t placement_index = 0;
+         placement_index < board.all<volt::ComponentPlacementId>().size(); ++placement_index) {
         const auto placement_id = ComponentPlacementId{placement_index};
-        const auto &placement = board.placement(placement_id);
+        const auto &placement = board.get(placement_id);
         const auto &selected_part =
             volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {

@@ -72,6 +72,7 @@ add_executable(
     pcb/routing/board_router_test.cpp
     pcb/routing/board_spatial_index_test.cpp
     pcb/board_queries_test.cpp
+    pcb/board_root_cutover_test.cpp
     pcb/board_test.cpp
     pcb/canonical_public_include_paths_test.cpp
     pcb/models/board_models_test.cpp

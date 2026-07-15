@@ -1,28 +1,27 @@
+include <concepts>
 include <cstddef>
-include <memory>
+include <iterator>
 include <optional>
 include <string>
+include <type_traits>
 include <utility>
 include <vector>
 include <volt/circuit/circuit.hpp>
 include <volt/core/diagnostics.hpp>
+include <volt/core/entity_table.hpp>
 include <volt/pcb/copper/board_copper.hpp>
-include <volt/pcb/copper/board_copper_model.hpp>
 include <volt/pcb/features/board_features.hpp>
-include <volt/pcb/footprints/board_footprint_model.hpp>
 include <volt/pcb/footprints/footprints.hpp>
 include <volt/pcb/geometry/board_geometry.hpp>
 include <volt/pcb/geometry/board_outline.hpp>
 include <volt/pcb/layers/board_layers.hpp>
-include <volt/pcb/placement/board_placement_model.hpp>
-include <volt/pcb/structure/board_structure_model.hpp>
+include <volt/pcb/placement/board_placement_updates.hpp>
 
 explicit Board(const Circuit &circuit, BoardName name = BoardName{"Main"})
 Board(const Circuit &&circuit, BoardName name = BoardName{"Main"}) = delete
 [[nodiscard]] const BoardName &name() const noexcept
 [[nodiscard]] BoardUnits units() const noexcept
 [[nodiscard]] const Circuit &circuit() const noexcept
-[[nodiscard]] std::size_t geometry_mutation_count() const noexcept
 [[nodiscard]] BoardLayerId add_layer(BoardLayer layer)
 void set_layer_stack(LayerStack stack)
 void set_outline(BoardOutline outline)
@@ -37,27 +36,11 @@ void set_capability_profile(BoardCapabilityProfile profile)
 [[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout)
 [[nodiscard]] BoardRoomId add_room(BoardRoom room)
 [[nodiscard]] BoardTextId add_text(BoardText text)
-[[nodiscard]] const BoardLayer &layer(BoardLayerId id) const
-[[nodiscard]] std::size_t layer_count() const noexcept
+void move(BoardPlacementMove change)
 [[nodiscard]] const std::optional<LayerStack> &layer_stack() const noexcept
 [[nodiscard]] const std::optional<BoardOutline> &outline() const noexcept
 [[nodiscard]] const BoardDesignRules &design_rules() const noexcept
 [[nodiscard]] const std::optional<BoardCapabilityProfile> &capability_profile() const noexcept
-[[nodiscard]] const BoardFeature &feature(BoardFeatureId id) const
-[[nodiscard]] std::size_t feature_count() const noexcept
-[[nodiscard]] const FootprintDefinition &footprint_definition(FootprintDefId id) const
-[[nodiscard]] std::size_t footprint_definition_count() const noexcept
-[[nodiscard]] const ComponentPlacement &placement(ComponentPlacementId id) const
-[[nodiscard]] std::size_t placement_count() const noexcept
-[[nodiscard]] const BoardTrack &track(BoardTrackId id) const
-[[nodiscard]] std::size_t track_count() const noexcept
-[[nodiscard]] const BoardVia &via(BoardViaId id) const
-[[nodiscard]] std::size_t via_count() const noexcept
-[[nodiscard]] const BoardZone &zone(BoardZoneId id) const
-[[nodiscard]] std::size_t zone_count() const noexcept
-[[nodiscard]] const BoardKeepout &keepout(BoardKeepoutId id) const
-[[nodiscard]] std::size_t keepout_count() const noexcept
-[[nodiscard]] const BoardRoom &room(BoardRoomId id) const
-[[nodiscard]] std::size_t room_count() const noexcept
-[[nodiscard]] const BoardText &text(BoardTextId id) const
-[[nodiscard]] std::size_t text_count() const noexcept
+template <BoardEntityId Id> [[nodiscard]] const board_entity_type_t<Id> &get(Id id) const
+template <BoardEntityId Id> [[nodiscard]] board_entity_range_t<Id> all() const &
+template <BoardEntityId Id> [[nodiscard]] board_entity_range_t<Id> all() const && = delete

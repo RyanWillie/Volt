@@ -4,23 +4,19 @@ add_library(
     copper/board_capability.cpp
     copper/board_copper.cpp
     copper/board_copper_geometry.cpp
-    copper/board_copper_model.cpp
     copper/board_copper_validation.cpp
     copper/board_room_rules.cpp
     features/board_features.cpp
-    footprints/board_footprint_model.cpp
     footprints/footprints.cpp
     geometry/board_geometry.cpp
     geometry/board_outline.cpp
     layers/board_layers.cpp
-    placement/board_placement_model.cpp
     assembly/cpl.cpp
     projection/board_geometry_projection.cpp
     projection/footprint_visual_projection.cpp
     queries/board_queries.cpp
     routing/board_router.cpp
     routing/board_spatial_index.cpp
-    structure/board_structure_model.cpp
     validation/board_capability_validation.cpp
     validation/board_footprint_drc.cpp
     validation/board_visual_validation.cpp

@@ -142,8 +142,8 @@ void write_pcb_svg_number(std::ostream &out, double value) {
 [[nodiscard]] FootprintLibrary preview_footprint_library(const Board &board,
                                                          const FootprintLibrary &footprints) {
     auto library = FootprintLibrary{};
-    for (std::size_t index = 0; index < board.footprint_definition_count(); ++index) {
-        library.add(board.footprint_definition(FootprintDefId{index}));
+    for (std::size_t index = 0; index < board.all<volt::FootprintDefId>().size(); ++index) {
+        library.add(board.get(FootprintDefId{index}));
     }
     for (const auto &definition : footprints.definitions()) {
         const auto *existing = library.find(definition.ref());
@@ -171,7 +171,7 @@ resolve_definition_for_placement(const Board &board, const ComponentPlacement &p
 
     const auto cached = queries::footprint_definition_id(board, selected_part->footprint());
     if (cached.has_value()) {
-        return &board.footprint_definition(cached.value());
+        return &board.get(cached.value());
     }
     return footprints.find(selected_part->footprint());
 }
@@ -183,7 +183,7 @@ resolve_definition_for_placement(const Board &board, const ComponentPlacement &p
 
 [[nodiscard]] std::optional<FootprintDefId> projection_footprint_definition_id_for_placement(
     const Board &board, ComponentPlacementId placement_id, const FootprintLibrary &footprints) {
-    const auto &placement = board.placement(placement_id);
+    const auto &placement = board.get(placement_id);
     const auto &selected_part =
         volt::queries::selected_physical_part(board.circuit(), placement.component());
     if (!selected_part.has_value()) {
@@ -191,13 +191,13 @@ resolve_definition_for_placement(const Board &board, const ComponentPlacement &p
     }
 
     auto refs = std::vector<FootprintRef>{};
-    refs.reserve(board.footprint_definition_count() + placement_id.index() + 1U);
-    for (std::size_t index = 0; index < board.footprint_definition_count(); ++index) {
-        refs.push_back(board.footprint_definition(FootprintDefId{index}).ref());
+    refs.reserve(board.all<volt::FootprintDefId>().size() + placement_id.index() + 1U);
+    for (std::size_t index = 0; index < board.all<volt::FootprintDefId>().size(); ++index) {
+        refs.push_back(board.get(FootprintDefId{index}).ref());
     }
 
     for (std::size_t index = 0; index <= placement_id.index(); ++index) {
-        const auto &candidate_placement = board.placement(ComponentPlacementId{index});
+        const auto &candidate_placement = board.get(ComponentPlacementId{index});
         const auto &candidate_part =
             volt::queries::selected_physical_part(board.circuit(), candidate_placement.component());
         if (!candidate_part.has_value() ||
@@ -239,11 +239,11 @@ void include_board_point(PcbSvgBounds &bounds, BoardPoint point) {
 bounds_from_board(const Board &board, const FootprintLibrary &footprints,
                   const std::vector<ProjectedFootprintGeometry> &footprint_geometries) {
     auto bounds = bounds_from_outline(board);
-    for (std::size_t index = 0; index < board.feature_count(); ++index) {
-        include_feature_bounds(bounds, board.feature(BoardFeatureId{index}));
+    for (std::size_t index = 0; index < board.all<volt::BoardFeatureId>().size(); ++index) {
+        include_feature_bounds(bounds, board.get(BoardFeatureId{index}));
     }
-    for (std::size_t index = 0; index < board.track_count(); ++index) {
-        const auto &track = board.track(BoardTrackId{index});
+    for (std::size_t index = 0; index < board.all<volt::BoardTrackId>().size(); ++index) {
+        const auto &track = board.get(BoardTrackId{index});
         const auto half_width = track.width_mm() / 2.0;
         for (const auto point : track.points()) {
             include_board_point(bounds, BoardPoint{point.x_mm() - half_width, point.y_mm()});
@@ -252,8 +252,8 @@ bounds_from_board(const Board &board, const FootprintLibrary &footprints,
             include_board_point(bounds, BoardPoint{point.x_mm(), point.y_mm() + half_width});
         }
     }
-    for (std::size_t index = 0; index < board.via_count(); ++index) {
-        const auto &via = board.via(BoardViaId{index});
+    for (std::size_t index = 0; index < board.all<volt::BoardViaId>().size(); ++index) {
+        const auto &via = board.get(BoardViaId{index});
         const auto radius = via.annular_diameter_mm() / 2.0;
         include_board_point(bounds,
                             BoardPoint{via.position().x_mm() - radius, via.position().y_mm()});
@@ -264,23 +264,23 @@ bounds_from_board(const Board &board, const FootprintLibrary &footprints,
         include_board_point(bounds,
                             BoardPoint{via.position().x_mm(), via.position().y_mm() + radius});
     }
-    for (std::size_t index = 0; index < board.zone_count(); ++index) {
-        for (const auto point : board.zone(BoardZoneId{index}).outline()) {
+    for (std::size_t index = 0; index < board.all<volt::BoardZoneId>().size(); ++index) {
+        for (const auto point : board.get(BoardZoneId{index}).outline()) {
             include_board_point(bounds, point);
         }
     }
-    for (std::size_t index = 0; index < board.keepout_count(); ++index) {
-        for (const auto point : board.keepout(BoardKeepoutId{index}).outline()) {
+    for (std::size_t index = 0; index < board.all<volt::BoardKeepoutId>().size(); ++index) {
+        for (const auto point : board.get(BoardKeepoutId{index}).outline()) {
             include_board_point(bounds, point);
         }
     }
-    for (std::size_t index = 0; index < board.text_count(); ++index) {
-        const auto &text = board.text(BoardTextId{index});
+    for (std::size_t index = 0; index < board.all<volt::BoardTextId>().size(); ++index) {
+        const auto &text = board.get(BoardTextId{index});
         include_board_point(bounds, text.position());
     }
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
-        const auto &placement = board.placement(placement_id);
+        const auto &placement = board.get(placement_id);
         include_board_point(bounds, placement.position());
         const auto *definition = resolve_definition_for_placement(board, placement, footprints);
         if (definition != nullptr) {
@@ -656,10 +656,10 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
             for (const auto entity : diagnostic.entities()) {
                 if (entity.kind() == EntityKind::BoardTrack) {
                     const auto track_id = BoardTrackId{entity.index()};
-                    if (track_id.index() >= board.track_count()) {
+                    if (track_id.index() >= board.all<volt::BoardTrackId>().size()) {
                         continue;
                     }
-                    const auto &track = board.track(track_id);
+                    const auto &track = board.get(track_id);
                     if (!layer_selected(options, track.layer())) {
                         continue;
                     }
@@ -683,10 +683,10 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
                 }
                 if (entity.kind() == EntityKind::BoardVia) {
                     const auto via_id = BoardViaId{entity.index()};
-                    if (via_id.index() >= board.via_count()) {
+                    if (via_id.index() >= board.all<volt::BoardViaId>().size()) {
                         continue;
                     }
-                    const auto &via = board.via(via_id);
+                    const auto &via = board.get(via_id);
                     if (options.layer_filter.has_value() &&
                         !via_intersects_layer(board, via, options.layer_filter.value())) {
                         continue;
@@ -705,10 +705,10 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
                 }
                 if (entity.kind() == EntityKind::BoardKeepout) {
                     const auto keepout_id = BoardKeepoutId{entity.index()};
-                    if (keepout_id.index() >= board.keepout_count()) {
+                    if (keepout_id.index() >= board.all<volt::BoardKeepoutId>().size()) {
                         continue;
                     }
-                    const auto &keepout = board.keepout(keepout_id);
+                    const auto &keepout = board.get(keepout_id);
                     if (options.layer_filter.has_value() &&
                         !layer_list_contains(keepout.layers(), options.layer_filter.value())) {
                         continue;
@@ -723,10 +723,10 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
                 }
                 if (entity.kind() == EntityKind::BoardZone) {
                     const auto zone_id = BoardZoneId{entity.index()};
-                    if (zone_id.index() >= board.zone_count()) {
+                    if (zone_id.index() >= board.all<volt::BoardZoneId>().size()) {
                         continue;
                     }
-                    const auto &zone = board.zone(zone_id);
+                    const auto &zone = board.get(zone_id);
                     if (options.layer_filter.has_value() &&
                         !layer_list_contains(zone.layers(), options.layer_filter.value())) {
                         continue;
@@ -751,11 +751,12 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
                     placement_id =
                         queries::placement_for_component(board, ComponentId{entity.index()});
                 }
-                if (!placement_id.has_value() || placement_id->index() >= board.placement_count()) {
+                if (!placement_id.has_value() ||
+                    placement_id->index() >= board.all<volt::ComponentPlacementId>().size()) {
                     continue;
                 }
 
-                const auto &placement = board.placement(placement_id.value());
+                const auto &placement = board.get(placement_id.value());
                 if (!placement_selected(board, placement, options)) {
                     continue;
                 }
@@ -790,10 +791,11 @@ void write_pcb_placement_svg(std::ostream &out, const Board &board,
     const auto translate_y = detail::pcb_svg_margin_mm - bounds.min_y;
     const auto resolutions = queries::resolve_pads(board, preview_footprints);
     const auto ratsnest_edges = derive_ratsnest_edges(board.circuit(), resolutions);
-    const auto has_copper = board.track_count() != 0U || board.via_count() != 0U;
-    const auto has_zones = board.zone_count() != 0U;
-    const auto has_keepouts = board.keepout_count() != 0U;
-    const auto has_texts = board.text_count() != 0U;
+    const auto has_copper =
+        board.all<volt::BoardTrackId>().size() != 0U || board.all<volt::BoardViaId>().size() != 0U;
+    const auto has_zones = board.all<volt::BoardZoneId>().size() != 0U;
+    const auto has_keepouts = board.all<volt::BoardKeepoutId>().size() != 0U;
+    const auto has_texts = board.all<volt::BoardTextId>().size() != 0U;
     const auto has_diagnostic_overlays =
         detail::has_selected_diagnostic_overlays(board, diagnostics, options);
 
@@ -823,7 +825,7 @@ void write_pcb_placement_svg(std::ostream &out, const Board &board,
     out << ")\">\n";
     detail::write_pcb_svg_outline(out, board);
     detail::write_pcb_svg_features(out, board);
-    for (std::size_t index = 0; index < board.layer_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardLayerId>().size(); ++index) {
         const auto layer = BoardLayerId{index};
         if (!detail::layer_selected(options, layer)) {
             continue;

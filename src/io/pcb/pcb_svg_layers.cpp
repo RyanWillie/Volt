@@ -14,7 +14,7 @@ namespace {
 
 [[nodiscard]] bool board_side_matches_layer(const Board &board, BoardSide side,
                                             BoardLayerId layer_id) {
-    const auto &layer = board.layer(layer_id);
+    const auto &layer = board.get(layer_id);
     switch (layer.side()) {
     case BoardLayerSide::Top:
         return side == BoardSide::Top;
@@ -30,10 +30,10 @@ namespace {
 }
 
 [[nodiscard]] std::size_t layer_token_collision_index(const Board &board, BoardLayerId layer_id) {
-    const auto token = pcb_svg_layer_filename_token(board.layer(layer_id).name());
+    const auto token = pcb_svg_layer_filename_token(board.get(layer_id).name());
     auto collision_index = std::size_t{1};
     for (std::size_t index = 0; index < layer_id.index(); ++index) {
-        if (pcb_svg_layer_filename_token(board.layer(BoardLayerId{index}).name()) == token) {
+        if (pcb_svg_layer_filename_token(board.get(BoardLayerId{index}).name()) == token) {
             ++collision_index;
         }
     }
@@ -41,7 +41,7 @@ namespace {
 }
 
 [[nodiscard]] bool board_layer_is_copper(const Board &board, BoardLayerId layer_id) {
-    return board.layer(layer_id).role() == BoardLayerRole::Copper;
+    return board.get(layer_id).role() == BoardLayerRole::Copper;
 }
 
 } // namespace
@@ -59,10 +59,10 @@ namespace {
                                                     const FootprintLibrary &footprints,
                                                     ComponentPlacementId placement_id,
                                                     FootprintPadId pad_id, BoardLayerId layer_id) {
-    if (placement_id.index() >= board.placement_count()) {
+    if (placement_id.index() >= board.all<volt::ComponentPlacementId>().size()) {
         return false;
     }
-    const auto &placement = board.placement(placement_id);
+    const auto &placement = board.get(placement_id);
     const auto *definition = resolve_definition_for_placement(board, placement, footprints);
     if (definition == nullptr || pad_id.index() >= definition->pad_count()) {
         return false;
@@ -94,7 +94,7 @@ namespace {
 }
 
 [[nodiscard]] std::string pcb_svg_layer_token(const Board &board, BoardLayerId layer_id) {
-    const auto token = pcb_svg_layer_filename_token(board.layer(layer_id).name());
+    const auto token = pcb_svg_layer_filename_token(board.get(layer_id).name());
     const auto collision_index = layer_token_collision_index(board, layer_id);
     if (collision_index == 1U) {
         return token;
@@ -164,46 +164,48 @@ namespace {
             break;
         case EntityKind::BoardTrack: {
             const auto id = BoardTrackId{entity.index()};
-            if (id.index() < board.track_count() && board.track(id).layer() == layer) {
+            if (id.index() < board.all<volt::BoardTrackId>().size() &&
+                board.get(id).layer() == layer) {
                 return true;
             }
             break;
         }
         case EntityKind::BoardVia: {
             const auto id = BoardViaId{entity.index()};
-            if (id.index() < board.via_count() &&
-                via_intersects_layer(board, board.via(id), layer)) {
+            if (id.index() < board.all<volt::BoardViaId>().size() &&
+                via_intersects_layer(board, board.get(id), layer)) {
                 return true;
             }
             break;
         }
         case EntityKind::BoardZone: {
             const auto id = BoardZoneId{entity.index()};
-            if (id.index() < board.zone_count() &&
-                layer_list_contains(board.zone(id).layers(), layer)) {
+            if (id.index() < board.all<volt::BoardZoneId>().size() &&
+                layer_list_contains(board.get(id).layers(), layer)) {
                 return true;
             }
             break;
         }
         case EntityKind::BoardKeepout: {
             const auto id = BoardKeepoutId{entity.index()};
-            if (id.index() < board.keepout_count() &&
-                layer_list_contains(board.keepout(id).layers(), layer)) {
+            if (id.index() < board.all<volt::BoardKeepoutId>().size() &&
+                layer_list_contains(board.get(id).layers(), layer)) {
                 return true;
             }
             break;
         }
         case EntityKind::BoardText: {
             const auto id = BoardTextId{entity.index()};
-            if (id.index() < board.text_count() && board.text(id).layer() == layer) {
+            if (id.index() < board.all<volt::BoardTextId>().size() &&
+                board.get(id).layer() == layer) {
                 return true;
             }
             break;
         }
         case EntityKind::ComponentPlacement: {
             const auto id = ComponentPlacementId{entity.index()};
-            if (id.index() < board.placement_count() &&
-                placement_selected(board, board.placement(id), options)) {
+            if (id.index() < board.all<volt::ComponentPlacementId>().size() &&
+                placement_selected(board, board.get(id), options)) {
                 return true;
             }
             break;
@@ -211,8 +213,9 @@ namespace {
         case EntityKind::Component: {
             const auto placement =
                 queries::placement_for_component(board, ComponentId{entity.index()});
-            if (placement.has_value() && placement->index() < board.placement_count() &&
-                placement_selected(board, board.placement(placement.value()), options)) {
+            if (placement.has_value() &&
+                placement->index() < board.all<volt::ComponentPlacementId>().size() &&
+                placement_selected(board, board.get(placement.value()), options)) {
                 return true;
             }
             break;
@@ -225,7 +228,7 @@ namespace {
 }
 
 void write_board_layer_group_open(std::ostream &out, const Board &board, BoardLayerId layer_id) {
-    const auto &layer = board.layer(layer_id);
+    const auto &layer = board.get(layer_id);
     const auto token = pcb_svg_layer_token(board, layer_id);
     out << "    <g id=\"pcb-layer-" << token << "\" class=\"pcb-layer board-layer layer-" << token
         << "\" data-layer=\"" << encode_local_id(layer_id) << "\" data-layer-name=\""
@@ -235,14 +238,14 @@ void write_board_layer_group_open(std::ostream &out, const Board &board, BoardLa
 }
 
 void write_zones(std::ostream &out, const Board &board, BoardLayerId layer) {
-    if (board.zone_count() == 0U) {
+    if (board.all<volt::BoardZoneId>().size() == 0U) {
         return;
     }
 
     out << "    <g class=\"layer layer-zones\">\n";
-    for (std::size_t index = 0; index < board.zone_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardZoneId>().size(); ++index) {
         const auto id = BoardZoneId{index};
-        const auto &zone = board.zone(id);
+        const auto &zone = board.get(id);
         if (!layer_list_contains(zone.layers(), layer)) {
             continue;
         }
@@ -264,14 +267,14 @@ void write_zones(std::ostream &out, const Board &board, BoardLayerId layer) {
 }
 
 void write_keepouts(std::ostream &out, const Board &board, BoardLayerId layer) {
-    if (board.keepout_count() == 0U) {
+    if (board.all<volt::BoardKeepoutId>().size() == 0U) {
         return;
     }
 
     out << "    <g class=\"layer layer-keepouts\">\n";
-    for (std::size_t index = 0; index < board.keepout_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardKeepoutId>().size(); ++index) {
         const auto id = BoardKeepoutId{index};
-        const auto &keepout = board.keepout(id);
+        const auto &keepout = board.get(id);
         if (!layer_list_contains(keepout.layers(), layer)) {
             continue;
         }
@@ -291,14 +294,14 @@ void write_keepouts(std::ostream &out, const Board &board, BoardLayerId layer) {
 }
 
 void write_texts(std::ostream &out, const Board &board, BoardLayerId layer) {
-    if (board.text_count() == 0U) {
+    if (board.all<volt::BoardTextId>().size() == 0U) {
         return;
     }
 
     out << "    <g class=\"layer layer-board-text\">\n";
-    for (std::size_t index = 0; index < board.text_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardTextId>().size(); ++index) {
         const auto id = BoardTextId{index};
-        const auto &text = board.text(id);
+        const auto &text = board.get(id);
         if (text.layer() != layer) {
             continue;
         }
@@ -325,14 +328,15 @@ void write_texts(std::ostream &out, const Board &board, BoardLayerId layer) {
 }
 
 void write_copper(std::ostream &out, const Board &board, BoardLayerId layer) {
-    if (board.track_count() == 0U && board.via_count() == 0U) {
+    if (board.all<volt::BoardTrackId>().size() == 0U &&
+        board.all<volt::BoardViaId>().size() == 0U) {
         return;
     }
 
     out << "    <g class=\"layer layer-copper\">\n";
-    for (std::size_t index = 0; index < board.track_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardTrackId>().size(); ++index) {
         const auto id = BoardTrackId{index};
-        const auto &track = board.track(id);
+        const auto &track = board.get(id);
         if (track.layer() != layer) {
             continue;
         }
@@ -352,9 +356,9 @@ void write_copper(std::ostream &out, const Board &board, BoardLayerId layer) {
         out << "\"/>\n";
     }
 
-    for (std::size_t index = 0; index < board.via_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardViaId>().size(); ++index) {
         const auto id = BoardViaId{index};
-        const auto &via = board.via(id);
+        const auto &via = board.get(id);
         if (!via_intersects_layer(board, via, layer)) {
             continue;
         }

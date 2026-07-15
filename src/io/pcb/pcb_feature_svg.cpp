@@ -74,9 +74,9 @@ void include_feature_bounds(PcbSvgBounds &bounds, const BoardFeature &feature) {
 
 void write_pcb_svg_features(std::ostream &out, const Board &board) {
     out << "    <g class=\"layer layer-board-features\">\n";
-    for (std::size_t index = 0; index < board.feature_count(); ++index) {
+    for (std::size_t index = 0; index < board.all<volt::BoardFeatureId>().size(); ++index) {
         const auto id = BoardFeatureId{index};
-        const auto &feature = board.feature(id);
+        const auto &feature = board.get(id);
         switch (feature.kind()) {
         case BoardFeatureKind::Hole:
             out << "      <circle class=\"board-feature hole\" data-board-feature=\""
