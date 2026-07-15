@@ -10,6 +10,7 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/pcb/projection/board_geometry_projection.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 namespace volt::io::detail {
 
@@ -64,7 +65,7 @@ collect_footprint_definitions(const Board &board, const FootprintLibrary &footpr
 
     for (const auto &definition : footprints.definitions()) {
         const auto existing = find_footprint_definition(definitions, definition.ref());
-        if (existing.has_value() && ::volt::detail::footprint_library_definition_conflicts(
+        if (existing.has_value() && ::volt::queries::footprint_definition_conflicts(
                                         definitions[existing->index()], definition)) {
             throw KernelLogicError{
                 ErrorCode::InvalidState,
@@ -762,7 +763,7 @@ void write_viewer_layers(std::ostream &out) {
 void write_viewer(std::ostream &out, const Board &board,
                   const std::vector<FootprintDefinition> &definitions) {
     const auto footprint_library = footprint_library_from_definitions(definitions);
-    const auto resolutions = board.resolve_pads(footprint_library);
+    const auto resolutions = queries::resolve_pads(board, footprint_library);
     const auto diagnostics = validate_board(board, footprint_library);
 
     out << "  \"viewer\": {\n";

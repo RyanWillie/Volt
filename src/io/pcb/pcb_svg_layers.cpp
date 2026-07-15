@@ -7,6 +7,7 @@
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/pcb/pcb_schema.hpp>
 #include <volt/pcb/board.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 namespace volt::io::detail {
 namespace {
@@ -208,7 +209,8 @@ namespace {
             break;
         }
         case EntityKind::Component: {
-            const auto placement = board.placement_for_component(ComponentId{entity.index()});
+            const auto placement =
+                queries::placement_for_component(board, ComponentId{entity.index()});
             if (placement.has_value() && placement->index() < board.placement_count() &&
                 placement_selected(board, board.placement(placement.value()), options)) {
                 return true;

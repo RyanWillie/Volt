@@ -707,12 +707,12 @@
       "locations": [
         {
           "caller": "PyCircuit::board_component_footprint_pads",
-          "line": 243,
+          "line": 244,
           "path": "src/python/py_circuit_board.cpp"
         },
         {
           "caller": "PyCircuit::board_add_track_for_route",
-          "line": 306,
+          "line": 300,
           "path": "src/python/py_circuit_board.cpp"
         },
         {
@@ -846,7 +846,7 @@
       "caller_strata": {
         "board": {
           "core_production": {
-            "count": 387,
+            "count": 388,
             "files": [
               "src/pcb/assembly/cpl.cpp",
               "src/pcb/board.cpp",
@@ -857,6 +857,7 @@
               "src/pcb/features/board_features.cpp",
               "src/pcb/footprints/footprints.cpp",
               "src/pcb/projection/board_geometry_projection.cpp",
+              "src/pcb/queries/board_queries.cpp",
               "src/pcb/routing/board_router.cpp",
               "src/pcb/routing/board_spatial_index.cpp",
               "src/pcb/structure/board_structure_model.cpp",
@@ -894,7 +895,6 @@
               "feature_count",
               "footprint_definition",
               "footprint_definition_count",
-              "footprint_definition_id",
               "geometry_mutation_count",
               "keepout",
               "keepout_count",
@@ -906,9 +906,6 @@
               "place_component",
               "placement",
               "placement_count",
-              "placement_for_component",
-              "project_footprint_geometries",
-              "resolve_pads",
               "room",
               "room_count",
               "set_capability_profile",
@@ -925,10 +922,10 @@
               "zone",
               "zone_count"
             ],
-            "unique_name_count": 46
+            "unique_name_count": 42
           },
           "io_adapters": {
-            "count": 430,
+            "count": 420,
             "files": [
               "src/adapters/kicad/pcb_writer.cpp",
               "src/adapters/kicad/schematic_writer.cpp",
@@ -968,7 +965,6 @@
               "feature_count",
               "footprint_definition",
               "footprint_definition_count",
-              "footprint_definition_id",
               "keepout",
               "keepout_count",
               "layer",
@@ -979,9 +975,6 @@
               "place_component",
               "placement",
               "placement_count",
-              "placement_for_component",
-              "project_footprint_geometries",
-              "resolve_pads",
               "room",
               "room_count",
               "set_capability_profile",
@@ -998,10 +991,10 @@
               "zone",
               "zone_count"
             ],
-            "unique_name_count": 45
+            "unique_name_count": 41
           },
           "python_binding": {
-            "count": 49,
+            "count": 48,
             "files": [
               "src/python/binding_pcb_conversions.hpp",
               "src/python/py_circuit_board.cpp",
@@ -1028,17 +1021,16 @@
               "place_component",
               "placement",
               "placement_count",
-              "resolve_pads",
               "set_capability_profile",
               "set_design_rules",
               "set_layer_stack",
               "set_outline",
               "track"
             ],
-            "unique_name_count": 23
+            "unique_name_count": 22
           },
           "tests": {
-            "count": 1099,
+            "count": 1108,
             "files": [
               "tests/adapters/kicad_pcb_writer_test.cpp",
               "tests/authoring/component_library_test.cpp",
@@ -1063,6 +1055,7 @@
               "tests/io/schematic/schematic_reader_test.cpp",
               "tests/io/schematic/schematic_round_trip_test.cpp",
               "tests/pcb/assembly/cpl_test.cpp",
+              "tests/pcb/board_queries_test.cpp",
               "tests/pcb/board_test.cpp",
               "tests/pcb/footprints/footprints_test.cpp",
               "tests/pcb/geometry/board_geometry_projection_test.cpp",
@@ -1095,7 +1088,7 @@
               "feature_count",
               "footprint_definition",
               "footprint_definition_count",
-              "footprint_definition_id",
+              "geometry_mutation_count",
               "keepout",
               "keepout_count",
               "layer",
@@ -1106,9 +1099,6 @@
               "place_component",
               "placement",
               "placement_count",
-              "project_footprint_geometries",
-              "ratsnest_edges",
-              "resolve_pads",
               "room",
               "room_count",
               "set_capability_profile",
@@ -1125,17 +1115,18 @@
               "zone",
               "zone_count"
             ],
-            "unique_name_count": 45
+            "unique_name_count": 42
           }
         },
         "schematic": {
           "core_production": {
-            "count": 285,
+            "count": 290,
             "files": [
               "src/pcb/assembly/cpl.cpp",
               "src/pcb/board.cpp",
               "src/pcb/copper/board_copper_geometry.cpp",
               "src/pcb/copper/board_copper_validation.cpp",
+              "src/pcb/queries/board_queries.cpp",
               "src/pcb/routing/board_router.cpp",
               "src/pcb/routing/board_spatial_index.cpp",
               "src/pcb/validation/board_capability_validation.cpp",
@@ -1635,10 +1626,10 @@
       },
       "snapshots": {
         "Board": {
-          "declaration_count": 50,
+          "declaration_count": 44,
           "include_count": 18,
           "path": "tests/architecture/board_public_api.txt",
-          "sha256": "eb072d1914159571e7f57b21592925fc3f32c6e7fa9976bd012799479d1b20eb",
+          "sha256": "494aa0ec816626c6fd8b98d3ad7daa12318bae206381fbaca4968e429f652097",
           "unique_callable_names": [
             "Board",
             "add_feature",
@@ -1657,7 +1648,6 @@
             "feature_count",
             "footprint_definition",
             "footprint_definition_count",
-            "footprint_definition_id",
             "geometry_mutation_count",
             "keepout",
             "keepout_count",
@@ -1669,10 +1659,6 @@
             "place_component",
             "placement",
             "placement_count",
-            "placement_for_component",
-            "project_footprint_geometries",
-            "ratsnest_edges",
-            "resolve_pads",
             "room",
             "room_count",
             "set_capability_profile",
@@ -1691,12 +1677,13 @@
           ]
         },
         "BoardRouter": {
-          "declaration_count": 4,
+          "declaration_count": 5,
           "include_count": 9,
           "path": "tests/architecture/boardrouter_public_api.txt",
-          "sha256": "ad6865ceb659e50f0aa54d697959e890e821ce4d28fde76ab3aae4b851071f2d",
+          "sha256": "3c07e3dad4170d33f5fe1f651f125568f08b80af4dcae31a2b4f9794e3c31c71",
           "unique_callable_names": [
             "BoardRouter",
+            "add_track",
             "connect",
             "escape",
             "resolve_parameters"

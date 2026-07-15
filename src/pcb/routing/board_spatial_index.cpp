@@ -1,6 +1,7 @@
 #include <volt/pcb/routing/board_router.hpp>
 
 #include <volt/core/errors.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
 
 #include "board_spatial_index_storage.hpp"
@@ -198,10 +199,10 @@ BoardSpatialIndex::BoardSpatialIndex(const Board &board)
 BoardSpatialIndex::BoardSpatialIndex(const Board &board, const FootprintLibrary &footprints)
     : BoardSpatialIndex{board, [&board, &footprints]() {
                             const auto resolution_footprints =
-                                detail::board_resolution_footprints(board, footprints);
+                                queries::board_resolution_footprints(board, footprints);
                             return detail::collect_copper_shapes(
                                 board, resolution_footprints,
-                                board.resolve_pads(resolution_footprints));
+                                queries::resolve_pads(board, resolution_footprints));
                         }()} {}
 
 BoardSpatialIndex::BoardSpatialIndex(const Board &board,

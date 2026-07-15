@@ -10,5 +10,6 @@ include <volt/pcb/routing/board_spatial_index.hpp>
 
 BoardRouter(Board &board, const FootprintLibrary &footprints)
 [[nodiscard]] BoardRouteParameters resolve_parameters(NetId net) const
+[[nodiscard]] BoardTrackRouteResult add_track(BoardTrackRouteRequest request)
 [[nodiscard]] BoardRouteResult connect(const BoardRouteRequest &request)
 [[nodiscard]] BoardEscapeResult escape(ComponentId component)

@@ -10,6 +10,7 @@
 #include <volt/io/pcb/pcb_svg_writer.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/pcb/assembly/cpl.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 #include <volt/pcb/routing/board_router.hpp>
 
 namespace volt::python {
@@ -239,7 +240,7 @@ py::list PyCircuit::board_component_footprint_pads(std::size_t component) const 
         return result;
     }
 
-    const auto resolution_footprints = volt::detail::board_resolution_footprints(
+    const auto resolution_footprints = volt::queries::board_resolution_footprints(
         board_projection(), volt::builtin_footprint_library());
     const auto footprint_resolution =
         volt::resolve_footprint(selected_part.value(), resolution_footprints);
@@ -296,14 +297,13 @@ py::dict PyCircuit::board_add_track_for_route(std::optional<std::size_t> net, st
         route_net = net_id(net.value());
     }
 
-    const auto result = board_projection().add_track(
-        volt::BoardTrackRouteRequest{
-            route_net,
-            volt::BoardLayerId{layer},
-            board_route_endpoints_from_list(endpoints),
-            width_mm,
-        },
-        volt::builtin_footprint_library());
+    auto router = volt::BoardRouter{board_projection(), volt::builtin_footprint_library()};
+    const auto result = router.add_track(volt::BoardTrackRouteRequest{
+        route_net,
+        volt::BoardLayerId{layer},
+        board_route_endpoints_from_list(endpoints),
+        width_mm,
+    });
 
     auto lowered = py::dict{};
     lowered["track"] = result.track.index();
@@ -506,7 +506,7 @@ std::size_t PyCircuit::board_add_text(const std::string &text, double x, double 
 py::list PyCircuit::board_resolve_pads() const {
     auto result = py::list{};
     for (const auto &resolution :
-         board_projection().resolve_pads(volt::builtin_footprint_library())) {
+         volt::queries::resolve_pads(board_projection(), volt::builtin_footprint_library())) {
         auto item = py::dict{};
         item["placement"] = resolution.placement().index();
         item["component"] = resolution.component().index();

@@ -2,6 +2,7 @@
 
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -106,7 +107,7 @@ void append_component_diagnostics(const Board &board, DiagnosticReport &report) 
                 "Populated component has no manufacturer part identity for assembly handoff",
                 entities));
         }
-        if (!board.placement_for_component(component).has_value()) {
+        if (!queries::placement_for_component(board, component).has_value()) {
             report.add(assembly_diagnostic(
                 assembly_diagnostic_codes::ComponentUnplaced,
                 "Populated BOM component has no board placement for assembly handoff", entities));

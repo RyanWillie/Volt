@@ -1,5 +1,7 @@
 #include "board_footprint_drc.hpp"
 
+#include <volt/pcb/queries/board_queries.hpp>
+
 #include <cmath>
 #include <cstddef>
 #include <optional>
@@ -232,7 +234,7 @@ void validate_component_board_edge_clearance(
 
 void validate_footprint_geometry_drc(const Board &board, const FootprintLibrary &footprints,
                                      DiagnosticReport &report) {
-    const auto geometries = board.project_footprint_geometries(footprints);
+    const auto geometries = queries::project_footprint_geometries(board, footprints);
     validate_component_geometry_overlaps(board, geometries, report);
     validate_component_board_edge_clearance(board, geometries, report);
 }

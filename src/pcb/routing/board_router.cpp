@@ -17,6 +17,7 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/constraints/net_class_resolution.hpp>
 #include <volt/pcb/copper/board_copper.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 #include "../copper/board_room_rules.hpp"
 
@@ -327,6 +328,20 @@ void BoardRouter::require_routable_layer(BoardLayerId layer) const {
     return params;
 }
 
+[[nodiscard]] BoardTrackRouteResult BoardRouter::add_track(BoardTrackRouteRequest request) {
+    const auto net = queries::resolve_board_route_net(*board_, request, footprints_);
+    auto points = std::vector<BoardPoint>{};
+    points.reserve(request.endpoints.size());
+    for (const auto &endpoint : request.endpoints) {
+        points.push_back(endpoint.position);
+    }
+
+    const auto track =
+        board_->add_track(BoardTrack{net, request.layer, std::move(points), request.width_mm});
+    index_ = SpatialIndexStorage{*board_, footprints_};
+    return BoardTrackRouteResult{track, net};
+}
+
 [[nodiscard]] std::vector<BoardRouter::Candidate>
 BoardRouter::pattern_candidates(const BoardRouteRequest &request,
                                 const BoardRouteParameters &params) const {
@@ -571,7 +586,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
 
     auto result = BoardEscapeResult{};
     result.component = component;
-    const auto placement_id = board_->placement_for_component(component);
+    const auto placement_id = queries::placement_for_component(*board_, component);
     if (!placement_id.has_value()) {
         throw KernelArgumentError{ErrorCode::InvalidState,
                                   "Cannot escape component without a board placement",
@@ -587,7 +602,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
                                   EntityRef::component(component)};
     }
 
-    const auto resolution_footprints = detail::board_resolution_footprints(*board_, footprints_);
+    const auto resolution_footprints = queries::board_resolution_footprints(*board_, footprints_);
     const auto footprint_resolution =
         resolve_footprint(selected_part.value(), resolution_footprints);
     const auto *definition = footprint_resolution.definition();
@@ -597,7 +612,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
                                   EntityRef::component(component)};
     }
 
-    const auto pad_resolutions = board_->resolve_pads(resolution_footprints);
+    const auto pad_resolutions = queries::resolve_pads(*board_, resolution_footprints);
     auto candidates = std::vector<EscapePadCandidate>{};
     auto room_layers = std::vector<BoardLayerId>{};
 

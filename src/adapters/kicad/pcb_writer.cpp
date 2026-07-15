@@ -19,6 +19,7 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/core/properties.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 namespace volt::adapters::kicad::detail {
 
@@ -243,7 +244,7 @@ definition_for_placement(const Board &board, const ComponentPlacement &placement
         return nullptr;
     }
 
-    const auto cached = board.footprint_definition_id(selected_part->footprint());
+    const auto cached = queries::footprint_definition_id(board, selected_part->footprint());
     if (cached.has_value()) {
         return &board.footprint_definition(cached.value());
     }
@@ -453,7 +454,7 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
 [[nodiscard]] std::vector<PlacementExport>
 build_placement_exports(const Board &board, const FootprintLibrary &footprints,
                         LossReport &loss_report) {
-    const auto resolutions = board.resolve_pads(footprints);
+    const auto resolutions = queries::resolve_pads(board, footprints);
     auto exports = std::vector<PlacementExport>{};
 
     for (std::size_t index = 0; index < board.placement_count(); ++index) {

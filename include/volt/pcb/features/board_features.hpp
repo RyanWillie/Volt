@@ -443,12 +443,7 @@ class RatsnestEdge {
     RatsnestEndpoint to_;
 };
 
-class Board;
-
 namespace detail {
-
-[[nodiscard]] FootprintLibrary board_resolution_footprints(const Board &board,
-                                                           const FootprintLibrary &footprints);
 
 [[nodiscard]] bool ratsnest_endpoint_less(const RatsnestEndpoint &lhs,
                                           const RatsnestEndpoint &rhs) noexcept;

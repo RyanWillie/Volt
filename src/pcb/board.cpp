@@ -1,6 +1,7 @@
 #include <volt/pcb/board.hpp>
 
 #include <volt/core/errors.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -12,67 +13,6 @@
 #include <volt/circuit/connectivity/queries.hpp>
 
 namespace volt {
-
-namespace {
-
-struct ResolvedPlacementFootprint {
-    ComponentPlacementId placement_id;
-    ComponentPlacement placement;
-    FootprintDefinition definition;
-    std::vector<FootprintPadBinding> pad_bindings;
-};
-
-[[nodiscard]] std::vector<ResolvedPlacementFootprint>
-resolved_placement_footprints(const Board &board, const FootprintLibrary &footprints) {
-    auto resolved = std::vector<ResolvedPlacementFootprint>{};
-    resolved.reserve(board.placement_count());
-
-    const auto resolution_footprints = detail::board_resolution_footprints(board, footprints);
-    for (std::size_t index = 0; index < board.placement_count(); ++index) {
-        const auto placement_id = ComponentPlacementId{index};
-        const auto &component_placement = board.placement(placement_id);
-        const auto &selected_part =
-            volt::queries::selected_physical_part(board.circuit(), component_placement.component());
-        if (!selected_part.has_value()) {
-            continue;
-        }
-
-        const auto footprint_resolution =
-            resolve_footprint(selected_part.value(), resolution_footprints);
-        const auto *definition = footprint_resolution.definition();
-        if (definition == nullptr) {
-            continue;
-        }
-
-        resolved.push_back(ResolvedPlacementFootprint{
-            placement_id, component_placement, *definition, footprint_resolution.pad_bindings()});
-    }
-
-    return resolved;
-}
-
-[[nodiscard]] std::optional<std::vector<BoardPoint>>
-project_optional_polygon(const ComponentPlacement &placement,
-                         const std::optional<FootprintPolygon> &polygon) {
-    if (!polygon.has_value()) {
-        return std::nullopt;
-    }
-    return detail::transformed_footprint_polygon(placement, polygon.value());
-}
-
-[[nodiscard]] std::vector<ProjectedFootprintMarking>
-project_markings(const ComponentPlacement &placement,
-                 const std::vector<FootprintMarking> &markings) {
-    auto projected = std::vector<ProjectedFootprintMarking>{};
-    projected.reserve(markings.size());
-    for (const auto &marking : markings) {
-        projected.emplace_back(marking.kind(),
-                               detail::transformed_footprint_polygon(placement, marking.polygon()));
-    }
-    return projected;
-}
-
-} // namespace
 
 Board::Board(const Circuit &circuit, BoardName name) : circuit_{&circuit}, name_{std::move(name)} {}
 
@@ -126,21 +66,6 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
     const auto id = copper_.add_track(std::move(track));
     ++geometry_mutation_count_;
     return id;
-}
-
-[[nodiscard]] BoardTrackRouteResult Board::add_track(BoardTrackRouteRequest request,
-                                                     const FootprintLibrary &footprints) {
-    const auto net = route_track_net(request, footprints);
-
-    auto points = std::vector<BoardPoint>{};
-    points.reserve(request.endpoints.size());
-    for (const auto &endpoint : request.endpoints) {
-        points.push_back(endpoint.position);
-    }
-
-    const auto track =
-        add_track(BoardTrack{net, request.layer, std::move(points), request.width_mm});
-    return BoardTrackRouteResult{track, net};
 }
 
 [[nodiscard]] BoardViaId Board::add_via(BoardVia via) {
@@ -206,11 +131,6 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
     return footprint_cache_.footprint_definition_count();
 }
 
-[[nodiscard]] std::optional<FootprintDefId>
-Board::footprint_definition_id(const FootprintRef &ref) const noexcept {
-    return footprint_cache_.footprint_definition_id(ref);
-}
-
 [[nodiscard]] const ComponentPlacement &Board::placement(ComponentPlacementId id) const {
     return placements_.placement(id);
 }
@@ -229,43 +149,6 @@ Board::footprint_definition_id(const FootprintRef &ref) const noexcept {
 
 [[nodiscard]] std::size_t Board::text_count() const noexcept { return copper_.text_count(); }
 
-[[nodiscard]] std::optional<ComponentPlacementId>
-Board::placement_for_component(ComponentId component) const noexcept {
-    return placements_.placement_for_component(component);
-}
-
-[[nodiscard]] std::vector<PadResolution>
-Board::resolve_pads(const FootprintLibrary &footprints) const {
-    auto resolutions = std::vector<PadResolution>{};
-    for (const auto &resolved : resolved_placement_footprints(*this, footprints)) {
-        append_pad_resolutions(resolved.placement_id, resolved.placement, resolved.definition,
-                               resolved.pad_bindings, resolutions);
-    }
-
-    return resolutions;
-}
-
-[[nodiscard]] std::vector<ProjectedFootprintGeometry>
-Board::project_footprint_geometries(const FootprintLibrary &footprints) const {
-    auto geometries = std::vector<ProjectedFootprintGeometry>{};
-    for (const auto &resolved : resolved_placement_footprints(*this, footprints)) {
-        geometries.emplace_back(
-            resolved.placement_id, resolved.placement.component(), resolved.placement.side(),
-            project_optional_polygon(resolved.placement, resolved.definition.courtyard()),
-            project_optional_polygon(resolved.placement, resolved.definition.body()),
-            project_optional_polygon(resolved.placement, resolved.definition.fabrication_outline()),
-            project_optional_polygon(resolved.placement, resolved.definition.assembly_outline()),
-            project_markings(resolved.placement, resolved.definition.markings()));
-    }
-
-    return geometries;
-}
-
-[[nodiscard]] std::vector<RatsnestEdge>
-Board::ratsnest_edges(const FootprintLibrary &footprints) const {
-    return derive_ratsnest_edges(circuit(), resolve_pads(footprints));
-}
-
 void Board::require_layer(BoardLayerId layer) const { structure_.require_layer(layer); }
 
 void Board::require_net(NetId net) const { static_cast<void>(circuit().get(net)); }
@@ -276,130 +159,6 @@ void Board::require_copper_layer(BoardLayerId layer_id) const {
         throw KernelLogicError{ErrorCode::CrossReferenceViolation,
                                "Board copper primitives require copper layers",
                                EntityRef::board_layer(layer_id)};
-    }
-}
-
-[[nodiscard]] std::optional<NetId>
-Board::route_endpoint_net(const BoardRouteEndpoint &endpoint,
-                          const FootprintLibrary &footprints) const {
-    if (!endpoint.placement.has_value() && !endpoint.pad.has_value()) {
-        return std::nullopt;
-    }
-    if (!endpoint.placement.has_value() || !endpoint.pad.has_value()) {
-        throw KernelArgumentError{ErrorCode::InvalidArgument,
-                                  "Board route pad endpoints require placement and pad IDs"};
-    }
-
-    const auto &component_placement = placement(endpoint.placement.value());
-    const auto &selected_part =
-        volt::queries::selected_physical_part(circuit(), component_placement.component());
-    if (!selected_part.has_value()) {
-        throw KernelArgumentError{ErrorCode::InvalidState,
-                                  "Board route endpoint component has no selected physical part",
-                                  EntityRef::component(component_placement.component())};
-    }
-
-    const auto resolution_footprints = detail::board_resolution_footprints(*this, footprints);
-    const auto footprint_resolution =
-        resolve_footprint(selected_part.value(), resolution_footprints);
-    const auto *definition = footprint_resolution.definition();
-    if (definition == nullptr) {
-        throw KernelArgumentError{ErrorCode::InvalidState,
-                                  "Board route endpoint footprint cannot be resolved",
-                                  EntityRef::component(component_placement.component())};
-    }
-
-    static_cast<void>(definition->pad(endpoint.pad.value()));
-
-    const auto pad_resolutions = resolve_pads(resolution_footprints);
-    const auto *resolution = detail::find_board_pad_resolution(
-        pad_resolutions, endpoint.placement.value(), endpoint.pad.value());
-    if (resolution == nullptr || resolution->status() != PadResolutionStatus::Connected ||
-        !resolution->net().has_value()) {
-        throw KernelArgumentError{ErrorCode::InvalidState,
-                                  "Board route endpoint pad is not connected to a logical net",
-                                  EntityRef::footprint_pad(endpoint.pad.value())};
-    }
-    return resolution->net().value();
-}
-
-[[nodiscard]] NetId Board::route_track_net(const BoardTrackRouteRequest &request,
-                                           const FootprintLibrary &footprints) const {
-    auto resolved_net = std::optional<NetId>{};
-    if (request.net.has_value()) {
-        require_net(request.net.value());
-        resolved_net = request.net.value();
-    }
-
-    for (const auto &endpoint : request.endpoints) {
-        const auto endpoint_net = route_endpoint_net(endpoint, footprints);
-        if (!endpoint_net.has_value()) {
-            continue;
-        }
-        if (!resolved_net.has_value()) {
-            resolved_net = endpoint_net.value();
-            continue;
-        }
-        if (resolved_net.value() != endpoint_net.value()) {
-            if (request.net.has_value()) {
-                throw KernelLogicError{
-                    ErrorCode::InvalidState,
-                    "Board route endpoint net does not match explicit route net"};
-            }
-            throw KernelLogicError{ErrorCode::InvalidState,
-                                   "Board route endpoints resolve to different nets"};
-        }
-    }
-
-    if (!resolved_net.has_value()) {
-        throw KernelArgumentError{
-            ErrorCode::InvalidArgument,
-            "Board routed track requires an explicit net or a pad endpoint with a net"};
-    }
-    return resolved_net.value();
-}
-
-void Board::append_pad_resolutions(ComponentPlacementId placement_id,
-                                   const ComponentPlacement &component_placement,
-                                   const FootprintDefinition &definition,
-                                   const std::vector<FootprintPadBinding> &bindings,
-                                   std::vector<PadResolution> &resolutions) const {
-    for (std::size_t pad_index = 0; pad_index < definition.pad_count(); ++pad_index) {
-        const auto pad_id = FootprintPadId{pad_index};
-        const auto &pad = definition.pad(pad_id);
-        const auto position =
-            detail::transform_footprint_point(component_placement, pad.position());
-        if (!pad.requires_pin_mapping()) {
-            resolutions.emplace_back(placement_id, component_placement.component(), pad_id,
-                                     pad.label(), position, std::nullopt, std::nullopt,
-                                     PadResolutionStatus::NonElectrical);
-            continue;
-        }
-
-        const auto binding = std::find_if(
-            bindings.begin(), bindings.end(),
-            [pad_id](const FootprintPadBinding &candidate) { return candidate.pad() == pad_id; });
-        if (binding == bindings.end()) {
-            resolutions.emplace_back(placement_id, component_placement.component(), pad_id,
-                                     pad.label(), position, std::nullopt, std::nullopt,
-                                     PadResolutionStatus::Invalid);
-            continue;
-        }
-
-        const auto pin =
-            queries::pin_by_definition(circuit(), component_placement.component(), binding->pin());
-        if (!pin.has_value()) {
-            resolutions.emplace_back(placement_id, component_placement.component(), pad_id,
-                                     pad.label(), position, std::nullopt, std::nullopt,
-                                     PadResolutionStatus::Invalid);
-            continue;
-        }
-
-        const auto net = queries::net_of(circuit(), pin.value());
-        const auto status =
-            net.has_value() ? PadResolutionStatus::Connected : PadResolutionStatus::Unconnected;
-        resolutions.emplace_back(placement_id, component_placement.component(), pad_id, pad.label(),
-                                 position, pin, net, status);
     }
 }
 
@@ -466,8 +225,8 @@ namespace {
 [[nodiscard]] DiagnosticReport validate_board(const Board &board,
                                               const FootprintLibrary &footprints) {
     auto report = DiagnosticReport{};
-    const auto resolution_footprints = detail::board_resolution_footprints(board, footprints);
-    const auto pad_resolutions = board.resolve_pads(resolution_footprints);
+    const auto resolution_footprints = queries::board_resolution_footprints(board, footprints);
+    const auto pad_resolutions = queries::resolve_pads(board, resolution_footprints);
 
     if (!board.outline().has_value()) {
         report.add(detail::board_diagnostic(DiagnosticCode{"PCB_BOARD_OUTLINE_MISSING"},
@@ -500,7 +259,7 @@ namespace {
 
     for (std::size_t index = 0; index < board.circuit().all<volt::ComponentId>().size(); ++index) {
         const auto component = ComponentId{index};
-        if (!board.placement_for_component(component).has_value()) {
+        if (!queries::placement_for_component(board, component).has_value()) {
             report.add(
                 detail::board_component_diagnostic(DiagnosticCode{"PCB_COMPONENT_NOT_PLACED"},
                                                    "Component has no board placement", component));
@@ -598,36 +357,6 @@ namespace {
 } // namespace volt
 
 namespace volt::detail {
-
-[[nodiscard]] bool
-footprint_library_definition_conflicts(const FootprintDefinition &board_definition,
-                                       const FootprintDefinition &library_definition) {
-    if (board_definition.ref() != library_definition.ref()) {
-        return false;
-    }
-    return board_definition != library_definition;
-}
-
-[[nodiscard]] FootprintLibrary board_resolution_footprints(const Board &board,
-                                                           const FootprintLibrary &footprints) {
-    auto library = FootprintLibrary{};
-    for (std::size_t index = 0; index < board.footprint_definition_count(); ++index) {
-        library.add(board.footprint_definition(FootprintDefId{index}));
-    }
-    for (const auto &definition : footprints.definitions()) {
-        const auto *existing = library.find(definition.ref());
-        if (existing == nullptr) {
-            library.add(definition);
-            continue;
-        }
-        if (footprint_library_definition_conflicts(*existing, definition)) {
-            throw KernelLogicError{
-                ErrorCode::DuplicateName,
-                "Board footprint definition conflicts with footprint library definition"};
-        }
-    }
-    return library;
-}
 
 [[nodiscard]] Diagnostic board_diagnostic(DiagnosticCode code, std::string message,
                                           std::vector<EntityRef> entities) {

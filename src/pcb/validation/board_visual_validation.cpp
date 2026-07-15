@@ -12,6 +12,7 @@
 
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/pcb/projection/footprint_visual_projection.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 namespace volt::detail {
 namespace {
@@ -565,7 +566,7 @@ void validate_board_visual(const Board &board, const FootprintLibrary &footprint
     const auto extents = collect_placement_visual_extents(board, footprints);
     const auto texts = collect_text_visual_extents(board);
     const auto pads = collect_pad_visual_geometry(board, footprints);
-    const auto geometries = board.project_footprint_geometries(footprints);
+    const auto geometries = queries::project_footprint_geometries(board, footprints);
     const auto reference_labels = collect_reference_designator_extents(board, footprints);
     for (std::size_t lhs_index = 0; lhs_index < extents.size(); ++lhs_index) {
         for (std::size_t rhs_index = lhs_index + 1U; rhs_index < extents.size(); ++rhs_index) {

@@ -26,6 +26,7 @@
 #include <volt/io/pcb/pcb_schema.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 namespace volt::io::detail {
 
@@ -916,7 +917,7 @@ void PcbBoardReader::validate_viewer_cache(const Board &board) const {
     require(viewer->is_object(), "PCB viewer cache must be an object");
     const auto &pad_resolutions = array_field(*viewer, "pad_resolutions");
     const auto footprint_library = cached_footprint_library(board);
-    const auto expected_resolutions = board.resolve_pads(footprint_library);
+    const auto expected_resolutions = queries::resolve_pads(board, footprint_library);
     require_valid_state(pad_resolutions.size() == expected_resolutions.size(),
                         "PCB viewer pad resolutions must match resolved pads");
 
