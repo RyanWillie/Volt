@@ -5,6 +5,7 @@
 #include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/bom/bom.hpp>
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/connectivity/component_contract.hpp>
 #include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/circuit/connectivity/instances.hpp>
 #include <volt/circuit/connectivity/nets.hpp>

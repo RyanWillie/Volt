@@ -2,6 +2,7 @@ add_library(
     volt_circuit
     bom/bom.cpp
     circuit.cpp
+    connectivity/component_contract.cpp
     connectivity/connectivity_model.cpp
     connectivity/definitions.cpp
     connectivity/instances.cpp

@@ -23,6 +23,7 @@ add_executable(
     circuit/authoring_test.cpp
     circuit/construction_specs_test.cpp
     circuit/bom/bom_test.cpp
+    circuit/connectivity/component_contract_test.cpp
     circuit/connectivity/connectivity_model_test.cpp
     circuit/connectivity/definitions_test.cpp
     circuit/connectivity/instances_test.cpp

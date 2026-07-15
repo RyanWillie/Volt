@@ -30,9 +30,9 @@ namespace volt {
         pin_ids.emplace_back(first_pin_index + index);
     }
 
-    auto definition =
-        ComponentDefinition{std::move(spec.name), pin_ids, std::move(spec.properties),
-                            std::move(spec.source), std::move(spec.schematic_symbols)};
+    auto definition = ComponentDefinition::make(
+        std::move(spec.name), pin_definitions, pin_ids, std::move(spec.properties),
+        std::move(spec.source), std::move(spec.schematic_symbols), std::move(spec.contract));
     for (auto &pin_definition : pin_definitions) {
         [[maybe_unused]] const auto pin =
             connectivity_.add_pin_definition(std::move(pin_definition));

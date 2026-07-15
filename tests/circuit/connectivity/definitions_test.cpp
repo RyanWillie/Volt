@@ -117,10 +117,9 @@ TEST_CASE("PinDefinition rejects empty names and numbers") {
 }
 
 TEST_CASE("ComponentDefinition stores reusable component metadata and pin definitions") {
-    const auto component = volt::ComponentDefinition{
-        "Resistor",
-        std::vector{volt::PinDefId{0}, volt::PinDefId{1}},
-    };
+    const auto component = volt::ComponentDefinition::make(
+        "Resistor", std::vector{volt::PinDefinition{"1", "1"}, volt::PinDefinition{"2", "2"}},
+        std::vector{volt::PinDefId{0}, volt::PinDefId{1}});
 
     CHECK(component.name() == "Resistor");
     REQUIRE(component.pins().size() == 2);
@@ -145,14 +144,14 @@ TEST_CASE("DefinitionSource rejects empty provenance fields") {
 }
 
 TEST_CASE("ComponentDefinition stores explicit properties") {
-    const auto component = volt::ComponentDefinition{
-        "Resistor",
+    const auto component = volt::ComponentDefinition::make(
+        "Resistor", std::vector{volt::PinDefinition{"1", "1"}, volt::PinDefinition{"2", "2"}},
         std::vector{volt::PinDefId{0}, volt::PinDefId{1}},
         volt::PropertyMap{
             {volt::PropertyKey{"category"}, volt::PropertyValue{"passive"}},
             {volt::PropertyKey{"polarized"}, volt::PropertyValue{false}},
         },
-    };
+        std::nullopt, {});
 
     CHECK(component.properties().size() == 2);
     CHECK(component.properties().get(volt::PropertyKey{"category"}) ==
@@ -161,16 +160,14 @@ TEST_CASE("ComponentDefinition stores explicit properties") {
 }
 
 TEST_CASE("ComponentDefinition stores default schematic symbol variants") {
-    const auto component = volt::ComponentDefinition{
-        "Sensor",
-        std::vector{volt::PinDefId{0}, volt::PinDefId{1}},
-        {},
-        std::nullopt,
+    const auto component = volt::ComponentDefinition::make(
+        "Sensor", std::vector{volt::PinDefinition{"IN", "1"}, volt::PinDefinition{"OUT", "2"}},
+        std::vector{volt::PinDefId{0}, volt::PinDefId{1}}, {}, std::nullopt,
         std::vector{
             volt::SchematicSymbolReference{"volt.test:Sensor"},
             volt::SchematicSymbolReference{"volt.test:SensorVertical", "vertical"},
         },
-    };
+        std::nullopt);
 
     REQUIRE(component.schematic_symbols().size() == 2);
     CHECK(component.schematic_symbols()[0].name() == "volt.test:Sensor");
@@ -185,25 +182,21 @@ TEST_CASE("ComponentDefinition rejects invalid schematic symbol variants") {
                     std::invalid_argument);
 
     const auto duplicate_default_variant = [] {
-        return volt::ComponentDefinition{
-            "Sensor",
-            std::vector{volt::PinDefId{0}},
-            {},
-            std::nullopt,
+        return volt::ComponentDefinition::make(
+            "Sensor", std::vector{volt::PinDefinition{"IN", "1"}}, std::vector{volt::PinDefId{0}},
+            {}, std::nullopt,
             std::vector{volt::SchematicSymbolReference{"volt.test:Sensor"},
                         volt::SchematicSymbolReference{"volt.test:SensorAlt"}},
-        };
+            std::nullopt);
     };
     CHECK_THROWS_AS(duplicate_default_variant(), std::invalid_argument);
 }
 
 TEST_CASE("ComponentDefinition stores optional source provenance") {
-    const auto component = volt::ComponentDefinition{
-        "Resistor",
-        std::vector{volt::PinDefId{0}, volt::PinDefId{1}},
-        {},
-        volt::DefinitionSource{"volt.passives", "resistor_2pin", "1.0.0"},
-    };
+    const auto component = volt::ComponentDefinition::make(
+        "Resistor", std::vector{volt::PinDefinition{"1", "1"}, volt::PinDefinition{"2", "2"}},
+        std::vector{volt::PinDefId{0}, volt::PinDefId{1}}, {},
+        volt::DefinitionSource{"volt.passives", "resistor_2pin", "1.0.0"}, {}, std::nullopt);
 
     REQUIRE(component.source().has_value());
     CHECK(component.source()->namespace_name() == "volt.passives");
@@ -212,8 +205,11 @@ TEST_CASE("ComponentDefinition stores optional source provenance") {
 }
 
 TEST_CASE("ComponentDefinition rejects empty names and empty pin lists") {
-    CHECK_THROWS_AS(volt::ComponentDefinition("", std::vector{volt::PinDefId{0}}),
+    CHECK_THROWS_AS(volt::ComponentDefinition::make("", std::vector{volt::PinDefinition{"1", "1"}},
+                                                    std::vector{volt::PinDefId{0}}),
                     std::invalid_argument);
-    CHECK_THROWS_AS(volt::ComponentDefinition("MechanicalOnly", std::vector<volt::PinDefId>{}),
+    CHECK_THROWS_AS(volt::ComponentDefinition::make("MechanicalOnly",
+                                                    std::vector<volt::PinDefinition>{},
+                                                    std::vector<volt::PinDefId>{}),
                     std::invalid_argument);
 }

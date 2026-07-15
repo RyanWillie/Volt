@@ -378,6 +378,134 @@ LogicalCircuitParser::schematic_symbol_references(const nlohmann::json &object) 
     return result;
 }
 
+ElectricalSubjectKind LogicalCircuitParser::component_subject_kind(const std::string &value) {
+    if (value == "framed_pin")
+        return ElectricalSubjectKind::FramedPin;
+    if (value == "directed_relation")
+        return ElectricalSubjectKind::DirectedRelation;
+    if (value == "supply_domain")
+        return ElectricalSubjectKind::SupplyDomain;
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid component-contract subject kind"};
+}
+
+FeatureRoleCardinality LogicalCircuitParser::feature_role_cardinality(const std::string &value) {
+    if (value == "exactly_one")
+        return FeatureRoleCardinality::ExactlyOne;
+    if (value == "one_or_more")
+        return FeatureRoleCardinality::OneOrMore;
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid feature-role cardinality"};
+}
+
+ElectricalObservable LogicalCircuitParser::canonical_observable(const std::string &value) {
+    if (value == "voltage")
+        return ElectricalObservable::Voltage;
+    if (value == "current")
+        return ElectricalObservable::Current;
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid canonical electrical observable"};
+}
+
+ElectricalMeaning LogicalCircuitParser::canonical_meaning(const std::string &value) {
+    if (value == "characteristic")
+        return ElectricalMeaning::Characteristic;
+    if (value == "accepted_range")
+        return ElectricalMeaning::AcceptedRange;
+    if (value == "provided_range")
+        return ElectricalMeaning::ProvidedRange;
+    if (value == "absolute_limit")
+        return ElectricalMeaning::AbsoluteLimit;
+    if (value == "requirement")
+        return ElectricalMeaning::Requirement;
+    if (value == "capability")
+        return ElectricalMeaning::Capability;
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid canonical electrical meaning"};
+}
+
+std::optional<LogicalCircuitParser::ParsedComponentContract>
+LogicalCircuitParser::component_contract(const nlohmann::json &object) {
+    const auto contract_it = object.find("contract");
+    if (contract_it == object.end()) {
+        return std::nullopt;
+    }
+    const auto &contract = *contract_it;
+    require(contract.is_object(), "Component contract must be an object");
+    const auto &version = field(contract, "semantic_model_version");
+    require(version.is_number_integer() && version.get<std::int64_t>() == 1,
+            "Unsupported component-contract semantic model version");
+
+    const auto pin_keys = [](const nlohmann::json &array) {
+        require(array.is_array(), "Component-contract PinKeys must be an array");
+        auto result = std::vector<PinKey>{};
+        result.reserve(array.size());
+        for (const auto &value : array) {
+            require(value.is_string(), "Component-contract PinKey must be a string");
+            result.emplace_back(value.get<std::string>());
+        }
+        return result;
+    };
+
+    auto spec = ComponentContractSpec{ComponentKey{string_field(contract, "key")},
+                                      pin_keys(field(contract, "pin_keys"))};
+    for (const auto &subject : array_field(contract, "framed_pins")) {
+        spec.framed_pins.emplace_back(FramedPinKey{string_field(subject, "key")},
+                                      PinKey{string_field(subject, "pin")},
+                                      PinKey{string_field(subject, "reference")});
+    }
+    for (const auto &subject : array_field(contract, "relations")) {
+        spec.relations.emplace_back(RelationKey{string_field(subject, "key")},
+                                    PinKey{string_field(subject, "from")},
+                                    PinKey{string_field(subject, "to")});
+    }
+    for (const auto &subject : array_field(contract, "supply_domains")) {
+        spec.supply_domains.emplace_back(SupplyDomainKey{string_field(subject, "key")},
+                                         pin_keys(field(subject, "positive_pins")),
+                                         pin_keys(field(subject, "return_pins")));
+    }
+    for (const auto &schema : array_field(contract, "feature_schemas")) {
+        auto roles = std::vector<FeatureRole>{};
+        for (const auto &role : array_field(schema, "roles")) {
+            roles.emplace_back(FeatureRoleKey{string_field(role, "key")},
+                               feature_role_cardinality(string_field(role, "cardinality")));
+        }
+        auto requirements = std::vector<CanonicalRecordRequirement>{};
+        for (const auto &requirement : array_field(schema, "required_records")) {
+            requirements.push_back(CanonicalRecordRequirement{
+                canonical_observable(string_field(requirement, "observable")),
+                canonical_meaning(string_field(requirement, "meaning"))});
+        }
+        spec.feature_schemas.emplace_back(
+            FeatureSchemaKey{string_field(schema, "key")},
+            component_subject_kind(string_field(schema, "subject_kind")), std::move(roles),
+            std::move(requirements));
+    }
+    for (const auto &binding : array_field(contract, "feature_bindings")) {
+        const auto &subject = field(binding, "subject");
+        const auto kind = component_subject_kind(string_field(subject, "kind"));
+        const auto subject_key = string_field(subject, "key");
+        auto subject_ref = [&]() {
+            switch (kind) {
+            case ElectricalSubjectKind::FramedPin:
+                return ComponentSubjectRef::framed_pin(FramedPinKey{subject_key});
+            case ElectricalSubjectKind::DirectedRelation:
+                return ComponentSubjectRef::directed_relation(RelationKey{subject_key});
+            case ElectricalSubjectKind::SupplyDomain:
+                return ComponentSubjectRef::supply_domain(SupplyDomainKey{subject_key});
+            }
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Unhandled component-contract subject kind"};
+        }();
+        auto roles = std::vector<FeatureRoleBinding>{};
+        for (const auto &role : array_field(binding, "roles")) {
+            roles.emplace_back(FeatureRoleKey{string_field(role, "role")},
+                               pin_keys(field(role, "pins")));
+        }
+        spec.feature_bindings.emplace_back(FeatureKey{string_field(binding, "key")},
+                                           FeatureSchemaKey{string_field(binding, "schema")},
+                                           std::move(subject_ref), std::move(roles));
+    }
+    return ParsedComponentContract{std::move(spec),
+                                   ContentHash{string_field(contract, "content_identity")}};
+}
+
 void LogicalCircuitParser::read_pin_definitions() {
     auto seen = std::set<std::string>{};
     for (const auto &pin : array_field(document_, "pin_definitions")) {
@@ -394,12 +522,13 @@ void LogicalCircuitParser::read_pin_definitions() {
         const auto drive =
             electrical_drive_kind(optional_string_field(pin, "drive_kind", "Unspecified"));
         const auto polarity = electrical_polarity(optional_string_field(pin, "polarity", "None"));
+        auto attributes = electrical_attributes(pin, ElectricalAttributeOwner::PinSpec,
+                                                ElectricalAttributeKind::Constraint);
         const auto pin_definition_id = PinDefId{plan_.connectivity.pin_definitions.size()};
         plan_.connectivity.pin_definitions.push_back(RestoredPinDefinition{
             PinDefinition{string_field(pin, "name"), string_field(pin, "number"), connection,
-                          terminal, direction, signal_domain, drive, polarity},
-            electrical_attributes(pin, ElectricalAttributeOwner::PinSpec,
-                                  ElectricalAttributeKind::Constraint),
+                          terminal, direction, signal_domain, drive, polarity, attributes},
+            std::move(attributes),
         });
         pin_def_ids_.emplace(id, pin_definition_id);
     }
@@ -428,11 +557,29 @@ void LogicalCircuitParser::read_component_definitions() {
         }
         const auto component_definition =
             ComponentDefId{plan_.connectivity.component_definitions.size()};
-        plan_.connectivity.component_definitions.push_back(RestoredComponentDefinition{
-            ComponentDefinition{
-                string_field(definition, "name"), pins, properties(field(definition, "properties")),
-                definition_source(definition), schematic_symbol_references(definition)},
-        });
+        auto pin_contents = std::vector<PinDefinition>{};
+        pin_contents.reserve(pins.size());
+        for (const auto pin : pins) {
+            pin_contents.push_back(plan_.connectivity.pin_definitions.at(pin.index()).definition);
+        }
+        auto parsed_contract = component_contract(definition);
+        const auto expected_identity = parsed_contract.has_value()
+                                           ? std::optional{parsed_contract->content_identity}
+                                           : std::nullopt;
+        auto restored_definition = ComponentDefinition::make(
+            string_field(definition, "name"), pin_contents, pins,
+            properties(field(definition, "properties")), definition_source(definition),
+            schematic_symbol_references(definition),
+            parsed_contract.has_value()
+                ? std::optional<ComponentContractSpec>{std::move(parsed_contract->spec)}
+                : std::nullopt);
+        if (expected_identity.has_value() &&
+            restored_definition.content_identity() != *expected_identity) {
+            throw KernelLogicError{ErrorCode::InvalidArgument,
+                                   "Component contract content identity does not match content"};
+        }
+        plan_.connectivity.component_definitions.push_back(
+            RestoredComponentDefinition{std::move(restored_definition)});
         for (const auto pin : pins) {
             pin_definition_owners_[pin.index()] = component_definition;
         }
