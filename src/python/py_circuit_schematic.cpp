@@ -4,11 +4,15 @@
 
 #include <sstream>
 
+#include <volt/schematic/endpoint_authoring.hpp>
+#include <volt/schematic/queries.hpp>
+
 namespace volt::python {
 
 std::size_t PyCircuit::schematic_sheet(const std::string &name, const py::dict &metadata) {
     auto &projection = schematic_projection();
-    if (const auto existing = projection.sheet_by_name(name); existing.has_value()) {
+    if (const auto existing = volt::queries::sheet_by_name(projection, name);
+        existing.has_value()) {
         if (py::len(metadata) != 0) {
             const auto requested = sheet_metadata_from_dict(metadata, name);
             if (!(projection.sheet(existing.value()).metadata() == requested)) {
@@ -26,7 +30,8 @@ std::size_t PyCircuit::schematic_region(std::size_t sheet, const py::dict &regio
     auto &projection = schematic_projection();
     const auto sheet_handle = sheet_id(sheet);
     const auto requested = sheet_region_from_dict(region_data);
-    if (const auto existing = projection.sheet_region_by_name(sheet_handle, requested.name());
+    if (const auto existing =
+            volt::queries::sheet_region_by_name(projection, sheet_handle, requested.name());
         existing.has_value()) {
         if (!(projection.sheet_region(sheet_handle, existing.value()) == requested)) {
             throw std::invalid_argument{"Schematic region already exists with different metadata"};
@@ -39,7 +44,7 @@ std::size_t PyCircuit::schematic_region(std::size_t sheet, const py::dict &regio
 std::size_t PyCircuit::register_schematic_symbol(const py::dict &symbol_data) {
     auto symbol = symbol_definition_from_dict(symbol_data);
     auto &projection = schematic_projection();
-    if (const auto existing = projection.symbol_definition_by_name(symbol.name());
+    if (const auto existing = volt::queries::symbol_definition_by_name(projection, symbol.name());
         existing.has_value()) {
         if (projection.symbol_definition(existing.value()) != symbol) {
             throw std::invalid_argument{
@@ -149,8 +154,9 @@ py::tuple PyCircuit::add_schematic_wire_for_endpoints(
     }
 
     auto &projection = schematic_projection();
+    auto endpoint_authoring = volt::SchematicEndpointAuthoring{projection};
     try {
-        const auto id = projection.add_wire_run_for_endpoints(
+        const auto id = endpoint_authoring.add_wire_run(
             sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
             std::move(wire_points), schematic_endpoints_from_list(endpoints),
             route_intent_from_string(route_intent), authored_region);
@@ -187,8 +193,9 @@ py::tuple PyCircuit::add_schematic_net_label_for_endpoint(
     std::optional<std::string> label, const std::string &horizontal_alignment,
     const std::string &vertical_alignment, std::optional<double> font_size) {
     auto &projection = schematic_projection();
+    auto endpoint_authoring = volt::SchematicEndpointAuthoring{projection};
     try {
-        const auto id = projection.add_net_label_for_endpoint(
+        const auto id = endpoint_authoring.add_net_label(
             sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
             schematic_endpoint_from_tuple(endpoint), schematic_orientation_from_string(orientation),
             authored_region, std::move(label),
@@ -217,8 +224,9 @@ PyCircuit::add_schematic_junction_for_endpoint(std::size_t sheet, std::optional<
                                                const py::tuple &endpoint,
                                                std::optional<std::size_t> authored_region) {
     auto &projection = schematic_projection();
+    auto endpoint_authoring = volt::SchematicEndpointAuthoring{projection};
     try {
-        const auto id = projection.add_junction_for_endpoint(
+        const auto id = endpoint_authoring.add_junction(
             sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
             schematic_endpoint_from_tuple(endpoint), authored_region);
         return schematic_entity_result(id.index(), projection.junction(id).net());
@@ -250,8 +258,9 @@ py::tuple PyCircuit::add_schematic_terminal_marker_for_endpoint(
     const py::tuple &endpoint, const std::string &orientation,
     std::optional<std::size_t> authored_region, std::optional<std::string> label) {
     auto &projection = schematic_projection();
+    auto endpoint_authoring = volt::SchematicEndpointAuthoring{projection};
     try {
-        const auto id = projection.add_terminal_marker_for_endpoint(
+        const auto id = endpoint_authoring.add_terminal_marker(
             sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
             schematic_endpoint_from_tuple(endpoint), power_port_kind_from_string(kind),
             schematic_orientation_from_string(orientation), authored_region, std::move(label));
@@ -298,8 +307,9 @@ py::tuple PyCircuit::add_schematic_sheet_port_for_endpoint(
     const std::string &kind, const py::tuple &endpoint, const std::string &orientation,
     std::optional<std::size_t> authored_region) {
     auto &projection = schematic_projection();
+    auto endpoint_authoring = volt::SchematicEndpointAuthoring{projection};
     try {
-        const auto id = projection.add_sheet_port_for_endpoint(
+        const auto id = endpoint_authoring.add_sheet_port(
             sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
             schematic_endpoint_from_tuple(endpoint), name, sheet_port_kind_from_string(kind),
             schematic_orientation_from_string(orientation), authored_region);
@@ -382,7 +392,8 @@ volt::Schematic &PyCircuit::schematic_projection() { return schematic_document_.
 
 volt::SymbolDefId PyCircuit::ensure_schematic_symbol(const std::string &name) {
     auto &projection = schematic_projection();
-    if (const auto existing = projection.symbol_definition_by_name(name); existing.has_value()) {
+    if (const auto existing = volt::queries::symbol_definition_by_name(projection, name);
+        existing.has_value()) {
         return existing.value();
     }
 

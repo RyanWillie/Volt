@@ -10,6 +10,8 @@
 #include <volt/circuit/connectivity/nets.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/constraints/net_classes.hpp>
+#include <volt/circuit/electrical/queries.hpp>
+#include <volt/circuit/electrical/records.hpp>
 #include <volt/circuit/hierarchy/hierarchy.hpp>
 #include <volt/circuit/intent/design_intent.hpp>
 #include <volt/circuit/parts/part_definition.hpp>
@@ -31,6 +33,7 @@
 #include <volt/io/capabilities/board_capability_profile.hpp>
 #include <volt/io/logical/logical_circuit_reader.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
+#include <volt/io/parts/electrical_records_io.hpp>
 #include <volt/io/parts/part_definition_reader.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
 #include <volt/io/pcb/pcb_fabrication_writer.hpp>

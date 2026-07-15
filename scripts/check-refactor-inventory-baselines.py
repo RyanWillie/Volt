@@ -36,6 +36,9 @@ PUBLIC_SNAPSHOTS = {
 SEMANTIC_GOLDEN_PATHS = (
     "tests/fixtures/semantic_parity.volt.json",
     "tests/fixtures/ap1117.part.volt.json",
+    "tests/fixtures/regulator.electrical.volt.json",
+    "tests/fixtures/mcu.electrical.volt.json",
+    "tests/fixtures/led.electrical.volt.json",
     "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/manifest.volt.json",
     "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/logical/stm32_usb_buck.volt.json",
     "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/schematic/STM32-USB-Buck.volt.schematic.json",
@@ -44,6 +47,9 @@ SEMANTIC_GOLDEN_PATHS = (
 
 BYTE_GOLDEN_PATHS = (
     "tests/fixtures/ap1117.part.volt.json",
+    "tests/fixtures/regulator.electrical.volt.json",
+    "tests/fixtures/mcu.electrical.volt.json",
+    "tests/fixtures/led.electrical.volt.json",
     "tests/fixtures/native_fabrication_control.GBL",
     "tests/fixtures/native_fabrication_control.GBS",
     "tests/fixtures/native_fabrication_control.GKO",
@@ -575,6 +581,7 @@ def part_route_inventory() -> dict[str, object]:
         relative(path)
         for path in (ROOT / "tests" / "fixtures").glob("*")
         if path.name.endswith(".part.volt.json")
+        or path.name.endswith(".electrical.volt.json")
         or path.name.endswith(".voltcap.json")
         or path.name.startswith("native_fabrication_control")
         or path.name.startswith("kicad_flat_resistor")

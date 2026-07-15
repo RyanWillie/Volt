@@ -4,8 +4,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
-#include <vector>
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/schematic/geometry.hpp>
@@ -62,24 +60,8 @@ class Schematic {
     /** Add a one-terminal marker over an existing logical net. */
     [[nodiscard]] PowerPortId add_power_port(SheetId sheet, PowerPort port);
 
-    /** Add a one-terminal marker whose net is inferred or checked from an authoring endpoint. */
-    [[nodiscard]] PowerPortId
-    add_power_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
-                                const SchematicEndpoint &endpoint, PowerPortKind kind,
-                                SchematicOrientation orientation = SchematicOrientation::Up,
-                                std::optional<std::size_t> authored_region = std::nullopt,
-                                std::optional<std::string> label = std::nullopt);
-
     /** Add a generic terminal marker over an existing logical net. */
     [[nodiscard]] PowerPortId add_terminal_marker(SheetId sheet, PowerPort marker);
-
-    /** Add a generic terminal marker whose net is inferred or checked from an endpoint. */
-    [[nodiscard]] PowerPortId
-    add_terminal_marker_for_endpoint(SheetId sheet, std::optional<NetId> net,
-                                     const SchematicEndpoint &endpoint, PowerPortKind kind,
-                                     SchematicOrientation orientation = SchematicOrientation::Up,
-                                     std::optional<std::size_t> authored_region = std::nullopt,
-                                     std::optional<std::string> label = std::nullopt);
 
     /** Add a no-connect marker for an existing concrete pin. */
     [[nodiscard]] NoConnectMarkerId add_no_connect_marker(SheetId sheet, NoConnectMarker marker);
@@ -87,55 +69,14 @@ class Schematic {
     /** Add a sheet/off-page port over an existing logical net. */
     [[nodiscard]] SheetPortId add_sheet_port(SheetId sheet, SheetPort port);
 
-    /** Add a sheet/off-page port whose net is inferred or checked from an endpoint. */
-    [[nodiscard]] SheetPortId
-    add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
-                                const SchematicEndpoint &endpoint, std::string name,
-                                SheetPortKind kind,
-                                SchematicOrientation orientation = SchematicOrientation::Right,
-                                std::optional<std::size_t> authored_region = std::nullopt);
-
     /** Add a placed field for a symbol instance on the same sheet. */
     [[nodiscard]] SymbolFieldId add_symbol_field(SheetId sheet, SymbolField field);
 
     /** Add a wire run on a sheet for an existing logical net. */
     [[nodiscard]] WireRunId add_wire_run(SheetId sheet, WireRun wire);
 
-    /** Add a wire run whose logical net is inferred or checked from authoring endpoints. */
-    [[nodiscard]] WireRunId
-    add_wire_run_for_endpoints(SheetId sheet, std::optional<NetId> net, std::vector<Point> points,
-                               const std::vector<SchematicEndpoint> &endpoints,
-                               RouteIntent route_intent = RouteIntent::Direct,
-                               std::optional<std::size_t> authored_region = std::nullopt);
-
     /** Add a net label on a sheet for an existing logical net. */
     [[nodiscard]] NetLabelId add_net_label(SheetId sheet, NetLabel label);
-
-    /** Add a net label whose net is inferred or checked from an authoring endpoint. */
-    [[nodiscard]] NetLabelId add_net_label_for_endpoint(
-        SheetId sheet, std::optional<NetId> net, const SchematicEndpoint &endpoint,
-        SchematicOrientation orientation = SchematicOrientation::Right,
-        std::optional<std::size_t> authored_region = std::nullopt,
-        std::optional<std::string> label = std::nullopt,
-        SchematicTextStyle style = SchematicTextStyle{TextHorizontalAlignment::Start},
-        std::optional<Point> text_position = std::nullopt);
-
-    /** Add a junction whose net is inferred or checked from an authoring endpoint. */
-    [[nodiscard]] JunctionId
-    add_junction_for_endpoint(SheetId sheet, std::optional<NetId> net,
-                              const SchematicEndpoint &endpoint,
-                              std::optional<std::size_t> authored_region = std::nullopt);
-
-    /** Return the symbol definition with this name, if it exists. */
-    [[nodiscard]] std::optional<SymbolDefId>
-    symbol_definition_by_name(const std::string &name) const;
-
-    /** Return the sheet with this name, if it exists. */
-    [[nodiscard]] std::optional<SheetId> sheet_by_name(const std::string &name) const;
-
-    /** Return a region with this name on the given sheet, if it exists. */
-    [[nodiscard]] std::optional<std::size_t> sheet_region_by_name(SheetId sheet,
-                                                                  const std::string &name) const;
 
     /** Return a symbol definition by ID. */
     [[nodiscard]] const SymbolDefinition &symbol_definition(SymbolDefId id) const;
@@ -317,24 +258,6 @@ class Schematic {
 
     void require_wire_run_does_not_collide_with_different_net(SheetId sheet,
                                                               const WireRun &wire) const;
-
-    [[nodiscard]] std::string net_label(NetId net) const;
-
-    [[nodiscard]] std::string pin_label(PinId pin) const;
-
-    [[nodiscard]] std::string endpoint_label(const SchematicEndpoint &endpoint) const;
-
-    [[nodiscard]] std::optional<NetId> infer_endpoint_net(const SchematicEndpoint &endpoint) const;
-
-    void require_endpoint_matches_net(const SchematicEndpoint &endpoint, NetId net) const;
-
-    [[nodiscard]] NetId resolve_endpoint_net(std::optional<NetId> net,
-                                             const SchematicEndpoint &endpoint,
-                                             std::string_view action) const;
-
-    [[nodiscard]] NetId
-    resolve_wire_endpoint_net(std::optional<NetId> net,
-                              const std::vector<SchematicEndpoint> &endpoints) const;
 
     const Circuit &circuit_;
     LibraryStorage library_;

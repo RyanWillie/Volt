@@ -10,6 +10,8 @@ add_library(
     constraints/net_class_resolution.cpp
     constraints/net_classes.cpp
     electrical/electrical_model.cpp
+    electrical/electrical_records.cpp
+    electrical/electrical_queries.cpp
     hierarchy/hierarchy.cpp
     hierarchy/hierarchy_model.cpp
     parts/part_definition.cpp

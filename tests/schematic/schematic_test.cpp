@@ -1,6 +1,8 @@
 #include "schematic_test_helpers.hpp"
 
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/io/schematic/schematic_writer.hpp>
+#include <volt/schematic/endpoint_authoring.hpp>
 
 TEST_CASE("Symbol definitions store structured drawing primitives and pins") {
     const auto symbol = make_resistor_symbol();
@@ -103,7 +105,8 @@ TEST_CASE("Schematic authoring mutations infer nets from logical pin endpoints")
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
-    const auto wire = schematic.add_wire_run_for_endpoints(
+    auto endpoint_authoring = volt::SchematicEndpointAuthoring{schematic};
+    const auto wire = endpoint_authoring.add_wire_run(
         sheet, std::nullopt, std::vector{volt::Point{20.0, 0.0}, volt::Point{40.0, 0.0}},
         std::vector{volt::SchematicEndpoint{volt::Point{20.0, 0.0}, first_pin},
                     volt::SchematicEndpoint{volt::Point{40.0, 0.0}, second_pin}},
@@ -113,6 +116,35 @@ TEST_CASE("Schematic authoring mutations infer nets from logical pin endpoints")
     CHECK(schematic.wire_run(wire).points() ==
           std::vector{volt::Point{20.0, 0.0}, volt::Point{40.0, 0.0}});
     CHECK(circuit.all<volt::NetId>().size() == net_count);
+}
+
+TEST_CASE("Schematic endpoint authoring preserves canonical typed-add bytes") {
+    volt::Circuit circuit;
+    const auto first_component = add_resistor(circuit, "R1");
+    const auto second_component = add_resistor(circuit, "R2");
+    const auto net = add_named_net(circuit, "SIG");
+    const auto first_pin = volt::queries::pin_by_number(circuit, first_component, "2").value();
+    const auto second_pin = volt::queries::pin_by_number(circuit, second_component, "1").value();
+    circuit.connect(net, first_pin);
+    circuit.connect(net, second_pin);
+
+    auto expected = volt::Schematic{circuit};
+    const auto expected_sheet = expected.add_sheet(volt::Sheet{"Main"});
+    static_cast<void>(expected.add_wire_run(
+        expected_sheet,
+        volt::WireRun{net, std::vector{volt::Point{20.0, 0.0}, volt::Point{40.0, 0.0}},
+                      volt::RouteIntent::Direct}));
+
+    auto actual = volt::Schematic{circuit};
+    const auto actual_sheet = actual.add_sheet(volt::Sheet{"Main"});
+    auto endpoint_authoring = volt::SchematicEndpointAuthoring{actual};
+    static_cast<void>(endpoint_authoring.add_wire_run(
+        actual_sheet, std::nullopt, std::vector{volt::Point{20.0, 0.0}, volt::Point{40.0, 0.0}},
+        std::vector{volt::SchematicEndpoint{volt::Point{20.0, 0.0}, first_pin},
+                    volt::SchematicEndpoint{volt::Point{40.0, 0.0}, second_pin}},
+        volt::RouteIntent::Direct));
+
+    CHECK(volt::io::write_schematic(actual) == volt::io::write_schematic(expected));
 }
 
 TEST_CASE("Schematic authoring mutations reject unconnected and mismatched endpoints") {
@@ -126,9 +158,10 @@ TEST_CASE("Schematic authoring mutations reject unconnected and mismatched endpo
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    auto endpoint_authoring = volt::SchematicEndpointAuthoring{schematic};
 
     try {
-        static_cast<void>(schematic.add_net_label_for_endpoint(
+        static_cast<void>(endpoint_authoring.add_net_label(
             sheet, std::nullopt, volt::SchematicEndpoint{volt::Point{0.0, 0.0}, unconnected_pin}));
         FAIL("unconnected pin endpoints must not infer schematic nets");
     } catch (const std::logic_error &error) {
@@ -137,7 +170,7 @@ TEST_CASE("Schematic authoring mutations reject unconnected and mismatched endpo
     }
 
     try {
-        static_cast<void>(schematic.add_net_label_for_endpoint(
+        static_cast<void>(endpoint_authoring.add_net_label(
             sheet, second_net, volt::SchematicEndpoint{volt::Point{0.0, 0.0}, connected_pin}));
         FAIL("mismatched endpoint net intent must be rejected");
     } catch (const std::logic_error &error) {
@@ -148,7 +181,7 @@ TEST_CASE("Schematic authoring mutations reject unconnected and mismatched endpo
 
     check_kernel_error(
         [&] {
-            static_cast<void>(schematic.add_net_label_for_endpoint(
+            static_cast<void>(endpoint_authoring.add_net_label(
                 sheet, std::nullopt,
                 volt::SchematicEndpoint{volt::Point{0.0, 0.0}, unconnected_pin}));
         },
@@ -156,7 +189,7 @@ TEST_CASE("Schematic authoring mutations reject unconnected and mismatched endpo
         "Schematic endpoint R1 pin 2 (2) is not connected to any logical net");
     check_kernel_error(
         [&] {
-            static_cast<void>(schematic.add_net_label_for_endpoint(
+            static_cast<void>(endpoint_authoring.add_net_label(
                 sheet, second_net, volt::SchematicEndpoint{volt::Point{0.0, 0.0}, connected_pin}));
         },
         volt::ErrorCode::CrossReferenceViolation,
