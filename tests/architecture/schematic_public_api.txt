@@ -2,8 +2,6 @@ include <cstddef>
 include <memory>
 include <optional>
 include <string>
-include <string_view>
-include <vector>
 include <volt/circuit/circuit.hpp>
 include <volt/schematic/geometry.hpp>
 include <volt/schematic/schematic_items.hpp>
@@ -24,21 +22,12 @@ void replace_with(Schematic replacement)
 [[nodiscard]] SymbolInstanceId place_symbol(SheetId sheet, SymbolInstance instance)
 [[nodiscard]] JunctionId add_junction(SheetId sheet, Junction junction)
 [[nodiscard]] PowerPortId add_power_port(SheetId sheet, PowerPort port)
-[[nodiscard]] PowerPortId add_power_port_for_endpoint(SheetId sheet, std::optional<NetId> net, const SchematicEndpoint &endpoint, PowerPortKind kind, SchematicOrientation orientation = SchematicOrientation::Up, std::optional<std::size_t> authored_region = std::nullopt, std::optional<std::string> label = std::nullopt)
 [[nodiscard]] PowerPortId add_terminal_marker(SheetId sheet, PowerPort marker)
-[[nodiscard]] PowerPortId add_terminal_marker_for_endpoint(SheetId sheet, std::optional<NetId> net, const SchematicEndpoint &endpoint, PowerPortKind kind, SchematicOrientation orientation = SchematicOrientation::Up, std::optional<std::size_t> authored_region = std::nullopt, std::optional<std::string> label = std::nullopt)
 [[nodiscard]] NoConnectMarkerId add_no_connect_marker(SheetId sheet, NoConnectMarker marker)
 [[nodiscard]] SheetPortId add_sheet_port(SheetId sheet, SheetPort port)
-[[nodiscard]] SheetPortId add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net, const SchematicEndpoint &endpoint, std::string name, SheetPortKind kind, SchematicOrientation orientation = SchematicOrientation::Right, std::optional<std::size_t> authored_region = std::nullopt)
 [[nodiscard]] SymbolFieldId add_symbol_field(SheetId sheet, SymbolField field)
 [[nodiscard]] WireRunId add_wire_run(SheetId sheet, WireRun wire)
-[[nodiscard]] WireRunId add_wire_run_for_endpoints(SheetId sheet, std::optional<NetId> net, std::vector<Point> points, const std::vector<SchematicEndpoint> &endpoints, RouteIntent route_intent = RouteIntent::Direct, std::optional<std::size_t> authored_region = std::nullopt)
 [[nodiscard]] NetLabelId add_net_label(SheetId sheet, NetLabel label)
-[[nodiscard]] NetLabelId add_net_label_for_endpoint(SheetId sheet, std::optional<NetId> net, const SchematicEndpoint &endpoint, SchematicOrientation orientation = SchematicOrientation::Right, std::optional<std::size_t> authored_region = std::nullopt, std::optional<std::string> label = std::nullopt, SchematicTextStyle style = SchematicTextStyle{TextHorizontalAlignment::Start}, std::optional<Point> text_position = std::nullopt)
-[[nodiscard]] JunctionId add_junction_for_endpoint(SheetId sheet, std::optional<NetId> net, const SchematicEndpoint &endpoint, std::optional<std::size_t> authored_region = std::nullopt)
-[[nodiscard]] std::optional<SymbolDefId> symbol_definition_by_name(const std::string &name) const
-[[nodiscard]] std::optional<SheetId> sheet_by_name(const std::string &name) const
-[[nodiscard]] std::optional<std::size_t> sheet_region_by_name(SheetId sheet, const std::string &name) const
 [[nodiscard]] const SymbolDefinition &symbol_definition(SymbolDefId id) const
 [[nodiscard]] const Sheet &sheet(SheetId id) const
 [[nodiscard]] const SheetRegion &sheet_region(SheetId sheet, std::size_t region) const

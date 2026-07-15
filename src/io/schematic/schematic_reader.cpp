@@ -20,6 +20,7 @@
 #include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/schematic/schematic_schema.hpp>
+#include <volt/schematic/queries.hpp>
 #include <volt/schematic/schematic_document.hpp>
 
 namespace volt::io::detail {
@@ -642,7 +643,7 @@ SchematicReader::authored_region(SheetId sheet, const nlohmann::json &object) co
     if (name.empty()) {
         return std::nullopt;
     }
-    const auto region = schematic_.sheet_region_by_name(sheet, name);
+    const auto region = queries::sheet_region_by_name(schematic_, sheet, name);
     if (!region.has_value()) {
         throw KernelLogicError{ErrorCode::UnknownEntity,
                                "Authored region reference points to a missing sheet region"};
