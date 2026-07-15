@@ -15,7 +15,7 @@ std::size_t PyCircuit::schematic_sheet(const std::string &name, const py::dict &
         existing.has_value()) {
         if (py::len(metadata) != 0) {
             const auto requested = sheet_metadata_from_dict(metadata, name);
-            if (!(projection.sheet(existing.value()).metadata() == requested)) {
+            if (!(projection.get(existing.value()).metadata() == requested)) {
                 throw std::invalid_argument{
                     "Schematic sheet already exists with different metadata"};
             }
@@ -33,12 +33,14 @@ std::size_t PyCircuit::schematic_region(std::size_t sheet, const py::dict &regio
     if (const auto existing =
             volt::queries::sheet_region_by_name(projection, sheet_handle, requested.name());
         existing.has_value()) {
-        if (!(projection.sheet_region(sheet_handle, existing.value()) == requested)) {
+        if (!(projection.get(existing.value()) == requested)) {
             throw std::invalid_argument{"Schematic region already exists with different metadata"};
         }
-        return existing.value();
+        return projection.get(sheet_handle).region_by_name(requested.name()).value();
     }
-    return projection.add_sheet_region(sheet_handle, std::move(requested));
+    const auto name = std::string{requested.name()};
+    static_cast<void>(projection.add_sheet_region(sheet_handle, std::move(requested)));
+    return projection.get(sheet_handle).region_by_name(name).value();
 }
 
 std::size_t PyCircuit::register_schematic_symbol(const py::dict &symbol_data) {
@@ -46,7 +48,7 @@ std::size_t PyCircuit::register_schematic_symbol(const py::dict &symbol_data) {
     auto &projection = schematic_projection();
     if (const auto existing = volt::queries::symbol_definition_by_name(projection, symbol.name());
         existing.has_value()) {
-        if (projection.symbol_definition(existing.value()) != symbol) {
+        if (projection.get(existing.value()) != symbol) {
             throw std::invalid_argument{
                 "Schematic symbol name already exists with a different definition"};
         }
@@ -64,7 +66,7 @@ std::size_t PyCircuit::place_schematic_symbol(std::size_t sheet, std::size_t com
 
     auto &projection = schematic_projection();
     const auto sheet_handle = sheet_id(sheet);
-    static_cast<void>(projection.sheet(sheet_handle));
+    static_cast<void>(projection.get(sheet_handle));
 
     const auto component_handle = component_id(component);
     static_cast<void>(circuit_.get(component_handle));
@@ -80,15 +82,15 @@ std::size_t PyCircuit::place_schematic_symbol(std::size_t sheet, std::size_t com
 
 std::string PyCircuit::schematic_symbol_orientation(std::size_t instance) {
     auto &projection = schematic_projection();
-    const auto &symbol_instance = projection.symbol_instance(volt::SymbolInstanceId{instance});
+    const auto &symbol_instance = projection.get(volt::SymbolInstanceId{instance});
     return schematic_orientation_name(symbol_instance.orientation());
 }
 
 std::pair<double, double> PyCircuit::schematic_symbol_pin_anchor(std::size_t instance,
                                                                  const std::string &number) {
     auto &projection = schematic_projection();
-    const auto &symbol_instance = projection.symbol_instance(volt::SymbolInstanceId{instance});
-    const auto &symbol = projection.symbol_definition(symbol_instance.symbol_definition());
+    const auto &symbol_instance = projection.get(volt::SymbolInstanceId{instance});
+    const auto &symbol = projection.get(symbol_instance.symbol_definition());
 
     for (const auto &pin : symbol.pins()) {
         if (pin.number() == number) {
@@ -104,8 +106,8 @@ std::pair<double, double> PyCircuit::schematic_symbol_pin_anchor(std::size_t ins
 py::list PyCircuit::schematic_symbol_pin_refs(std::size_t instance) {
     auto result = py::list{};
     auto &projection = schematic_projection();
-    const auto &symbol_instance = projection.symbol_instance(volt::SymbolInstanceId{instance});
-    const auto &symbol = projection.symbol_definition(symbol_instance.symbol_definition());
+    const auto &symbol_instance = projection.get(volt::SymbolInstanceId{instance});
+    const auto &symbol = projection.get(symbol_instance.symbol_definition());
 
     for (const auto &pin : symbol.pins()) {
         const auto anchor = volt::transform_schematic_point(
@@ -160,7 +162,7 @@ py::tuple PyCircuit::add_schematic_wire_for_endpoints(
             sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
             std::move(wire_points), schematic_endpoints_from_list(endpoints),
             route_intent_from_string(route_intent), authored_region);
-        return schematic_entity_result(id.index(), projection.wire_run(id).net());
+        return schematic_entity_result(id.index(), projection.get(id).net());
     } catch (const std::invalid_argument &error) {
         raise_schematic_authoring_error(error);
     }
@@ -200,7 +202,7 @@ py::tuple PyCircuit::add_schematic_net_label_for_endpoint(
             schematic_endpoint_from_tuple(endpoint), schematic_orientation_from_string(orientation),
             authored_region, std::move(label),
             text_style_from_strings(horizontal_alignment, vertical_alignment, font_size));
-        return schematic_entity_result(id.index(), projection.net_label(id).net());
+        return schematic_entity_result(id.index(), projection.get(id).net());
     } catch (const std::invalid_argument &error) {
         raise_schematic_authoring_error(error);
     }
@@ -229,7 +231,7 @@ PyCircuit::add_schematic_junction_for_endpoint(std::size_t sheet, std::optional<
         const auto id = endpoint_authoring.add_junction(
             sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
             schematic_endpoint_from_tuple(endpoint), authored_region);
-        return schematic_entity_result(id.index(), projection.junction(id).net());
+        return schematic_entity_result(id.index(), projection.get(id).net());
     } catch (const std::invalid_argument &error) {
         raise_schematic_authoring_error(error);
     }
@@ -245,11 +247,11 @@ std::size_t PyCircuit::add_schematic_terminal_marker(std::size_t sheet, std::siz
 
     auto &projection = schematic_projection();
     return projection
-        .add_terminal_marker(sheet_id(sheet),
-                             volt::PowerPort{net_id(net), power_port_kind_from_string(kind),
-                                             volt::Point{x, y},
-                                             schematic_orientation_from_string(orientation),
-                                             authored_region, std::move(label)})
+        .add_power_port(sheet_id(sheet),
+                        volt::PowerPort{net_id(net), power_port_kind_from_string(kind),
+                                        volt::Point{x, y},
+                                        schematic_orientation_from_string(orientation),
+                                        authored_region, std::move(label)})
         .index();
 }
 
@@ -264,7 +266,7 @@ py::tuple PyCircuit::add_schematic_terminal_marker_for_endpoint(
             sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
             schematic_endpoint_from_tuple(endpoint), power_port_kind_from_string(kind),
             schematic_orientation_from_string(orientation), authored_region, std::move(label));
-        return schematic_entity_result(id.index(), projection.power_port(id).net());
+        return schematic_entity_result(id.index(), projection.get(id).net());
     } catch (const std::invalid_argument &error) {
         raise_schematic_authoring_error(error);
     }
@@ -313,7 +315,7 @@ py::tuple PyCircuit::add_schematic_sheet_port_for_endpoint(
             sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
             schematic_endpoint_from_tuple(endpoint), name, sheet_port_kind_from_string(kind),
             schematic_orientation_from_string(orientation), authored_region);
-        return schematic_entity_result(id.index(), projection.sheet_port(id).net());
+        return schematic_entity_result(id.index(), projection.get(id).net());
     } catch (const std::invalid_argument &error) {
         raise_schematic_authoring_error(error);
     }
@@ -381,9 +383,9 @@ void PyCircuit::load_schematic_json(const std::string &text) {
 std::vector<std::string> PyCircuit::schematic_sheet_names() const {
     const auto &projection = schematic_document_.schematic();
     auto names = std::vector<std::string>{};
-    names.reserve(projection.sheet_count());
-    for (std::size_t index = 0; index < projection.sheet_count(); ++index) {
-        names.push_back(projection.sheet(volt::SheetId{index}).name());
+    names.reserve(projection.all<volt::SheetId>().size());
+    for (std::size_t index = 0; index < projection.all<volt::SheetId>().size(); ++index) {
+        names.push_back(projection.get(volt::SheetId{index}).name());
     }
     return names;
 }

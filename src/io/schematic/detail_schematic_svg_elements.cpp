@@ -112,8 +112,8 @@ void write_symbol_pin_svg(std::ostream &out, const SymbolPin &pin) {
 }
 
 void write_symbol_instance_svg(std::ostream &out, const Schematic &schematic, SymbolInstanceId id) {
-    const auto &instance = schematic.symbol_instance(id);
-    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    const auto &instance = schematic.get(id);
+    const auto &symbol = schematic.get(instance.symbol_definition());
 
     out << "    <g class=\"symbol-instance\" data-component=\""
         << svg_escape(svg_component_id(instance.component())) << "\" data-symbol-definition=\""
@@ -136,8 +136,8 @@ void write_symbol_instance_svg(std::ostream &out, const Schematic &schematic, Sy
 
 void write_symbol_text_instance_svg(std::ostream &out, const Schematic &schematic,
                                     SymbolInstanceId id) {
-    const auto &instance = schematic.symbol_instance(id);
-    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    const auto &instance = schematic.get(id);
+    const auto &symbol = schematic.get(instance.symbol_definition());
     const auto has_text =
         std::any_of(symbol.primitives().begin(), symbol.primitives().end(),
                     [](const auto &primitive) { return is_symbol_text(primitive); });
@@ -166,8 +166,8 @@ void write_symbol_text_instance_svg(std::ostream &out, const Schematic &schemati
 
 void write_symbol_debug_overlay_svg(std::ostream &out, const Schematic &schematic,
                                     SymbolInstanceId id) {
-    const auto &instance = schematic.symbol_instance(id);
-    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    const auto &instance = schematic.get(id);
+    const auto &symbol = schematic.get(instance.symbol_definition());
 
     out << "      <g class=\"symbol-debug-overlay\" data-component=\""
         << svg_escape(svg_component_id(instance.component())) << "\" data-symbol-definition=\""
@@ -186,7 +186,7 @@ void write_symbol_debug_overlay_svg(std::ostream &out, const Schematic &schemati
 }
 
 void write_wire_run_svg(std::ostream &out, const Schematic &schematic, WireRunId id) {
-    const auto &wire = schematic.wire_run(id);
+    const auto &wire = schematic.get(id);
 
     out << "    <polyline class=\"wire-run\" data-net=\"" << svg_escape(svg_net_id(wire.net()))
         << "\" points=\"";
@@ -202,7 +202,7 @@ void write_wire_run_svg(std::ostream &out, const Schematic &schematic, WireRunId
 }
 
 void write_net_label_svg(std::ostream &out, const Schematic &schematic, NetLabelId id) {
-    const auto &label = schematic.net_label(id);
+    const auto &label = schematic.get(id);
     const auto &net = schematic.circuit().get(label.net());
     const auto &text = label.label().value_or(net.name().value());
     const auto text_position = label.text_position();
@@ -224,7 +224,7 @@ void write_net_label_svg(std::ostream &out, const Schematic &schematic, NetLabel
 }
 
 void write_junction_svg(std::ostream &out, const Schematic &schematic, JunctionId id) {
-    const auto &junction = schematic.junction(id);
+    const auto &junction = schematic.get(id);
 
     out << "    <circle class=\"junction\" data-net=\"" << svg_escape(svg_net_id(junction.net()))
         << "\" cx=\"";
@@ -237,7 +237,7 @@ void write_junction_svg(std::ostream &out, const Schematic &schematic, JunctionI
 }
 
 void write_power_port_svg(std::ostream &out, const Schematic &schematic, PowerPortId id) {
-    const auto &port = schematic.power_port(id);
+    const auto &port = schematic.get(id);
     const auto &net = schematic.circuit().get(port.net());
     const auto kind_class = power_port_class(port.kind());
 
@@ -305,7 +305,7 @@ void write_power_port_svg(std::ostream &out, const Schematic &schematic, PowerPo
 
 void write_no_connect_marker_svg(std::ostream &out, const Schematic &schematic,
                                  NoConnectMarkerId id) {
-    const auto &marker = schematic.no_connect_marker(id);
+    const auto &marker = schematic.get(id);
 
     out << "    <g class=\"no-connect-marker\" data-pin=\"" << svg_escape(svg_pin_id(marker.pin()))
         << "\" transform=\"translate(";
@@ -321,7 +321,7 @@ void write_no_connect_marker_svg(std::ostream &out, const Schematic &schematic,
 }
 
 void write_sheet_port_svg(std::ostream &out, const Schematic &schematic, SheetPortId id) {
-    const auto &port = schematic.sheet_port(id);
+    const auto &port = schematic.get(id);
     const auto kind_class = sheet_port_class(port.kind());
 
     out << "    <g class=\"sheet-port " << kind_class << "\" data-net=\""
@@ -362,7 +362,7 @@ void write_sheet_port_svg(std::ostream &out, const Schematic &schematic, SheetPo
 }
 
 void write_symbol_field_svg(std::ostream &out, const Schematic &schematic, SymbolFieldId id) {
-    const auto &field = schematic.symbol_field(id);
+    const auto &field = schematic.get(id);
 
     out << "    <text class=\"symbol-field\" data-symbol-instance=\""
         << svg_escape(svg_symbol_instance_id(field.symbol_instance())) << "\" data-field=\""

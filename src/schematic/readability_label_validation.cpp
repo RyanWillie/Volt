@@ -57,11 +57,11 @@ void validate_visible_reference_labels(const Schematic &schematic, SheetId sheet
     };
 
     for (const auto field_id : sheet.symbol_fields()) {
-        const auto &field = schematic.symbol_field(field_id);
+        const auto &field = schematic.get(field_id);
         if (field.name() != "reference") {
             continue;
         }
-        const auto &instance = schematic.symbol_instance(field.symbol_instance());
+        const auto &instance = schematic.get(field.symbol_instance());
         record_visible_reference(field.symbol_instance(), instance.component(), field.value());
     }
 
@@ -98,7 +98,7 @@ void validate_visible_reference_labels(const Schematic &schematic, SheetId sheet
 void validate_label_readability(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                                 DiagnosticReport &report) {
     for (const auto label_id : sheet.net_labels()) {
-        const auto &label = schematic.net_label(label_id);
+        const auto &label = schematic.get(label_id);
         const auto &net = schematic.circuit().get(label.net());
         if (label.orientation() != SchematicOrientation::Right) {
             add_readability_diagnostic(
@@ -114,7 +114,7 @@ void validate_label_readability(const Schematic &schematic, SheetId sheet_id, co
         }
     }
     for (const auto field_id : sheet.symbol_fields()) {
-        const auto &field = schematic.symbol_field(field_id);
+        const auto &field = schematic.get(field_id);
         if (field.orientation() != SchematicOrientation::Right) {
             add_readability_diagnostic(
                 report, Severity::Warning, "SCHEMATIC_TEXT_NOT_HORIZONTAL",
@@ -131,7 +131,7 @@ void validate_label_readability(const Schematic &schematic, SheetId sheet_id, co
         }
     }
     for (const auto port_id : sheet.sheet_ports()) {
-        const auto &port = schematic.sheet_port(port_id);
+        const auto &port = schematic.get(port_id);
         if (display_label_is_overlong_or_scoped(port.name())) {
             add_readability_diagnostic(
                 report, Severity::Warning, "SCHEMATIC_OVERLONG_DISPLAY_LABEL",
@@ -144,7 +144,7 @@ void validate_label_readability(const Schematic &schematic, SheetId sheet_id, co
 void validate_symbol_field_ownership_distance(const Schematic &schematic, SheetId sheet_id,
                                               const Sheet &sheet, DiagnosticReport &report) {
     for (const auto field_id : sheet.symbol_fields()) {
-        const auto &field = schematic.symbol_field(field_id);
+        const auto &field = schematic.get(field_id);
         const auto field_bounds = text_bounds(field.position(), field.orientation(), field.value(),
                                               field.style(), symbol_field_rendered_font_size);
         const auto owner_bounds = symbol_instance_bounds(schematic, field.symbol_instance());

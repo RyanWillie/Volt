@@ -316,8 +316,8 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
                                                      SymbolInstanceId id, double line_padding,
                                                      double closed_shape_padding,
                                                      double text_font_size) {
-    const auto &instance = schematic.symbol_instance(id);
-    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    const auto &instance = schematic.get(id);
+    const auto &symbol = schematic.get(instance.symbol_definition());
     auto bounds = bounds_from_point(instance.position());
     for (const auto &pin : symbol.pins()) {
         include_bounds(bounds, transform_symbol_point_bounds(pin.anchor(), instance));
@@ -331,8 +331,8 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
 
 [[nodiscard]] std::optional<SchematicBounds> symbol_instance_body_bounds(const Schematic &schematic,
                                                                          SymbolInstanceId id) {
-    const auto &instance = schematic.symbol_instance(id);
-    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    const auto &instance = schematic.get(id);
+    const auto &symbol = schematic.get(instance.symbol_definition());
     const auto has_body_primitive = std::any_of(
         symbol.primitives().begin(), symbol.primitives().end(), [](const auto &primitive) {
             return std::holds_alternative<SymbolRectangle>(primitive) ||
@@ -371,10 +371,10 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
                                                              SymbolInstanceId first_id,
                                                              SymbolInstanceId second_id) {
     const auto &circuit = schematic.circuit();
-    const auto &first = schematic.symbol_instance(first_id);
-    const auto &second = schematic.symbol_instance(second_id);
-    const auto &first_symbol = schematic.symbol_definition(first.symbol_definition());
-    const auto &second_symbol = schematic.symbol_definition(second.symbol_definition());
+    const auto &first = schematic.get(first_id);
+    const auto &second = schematic.get(second_id);
+    const auto &first_symbol = schematic.get(first.symbol_definition());
+    const auto &second_symbol = schematic.get(second.symbol_definition());
     for (const auto &first_pin : first_symbol.pins()) {
         const auto first_concrete_pin =
             queries::pin_by_number(circuit, first.component(), first_pin.number());

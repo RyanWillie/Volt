@@ -180,9 +180,10 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
 
 [[nodiscard]] SheetId sheet_for_symbol_instance(const Schematic &schematic,
                                                 SymbolInstanceId instance) {
-    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+    for (std::size_t sheet_index = 0; sheet_index < schematic.all<volt::SheetId>().size();
+         ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
-        const auto &instances = schematic.sheet(sheet).symbol_instances();
+        const auto &instances = schematic.get(sheet).symbol_instances();
         if (std::find(instances.begin(), instances.end(), instance) != instances.end()) {
             return sheet;
         }
@@ -192,9 +193,10 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
 }
 
 [[nodiscard]] SheetId sheet_for_wire_run(const Schematic &schematic, WireRunId wire) {
-    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+    for (std::size_t sheet_index = 0; sheet_index < schematic.all<volt::SheetId>().size();
+         ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
-        const auto &wires = schematic.sheet(sheet).wire_runs();
+        const auto &wires = schematic.get(sheet).wire_runs();
         if (std::find(wires.begin(), wires.end(), wire) != wires.end()) {
             return sheet;
         }
@@ -203,9 +205,10 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
 }
 
 [[nodiscard]] SheetId sheet_for_net_label(const Schematic &schematic, NetLabelId label) {
-    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+    for (std::size_t sheet_index = 0; sheet_index < schematic.all<volt::SheetId>().size();
+         ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
-        const auto &labels = schematic.sheet(sheet).net_labels();
+        const auto &labels = schematic.get(sheet).net_labels();
         if (std::find(labels.begin(), labels.end(), label) != labels.end()) {
             return sheet;
         }
@@ -214,9 +217,10 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
 }
 
 [[nodiscard]] SheetId sheet_for_junction(const Schematic &schematic, JunctionId junction) {
-    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+    for (std::size_t sheet_index = 0; sheet_index < schematic.all<volt::SheetId>().size();
+         ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
-        const auto &junctions = schematic.sheet(sheet).junctions();
+        const auto &junctions = schematic.get(sheet).junctions();
         if (std::find(junctions.begin(), junctions.end(), junction) != junctions.end()) {
             return sheet;
         }
@@ -225,9 +229,10 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
 }
 
 [[nodiscard]] SheetId sheet_for_power_port(const Schematic &schematic, PowerPortId port) {
-    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+    for (std::size_t sheet_index = 0; sheet_index < schematic.all<volt::SheetId>().size();
+         ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
-        const auto &ports = schematic.sheet(sheet).power_ports();
+        const auto &ports = schematic.get(sheet).power_ports();
         if (std::find(ports.begin(), ports.end(), port) != ports.end()) {
             return sheet;
         }
@@ -238,9 +243,10 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
 
 [[nodiscard]] SheetId sheet_for_no_connect_marker(const Schematic &schematic,
                                                   NoConnectMarkerId marker) {
-    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+    for (std::size_t sheet_index = 0; sheet_index < schematic.all<volt::SheetId>().size();
+         ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
-        const auto &markers = schematic.sheet(sheet).no_connect_markers();
+        const auto &markers = schematic.get(sheet).no_connect_markers();
         if (std::find(markers.begin(), markers.end(), marker) != markers.end()) {
             return sheet;
         }
@@ -250,9 +256,10 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
 }
 
 [[nodiscard]] SheetId sheet_for_sheet_port(const Schematic &schematic, SheetPortId port) {
-    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+    for (std::size_t sheet_index = 0; sheet_index < schematic.all<volt::SheetId>().size();
+         ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
-        const auto &ports = schematic.sheet(sheet).sheet_ports();
+        const auto &ports = schematic.get(sheet).sheet_ports();
         if (std::find(ports.begin(), ports.end(), port) != ports.end()) {
             return sheet;
         }
@@ -262,9 +269,10 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
 }
 
 [[nodiscard]] SheetId sheet_for_symbol_field(const Schematic &schematic, SymbolFieldId field) {
-    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+    for (std::size_t sheet_index = 0; sheet_index < schematic.all<volt::SheetId>().size();
+         ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
-        const auto &fields = schematic.sheet(sheet).symbol_fields();
+        const auto &fields = schematic.get(sheet).symbol_fields();
         if (std::find(fields.begin(), fields.end(), field) != fields.end()) {
             return sheet;
         }
@@ -283,9 +291,9 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
     out << "  \"version\": " << schematic_format_version() << ",\n";
 
     out << "  \"symbol_definitions\": [\n";
-    for (std::size_t index = 0; index < schematic.symbol_definition_count(); ++index) {
+    for (std::size_t index = 0; index < schematic.all<volt::SymbolDefId>().size(); ++index) {
         const auto id = SymbolDefId{index};
-        const auto &symbol = schematic.symbol_definition(id);
+        const auto &symbol = schematic.get(id);
         out << "    { \"id\": " << detail::json_string(detail::symbol_def_id(id))
             << ", \"name\": " << detail::json_string(symbol.name()) << ", \"pins\": [";
         for (std::size_t pin_index = 0; pin_index < symbol.pins().size(); ++pin_index) {
@@ -308,7 +316,7 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
             detail::write_symbol_primitive(out, symbol.primitives()[primitive_index]);
         }
         out << "] }";
-        if (index + 1 != schematic.symbol_definition_count()) {
+        if (index + 1 != schematic.all<volt::SymbolDefId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -316,9 +324,9 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
     out << "  ],\n";
 
     out << "  \"sheets\": [\n";
-    for (std::size_t index = 0; index < schematic.sheet_count(); ++index) {
+    for (std::size_t index = 0; index < schematic.all<volt::SheetId>().size(); ++index) {
         const auto id = SheetId{index};
-        const auto &sheet = schematic.sheet(id);
+        const auto &sheet = schematic.get(id);
         out << "    { \"id\": " << detail::json_string(detail::sheet_id(id))
             << ", \"name\": " << detail::json_string(sheet.name()) << ", \"metadata\": ";
         detail::write_sheet_metadata(out, sheet.metadata());
@@ -392,7 +400,7 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
             out << detail::json_string(detail::symbol_field_id(sheet.symbol_fields()[field_index]));
         }
         out << "] }";
-        if (index + 1 != schematic.sheet_count()) {
+        if (index + 1 != schematic.all<volt::SheetId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -400,9 +408,9 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
     out << "  ],\n";
 
     out << "  \"symbol_instances\": [\n";
-    for (std::size_t index = 0; index < schematic.symbol_instance_count(); ++index) {
+    for (std::size_t index = 0; index < schematic.all<volt::SymbolInstanceId>().size(); ++index) {
         const auto id = SymbolInstanceId{index};
-        const auto &instance = schematic.symbol_instance(id);
+        const auto &instance = schematic.get(id);
         out << "    { \"id\": " << detail::json_string(detail::symbol_instance_id(id))
             << ", \"sheet\": "
             << detail::json_string(
@@ -416,10 +424,10 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
         out << ", \"orientation\": "
             << detail::json_string(schematic_orientation_name(instance.orientation()));
         detail::write_authored_region(
-            out, schematic.sheet(detail::sheet_for_symbol_instance(schematic, id)),
+            out, schematic.get(detail::sheet_for_symbol_instance(schematic, id)),
             instance.authored_region());
         out << " }";
-        if (index + 1 != schematic.symbol_instance_count()) {
+        if (index + 1 != schematic.all<volt::SymbolInstanceId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -427,9 +435,9 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
     out << "  ],\n";
 
     out << "  \"wire_runs\": [\n";
-    for (std::size_t index = 0; index < schematic.wire_run_count(); ++index) {
+    for (std::size_t index = 0; index < schematic.all<volt::WireRunId>().size(); ++index) {
         const auto id = WireRunId{index};
-        const auto &wire = schematic.wire_run(id);
+        const auto &wire = schematic.get(id);
         out << "    { \"id\": " << detail::json_string(detail::wire_run_id(id)) << ", \"sheet\": "
             << detail::json_string(detail::sheet_id(detail::sheet_for_wire_run(schematic, id)))
             << ", \"net\": " << detail::json_string(detail::net_id(wire.net()))
@@ -442,11 +450,10 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
         }
         out << "], \"route_intent\": "
             << detail::json_string(route_intent_name(wire.route_intent()));
-        detail::write_authored_region(out,
-                                      schematic.sheet(detail::sheet_for_wire_run(schematic, id)),
+        detail::write_authored_region(out, schematic.get(detail::sheet_for_wire_run(schematic, id)),
                                       wire.authored_region());
         out << " }";
-        if (index + 1 != schematic.wire_run_count()) {
+        if (index + 1 != schematic.all<volt::WireRunId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -454,9 +461,9 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
     out << "  ],\n";
 
     out << "  \"net_labels\": [\n";
-    for (std::size_t index = 0; index < schematic.net_label_count(); ++index) {
+    for (std::size_t index = 0; index < schematic.all<volt::NetLabelId>().size(); ++index) {
         const auto id = NetLabelId{index};
-        const auto &label = schematic.net_label(id);
+        const auto &label = schematic.get(id);
         out << "    { \"id\": " << detail::json_string(detail::net_label_id(id)) << ", \"sheet\": "
             << detail::json_string(detail::sheet_id(detail::sheet_for_net_label(schematic, id)))
             << ", \"net\": " << detail::json_string(detail::net_id(label.net()))
@@ -474,10 +481,10 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
         detail::write_text_style_fields(
             out, label.style(), volt::SchematicTextStyle{volt::TextHorizontalAlignment::Start});
         detail::write_authored_region(out,
-                                      schematic.sheet(detail::sheet_for_net_label(schematic, id)),
+                                      schematic.get(detail::sheet_for_net_label(schematic, id)),
                                       label.authored_region());
         out << " }";
-        if (index + 1 != schematic.net_label_count()) {
+        if (index + 1 != schematic.all<volt::NetLabelId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -485,19 +492,18 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
     out << "  ],\n";
 
     out << "  \"junctions\": [\n";
-    for (std::size_t index = 0; index < schematic.junction_count(); ++index) {
+    for (std::size_t index = 0; index < schematic.all<volt::JunctionId>().size(); ++index) {
         const auto id = JunctionId{index};
-        const auto &junction = schematic.junction(id);
+        const auto &junction = schematic.get(id);
         out << "    { \"id\": " << detail::json_string(detail::junction_id(id)) << ", \"sheet\": "
             << detail::json_string(detail::sheet_id(detail::sheet_for_junction(schematic, id)))
             << ", \"net\": " << detail::json_string(detail::net_id(junction.net()))
             << ", \"position\": ";
         detail::write_point(out, junction.position());
-        detail::write_authored_region(out,
-                                      schematic.sheet(detail::sheet_for_junction(schematic, id)),
+        detail::write_authored_region(out, schematic.get(detail::sheet_for_junction(schematic, id)),
                                       junction.authored_region());
         out << " }";
-        if (index + 1 != schematic.junction_count()) {
+        if (index + 1 != schematic.all<volt::JunctionId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -505,9 +511,9 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
     out << "  ],\n";
 
     out << "  \"power_ports\": [\n";
-    for (std::size_t index = 0; index < schematic.power_port_count(); ++index) {
+    for (std::size_t index = 0; index < schematic.all<volt::PowerPortId>().size(); ++index) {
         const auto id = PowerPortId{index};
-        const auto &port = schematic.power_port(id);
+        const auto &port = schematic.get(id);
         out << "    { \"id\": " << detail::json_string(detail::power_port_id(id)) << ", \"sheet\": "
             << detail::json_string(detail::sheet_id(detail::sheet_for_power_port(schematic, id)))
             << ", \"net\": " << detail::json_string(detail::net_id(port.net()))
@@ -524,10 +530,10 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
             detail::write_point(out, *port.explicit_label_position());
         }
         detail::write_authored_region(out,
-                                      schematic.sheet(detail::sheet_for_power_port(schematic, id)),
+                                      schematic.get(detail::sheet_for_power_port(schematic, id)),
                                       port.authored_region());
         out << " }";
-        if (index + 1 != schematic.power_port_count()) {
+        if (index + 1 != schematic.all<volt::PowerPortId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -535,9 +541,9 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
     out << "  ],\n";
 
     out << "  \"no_connect_markers\": [\n";
-    for (std::size_t index = 0; index < schematic.no_connect_marker_count(); ++index) {
+    for (std::size_t index = 0; index < schematic.all<volt::NoConnectMarkerId>().size(); ++index) {
         const auto id = NoConnectMarkerId{index};
-        const auto &marker = schematic.no_connect_marker(id);
+        const auto &marker = schematic.get(id);
         out << "    { \"id\": " << detail::json_string(detail::no_connect_marker_id(id))
             << ", \"sheet\": "
             << detail::json_string(
@@ -551,10 +557,10 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
             out << ", \"reason\": " << detail::json_string(marker.reason());
         }
         detail::write_authored_region(
-            out, schematic.sheet(detail::sheet_for_no_connect_marker(schematic, id)),
+            out, schematic.get(detail::sheet_for_no_connect_marker(schematic, id)),
             marker.authored_region());
         out << " }";
-        if (index + 1 != schematic.no_connect_marker_count()) {
+        if (index + 1 != schematic.all<volt::NoConnectMarkerId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -562,9 +568,9 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
     out << "  ],\n";
 
     out << "  \"sheet_ports\": [\n";
-    for (std::size_t index = 0; index < schematic.sheet_port_count(); ++index) {
+    for (std::size_t index = 0; index < schematic.all<volt::SheetPortId>().size(); ++index) {
         const auto id = SheetPortId{index};
-        const auto &port = schematic.sheet_port(id);
+        const auto &port = schematic.get(id);
         out << "    { \"id\": " << detail::json_string(detail::sheet_port_id(id)) << ", \"sheet\": "
             << detail::json_string(detail::sheet_id(detail::sheet_for_sheet_port(schematic, id)))
             << ", \"net\": " << detail::json_string(detail::net_id(port.net()))
@@ -575,10 +581,10 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
         out << ", \"orientation\": "
             << detail::json_string(schematic_orientation_name(port.orientation()));
         detail::write_authored_region(out,
-                                      schematic.sheet(detail::sheet_for_sheet_port(schematic, id)),
+                                      schematic.get(detail::sheet_for_sheet_port(schematic, id)),
                                       port.authored_region());
         out << " }";
-        if (index + 1 != schematic.sheet_port_count()) {
+        if (index + 1 != schematic.all<volt::SheetPortId>().size()) {
             out << ',';
         }
         out << '\n';
@@ -586,9 +592,9 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
     out << "  ],\n";
 
     out << "  \"symbol_fields\": [\n";
-    for (std::size_t index = 0; index < schematic.symbol_field_count(); ++index) {
+    for (std::size_t index = 0; index < schematic.all<volt::SymbolFieldId>().size(); ++index) {
         const auto id = SymbolFieldId{index};
-        const auto &field = schematic.symbol_field(id);
+        const auto &field = schematic.get(id);
         out << "    { \"id\": " << detail::json_string(detail::symbol_field_id(id))
             << ", \"sheet\": "
             << detail::json_string(detail::sheet_id(detail::sheet_for_symbol_field(schematic, id)))
@@ -600,11 +606,11 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
         out << ", \"orientation\": "
             << detail::json_string(schematic_orientation_name(field.orientation()));
         detail::write_text_style_fields(out, field.style(), volt::SchematicTextStyle{});
-        detail::write_authored_region(
-            out, schematic.sheet(detail::sheet_for_symbol_field(schematic, id)),
-            field.authored_region());
+        detail::write_authored_region(out,
+                                      schematic.get(detail::sheet_for_symbol_field(schematic, id)),
+                                      field.authored_region());
         out << " }";
-        if (index + 1 != schematic.symbol_field_count()) {
+        if (index + 1 != schematic.all<volt::SymbolFieldId>().size()) {
             out << ',';
         }
         out << '\n';
