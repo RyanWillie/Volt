@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture Gate F1 evidence map</title>
+  <style>
+    :root {
+      --paper: #f7f3ea;
+      --ink: #16222d;
+      --muted: #5b6872;
+      --line: #d8cbbb;
+      --navy: #122d40;
+      --teal: #177b79;
+      --amber: #d88819;
+      --brick: #a44636;
+      --white: #fffdf8;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --body: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+      --display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--body);
+      line-height: 1.55;
+    }
+    header {
+      padding: 5rem max(1.2rem, calc((100vw - 1180px) / 2)) 3.5rem;
+      background: var(--navy);
+      color: #edf5f2;
+    }
+    main {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      padding: 2.5rem 1.2rem 5rem;
+    }
+    h1, h2, h3 { margin: 0; line-height: 1.08; }
+    h1, h2 { font-family: var(--display); font-weight: 650; }
+    h1 { max-width: 12ch; color: #fff8e8; font-size: 5rem; }
+    h2 { margin-top: 3rem; color: var(--navy); font-size: 3rem; }
+    h3 { color: var(--navy); font-size: 1rem; }
+    p { max-width: 76ch; }
+    code { font-family: var(--mono); font-size: 0.9em; }
+    a { color: var(--teal); }
+    .eyebrow {
+      margin-bottom: 1rem;
+      color: #ffd58b;
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+    .deck {
+      max-width: 820px;
+      color: #cbd9dc;
+      font-family: var(--display);
+      font-size: clamp(1.15rem, 2vw, 1.55rem);
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1rem;
+      margin-top: 2.2rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid rgba(255,255,255,.18);
+    }
+    .meta dt, .kicker {
+      color: var(--amber);
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+    .meta dd { margin: 0.25rem 0 0; overflow-wrap: anywhere; font-family: var(--mono); font-size: 0.78rem; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      margin: 2rem 0;
+      background: var(--line);
+      border: 1px solid var(--line);
+    }
+    .metric {
+      min-height: 9.5rem;
+      padding: 1rem;
+      background: var(--white);
+    }
+    .metric dt { color: var(--muted); font-size: 0.66rem; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
+    .metric dd { margin: .35rem 0; color: var(--navy); font-family: var(--display); font-size: 2.35rem; line-height: 1; }
+    .metric p { margin: .35rem 0 0; color: var(--muted); font-size: .76rem; }
+    .panel {
+      margin: 1.4rem 0;
+      padding: 1.2rem;
+      border-left: 5px solid var(--teal);
+      background: var(--white);
+    }
+    .panel.warning { border-left-color: var(--amber); }
+    .panel.danger { border-left-color: var(--brick); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      margin: 1.4rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.2rem 0;
+      background: var(--white);
+      font-size: 0.82rem;
+    }
+    th, td {
+      padding: .7rem .8rem;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--navy);
+      font-size: .65rem;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+    ul { padding-left: 1.2rem; }
+    li + li { margin-top: .35rem; }
+    footer {
+      padding: 2rem max(1.2rem, calc((100vw - 1180px) / 2));
+      background: var(--navy);
+      color: #b8c9ce;
+      font-size: .78rem;
+    }
+    @media (max-width: 820px) {
+      .summary, .grid, .meta { grid-template-columns: 1fr; }
+      h1 { font-size: 3.4rem; }
+      h2 { font-size: 2.25rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">Issue #294 | Gate F1 | evidence only</div>
+    <h1>Freeze the refactor baseline.</h1>
+    <p class="deck">This page maps the checked-in inventories and goldens that must be intentionally updated by future slices. It records evidence; it does not authorize or implement D1-D3 product contracts.</p>
+    <dl class="meta">
+      <div><dt>Measurement baseline</dt><dd>817ad42588d01d2b7d095d1b4b39cc7abed18b6a</dd></div>
+      <div><dt>Implementation baseline</dt><dd>817ad42588d01d2b7d095d1b4b39cc7abed18b6a</dd></div>
+      <div><dt>Baseline drift</dt><dd>none, origin/main matched issue #294</dd></div>
+      <div><dt>Checker</dt><dd>scripts/check-refactor-inventory-baselines.py</dd></div>
+    </dl>
+  </header>
+
+  <main>
+    <section>
+      <span class="kicker">One-screen result</span>
+      <h2>What is frozen</h2>
+      <dl class="summary">
+        <div class="metric"><dt>Public roots</dt><dd>16 / 49 / 50</dd><p>Circuit, Schematic and Board declarations, plus BoardRouter 4 and BoardSpatialIndex 14.</p></div>
+        <div class="metric"><dt>Native binding</dt><dd>133</dd><p>44 logical, 18 module, 25 schematic, 8 validation/BOM, 37 board, 1 serializer.</p></div>
+        <div class="metric"><dt>Python exports</dt><dd>113</dd><p><code>python/volt/__init__.py</code> is the export boundary.</p></div>
+        <div class="metric"><dt>Footprint injections</dt><dd>13</dd><p>Production <code>src/python</code> call sites that inject <code>builtin_footprint_library()</code>.</p></div>
+        <div class="metric"><dt>Artifacts</dt><dd>18 / 17</dd><p>Project record kinds and checked-in manifest artifact kinds.</p></div>
+        <div class="metric"><dt>Part routes</dt><dd>14 / 17 / 11</dd><p>Built-ins, STM32 catalogue entries and manual example selected-part calls.</p></div>
+        <div class="metric"><dt>CLI / Project</dt><dd>7 / 3 / 0</dd><p>CLI leaf handlers, staged Project examples and tracked <code>volt.toml</code> files.</p></div>
+        <div class="metric"><dt>Goldens</dt><dd>6 / 15</dd><p>Semantic JSON summaries and byte-level SHA-256 fixtures.</p></div>
+      </dl>
+
+      <div class="panel">
+        <h3>Checked-in source of truth</h3>
+        <p>The mechanical baseline lives in <code>tests/architecture/refactor_inventory_baseline.json</code>. The checker compares regenerated inventories, representative semantic summaries and raw byte hashes to that file. Any drift fails with an instruction to update both the JSON baseline and this evidence map in the slice that intentionally moved the surface.</p>
+      </div>
+    </section>
+
+    <section>
+      <span class="kicker">Rules</span>
+      <h2>Counting contract</h2>
+      <div class="grid">
+        <div class="panel">
+          <h3>Mechanical counts</h3>
+          <ul>
+            <li>Public declarations are nonblank non-include snapshot lines; overloads and constructors count.</li>
+            <li>Binding methods are named <code>.def("...")</code> registrations on <code>py::class_&lt;PyCircuit&gt;</code>; top-level <code>module.def</code> exports are separate.</li>
+            <li>Caller strata count direct lexical <code>.name(</code> and <code>-&gt;name(</code> tokens for root snapshot names.</li>
+            <li>Hidden footprint injections count only production <code>src/python</code> calls to <code>volt::builtin_footprint_library()</code>.</li>
+            <li>Goldens freeze normalized JSON shape plus raw byte length and SHA-256.</li>
+          </ul>
+        </div>
+        <div class="panel warning">
+          <h3>Intentional exclusions</h3>
+          <ul>
+            <li>Generated docs and architecture HTML are not product call-site evidence.</li>
+            <li>Indirect aliases, templates and function pointers are outside the lexical caller count.</li>
+            <li>Tests and examples are excluded from hidden resolver injection counts but included where caller strata explicitly name tests.</li>
+            <li>This gate does not enforce D1-D3 designs or forbid approved future movement.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <span class="kicker">Future updates</span>
+      <h2>Who may move each baseline</h2>
+      <table>
+        <thead><tr><th>Future slice</th><th>May intentionally update</th></tr></thead>
+        <tbody>
+          <tr><td>D1 private native owner split</td><td>Native binding groups, Python ownership paths, binding lifetime entries and hidden footprint injection callers.</td></tr>
+          <tr><td>D2 Schematic/Board roots and CompiledBoard</td><td>Schematic and Board snapshots, direct caller strata, footprint-resolution injections, Board semantic and byte goldens.</td></tr>
+          <tr><td>D3 typed artifact graph and bundle reopening</td><td>Artifact kinds, manifest fields, reader/writer surfaces, CLI source-execution surfaces, bundle and manifest goldens.</td></tr>
+          <tr><td>Part-library semantic and exact-selection program</td><td>Built-in component routes, STM32 catalogue entries, manual selected-part calls, part and offline fixture goldens.</td></tr>
+          <tr><td>Deletion gate</td><td>Parity gate test inventory, byte-golden shadow pairs, sanitizer, coverage and platform evidence requirements.</td></tr>
+        </tbody>
+      </table>
+      <div class="panel danger">
+        <h3>Stop rule</h3>
+        <p>If a future PR changes one of these baselines without being the slice named above, treat it as architecture drift until the PR proves why the evidence moved.</p>
+      </div>
+    </section>
+
+    <section>
+      <span class="kicker">Accepted references</span>
+      <h2>Inputs read for this gate</h2>
+      <ul>
+        <li><code>AGENTS.md</code> and the linked Volt shared architecture skill note.</li>
+        <li><code>docs/design/volt-post-circuit-architecture-review.html</code>.</li>
+        <li><code>docs/design/volt-part-library-architecture-review.html</code>.</li>
+        <li>Existing architecture snapshots and checker conventions in <code>tests/architecture</code> and <code>scripts/check-circuit-architecture-boundary.py</code>.</li>
+        <li>Current Python binding, CLI, Project, artifact, part-library, PCB, schematic, KiCad, fabrication, BOM/CPL, 3D and test surfaces referenced by the baseline JSON.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    Architecture Gate F1 evidence map. Issue #294 closes when this checked-in evidence and CI pass; downstream deletion/refactor work remains out of scope.
+  </footer>
+</body>
+</html>
