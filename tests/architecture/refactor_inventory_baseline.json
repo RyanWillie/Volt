@@ -1261,7 +1261,7 @@
             "unique_name_count": 12
           },
           "tests": {
-            "count": 912,
+            "count": 926,
             "files": [
               "tests/adapters/kicad_pcb_writer_test.cpp",
               "tests/adapters/kicad_schematic_writer_test.cpp",
@@ -1273,6 +1273,7 @@
               "tests/circuit/circuit_reads_test.cpp",
               "tests/circuit/circuit_test.cpp",
               "tests/circuit/circuit_updates_test.cpp",
+              "tests/circuit/connectivity/component_contract_test.cpp",
               "tests/circuit/connectivity/connectivity_model_test.cpp",
               "tests/circuit/connectivity/definitions_test.cpp",
               "tests/circuit/connectivity/instances_test.cpp",
