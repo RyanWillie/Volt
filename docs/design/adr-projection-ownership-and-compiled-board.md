@@ -229,19 +229,22 @@ compilation-contract change makes an older artifact non-current for those author
 older artifact remains valid as historical evidence. Callers select or compile the desired
 identity explicitly; "non-current" never means corrupt or mutable.
 
-Foreign-owner IDs, a Board bound to another Circuit, malformed input snapshots, missing or
-incompatible exact selection for a Circuit component instance, invalid pin/package/pad
-mappings, missing required definitions or asset bytes, digest mismatches, and unsupported
-required capabilities are typed boundary or compilation failures. They leave every input
-unchanged, produce no artifact, and retain typed diagnostic evidence. Exact carrier types may
-distinguish caller-contract exceptions from a failed compile result, but absence is never an
-untyped null or incomplete value.
+Foreign-owner IDs, a Board bound to another Circuit, malformed input snapshots, a non-empty
+exact selection that cannot be resolved or is incompatible with the instance's component
+contract, invalid pin/package/pad mappings, missing required definitions or asset bytes, digest
+mismatches, and unsupported required capabilities are typed boundary or compilation failures.
+They leave every input unchanged, produce no artifact, and retain typed diagnostic evidence.
+Exact carrier types may distinguish caller-contract exceptions from a failed compile result,
+but absence is never an untyped null or incomplete value.
 
-Structurally valid but poor design remains representable and diagnosable. Unplaced components,
-unrouted nets, clearance violations, capability-limit issues, and other readiness problems do
-not become alternate structure or hidden fallback behavior. They accompany the immutable
-artifact in the compile result; delivery/export policy may reject an artifact based on those
-diagnostics.
+Absence of a selection is not by itself a compile failure: a populated occurrence that lacks an
+exact part is a readiness diagnostic, while DNP intent does not require a selection. If a
+placement or declared capability needs part-owned mappings, definitions, or assets that the
+closure cannot supply, compilation fails under the missing-input rule above. Other structurally
+valid but poor design remains representable and diagnosable. Unplaced components, unrouted nets,
+clearance violations, capability-limit issues, and other readiness problems accompany the
+immutable artifact in the compile result; delivery/export policy may reject an artifact based
+on those diagnostics.
 
 An owned `CompiledBoard` remains valid after all authoring inputs and source libraries are
 destroyed or upgraded. A loader may expose borrowed typed views into an owning loaded artifact
