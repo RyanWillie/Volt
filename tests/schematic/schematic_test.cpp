@@ -3,6 +3,7 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/io/schematic/schematic_writer.hpp>
 #include <volt/schematic/endpoint_authoring.hpp>
+#include <volt/schematic/schematic_document.hpp>
 
 TEST_CASE("Symbol definitions store structured drawing primitives and pins") {
     const auto symbol = make_resistor_symbol();
@@ -57,13 +58,13 @@ TEST_CASE("Schematic stores sheets and symbol instances over logical components"
     CHECK(sheet == volt::SheetId{0});
     CHECK(symbol == volt::SymbolDefId{0});
     CHECK(instance == volt::SymbolInstanceId{0});
-    CHECK(schematic.sheet_count() == 1);
-    CHECK(schematic.symbol_definition_count() == 1);
-    CHECK(schematic.symbol_instance_count() == 1);
-    CHECK(schematic.symbol_instance(instance).component() == component);
-    CHECK(schematic.symbol_instance(instance).symbol_definition() == symbol);
-    CHECK(schematic.symbol_instance(instance).position() == volt::Point{40.0, 20.0});
-    CHECK(schematic.sheet(sheet).symbol_instances() == std::vector{instance});
+    CHECK(schematic.all<volt::SheetId>().size() == 1);
+    CHECK(schematic.all<volt::SymbolDefId>().size() == 1);
+    CHECK(schematic.all<volt::SymbolInstanceId>().size() == 1);
+    CHECK(schematic.get(instance).component() == component);
+    CHECK(schematic.get(instance).symbol_definition() == symbol);
+    CHECK(schematic.get(instance).position() == volt::Point{40.0, 20.0});
+    CHECK(schematic.get(sheet).symbol_instances() == std::vector{instance});
     CHECK(circuit.all<volt::NetId>().size() == 0);
 }
 
@@ -80,16 +81,16 @@ TEST_CASE("Schematic stores wire runs and labels over canonical logical nets") {
 
     CHECK(wire == volt::WireRunId{0});
     CHECK(label == volt::NetLabelId{0});
-    CHECK(schematic.wire_run_count() == 1);
-    CHECK(schematic.net_label_count() == 1);
-    CHECK(schematic.sheet(sheet).wire_runs() == std::vector{wire});
-    CHECK(schematic.sheet(sheet).net_labels() == std::vector{label});
-    CHECK(schematic.wire_run(wire).net() == net);
-    CHECK(schematic.wire_run(wire).points() ==
+    CHECK(schematic.all<volt::WireRunId>().size() == 1);
+    CHECK(schematic.all<volt::NetLabelId>().size() == 1);
+    CHECK(schematic.get(sheet).wire_runs() == std::vector{wire});
+    CHECK(schematic.get(sheet).net_labels() == std::vector{label});
+    CHECK(schematic.get(wire).net() == net);
+    CHECK(schematic.get(wire).points() ==
           std::vector{volt::Point{10.0, 20.0}, volt::Point{40.0, 20.0}});
-    CHECK(schematic.net_label(label).net() == net);
-    CHECK(schematic.net_label(label).position() == volt::Point{12.0, 16.0});
-    CHECK(schematic.net_label(label).orientation() == volt::SchematicOrientation::Right);
+    CHECK(schematic.get(label).net() == net);
+    CHECK(schematic.get(label).position() == volt::Point{12.0, 16.0});
+    CHECK(schematic.get(label).orientation() == volt::SchematicOrientation::Right);
 }
 
 TEST_CASE("Schematic authoring mutations infer nets from logical pin endpoints") {
@@ -112,8 +113,8 @@ TEST_CASE("Schematic authoring mutations infer nets from logical pin endpoints")
                     volt::SchematicEndpoint{volt::Point{40.0, 0.0}, second_pin}},
         volt::RouteIntent::Direct);
 
-    CHECK(schematic.wire_run(wire).net() == net);
-    CHECK(schematic.wire_run(wire).points() ==
+    CHECK(schematic.get(wire).net() == net);
+    CHECK(schematic.get(wire).points() ==
           std::vector{volt::Point{20.0, 0.0}, volt::Point{40.0, 0.0}});
     CHECK(circuit.all<volt::NetId>().size() == net_count);
 }
@@ -220,6 +221,7 @@ TEST_CASE("Schematic stores professional primitives without changing logical con
                              std::vector{volt::Point{10.0, 20.0}, volt::Point{30.0, 20.0},
                                          volt::Point{30.0, 40.0}},
                              volt::RouteIntent::Orthogonal});
+    const auto label = schematic.add_net_label(sheet, volt::NetLabel{vcc, volt::Point{30.0, 20.0}});
 
     const auto junction =
         schematic.add_junction(sheet, volt::Junction{vcc, volt::Point{30.0, 20.0}});
@@ -239,33 +241,41 @@ TEST_CASE("Schematic stores professional primitives without changing logical con
         sheet, volt::SymbolField{instance, "value", "10k", volt::Point{40.0, 32.0},
                                  volt::SchematicOrientation::Right});
 
-    CHECK(schematic.sheet(sheet).metadata().title() == "Power sheet");
-    CHECK(schematic.sheet(sheet).metadata().size().width() == 420.0);
-    CHECK(schematic.sheet(sheet).metadata().size().height() == 297.0);
-    REQUIRE(schematic.sheet(sheet).metadata().title_block().size() == 2);
-    CHECK(schematic.sheet(sheet).metadata().title_block()[0].key() == "Revision");
-    CHECK(schematic.sheet(sheet).metadata().title_block()[0].value() == "A");
-    CHECK(schematic.wire_run(wire).route_intent() == volt::RouteIntent::Orthogonal);
+    CHECK(schematic.get(sheet).metadata().title() == "Power sheet");
+    CHECK(schematic.get(sheet).metadata().size().width() == 420.0);
+    CHECK(schematic.get(sheet).metadata().size().height() == 297.0);
+    REQUIRE(schematic.get(sheet).metadata().title_block().size() == 2);
+    CHECK(schematic.get(sheet).metadata().title_block()[0].key() == "Revision");
+    CHECK(schematic.get(sheet).metadata().title_block()[0].value() == "A");
+    CHECK(schematic.get(wire).route_intent() == volt::RouteIntent::Orthogonal);
     CHECK(junction == volt::JunctionId{0});
     CHECK(power == volt::PowerPortId{0});
     CHECK(ground == volt::PowerPortId{1});
     CHECK(no_connect == volt::NoConnectMarkerId{0});
     CHECK(sheet_port == volt::SheetPortId{0});
     CHECK(field == volt::SymbolFieldId{0});
-    CHECK(schematic.sheet(sheet).junctions() == std::vector{junction});
-    CHECK(schematic.sheet(sheet).power_ports() == std::vector{power, ground});
-    CHECK(schematic.sheet(sheet).no_connect_markers() == std::vector{no_connect});
-    CHECK(schematic.sheet(sheet).sheet_ports() == std::vector{sheet_port});
-    CHECK(schematic.sheet(sheet).symbol_fields() == std::vector{field});
-    CHECK(schematic.junction(junction).net() == vcc);
-    CHECK(schematic.power_port(power).kind() == volt::PowerPortKind::Power);
-    CHECK(schematic.power_port(ground).net() == gnd);
-    CHECK(schematic.no_connect_marker(no_connect).pin() == no_connect_pin);
-    CHECK(schematic.no_connect_marker(no_connect).reason() == "factory option");
-    CHECK(schematic.sheet_port(sheet_port).name() == "VIN");
-    CHECK(schematic.symbol_field(field).symbol_instance() == instance);
-    CHECK(schematic.symbol_field(field).name() == "value");
-    CHECK(schematic.symbol_field(field).value() == "10k");
+    CHECK(schematic.get(sheet).junctions() == std::vector{junction});
+    CHECK(schematic.get(sheet).power_ports() == std::vector{power, ground});
+    CHECK(schematic.get(sheet).no_connect_markers() == std::vector{no_connect});
+    CHECK(schematic.get(sheet).sheet_ports() == std::vector{sheet_port});
+    CHECK(schematic.get(sheet).symbol_fields() == std::vector{field});
+    CHECK(schematic.get(junction).net() == vcc);
+    CHECK(schematic.get(power).kind() == volt::PowerPortKind::Power);
+    CHECK(schematic.get(ground).net() == gnd);
+    CHECK(schematic.get(no_connect).pin() == no_connect_pin);
+    CHECK(schematic.get(no_connect).reason() == "factory option");
+    CHECK(schematic.get(sheet_port).name() == "VIN");
+    CHECK(schematic.get(field).symbol_instance() == instance);
+    CHECK(schematic.get(field).name() == "value");
+    CHECK(schematic.get(field).value() == "10k");
+
+    schematic.move(volt::MoveNetLabelText{label, volt::Point{32.0, 18.0}});
+    schematic.move(volt::MovePowerPortLabel{power, volt::Point{12.0, 14.0}});
+    schematic.move(volt::MoveSymbolField{field, volt::Point{42.0, 34.0}});
+    CHECK(schematic.get(label).text_position() == volt::Point{32.0, 18.0});
+    CHECK(schematic.get(power).explicit_label_position() == volt::Point{12.0, 14.0});
+    CHECK(schematic.get(field).position() == volt::Point{42.0, 34.0});
+
     CHECK(circuit.get(vcc).pins().empty());
     CHECK(circuit.get(gnd).pins().empty());
     CHECK_FALSE(volt::queries::net_of(circuit, no_connect_pin).has_value());
@@ -432,10 +442,10 @@ TEST_CASE("Schematic rejects professional primitives with missing references") {
 TEST_CASE("Schematic replacement must reference the same logical circuit") {
     auto circuit = volt::Circuit{};
     auto other_circuit = volt::Circuit{};
-    auto schematic = volt::Schematic{circuit};
+    auto document = volt::SchematicDocument{circuit};
 
-    CHECK_THROWS_AS(schematic.replace_with(volt::Schematic{other_circuit}), std::logic_error);
-    check_kernel_error([&] { schematic.replace_with(volt::Schematic{other_circuit}); },
+    CHECK_THROWS_AS(document.replace_schematic(volt::Schematic{other_circuit}), std::logic_error);
+    check_kernel_error([&] { document.replace_schematic(volt::Schematic{other_circuit}); },
                        volt::ErrorCode::CrossReferenceViolation,
                        "Schematic replacement must reference the same logical circuit");
 }

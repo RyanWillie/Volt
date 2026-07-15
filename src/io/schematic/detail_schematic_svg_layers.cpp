@@ -4,7 +4,7 @@ namespace volt::io::detail {
 
 void write_schematic_object_layers_svg(std::ostream &out, const Schematic &schematic,
                                        SheetId sheet_id, SchematicSvgLayerOptions options) {
-    const auto &sheet = schematic.sheet(sheet_id);
+    const auto &sheet = schematic.get(sheet_id);
 
     if (options.include_regions) {
         out << "    <g class=\"layer layer-regions\">\n";

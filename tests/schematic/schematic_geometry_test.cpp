@@ -85,7 +85,7 @@ TEST_CASE("Schematic allows same-net joins but rejects different-net wire collis
                 volt::WireRun{gnd, std::vector{volt::Point{0.0, 0.0}, volt::Point{5.0, 0.0}}}));
         },
         volt::ErrorCode::InvalidState, "Schematic wire run collides with a different logical net");
-    CHECK(schematic.wire_run_count() == 4U);
+    CHECK(schematic.all<volt::WireRunId>().size() == 4U);
 }
 
 TEST_CASE("Schematic geometry rejects non-finite coordinates") {

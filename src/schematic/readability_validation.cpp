@@ -5,9 +5,10 @@ namespace volt {
 [[nodiscard]] DiagnosticReport validate_schematic_readability(const Schematic &schematic) {
     auto report = DiagnosticReport{};
 
-    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+    for (std::size_t sheet_index = 0; sheet_index < schematic.all<volt::SheetId>().size();
+         ++sheet_index) {
         const auto sheet_id = SheetId{sheet_index};
-        const auto &sheet = schematic.sheet(sheet_id);
+        const auto &sheet = schematic.get(sheet_id);
         detail::validate_readability_bounds(schematic, sheet_id, sheet, report);
         detail::validate_authored_region_content_overlaps(schematic, sheet_id, sheet, report);
         detail::validate_title_block_text_overflow(sheet_id, sheet, report);

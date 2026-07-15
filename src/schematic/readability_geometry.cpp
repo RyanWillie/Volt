@@ -17,7 +17,7 @@ namespace volt::detail {
 [[nodiscard]] bool sheet_has_net_label_at_point(const Schematic &schematic, const Sheet &sheet,
                                                 NetId net, Point point) {
     for (const auto label_id : sheet.net_labels()) {
-        const auto &label = schematic.net_label(label_id);
+        const auto &label = schematic.get(label_id);
         if (label.net() == net && same_schematic_point(label.position(), point)) {
             return true;
         }
@@ -29,7 +29,7 @@ namespace volt::detail {
 [[nodiscard]] bool sheet_visually_covers_net_at_pin(const Schematic &schematic, const Sheet &sheet,
                                                     NetId net, Point point) {
     for (const auto wire_id : sheet.wire_runs()) {
-        const auto &wire = schematic.wire_run(wire_id);
+        const auto &wire = schematic.get(wire_id);
         if (wire.net() == net && wire_covers_point(wire, point)) {
             return true;
         }
@@ -40,14 +40,14 @@ namespace volt::detail {
     }
 
     for (const auto port_id : sheet.power_ports()) {
-        const auto &port = schematic.power_port(port_id);
+        const auto &port = schematic.get(port_id);
         if (port.net() == net && same_schematic_point(port.position(), point)) {
             return true;
         }
     }
 
     for (const auto port_id : sheet.sheet_ports()) {
-        const auto &port = schematic.sheet_port(port_id);
+        const auto &port = schematic.get(port_id);
         if (port.net() == net && same_schematic_point(port.position(), point)) {
             return true;
         }
@@ -62,8 +62,8 @@ namespace volt::detail {
     const auto &circuit = schematic.circuit();
 
     for (const auto other_instance_id : sheet.symbol_instances()) {
-        const auto &other_instance = schematic.symbol_instance(other_instance_id);
-        const auto &other_symbol = schematic.symbol_definition(other_instance.symbol_definition());
+        const auto &other_instance = schematic.get(other_instance_id);
+        const auto &other_symbol = schematic.get(other_instance.symbol_definition());
         for (const auto &other_symbol_pin : other_symbol.pins()) {
             const auto other_pin = queries::pin_by_number(circuit, other_instance.component(),
                                                           other_symbol_pin.number());
@@ -107,10 +107,11 @@ namespace volt::detail {
 [[nodiscard]] std::vector<SymbolInstanceId>
 symbol_instances_for_component(const Schematic &schematic, ComponentId component) {
     auto result = std::vector<SymbolInstanceId>{};
-    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
-        const auto &sheet = schematic.sheet(SheetId{sheet_index});
+    for (std::size_t sheet_index = 0; sheet_index < schematic.all<volt::SheetId>().size();
+         ++sheet_index) {
+        const auto &sheet = schematic.get(SheetId{sheet_index});
         for (const auto instance_id : sheet.symbol_instances()) {
-            if (schematic.symbol_instance(instance_id).component() == component) {
+            if (schematic.get(instance_id).component() == component) {
                 result.push_back(instance_id);
             }
         }
@@ -144,7 +145,7 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
                                                   SchematicSegment first, SchematicSegment second,
                                                   NetId net) {
     for (const auto junction_id : sheet.junctions()) {
-        const auto &junction = schematic.junction(junction_id);
+        const auto &junction = schematic.get(junction_id);
         if (junction.net() == net && point_on_schematic_segment(junction.position(), first) &&
             point_on_schematic_segment(junction.position(), second)) {
             return true;

@@ -69,6 +69,16 @@ FORBIDDEN_PUBLIC_CIRCUIT_HEADERS = frozenset(
         "include/volt/circuit/hierarchy/hierarchy_model.hpp",
     }
 )
+FORBIDDEN_PUBLIC_SCHEMATIC_HEADERS = frozenset(
+    {
+        "include/volt/schematic/schematic_items_model.hpp",
+        "include/volt/schematic/schematic_library_model.hpp",
+        "include/volt/schematic/schematic_sheet_model.hpp",
+    }
+)
+REMOVED_SCHEMATIC_SUBMODEL_SYMBOLS = frozenset(
+    {"SchematicItemsModel", "SchematicLibraryModel", "SchematicSheetModel"}
+)
 CIRCUIT_FACADE_TERMINOLOGY_PATTERN = re.compile(r"\bfacades?\b", flags=re.IGNORECASE)
 CIRCUIT_PUBLIC_SHELL_NAME_PATTERN = re.compile(
     r"\b(?:class|struct)\s+(?:\[\[(?:(?!\]\])[\s\S])*\]\]\s*)*"
@@ -122,6 +132,10 @@ RETAINED_CIRCUIT_DOMAIN_SNAPSHOTS = {
 FRIEND_TYPE_PREFIXES = ("friend " "class ", "friend " "struct ")
 
 PRIVILEGED_FRIEND_ALLOWLIST = {
+    (
+        "include/volt/schematic/schematic.hpp",
+        "friend schematic_entity_range_t<Id> Schematic::all<Id>() const &",
+    ): "Schematic::all is the sole factory for correctly sized borrowed presentation ranges.",
     (
         "include/volt/circuit/circuit.hpp",
         "friend entity_range_t<Id> Circuit::all<Id>() const &",
@@ -237,6 +251,108 @@ CIRCUIT_ENTITY_RANGE_ITERATOR_PUBLIC_SURFACE = (
     "iterator(const Circuit &&, std::size_t) = delete;"
 )
 
+SCHEMATIC_PUBLIC_DECLARATION_COUNT = 18
+SCHEMATIC_PUBLIC_METHOD_DECLARATIONS = frozenset(
+    """
+explicit Schematic(const Circuit &circuit)
+explicit Schematic(const Circuit &&circuit) = delete
+[[nodiscard]] SymbolDefId add_symbol_definition(SymbolDefinition definition)
+[[nodiscard]] SheetId add_sheet(Sheet sheet)
+[[nodiscard]] SheetRegionId add_sheet_region(SheetId sheet, SheetRegion region)
+[[nodiscard]] SymbolInstanceId place_symbol(SheetId sheet, SymbolInstance instance)
+[[nodiscard]] JunctionId add_junction(SheetId sheet, Junction junction)
+[[nodiscard]] PowerPortId add_power_port(SheetId sheet, PowerPort port)
+[[nodiscard]] NoConnectMarkerId add_no_connect_marker(SheetId sheet, NoConnectMarker marker)
+[[nodiscard]] SheetPortId add_sheet_port(SheetId sheet, SheetPort port)
+[[nodiscard]] SymbolFieldId add_symbol_field(SheetId sheet, SymbolField field)
+[[nodiscard]] WireRunId add_wire_run(SheetId sheet, WireRun wire)
+[[nodiscard]] NetLabelId add_net_label(SheetId sheet, NetLabel label)
+void move(SchematicMove change)
+template <SchematicEntityId Id> [[nodiscard]] const schematic_entity_type_t<Id> &get(Id id) const
+template <SchematicEntityId Id> [[nodiscard]] schematic_entity_range_t<Id> all() const &
+template <SchematicEntityId Id> [[nodiscard]] schematic_entity_range_t<Id> all() const && = delete
+[[nodiscard]] const Circuit &circuit() const noexcept
+""".strip().splitlines()
+)
+
+SCHEMATIC_LEGACY_PUBLIC_DECLARATIONS = frozenset(
+    """
+void replace_with(Schematic replacement)
+[[nodiscard]] std::size_t add_sheet_region(SheetId sheet, SheetRegion region)
+[[nodiscard]] PowerPortId add_terminal_marker(SheetId sheet, PowerPort marker)
+[[nodiscard]] const SymbolDefinition &symbol_definition(SymbolDefId id) const
+[[nodiscard]] const Sheet &sheet(SheetId id) const
+[[nodiscard]] const SheetRegion &sheet_region(SheetId sheet, std::size_t region) const
+[[nodiscard]] const SymbolInstance &symbol_instance(SymbolInstanceId id) const
+[[nodiscard]] const WireRun &wire_run(WireRunId id) const
+[[nodiscard]] const NetLabel &net_label(NetLabelId id) const
+void move_net_label_text(NetLabelId id, Point position)
+[[nodiscard]] const Junction &junction(JunctionId id) const
+[[nodiscard]] const PowerPort &power_port(PowerPortId id) const
+void move_power_port_label(PowerPortId id, Point position)
+[[nodiscard]] const NoConnectMarker &no_connect_marker(NoConnectMarkerId id) const
+[[nodiscard]] const SheetPort &sheet_port(SheetPortId id) const
+[[nodiscard]] const SymbolField &symbol_field(SymbolFieldId id) const
+void move_symbol_field(SymbolFieldId id, Point position)
+[[nodiscard]] std::size_t symbol_definition_count() const noexcept
+[[nodiscard]] std::size_t sheet_count() const noexcept
+[[nodiscard]] std::size_t symbol_instance_count() const noexcept
+[[nodiscard]] std::size_t wire_run_count() const noexcept
+[[nodiscard]] std::size_t net_label_count() const noexcept
+[[nodiscard]] std::size_t junction_count() const noexcept
+[[nodiscard]] std::size_t power_port_count() const noexcept
+[[nodiscard]] std::size_t no_connect_marker_count() const noexcept
+[[nodiscard]] std::size_t sheet_port_count() const noexcept
+[[nodiscard]] std::size_t symbol_field_count() const noexcept
+""".strip().splitlines()
+)
+
+SCHEMATIC_STORAGE_SHAPED_READ_NAMES = frozenset(
+    {
+        "symbol_definition",
+        "sheet",
+        "sheet_region",
+        "symbol_instance",
+        "wire_run",
+        "net_label",
+        "junction",
+        "power_port",
+        "no_connect_marker",
+        "sheet_port",
+        "symbol_field",
+        "symbol_definition_count",
+        "sheet_count",
+        "symbol_instance_count",
+        "wire_run_count",
+        "net_label_count",
+        "junction_count",
+        "power_port_count",
+        "no_connect_marker_count",
+        "sheet_port_count",
+        "symbol_field_count",
+    }
+)
+
+SCHEMATIC_ENTITY_RANGE_PUBLIC_DECLARATIONS = CIRCUIT_ENTITY_RANGE_PUBLIC_DECLARATIONS
+
+SCHEMATIC_ENTITY_RANGE_ITERATOR_PUBLIC_SURFACE = (
+    "using value_type = schematic_entity_type_t<Id>; "
+    "using difference_type = std::ptrdiff_t; "
+    "using reference = const value_type &; "
+    "using pointer = const value_type *; "
+    "using iterator_concept = std::forward_iterator_tag; "
+    "using iterator_category = std::forward_iterator_tag; "
+    "iterator() = default; "
+    "[[nodiscard]] reference operator*() const { return schematic_->get(Id{index_}); } "
+    "[[nodiscard]] pointer operator->() const { return &**this; } "
+    "iterator &operator++() { ++index_; return *this; } "
+    "iterator operator++(int) { auto previous = *this; ++*this; return previous; } "
+    "friend bool operator==(const iterator &, const iterator &) = default; "
+    "iterator(const Schematic &schematic, std::size_t index) noexcept "
+    ": schematic_{&schematic}, index_{index} {} "
+    "iterator(const Schematic &&, std::size_t) = delete;"
+)
+
 ENTITY_REF_KERNEL_ALLOWLIST = {
     (
         "src/pcb/copper/board_copper_geometry.cpp",
@@ -292,41 +408,6 @@ SUBMODEL_MUTATORS = {
             "add_symbol_field",
         },
     ),
-    "SchematicLibraryModel": (
-        ROOT / "include" / "volt" / "schematic" / "schematic_library_model.hpp",
-        {"add_symbol_definition"},
-    ),
-    "SchematicSheetModel": (
-        ROOT / "include" / "volt" / "schematic" / "schematic_sheet_model.hpp",
-        {
-            "add_sheet",
-            "add_sheet_region",
-            "add_symbol_instance",
-            "add_wire_run",
-            "add_net_label",
-            "add_junction",
-            "add_power_port",
-            "add_no_connect_marker",
-            "add_sheet_port",
-            "add_symbol_field",
-        },
-    ),
-    "SchematicItemsModel": (
-        ROOT / "include" / "volt" / "schematic" / "schematic_items_model.hpp",
-        {
-            "move_net_label_text",
-            "move_power_port_label",
-            "move_symbol_field",
-            "add_symbol_instance",
-            "add_wire_run",
-            "add_net_label",
-            "add_junction",
-            "add_power_port",
-            "add_no_connect_marker",
-            "add_sheet_port",
-            "add_symbol_field",
-        },
-    ),
     "BoardStructureModel": (
         ROOT / "include" / "volt" / "pcb" / "structure" / "board_structure_model.hpp",
         {
@@ -353,12 +434,6 @@ SUBMODEL_DERIVATION_ALLOWLIST = {
         "Board-private storage adapter exposes placement mutation only to Board.",
     ("include/volt/pcb/board.hpp", "CopperStorage", "BoardCopperModel"):
         "Board-private storage adapter exposes copper mutation only to Board.",
-    ("include/volt/schematic/schematic.hpp", "LibraryStorage", "SchematicLibraryModel"):
-        "Schematic-private storage adapter exposes library mutation only to Schematic.",
-    ("include/volt/schematic/schematic.hpp", "SheetStorage", "SchematicSheetModel"):
-        "Schematic-private storage adapter exposes sheet mutation only to Schematic.",
-    ("include/volt/schematic/schematic.hpp", "ItemStorage", "SchematicItemsModel"):
-        "Schematic-private storage adapter exposes item mutation only to Schematic.",
     (
         "src/schematic/schematic_storage.hpp",
         "SheetStorage",
@@ -1133,6 +1208,11 @@ def is_forbidden_public_circuit_header(path: str | Path) -> bool:
     return normalized in FORBIDDEN_PUBLIC_CIRCUIT_HEADERS
 
 
+def is_forbidden_public_schematic_header(path: str | Path) -> bool:
+    normalized = Path(path).as_posix()
+    return normalized in FORBIDDEN_PUBLIC_SCHEMATIC_HEADERS
+
+
 def check_rejected_tokens(failures: list[str]) -> None:
     for path in code_files():
         text = read(path)
@@ -1198,6 +1278,29 @@ def check_no_removed_circuit_architecture(failures: list[str]) -> None:
             fail(
                 f"{relative(path)}:{line_number} retains obsolete Circuit facade terminology: "
                 f"{line}",
+                failures,
+            )
+
+
+def check_no_removed_schematic_architecture(failures: list[str]) -> None:
+    for path in code_files():
+        first_match_by_symbol: dict[str, tuple[int, str]] = {}
+        for line_number, symbol, line in exact_identifier_lines(
+            read(path), REMOVED_SCHEMATIC_SUBMODEL_SYMBOLS
+        ):
+            first_match_by_symbol.setdefault(symbol, (line_number, line))
+        for symbol, (line_number, line) in sorted(first_match_by_symbol.items()):
+            fail(
+                f"{relative(path)}:{line_number} references removed public Schematic storage "
+                f"symbol {symbol}: {line}",
+                failures,
+            )
+
+    for header in sorted(FORBIDDEN_PUBLIC_SCHEMATIC_HEADERS):
+        if (ROOT / header).exists():
+            fail(
+                f"{header} is forbidden public Schematic storage plumbing; storage must remain "
+                "inside the Schematic implementation boundary",
                 failures,
             )
 
@@ -1494,6 +1597,107 @@ def check_circuit_public_method_admission(failures: list[str]) -> None:
     failures.extend(circuit_public_method_admission_failures(read(header)))
 
 
+def schematic_contract_configuration_failures(
+    approved: frozenset[str] = SCHEMATIC_PUBLIC_METHOD_DECLARATIONS,
+    legacy: frozenset[str] = SCHEMATIC_LEGACY_PUBLIC_DECLARATIONS,
+    expected_count: int = SCHEMATIC_PUBLIC_DECLARATION_COUNT,
+) -> list[str]:
+    failures: list[str] = []
+    if len(approved) != expected_count:
+        failures.append(
+            f"Schematic approved declaration set has {len(approved)} entries; expected "
+            f"{expected_count}"
+        )
+
+    overlap = sorted(approved & legacy)
+    for declaration in overlap:
+        failures.append(
+            "Schematic declaration is both approved and legacy, so the retired surface could "
+            f"regrow: {declaration}"
+        )
+
+    for declaration in sorted(approved):
+        name = declaration_function_name(declaration)
+        if name in SCHEMATIC_STORAGE_SHAPED_READ_NAMES:
+            failures.append(
+                "Schematic approved declaration set contains storage-shaped read "
+                f"{name}: {declaration}"
+            )
+    return failures
+
+
+def schematic_public_method_admission_failures(header_text: str) -> list[str]:
+    failures: list[str] = []
+
+    stripped_header = strip_cpp_comments_and_strings_preserve_lines(header_text)
+    class_match = re.search(r"\bclass\s+Schematic\b([^;{]*)\{", stripped_header)
+    if class_match is None:
+        failures.append("Schematic must be declared exactly as `class Schematic final`")
+        return failures
+
+    class_suffix = re.sub(r"\s+", " ", class_match.group(1)).strip()
+    if class_suffix != "final":
+        failures.append(
+            "Schematic must be declared exactly as `class Schematic final` with no base classes"
+        )
+
+    public_declarations = public_surface_declarations_from_header(
+        "Schematic", header_text, {"public"}
+    )
+    protected_declarations = public_surface_declarations_from_header(
+        "Schematic", header_text, {"protected"}
+    )
+
+    declaration_counts = Counter(public_declarations)
+    for declaration in sorted(SCHEMATIC_PUBLIC_METHOD_DECLARATIONS):
+        count = declaration_counts[declaration]
+        if count == 0:
+            failures.append(
+                "Schematic public contract is missing approved declaration: " f"{declaration}"
+            )
+        elif count > 1:
+            failures.append(
+                "Schematic public contract duplicates approved declaration: " f"{declaration}"
+            )
+
+    if len(public_declarations) != SCHEMATIC_PUBLIC_DECLARATION_COUNT:
+        failures.append(
+            f"Schematic public contract has {len(public_declarations)} declarations; expected "
+            f"exactly {SCHEMATIC_PUBLIC_DECLARATION_COUNT}"
+        )
+
+    for declaration in public_declarations:
+        name = declaration_function_name(declaration)
+        if name in SCHEMATIC_STORAGE_SHAPED_READ_NAMES:
+            failures.append(
+                "Schematic public storage-shaped read belongs in generic typed get/all or a "
+                f"free query: {declaration}"
+            )
+            continue
+        if declaration in SCHEMATIC_LEGACY_PUBLIC_DECLARATIONS:
+            failures.append(
+                "Schematic public declaration is a retired storage-shaped surface: "
+                f"{declaration}"
+            )
+            continue
+        if declaration not in SCHEMATIC_PUBLIC_METHOD_DECLARATIONS:
+            failures.append(
+                "Schematic public declaration is outside the approved bounded owner-shaped "
+                f"contract: {declaration}"
+            )
+
+    for declaration in protected_declarations:
+        failures.append(
+            "Schematic protected declaration is outside the public bounded owner-shaped "
+            f"contract: {declaration}"
+        )
+    return failures
+
+
+def check_schematic_public_method_admission(failures: list[str]) -> None:
+    failures.extend(schematic_public_method_admission_failures(read(ROOT_TYPES["Schematic"])))
+
+
 def circuit_range_construction_failures(header_text: str) -> list[str]:
     failures: list[str] = []
     for declaration in public_surface_declarations_from_header(
@@ -1518,6 +1722,32 @@ def circuit_range_construction_failures(header_text: str) -> list[str]:
 
 def check_circuit_range_construction(failures: list[str]) -> None:
     failures.extend(circuit_range_construction_failures(read(ROOT_TYPES["Circuit"])))
+
+
+def schematic_range_construction_failures(header_text: str) -> list[str]:
+    failures: list[str] = []
+    for declaration in public_surface_declarations_from_header(
+        "SchematicEntityRange", header_text, {"public", "protected"}
+    ):
+        declaration = declaration.lstrip("} ")
+        if declaration not in SCHEMATIC_ENTITY_RANGE_PUBLIC_DECLARATIONS:
+            failures.append(
+                "SchematicEntityRange public declaration is outside the borrowed-range "
+                f"contract: {declaration}"
+            )
+    iterator_surface = normalized_access_surface_from_header(
+        "iterator", header_text, {"public", "protected"}
+    )
+    if iterator_surface != SCHEMATIC_ENTITY_RANGE_ITERATOR_PUBLIC_SURFACE:
+        failures.append(
+            "SchematicEntityRange::iterator public/protected surface is outside the approved "
+            f"forward-iterator contract: {iterator_surface}"
+        )
+    return failures
+
+
+def check_schematic_range_construction(failures: list[str]) -> None:
+    failures.extend(schematic_range_construction_failures(read(ROOT_TYPES["Schematic"])))
 
 
 def subsystem_root_name(path: Path) -> str | None:
@@ -1979,6 +2209,25 @@ def run_self_tests() -> int:
         ),
         "all removed public Circuit model/storage headers must stay forbidden",
     )
+    require_self_test(
+        all(
+            is_forbidden_public_schematic_header(path)
+            for path in FORBIDDEN_PUBLIC_SCHEMATIC_HEADERS
+        )
+        and not is_forbidden_public_schematic_header(
+            "include/volt/schematic/schematic.hpp"
+        ),
+        "all removed public Schematic model/storage headers must stay forbidden",
+    )
+    removed_schematic_symbols = exact_identifier_lines(
+        "class SchematicItemsModel {};\nclass SimilarSchematicItemsModel {};",
+        REMOVED_SCHEMATIC_SUBMODEL_SYMBOLS,
+    )
+    require_self_test(
+        len(removed_schematic_symbols) == 1
+        and removed_schematic_symbols[0][1] == "SchematicItemsModel",
+        "removed Schematic storage symbols must stay forbidden without substring false positives",
+    )
     submodel_derivation_sample = textwrap.dedent(
         """
         struct TestBoardPlacementModel : volt::BoardPlacementModel {
@@ -2227,6 +2476,35 @@ def run_self_tests() -> int:
         "checker configuration must reject declarations admitted into both final and legacy sets",
     )
 
+    approved_schematic_sample = "class Schematic final { public:\n" + ";\n".join(
+        sorted(SCHEMATIC_PUBLIC_METHOD_DECLARATIONS)
+    ) + ";\n};"
+    require_self_test(
+        not schematic_public_method_admission_failures(approved_schematic_sample),
+        "the final 18-declaration Schematic contract must admit its exact approved surface",
+    )
+    retired_schematic_sample = "class Schematic final { public:\n" + ";\n".join(
+        sorted(SCHEMATIC_LEGACY_PUBLIC_DECLARATIONS)
+    ) + ";\n};"
+    retired_schematic_failures = schematic_public_method_admission_failures(
+        retired_schematic_sample
+    )
+    require_self_test(
+        all(
+            any(name in failure for failure in retired_schematic_failures)
+            for name in SCHEMATIC_STORAGE_SHAPED_READ_NAMES
+        )
+        and any("replace_with" in failure for failure in retired_schematic_failures)
+        and any("add_terminal_marker" in failure for failure in retired_schematic_failures)
+        and any("move_net_label_text" in failure for failure in retired_schematic_failures),
+        "retired Schematic storage reads, restoration, aliases, and named moves must fail admission",
+    )
+    require_self_test(
+        not schematic_contract_configuration_failures(),
+        "the final approved Schematic declarations must match the 18-entry budget and stay "
+        "disjoint from the retired surface",
+    )
+
     range_escape_sample = read(ROOT_TYPES["Circuit"]).replace(
         "iterator() = default;",
         "iterator() = default;\n"
@@ -2237,6 +2515,20 @@ def run_self_tests() -> int:
     require_self_test(
         len(range_failures) == 1 and "forge" in range_failures[0],
         "nested iterator factories outside Circuit::all must fail range admission",
+    )
+    schematic_range_escape_sample = read(ROOT_TYPES["Schematic"]).replace(
+        "iterator() = default;",
+        "iterator() = default;\n"
+        "        static schematic_entity_range_t<Id> forge(const Schematic &schematic, "
+        "std::size_t size);",
+        1,
+    )
+    schematic_range_failures = schematic_range_construction_failures(
+        schematic_range_escape_sample
+    )
+    require_self_test(
+        len(schematic_range_failures) == 1 and "forge" in schematic_range_failures[0],
+        "nested iterator factories outside Schematic::all must fail range admission",
     )
 
     entity_ref_bad = textwrap.dedent(
@@ -2309,6 +2601,7 @@ def run_checks() -> int:
     failures: list[str] = []
     check_rejected_tokens(failures)
     check_no_removed_circuit_architecture(failures)
+    check_no_removed_schematic_architecture(failures)
     check_no_kernel_mutation_access(failures)
     check_no_broad_type_friends(failures)
     check_no_flat_pcb_public_headers(failures)
@@ -2319,6 +2612,9 @@ def run_checks() -> int:
     failures.extend(circuit_contract_configuration_failures())
     check_circuit_public_method_admission(failures)
     check_circuit_range_construction(failures)
+    failures.extend(schematic_contract_configuration_failures())
+    check_schematic_public_method_admission(failures)
+    check_schematic_range_construction(failures)
     check_python_connectivity_semantics(failures)
     check_entity_ref_not_kernel_traversal_handle(failures)
     check_no_raw_structural_throws(failures)

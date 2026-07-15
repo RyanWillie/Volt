@@ -20,9 +20,9 @@ void validate_component_placement_coverage(const Schematic &schematic, const She
                                            SheetId sheet_id, SymbolInstanceId instance_id,
                                            DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
-    const auto &instance = schematic.symbol_instance(instance_id);
+    const auto &instance = schematic.get(instance_id);
     const auto &component = circuit.get(instance.component());
-    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    const auto &symbol = schematic.get(instance.symbol_definition());
 
     for (const auto &symbol_pin : symbol.pins()) {
         const auto pin = queries::pin_by_number(circuit, instance.component(), symbol_pin.number());
@@ -131,7 +131,7 @@ void validate_repeated_labels(const Schematic &schematic, SheetId sheet_id, cons
         const auto net_id = NetId{net_index};
         auto count = std::size_t{0};
         for (const auto label_id : sheet.net_labels()) {
-            if (schematic.net_label(label_id).net() == net_id) {
+            if (schematic.get(label_id).net() == net_id) {
                 ++count;
             }
         }
@@ -159,8 +159,8 @@ void validate_fragmented_pin_labels_for_net(const Schematic &schematic, SheetId 
 
     auto labelled_pin_anchors = std::size_t{0};
     for (const auto instance_id : sheet.symbol_instances()) {
-        const auto &instance = schematic.symbol_instance(instance_id);
-        const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+        const auto &instance = schematic.get(instance_id);
+        const auto &symbol = schematic.get(instance.symbol_definition());
         for (const auto &symbol_pin : symbol.pins()) {
             const auto pin =
                 queries::pin_by_number(circuit, instance.component(), symbol_pin.number());
@@ -202,7 +202,7 @@ void validate_fragmented_pin_labels(const Schematic &schematic, SheetId sheet_id
 void validate_outside_sheet_objects(const Schematic &schematic, SheetId sheet_id,
                                     const Sheet &sheet, DiagnosticReport &report) {
     for (const auto wire_id : sheet.wire_runs()) {
-        const auto &wire = schematic.wire_run(wire_id);
+        const auto &wire = schematic.get(wire_id);
         for (const auto point : wire.points()) {
             if (!point_inside_sheet(sheet, point)) {
                 add_outside_sheet_diagnostic(report, sheet_id, EntityRef::wire_run(wire_id),
@@ -213,7 +213,7 @@ void validate_outside_sheet_objects(const Schematic &schematic, SheetId sheet_id
     }
 
     for (const auto label_id : sheet.net_labels()) {
-        const auto &label = schematic.net_label(label_id);
+        const auto &label = schematic.get(label_id);
         if (!point_inside_sheet(sheet, label.position())) {
             add_outside_sheet_diagnostic(report, sheet_id, EntityRef::net_label(label_id),
                                          std::vector{EntityRef::net(label.net())});
@@ -221,7 +221,7 @@ void validate_outside_sheet_objects(const Schematic &schematic, SheetId sheet_id
     }
 
     for (const auto junction_id : sheet.junctions()) {
-        const auto &junction = schematic.junction(junction_id);
+        const auto &junction = schematic.get(junction_id);
         if (!point_inside_sheet(sheet, junction.position())) {
             add_outside_sheet_diagnostic(report, sheet_id, EntityRef::junction(junction_id),
                                          std::vector{EntityRef::net(junction.net())});
@@ -229,7 +229,7 @@ void validate_outside_sheet_objects(const Schematic &schematic, SheetId sheet_id
     }
 
     for (const auto port_id : sheet.power_ports()) {
-        const auto &port = schematic.power_port(port_id);
+        const auto &port = schematic.get(port_id);
         if (!point_inside_sheet(sheet, port.position())) {
             add_outside_sheet_diagnostic(report, sheet_id, EntityRef::power_port(port_id),
                                          std::vector{EntityRef::net(port.net())});
@@ -237,7 +237,7 @@ void validate_outside_sheet_objects(const Schematic &schematic, SheetId sheet_id
     }
 
     for (const auto marker_id : sheet.no_connect_markers()) {
-        const auto &marker = schematic.no_connect_marker(marker_id);
+        const auto &marker = schematic.get(marker_id);
         if (!point_inside_sheet(sheet, marker.position())) {
             add_outside_sheet_diagnostic(report, sheet_id, EntityRef::no_connect_marker(marker_id),
                                          std::vector{EntityRef::pin(marker.pin())});
@@ -245,7 +245,7 @@ void validate_outside_sheet_objects(const Schematic &schematic, SheetId sheet_id
     }
 
     for (const auto port_id : sheet.sheet_ports()) {
-        const auto &port = schematic.sheet_port(port_id);
+        const auto &port = schematic.get(port_id);
         if (!point_inside_sheet(sheet, port.position())) {
             add_outside_sheet_diagnostic(report, sheet_id, EntityRef::sheet_port(port_id),
                                          std::vector{EntityRef::net(port.net())});
@@ -253,7 +253,7 @@ void validate_outside_sheet_objects(const Schematic &schematic, SheetId sheet_id
     }
 
     for (const auto field_id : sheet.symbol_fields()) {
-        const auto &field = schematic.symbol_field(field_id);
+        const auto &field = schematic.get(field_id);
         if (!point_inside_sheet(sheet, field.position())) {
             add_outside_sheet_diagnostic(
                 report, sheet_id, EntityRef::symbol_field(field_id),
@@ -267,11 +267,11 @@ void validate_same_net_crossings(const Schematic &schematic, SheetId sheet_id, c
     const auto &wires = sheet.wire_runs();
     for (std::size_t first_index = 0; first_index < wires.size(); ++first_index) {
         const auto first_id = wires[first_index];
-        const auto &first = schematic.wire_run(first_id);
+        const auto &first = schematic.get(first_id);
         for (std::size_t second_index = first_index + 1U; second_index < wires.size();
              ++second_index) {
             const auto second_id = wires[second_index];
-            const auto &second = schematic.wire_run(second_id);
+            const auto &second = schematic.get(second_id);
             if (first.net() != second.net()) {
                 continue;
             }
@@ -299,10 +299,11 @@ void validate_same_net_crossings(const Schematic &schematic, SheetId sheet_id, c
 }
 
 [[nodiscard]] bool schematic_has_no_connect_marker_for_pin(const Schematic &schematic, PinId pin) {
-    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
-        const auto &sheet = schematic.sheet(SheetId{sheet_index});
+    for (std::size_t sheet_index = 0; sheet_index < schematic.all<volt::SheetId>().size();
+         ++sheet_index) {
+        const auto &sheet = schematic.get(SheetId{sheet_index});
         for (const auto marker_id : sheet.no_connect_markers()) {
-            if (schematic.no_connect_marker(marker_id).pin() == pin) {
+            if (schematic.get(marker_id).pin() == pin) {
                 return true;
             }
         }
@@ -315,7 +316,7 @@ void validate_no_connect_markers(const Schematic &schematic, SheetId sheet_id, c
                                  DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
     for (const auto marker_id : sheet.no_connect_markers()) {
-        const auto &marker = schematic.no_connect_marker(marker_id);
+        const auto &marker = schematic.get(marker_id);
         const auto &pin = circuit.get(marker.pin());
         const auto net = queries::net_of(circuit, marker.pin());
         if (net.has_value()) {
@@ -368,9 +369,10 @@ namespace volt {
 
     detail::validate_component_placements(schematic, report);
 
-    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+    for (std::size_t sheet_index = 0; sheet_index < schematic.all<volt::SheetId>().size();
+         ++sheet_index) {
         const auto sheet_id = SheetId{sheet_index};
-        const auto &sheet = schematic.sheet(sheet_id);
+        const auto &sheet = schematic.get(sheet_id);
         for (const auto instance_id : sheet.symbol_instances()) {
             detail::validate_component_placement_coverage(schematic, sheet, sheet_id, instance_id,
                                                           report);

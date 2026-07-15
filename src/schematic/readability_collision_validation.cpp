@@ -15,7 +15,7 @@ void validate_text_wire_collisions(const Schematic &schematic, SheetId sheet_id,
     const auto texts = readability_texts_for_sheet(schematic, sheet);
     for (const auto &text : texts) {
         for (const auto wire_id : sheet.wire_runs()) {
-            const auto &wire = schematic.wire_run(wire_id);
+            const auto &wire = schematic.get(wire_id);
             if (text_anchor_intentionally_attaches_to_wire(text, wire)) {
                 continue;
             }
@@ -97,11 +97,10 @@ void validate_symbol_overlaps(const Schematic &schematic, SheetId sheet_id, cons
                 Severity::Error,
                 DiagnosticCode{"SCHEMATIC_SYMBOL_OVERLAP"},
                 "Schematic symbols overlap; separate the component placements",
-                std::vector{
-                    EntityRef::sheet(sheet_id), EntityRef::symbol_instance(first_instance),
-                    EntityRef::symbol_instance(second_instance),
-                    EntityRef::component(schematic.symbol_instance(first_instance).component()),
-                    EntityRef::component(schematic.symbol_instance(second_instance).component())},
+                std::vector{EntityRef::sheet(sheet_id), EntityRef::symbol_instance(first_instance),
+                            EntityRef::symbol_instance(second_instance),
+                            EntityRef::component(schematic.get(first_instance).component()),
+                            EntityRef::component(schematic.get(second_instance).component())},
             });
         }
     }
@@ -111,8 +110,8 @@ void validate_symbol_overlaps(const Schematic &schematic, SheetId sheet_id, cons
                                                            const WireRun &wire,
                                                            SchematicSegment segment,
                                                            SymbolInstanceId instance_id) {
-    const auto &instance = schematic.symbol_instance(instance_id);
-    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    const auto &instance = schematic.get(instance_id);
+    const auto &symbol = schematic.get(instance.symbol_definition());
     const auto &circuit = schematic.circuit();
     for (const auto &symbol_pin : symbol.pins()) {
         const auto pin = queries::pin_by_number(circuit, instance.component(), symbol_pin.number());
@@ -135,7 +134,7 @@ void validate_symbol_overlaps(const Schematic &schematic, SheetId sheet_id, cons
 void validate_wire_symbol_collisions(const Schematic &schematic, SheetId sheet_id,
                                      const Sheet &sheet, DiagnosticReport &report) {
     for (const auto wire_id : sheet.wire_runs()) {
-        const auto &wire = schematic.wire_run(wire_id);
+        const auto &wire = schematic.get(wire_id);
         for (const auto instance_id : sheet.symbol_instances()) {
             const auto body_bounds = symbol_instance_body_bounds(schematic, instance_id);
             if (!body_bounds.has_value()) {
@@ -159,10 +158,9 @@ void validate_wire_symbol_collisions(const Schematic &schematic, SheetId sheet_i
                 Severity::Error,
                 DiagnosticCode{"SCHEMATIC_WIRE_CROSSES_SYMBOL"},
                 "Schematic wire crosses a symbol body; reroute the wire or move the symbol",
-                std::vector{
-                    EntityRef::sheet(sheet_id), EntityRef::wire_run(wire_id),
-                    EntityRef::symbol_instance(instance_id), EntityRef::net(wire.net()),
-                    EntityRef::component(schematic.symbol_instance(instance_id).component())},
+                std::vector{EntityRef::sheet(sheet_id), EntityRef::wire_run(wire_id),
+                            EntityRef::symbol_instance(instance_id), EntityRef::net(wire.net()),
+                            EntityRef::component(schematic.get(instance_id).component())},
             });
         }
     }
@@ -171,10 +169,10 @@ void validate_wire_symbol_collisions(const Schematic &schematic, SheetId sheet_i
 void validate_terminal_wire_collisions(const Schematic &schematic, SheetId sheet_id,
                                        const Sheet &sheet, DiagnosticReport &report) {
     for (const auto port_id : sheet.power_ports()) {
-        const auto &port = schematic.power_port(port_id);
+        const auto &port = schematic.get(port_id);
         const auto port_bounds = power_port_glyph_bounds(port);
         for (const auto wire_id : sheet.wire_runs()) {
-            const auto &wire = schematic.wire_run(wire_id);
+            const auto &wire = schematic.get(wire_id);
             if (wire.net() == port.net()) {
                 continue;
             }
@@ -206,7 +204,7 @@ void validate_terminal_wire_collisions(const Schematic &schematic, SheetId sheet
 void validate_terminal_symbol_collisions(const Schematic &schematic, SheetId sheet_id,
                                          const Sheet &sheet, DiagnosticReport &report) {
     for (const auto port_id : sheet.power_ports()) {
-        const auto &port = schematic.power_port(port_id);
+        const auto &port = schematic.get(port_id);
         const auto port_bounds = power_port_glyph_bounds(port);
         for (const auto instance_id : sheet.symbol_instances()) {
             const auto body_bounds = symbol_instance_body_bounds(schematic, instance_id);
@@ -221,10 +219,9 @@ void validate_terminal_symbol_collisions(const Schematic &schematic, SheetId she
                 DiagnosticCode{"SCHEMATIC_TERMINAL_TOUCHES_SYMBOL"},
                 "Schematic terminal marker touches or crosses a symbol body; move the marker away "
                 "from the component body",
-                std::vector{
-                    EntityRef::sheet(sheet_id), EntityRef::power_port(port_id),
-                    EntityRef::symbol_instance(instance_id), EntityRef::net(port.net()),
-                    EntityRef::component(schematic.symbol_instance(instance_id).component())},
+                std::vector{EntityRef::sheet(sheet_id), EntityRef::power_port(port_id),
+                            EntityRef::symbol_instance(instance_id), EntityRef::net(port.net()),
+                            EntityRef::component(schematic.get(instance_id).component())},
             });
         }
     }
@@ -313,8 +310,8 @@ readability_collision_is_intentional_wire_contact(const ReadabilityCollisionObje
         return false;
     }
 
-    const auto &instance = schematic.symbol_instance(symbol->symbol_instance.value());
-    const auto &definition = schematic.symbol_definition(instance.symbol_definition());
+    const auto &instance = schematic.get(symbol->symbol_instance.value());
+    const auto &definition = schematic.get(instance.symbol_definition());
     const auto &circuit = schematic.circuit();
     for (const auto &symbol_pin : definition.pins()) {
         const auto pin = queries::pin_by_number(circuit, instance.component(), symbol_pin.number());
@@ -352,8 +349,8 @@ readability_collision_is_intentional_junction_contact(const ReadabilityCollision
         return false;
     }
 
-    const auto &instance = schematic.symbol_instance(symbol->symbol_instance.value());
-    const auto &definition = schematic.symbol_definition(instance.symbol_definition());
+    const auto &instance = schematic.get(symbol->symbol_instance.value());
+    const auto &definition = schematic.get(instance.symbol_definition());
     const auto &circuit = schematic.circuit();
     for (const auto &symbol_pin : definition.pins()) {
         const auto pin = queries::pin_by_number(circuit, instance.component(), symbol_pin.number());

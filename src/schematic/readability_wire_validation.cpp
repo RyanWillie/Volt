@@ -15,7 +15,7 @@ namespace volt::detail {
 void validate_long_local_doglegs(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                                  DiagnosticReport &report) {
     for (const auto wire_id : sheet.wire_runs()) {
-        const auto &wire = schematic.wire_run(wire_id);
+        const auto &wire = schematic.get(wire_id);
         if (wire.route_intent() != RouteIntent::Orthogonal || wire.points().size() < 4U) {
             continue;
         }
@@ -60,7 +60,7 @@ void validate_misaligned_local_labels(const Schematic &schematic, SheetId sheet_
         auto labels = std::vector<NetLabelId>{};
         auto points = std::vector<Point>{};
         for (const auto label_id : sheet.net_labels()) {
-            const auto &label = schematic.net_label(label_id);
+            const auto &label = schematic.get(label_id);
             if (label.net() == net_id) {
                 labels.push_back(label_id);
                 points.push_back(label.position());
@@ -115,11 +115,11 @@ void validate_ambiguous_same_net_crossings(const Schematic &schematic, SheetId s
     const auto &wires = sheet.wire_runs();
     for (std::size_t first_index = 0; first_index < wires.size(); ++first_index) {
         const auto first_id = wires[first_index];
-        const auto &first = schematic.wire_run(first_id);
+        const auto &first = schematic.get(first_id);
         for (std::size_t second_index = first_index + 1U; second_index < wires.size();
              ++second_index) {
             const auto second_id = wires[second_index];
-            const auto &second = schematic.wire_run(second_id);
+            const auto &second = schematic.get(second_id);
             if (first.net() != second.net()) {
                 continue;
             }
@@ -152,11 +152,11 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
     const auto &wires = sheet.wire_runs();
     for (std::size_t first_index = 0; first_index < wires.size(); ++first_index) {
         const auto first_id = wires[first_index];
-        const auto &first = schematic.wire_run(first_id);
+        const auto &first = schematic.get(first_id);
         for (std::size_t second_index = first_index + 1U; second_index < wires.size();
              ++second_index) {
             const auto second_id = wires[second_index];
-            const auto &second = schematic.wire_run(second_id);
+            const auto &second = schematic.get(second_id);
             if (first.net() == second.net()) {
                 continue;
             }
@@ -193,13 +193,13 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
         return true;
     }
     for (const auto port_id : sheet.power_ports()) {
-        const auto &port = schematic.power_port(port_id);
+        const auto &port = schematic.get(port_id);
         if (port.net() == net && same_schematic_point(port.position(), point)) {
             return true;
         }
     }
     for (const auto port_id : sheet.sheet_ports()) {
-        const auto &port = schematic.sheet_port(port_id);
+        const auto &port = schematic.get(port_id);
         if (port.net() == net && same_schematic_point(port.position(), point)) {
             return true;
         }
@@ -212,8 +212,8 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
                                                          Point point) {
     const auto &circuit = schematic.circuit();
     for (const auto instance_id : sheet.symbol_instances()) {
-        const auto &instance = schematic.symbol_instance(instance_id);
-        const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+        const auto &instance = schematic.get(instance_id);
+        const auto &symbol = schematic.get(instance.symbol_definition());
         for (const auto &symbol_pin : symbol.pins()) {
             const auto pin =
                 queries::pin_by_number(circuit, instance.component(), symbol_pin.number());
@@ -238,13 +238,13 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
                                                                      const Sheet &sheet, NetId net,
                                                                      Point point) {
     for (const auto port_id : sheet.power_ports()) {
-        const auto &port = schematic.power_port(port_id);
+        const auto &port = schematic.get(port_id);
         if (port.net() == net && same_schematic_point(port.position(), point)) {
             return true;
         }
     }
     for (const auto port_id : sheet.sheet_ports()) {
-        const auto &port = schematic.sheet_port(port_id);
+        const auto &port = schematic.get(port_id);
         if (port.net() == net && same_schematic_point(port.position(), point)) {
             return true;
         }
@@ -255,7 +255,7 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
 [[nodiscard]] bool sheet_has_junction_for_net_at_point(const Schematic &schematic,
                                                        const Sheet &sheet, NetId net, Point point) {
     for (const auto junction_id : sheet.junctions()) {
-        const auto &junction = schematic.junction(junction_id);
+        const auto &junction = schematic.get(junction_id);
         if (junction.net() == net && same_schematic_point(junction.position(), point)) {
             return true;
         }
@@ -276,7 +276,7 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
         if (wire_id == excluded_wire) {
             continue;
         }
-        const auto &wire = schematic.wire_run(wire_id);
+        const auto &wire = schematic.get(wire_id);
         if (wire.net() == net && wire_has_endpoint_at_point(wire, point)) {
             return true;
         }
@@ -295,7 +295,7 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
 void validate_dangling_wire_endpoints(const Schematic &schematic, SheetId sheet_id,
                                       const Sheet &sheet, DiagnosticReport &report) {
     for (const auto wire_id : sheet.wire_runs()) {
-        const auto &wire = schematic.wire_run(wire_id);
+        const auto &wire = schematic.get(wire_id);
         for (const auto point : {wire.points().front(), wire.points().back()}) {
             if (wire_endpoint_has_readable_anchor(schematic, sheet, wire.net(), point, wire_id)) {
                 continue;
@@ -318,7 +318,7 @@ void validate_dangling_wire_endpoints(const Schematic &schematic, SheetId sheet_
         if (wire_id == excluded_wire) {
             continue;
         }
-        const auto &wire = schematic.wire_run(wire_id);
+        const auto &wire = schematic.get(wire_id);
         if (wire.net() == net && wire_covers_point(wire, point)) {
             return true;
         }
@@ -333,7 +333,7 @@ void validate_floating_stub_clusters(const Schematic &schematic, SheetId sheet_i
         const auto net_id = NetId{net_index};
         auto stubs = std::vector<FloatingStubCandidate>{};
         for (const auto wire_id : sheet.wire_runs()) {
-            const auto &wire = schematic.wire_run(wire_id);
+            const auto &wire = schematic.get(wire_id);
             if (wire.net() != net_id || wire.points().size() != 2U ||
                 wire_run_length(wire) > floating_stub_max_length) {
                 continue;
@@ -402,11 +402,11 @@ void validate_duplicate_junctions(const Schematic &schematic, SheetId sheet_id, 
     const auto &junctions = sheet.junctions();
     for (std::size_t first_index = 0; first_index < junctions.size(); ++first_index) {
         const auto first_id = junctions[first_index];
-        const auto &first = schematic.junction(first_id);
+        const auto &first = schematic.get(first_id);
         for (std::size_t second_index = first_index + 1U; second_index < junctions.size();
              ++second_index) {
             const auto second_id = junctions[second_index];
-            const auto &second = schematic.junction(second_id);
+            const auto &second = schematic.get(second_id);
             if (first.net() == second.net() &&
                 same_schematic_point(first.position(), second.position())) {
                 report.add(Diagnostic{

@@ -20,8 +20,8 @@ namespace volt::io::detail {
 
 [[nodiscard]] SvgBounds symbol_debug_overlay_bounds(const Schematic &schematic,
                                                     SymbolInstanceId id) {
-    const auto &instance = schematic.symbol_instance(id);
-    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    const auto &instance = schematic.get(id);
+    const auto &symbol = schematic.get(instance.symbol_definition());
     auto bounds = bounds_from_point(instance.position());
     const auto pin_anchor_padding = schematic_svg_visual_scale.pin_anchor_radius +
                                     (schematic_svg_visual_scale.pin_overlay_stroke_width / 2.0);
@@ -95,7 +95,7 @@ namespace volt::io::detail {
 [[nodiscard]] std::optional<SvgBounds> sheet_content_bounds(const Schematic &schematic,
                                                             SheetId sheet_id,
                                                             SchematicSvgBodyOptions options) {
-    const auto &sheet = schematic.sheet(sheet_id);
+    const auto &sheet = schematic.get(sheet_id);
     auto bounds = std::optional<SvgBounds>{};
     const auto include = [&bounds](SvgBounds next) {
         if (bounds.has_value()) {
@@ -115,33 +115,33 @@ namespace volt::io::detail {
         include(::volt::io::detail::symbol_instance_bounds(schematic, instance));
     }
     for (const auto wire : sheet.wire_runs()) {
-        include(::volt::io::detail::wire_run_bounds(schematic.wire_run(wire)));
+        include(::volt::io::detail::wire_run_bounds(schematic.get(wire)));
     }
     for (const auto junction : sheet.junctions()) {
-        include(padded_bounds(bounds_from_point(schematic.junction(junction).position()),
+        include(padded_bounds(bounds_from_point(schematic.get(junction).position()),
                               schematic_svg_visual_scale.junction_radius));
     }
     for (const auto port_id : sheet.power_ports()) {
-        const auto &port = schematic.power_port(port_id);
+        const auto &port = schematic.get(port_id);
         const auto &net = schematic.circuit().get(port.net());
         include(
             ::volt::io::detail::power_port_bounds(port, port.label().value_or(net.name().value())));
     }
     for (const auto marker : sheet.no_connect_markers()) {
-        include(::volt::io::detail::no_connect_marker_bounds(schematic.no_connect_marker(marker)));
+        include(::volt::io::detail::no_connect_marker_bounds(schematic.get(marker)));
     }
     for (const auto port : sheet.sheet_ports()) {
-        include(::volt::io::detail::sheet_port_bounds(schematic.sheet_port(port)));
+        include(::volt::io::detail::sheet_port_bounds(schematic.get(port)));
     }
     for (const auto label_id : sheet.net_labels()) {
-        const auto &label = schematic.net_label(label_id);
+        const auto &label = schematic.get(label_id);
         const auto &net = schematic.circuit().get(label.net());
         include(text_bounds(label.text_position(), label.orientation(),
                             label.label().value_or(net.name().value()), label.style(),
                             schematic_svg_visual_scale.net_label_font_size));
     }
     for (const auto field_id : sheet.symbol_fields()) {
-        const auto &field = schematic.symbol_field(field_id);
+        const auto &field = schematic.get(field_id);
         include(text_bounds(field.position(), field.orientation(), field.value(), field.style(),
                             schematic_svg_visual_scale.symbol_field_font_size));
     }
@@ -230,7 +230,7 @@ void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
 
 void write_sheet_svg(std::ostream &out, const Schematic &schematic, SheetId sheet_id,
                      double y_offset, SchematicSvgOptions options) {
-    const auto &sheet = schematic.sheet(sheet_id);
+    const auto &sheet = schematic.get(sheet_id);
 
     out << "  <g class=\"schematic-sheet\" data-sheet=\"" << svg_escape(svg_sheet_id(sheet_id))
         << "\" transform=\"translate(0 ";
@@ -269,7 +269,7 @@ void write_schematic_body_svg(std::ostream &out, const Schematic &schematic, She
     detail::write_svg_number(out, height);
     out << "\">\n";
     detail::write_svg_style(out, options.svg);
-    const auto &sheet = schematic.sheet(sheet_id);
+    const auto &sheet = schematic.get(sheet_id);
     if (options.include_regions && !sheet.regions().empty()) {
         out << "  <defs>\n";
         detail::write_region_title_clip_defs_svg(out, sheet_id, sheet);
@@ -295,11 +295,11 @@ void write_schematic_body_svg(std::ostream &out, const Schematic &schematic, She
 
 void write_schematic_svg(std::ostream &out, const Schematic &schematic,
                          SchematicSvgOptions options) {
-    const auto sheet_count = schematic.sheet_count();
+    const auto sheet_count = schematic.all<volt::SheetId>().size();
     auto width = detail::svg_sheet_width;
     auto height = sheet_count == 0 ? detail::svg_sheet_height : 0.0;
     for (std::size_t sheet_index = 0; sheet_index < sheet_count; ++sheet_index) {
-        const auto &metadata = schematic.sheet(SheetId{sheet_index}).metadata();
+        const auto &metadata = schematic.get(SheetId{sheet_index}).metadata();
         width = std::max(width, metadata.size().width());
         if (sheet_index != 0) {
             height += detail::svg_sheet_gap;
@@ -327,7 +327,7 @@ void write_schematic_svg(std::ostream &out, const Schematic &schematic,
     for (std::size_t sheet_index = 0; sheet_index < sheet_count; ++sheet_index) {
         const auto sheet_id = SheetId{sheet_index};
         detail::write_sheet_svg(out, schematic, sheet_id, y_offset, options);
-        y_offset += schematic.sheet(sheet_id).metadata().size().height() + detail::svg_sheet_gap;
+        y_offset += schematic.get(sheet_id).metadata().size().height() + detail::svg_sheet_gap;
     }
 
     out << "</svg>\n";
@@ -342,7 +342,7 @@ void write_schematic_svg(std::ostream &out, const Schematic &schematic,
 
 void write_schematic_sheet_svg(std::ostream &out, const Schematic &schematic, SheetId sheet_id,
                                SchematicSvgOptions options) {
-    const auto &metadata = schematic.sheet(sheet_id).metadata();
+    const auto &metadata = schematic.get(sheet_id).metadata();
     const auto width = metadata.size().width();
     const auto height = metadata.size().height();
 
@@ -375,10 +375,11 @@ void write_schematic_sheet_svg(std::ostream &out, const Schematic &schematic, Sh
 [[nodiscard]] std::vector<SchematicSvgPage> write_schematic_svg_pages(const Schematic &schematic,
                                                                       SchematicSvgOptions options) {
     auto pages = std::vector<SchematicSvgPage>{};
-    pages.reserve(schematic.sheet_count());
-    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+    pages.reserve(schematic.all<volt::SheetId>().size());
+    for (std::size_t sheet_index = 0; sheet_index < schematic.all<volt::SheetId>().size();
+         ++sheet_index) {
         const auto sheet_id = SheetId{sheet_index};
-        const auto &sheet = schematic.sheet(sheet_id);
+        const auto &sheet = schematic.get(sheet_id);
         pages.push_back(SchematicSvgPage{
             sheet_id,
             sheet.name(),

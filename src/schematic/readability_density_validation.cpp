@@ -7,7 +7,7 @@ namespace volt::detail {
 void validate_port_tag_scale(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                              DiagnosticReport &report) {
     for (const auto port_id : sheet.power_ports()) {
-        const auto &port = schematic.power_port(port_id);
+        const auto &port = schematic.get(port_id);
         const auto &net = schematic.circuit().get(port.net());
         const auto label = port.label().value_or(net.name().value());
         if (rendered_text_width(label, sheet_port_rendered_label_font_size) <=
@@ -20,7 +20,7 @@ void validate_port_tag_scale(const Schematic &schematic, SheetId sheet_id, const
             EntityRef::power_port(port_id), std::vector{EntityRef::net(port.net())});
     }
     for (const auto port_id : sheet.sheet_ports()) {
-        const auto &port = schematic.sheet_port(port_id);
+        const auto &port = schematic.get(port_id);
         const auto rendered_length =
             sheet_port_rendered_body_length(port.name()) + sheet_port_rendered_tip_length;
         if (rendered_length <= oversized_port_tag_rendered_length) {
@@ -233,7 +233,7 @@ void validate_dense_region_port_tags(const Schematic &schematic, SheetId sheet_i
 [[nodiscard]] bool symbol_instance_has_value_field(const Schematic &schematic, const Sheet &sheet,
                                                    SymbolInstanceId instance) {
     for (const auto field_id : sheet.symbol_fields()) {
-        const auto &field = schematic.symbol_field(field_id);
+        const auto &field = schematic.get(field_id);
         if (field.symbol_instance() == instance &&
             (field.name() == "value" || field.name() == "Value")) {
             return true;
@@ -246,7 +246,7 @@ void validate_missing_passive_value_fields(const Schematic &schematic, SheetId s
                                            const Sheet &sheet, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
     for (const auto instance_id : sheet.symbol_instances()) {
-        const auto &instance = schematic.symbol_instance(instance_id);
+        const auto &instance = schematic.get(instance_id);
         const auto &component = circuit.get(instance.component());
         if (!component_definition_is_passive(circuit, component.definition()) ||
             !component_has_known_value(circuit, instance.component()) ||
@@ -273,7 +273,7 @@ void validate_terminal_marker_net_kind_mismatch(const Schematic &schematic, Shee
                                                 const Sheet &sheet, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
     for (const auto port_id : sheet.power_ports()) {
-        const auto &port = schematic.power_port(port_id);
+        const auto &port = schematic.get(port_id);
         const auto &net = circuit.get(port.net());
 
         if (port.kind() == PowerPortKind::Power && net.kind() == NetKind::Ground) {
@@ -300,10 +300,10 @@ void validate_dense_no_connect_clusters(const Schematic &schematic, SheetId shee
                                         const Sheet &sheet, DiagnosticReport &report) {
     const auto radius_squared = dense_no_connect_cluster_radius * dense_no_connect_cluster_radius;
     for (const auto instance_id : sheet.symbol_instances()) {
-        const auto &instance = schematic.symbol_instance(instance_id);
+        const auto &instance = schematic.get(instance_id);
         auto markers = std::vector<NoConnectMarkerId>{};
         for (const auto marker_id : sheet.no_connect_markers()) {
-            const auto &marker = schematic.no_connect_marker(marker_id);
+            const auto &marker = schematic.get(marker_id);
             const auto &pin = schematic.circuit().get(marker.pin());
             if (pin.component() == instance.component() &&
                 squared_distance(marker.position(), instance.position()) <= radius_squared) {
