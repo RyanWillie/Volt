@@ -136,6 +136,20 @@ add_test(
 set_tests_properties(circuit_architecture_boundary_self_test PROPERTIES LABELS cpp)
 
 add_test(
+    NAME refactor_inventory_baselines
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-refactor-inventory-baselines.py
+)
+set_tests_properties(refactor_inventory_baselines PROPERTIES LABELS cpp)
+
+add_test(
+    NAME refactor_inventory_baselines_self_test
+    COMMAND
+        ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-refactor-inventory-baselines.py
+        --self-test
+)
+set_tests_properties(refactor_inventory_baselines_self_test PROPERTIES LABELS cpp)
+
+add_test(
     NAME docs_site
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-docs-site.py
 )
