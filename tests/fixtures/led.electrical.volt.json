@@ -1,0 +1,84 @@
+{
+  "format": "volt.electrical_records",
+  "version": 1,
+  "semantic_model_version": 1,
+  "pin_count": 2,
+  "records": [
+    {
+      "semantic_key": "sha256:3bbc1f25f048046b488520c0d82a92dc2ed50bf905ada8033e309ad0f53e6cd9",
+      "subject": {
+        "kind": "directed_relation",
+        "from": 0,
+        "to": 1
+      },
+      "observable": "voltage",
+      "meaning": "absolute_limit",
+      "value": {
+        "kind": "range",
+        "dimension": "voltage",
+        "minimum": -5.0
+      },
+      "conditions": [],
+      "evidence": [
+        "sha256:6bbfe1cae6b2d72c1ce75ca8ec8027d4a036761b7a630c36843bd84c36085781"
+      ]
+    },
+    {
+      "semantic_key": "sha256:bdf10ce86d18613b550f3e6a80efe5f22f4962a51fc53a2a2460932aed0e7305",
+      "subject": {
+        "kind": "directed_relation",
+        "from": 0,
+        "to": 1
+      },
+      "observable": "current",
+      "meaning": "absolute_limit",
+      "value": {
+        "kind": "range",
+        "dimension": "current",
+        "maximum": 0.025
+      },
+      "conditions": [],
+      "evidence": [
+        "sha256:6bbfe1cae6b2d72c1ce75ca8ec8027d4a036761b7a630c36843bd84c36085781"
+      ]
+    },
+    {
+      "semantic_key": "sha256:d4b916457ce71105893cba28c4ca96e3b1437bdf32f8f46c863e32c274256d36",
+      "subject": {
+        "kind": "directed_relation",
+        "from": 0,
+        "to": 1
+      },
+      "observable": "voltage",
+      "meaning": "characteristic",
+      "value": {
+        "kind": "characteristic_envelope",
+        "dimension": "voltage",
+        "minimum": 1.6,
+        "typical": 2.0,
+        "maximum": 2.4
+      },
+      "conditions": [
+        {
+          "subject": {
+            "kind": "directed_relation",
+            "from": 0,
+            "to": 1
+          },
+          "observable": "current",
+          "predicate": {
+            "kind": "equal",
+            "value": {
+              "kind": "literal",
+              "dimension": "current",
+              "value": 0.02
+            }
+          }
+        }
+      ],
+      "evidence": [
+        "sha256:6bbfe1cae6b2d72c1ce75ca8ec8027d4a036761b7a630c36843bd84c36085781"
+      ]
+    }
+  ]
+}

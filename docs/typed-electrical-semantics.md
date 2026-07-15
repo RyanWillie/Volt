@@ -71,6 +71,13 @@ The landed foundation includes:
 
 - `UnitDimension`, `Quantity`, `Tolerance`, and `QuantityRange`
 - `ElectricalAttributeSpec`, `ElectricalAttributeValue`, and `ElectricalAttributeMap`
+- the canonical `ElectricalRecordSet` substrate for Voltage and Current
+- explicitly framed pin, directed-relation, and supply-domain subjects
+- characteristic, accepted/provided range, absolute-limit, continuous requirement, and
+  continuous capability meanings
+- typed Unknown, normalized tolerance/envelope/range values, bounded conditions, immutable
+  evidence references, deterministic semantic keys, and native typed queries
+- deterministic `volt.electrical_records` v1 native read/write and content hashing
 - owner and dimension checks for typed electrical attributes
 - component instance electrical attributes
 - selected physical part electrical attributes
@@ -86,6 +93,12 @@ The landed foundation includes:
 
 The important architectural result is that Python and JSON are no longer the only places
 where these facts exist. The kernel can inspect, serialize, and validate them directly.
+
+The canonical record substrate is intentionally separate from the older named electrical
+attribute maps. It is the accepted language for future part-contract and exact-part work;
+P2 and P3 will bind it into stable component and part identities. This slice does not
+reinterpret or migrate existing logical-circuit attributes or the current `volt.part` v4
+artifact.
 
 ## Quantities And Attributes
 
@@ -153,6 +166,70 @@ Structural checks happen at construction, mutation, or load boundaries:
 Design-quality issues remain diagnostics. For example, a selected part whose voltage
 rating is too low for an authored net voltage is diagnosable; it should not make the
 loaded circuit structurally invalid.
+
+## Canonical Voltage And Current Records
+
+`ElectricalRecordSet` is an append-only native owner over one ordered component pin
+contract. P1 uses typed record-set-local pin indices. Stable `PinKey`, relation/domain keys,
+feature schemas, and bindings belong to P2 and are not duplicated here.
+
+Every canonical record contains:
+
+```text
+subject
+observable: Voltage | Current
+meaning: Characteristic | AcceptedRange | ProvidedRange | AbsoluteLimit |
+         Requirement | Capability
+typed value or Unknown
+normalized condition set
+zero or more immutable content-hash evidence references
+```
+
+The closed subject variants make reference and direction explicit:
+
+- a framed pin is `pin` relative to one distinct `reference` pin
+- a directed relation is one distinct `from` pin to one `to` pin
+- a supply domain has non-empty, disjoint positive and return pin sets
+
+Voltage and Current use those orientations directly. `Requirement` and `Capability` are
+limited to non-negative continuous Current on a supply domain. Peak, pulse, duty-cycle,
+mode-dependent, probabilistic, and source-sharing semantics remain outside v1.
+
+Meaning controls the accepted value shape and normalization:
+
+- `Characteristic` accepts a scalar or an ordered minimum/typical/maximum envelope
+- `AcceptedRange`, `ProvidedRange`, and `AbsoluteLimit` accept one- or two-sided ranges
+- `Requirement` and `Capability` accept a non-negative continuous Current magnitude
+- nominal plus absolute or percent tolerance normalizes to an envelope for a
+  characteristic and to a closed range for range/limit meanings
+- `Unknown` keeps the subject, observable, meaning, conditions, and evidence without
+  becoming zero demand, zero capability, or a usable guarantee
+
+The semantic key is the SHA-256 identity of the normalized
+`(subject, observable, meaning, condition set)`. Domain members, conditions, and evidence
+are sorted deterministically; duplicate evidence is removed. Evidence and the record value
+are not key fields. Exact duplicate records combine evidence.
+
+Native queries group records by semantic key. Compatible ranges intersect, requirements
+take the maximum demand, capabilities take the minimum guarantee, and characteristics must
+match exactly. Empty intersections or differing characteristics remain stored and produce
+`ELECTRICAL_RECORD_CONFLICT`; an active Unknown produces `ELECTRICAL_RECORD_UNKNOWN` while
+known records remain available. These are diagnostics over structurally valid claims, not
+load failures.
+
+Conditions are an order-independent set of typed Voltage/Current equality or range
+predicates. A bound is either one literal dimensioned quantity or one typed record selector
+multiplied by a finite dimensionless scalar. Selectors must resolve to one known scalar of
+the same observable; dangling, ambiguous, cyclic, or multi-step reference graphs reject.
+Offsets, arbitrary formulas, callbacks, and solver-produced values are not canonical
+inputs.
+
+The standalone `volt.electrical_records` v1 document records its separate semantic-model
+version, ordered pin count, semantic keys, canonical values, conditions, and evidence. The
+reader verifies keys and rejects unsupported versions or malformed records before returning
+an owner. The deterministic bytes are the P1 content-hash input. Integrating those records
+into component identity, exact part identity, library bundles, or circuit ERC belongs to
+later approved slices.
 
 ## Pin Semantics
 
@@ -413,6 +490,10 @@ ad hoc strings when a typed kernel field exists.
 Loading malformed typed fields is a structural format error. Loading a well-formed but
 bad design should succeed and allow validation to report diagnostics.
 
+Canonical Voltage/Current records additionally round-trip through the standalone
+`volt.electrical_records` v1 native codec. This is the P1 persistence seam, not a successor
+`volt.part` writer and not a package or registry format.
+
 ## Python Authoring
 
 Python provides ergonomic syntax over kernel-owned state:
@@ -474,17 +555,19 @@ Explicitly deferred:
 
 ## Next Slices
 
-The typed semantics foundation is now in place. The next work should be small and
-dependency-aware:
+The accepted post-Circuit part program keeps the remaining ownership changes separate:
 
-1. Finish the documentation refresh so contributors understand the current model.
-2. Write a focused hierarchy and scoped-net design page before adding new logical
-   topology.
-3. Add the smallest hierarchy/scoped-net vertical slice.
-4. Add no-connect assertions as explicit stored design intent.
-5. Add selected-part compatibility checks beyond voltage rating.
-6. Add current and power capability checks once the relevant constraints are explicit.
-7. Extend net classes only after the reusable constraint vocabulary is clear.
+1. P2 adds stable `PinKey`, relation/domain keys, feature schemas, bindings, and component
+   content identity over this substrate.
+2. P3 makes one exact `PartDefinition` implement one component identity and persists the
+   canonical records with exact physical mappings.
+3. P4 adds native catalogue construction and exact resolution.
+4. P5 consumes resolved records for selected-part truth and circuit-level Voltage/Current
+   ERC.
+5. Y3 later adds thin Python lowering after the native contracts settle.
+
+Power, Resistance, Inductance, Capacitance, packaging, simulation, and richer operating
+qualifiers remain separate future work.
 
 Each slice should have tests that prove structural invalid data is rejected at the
 mutation or load boundary, while bad design intent is reported through diagnostics.

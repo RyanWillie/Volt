@@ -76,6 +76,31 @@ include/volt/circuit/constraints/net_classes.hpp|struct|DerivedNetClassRuleValue
 include/volt/circuit/constraints/net_classes.hpp|struct|NetClassDerivationInput
 include/volt/circuit/constraints/net_classes.hpp|struct|NetClassRuleDerivation
 include/volt/circuit/constraints/net_classes.hpp|struct|NetClassSpec
+include/volt/circuit/electrical/records.hpp|class|CharacteristicEnvelope
+include/volt/circuit/electrical/records.hpp|class|ContinuousCurrent
+include/volt/circuit/electrical/records.hpp|class|ElectricalCondition
+include/volt/circuit/electrical/records.hpp|class|ElectricalPinIndex
+include/volt/circuit/electrical/records.hpp|class|ElectricalRecord
+include/volt/circuit/electrical/records.hpp|class|ElectricalRecordGroup
+include/volt/circuit/electrical/records.hpp|class|ElectricalRecordSet
+include/volt/circuit/electrical/records.hpp|class|ElectricalSemanticKey
+include/volt/circuit/electrical/records.hpp|class|ElectricalSubject
+include/volt/circuit/electrical/records.hpp|class|ElectricalValue
+include/volt/circuit/electrical/records.hpp|class|ElectricalValueExpression
+include/volt/circuit/electrical/records.hpp|class|ScaledElectricalValueReference
+include/volt/circuit/electrical/records.hpp|class|SupplyDomainSubject
+include/volt/circuit/electrical/records.hpp|class|TolerancedQuantity
+include/volt/circuit/electrical/records.hpp|enum class|ElectricalConditionPredicateKind
+include/volt/circuit/electrical/records.hpp|enum class|ElectricalMeaning
+include/volt/circuit/electrical/records.hpp|enum class|ElectricalMergeStatus
+include/volt/circuit/electrical/records.hpp|enum class|ElectricalObservable
+include/volt/circuit/electrical/records.hpp|enum class|ElectricalSubjectKind
+include/volt/circuit/electrical/records.hpp|enum class|ElectricalValueKind
+include/volt/circuit/electrical/records.hpp|struct|DirectedRelationSubject
+include/volt/circuit/electrical/records.hpp|struct|ElectricalRecordSelector
+include/volt/circuit/electrical/records.hpp|struct|ElectricalRecordSpec
+include/volt/circuit/electrical/records.hpp|struct|FramedPinSubject
+include/volt/circuit/electrical/records.hpp|struct|UnknownElectricalValue
 include/volt/circuit/hierarchy/hierarchy.hpp|class|ModuleComponentTemplate
 include/volt/circuit/hierarchy/hierarchy.hpp|class|ModuleDefinition
 include/volt/circuit/hierarchy/hierarchy.hpp|class|ModuleInstance
