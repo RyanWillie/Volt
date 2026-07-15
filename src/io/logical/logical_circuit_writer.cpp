@@ -139,6 +139,165 @@ namespace volt::io::detail {
     throw KernelLogicError{ErrorCode::InvalidState, "Unhandled electrical polarity"};
 }
 
+[[nodiscard]] std::string component_subject_kind_name(ElectricalSubjectKind kind) {
+    switch (kind) {
+    case ElectricalSubjectKind::FramedPin:
+        return "framed_pin";
+    case ElectricalSubjectKind::DirectedRelation:
+        return "directed_relation";
+    case ElectricalSubjectKind::SupplyDomain:
+        return "supply_domain";
+    }
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled component subject kind"};
+}
+
+[[nodiscard]] std::string feature_role_cardinality_name(FeatureRoleCardinality cardinality) {
+    return cardinality == FeatureRoleCardinality::ExactlyOne ? "exactly_one" : "one_or_more";
+}
+
+[[nodiscard]] std::string canonical_observable_name(ElectricalObservable observable) {
+    return observable == ElectricalObservable::Voltage ? "voltage" : "current";
+}
+
+[[nodiscard]] std::string canonical_meaning_name(ElectricalMeaning meaning) {
+    switch (meaning) {
+    case ElectricalMeaning::Characteristic:
+        return "characteristic";
+    case ElectricalMeaning::AcceptedRange:
+        return "accepted_range";
+    case ElectricalMeaning::ProvidedRange:
+        return "provided_range";
+    case ElectricalMeaning::AbsoluteLimit:
+        return "absolute_limit";
+    case ElectricalMeaning::Requirement:
+        return "requirement";
+    case ElectricalMeaning::Capability:
+        return "capability";
+    }
+    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled canonical electrical meaning"};
+}
+
+template <typename Key> void write_contract_keys(std::ostream &out, const std::vector<Key> &keys) {
+    out << '[';
+    for (std::size_t index = 0; index < keys.size(); ++index) {
+        out << json_string(keys[index].value());
+        if (index + 1U != keys.size()) {
+            out << ", ";
+        }
+    }
+    out << ']';
+}
+
+void write_component_subject_ref(std::ostream &out, const ComponentSubjectRef &subject) {
+    out << "{ \"kind\": " << json_string(component_subject_kind_name(subject.kind()))
+        << ", \"key\": ";
+    switch (subject.kind()) {
+    case ElectricalSubjectKind::FramedPin:
+        out << json_string(subject.as_framed_pin().value());
+        break;
+    case ElectricalSubjectKind::DirectedRelation:
+        out << json_string(subject.as_directed_relation().value());
+        break;
+    case ElectricalSubjectKind::SupplyDomain:
+        out << json_string(subject.as_supply_domain().value());
+        break;
+    }
+    out << " }";
+}
+
+void write_component_contract(std::ostream &out, const ComponentDefinition &definition) {
+    const auto &contract = definition.contract();
+    out << "{ \"semantic_model_version\": 1, \"key\": " << json_string(contract.key().value())
+        << ", \"content_identity\": " << json_string(definition.content_identity().value())
+        << ", \"pin_keys\": ";
+    write_contract_keys(out, contract.pin_keys());
+
+    out << ", \"framed_pins\": [";
+    for (std::size_t index = 0; index < contract.framed_pins().size(); ++index) {
+        const auto &subject = contract.framed_pins()[index];
+        out << "{ \"key\": " << json_string(subject.key().value())
+            << ", \"pin\": " << json_string(subject.pin().value())
+            << ", \"reference\": " << json_string(subject.reference().value()) << " }";
+        if (index + 1U != contract.framed_pins().size()) {
+            out << ", ";
+        }
+    }
+    out << "], \"relations\": [";
+    for (std::size_t index = 0; index < contract.relations().size(); ++index) {
+        const auto &subject = contract.relations()[index];
+        out << "{ \"key\": " << json_string(subject.key().value())
+            << ", \"from\": " << json_string(subject.from().value())
+            << ", \"to\": " << json_string(subject.to().value()) << " }";
+        if (index + 1U != contract.relations().size()) {
+            out << ", ";
+        }
+    }
+    out << "], \"supply_domains\": [";
+    for (std::size_t index = 0; index < contract.supply_domains().size(); ++index) {
+        const auto &subject = contract.supply_domains()[index];
+        out << "{ \"key\": " << json_string(subject.key().value()) << ", \"positive_pins\": ";
+        write_contract_keys(out, subject.positive_pins());
+        out << ", \"return_pins\": ";
+        write_contract_keys(out, subject.return_pins());
+        out << " }";
+        if (index + 1U != contract.supply_domains().size()) {
+            out << ", ";
+        }
+    }
+    out << "], \"feature_schemas\": [";
+    for (std::size_t index = 0; index < contract.feature_schemas().size(); ++index) {
+        const auto &schema = contract.feature_schemas()[index];
+        out << "{ \"key\": " << json_string(schema.key().value()) << ", \"subject_kind\": "
+            << json_string(component_subject_kind_name(schema.subject_kind())) << ", \"roles\": [";
+        for (std::size_t role_index = 0; role_index < schema.roles().size(); ++role_index) {
+            const auto &role = schema.roles()[role_index];
+            out << "{ \"key\": " << json_string(role.key().value()) << ", \"cardinality\": "
+                << json_string(feature_role_cardinality_name(role.cardinality())) << " }";
+            if (role_index + 1U != schema.roles().size()) {
+                out << ", ";
+            }
+        }
+        out << "], \"required_records\": [";
+        for (std::size_t requirement_index = 0;
+             requirement_index < schema.required_records().size(); ++requirement_index) {
+            const auto &requirement = schema.required_records()[requirement_index];
+            out << "{ \"observable\": "
+                << json_string(canonical_observable_name(requirement.observable))
+                << ", \"meaning\": " << json_string(canonical_meaning_name(requirement.meaning))
+                << " }";
+            if (requirement_index + 1U != schema.required_records().size()) {
+                out << ", ";
+            }
+        }
+        out << "] }";
+        if (index + 1U != contract.feature_schemas().size()) {
+            out << ", ";
+        }
+    }
+    out << "], \"feature_bindings\": [";
+    for (std::size_t index = 0; index < contract.feature_bindings().size(); ++index) {
+        const auto &binding = contract.feature_bindings()[index];
+        out << "{ \"key\": " << json_string(binding.key().value())
+            << ", \"schema\": " << json_string(binding.schema().value()) << ", \"subject\": ";
+        write_component_subject_ref(out, binding.subject());
+        out << ", \"roles\": [";
+        for (std::size_t role_index = 0; role_index < binding.roles().size(); ++role_index) {
+            const auto &role = binding.roles()[role_index];
+            out << "{ \"role\": " << json_string(role.role().value()) << ", \"pins\": ";
+            write_contract_keys(out, role.pins());
+            out << " }";
+            if (role_index + 1U != binding.roles().size()) {
+                out << ", ";
+            }
+        }
+        out << "] }";
+        if (index + 1U != contract.feature_bindings().size()) {
+            out << ", ";
+        }
+    }
+    out << "] }";
+}
+
 [[nodiscard]] std::string net_kind_name(NetKind kind) {
     switch (kind) {
     case NetKind::Signal:
@@ -557,6 +716,10 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
                 }
             }
             out << "]";
+        }
+        if (definition.contract().explicitly_authored()) {
+            out << ", \"contract\": ";
+            detail::write_component_contract(out, definition);
         }
         out << ", \"pins\": [";
         for (std::size_t pin_index = 0; pin_index < definition.pins().size(); ++pin_index) {

@@ -1,0 +1,17 @@
+{
+  "format": "volt.logical_circuit",
+  "version": 1,
+  "pin_definitions": [
+    { "id": "pin_def:0", "name": "A", "number": "2", "connection_requirement": "Required" },
+    { "id": "pin_def:1", "name": "K", "number": "1", "connection_requirement": "Required" }
+  ],
+  "component_definitions": [
+    { "id": "component_def:0", "name": "LED", "contract": { "semantic_model_version": 1, "key": "volt/led@1", "content_identity": "sha256:83c4819460811394588d42f69e87cef73e9b84b9e03ad05894d30397533c2d07", "pin_keys": ["A", "K"], "framed_pins": [], "relations": [{ "key": "junction", "from": "A", "to": "K" }], "supply_domains": [], "feature_schemas": [{ "key": "volt.feature/diode-junction@1", "subject_kind": "directed_relation", "roles": [{ "key": "positive", "cardinality": "exactly_one" }, { "key": "negative", "cardinality": "exactly_one" }], "required_records": [{ "observable": "voltage", "meaning": "characteristic" }, { "observable": "voltage", "meaning": "absolute_limit" }, { "observable": "current", "meaning": "absolute_limit" }] }], "feature_bindings": [{ "key": "diode", "schema": "volt.feature/diode-junction@1", "subject": { "kind": "directed_relation", "key": "junction" }, "roles": [{ "role": "negative", "pins": ["K"] }, { "role": "positive", "pins": ["A"] }] }] }, "pins": ["pin_def:0", "pin_def:1"], "properties": {} }
+  ],
+  "components": [
+  ],
+  "pins": [
+  ],
+  "nets": [
+  ]
+}

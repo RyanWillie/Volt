@@ -225,6 +225,60 @@ remains the canonical persistence representation and table order remains the sou
 deterministic `PinDefId` restoration. Unowned rows remain readable for v1 document
 compatibility, although complete typed construction does not create them.
 
+An explicitly authored portable component contract adds a `contract` object. Simple legacy
+definitions omit it; readers lower those definitions into the same immutable contract model
+from the component name and deterministic ordered legacy pin keys.
+
+```json
+{
+  "semantic_model_version": 1,
+  "key": "volt/led@1",
+  "content_identity": "sha256:...",
+  "pin_keys": ["A", "K"],
+  "framed_pins": [],
+  "relations": [
+    { "key": "junction", "from": "A", "to": "K" }
+  ],
+  "supply_domains": [],
+  "feature_schemas": [
+    {
+      "key": "volt.feature/diode-junction@1",
+      "subject_kind": "directed_relation",
+      "roles": [
+        { "key": "positive", "cardinality": "exactly_one" },
+        { "key": "negative", "cardinality": "exactly_one" }
+      ],
+      "required_records": [
+        { "observable": "voltage", "meaning": "characteristic" }
+      ]
+    }
+  ],
+  "feature_bindings": [
+    {
+      "key": "diode",
+      "schema": "volt.feature/diode-junction@1",
+      "subject": { "kind": "directed_relation", "key": "junction" },
+      "roles": [
+        { "role": "negative", "pins": ["K"] },
+        { "role": "positive", "pins": ["A"] }
+      ]
+    }
+  ]
+}
+```
+
+`subject_kind` and bound subject `kind` use `framed_pin`, `directed_relation`, or
+`supply_domain`. Role cardinality uses `exactly_one` or `one_or_more`. Canonical record
+requirements use the lower-case Voltage/Current observable and meaning spellings from the
+native electrical-record format. Supply domains persist sorted non-empty
+`positive_pins` and `return_pins`; framed pins persist `pin` and `reference` keys.
+
+Named subject, schema, and binding collections are written in stable key order. Domain
+members, feature-binding roles, and their pins are normalized because their order is not
+semantic; schema role order and component `pin_keys` order remain semantic. The reader
+recomputes `content_identity` from the complete accepted component content and rejects a
+mismatch or unsupported component semantic-model version before restoring the circuit.
+
 ## Components
 
 Components are concrete design occurrences:
