@@ -29,6 +29,8 @@ into a Markdown document under `docs/` rather than editing the exported HTML.
 - [`adr-part-semantics-and-identity.md`](adr-part-semantics-and-identity.md) — freeze
   component contracts, exact-part identity, integrity-bearing selection, and canonical
   v1 Voltage/Current semantics
+- [`adr-projection-ownership-and-compiled-board.md`](adr-projection-ownership-and-compiled-board.md)
+  — freeze projection ownership, named Boards, and the immutable `CompiledBoard` contract
 - [`volt-post-circuit-architecture-review.html`](volt-post-circuit-architecture-review.html)
   — approved owner-aligned Schematic/Board, `CompiledBoard`, artifact graph, bundle and
   project-tooling direction; focused ADRs freeze exact implementation contracts
