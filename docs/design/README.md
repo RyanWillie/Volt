@@ -31,6 +31,8 @@ into a Markdown document under `docs/` rather than editing the exported HTML.
   v1 Voltage/Current semantics
 - [`adr-projection-ownership-and-compiled-board.md`](adr-projection-ownership-and-compiled-board.md)
   — freeze projection ownership, named Boards, and the immutable `CompiledBoard` contract
+- [`adr-project-bundle-artifact-graph.md`](adr-project-bundle-artifact-graph.md) — ProjectBundle
+  v2 typed artifact graph, dependency lock, safe native reopening, and opt-in exports
 - [`volt-post-circuit-architecture-review.html`](volt-post-circuit-architecture-review.html)
   — approved owner-aligned Schematic/Board, `CompiledBoard`, artifact graph, bundle and
   project-tooling direction; focused ADRs freeze exact implementation contracts
