@@ -1,77 +1,4 @@
 {
-  "baseline": {
-    "approved_references": [
-      "docs/design/volt-post-circuit-architecture-review.html",
-      "docs/design/volt-part-library-architecture-review.html"
-    ],
-    "implementation_baseline_commit": "817ad42588d01d2b7d095d1b4b39cc7abed18b6a",
-    "issue": 294,
-    "measurement_baseline_commit": "817ad42588d01d2b7d095d1b4b39cc7abed18b6a"
-  },
-  "counting_rules": [
-    "Public declarations are nonblank non-include lines in tests/architecture/*_public_api.txt; overloads stay separate and constructors count.",
-    "Native binding methods are named .def(\"...\") registrations on py::class_<PyCircuit>; py::init is excluded, module.def exports are counted separately.",
-    "Caller strata are direct lexical member-call tokens .name( or ->name( for names in the checked-in root snapshots; counts are lower bounds and intentionally do not infer aliases.",
-    "Python _circuit calls are AST-like lexical calls on the private Design._circuit handle in python/volt/*.py; public tests and docs are excluded.",
-    "Hidden footprint injections are production src/python call sites that invoke volt::builtin_footprint_library(); tests, examples and non-binding C++ are excluded.",
-    "Artifact kinds are first arguments to Project _artifact_record(...) calls plus kinds observed in checked-in manifest.volt.json files.",
-    "CLI leaves are _handle_* functions that back user commands; _handle_export_manufacturing is treated as the export manufacturing leaf and helper functions are excluded.",
-    "Project shapes are example Python files that construct volt.Project and the stage decorators they register; no volt.toml files are expected at this baseline.",
-    "Semantic goldens record normalized JSON top-level shape plus SHA-256; byte goldens record raw byte length and SHA-256."
-  ],
-  "exclusions": [
-    "Generated docs and architecture HTML are not scanned for product call-site counts.",
-    "Tests and examples are excluded from hidden footprint injection counts but are included in caller strata where explicitly named.",
-    "Indirect C++ calls through aliases, templates or function pointers are not call-graph counted.",
-    "Python public API docs are not counted as exports; __all__ in python/volt/__init__.py is the export boundary.",
-    "Future D1-D3 implementation contracts are not enforced here; this checker freezes the Gate F1 evidence baseline and requires intentional updates when approved slices move it."
-  ],
-  "future_slice_map": [
-    {
-      "may_update": [
-        "native binding method groups",
-        "Python ownership paths",
-        "binding lifetime entries",
-        "hidden footprint injection callers"
-      ],
-      "slice": "D1 private native owner split"
-    },
-    {
-      "may_update": [
-        "Schematic and Board public snapshots",
-        "direct caller strata",
-        "footprint-resolution injections",
-        "Board semantic and byte goldens"
-      ],
-      "slice": "D2 Schematic/Board roots and CompiledBoard"
-    },
-    {
-      "may_update": [
-        "artifact kinds and manifest fields",
-        "reader/writer surfaces",
-        "CLI source-execution surfaces",
-        "bundle and manifest goldens"
-      ],
-      "slice": "D3 typed artifact graph and bundle reopening"
-    },
-    {
-      "may_update": [
-        "built-in component route counts",
-        "STM32 catalogue entries",
-        "manual selected-part calls",
-        "component-contract, part and offline fixture goldens"
-      ],
-      "slice": "Part-library semantic and exact-selection program"
-    },
-    {
-      "may_update": [
-        "parity gate test inventory",
-        "byte-golden shadow pairs",
-        "sanitizer, coverage and platform evidence requirements"
-      ],
-      "slice": "Deletion gate"
-    }
-  ],
   "goldens": {
     "byte": [
       {
@@ -444,69 +371,7 @@
     ]
   },
   "inventories": {
-    "artifacts": {
-      "io_surfaces": {
-        "diagnostic_surface_count": 18,
-        "reader_count": 8,
-        "readers": [
-          "include/volt/io/logical/logical_circuit_reader.hpp",
-          "include/volt/io/parts/part_definition_reader.hpp",
-          "include/volt/io/pcb/pcb_reader.hpp",
-          "include/volt/io/schematic/schematic_reader.hpp",
-          "src/io/logical/logical_circuit_reader.cpp",
-          "src/io/parts/part_definition_reader.cpp",
-          "src/io/pcb/pcb_reader.cpp",
-          "src/io/schematic/schematic_reader.cpp"
-        ],
-        "schema_or_format_count": 22,
-        "schemas_or_formats": [
-          "include/volt/io/pcb/pcb_schema.hpp",
-          "include/volt/io/schematic/detail/schematic_svg_common.hpp",
-          "include/volt/io/schematic/detail/schematic_svg_elements.hpp",
-          "include/volt/io/schematic/detail/schematic_svg_layers.hpp",
-          "include/volt/io/schematic/detail/schematic_svg_page_chrome.hpp",
-          "include/volt/io/schematic/schematic_reader.hpp",
-          "include/volt/io/schematic/schematic_schema.hpp",
-          "include/volt/io/schematic/schematic_svg_writer.hpp",
-          "include/volt/io/schematic/schematic_writer.hpp",
-          "src/io/detail/entity_ref_format.cpp",
-          "src/io/detail/entity_ref_format.hpp",
-          "src/io/logical/logical_net_class_format.cpp",
-          "src/io/logical/logical_net_class_format.hpp",
-          "src/io/pcb/pcb_schema.cpp",
-          "src/io/schematic/detail_schematic_svg_common.cpp",
-          "src/io/schematic/detail_schematic_svg_elements.cpp",
-          "src/io/schematic/detail_schematic_svg_layers.cpp",
-          "src/io/schematic/detail_schematic_svg_page_chrome.cpp",
-          "src/io/schematic/schematic_reader.cpp",
-          "src/io/schematic/schematic_schema.cpp",
-          "src/io/schematic/schematic_svg_writer.cpp",
-          "src/io/schematic/schematic_writer.cpp"
-        ],
-        "writer_count": 20,
-        "writers": [
-          "include/volt/io/assembly/cpl_writer.hpp",
-          "include/volt/io/bom/bom_writer.hpp",
-          "include/volt/io/logical/logical_circuit_writer.hpp",
-          "include/volt/io/parts/part_definition_writer.hpp",
-          "include/volt/io/pcb/pcb_fabrication_writer.hpp",
-          "include/volt/io/pcb/pcb_svg_writer.hpp",
-          "include/volt/io/pcb/pcb_writer.hpp",
-          "include/volt/io/schematic/schematic_svg_writer.hpp",
-          "include/volt/io/schematic/schematic_writer.hpp",
-          "src/io/assembly/cpl_writer.cpp",
-          "src/io/bom/bom_writer.cpp",
-          "src/io/logical/logical_circuit_writer.cpp",
-          "src/io/parts/part_definition_writer.cpp",
-          "src/io/pcb/pcb_fabrication_writer.cpp",
-          "src/io/pcb/pcb_svg_writer.cpp",
-          "src/io/pcb/pcb_writer.cpp",
-          "src/io/pcb/pcb_writer_footprints.cpp",
-          "src/io/pcb/pcb_writer_rooms.cpp",
-          "src/io/schematic/schematic_svg_writer.cpp",
-          "src/io/schematic/schematic_writer.cpp"
-        ]
-      },
+    "canonical_artifacts": {
       "manifest_artifact_kinds": [
         "bom",
         "bom_csv",
@@ -576,12 +441,6 @@
           "tests"
         ]
       },
-      "manifest_paths": [
-        "examples/pcb_led_board/artifacts/pcb_led_board.volt/manifest.volt.json",
-        "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/manifest.volt.json",
-        "examples/stm32_usb_buck/artifacts/stm32_usb_buck_jlcpcb_manufacturing/manifest.volt.json",
-        "examples/timer_555_led_blinker/artifacts/timer_555_led_blinker.volt/manifest.volt.json"
-      ],
       "project_artifact_path_fields": [
         "cpl_csv",
         "cpl_json",
@@ -617,1106 +476,26 @@
         "schematic_svg"
       ]
     },
-    "cli_project": {
-      "cli": {
-        "check_flag_count": 1,
-        "cli_test_count": 31,
-        "json_flag_count": 5,
-        "leaf_command_count": 7,
-        "leaf_handlers": [
-          "_handle_build",
-          "_handle_diagnostics",
-          "_handle_export_manufacturing",
-          "_handle_info",
-          "_handle_init",
-          "_handle_model",
-          "_handle_run"
-        ],
-        "source_execution_functions": [
-          "_evict_project_entrypoint_modules",
-          "_project_result_from_entrypoint",
-          "_project_result_with_forwarded_stdout",
-          "load_entrypoint",
-          "run_entrypoint"
-        ]
-      },
-      "project_shapes": {
-        "project_cli_test_count": 77,
-        "tracked_project_example_count": 3,
-        "tracked_project_examples": {
-          "examples/pcb_led_board/main.py": [
-            "board",
-            "design",
-            "schematic"
-          ],
-          "examples/stm32_usb_buck/main.py": [
-            "board",
-            "design",
-            "schematic"
-          ],
-          "examples/timer_555_led_blinker/main.py": [
-            "design"
-          ]
-        },
-        "tracked_volt_toml_count": 0,
-        "tracked_volt_toml_files": []
-      }
-    },
-    "deletion_parity_gates": {
-      "bom_cpl": {
-        "count": 4,
-        "missing": [],
-        "paths": [
-          "tests/circuit/bom/bom_test.cpp",
-          "tests/pcb/assembly/cpl_test.cpp",
-          "python/tests/test_project_bom.py",
-          "python/tests/test_project_assembly.py"
-        ]
-      },
-      "fabrication": {
-        "count": 3,
-        "missing": [],
-        "paths": [
-          "scripts/verify-kicad-fab-export.py",
-          "tests/io/pcb/pcb_fabrication_writer_test.cpp",
-          "examples/stm32_usb_buck/artifacts/stm32_usb_buck_jlcpcb_manufacturing.zip"
-        ]
-      },
-      "kicad": {
-        "count": 4,
-        "missing": [],
-        "paths": [
-          "scripts/check-kicad-boundary.py",
-          "tests/adapters/kicad_boundary_test.cpp",
-          "tests/adapters/kicad_pcb_writer_test.cpp",
-          "tests/adapters/kicad_schematic_writer_test.cpp"
-        ]
-      },
-      "models_3d_viewer": {
-        "count": 3,
-        "missing": [],
-        "paths": [
-          "python/tests/test_project_models3d.py",
-          "python/volt/_project_models3d.py",
-          "examples/pcb_led_board/artifacts/pcb_led_board.volt/assets/part_models_3d.json"
-        ]
-      },
-      "persistence": {
-        "count": 4,
-        "missing": [],
-        "paths": [
-          "tests/io/logical/logical_circuit_round_trip_test.cpp",
-          "tests/io/schematic/schematic_round_trip_test.cpp",
-          "tests/io/pcb/pcb_projection_io_test.cpp",
-          "tests/io/parts/part_definition_io_test.cpp"
-        ]
-      },
-      "render": {
-        "count": 4,
-        "missing": [],
-        "paths": [
-          "tests/io/schematic/schematic_svg_writer_test.cpp",
-          "tests/io/pcb/pcb_svg_writer_test.cpp",
-          "examples/stm32_usb_buck/artifacts/stm32_usb_buck.svg",
-          "examples/stm32_usb_buck/artifacts/stm32_usb_buck.pcb.svg"
-        ]
-      },
-      "sanitizer_coverage_platform": {
-        "count": 3,
-        "missing": [],
-        "paths": [
-          "CMakePresets.json",
-          "cmake/VoltCompilerOptions.cmake",
-          ".github/workflows/ci.yml"
-        ]
-      }
-    },
-    "hidden_footprint_injections": {
-      "count": 13,
-      "locations": [
-        {
-          "caller": "PyCircuit::board_component_footprint_pads",
-          "line": 244,
-          "path": "src/python/py_circuit_board.cpp"
-        },
-        {
-          "caller": "PyCircuit::board_add_track_for_route",
-          "line": 300,
-          "path": "src/python/py_circuit_board.cpp"
-        },
-        {
-          "caller": "PyCircuit::board_assisted_connect",
-          "line": 344,
-          "path": "src/python/py_circuit_board.cpp"
-        },
-        {
-          "caller": "PyCircuit::board_escape",
-          "line": 371,
-          "path": "src/python/py_circuit_board.cpp"
-        },
-        {
-          "caller": "PyCircuit::board_resolve_pads",
-          "line": 509,
-          "path": "src/python/py_circuit_board.cpp"
-        },
-        {
-          "caller": "PyCircuit::board_validate",
-          "line": 529,
-          "path": "src/python/py_circuit_board.cpp"
-        },
-        {
-          "caller": "PyCircuit::board_validate_assembly",
-          "line": 535,
-          "path": "src/python/py_circuit_board.cpp"
-        },
-        {
-          "caller": "PyCircuit::board_cpl_json",
-          "line": 542,
-          "path": "src/python/py_circuit_board.cpp"
-        },
-        {
-          "caller": "PyCircuit::board_cpl_csv",
-          "line": 548,
-          "path": "src/python/py_circuit_board.cpp"
-        },
-        {
-          "caller": "PyCircuit::board_to_json",
-          "line": 552,
-          "path": "src/python/py_circuit_board.cpp"
-        },
-        {
-          "caller": "PyCircuit::board_to_svg",
-          "line": 564,
-          "path": "src/python/py_circuit_board.cpp"
-        },
-        {
-          "caller": "PyCircuit::board_to_fabrication_files",
-          "line": 95,
-          "path": "src/python/py_fabrication.cpp"
-        },
-        {
-          "caller": "PyCircuit::board_to_kicad_pcb",
-          "line": 64,
-          "path": "src/python/py_kicad.cpp"
-        }
-      ]
-    },
-    "part_routes": {
-      "builtin_component_routes": {
-        "count": 14,
-        "names": [
-          "define_capacitor",
-          "define_connector_1x01",
-          "define_connector_1x02",
-          "define_connector_1x03",
-          "define_crystal_2pin",
-          "define_diode",
-          "define_inductor",
-          "define_led",
-          "define_op_amp_5pin",
-          "define_polarized_capacitor",
-          "define_regulator_3pin",
-          "define_resistor",
-          "define_switch_spst",
-          "define_test_point"
-        ]
-      },
-      "manual_example_selection_calls": {
-        "count": 11,
-        "locations": [
-          "examples/pcb_led_board/main.py:103",
-          "examples/pcb_led_board/main.py:110",
-          "examples/pcb_led_board/main.py:122",
-          "examples/stm32_usb_buck/stm32_board.py:270",
-          "examples/stm32_usb_buck/stm32_board.py:285",
-          "examples/stm32_usb_buck/stm32_board.py:295",
-          "examples/timer_555_led_blinker/components.py:206",
-          "examples/timer_555_led_blinker/components.py:213",
-          "examples/timer_555_led_blinker/components.py:235",
-          "examples/timer_555_led_blinker/components.py:248",
-          "examples/timer_555_led_blinker/components.py:256"
-        ]
-      },
-      "modern_library_part_tests": {
-        "count": 62,
-        "paths": [
-          "python/tests/test_component_library.py",
-          "tests/io/parts/part_definition_io_test.cpp"
-        ]
-      },
-      "offline_fixtures": {
-        "count": 17,
-        "paths": [
-          "tests/fixtures/ap1117.part.volt.json",
-          "tests/fixtures/example_fab_2layer.voltcap.json",
-          "tests/fixtures/jlcpcb_2layer.voltcap.json",
-          "tests/fixtures/kicad_flat_resistor.kicad_pcb",
-          "tests/fixtures/kicad_flat_resistor.kicad_sch",
-          "tests/fixtures/led.electrical.volt.json",
-          "tests/fixtures/mcu.electrical.volt.json",
-          "tests/fixtures/native_fabrication_control-NPTH.TXT",
-          "tests/fixtures/native_fabrication_control-PTH.TXT",
-          "tests/fixtures/native_fabrication_control.GBL",
-          "tests/fixtures/native_fabrication_control.GBS",
-          "tests/fixtures/native_fabrication_control.GKO",
-          "tests/fixtures/native_fabrication_control.GTL",
-          "tests/fixtures/native_fabrication_control.GTO",
-          "tests/fixtures/native_fabrication_control.GTP",
-          "tests/fixtures/native_fabrication_control.GTS",
-          "tests/fixtures/regulator.electrical.volt.json"
-        ]
-      },
-      "stm32_catalogue_entries": {
-        "count": 17,
-        "path": "python/volt/libraries/stm32_usb_buck.py"
-      }
-    },
-    "public_surfaces": {
-      "caller_strata": {
-        "board": {
-          "core_production": {
-            "count": 492,
-            "files": [
-              "src/pcb/assembly/cpl.cpp",
-              "src/pcb/board.cpp",
-              "src/pcb/copper/board_copper_geometry.cpp",
-              "src/pcb/copper/board_copper_validation.cpp",
-              "src/pcb/copper/board_room_rules.cpp",
-              "src/pcb/footprints/footprints.cpp",
-              "src/pcb/projection/board_geometry_projection.cpp",
-              "src/pcb/queries/board_queries.cpp",
-              "src/pcb/routing/board_router.cpp",
-              "src/pcb/routing/board_spatial_index.cpp",
-              "src/pcb/validation/board_capability_validation.cpp",
-              "src/pcb/validation/board_footprint_drc.cpp",
-              "src/pcb/validation/board_visual_validation.cpp",
-              "src/schematic/endpoint_authoring.cpp",
-              "src/schematic/layout.cpp",
-              "src/schematic/presentation_geometry.cpp",
-              "src/schematic/readability_bounds_validation.cpp",
-              "src/schematic/readability_collision_validation.cpp",
-              "src/schematic/readability_density_validation.cpp",
-              "src/schematic/readability_geometry.cpp",
-              "src/schematic/readability_label_validation.cpp",
-              "src/schematic/readability_validation.cpp",
-              "src/schematic/readability_validation_common.cpp",
-              "src/schematic/readability_wire_validation.cpp",
-              "src/schematic/readiness_validation.cpp",
-              "src/schematic/schematic.cpp",
-              "src/schematic/schematic_document.cpp",
-              "src/schematic/schematic_items_model.cpp",
-              "src/schematic/schematic_library_model.cpp",
-              "src/schematic/schematic_sheet_model.cpp"
-            ],
-            "names": [
-              "add_room",
-              "add_track",
-              "add_via",
-              "capability_profile",
-              "circuit",
-              "design_rules",
-              "get",
-              "layer_stack",
-              "move",
-              "name",
-              "outline",
-              "units"
-            ],
-            "unique_name_count": 12
-          },
-          "io_adapters": {
-            "count": 344,
-            "files": [
-              "src/adapters/kicad/pcb_writer.cpp",
-              "src/adapters/kicad/schematic_writer.cpp",
-              "src/io/assembly/cpl_writer.cpp",
-              "src/io/bom/bom_writer.cpp",
-              "src/io/capabilities/board_capability_profile.cpp",
-              "src/io/logical/logical_circuit_restoration.cpp",
-              "src/io/logical/logical_circuit_writer.cpp",
-              "src/io/parts/part_definition_writer.cpp",
-              "src/io/pcb/pcb_fabrication_writer.cpp",
-              "src/io/pcb/pcb_feature_io.cpp",
-              "src/io/pcb/pcb_feature_svg.cpp",
-              "src/io/pcb/pcb_reader.cpp",
-              "src/io/pcb/pcb_svg_footprints.cpp",
-              "src/io/pcb/pcb_svg_layers.cpp",
-              "src/io/pcb/pcb_svg_writer.cpp",
-              "src/io/pcb/pcb_writer.cpp",
-              "src/io/pcb/pcb_writer_footprints.cpp",
-              "src/io/pcb/pcb_writer_rooms.cpp",
-              "src/io/schematic/detail_schematic_svg_elements.cpp",
-              "src/io/schematic/detail_schematic_svg_layers.cpp",
-              "src/io/schematic/detail_schematic_svg_page_chrome.cpp",
-              "src/io/schematic/schematic_reader.cpp",
-              "src/io/schematic/schematic_svg_writer.cpp",
-              "src/io/schematic/schematic_writer.cpp"
-            ],
-            "names": [
-              "add_feature",
-              "add_keepout",
-              "add_layer",
-              "add_room",
-              "add_text",
-              "add_track",
-              "add_via",
-              "add_zone",
-              "cache_footprint_definition",
-              "capability_profile",
-              "circuit",
-              "design_rules",
-              "get",
-              "layer_stack",
-              "name",
-              "outline",
-              "place_component",
-              "set_capability_profile",
-              "set_design_rules",
-              "set_layer_stack",
-              "set_outline",
-              "units"
-            ],
-            "unique_name_count": 22
-          },
-          "python_binding": {
-            "count": 100,
-            "files": [
-              "src/python/binding_pcb_conversions.hpp",
-              "src/python/bindings.cpp",
-              "src/python/py_circuit_board.cpp",
-              "src/python/py_circuit_board_helpers.hpp",
-              "src/python/py_circuit_logical.cpp",
-              "src/python/py_circuit_modules.cpp",
-              "src/python/py_circuit_schematic.cpp"
-            ],
-            "names": [
-              "add_feature",
-              "add_keepout",
-              "add_layer",
-              "add_room",
-              "add_text",
-              "add_track",
-              "add_via",
-              "add_zone",
-              "cache_footprint_definition",
-              "design_rules",
-              "get",
-              "layer_stack",
-              "name",
-              "outline",
-              "place_component",
-              "set_capability_profile",
-              "set_design_rules",
-              "set_layer_stack",
-              "set_outline"
-            ],
-            "unique_name_count": 19
-          },
-          "tests": {
-            "count": 1494,
-            "files": [
-              "tests/adapters/kicad_pcb_writer_test.cpp",
-              "tests/authoring/component_library_test.cpp",
-              "tests/authoring/connection_helpers_test.cpp",
-              "tests/authoring/reference_designators_test.cpp",
-              "tests/circuit/authoring_test.cpp",
-              "tests/circuit/bom/bom_test.cpp",
-              "tests/circuit/circuit_reads_test.cpp",
-              "tests/circuit/circuit_test.cpp",
-              "tests/circuit/circuit_updates_test.cpp",
-              "tests/circuit/connectivity/component_contract_test.cpp",
-              "tests/circuit/connectivity/connectivity_model_test.cpp",
-              "tests/circuit/connectivity/definitions_test.cpp",
-              "tests/circuit/connectivity/instances_test.cpp",
-              "tests/circuit/connectivity/nets_test.cpp",
-              "tests/circuit/connectivity/queries_test.cpp",
-              "tests/circuit/constraints/net_classes_test.cpp",
-              "tests/circuit/construction_specs_test.cpp",
-              "tests/circuit/electrical/electrical_model_test.cpp",
-              "tests/circuit/hierarchy/hierarchy_model_test.cpp",
-              "tests/circuit/hierarchy/hierarchy_test.cpp",
-              "tests/circuit/intent/design_intent_test.cpp",
-              "tests/circuit/led_circuit_test.cpp",
-              "tests/circuit/parts/parts_test.cpp",
-              "tests/circuit/validation/validation_power_intent_test.cpp",
-              "tests/circuit/validation/validation_test.cpp",
-              "tests/core/electrical_attributes_test.cpp",
-              "tests/core/entity_table_test.cpp",
-              "tests/core/properties_test.cpp",
-              "tests/io/capabilities/board_capability_profile_io_test.cpp",
-              "tests/io/logical/logical_circuit_reader_test.cpp",
-              "tests/io/logical/logical_circuit_round_trip_test.cpp",
-              "tests/io/logical/logical_circuit_writer_test.cpp",
-              "tests/io/pcb/pcb_fabrication_writer_test.cpp",
-              "tests/io/pcb/pcb_projection_io_test.cpp",
-              "tests/io/pcb/pcb_svg_writer_test.cpp",
-              "tests/io/schematic/schematic_reader_test.cpp",
-              "tests/io/schematic/schematic_round_trip_test.cpp",
-              "tests/pcb/assembly/cpl_test.cpp",
-              "tests/pcb/board_queries_test.cpp",
-              "tests/pcb/board_root_cutover_test.cpp",
-              "tests/pcb/board_test.cpp",
-              "tests/pcb/footprints/footprints_test.cpp",
-              "tests/pcb/geometry/board_geometry_projection_test.cpp",
-              "tests/pcb/models/board_models_test.cpp",
-              "tests/pcb/routing/board_escape_router_test.cpp",
-              "tests/pcb/routing/board_router_test.cpp",
-              "tests/pcb/routing/board_spatial_index_test.cpp",
-              "tests/pcb/validation/board_validation_test.cpp",
-              "tests/pcb/validation/erc_drc_real_board_coverage_matrix_test.cpp",
-              "tests/pcb/validation/erc_drc_real_board_edge_cases_test.cpp",
-              "tests/pcb/validation/erc_drc_real_board_regression_helpers.hpp",
-              "tests/pcb/validation/erc_drc_real_board_regression_test.cpp",
-              "tests/schematic/schematic_models_test.cpp",
-              "tests/schematic/schematic_readability_labeling_test.cpp",
-              "tests/schematic/schematic_readability_routing_test.cpp",
-              "tests/schematic/schematic_readability_test.cpp",
-              "tests/schematic/schematic_readiness_test.cpp",
-              "tests/schematic/schematic_test.cpp",
-              "tests/support/semantic_parity_circuit.hpp"
-            ],
-            "names": [
-              "add_feature",
-              "add_keepout",
-              "add_layer",
-              "add_room",
-              "add_text",
-              "add_track",
-              "add_via",
-              "add_zone",
-              "cache_footprint_definition",
-              "capability_profile",
-              "circuit",
-              "design_rules",
-              "get",
-              "layer_stack",
-              "move",
-              "name",
-              "outline",
-              "place_component",
-              "set_capability_profile",
-              "set_design_rules",
-              "set_layer_stack",
-              "set_outline",
-              "units"
-            ],
-            "unique_name_count": 23
-          }
-        },
-        "schematic": {
-          "core_production": {
-            "count": 394,
-            "files": [
-              "src/pcb/assembly/cpl.cpp",
-              "src/pcb/board.cpp",
-              "src/pcb/copper/board_copper_geometry.cpp",
-              "src/pcb/copper/board_copper_validation.cpp",
-              "src/pcb/copper/board_room_rules.cpp",
-              "src/pcb/projection/board_geometry_projection.cpp",
-              "src/pcb/queries/board_queries.cpp",
-              "src/pcb/routing/board_router.cpp",
-              "src/pcb/routing/board_spatial_index.cpp",
-              "src/pcb/validation/board_capability_validation.cpp",
-              "src/pcb/validation/board_footprint_drc.cpp",
-              "src/pcb/validation/board_visual_validation.cpp",
-              "src/schematic/endpoint_authoring.cpp",
-              "src/schematic/layout.cpp",
-              "src/schematic/presentation_geometry.cpp",
-              "src/schematic/readability_collision_validation.cpp",
-              "src/schematic/readability_density_validation.cpp",
-              "src/schematic/readability_geometry.cpp",
-              "src/schematic/readability_label_validation.cpp",
-              "src/schematic/readability_validation.cpp",
-              "src/schematic/readability_validation_common.cpp",
-              "src/schematic/readability_wire_validation.cpp",
-              "src/schematic/readiness_validation.cpp",
-              "src/schematic/schematic.cpp",
-              "src/schematic/schematic_document.cpp",
-              "src/schematic/schematic_items_model.cpp",
-              "src/schematic/schematic_library_model.cpp",
-              "src/schematic/schematic_sheet_model.cpp"
-            ],
-            "names": [
-              "add_junction",
-              "add_net_label",
-              "add_no_connect_marker",
-              "add_power_port",
-              "add_sheet",
-              "add_sheet_port",
-              "add_sheet_region",
-              "add_symbol_definition",
-              "add_symbol_field",
-              "add_wire_run",
-              "circuit",
-              "get",
-              "move"
-            ],
-            "unique_name_count": 13
-          },
-          "io_adapters": {
-            "count": 235,
-            "files": [
-              "src/adapters/kicad/pcb_writer.cpp",
-              "src/adapters/kicad/schematic_writer.cpp",
-              "src/io/bom/bom_writer.cpp",
-              "src/io/logical/logical_circuit_restoration.cpp",
-              "src/io/logical/logical_circuit_writer.cpp",
-              "src/io/pcb/pcb_fabrication_writer.cpp",
-              "src/io/pcb/pcb_feature_io.cpp",
-              "src/io/pcb/pcb_feature_svg.cpp",
-              "src/io/pcb/pcb_reader.cpp",
-              "src/io/pcb/pcb_svg_footprints.cpp",
-              "src/io/pcb/pcb_svg_layers.cpp",
-              "src/io/pcb/pcb_svg_writer.cpp",
-              "src/io/pcb/pcb_writer.cpp",
-              "src/io/pcb/pcb_writer_rooms.cpp",
-              "src/io/schematic/detail_schematic_svg_elements.cpp",
-              "src/io/schematic/detail_schematic_svg_layers.cpp",
-              "src/io/schematic/schematic_reader.cpp",
-              "src/io/schematic/schematic_svg_writer.cpp",
-              "src/io/schematic/schematic_writer.cpp"
-            ],
-            "names": [
-              "add_junction",
-              "add_net_label",
-              "add_no_connect_marker",
-              "add_power_port",
-              "add_sheet",
-              "add_sheet_port",
-              "add_sheet_region",
-              "add_symbol_definition",
-              "add_symbol_field",
-              "add_wire_run",
-              "circuit",
-              "get",
-              "place_symbol"
-            ],
-            "unique_name_count": 13
-          },
-          "python_binding": {
-            "count": 72,
-            "files": [
-              "src/python/bindings.cpp",
-              "src/python/py_circuit_board.cpp",
-              "src/python/py_circuit_board_helpers.hpp",
-              "src/python/py_circuit_logical.cpp",
-              "src/python/py_circuit_modules.cpp",
-              "src/python/py_circuit_schematic.cpp"
-            ],
-            "names": [
-              "add_junction",
-              "add_net_label",
-              "add_no_connect_marker",
-              "add_power_port",
-              "add_sheet",
-              "add_sheet_port",
-              "add_sheet_region",
-              "add_symbol_definition",
-              "add_symbol_field",
-              "add_wire_run",
-              "get",
-              "place_symbol"
-            ],
-            "unique_name_count": 12
-          },
-          "tests": {
-            "count": 1025,
-            "files": [
-              "tests/adapters/kicad_pcb_writer_test.cpp",
-              "tests/adapters/kicad_schematic_writer_test.cpp",
-              "tests/authoring/component_library_test.cpp",
-              "tests/authoring/connection_helpers_test.cpp",
-              "tests/authoring/reference_designators_test.cpp",
-              "tests/circuit/authoring_test.cpp",
-              "tests/circuit/bom/bom_test.cpp",
-              "tests/circuit/circuit_reads_test.cpp",
-              "tests/circuit/circuit_test.cpp",
-              "tests/circuit/circuit_updates_test.cpp",
-              "tests/circuit/connectivity/component_contract_test.cpp",
-              "tests/circuit/connectivity/connectivity_model_test.cpp",
-              "tests/circuit/connectivity/definitions_test.cpp",
-              "tests/circuit/connectivity/instances_test.cpp",
-              "tests/circuit/connectivity/queries_test.cpp",
-              "tests/circuit/constraints/net_classes_test.cpp",
-              "tests/circuit/construction_specs_test.cpp",
-              "tests/circuit/electrical/electrical_model_test.cpp",
-              "tests/circuit/hierarchy/hierarchy_model_test.cpp",
-              "tests/circuit/hierarchy/hierarchy_test.cpp",
-              "tests/circuit/intent/design_intent_test.cpp",
-              "tests/circuit/led_circuit_test.cpp",
-              "tests/circuit/parts/parts_test.cpp",
-              "tests/circuit/validation/validation_power_intent_test.cpp",
-              "tests/circuit/validation/validation_test.cpp",
-              "tests/core/electrical_attributes_test.cpp",
-              "tests/core/entity_table_test.cpp",
-              "tests/core/properties_test.cpp",
-              "tests/io/logical/logical_circuit_reader_test.cpp",
-              "tests/io/logical/logical_circuit_round_trip_test.cpp",
-              "tests/io/logical/logical_circuit_writer_test.cpp",
-              "tests/io/pcb/pcb_fabrication_writer_test.cpp",
-              "tests/io/pcb/pcb_projection_io_test.cpp",
-              "tests/io/pcb/pcb_svg_writer_test.cpp",
-              "tests/io/schematic/schematic_reader_test.cpp",
-              "tests/io/schematic/schematic_round_trip_test.cpp",
-              "tests/io/schematic/schematic_svg_writer_test.cpp",
-              "tests/io/schematic/schematic_writer_test.cpp",
-              "tests/pcb/assembly/cpl_test.cpp",
-              "tests/pcb/board_queries_test.cpp",
-              "tests/pcb/board_root_cutover_test.cpp",
-              "tests/pcb/board_test.cpp",
-              "tests/pcb/models/board_models_test.cpp",
-              "tests/pcb/routing/board_escape_router_test.cpp",
-              "tests/pcb/routing/board_router_test.cpp",
-              "tests/pcb/validation/board_validation_test.cpp",
-              "tests/pcb/validation/erc_drc_real_board_coverage_matrix_test.cpp",
-              "tests/pcb/validation/erc_drc_real_board_regression_helpers.hpp",
-              "tests/schematic/schematic_geometry_test.cpp",
-              "tests/schematic/schematic_models_test.cpp",
-              "tests/schematic/schematic_readability_labeling_test.cpp",
-              "tests/schematic/schematic_readability_routing_test.cpp",
-              "tests/schematic/schematic_readability_test.cpp",
-              "tests/schematic/schematic_readiness_test.cpp",
-              "tests/schematic/schematic_test.cpp",
-              "tests/support/semantic_parity_circuit.hpp"
-            ],
-            "names": [
-              "add_junction",
-              "add_net_label",
-              "add_no_connect_marker",
-              "add_power_port",
-              "add_sheet",
-              "add_sheet_port",
-              "add_sheet_region",
-              "add_symbol_definition",
-              "add_symbol_field",
-              "add_wire_run",
-              "circuit",
-              "get",
-              "move",
-              "place_symbol"
-            ],
-            "unique_name_count": 14
-          }
-        }
-      },
-      "py_circuit_binding": {
-        "module_function_count": 13,
-        "module_functions": [
-          "_raise_cross_reference_error",
-          "assembly_diagnostic_codes",
-          "bom_diagnostic_codes",
-          "content_hash",
-          "diagnostic_categories",
-          "drc_diagnostic_codes",
-          "erc_diagnostic_codes",
-          "normalize_capability_profile",
-          "part_definition_artifact",
-          "part_lineup_diagnostic_codes",
-          "pcb_fabrication_diagnostic_codes",
-          "pcb_visual_diagnostic_codes",
-          "read_capability_profile_text"
-        ],
-        "registered_method_count": 133,
-        "registered_methods_by_group": {
-          "board": {
-            "count": 37,
-            "names": [
-              "board",
-              "board_add_circle",
-              "board_add_cutout",
-              "board_add_hole",
-              "board_add_keepout",
-              "board_add_layer",
-              "board_add_room",
-              "board_add_slot",
-              "board_add_text",
-              "board_add_track",
-              "board_add_track_for_route",
-              "board_add_via",
-              "board_add_zone",
-              "board_assisted_connect",
-              "board_cache_footprint_definition",
-              "board_component_footprint_pads",
-              "board_cpl_csv",
-              "board_cpl_json",
-              "board_design_rules",
-              "board_escape",
-              "board_outline_vertices",
-              "board_place_component",
-              "board_placement_refs",
-              "board_resolve_pads",
-              "board_set_capability_profile",
-              "board_set_design_rules",
-              "board_set_layer_stack",
-              "board_set_polygon_outline",
-              "board_set_rectangular_outline",
-              "board_stackup",
-              "board_to_fabrication_files",
-              "board_to_json",
-              "board_to_kicad_pcb",
-              "board_to_svg",
-              "board_track_net",
-              "board_validate",
-              "board_validate_assembly"
-            ]
-          },
-          "logical": {
-            "count": 44,
-            "names": [
-              "add_net",
-              "add_net_class",
-              "assign_net_class",
-              "component_reference",
-              "component_refs",
-              "component_schematic_symbol",
-              "component_selected_part_model_3d",
-              "connect",
-              "connect_endpoints",
-              "define_capacitor",
-              "define_component",
-              "define_connector_1x01",
-              "define_connector_1x02",
-              "define_connector_1x03",
-              "define_crystal_2pin",
-              "define_diode",
-              "define_inductor",
-              "define_led",
-              "define_op_amp_5pin",
-              "define_polarized_capacitor",
-              "define_regulator_3pin",
-              "define_resistor",
-              "define_switch_spst",
-              "define_test_point",
-              "instantiate_auto",
-              "instantiate_ref",
-              "mark_intentional_no_connect_pin",
-              "mark_intentional_stub_net",
-              "net_class_info",
-              "net_of",
-              "net_pins",
-              "net_refs",
-              "pin_by_name",
-              "pin_by_number",
-              "pin_component",
-              "pin_refs",
-              "select_generic_physical_part",
-              "select_physical_part",
-              "set_component_dnp",
-              "set_component_percent_tolerance",
-              "set_component_quantity",
-              "set_component_selection_override",
-              "set_net_quantity",
-              "set_selected_part_quantity"
-            ]
-          },
-          "module": {
-            "count": 18,
-            "names": [
-              "add_module_component",
-              "add_module_port",
-              "add_template_net",
-              "bind_port",
-              "concrete_component_for",
-              "connect_module_pins",
-              "define_module",
-              "instantiate_root_module",
-              "module_component_origins",
-              "module_component_pin_by_name",
-              "module_component_pin_by_number",
-              "module_component_pin_refs",
-              "module_components",
-              "module_connections",
-              "module_net_origins",
-              "module_ports",
-              "port_bindings",
-              "template_nets"
-            ]
-          },
-          "schematic": {
-            "count": 25,
-            "names": [
-              "add_schematic_junction",
-              "add_schematic_junction_for_endpoint",
-              "add_schematic_net_label",
-              "add_schematic_net_label_for_endpoint",
-              "add_schematic_no_connect_marker",
-              "add_schematic_sheet_port",
-              "add_schematic_sheet_port_for_endpoint",
-              "add_schematic_symbol_field",
-              "add_schematic_terminal_marker",
-              "add_schematic_terminal_marker_for_endpoint",
-              "add_schematic_wire",
-              "add_schematic_wire_for_endpoints",
-              "load_schematic_json",
-              "place_schematic_symbol",
-              "register_schematic_symbol",
-              "schematic_region",
-              "schematic_sheet",
-              "schematic_sheet_names",
-              "schematic_svg_pages",
-              "schematic_symbol_orientation",
-              "schematic_symbol_pin_anchor",
-              "schematic_symbol_pin_refs",
-              "schematic_to_body_svg",
-              "schematic_to_json",
-              "schematic_to_svg"
-            ]
-          },
-          "serializer": {
-            "count": 1,
-            "names": [
-              "to_json"
-            ]
-          },
-          "validation_bom": {
-            "count": 8,
-            "names": [
-              "bom_csv",
-              "bom_json",
-              "bom_sourcing_snapshot_json",
-              "validate",
-              "validate_bom_readiness",
-              "validate_for_pcb",
-              "validate_schematic",
-              "validate_schematic_readability"
-            ]
-          }
-        }
-      },
-      "python_private_circuit_calls": {
-        "count": 125,
-        "files": [
-          "python/volt/_schematic_handles.py",
-          "python/volt/design.py",
-          "python/volt/logical.py",
-          "python/volt/pcb.py",
-          "python/volt/schematic.py"
-        ],
-        "names": [
-          "add_module_component",
-          "add_module_port",
-          "add_net",
-          "add_net_class",
-          "add_schematic_junction_for_endpoint",
-          "add_schematic_net_label_for_endpoint",
-          "add_schematic_no_connect_marker",
-          "add_schematic_sheet_port_for_endpoint",
-          "add_schematic_symbol_field",
-          "add_schematic_terminal_marker_for_endpoint",
-          "add_schematic_wire_for_endpoints",
-          "add_template_net",
-          "assign_net_class",
-          "board",
-          "board_add_circle",
-          "board_add_cutout",
-          "board_add_hole",
-          "board_add_keepout",
-          "board_add_layer",
-          "board_add_room",
-          "board_add_slot",
-          "board_add_text",
-          "board_add_track",
-          "board_add_track_for_route",
-          "board_add_via",
-          "board_add_zone",
-          "board_assisted_connect",
-          "board_cache_footprint_definition",
-          "board_component_footprint_pads",
-          "board_cpl_csv",
-          "board_cpl_json",
-          "board_design_rules",
-          "board_escape",
-          "board_outline_vertices",
-          "board_place_component",
-          "board_placement_refs",
-          "board_resolve_pads",
-          "board_set_capability_profile",
-          "board_set_design_rules",
-          "board_set_layer_stack",
-          "board_set_polygon_outline",
-          "board_set_rectangular_outline",
-          "board_stackup",
-          "board_to_fabrication_files",
-          "board_to_json",
-          "board_to_kicad_pcb",
-          "board_to_svg",
-          "board_track_net",
-          "board_validate",
-          "board_validate_assembly",
-          "bom_csv",
-          "bom_json",
-          "bom_sourcing_snapshot_json",
-          "component_reference",
-          "component_refs",
-          "component_schematic_symbol",
-          "component_selected_part_model_3d",
-          "concrete_component_for",
-          "connect_endpoints",
-          "connect_module_pins",
-          "define_component",
-          "define_module",
-          "instantiate_auto",
-          "instantiate_ref",
-          "instantiate_root_module",
-          "load_schematic_json",
-          "mark_intentional_no_connect_pin",
-          "mark_intentional_stub_net",
-          "module_component_origins",
-          "module_component_pin_by_number",
-          "module_component_pin_refs",
-          "module_components",
-          "module_connections",
-          "module_net_origins",
-          "module_ports",
-          "net_class_info",
-          "net_pins",
-          "net_refs",
-          "pin_by_number",
-          "pin_component",
-          "pin_refs",
-          "place_schematic_symbol",
-          "port_bindings",
-          "register_schematic_symbol",
-          "schematic_region",
-          "schematic_sheet",
-          "schematic_sheet_names",
-          "schematic_svg_pages",
-          "schematic_symbol_orientation",
-          "schematic_symbol_pin_anchor",
-          "schematic_symbol_pin_refs",
-          "schematic_to_body_svg",
-          "schematic_to_json",
-          "schematic_to_svg",
-          "select_generic_physical_part",
-          "select_physical_part",
-          "set_component_dnp",
-          "set_component_percent_tolerance",
-          "set_component_quantity",
-          "set_component_selection_override",
-          "set_net_quantity",
-          "set_selected_part_quantity",
-          "template_nets",
-          "to_json",
-          "validate",
-          "validate_bom_readiness",
-          "validate_for_pcb",
-          "validate_schematic",
-          "validate_schematic_readability"
-        ],
-        "unique_name_count": 109
-      },
-      "snapshots": {
-        "Board": {
-          "declaration_count": 27,
-          "include_count": 18,
-          "path": "tests/architecture/board_public_api.txt",
-          "sha256": "0fae049e396e4d7c0a738b3c58344fa94d0582bae4a2b909dd1f64a458f67f5d",
-          "unique_callable_names": [
-            "Board",
-            "add_feature",
-            "add_keepout",
-            "add_layer",
-            "add_room",
-            "add_text",
-            "add_track",
-            "add_via",
-            "add_zone",
-            "all",
-            "cache_footprint_definition",
-            "capability_profile",
-            "circuit",
-            "design_rules",
-            "get",
-            "layer_stack",
-            "move",
-            "name",
-            "outline",
-            "place_component",
-            "set_capability_profile",
-            "set_design_rules",
-            "set_layer_stack",
-            "set_outline",
-            "units"
-          ]
-        },
-        "BoardRouter": {
-          "declaration_count": 5,
-          "include_count": 9,
-          "path": "tests/architecture/boardrouter_public_api.txt",
-          "sha256": "3c07e3dad4170d33f5fe1f651f125568f08b80af4dcae31a2b4f9794e3c31c71",
-          "unique_callable_names": [
-            "BoardRouter",
-            "add_track",
-            "connect",
-            "escape",
-            "resolve_parameters"
-          ]
-        },
-        "BoardSpatialIndex": {
-          "declaration_count": 14,
-          "include_count": 9,
-          "path": "tests/architecture/boardspatialindex_public_api.txt",
-          "sha256": "0db71cdbe8e46f6de80d7153cea46b8ea479b985f8ae38a7a0399bd2c254dd55",
-          "unique_callable_names": [
-            "BoardSpatialIndex",
-            "candidate_obstacles",
-            "conservative_clearance_mm",
-            "copper_clearance_candidates",
-            "insert",
-            "operator=",
-            "query_legality",
-            "~BoardSpatialIndex"
-          ]
-        },
-        "Circuit": {
-          "declaration_count": 16,
-          "include_count": 22,
-          "path": "tests/architecture/circuit_public_api.txt",
-          "sha256": "42f7cf425d3c399ccebbd73f08502d5cb6a43472ff30c4399b7bb778962c74c0",
-          "unique_callable_names": [
-            "add_net",
-            "all",
-            "bind_port",
-            "connect",
-            "define_component",
-            "define_module",
-            "define_net_class",
-            "disconnect",
-            "get",
-            "instantiate_component",
-            "instantiate_module",
-            "mark_no_connect",
-            "net_of",
-            "update"
-          ]
-        },
-        "Schematic": {
-          "declaration_count": 18,
-          "include_count": 16,
-          "path": "tests/architecture/schematic_public_api.txt",
-          "sha256": "bee5ec5b807dc55b351abaf7807c8e29d9a64025927fda62f358b483f0c7b516",
-          "unique_callable_names": [
-            "Schematic",
-            "add_junction",
-            "add_net_label",
-            "add_no_connect_marker",
-            "add_power_port",
-            "add_sheet",
-            "add_sheet_port",
-            "add_sheet_region",
-            "add_symbol_definition",
-            "add_symbol_field",
-            "add_wire_run",
-            "all",
-            "circuit",
-            "get",
-            "move",
-            "place_symbol"
-          ]
-        }
-      }
-    },
-    "python_surface": {
+    "offline_fixtures": [
+      "tests/fixtures/ap1117.part.volt.json",
+      "tests/fixtures/example_fab_2layer.voltcap.json",
+      "tests/fixtures/jlcpcb_2layer.voltcap.json",
+      "tests/fixtures/kicad_flat_resistor.kicad_pcb",
+      "tests/fixtures/kicad_flat_resistor.kicad_sch",
+      "tests/fixtures/led.electrical.volt.json",
+      "tests/fixtures/mcu.electrical.volt.json",
+      "tests/fixtures/native_fabrication_control-NPTH.TXT",
+      "tests/fixtures/native_fabrication_control-PTH.TXT",
+      "tests/fixtures/native_fabrication_control.GBL",
+      "tests/fixtures/native_fabrication_control.GBS",
+      "tests/fixtures/native_fabrication_control.GKO",
+      "tests/fixtures/native_fabrication_control.GTL",
+      "tests/fixtures/native_fabrication_control.GTO",
+      "tests/fixtures/native_fabrication_control.GTP",
+      "tests/fixtures/native_fabrication_control.GTS",
+      "tests/fixtures/regulator.electrical.volt.json"
+    ],
+    "ownership": {
       "design_owner_attributes": [
         "_board_cached_footprints",
         "_board_placed_components",
@@ -1733,7 +512,108 @@
         "_sourcing_snapshot",
         "name"
       ],
-      "exceptions": {
+      "hidden_footprint_injections": [
+        {
+          "caller": "PyCircuit::board_component_footprint_pads",
+          "path": "src/python/py_circuit_board.cpp"
+        },
+        {
+          "caller": "PyCircuit::board_add_track_for_route",
+          "path": "src/python/py_circuit_board.cpp"
+        },
+        {
+          "caller": "PyCircuit::board_assisted_connect",
+          "path": "src/python/py_circuit_board.cpp"
+        },
+        {
+          "caller": "PyCircuit::board_escape",
+          "path": "src/python/py_circuit_board.cpp"
+        },
+        {
+          "caller": "PyCircuit::board_resolve_pads",
+          "path": "src/python/py_circuit_board.cpp"
+        },
+        {
+          "caller": "PyCircuit::board_validate",
+          "path": "src/python/py_circuit_board.cpp"
+        },
+        {
+          "caller": "PyCircuit::board_validate_assembly",
+          "path": "src/python/py_circuit_board.cpp"
+        },
+        {
+          "caller": "PyCircuit::board_cpl_json",
+          "path": "src/python/py_circuit_board.cpp"
+        },
+        {
+          "caller": "PyCircuit::board_cpl_csv",
+          "path": "src/python/py_circuit_board.cpp"
+        },
+        {
+          "caller": "PyCircuit::board_to_json",
+          "path": "src/python/py_circuit_board.cpp"
+        },
+        {
+          "caller": "PyCircuit::board_to_svg",
+          "path": "src/python/py_circuit_board.cpp"
+        },
+        {
+          "caller": "PyCircuit::board_to_fabrication_files",
+          "path": "src/python/py_fabrication.cpp"
+        },
+        {
+          "caller": "PyCircuit::board_to_kicad_pcb",
+          "path": "src/python/py_kicad.cpp"
+        }
+      ],
+      "lifetime_evidence": [
+        "src/python/py_circuit.hpp: Circuit + SchematicDocument + optional Board live in one bound owner",
+        "tests/architecture/circuit_public_api.txt: deleted rvalue all() overload freezes borrowed range lifetime",
+        "tests/architecture/board_public_api.txt: deleted rvalue Board(Circuit&&) constructor freezes Circuit borrow lifetime",
+        "tests/architecture/schematic_public_api.txt: deleted rvalue Schematic(Circuit&&) constructor freezes Circuit borrow lifetime"
+      ],
+      "py_circuit_private_members": [
+        "board_projection",
+        "circuit",
+        "module_drafts",
+        "next_module_component_handle",
+        "next_port_handle",
+        "next_template_net_handle",
+        "schematic_document"
+      ]
+    },
+    "public_contracts": {
+      "cpp_api_snapshots": {
+        "Board": {
+          "path": "tests/architecture/board_public_api.txt",
+          "sha256": "9714b17af646a0459edd1a4cb5104565d47e626962374878da57d8ad7357b603"
+        },
+        "BoardRouter": {
+          "path": "tests/architecture/boardrouter_public_api.txt",
+          "sha256": "8cbbf02ce4faebc669d205e03893128cc83e8c8c86e2c81adde85dba506573c0"
+        },
+        "BoardSpatialIndex": {
+          "path": "tests/architecture/boardspatialindex_public_api.txt",
+          "sha256": "4eb63c38d59903082003a20e2d620deba24bd63966624891cdde9d8e13268042"
+        },
+        "Circuit": {
+          "path": "tests/architecture/circuit_public_api.txt",
+          "sha256": "96aeaa53088eb23523245ebe245edff05b3f59d592be8c97dfd8269c965b3dbd"
+        },
+        "ComponentAssemblyIntent": {
+          "path": "tests/architecture/component_assembly_intent_public_api.txt",
+          "sha256": "cef5ae3a7d6402644434cb197cd28b4e131d6634d4ee00a9fff2381619236d4a"
+        },
+        "NetClass": {
+          "path": "tests/architecture/net_class_public_api.txt",
+          "sha256": "6c6efcf9b5a922b39ce83fec9e7097c6aa24a979a27bb2fca5528c629f3e6f64"
+        },
+        "Schematic": {
+          "path": "tests/architecture/schematic_public_api.txt",
+          "sha256": "64c32bfa9154735ceb0006533f911b3d11caee04b1e0814a76c8bb7262a8351c"
+        }
+      },
+      "python_exceptions": {
         "entity_metadata_keys": [
           "index",
           "kind"
@@ -1751,8 +631,7 @@
           "entity"
         ]
       },
-      "export_count": 113,
-      "exports": [
+      "python_exports": [
         "ASSEMBLY_DIAGNOSTIC_CODES",
         "BOM_DIAGNOSTIC_CODES",
         "Board",
@@ -1866,35 +745,9 @@
         "Text",
         "UnknownEntityError",
         "VoltError"
-      ],
-      "lifetime_sensitive_paths": [
-        "src/python/py_circuit.hpp: Circuit + SchematicDocument + optional Board live in one bound owner",
-        "tests/architecture/circuit_public_api.txt: deleted rvalue all() overload freezes borrowed range lifetime",
-        "tests/architecture/board_public_api.txt: deleted rvalue Board(Circuit&&) constructor freezes Circuit borrow lifetime",
-        "tests/architecture/schematic_public_api.txt: deleted rvalue Schematic(Circuit&&) constructor freezes Circuit borrow lifetime"
-      ],
-      "py_circuit_private_members": [
-        "board_projection",
-        "circuit",
-        "module_drafts",
-        "next_module_component_handle",
-        "next_port_handle",
-        "next_template_net_handle",
-        "schematic_document"
-      ],
-      "selector_helpers": [
-        "_write_part_model_3d_artifacts",
-        "_write_schematic_page_artifacts",
-        "diagnostics",
-        "expected_diagnostics",
-        "expected_diagnostics_ok",
-        "expected_project_diagnostics",
-        "missing_expected_diagnostics",
-        "unexpected_diagnostics",
-        "write",
-        "write_artifacts",
-        "write_manufacturing_package"
       ]
     }
-  }
+  },
+  "purpose": "Compact review evidence for issue #328. A baseline delta requires review; the checked-in evidence does not approve the change.",
+  "schema_version": 2
 }

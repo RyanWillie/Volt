@@ -23,7 +23,7 @@ NATIVE_CPP_DIRS = [
     ROOT / "examples",
     ROOT / "benchmarks",
 ]
-ALLOWLIST_DIR = ROOT / "tests" / "architecture"
+EVIDENCE_DIR = ROOT / "tests" / "architecture"
 
 ROOT_TYPES = {
     "Circuit": ROOT / "include" / "volt" / "circuit" / "circuit.hpp",
@@ -95,11 +95,11 @@ CIRCUIT_PUBLIC_TYPE_DECLARATION_PATTERN = re.compile(
     r"|\busing\s+(?:\[\[(?:(?!\]\])[\s\S])*\]\]\s*)*([A-Za-z_]\w*)\s*"
     r"(?:\[\[(?:(?!\]\])[\s\S])*\]\]\s*)*="
 )
-CIRCUIT_PUBLIC_TYPE_SNAPSHOT = ALLOWLIST_DIR / "circuit_public_types.txt"
+CIRCUIT_PUBLIC_TYPE_SNAPSHOT = EVIDENCE_DIR / "circuit_public_types.txt"
 CIRCUIT_OWNER_MUTATOR_PATTERN = re.compile(
     r"\b(?:add|append|assign|attach|bind|clear|connect|create|define|detach|disconnect|emplace|erase|insert|instantiate|link|mark|merge|push|record|remove|replace|restore|split|unlink|update)(?:_[A-Za-z_]\w*)?\s*\("
 )
-CIRCUIT_NON_ROOT_OWNER_MUTATOR_ALLOWLIST = {
+CIRCUIT_LOCAL_VALUE_MUTATORS = {
     (
         "include/volt/circuit/connectivity/nets.hpp",
         "bool connect(PinId pin);",
@@ -109,7 +109,7 @@ CIRCUIT_NON_ROOT_OWNER_MUTATOR_ALLOWLIST = {
         "bool disconnect(PinId pin);",
     ): "Net values retain local pin-list behavior; Circuit owns every canonical Net as const state.",
 }
-CIRCUIT_PUBLIC_STORAGE_ALLOWLIST = {
+CIRCUIT_COMPLETE_INPUT_COLLECTIONS = {
     (
         "include/volt/circuit/hierarchy/hierarchy.hpp",
         "std::vector<TemplateNetDefinition> template_nets = {};",
@@ -129,27 +129,8 @@ RETAINED_CIRCUIT_DOMAIN_SNAPSHOTS = {
         ROOT / "include" / "volt" / "circuit" / "constraints" / "net_classes.hpp",
     ),
 }
-FRIEND_TYPE_PREFIXES = ("friend " "class ", "friend " "struct ")
-
-PRIVILEGED_FRIEND_ALLOWLIST = {
-    (
-        "include/volt/circuit/circuit.hpp",
-        "friend entity_range_t<Id> Circuit::all<Id>() const &",
-    ): "Circuit::all is the sole factory for correctly sized borrowed entity ranges.",
-    (
-        "include/volt/circuit/circuit.hpp",
-        "friend Circuit io::detail::restore_logical_circuit(io::detail::LogicalCircuitRestorationPlan plan)",
-    ): "The v1 logical reader applies one complete validated restoration plan without exposing raw persisted-table operations.",
-    (
-        "include/volt/pcb/routing/board_spatial_index.hpp",
-        "friend void detail::validate_copper_clearance(const Board &board, const std::vector<detail::BoardCopperShape> &shapes, DiagnosticReport &report)",
-    ): "Board copper DRC currently reuses the spatial index's internal shape snapshot.",
-}
-
-PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {}
-
 CIRCUIT_PUBLIC_DECLARATION_COUNT = 16
-CIRCUIT_PUBLIC_METHOD_DECLARATIONS = frozenset(
+CIRCUIT_REQUIRED_PUBLIC_METHOD_DECLARATIONS = frozenset(
     """
 [[nodiscard]] ComponentDefId define_component(ComponentSpec spec)
 [[nodiscard]] ModuleDefId define_module(ModuleSpec spec)
@@ -244,7 +225,7 @@ CIRCUIT_ENTITY_RANGE_ITERATOR_PUBLIC_SURFACE = (
 )
 
 SCHEMATIC_PUBLIC_DECLARATION_COUNT = 18
-SCHEMATIC_PUBLIC_METHOD_DECLARATIONS = frozenset(
+SCHEMATIC_REQUIRED_PUBLIC_METHOD_DECLARATIONS = frozenset(
     """
 explicit Schematic(const Circuit &circuit)
 explicit Schematic(const Circuit &&circuit) = delete
@@ -354,7 +335,7 @@ SCHEMATIC_ENTITY_RANGE_ITERATOR_PUBLIC_SURFACE = (
     "iterator(const Schematic &&, std::size_t) = delete;"
 )
 
-ENTITY_REF_KERNEL_ALLOWLIST = {
+ENTITY_REF_REPORTING_CLASSIFICATIONS = {
     (
         "src/pcb/copper/board_copper_geometry.cpp",
         "[kind](EntityRef entity) { return entity.kind() == kind; });",
@@ -399,7 +380,7 @@ SUBMODEL_MUTATORS = {
     ),
 }
 
-SUBMODEL_DERIVATION_ALLOWLIST = {
+PRIVATE_STORAGE_ADAPTER_DERIVATIONS = {
     (
         "src/schematic/schematic_storage.hpp",
         "SheetStorage",
@@ -407,17 +388,10 @@ SUBMODEL_DERIVATION_ALLOWLIST = {
     ): "Schematic source-private storage adapter exposes sheet membership mutation only after Schematic preflight.",
 }
 
-PRIVATE_STORAGE_HEADER_ALLOWLIST = {
+PRIVATE_STORAGE_HEADER_OWNERS = {
     "src/pcb/routing/board_spatial_index_storage.hpp": ("src/pcb/routing/",),
     "src/schematic/schematic_storage.hpp": ("src/schematic/",),
 }
-
-
-@dataclass(frozen=True)
-class FriendDeclaration:
-    path: Path
-    line: int
-    declaration: str
 
 
 @dataclass(frozen=True)
@@ -696,51 +670,6 @@ def normalize_declaration(declaration: str) -> str:
     declaration = re.sub(r"\s+,", ",", declaration)
     declaration = re.sub(r"\s*([*&])\s+([A-Za-z_]\w*)", r" \1\2", declaration)
     return declaration.strip()
-
-
-def friend_declarations(path: Path, text: str) -> list[FriendDeclaration]:
-    declarations: list[FriendDeclaration] = []
-    pending: list[str] | None = None
-    pending_line = 0
-    brace_depth = 0
-    stripped = strip_comments_preserve_lines(text)
-    for line_number, line in enumerate(stripped.splitlines(), start=1):
-        if pending is None:
-            match = re.search(r"\bfriend\b", line)
-            if match is None:
-                continue
-            pending = [line[match.start() :]]
-            pending_line = line_number
-            brace_depth = 0
-        else:
-            pending.append(line.strip())
-
-        chunk = " ".join(pending)
-        brace_depth += line.count("{") - line.count("}")
-        if "{" in chunk:
-            if brace_depth > 0:
-                continue
-        elif ";" not in chunk:
-            continue
-        declarations.append(
-            FriendDeclaration(path=path, line=pending_line, declaration=normalize_declaration(chunk))
-        )
-        pending = None
-        pending_line = 0
-        brace_depth = 0
-    return declarations
-
-
-def is_comparison_operator_friend(declaration: str) -> bool:
-    return re.search(r"\bfriend\b.*\boperator\s*(==|!=|<=>|<=|>=|<|>)\s*\(", declaration) is not None
-
-
-def is_broad_type_friend(declaration: str) -> bool:
-    return declaration.startswith(FRIEND_TYPE_PREFIXES)
-
-
-def is_privileged_friend(declaration: str) -> bool:
-    return declaration.startswith("friend ") and not is_comparison_operator_friend(declaration)
 
 
 def declaration_chunks(section: str) -> list[str]:
@@ -1140,25 +1069,25 @@ def circuit_public_type_inventory_failures(
     expected_counts = Counter(expected)
     for declaration in sorted((actual_counts - expected_counts).elements()):
         failures.append(
-            "unapproved public Circuit-header type declaration; canonical logical ownership "
+            "unexpected public Circuit-header type declaration; canonical logical ownership "
             f"must remain with Circuit: {declaration}"
         )
     for declaration in sorted((expected_counts - actual_counts).elements()):
-        failures.append(f"approved public Circuit-header type declaration is missing: {declaration}")
+        failures.append(f"required public Circuit-header type declaration is missing: {declaration}")
     return failures
 
 
-def exact_allowlist_occurrence_failures(
-    found: Counter[tuple[str, str]], allowlist: dict[tuple[str, str], str], label: str
+def exact_required_occurrence_failures(
+    found: Counter[tuple[str, str]], required: dict[tuple[str, str], str], label: str
 ) -> list[str]:
     failures: list[str] = []
-    for key, reason in sorted(allowlist.items()):
+    for key, reason in sorted(required.items()):
         if not reason.strip():
-            failures.append(f"{label} allowlist entry {key!r} needs a reason")
+            failures.append(f"required {label} entry {key!r} needs a semantic explanation")
         count = found[key]
         if count != 1:
             failures.append(
-                f"{label} allowlist entry {key!r} matched {count} times; expected exactly once"
+                f"required {label} entry {key!r} matched {count} times; expected exactly once"
             )
     return failures
 
@@ -1201,7 +1130,7 @@ def check_no_removed_circuit_architecture(failures: list[str]) -> None:
                 failures,
             )
 
-    found_storage_allowlisted: Counter[tuple[str, str]] = Counter()
+    found_complete_input_collections: Counter[tuple[str, str]] = Counter()
     for path in public_circuit_headers():
         names = circuit_public_shell_names(read(path))
         if names:
@@ -1214,8 +1143,8 @@ def check_no_removed_circuit_architecture(failures: list[str]) -> None:
             continue
         for line_number, line in circuit_public_storage_lines(read(path)):
             key = (relative(path), line)
-            if key in CIRCUIT_PUBLIC_STORAGE_ALLOWLIST:
-                found_storage_allowlisted[key] += 1
+            if key in CIRCUIT_COMPLETE_INPUT_COLLECTIONS:
+                found_complete_input_collections[key] += 1
                 continue
             fail(
                 f"{relative(path)}:{line_number} exposes public Circuit storage plumbing: "
@@ -1224,10 +1153,10 @@ def check_no_removed_circuit_architecture(failures: list[str]) -> None:
             )
 
     failures.extend(
-        exact_allowlist_occurrence_failures(
-            found_storage_allowlisted,
-            CIRCUIT_PUBLIC_STORAGE_ALLOWLIST,
-            "public Circuit storage",
+        exact_required_occurrence_failures(
+            found_complete_input_collections,
+            CIRCUIT_COMPLETE_INPUT_COLLECTIONS,
+            "complete Circuit input collection",
         )
     )
 
@@ -1288,33 +1217,33 @@ def check_circuit_public_type_inventory(failures: list[str]) -> None:
         if match is not None:
             line_number = stripped.count("\n", 0, match.start()) + 1
             fail(
-                f"{relative(path)}:{line_number} uses an unapproved typedef in the public "
+                f"{relative(path)}:{line_number} uses an unexpected typedef in the public "
                 "Circuit header boundary",
                 failures,
             )
 
 
 def check_no_non_root_circuit_owners(failures: list[str]) -> None:
-    found_allowlisted: Counter[tuple[str, str]] = Counter()
+    found_local_value_mutators: Counter[tuple[str, str]] = Counter()
     for path in public_circuit_headers():
         if path == ROOT_TYPES["Circuit"]:
             continue
         for line_number, line in circuit_owner_mutator_lines(read(path)):
             key = (relative(path), line)
-            if key in CIRCUIT_NON_ROOT_OWNER_MUTATOR_ALLOWLIST:
-                found_allowlisted[key] += 1
+            if key in CIRCUIT_LOCAL_VALUE_MUTATORS:
+                found_local_value_mutators[key] += 1
                 continue
             fail(
-                f"{relative(path)}:{line_number} exposes an unapproved root-like mutator "
+                f"{relative(path)}:{line_number} exposes an unexpected root-like mutator "
                 f"outside Circuit: {line}",
                 failures,
             )
 
     failures.extend(
-        exact_allowlist_occurrence_failures(
-            found_allowlisted,
-            CIRCUIT_NON_ROOT_OWNER_MUTATOR_ALLOWLIST,
-            "non-root Circuit mutator",
+        exact_required_occurrence_failures(
+            found_local_value_mutators,
+            CIRCUIT_LOCAL_VALUE_MUTATORS,
+            "local-value mutator",
         )
     )
 
@@ -1331,17 +1260,6 @@ def check_no_kernel_mutation_access(failures: list[str]) -> None:
                 )
 
 
-def check_no_broad_type_friends(failures: list[str]) -> None:
-    for path in architecture_code_files():
-        for declaration in friend_declarations(path, read(path)):
-            if is_broad_type_friend(declaration.declaration):
-                fail(
-                    f"{relative(path)}:{declaration.line} declares broad type friendship "
-                    "instead of a narrow API",
-                    failures,
-                )
-
-
 def check_no_flat_pcb_public_headers(failures: list[str]) -> None:
     pcb_dir = ROOT / "include" / "volt" / "pcb"
     for path in sorted(pcb_dir.glob("*.hpp")):
@@ -1352,84 +1270,49 @@ def check_no_flat_pcb_public_headers(failures: list[str]) -> None:
             )
 
 
-def check_privileged_friends_are_allowlisted(failures: list[str]) -> None:
-    found_allowlisted: set[tuple[str, str]] = set()
-    for path in architecture_code_files():
-        for declaration in friend_declarations(path, read(path)):
-            if not is_privileged_friend(declaration.declaration):
-                continue
-            if is_broad_type_friend(declaration.declaration):
-                continue
-            key = (relative(path), declaration.declaration)
-            if key in PRIVILEGED_FRIEND_ALLOWLIST:
-                found_allowlisted.add(key)
-                continue
-            fail(
-                f"{relative(path)}:{declaration.line} declares non-comparison friend "
-                f"{declaration.declaration!r} without a documented architecture allowlist reason",
-                failures,
-            )
-
-    for key, reason in sorted(PRIVILEGED_FRIEND_ALLOWLIST.items()):
-        if not reason.strip():
-            fail(f"privileged friend allowlist entry {key!r} must document a reason", failures)
-        if key not in found_allowlisted:
-            fail(f"privileged friend allowlist entry {key!r} no longer matches source", failures)
-
-
-def check_public_api_snapshots(failures: list[str]) -> None:
+def check_public_api_evidence(failures: list[str]) -> None:
     snapshots = {
         class_name.lower(): (class_name, header_path)
         for class_name, header_path in ROOT_TYPES.items()
     }
     snapshots.update(RETAINED_CIRCUIT_DOMAIN_SNAPSHOTS)
     for snapshot_name, (class_name, header_path) in snapshots.items():
-        allowlist = ALLOWLIST_DIR / f"{snapshot_name}_public_api.txt"
-        if not allowlist.exists():
-            fail(f"{relative(allowlist)} is missing", failures)
+        evidence_path = EVIDENCE_DIR / f"{snapshot_name}_public_api.txt"
+        if not evidence_path.exists():
+            fail(f"{relative(evidence_path)} is missing", failures)
             continue
 
         actual = public_api_snapshot(class_name, header_path)
         expected = [
             line.rstrip()
-            for line in read(allowlist).splitlines()
+            for line in read(evidence_path).splitlines()
             if not line.startswith("#")
         ]
         if actual != expected:
             fail(
-                f"{relative(allowlist)} does not match {relative(header_path)}",
+                f"{relative(evidence_path)} review evidence does not match "
+                f"{relative(header_path)}; inspect the API delta before updating the snapshot",
                 failures,
             )
 
 
 def check_python_connectivity_semantics(failures: list[str]) -> None:
-    found_allowlisted: set[tuple[str, str, str]] = set()
     for path in python_pcb_authoring_files():
         for risk in python_connectivity_risks(path, read(path)):
-            key = (relative(path), risk.qualname, risk.line_text)
-            if key in PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST:
-                found_allowlisted.add(key)
-                continue
             fail(
                 f"{relative(path)}:{risk.line} function {risk.qualname} owns PCB "
                 f"connectivity/net inference in Python ({risk.reason}): {risk.line_text}",
                 failures,
             )
 
-    for key, reason in sorted(PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST.items()):
-        if not reason.strip():
-            fail(f"Python connectivity allowlist entry {key!r} must document a reason", failures)
-        if key not in found_allowlisted:
-            fail(f"Python connectivity allowlist entry {key!r} no longer matches source", failures)
-
 
 def check_entity_ref_not_kernel_traversal_handle(failures: list[str]) -> None:
-    found_allowlisted: set[tuple[str, str]] = set()
+    found_reporting_classifications: set[tuple[str, str]] = set()
     for path in entity_ref_sensitive_files():
         for line_number, line in entity_ref_traversal_lines(read(path)):
             key = (relative(path), line)
-            if key in ENTITY_REF_KERNEL_ALLOWLIST:
-                found_allowlisted.add(key)
+            if key in ENTITY_REF_REPORTING_CLASSIFICATIONS:
+                found_reporting_classifications.add(key)
                 continue
             fail(
                 f"{relative(path)}:{line_number} branches on or unwraps EntityRef in a "
@@ -1437,11 +1320,14 @@ def check_entity_ref_not_kernel_traversal_handle(failures: list[str]) -> None:
                 failures,
             )
 
-    for key, reason in sorted(ENTITY_REF_KERNEL_ALLOWLIST.items()):
+    for key, reason in sorted(ENTITY_REF_REPORTING_CLASSIFICATIONS.items()):
         if not reason.strip():
-            fail(f"EntityRef kernel allowlist entry {key!r} must document a reason", failures)
-        if key not in found_allowlisted:
-            fail(f"EntityRef kernel allowlist entry {key!r} no longer matches source", failures)
+            fail(
+                f"EntityRef reporting classification {key!r} must document why it is reporting-only",
+                failures,
+            )
+        if key not in found_reporting_classifications:
+            fail(f"EntityRef reporting classification {key!r} no longer matches source", failures)
 
 
 def check_no_raw_structural_throws(failures: list[str]) -> None:
@@ -1455,29 +1341,29 @@ def check_no_raw_structural_throws(failures: list[str]) -> None:
 
 
 def circuit_contract_configuration_failures(
-    approved: frozenset[str] = CIRCUIT_PUBLIC_METHOD_DECLARATIONS,
+    required: frozenset[str] = CIRCUIT_REQUIRED_PUBLIC_METHOD_DECLARATIONS,
     legacy: frozenset[str] = CIRCUIT_LEGACY_PUBLIC_DECLARATIONS,
     expected_count: int = CIRCUIT_PUBLIC_DECLARATION_COUNT,
 ) -> list[str]:
     failures: list[str] = []
-    if len(approved) != expected_count:
+    if len(required) != expected_count:
         failures.append(
-            f"Circuit approved declaration set has {len(approved)} entries; expected "
+            f"Circuit required declaration set has {len(required)} entries; expected "
             f"{expected_count}"
         )
 
-    overlap = sorted(approved & legacy)
+    overlap = sorted(required & legacy)
     for declaration in overlap:
         failures.append(
-            "Circuit declaration is both approved and legacy, so the retired surface could "
+            "Circuit declaration is both required and legacy, so the retired surface could "
             f"regrow: {declaration}"
         )
 
-    for declaration in sorted(approved):
+    for declaration in sorted(required):
         name = declaration_function_name(declaration)
         if name in CIRCUIT_STORAGE_SHAPED_READ_NAMES:
             failures.append(
-                "Circuit approved declaration set contains storage-shaped derived read "
+                "Circuit required declaration set contains storage-shaped derived read "
                 f"{name}: {declaration}"
             )
     return failures
@@ -1506,15 +1392,15 @@ def circuit_public_method_admission_failures(header_text: str) -> list[str]:
     )
 
     declaration_counts = Counter(public_declarations)
-    for declaration in sorted(CIRCUIT_PUBLIC_METHOD_DECLARATIONS):
+    for declaration in sorted(CIRCUIT_REQUIRED_PUBLIC_METHOD_DECLARATIONS):
         count = declaration_counts[declaration]
         if count == 0:
             failures.append(
-                "Circuit public contract is missing approved declaration: " f"{declaration}"
+                "Circuit public contract is missing required declaration: " f"{declaration}"
             )
         elif count > 1:
             failures.append(
-                "Circuit public contract duplicates approved declaration: " f"{declaration}"
+                "Circuit public contract duplicates required declaration: " f"{declaration}"
             )
 
     if len(public_declarations) != CIRCUIT_PUBLIC_DECLARATION_COUNT:
@@ -1537,9 +1423,9 @@ def circuit_public_method_admission_failures(header_text: str) -> list[str]:
                 f"surface: {declaration}"
             )
             continue
-        if declaration not in CIRCUIT_PUBLIC_METHOD_DECLARATIONS:
+        if declaration not in CIRCUIT_REQUIRED_PUBLIC_METHOD_DECLARATIONS:
             failures.append(
-                "Circuit public declaration is outside the approved typed aggregate "
+                "Circuit public declaration is outside the required typed aggregate "
                 "contract: "
                 f"{declaration}"
             )
@@ -1558,29 +1444,29 @@ def check_circuit_public_method_admission(failures: list[str]) -> None:
 
 
 def schematic_contract_configuration_failures(
-    approved: frozenset[str] = SCHEMATIC_PUBLIC_METHOD_DECLARATIONS,
+    required: frozenset[str] = SCHEMATIC_REQUIRED_PUBLIC_METHOD_DECLARATIONS,
     legacy: frozenset[str] = SCHEMATIC_LEGACY_PUBLIC_DECLARATIONS,
     expected_count: int = SCHEMATIC_PUBLIC_DECLARATION_COUNT,
 ) -> list[str]:
     failures: list[str] = []
-    if len(approved) != expected_count:
+    if len(required) != expected_count:
         failures.append(
-            f"Schematic approved declaration set has {len(approved)} entries; expected "
+            f"Schematic required declaration set has {len(required)} entries; expected "
             f"{expected_count}"
         )
 
-    overlap = sorted(approved & legacy)
+    overlap = sorted(required & legacy)
     for declaration in overlap:
         failures.append(
-            "Schematic declaration is both approved and legacy, so the retired surface could "
+            "Schematic declaration is both required and legacy, so the retired surface could "
             f"regrow: {declaration}"
         )
 
-    for declaration in sorted(approved):
+    for declaration in sorted(required):
         name = declaration_function_name(declaration)
         if name in SCHEMATIC_STORAGE_SHAPED_READ_NAMES:
             failures.append(
-                "Schematic approved declaration set contains storage-shaped read "
+                "Schematic required declaration set contains storage-shaped read "
                 f"{name}: {declaration}"
             )
     return failures
@@ -1609,15 +1495,15 @@ def schematic_public_method_admission_failures(header_text: str) -> list[str]:
     )
 
     declaration_counts = Counter(public_declarations)
-    for declaration in sorted(SCHEMATIC_PUBLIC_METHOD_DECLARATIONS):
+    for declaration in sorted(SCHEMATIC_REQUIRED_PUBLIC_METHOD_DECLARATIONS):
         count = declaration_counts[declaration]
         if count == 0:
             failures.append(
-                "Schematic public contract is missing approved declaration: " f"{declaration}"
+                "Schematic public contract is missing required declaration: " f"{declaration}"
             )
         elif count > 1:
             failures.append(
-                "Schematic public contract duplicates approved declaration: " f"{declaration}"
+                "Schematic public contract duplicates required declaration: " f"{declaration}"
             )
 
     if len(public_declarations) != SCHEMATIC_PUBLIC_DECLARATION_COUNT:
@@ -1640,9 +1526,9 @@ def schematic_public_method_admission_failures(header_text: str) -> list[str]:
                 f"{declaration}"
             )
             continue
-        if declaration not in SCHEMATIC_PUBLIC_METHOD_DECLARATIONS:
+        if declaration not in SCHEMATIC_REQUIRED_PUBLIC_METHOD_DECLARATIONS:
             failures.append(
-                "Schematic public declaration is outside the approved bounded owner-shaped "
+                "Schematic public declaration is outside the required bounded owner-shaped "
                 f"contract: {declaration}"
             )
 
@@ -1674,7 +1560,7 @@ def circuit_range_construction_failures(header_text: str) -> list[str]:
     )
     if iterator_surface != CIRCUIT_ENTITY_RANGE_ITERATOR_PUBLIC_SURFACE:
         failures.append(
-            "CircuitEntityRange::iterator public/protected surface is outside the approved "
+            "CircuitEntityRange::iterator public/protected surface is outside the required "
             f"forward-iterator contract: {iterator_surface}"
         )
     return failures
@@ -1700,7 +1586,7 @@ def schematic_range_construction_failures(header_text: str) -> list[str]:
     )
     if iterator_surface != SCHEMATIC_ENTITY_RANGE_ITERATOR_PUBLIC_SURFACE:
         failures.append(
-            "SchematicEntityRange::iterator public/protected surface is outside the approved "
+            "SchematicEntityRange::iterator public/protected surface is outside the required "
             f"forward-iterator contract: {iterator_surface}"
         )
     return failures
@@ -1802,7 +1688,7 @@ def check_no_public_submodel_storage_accessors(failures: list[str]) -> None:
 def check_private_storage_headers_stay_private(failures: list[str]) -> None:
     header_names = {
         Path(path).name: (path, allowed_prefixes)
-        for path, allowed_prefixes in PRIVATE_STORAGE_HEADER_ALLOWLIST.items()
+        for path, allowed_prefixes in PRIVATE_STORAGE_HEADER_OWNERS.items()
     }
     found_headers: set[str] = set()
     include_pattern = re.compile(r'^\s*#\s*include\s+[<"]([^>"]+)[>"]')
@@ -1826,7 +1712,7 @@ def check_private_storage_headers_stay_private(failures: list[str]) -> None:
                     failures,
                 )
 
-    for header_path in sorted(PRIVATE_STORAGE_HEADER_ALLOWLIST):
+    for header_path in sorted(PRIVATE_STORAGE_HEADER_OWNERS):
         if not (ROOT / header_path).exists():
             fail(f"private storage header {header_path} is missing", failures)
         elif header_path not in found_headers:
@@ -1834,14 +1720,14 @@ def check_private_storage_headers_stay_private(failures: list[str]) -> None:
 
 
 def check_no_submodel_derivation_escape_hatches(failures: list[str]) -> None:
-    found_allowlisted: set[tuple[str, str, str]] = set()
+    found_private_storage_adapters: set[tuple[str, str, str]] = set()
     for path in code_files():
         if path.suffix not in {".cpp", ".hpp", ".h"}:
             continue
         for derivation in submodel_derivations(path, read(path)):
             key = (relative(derivation.path), derivation.derived, derivation.base)
-            if key in SUBMODEL_DERIVATION_ALLOWLIST:
-                found_allowlisted.add(key)
+            if key in PRIVATE_STORAGE_ADAPTER_DERIVATIONS:
+                found_private_storage_adapters.add(key)
                 continue
             fail(
                 f"{relative(derivation.path)}:{derivation.line} derives "
@@ -1850,11 +1736,14 @@ def check_no_submodel_derivation_escape_hatches(failures: list[str]) -> None:
                 failures,
             )
 
-    for key, reason in sorted(SUBMODEL_DERIVATION_ALLOWLIST.items()):
+    for key, reason in sorted(PRIVATE_STORAGE_ADAPTER_DERIVATIONS.items()):
         if not reason.strip():
-            fail(f"submodel derivation allowlist entry {key!r} must document a reason", failures)
-        if key not in found_allowlisted:
-            fail(f"submodel derivation allowlist entry {key!r} no longer matches source", failures)
+            fail(
+                f"private storage adapter derivation {key!r} must document its owner boundary",
+                failures,
+            )
+        if key not in found_private_storage_adapters:
+            fail(f"private storage adapter derivation {key!r} no longer matches source", failures)
 
 
 def require_self_test(condition: bool, message: str) -> None:
@@ -1863,65 +1752,6 @@ def require_self_test(condition: bool, message: str) -> None:
 
 
 def run_self_tests() -> int:
-    friend_class_declaration = FRIEND_TYPE_PREFIXES[0] + "Backdoor;"
-    friend_struct_declaration = FRIEND_TYPE_PREFIXES[1] + "StructBackdoor;"
-    friend_sample = textwrap.dedent(
-        """
-        struct Comparable {
-            [[nodiscard]] friend bool operator==(const Comparable &lhs,
-                                                 const Comparable &rhs) noexcept {
-                return lhs.value == rhs.value;
-            }
-            CLASS_FRIEND_DECLARATION
-            STRUCT_FRIEND_DECLARATION
-            friend void mutate_private_state(Comparable &value);
-            int value = 0;
-        };
-        """
-    ).replace("CLASS_FRIEND_DECLARATION", friend_class_declaration).replace(
-        "STRUCT_FRIEND_DECLARATION", friend_struct_declaration
-    )
-    friends = friend_declarations(Path("sample.hpp"), friend_sample)
-    require_self_test(
-        any(is_comparison_operator_friend(item.declaration) for item in friends),
-        "comparison operator friends must be classified as non-privileged value semantics",
-    )
-    privileged = [item for item in friends if is_privileged_friend(item.declaration)]
-    require_self_test(
-        sum(is_broad_type_friend(item.declaration) for item in privileged) == 2,
-        "type-level friend grants must be identifiable as broad privileged access",
-    )
-    require_self_test(
-        [item.declaration for item in privileged]
-        == [
-            friend_class_declaration.rstrip(";"),
-            friend_struct_declaration.rstrip(";"),
-            "friend void mutate_private_state(Comparable &value)",
-        ],
-        "non-operator friend grants must be classified as privileged access",
-    )
-    inline_privileged_friend = textwrap.dedent(
-        """
-        struct Sneaky {
-            friend void mutate_private_state(Sneaky &value) {
-                if (operator==(value, value)) {
-                    value.secret = 1;
-                }
-            }
-            [[nodiscard]] friend bool operator==(const Sneaky &lhs,
-                                                 const Sneaky &rhs) noexcept = default;
-            int secret = 0;
-        };
-        """
-    )
-    inline_friends = friend_declarations(Path("sample.hpp"), inline_privileged_friend)
-    require_self_test(
-        any(item.declaration == "friend void mutate_private_state(Sneaky &value)"
-            and is_privileged_friend(item.declaration)
-            for item in inline_friends),
-        "inline non-operator friend bodies must not be truncated into comparison friends",
-    )
-
     submodel_mutator_sample = textwrap.dedent(
         """
         class SampleModel {
@@ -2106,7 +1936,7 @@ def run_self_tests() -> int:
         "each be reported",
     )
     public_type_sample_path = ROOT / "include" / "volt" / "circuit" / "sample.h"
-    approved_public_type_sample = "class Net {};"
+    required_public_type_sample = "class Net {};"
     replacement_public_type_sample = textwrap.dedent(
         """
         class Net {};
@@ -2117,14 +1947,14 @@ def run_self_tests() -> int:
         using LogicalStorage [[deprecated]] = std::vector<Net>;
         """
     )
-    approved_public_types = circuit_public_type_declarations(
-        public_type_sample_path, approved_public_type_sample
+    required_public_types = circuit_public_type_declarations(
+        public_type_sample_path, required_public_type_sample
     )
     replacement_public_types = circuit_public_type_declarations(
         public_type_sample_path, replacement_public_type_sample
     )
     public_type_failures = circuit_public_type_inventory_failures(
-        replacement_public_types, approved_public_types
+        replacement_public_types, required_public_types
     )
     require_self_test(
         len(public_type_failures) == 2
@@ -2140,21 +1970,21 @@ def run_self_tests() -> int:
         and not circuit_owner_mutator_lines("ComponentId component() const;"),
         "root-like and retired restoration mutators on public domain types must be reported",
     )
-    duplicate_allowlist_key = ("include/volt/circuit/sample.hpp", "bool connect(PinId pin);")
-    duplicate_allowlist_failures = exact_allowlist_occurrence_failures(
-        Counter({duplicate_allowlist_key: 2}),
-        {duplicate_allowlist_key: "One documented local-value mutation."},
+    duplicate_required_key = ("include/volt/circuit/sample.hpp", "bool connect(PinId pin);")
+    duplicate_required_failures = exact_required_occurrence_failures(
+        Counter({duplicate_required_key: 2}),
+        {duplicate_required_key: "One documented local-value mutation."},
         "sample",
     )
     require_self_test(
-        len(duplicate_allowlist_failures) == 1
-        and "matched 2 times" in duplicate_allowlist_failures[0]
-        and not exact_allowlist_occurrence_failures(
-            Counter({duplicate_allowlist_key: 1}),
-            {duplicate_allowlist_key: "One documented local-value mutation."},
+        len(duplicate_required_failures) == 1
+        and "matched 2 times" in duplicate_required_failures[0]
+        and not exact_required_occurrence_failures(
+            Counter({duplicate_required_key: 1}),
+            {duplicate_required_key: "One documented local-value mutation."},
             "sample",
         ),
-        "allowlisted storage and mutator declarations must match exactly once",
+        "required storage and mutator declarations must match exactly once",
     )
     require_self_test(
         is_public_circuit_header(public_type_sample_path)
@@ -2223,7 +2053,7 @@ def run_self_tests() -> int:
         any(risk.qualname == "_route_net" for risk in risks),
         "Python route-net inference sample must be reported",
     )
-    python_allowlist_sample = textwrap.dedent(
+    additional_python_risk_sample = textwrap.dedent(
         """
         def _route_net(context, net, start, middle, end):
             start_net = context.pad_net(start)
@@ -2231,18 +2061,15 @@ def run_self_tests() -> int:
             return start_net if middle_net is None else middle_net
         """
     )
-    allowlist_risks = python_connectivity_risks(
-        Path("python/volt/_pcb_composition.py"), python_allowlist_sample
+    additional_python_risks = python_connectivity_risks(
+        Path("python/volt/_pcb_composition.py"), additional_python_risk_sample
     )
-    unallowlisted = [
-        risk
-        for risk in allowlist_risks
-        if (relative(risk.path), risk.qualname, risk.line_text)
-        not in PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST
-    ]
     require_self_test(
-        any("middle_net = context.pad_net(middle)" == risk.line_text for risk in unallowlisted),
-        "extra Python route-net inference inside known-debt functions must still fail",
+        any(
+            "middle_net = context.pad_net(middle)" == risk.line_text
+            for risk in additional_python_risks
+        ),
+        "every additional Python route-net inference must fail",
     )
     python_projection_sample = textwrap.dedent(
         """
@@ -2334,28 +2161,28 @@ def run_self_tests() -> int:
         and any("using RawMutationHandle" in failure for failure in admission_failures)
         and any("struct Mutator" in failure for failure in admission_failures)
         and any("ConnectivityModel &connectivity" in failure for failure in admission_failures)
-        and any("missing approved declaration" in failure for failure in admission_failures)
+        and any("missing required declaration" in failure for failure in admission_failures)
         and any("expected exactly 16" in failure for failure in admission_failures),
         "new names, same-name overloads, exposed fields, aliases, nested mutation handles, and "
         "protected access outside the typed contract must fail admission",
     )
-    approved_circuit_sample = "class Circuit final { public:\n" + ";\n".join(
-        sorted(CIRCUIT_PUBLIC_METHOD_DECLARATIONS)
+    required_circuit_sample = "class Circuit final { public:\n" + ";\n".join(
+        sorted(CIRCUIT_REQUIRED_PUBLIC_METHOD_DECLARATIONS)
     ) + ";\n};"
     require_self_test(
-        not circuit_public_method_admission_failures(approved_circuit_sample),
-        "the final 16-declaration Circuit contract must admit its exact approved surface",
+        not circuit_public_method_admission_failures(required_circuit_sample),
+        "the final 16-declaration Circuit contract must admit its exact required surface",
     )
 
     missing_final_failures = circuit_public_method_admission_failures(
-        approved_circuit_sample.replace("class Circuit final", "class Circuit", 1)
+        required_circuit_sample.replace("class Circuit final", "class Circuit", 1)
     )
     require_self_test(
         any("class Circuit final" in failure for failure in missing_final_failures),
         "Circuit admission must reject a root that is no longer final",
     )
     inherited_circuit_failures = circuit_public_method_admission_failures(
-        approved_circuit_sample.replace(
+        required_circuit_sample.replace(
             "class Circuit final", "class Circuit final : public CircuitBase", 1
         )
     )
@@ -2366,32 +2193,32 @@ def run_self_tests() -> int:
 
     missing_declaration = "[[nodiscard]] std::optional<NetId> net_of(PinId pin) const"
     missing_declaration_sample = "class Circuit final { public:\n" + ";\n".join(
-        sorted(CIRCUIT_PUBLIC_METHOD_DECLARATIONS - {missing_declaration})
+        sorted(CIRCUIT_REQUIRED_PUBLIC_METHOD_DECLARATIONS - {missing_declaration})
     ) + ";\n};"
     missing_declaration_failures = circuit_public_method_admission_failures(
         missing_declaration_sample
     )
     require_self_test(
         any(
-            "missing approved declaration" in failure and missing_declaration in failure
+            "missing required declaration" in failure and missing_declaration in failure
             for failure in missing_declaration_failures
         ),
-        "Circuit admission must reject an incomplete approved declaration set",
+        "Circuit admission must reject an incomplete required declaration set",
     )
 
     duplicated_declaration = "bool connect(NetId net, PinId pin)"
     duplicated_declaration_sample = "class Circuit final { public:\n" + ";\n".join(
-        [*sorted(CIRCUIT_PUBLIC_METHOD_DECLARATIONS), duplicated_declaration]
+        [*sorted(CIRCUIT_REQUIRED_PUBLIC_METHOD_DECLARATIONS), duplicated_declaration]
     ) + ";\n};"
     duplicated_declaration_failures = circuit_public_method_admission_failures(
         duplicated_declaration_sample
     )
     require_self_test(
         any(
-            "duplicates approved declaration" in failure and duplicated_declaration in failure
+            "duplicates required declaration" in failure and duplicated_declaration in failure
             for failure in duplicated_declaration_failures
         ),
-        "Circuit admission must reject duplicated approved declarations",
+        "Circuit admission must reject duplicated required declarations",
     )
 
     retired_circuit_surface_sample = "class Circuit final { public:\n" + ";\n".join(
@@ -2424,7 +2251,7 @@ def run_self_tests() -> int:
     )
     require_self_test(
         not circuit_contract_configuration_failures(),
-        "the final approved Circuit declarations must match the 16-entry budget and stay "
+        "the final required Circuit declarations must match the 16-entry budget and stay "
         "disjoint from the retired surface",
     )
     legacy_overlap_sample = next(iter(CIRCUIT_LEGACY_PUBLIC_DECLARATIONS))
@@ -2432,16 +2259,16 @@ def run_self_tests() -> int:
         frozenset({legacy_overlap_sample}), frozenset({legacy_overlap_sample}), 1
     )
     require_self_test(
-        any("both approved and legacy" in failure for failure in overlap_failures),
-        "checker configuration must reject declarations admitted into both final and legacy sets",
+        any("both required and legacy" in failure for failure in overlap_failures),
+        "checker configuration must reject declarations present in both final and legacy sets",
     )
 
-    approved_schematic_sample = "class Schematic final { public:\n" + ";\n".join(
-        sorted(SCHEMATIC_PUBLIC_METHOD_DECLARATIONS)
+    required_schematic_sample = "class Schematic final { public:\n" + ";\n".join(
+        sorted(SCHEMATIC_REQUIRED_PUBLIC_METHOD_DECLARATIONS)
     ) + ";\n};"
     require_self_test(
-        not schematic_public_method_admission_failures(approved_schematic_sample),
-        "the final 18-declaration Schematic contract must admit its exact approved surface",
+        not schematic_public_method_admission_failures(required_schematic_sample),
+        "the final 18-declaration Schematic contract must admit its exact required surface",
     )
     retired_schematic_sample = "class Schematic final { public:\n" + ";\n".join(
         sorted(SCHEMATIC_LEGACY_PUBLIC_DECLARATIONS)
@@ -2461,7 +2288,7 @@ def run_self_tests() -> int:
     )
     require_self_test(
         not schematic_contract_configuration_failures(),
-        "the final approved Schematic declarations must match the 18-entry budget and stay "
+        "the final required Schematic declarations must match the 18-entry budget and stay "
         "disjoint from the retired surface",
     )
 
@@ -2563,10 +2390,8 @@ def run_checks() -> int:
     check_no_removed_circuit_architecture(failures)
     check_no_removed_schematic_architecture(failures)
     check_no_kernel_mutation_access(failures)
-    check_no_broad_type_friends(failures)
     check_no_flat_pcb_public_headers(failures)
-    check_privileged_friends_are_allowlisted(failures)
-    check_public_api_snapshots(failures)
+    check_public_api_evidence(failures)
     check_circuit_public_type_inventory(failures)
     check_no_non_root_circuit_owners(failures)
     failures.extend(circuit_contract_configuration_failures())

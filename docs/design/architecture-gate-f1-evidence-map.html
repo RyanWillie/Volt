@@ -142,80 +142,77 @@
 </head>
 <body>
   <header>
-    <div class="eyebrow">Issue #294 | Gate F1 | evidence only</div>
-    <h1>Freeze the refactor baseline.</h1>
-    <p class="deck">This page maps the checked-in inventories and goldens that must be intentionally updated by future slices. It records evidence; it does not authorize or implement D1-D3 product contracts.</p>
+    <div class="eyebrow">Issue #328 | architecture evidence</div>
+    <h1>Evidence, not approval.</h1>
+    <p class="deck">Volt keeps compact review evidence for public contracts, canonical artifacts, ownership and compatibility. Objective architecture checks reject forbidden states. Neither surface can approve a change merely because its checked-in data was edited.</p>
     <dl class="meta">
-      <div><dt>Measurement baseline</dt><dd>817ad42588d01d2b7d095d1b4b39cc7abed18b6a</dd></div>
-      <div><dt>Implementation baseline</dt><dd>817ad42588d01d2b7d095d1b4b39cc7abed18b6a</dd></div>
-      <div><dt>Baseline drift</dt><dd>none, origin/main matched issue #294</dd></div>
-      <div><dt>Checker</dt><dd>scripts/check-refactor-inventory-baselines.py</dd></div>
+      <div><dt>Evidence schema</dt><dd>2</dd></div>
+      <div><dt>Inventory</dt><dd>tests/architecture/refactor_inventory_baseline.json</dd></div>
+      <div><dt>Evidence checker</dt><dd>scripts/check-refactor-inventory-baselines.py</dd></div>
+      <div><dt>Invariant checker</dt><dd>scripts/check-circuit-architecture-boundary.py</dd></div>
     </dl>
   </header>
 
   <main>
     <section>
       <span class="kicker">One-screen result</span>
-      <h2>What is frozen</h2>
+      <h2>What remains</h2>
       <dl class="summary">
-        <div class="metric"><dt>Public roots</dt><dd>16 / 18 / 27</dd><p>Circuit, Schematic and Board declarations after the S1, S2 and privilege-free B2 cutovers, plus BoardRouter 5 and BoardSpatialIndex 14.</p></div>
-        <div class="metric"><dt>Native binding</dt><dd>133</dd><p>44 logical, 18 module, 25 schematic, 8 validation/BOM, 37 board, 1 serializer.</p></div>
-        <div class="metric"><dt>Python exports</dt><dd>113</dd><p><code>python/volt/__init__.py</code> is the export boundary.</p></div>
-        <div class="metric"><dt>Footprint injections</dt><dd>13</dd><p>Production <code>src/python</code> call sites that inject <code>builtin_footprint_library()</code>.</p></div>
+        <div class="metric"><dt>C++ API evidence</dt><dd>7</dd><p>Content-addressed snapshots for Circuit, Schematic, Board, BoardRouter, BoardSpatialIndex and two retained domain owners.</p></div>
+        <div class="metric"><dt>Python exports</dt><dd>113</dd><p><code>python/volt/__init__.py</code> remains the public export contract.</p></div>
+        <div class="metric"><dt>Footprint injections</dt><dd>13</dd><p>Exact production callers that still inject <code>builtin_footprint_library()</code>, without line-number churn.</p></div>
         <div class="metric"><dt>Artifacts</dt><dd>18 / 17</dd><p>Project record kinds and checked-in manifest artifact kinds.</p></div>
-        <div class="metric"><dt>Part routes</dt><dd>14 / 17 / 11</dd><p>Built-ins, STM32 catalogue entries and manual example selected-part calls.</p></div>
-        <div class="metric"><dt>CLI / Project</dt><dd>7 / 3 / 0</dd><p>CLI leaf handlers, staged Project examples and tracked <code>volt.toml</code> files.</p></div>
-        <div class="metric"><dt>Goldens</dt><dd>10 / 19</dd><p>Semantic JSON summaries and byte-level SHA-256 fixtures, including the approved #300 electrical records and #301 LED component contract.</p></div>
+        <div class="metric"><dt>Offline fixtures</dt><dd>17</dd><p>Exact part, electrical, capability, fabrication and KiCad fixtures.</p></div>
+        <div class="metric"><dt>Goldens</dt><dd>10 / 19</dd><p>Semantic JSON summaries and byte-level SHA-256 fixtures.</p></div>
       </dl>
 
       <div class="panel">
-        <h3>Checked-in source of truth</h3>
-        <p>The mechanical baseline lives in <code>tests/architecture/refactor_inventory_baseline.json</code>. The checker compares regenerated inventories, representative semantic summaries and raw byte hashes to that file. Any drift fails with an instruction to update both the JSON baseline and this evidence map in the slice that intentionally moved the surface.</p>
+        <h3>Review delta, not a permission slip</h3>
+        <p>The evidence baseline lives in <code>tests/architecture/refactor_inventory_baseline.json</code>. The checker compares public snapshot hashes, Python contracts, canonical artifact shapes, ownership evidence, exact offline fixtures, semantic summaries and raw byte hashes. Drift fails so a reviewer sees the change. Updating the evidence records the reviewed delta; it does not make the change architecturally valid.</p>
       </div>
     </section>
 
     <section>
-      <span class="kicker">Rules</span>
-      <h2>Counting contract</h2>
+      <span class="kicker">Separation of roles</span>
+      <h2>Evidence and invariants</h2>
       <div class="grid">
         <div class="panel">
-          <h3>Mechanical counts</h3>
+          <h3>Compact review evidence</h3>
           <ul>
-            <li>Public declarations are nonblank non-include snapshot lines; overloads and constructors count.</li>
-            <li>Binding methods are named <code>.def("...")</code> registrations on <code>py::class_&lt;PyCircuit&gt;</code>; top-level <code>module.def</code> exports are separate.</li>
-            <li>Caller strata count direct lexical <code>.name(</code> and <code>-&gt;name(</code> tokens for root snapshot names.</li>
-            <li>Hidden footprint injections count only production <code>src/python</code> calls to <code>volt::builtin_footprint_library()</code>.</li>
+            <li>Public API snapshot files show the declaration-level delta; their hashes bind the inventory to that exact content.</li>
+            <li>Python exports and exception metadata preserve public binding contracts without counting private binding implementation.</li>
+            <li>Artifact kinds, manifest fields and exact fixtures preserve canonical and offline compatibility.</li>
             <li>Goldens freeze normalized JSON shape plus raw byte length and SHA-256.</li>
           </ul>
         </div>
         <div class="panel warning">
-          <h3>Intentional exclusions</h3>
+          <h3>Objective invariants</h3>
           <ul>
-            <li>Generated docs and architecture HTML are not product call-site evidence.</li>
-            <li>Indirect aliases, templates and function pointers are outside the lexical caller count.</li>
-            <li>Tests and examples are excluded from hidden resolver injection counts but included where caller strata explicitly name tests.</li>
-            <li>This gate does not enforce D1-D3 designs or forbid approved future movement.</li>
+            <li>Retired APIs and storage shells may not reappear.</li>
+            <li>Ownership crossings, subsystem back-references and public raw storage exposure fail directly.</li>
+            <li>Root declarations and borrowed lifetimes retain their bounded shapes.</li>
+            <li>Existing Python-only connectivity, hidden dependency, typed-error and <code>EntityRef</code> traversal boundaries remain checked.</li>
           </ul>
         </div>
       </div>
     </section>
 
     <section>
-      <span class="kicker">Future updates</span>
-      <h2>Who may move each baseline</h2>
-      <table>
-        <thead><tr><th>Future slice</th><th>May intentionally update</th></tr></thead>
-        <tbody>
-          <tr><td>D1 private native owner split</td><td>Native binding groups, Python ownership paths, binding lifetime entries and hidden footprint injection callers.</td></tr>
-          <tr><td>S2 Schematic root; later Board and CompiledBoard slices</td><td>The Schematic snapshot and direct caller strata move in S2. Later accepted slices own Board snapshots, footprint-resolution injections, and Board semantic and byte goldens.</td></tr>
-          <tr><td>D3 typed artifact graph and bundle reopening</td><td>Artifact kinds, manifest fields, reader/writer surfaces, CLI source-execution surfaces, bundle and manifest goldens.</td></tr>
-          <tr><td>Part-library semantic and exact-selection program</td><td>Built-in component routes, STM32 catalogue entries, manual selected-part calls, and component-contract, part and offline fixture goldens.</td></tr>
-          <tr><td>Deletion gate</td><td>Parity gate test inventory, byte-golden shadow pairs, sanitizer, coverage and platform evidence requirements.</td></tr>
-        </tbody>
-      </table>
+      <span class="kicker">Removed by #328</span>
+      <h2>What no longer belongs here</h2>
+      <div class="grid">
+        <div class="panel danger">
+          <h3>Mutable approval machinery</h3>
+          <p>The architecture checker no longer parses or classifies friend declarations, keeps friend exception tables, or treats repository-owned friend data as an architecture decision. Existing C++ friend declarations remain product code for later focused work.</p>
+        </div>
+        <div class="panel danger">
+          <h3>High-churn implementation inventory</h3>
+          <p>Direct caller strata, private binding-call counts, IO and test filename counts, catalogue and example call counts, CLI/project implementation shapes, baseline commit metadata and future-slice ownership tables are removed. GitHub issues and native dependencies own planning.</p>
+        </div>
+      </div>
       <div class="panel danger">
         <h3>Stop rule</h3>
-        <p>If a future PR changes one of these baselines without being the slice named above, treat it as architecture drift until the PR proves why the evidence moved.</p>
+        <p>If an evidence file changes, inspect the product delta it exposes. If an objective invariant fails, fix the forbidden state; do not add a waiver entry.</p>
       </div>
     </section>
 
@@ -226,14 +223,14 @@
         <li><code>AGENTS.md</code> and the linked Volt shared architecture skill note.</li>
         <li><code>docs/design/volt-post-circuit-architecture-review.html</code>.</li>
         <li><code>docs/design/volt-part-library-architecture-review.html</code>.</li>
-        <li>Existing architecture snapshots and checker conventions in <code>tests/architecture</code> and <code>scripts/check-circuit-architecture-boundary.py</code>.</li>
-        <li>Current Python binding, CLI, Project, artifact, part-library, PCB, schematic, KiCad, fabrication, BOM/CPL, 3D and test surfaces referenced by the baseline JSON.</li>
+        <li>Public API evidence in <code>tests/architecture/*_public_api.txt</code> and objective checks in <code>scripts/check-circuit-architecture-boundary.py</code>.</li>
+        <li>Current public Python exports, canonical artifact manifests, ownership boundaries, exact offline fixtures and semantic/byte goldens referenced by the evidence JSON.</li>
       </ul>
     </section>
   </main>
 
   <footer>
-    Architecture Gate F1 evidence map. Issue #294 closes when this checked-in evidence and CI pass; downstream deletion/refactor work remains out of scope.
+    Architecture evidence map. Issue #328 separates compact review evidence from objective invariants; product behavior and downstream architecture slices remain out of scope.
   </footer>
 </body>
 </html>
