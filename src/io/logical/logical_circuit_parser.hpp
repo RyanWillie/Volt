@@ -27,6 +27,11 @@ class LogicalCircuitParser {
     [[nodiscard]] LogicalCircuitRestorationPlan parse();
 
   private:
+    struct ParsedComponentContract {
+        ComponentContractSpec spec;
+        ContentHash content_identity;
+    };
+
     static void require(bool condition, const std::string &message);
 
     static const nlohmann::json &field(const nlohmann::json &object, const char *name);
@@ -93,6 +98,17 @@ class LogicalCircuitParser {
 
     [[nodiscard]] static std::vector<SchematicSymbolReference>
     schematic_symbol_references(const nlohmann::json &object);
+
+    [[nodiscard]] static ElectricalSubjectKind component_subject_kind(const std::string &value);
+
+    [[nodiscard]] static FeatureRoleCardinality feature_role_cardinality(const std::string &value);
+
+    [[nodiscard]] static ElectricalObservable canonical_observable(const std::string &value);
+
+    [[nodiscard]] static ElectricalMeaning canonical_meaning(const std::string &value);
+
+    [[nodiscard]] static std::optional<ParsedComponentContract>
+    component_contract(const nlohmann::json &object);
 
     template <typename Id>
     [[nodiscard]] Id resolve(const std::map<std::string, Id> &ids, const std::string &id) const {

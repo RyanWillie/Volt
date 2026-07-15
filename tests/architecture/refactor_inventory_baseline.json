@@ -59,7 +59,7 @@
         "built-in component route counts",
         "STM32 catalogue entries",
         "manual selected-part calls",
-        "part and offline fixture goldens"
+        "component-contract, part and offline fixture goldens"
       ],
       "slice": "Part-library semantic and exact-selection program"
     },
@@ -93,6 +93,11 @@
         "byte_count": 2127,
         "path": "tests/fixtures/led.electrical.volt.json",
         "sha256": "a0010545882de277e751db73b4084051c11ec81d46c68acc41a93e9934aa6ef8"
+      },
+      {
+        "byte_count": 1400,
+        "path": "tests/fixtures/led.component-contract.volt.json",
+        "sha256": "a96ec5e40aef34e5070e3af91d0965e90ae578d777d8a3d127498ae5cfac40f8"
       },
       {
         "byte_count": 434,
@@ -281,6 +286,30 @@
           "format": "volt.electrical_records",
           "pin_count": 2,
           "semantic_model_version": 1,
+          "version": 1
+        }
+      },
+      {
+        "path": "tests/fixtures/led.component-contract.volt.json",
+        "sha256": "a96ec5e40aef34e5070e3af91d0965e90ae578d777d8a3d127498ae5cfac40f8",
+        "top_level_counts": {
+          "component_definitions": 1,
+          "components": 0,
+          "nets": 0,
+          "pin_definitions": 2,
+          "pins": 0
+        },
+        "top_level_keys": [
+          "component_definitions",
+          "components",
+          "format",
+          "nets",
+          "pin_definitions",
+          "pins",
+          "version"
+        ],
+        "top_level_scalars": {
+          "format": "volt.logical_circuit",
           "version": 1
         }
       },
