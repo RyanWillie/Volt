@@ -172,14 +172,29 @@ def init_assigned_attributes(path: Path, class_name: str) -> list[str]:
     return []
 
 
-def py_circuit_private_members() -> list[str]:
-    header = read(ROOT / "src" / "python" / "py_circuit.hpp")
+def binding_private_members(path: str) -> list[str]:
+    header = read(ROOT / path)
     private = header.split("  private:", 1)[1]
     return sorted(
         name
         for name in re.findall(r"\b([A-Za-z_]\w*)_\s*(?:=|;)", private)
         if name not in {"std", "volt"}
     )
+
+
+def native_bound_classes() -> list[dict[str, str]]:
+    result: list[dict[str, str]] = []
+    pattern = re.compile(r'py::class_<([^>]+)>\(module,\s*"([^"]+)"\)')
+    for path in sorted((ROOT / "src" / "python").glob("*_bindings.cpp")):
+        for cpp_type, python_type in pattern.findall(read(path)):
+            result.append(
+                {
+                    "cpp_type": cpp_type,
+                    "python_type": python_type,
+                    "path": relative(path),
+                }
+            )
+    return result
 
 
 def python_exception_inventory() -> dict[str, object]:
@@ -342,9 +357,16 @@ def collect_inventory() -> dict[str, object]:
                 "design_owner_attributes": init_assigned_attributes(
                     ROOT / "python" / "volt" / "design.py", "Design"
                 ),
-                "py_circuit_private_members": py_circuit_private_members(),
+                "native_bound_classes": native_bound_classes(),
+                "py_circuit_private_members": binding_private_members(
+                    "src/python/py_circuit.hpp"
+                ),
+                "py_schematic_private_members": binding_private_members(
+                    "src/python/py_schematic.hpp"
+                ),
                 "lifetime_evidence": [
-                    "src/python/py_circuit.hpp: Circuit + SchematicDocument + optional Board live in one bound owner",
+                    "src/python/schematic_bindings.cpp: SchematicDocument keep_alive retains its bound Circuit owner",
+                    "src/python/py_schematic.hpp: SchematicDocument is a direct bound owner of native SchematicDocument state",
                     "tests/architecture/circuit_public_api.txt: deleted rvalue all() overload freezes borrowed range lifetime",
                     "tests/architecture/board_public_api.txt: deleted rvalue Board(Circuit&&) constructor freezes Circuit borrow lifetime",
                     "tests/architecture/schematic_public_api.txt: deleted rvalue Schematic(Circuit&&) constructor freezes Circuit borrow lifetime",

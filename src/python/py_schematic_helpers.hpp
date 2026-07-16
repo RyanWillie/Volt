@@ -1,6 +1,6 @@
 #pragma once
 
-#include "py_circuit.hpp"
+#include "py_schematic.hpp"
 
 #include "py_circuit_py_helpers.hpp"
 

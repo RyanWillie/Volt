@@ -2,6 +2,6 @@
 
 namespace volt::python {
 
-PyCircuit::PyCircuit() : circuit_{}, schematic_document_{circuit_} {}
+PyCircuit::PyCircuit() = default;
 
 } // namespace volt::python

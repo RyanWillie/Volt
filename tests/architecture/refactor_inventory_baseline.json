@@ -513,6 +513,7 @@
         "_net_class_counter",
         "_object_footprints",
         "_owner",
+        "_schematic_document",
         "_schematic_sheets",
         "_schematic_symbols",
         "_sourcing_snapshot",
@@ -573,10 +574,23 @@
         }
       ],
       "lifetime_evidence": [
-        "src/python/py_circuit.hpp: Circuit + SchematicDocument + optional Board live in one bound owner",
+        "src/python/schematic_bindings.cpp: SchematicDocument keep_alive retains its bound Circuit owner",
+        "src/python/py_schematic.hpp: SchematicDocument is a direct bound owner of native SchematicDocument state",
         "tests/architecture/circuit_public_api.txt: deleted rvalue all() overload freezes borrowed range lifetime",
         "tests/architecture/board_public_api.txt: deleted rvalue Board(Circuit&&) constructor freezes Circuit borrow lifetime",
         "tests/architecture/schematic_public_api.txt: deleted rvalue Schematic(Circuit&&) constructor freezes Circuit borrow lifetime"
+      ],
+      "native_bound_classes": [
+        {
+          "cpp_type": "PyCircuit",
+          "path": "src/python/circuit_bindings.cpp",
+          "python_type": "Circuit"
+        },
+        {
+          "cpp_type": "PySchematicDocument",
+          "path": "src/python/schematic_bindings.cpp",
+          "python_type": "SchematicDocument"
+        }
       ],
       "py_circuit_private_members": [
         "board_projection",
@@ -584,7 +598,9 @@
         "module_drafts",
         "next_module_component_handle",
         "next_port_handle",
-        "next_template_net_handle",
+        "next_template_net_handle"
+      ],
+      "py_schematic_private_members": [
         "schematic_document"
       ]
     },

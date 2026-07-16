@@ -1064,7 +1064,7 @@ class SchematicTwoTerminalElement:
         if not isinstance(component, Component):
             raise TypeError("Two-terminal placement expects a Component handle")
         if component._design is not drawing._schematic._design:
-            raise ValueError(
+            _raise_schematic_cross_reference(
                 f"Component {component.reference} belongs to a different design while "
                 f"authoring two-terminal placement on "
                 f"{_schematic_sheet_phrase(drawing._schematic)}"
@@ -1631,7 +1631,7 @@ class Schematic:
             "height": _positive_coordinate(h, "Schematic region heights"),
         }
         region_style = _string_dict(style or {}, "Schematic region style")
-        index = self._design._circuit.schematic_region(
+        index = self._design._schematic_document.schematic_region(
             self._sheet_index,
             {
                 "name": name,
@@ -1664,7 +1664,7 @@ class Schematic:
         if not isinstance(component, Component):
             raise TypeError("Schematic placement expects a Component handle")
         if component._design is not self._design:
-            raise ValueError(
+            _raise_schematic_cross_reference(
                 f"Component {component.reference} belongs to a different design while "
                 f"authoring symbol placement on {_schematic_sheet_phrase(self)}"
             )
@@ -1693,7 +1693,7 @@ class Schematic:
             schematic=self,
             action="symbol placement",
         )
-        instance = self._design._circuit.place_schematic_symbol(
+        instance = self._design._schematic_document.place_schematic_symbol(
             self._sheet_index,
             component.index,
             symbol_name,
@@ -1724,7 +1724,7 @@ class Schematic:
         if not isinstance(net, Net):
             raise TypeError("Schematic wires expect a Net handle")
         if net._design is not self._design:
-            raise ValueError(
+            _raise_schematic_cross_reference(
                 _with_schematic_context(
                     _cross_design_net_message(net), self, "schematic wire"
                 )
@@ -1808,7 +1808,7 @@ class Schematic:
         if not isinstance(net, Net):
             raise TypeError("Schematic connections expect a Net handle")
         if net._design is not self._design:
-            raise ValueError(
+            _raise_schematic_cross_reference(
                 _with_schematic_context(_cross_design_net_message(net), self, "schematic wire")
             )
         points = tuple(anchors)
@@ -1898,13 +1898,15 @@ class Schematic:
             )
 
         try:
-            wire, resolved_net_index = self._design._circuit.add_schematic_wire_for_endpoints(
-                self._sheet_index,
-                None if net is None else net.index,
-                converted,
-                list(endpoint_payloads),
-                route_intent,
-                _authored_region,
+            wire, resolved_net_index = (
+                self._design._schematic_document.add_schematic_wire_for_endpoints(
+                    self._sheet_index,
+                    None if net is None else net.index,
+                    converted,
+                    list(endpoint_payloads),
+                    route_intent,
+                    _authored_region,
+                )
             )
         except _volt.VoltError:
             raise
@@ -1976,7 +1978,7 @@ class Schematic:
         if not isinstance(net, Net):
             raise TypeError("Schematic labels expect a Net handle")
         if net._design is not self._design:
-            raise ValueError(
+            _raise_schematic_cross_reference(
                 _with_schematic_context(_cross_design_net_message(net), self, "net label")
             )
         endpoint = _schematic_endpoint_for_authoring(
@@ -2013,16 +2015,18 @@ class Schematic:
         orientation = _orientation(orient)
 
         try:
-            label, _resolved_net_index = self._design._circuit.add_schematic_net_label_for_endpoint(
-                self._sheet_index,
-                net.index,
-                endpoint,
-                orientation,
-                _authored_region,
-                _optional_display_label(label),
-                _text_horizontal_alignment(align),
-                _text_vertical_alignment(baseline),
-                _optional_text_font_size(font_size),
+            label, _resolved_net_index = (
+                self._design._schematic_document.add_schematic_net_label_for_endpoint(
+                    self._sheet_index,
+                    net.index,
+                    endpoint,
+                    orientation,
+                    _authored_region,
+                    _optional_display_label(label),
+                    _text_horizontal_alignment(align),
+                    _text_vertical_alignment(baseline),
+                    _optional_text_font_size(font_size),
+                )
             )
         except _volt.VoltError:
             raise
@@ -2322,7 +2326,7 @@ class Schematic:
         )
         orientation = _orientation(orient)
 
-        field = self._design._circuit.add_schematic_symbol_field(
+        field = self._design._schematic_document.add_schematic_symbol_field(
             self._sheet_index,
             symbol.index,
             name,
@@ -2356,7 +2360,7 @@ class Schematic:
         if not isinstance(net, Net):
             raise TypeError("Schematic junctions expect a Net handle")
         if net._design is not self._design:
-            raise ValueError(
+            _raise_schematic_cross_reference(
                 _with_schematic_context(_cross_design_net_message(net), self, "junction")
             )
         endpoint = _schematic_endpoint_for_authoring(
@@ -2367,7 +2371,7 @@ class Schematic:
         )
         try:
             junction, _resolved_net_index = (
-                self._design._circuit.add_schematic_junction_for_endpoint(
+                self._design._schematic_document.add_schematic_junction_for_endpoint(
                     self._sheet_index, net.index, endpoint, _authored_region
                 )
             )
@@ -2664,7 +2668,7 @@ class Schematic:
         orientation = _orientation(orient)
         try:
             port, resolved_net_index = (
-                self._design._circuit.add_schematic_terminal_marker_for_endpoint(
+                self._design._schematic_document.add_schematic_terminal_marker_for_endpoint(
                     self._sheet_index,
                     None if net is None else net.index,
                     kind,
@@ -2718,7 +2722,7 @@ class Schematic:
             orientation,
             _nonnegative_coordinate(offset, "No-connect marker offsets"),
         )
-        marker = self._design._circuit.add_schematic_no_connect_marker(
+        marker = self._design._schematic_document.add_schematic_no_connect_marker(
             self._sheet_index,
             pin.pin.index,
             marker_x,
@@ -2764,14 +2768,16 @@ class Schematic:
         orientation = _orientation(orient)
         port_kind = _sheet_port_kind(kind)
         try:
-            port, resolved_net_index = self._design._circuit.add_schematic_sheet_port_for_endpoint(
-                self._sheet_index,
-                None if net is None else net.index,
-                name,
-                port_kind,
-                endpoint,
-                orientation,
-                _authored_region,
+            port, resolved_net_index = (
+                self._design._schematic_document.add_schematic_sheet_port_for_endpoint(
+                    self._sheet_index,
+                    None if net is None else net.index,
+                    name,
+                    port_kind,
+                    endpoint,
+                    orientation,
+                    _authored_region,
+                )
             )
         except _volt.VoltError:
             raise
@@ -2811,15 +2817,15 @@ class Schematic:
 
     def to_json(self) -> str:
         """Serialize schematic projection data to Volt JSON."""
-        return self._design._circuit.schematic_to_json()
+        return self._design._schematic_document.schematic_to_json()
 
     def to_svg(self) -> str:
         """Render all schematic sheets as SVG."""
-        return self._design._circuit.schematic_to_svg()
+        return self._design._schematic_document.schematic_to_svg()
 
     def to_body_svg(self, *, margin: float = 4.0) -> str:
         """Return a content-tight SVG for this sheet's schematic body."""
-        return self._design._circuit.schematic_to_body_svg(
+        return self._design._schematic_document.schematic_to_body_svg(
             self._sheet_index,
             _nonnegative_coordinate(margin, "Schematic SVG body margins"),
         )
@@ -2832,21 +2838,21 @@ class Schematic:
                 "name": str(page["name"]),
                 "svg": str(page["svg"]),
             }
-            for page in self._design._circuit.schematic_svg_pages()
+            for page in self._design._schematic_document.schematic_svg_pages()
         )
 
     def validate(self) -> DiagnosticReport:
         """Run schematic validation and return the diagnostic report."""
         return DiagnosticReport(
             _diagnostic_from_dict(item)
-            for item in self._design._circuit.validate_schematic()
+            for item in self._design._schematic_document.validate_schematic()
         )
 
     def validate_readability(self) -> DiagnosticReport:
         """Run schematic readability validation and return the diagnostic report."""
         return DiagnosticReport(
             _diagnostic_from_dict(item)
-            for item in self._design._circuit.validate_schematic_readability()
+            for item in self._design._schematic_document.validate_schematic_readability()
         )
 
     def write_svg(self, path: str | Path) -> None:
@@ -3350,17 +3356,23 @@ def _cross_design_net_message(net: Net) -> str:
     return f"{_net_label(net)} belongs to a different design"
 
 
+def _raise_schematic_cross_reference(message: str) -> None:
+    _volt._raise_cross_reference_error(message)
+
+
 def _raise_cross_design_with_context(error: ValueError, schematic: Schematic, action: str) -> None:
     message = str(error)
     if "different design" in message:
-        raise ValueError(_with_schematic_context(message, schematic, action)) from error
+        _raise_schematic_cross_reference(
+            _with_schematic_context(message, schematic, action)
+        )
     raise error
 
 
 def _require_schematic_point_design(value, design: Design) -> None:
     point_design = getattr(value, "_design", None)
     if point_design is not None and point_design is not design:
-        raise ValueError(_cross_design_anchor_message(value))
+        _raise_schematic_cross_reference(_cross_design_anchor_message(value))
 
 
 def _require_schematic_point_design_for_authoring(
@@ -3375,7 +3387,7 @@ def _require_schematic_point_design_for_authoring(
 def _schematic_point(value, *, design: Design) -> tuple[float, float]:
     if isinstance(value, SchematicPort):
         if value.net._design is not design:
-            raise ValueError(_cross_design_anchor_message(value))
+            _raise_schematic_cross_reference(_cross_design_anchor_message(value))
         return value.pin.point
     if isinstance(value, SchematicAnchor):
         _require_schematic_point_design(value, design)
@@ -3425,7 +3437,7 @@ def _require_schematic_net(
     if not isinstance(net, Net):
         raise TypeError(type_message)
     if net._design is not design:
-        raise ValueError(_cross_design_net_message(net))
+        _raise_schematic_cross_reference(_cross_design_net_message(net))
 
 
 def _net_by_index(design: Design, index: int) -> Net:
@@ -3529,7 +3541,7 @@ def _add_schematic_junction_dot(
     )
     try:
         junction, _resolved_net_index = (
-            schematic._design._circuit.add_schematic_junction_for_endpoint(
+            schematic._design._schematic_document.add_schematic_junction_for_endpoint(
                 schematic._sheet_index,
                 None if explicit is None else explicit.index,
                 endpoint,
