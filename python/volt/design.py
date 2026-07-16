@@ -33,6 +33,7 @@ class Design:
 
         self.name = name
         self._circuit = _volt.Circuit()
+        self._schematic_document = _volt.SchematicDocument(self._circuit)
         self._owner = self._circuit
         self._definitions: dict[str, int] = {}
         self._library_definitions: dict[tuple[str, str, str], ComponentDefinition] = {}
@@ -346,7 +347,7 @@ class Design:
         return self._define_part_definition(component._to_part_definition())
 
     def _register_schematic_symbol(self, symbol: SchematicSymbolSpec) -> None:
-        self._circuit.register_schematic_symbol(symbol._to_dict())
+        self._schematic_document.register_schematic_symbol(symbol._to_dict())
         self._schematic_symbols[symbol.name] = symbol
 
     def _check_object_footprint(self, footprint: Footprint) -> None:
@@ -499,7 +500,9 @@ class Design:
             grid=grid,
         )
         if name not in self._schematic_sheets or metadata:
-            self._schematic_sheets[name] = self._circuit.schematic_sheet(name, metadata)
+            self._schematic_sheets[name] = self._schematic_document.schematic_sheet(
+                name, metadata
+            )
         return Schematic(self, self._schematic_sheets[name], name)
 
     def board(self, name: str = "Main"):
@@ -513,9 +516,9 @@ class Design:
         if not isinstance(text, str):
             raise TypeError("Schematic JSON must be a string")
 
-        self._circuit.load_schematic_json(text)
+        self._schematic_document.load_schematic_json(text)
         self._schematic_sheets.clear()
-        sheet_names = tuple(self._circuit.schematic_sheet_names())
+        sheet_names = tuple(self._schematic_document.schematic_sheet_names())
         if not sheet_names:
             raise ValueError("Schematic document must contain at least one sheet")
         return self.schematic(sheet_names[0])

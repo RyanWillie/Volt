@@ -1,6 +1,8 @@
-#include "py_circuit.hpp"
+#include "py_schematic.hpp"
 
-#include "py_circuit_schematic_helpers.hpp"
+#include "py_circuit.hpp"
+#include "py_circuit_reports_helpers.hpp"
+#include "py_schematic_helpers.hpp"
 
 #include <sstream>
 
@@ -9,7 +11,11 @@
 
 namespace volt::python {
 
-std::size_t PyCircuit::schematic_sheet(const std::string &name, const py::dict &metadata) {
+PySchematicDocument::PySchematicDocument(const PyCircuit &circuit)
+    : schematic_document_{circuit.logical_circuit()} {}
+
+std::size_t PySchematicDocument::schematic_sheet(const std::string &name,
+                                                 const py::dict &metadata) {
     auto &projection = schematic_projection();
     if (const auto existing = volt::queries::sheet_by_name(projection, name);
         existing.has_value()) {
@@ -26,7 +32,7 @@ std::size_t PyCircuit::schematic_sheet(const std::string &name, const py::dict &
         .index();
 }
 
-std::size_t PyCircuit::schematic_region(std::size_t sheet, const py::dict &region_data) {
+std::size_t PySchematicDocument::schematic_region(std::size_t sheet, const py::dict &region_data) {
     auto &projection = schematic_projection();
     const auto sheet_handle = sheet_id(sheet);
     const auto requested = sheet_region_from_dict(region_data);
@@ -43,7 +49,7 @@ std::size_t PyCircuit::schematic_region(std::size_t sheet, const py::dict &regio
     return projection.get(sheet_handle).region_by_name(name).value();
 }
 
-std::size_t PyCircuit::register_schematic_symbol(const py::dict &symbol_data) {
+std::size_t PySchematicDocument::register_schematic_symbol(const py::dict &symbol_data) {
     auto symbol = symbol_definition_from_dict(symbol_data);
     auto &projection = schematic_projection();
     if (const auto existing = volt::queries::symbol_definition_by_name(projection, symbol.name());
@@ -57,10 +63,9 @@ std::size_t PyCircuit::register_schematic_symbol(const py::dict &symbol_data) {
     return projection.add_symbol_definition(std::move(symbol)).index();
 }
 
-std::size_t PyCircuit::place_schematic_symbol(std::size_t sheet, std::size_t component,
-                                              const std::string &symbol, double x, double y,
-                                              const std::string &orientation,
-                                              std::optional<std::size_t> authored_region) {
+std::size_t PySchematicDocument::place_schematic_symbol(
+    std::size_t sheet, std::size_t component, const std::string &symbol, double x, double y,
+    const std::string &orientation, std::optional<std::size_t> authored_region) {
     require_finite(x, "Schematic coordinates must be finite");
     require_finite(y, "Schematic coordinates must be finite");
 
@@ -69,7 +74,7 @@ std::size_t PyCircuit::place_schematic_symbol(std::size_t sheet, std::size_t com
     static_cast<void>(projection.get(sheet_handle));
 
     const auto component_handle = component_id(component);
-    static_cast<void>(circuit_.get(component_handle));
+    static_cast<void>(schematic_document_.circuit().get(component_handle));
 
     const auto symbol_definition = ensure_schematic_symbol(symbol);
     return projection
@@ -80,14 +85,14 @@ std::size_t PyCircuit::place_schematic_symbol(std::size_t sheet, std::size_t com
         .index();
 }
 
-std::string PyCircuit::schematic_symbol_orientation(std::size_t instance) {
+std::string PySchematicDocument::schematic_symbol_orientation(std::size_t instance) {
     auto &projection = schematic_projection();
     const auto &symbol_instance = projection.get(volt::SymbolInstanceId{instance});
     return schematic_orientation_name(symbol_instance.orientation());
 }
 
-std::pair<double, double> PyCircuit::schematic_symbol_pin_anchor(std::size_t instance,
-                                                                 const std::string &number) {
+std::pair<double, double>
+PySchematicDocument::schematic_symbol_pin_anchor(std::size_t instance, const std::string &number) {
     auto &projection = schematic_projection();
     const auto &symbol_instance = projection.get(volt::SymbolInstanceId{instance});
     const auto &symbol = projection.get(symbol_instance.symbol_definition());
@@ -103,7 +108,7 @@ std::pair<double, double> PyCircuit::schematic_symbol_pin_anchor(std::size_t ins
     throw std::out_of_range{"Schematic symbol has no pin with that number"};
 }
 
-py::list PyCircuit::schematic_symbol_pin_refs(std::size_t instance) {
+py::list PySchematicDocument::schematic_symbol_pin_refs(std::size_t instance) {
     auto result = py::list{};
     auto &projection = schematic_projection();
     const auto &symbol_instance = projection.get(volt::SymbolInstanceId{instance});
@@ -123,10 +128,9 @@ py::list PyCircuit::schematic_symbol_pin_refs(std::size_t instance) {
     return result;
 }
 
-std::size_t PyCircuit::add_schematic_wire(std::size_t sheet, std::size_t net,
-                                          const std::vector<std::pair<double, double>> &points,
-                                          const std::string &route_intent,
-                                          std::optional<std::size_t> authored_region) {
+std::size_t PySchematicDocument::add_schematic_wire(
+    std::size_t sheet, std::size_t net, const std::vector<std::pair<double, double>> &points,
+    const std::string &route_intent, std::optional<std::size_t> authored_region) {
     auto wire_points = std::vector<volt::Point>{};
     wire_points.reserve(points.size());
     for (const auto &[x, y] : points) {
@@ -143,7 +147,7 @@ std::size_t PyCircuit::add_schematic_wire(std::size_t sheet, std::size_t net,
         .index();
 }
 
-py::tuple PyCircuit::add_schematic_wire_for_endpoints(
+py::tuple PySchematicDocument::add_schematic_wire_for_endpoints(
     std::size_t sheet, std::optional<std::size_t> net,
     const std::vector<std::pair<double, double>> &points, const py::list &endpoints,
     const std::string &route_intent, std::optional<std::size_t> authored_region) {
@@ -168,13 +172,11 @@ py::tuple PyCircuit::add_schematic_wire_for_endpoints(
     }
 }
 
-std::size_t PyCircuit::add_schematic_net_label(std::size_t sheet, std::size_t net, double x,
-                                               double y, const std::string &orientation,
-                                               std::optional<std::size_t> authored_region,
-                                               std::optional<std::string> label,
-                                               const std::string &horizontal_alignment,
-                                               const std::string &vertical_alignment,
-                                               std::optional<double> font_size) {
+std::size_t PySchematicDocument::add_schematic_net_label(
+    std::size_t sheet, std::size_t net, double x, double y, const std::string &orientation,
+    std::optional<std::size_t> authored_region, std::optional<std::string> label,
+    const std::string &horizontal_alignment, const std::string &vertical_alignment,
+    std::optional<double> font_size) {
     require_finite(x, "Schematic coordinates must be finite");
     require_finite(y, "Schematic coordinates must be finite");
 
@@ -189,7 +191,7 @@ std::size_t PyCircuit::add_schematic_net_label(std::size_t sheet, std::size_t ne
         .index();
 }
 
-py::tuple PyCircuit::add_schematic_net_label_for_endpoint(
+py::tuple PySchematicDocument::add_schematic_net_label_for_endpoint(
     std::size_t sheet, std::optional<std::size_t> net, const py::tuple &endpoint,
     const std::string &orientation, std::optional<std::size_t> authored_region,
     std::optional<std::string> label, const std::string &horizontal_alignment,
@@ -208,9 +210,9 @@ py::tuple PyCircuit::add_schematic_net_label_for_endpoint(
     }
 }
 
-std::size_t PyCircuit::add_schematic_junction(std::size_t sheet, std::size_t net, double x,
-                                              double y,
-                                              std::optional<std::size_t> authored_region) {
+std::size_t
+PySchematicDocument::add_schematic_junction(std::size_t sheet, std::size_t net, double x, double y,
+                                            std::optional<std::size_t> authored_region) {
     require_finite(x, "Schematic coordinates must be finite");
     require_finite(y, "Schematic coordinates must be finite");
 
@@ -221,10 +223,9 @@ std::size_t PyCircuit::add_schematic_junction(std::size_t sheet, std::size_t net
         .index();
 }
 
-py::tuple
-PyCircuit::add_schematic_junction_for_endpoint(std::size_t sheet, std::optional<std::size_t> net,
-                                               const py::tuple &endpoint,
-                                               std::optional<std::size_t> authored_region) {
+py::tuple PySchematicDocument::add_schematic_junction_for_endpoint(
+    std::size_t sheet, std::optional<std::size_t> net, const py::tuple &endpoint,
+    std::optional<std::size_t> authored_region) {
     auto &projection = schematic_projection();
     auto endpoint_authoring = volt::SchematicEndpointAuthoring{projection};
     try {
@@ -237,11 +238,10 @@ PyCircuit::add_schematic_junction_for_endpoint(std::size_t sheet, std::optional<
     }
 }
 
-std::size_t PyCircuit::add_schematic_terminal_marker(std::size_t sheet, std::size_t net,
-                                                     const std::string &kind, double x, double y,
-                                                     const std::string &orientation,
-                                                     std::optional<std::size_t> authored_region,
-                                                     std::optional<std::string> label) {
+std::size_t PySchematicDocument::add_schematic_terminal_marker(
+    std::size_t sheet, std::size_t net, const std::string &kind, double x, double y,
+    const std::string &orientation, std::optional<std::size_t> authored_region,
+    std::optional<std::string> label) {
     require_finite(x, "Schematic coordinates must be finite");
     require_finite(y, "Schematic coordinates must be finite");
 
@@ -255,7 +255,7 @@ std::size_t PyCircuit::add_schematic_terminal_marker(std::size_t sheet, std::siz
         .index();
 }
 
-py::tuple PyCircuit::add_schematic_terminal_marker_for_endpoint(
+py::tuple PySchematicDocument::add_schematic_terminal_marker_for_endpoint(
     std::size_t sheet, std::optional<std::size_t> net, const std::string &kind,
     const py::tuple &endpoint, const std::string &orientation,
     std::optional<std::size_t> authored_region, std::optional<std::string> label) {
@@ -272,10 +272,9 @@ py::tuple PyCircuit::add_schematic_terminal_marker_for_endpoint(
     }
 }
 
-std::size_t PyCircuit::add_schematic_no_connect_marker(std::size_t sheet, std::size_t pin, double x,
-                                                       double y, const std::string &orientation,
-                                                       const std::string &reason,
-                                                       std::optional<std::size_t> authored_region) {
+std::size_t PySchematicDocument::add_schematic_no_connect_marker(
+    std::size_t sheet, std::size_t pin, double x, double y, const std::string &orientation,
+    const std::string &reason, std::optional<std::size_t> authored_region) {
     require_finite(x, "Schematic coordinates must be finite");
     require_finite(y, "Schematic coordinates must be finite");
 
@@ -288,10 +287,9 @@ std::size_t PyCircuit::add_schematic_no_connect_marker(std::size_t sheet, std::s
         .index();
 }
 
-std::size_t PyCircuit::add_schematic_sheet_port(std::size_t sheet, std::size_t net,
-                                                const std::string &name, const std::string &kind,
-                                                double x, double y, const std::string &orientation,
-                                                std::optional<std::size_t> authored_region) {
+std::size_t PySchematicDocument::add_schematic_sheet_port(
+    std::size_t sheet, std::size_t net, const std::string &name, const std::string &kind, double x,
+    double y, const std::string &orientation, std::optional<std::size_t> authored_region) {
     require_finite(x, "Schematic coordinates must be finite");
     require_finite(y, "Schematic coordinates must be finite");
 
@@ -304,7 +302,7 @@ std::size_t PyCircuit::add_schematic_sheet_port(std::size_t sheet, std::size_t n
         .index();
 }
 
-py::tuple PyCircuit::add_schematic_sheet_port_for_endpoint(
+py::tuple PySchematicDocument::add_schematic_sheet_port_for_endpoint(
     std::size_t sheet, std::optional<std::size_t> net, const std::string &name,
     const std::string &kind, const py::tuple &endpoint, const std::string &orientation,
     std::optional<std::size_t> authored_region) {
@@ -321,7 +319,7 @@ py::tuple PyCircuit::add_schematic_sheet_port_for_endpoint(
     }
 }
 
-std::size_t PyCircuit::add_schematic_symbol_field(
+std::size_t PySchematicDocument::add_schematic_symbol_field(
     std::size_t sheet, std::size_t instance, const std::string &name, const std::string &value,
     double x, double y, const std::string &orientation, std::optional<std::size_t> authored_region,
     const std::string &horizontal_alignment, const std::string &vertical_alignment,
@@ -340,21 +338,21 @@ std::size_t PyCircuit::add_schematic_symbol_field(
         .index();
 }
 
-std::string PyCircuit::schematic_to_json() {
+std::string PySchematicDocument::schematic_to_json() {
     volt::layout_schematic_text(schematic_projection());
     auto out = std::ostringstream{};
     volt::io::write_schematic(out, schematic_document_);
     return out.str();
 }
 
-std::string PyCircuit::schematic_to_svg() {
+std::string PySchematicDocument::schematic_to_svg() {
     volt::layout_schematic_text(schematic_projection());
     auto out = std::ostringstream{};
     volt::io::write_schematic_svg(out, schematic_projection());
     return out.str();
 }
 
-std::string PyCircuit::schematic_to_body_svg(std::size_t sheet, double margin) {
+std::string PySchematicDocument::schematic_to_body_svg(std::size_t sheet, double margin) {
     volt::layout_schematic_text(schematic_projection());
     auto options = volt::io::SchematicSvgBodyOptions{};
     options.margin = margin;
@@ -363,7 +361,7 @@ std::string PyCircuit::schematic_to_body_svg(std::size_t sheet, double margin) {
     return out.str();
 }
 
-py::list PyCircuit::schematic_svg_pages() {
+py::list PySchematicDocument::schematic_svg_pages() {
     volt::layout_schematic_text(schematic_projection());
     auto result = py::list{};
     for (const auto &page : volt::io::write_schematic_svg_pages(schematic_projection())) {
@@ -376,11 +374,12 @@ py::list PyCircuit::schematic_svg_pages() {
     return result;
 }
 
-void PyCircuit::load_schematic_json(const std::string &text) {
-    schematic_document_.replace_schematic(volt::io::read_schematic_text(text, circuit_));
+void PySchematicDocument::load_schematic_json(const std::string &text) {
+    schematic_document_.replace_schematic(
+        volt::io::read_schematic_text(text, schematic_document_.circuit()));
 }
 
-std::vector<std::string> PyCircuit::schematic_sheet_names() const {
+std::vector<std::string> PySchematicDocument::schematic_sheet_names() const {
     const auto &projection = schematic_document_.schematic();
     auto names = std::vector<std::string>{};
     names.reserve(projection.all<volt::SheetId>().size());
@@ -390,9 +389,20 @@ std::vector<std::string> PyCircuit::schematic_sheet_names() const {
     return names;
 }
 
-volt::Schematic &PyCircuit::schematic_projection() { return schematic_document_.schematic(); }
+py::list PySchematicDocument::validate_schematic() {
+    return diagnostics_to_list(volt::validate_schematic_readiness(schematic_projection()));
+}
 
-volt::SymbolDefId PyCircuit::ensure_schematic_symbol(const std::string &name) {
+py::list PySchematicDocument::validate_schematic_readability() {
+    volt::layout_schematic_text(schematic_projection());
+    return diagnostics_to_list(volt::validate_schematic_readability(schematic_projection()));
+}
+
+volt::Schematic &PySchematicDocument::schematic_projection() {
+    return schematic_document_.schematic();
+}
+
+volt::SymbolDefId PySchematicDocument::ensure_schematic_symbol(const std::string &name) {
     auto &projection = schematic_projection();
     if (const auto existing = volt::queries::symbol_definition_by_name(projection, name);
         existing.has_value()) {

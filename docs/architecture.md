@@ -23,6 +23,10 @@ Python `Design` facade gives authors one root for those kernel-owned surfaces. F
 constraints, libraries, and reports should extend that root without moving EDA meaning out
 of the kernel.
 
+The private Python binding mirrors the native ownership boundary: `Circuit` is the logical
+owner and `SchematicDocument` is a separate presentation owner that retains its borrowed
+Circuit lifetime. Circuit exposes no schematic forwarding surface.
+
 The core design rule is:
 
 ```text

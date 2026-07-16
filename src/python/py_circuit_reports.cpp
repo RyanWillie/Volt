@@ -14,15 +14,6 @@ py::list PyCircuit::validate() const {
     return diagnostics_to_list(volt::validate_circuit(circuit));
 }
 
-py::list PyCircuit::validate_schematic() {
-    return diagnostics_to_list(volt::validate_schematic_readiness(schematic_projection()));
-}
-
-py::list PyCircuit::validate_schematic_readability() {
-    volt::layout_schematic_text(schematic_projection());
-    return diagnostics_to_list(volt::validate_schematic_readability(schematic_projection()));
-}
-
 py::list PyCircuit::validate_for_pcb() const {
     const auto circuit = materialized_circuit();
     return diagnostics_to_list(volt::validate_for_pcb(circuit));

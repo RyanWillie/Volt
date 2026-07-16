@@ -72,9 +72,10 @@ pybind11_add_module(
     py_circuit_logical.cpp
     py_circuit_modules.cpp
     py_circuit_reports.cpp
-    py_circuit_schematic.cpp
+    py_schematic.cpp
     py_fabrication.cpp
     py_kicad.cpp
+    schematic_bindings.cpp
 )
 target_link_libraries(_volt PRIVATE Volt::Authoring Volt::IO Volt::KiCadAdapter)
 if(MINGW)

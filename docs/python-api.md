@@ -102,15 +102,18 @@ import volt
 design = volt.Design("divider")
 ```
 
-`Design` owns one kernel logical circuit and can create kernel-owned schematic and PCB
-projection data over that circuit. Future kernel layers may add constraints and reports
-under the same root.
+`Design` composes one bound logical `Circuit` owner with a separate bound
+`SchematicDocument` owner over that circuit. The binding retains the Circuit for the full
+SchematicDocument lifetime. PCB projection data remains on the current Circuit binding until
+its separately admitted ownership slice. Future kernel layers may add constraints and reports
+without moving EDA meaning into Python.
 
 Python handles should be lightweight views over kernel-owned IDs:
 
 ```text
 Design
-  owns kernel Design or Circuit
+  owns bound Circuit
+  owns bound SchematicDocument (retains and borrows Circuit)
 
 Component handle
   references ComponentId
@@ -549,7 +552,9 @@ sch.write_svg("led.svg")
 loaded = d.load_schematic_json(schematic_json)
 ```
 
-`d.schematic(name)` creates or returns a kernel-owned sheet. `sch.place()` stores a
+`d.schematic(name)` creates or returns a kernel-owned sheet through the separate native
+`SchematicDocument`. The bound `Circuit` exposes no schematic mutation, read, validation, or
+codec forwarding methods. `sch.place()` stores a
 `SymbolInstance` over an existing `ComponentId`, with a finite `(x, y)` position and a
 kernel-owned `SymbolDefinition`. Common component helpers serialize stable namespaced
 default symbol references such as `volt.passives:resistor`, `volt.optos:led`, and

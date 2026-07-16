@@ -211,14 +211,16 @@ class SchematicSymbol:
     def orientation(self) -> str:
         """Return the placed symbol orientation."""
         if self._orientation is None:
-            return self._schematic._design._circuit.schematic_symbol_orientation(self._index)
+            return self._schematic._design._schematic_document.schematic_symbol_orientation(
+                self._index
+            )
         return self._orientation
 
     def pin_anchor(self, number: int | str) -> tuple[float, float]:
         """Return the sheet coordinate for a symbol pin number."""
         if not isinstance(number, (int, str)):
             raise TypeError("pin_anchor expects a pin number")
-        return self._schematic._design._circuit.schematic_symbol_pin_anchor(
+        return self._schematic._design._schematic_document.schematic_symbol_pin_anchor(
             self._index, str(number)
         )
 
@@ -246,7 +248,9 @@ class SchematicSymbol:
         return tuple(self._pin_anchor_for_ref(item) for item in self._pin_refs())
 
     def _pin_refs(self):
-        return self._schematic._design._circuit.schematic_symbol_pin_refs(self._index)
+        return self._schematic._design._schematic_document.schematic_symbol_pin_refs(
+            self._index
+        )
 
     def _pin_context(self) -> str:
         if self._component is None:
