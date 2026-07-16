@@ -1,0 +1,91 @@
+{
+  "format": "volt.part",
+  "version": 4,
+  "identity": {
+    "namespace": "volt.power",
+    "name": "AP1117-15",
+    "version": "1.0.0"
+  },
+  "pins": [
+    { "name": "GND", "number": "1", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "name": "VO", "number": "2", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Output", "electrical_attributes": {
+        "voltage_range": { "type": "range", "dimension": "voltage", "minimum": 1.5, "maximum": 1.5 }
+      } },
+    { "name": "VI", "number": "3", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input", "electrical_attributes": {
+        "voltage_range": { "type": "range", "dimension": "voltage", "minimum": 2.5, "maximum": 18 }
+      } }
+  ],
+  "electrical_attributes": {
+    "input_voltage": { "type": "range", "dimension": "voltage", "minimum": 2.5, "maximum": 18 },
+    "output_current": { "type": "quantity", "dimension": "current", "value": 1 }
+  },
+  "provenance": {
+    "authored_by": "volt.tests",
+    "datasheet": "AP1117 rev 24",
+    "derived_from": "manual"
+  },
+  "symbols": [
+    { "name": "volt.power:regulator_3pin", "variant": "default", "hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "pins": [{ "name": "GND", "number": "1" }, { "name": "VO", "number": "2" }, { "name": "VI", "number": "3" }] }
+  ],
+  "orderable_part": {
+    "manufacturer": "Diodes Incorporated",
+    "mpn": "AP1117E15G-13",
+    "package": "SOT-223-3",
+    "footprint": {
+      "library": "Package_TO_SOT_SMD",
+      "name": "SOT-223-3_TabPin2",
+      "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "pads": [
+      { "label": "1", "x_mm": -1, "y_mm": 0, "width_mm": 0.59999999999999998, "height_mm": 0.59999999999999998 },
+      { "label": "2", "x_mm": 0, "y_mm": 0, "width_mm": 0.59999999999999998, "height_mm": 0.59999999999999998 },
+      { "label": "3", "x_mm": 1, "y_mm": 0, "width_mm": 0.59999999999999998, "height_mm": 0.59999999999999998 },
+      { "label": "4", "x_mm": 0, "y_mm": 2, "width_mm": 1.8, "height_mm": 1.8, "role": "thermal" }
+      ],
+      "courtyard": [
+      { "x_mm": -2.3999999999999999, "y_mm": -1.2 },
+      { "x_mm": 2.3999999999999999, "y_mm": -1.2 },
+      { "x_mm": 2.3999999999999999, "y_mm": 3.2000000000000002 },
+      { "x_mm": -2.3999999999999999, "y_mm": 3.2000000000000002 }
+      ],
+      "body": [
+      { "x_mm": -1.8999999999999999, "y_mm": -0.80000000000000004 },
+      { "x_mm": 1.8999999999999999, "y_mm": -0.80000000000000004 },
+      { "x_mm": 1.8999999999999999, "y_mm": 2.7999999999999998 },
+      { "x_mm": -1.8999999999999999, "y_mm": 2.7999999999999998 }
+      ],
+      "fabrication_outline": [
+      { "x_mm": -1.7, "y_mm": -0.59999999999999998 },
+      { "x_mm": 1.7, "y_mm": -0.59999999999999998 },
+      { "x_mm": 1.7, "y_mm": 2.6000000000000001 },
+      { "x_mm": -1.7, "y_mm": 2.6000000000000001 }
+      ],
+      "assembly_outline": [
+      { "x_mm": -2, "y_mm": -0.90000000000000002 },
+      { "x_mm": 2, "y_mm": -0.90000000000000002 },
+      { "x_mm": 2, "y_mm": 2.8999999999999999 },
+      { "x_mm": -2, "y_mm": 2.8999999999999999 }
+      ],
+      "markings": [
+        { "kind": "pin_1", "polygon": [
+          { "x_mm": -1.8999999999999999, "y_mm": -0.80000000000000004 },
+          { "x_mm": -1.6499999999999999, "y_mm": -0.80000000000000004 },
+          { "x_mm": -1.8999999999999999, "y_mm": -0.55000000000000004 }
+        ] }
+      ]
+    },
+    "pin_pad_mappings": [
+      { "pin_number": "1", "pad": "1" },
+      { "pin_number": "2", "pad": "2" },
+      { "pin_number": "2", "pad": "4" },
+      { "pin_number": "3", "pad": "3" }
+    ],
+    "approved_alternate_mpns": ["AP1117E15G-7"],
+    "model_3d": {
+      "format": "step",
+      "file_name": "sot223.step",
+      "hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "translation_mm": [0, 0, 0.80000000000000004],
+      "rotation_deg": 0
+    }
+  }
+}

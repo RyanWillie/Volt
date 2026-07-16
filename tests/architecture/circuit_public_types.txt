@@ -147,22 +147,25 @@ include/volt/circuit/hierarchy/hierarchy.hpp|struct|ModulePinConnectionSpec
 include/volt/circuit/hierarchy/hierarchy.hpp|struct|ModulePortSpec
 include/volt/circuit/hierarchy/hierarchy.hpp|struct|ModuleSpec
 include/volt/circuit/intent/design_intent.hpp|class|ComponentAssemblyIntent
-include/volt/circuit/parts/part_definition.hpp|class|HashedFootprintReference
-include/volt/circuit/parts/part_definition.hpp|class|HashedSchematicSymbolReference
-include/volt/circuit/parts/part_definition.hpp|class|OrderablePart
-include/volt/circuit/parts/part_definition.hpp|class|OrderablePinPadMapping
-include/volt/circuit/parts/part_definition.hpp|class|PartDefinition
-include/volt/circuit/parts/part_definition.hpp|class|PartFootprintMarking
+include/volt/circuit/parts/part_definition.hpp|class|PartIdentity
+include/volt/circuit/parts/part_definition.hpp|class|PartProvenance
+include/volt/circuit/parts/part_definition.hpp|class|PartSchematicAssetReference
+include/volt/circuit/parts/part_definition.hpp|class|PackageTerminalKey
+include/volt/circuit/parts/part_definition.hpp|class|FootprintPadKey
+include/volt/circuit/parts/part_definition.hpp|class|PinPackageTerminalMapping
+include/volt/circuit/parts/part_definition.hpp|enum class|PackageTerminalDisposition
+include/volt/circuit/parts/part_definition.hpp|class|DisposedPackageTerminal
+include/volt/circuit/parts/part_definition.hpp|class|PackageTerminalPadMapping
+include/volt/circuit/parts/part_definition.hpp|enum class|PartFootprintPadRole
 include/volt/circuit/parts/part_definition.hpp|class|PartFootprintPad
 include/volt/circuit/parts/part_definition.hpp|class|PartFootprintPoint
 include/volt/circuit/parts/part_definition.hpp|class|PartFootprintPolygon
-include/volt/circuit/parts/part_definition.hpp|class|PartIdentity
-include/volt/circuit/parts/part_definition.hpp|class|PartModel3DReference
-include/volt/circuit/parts/part_definition.hpp|class|PartPin
-include/volt/circuit/parts/part_definition.hpp|class|PartProvenance
-include/volt/circuit/parts/part_definition.hpp|class|PartSymbolPin
 include/volt/circuit/parts/part_definition.hpp|enum class|PartFootprintMarkingKind
-include/volt/circuit/parts/part_definition.hpp|enum class|PartFootprintPadRole
+include/volt/circuit/parts/part_definition.hpp|class|PartFootprintMarking
+include/volt/circuit/parts/part_definition.hpp|class|HashedFootprintReference
+include/volt/circuit/parts/part_definition.hpp|class|PartModel3DReference
+include/volt/circuit/parts/part_definition.hpp|class|OrderablePart
+include/volt/circuit/parts/part_definition.hpp|class|PartDefinition
 include/volt/circuit/parts/parts.hpp|class|FootprintRef
 include/volt/circuit/parts/parts.hpp|class|ManufacturerPart
 include/volt/circuit/parts/parts.hpp|class|PackageRef

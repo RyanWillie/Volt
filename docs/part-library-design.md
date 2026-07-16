@@ -100,12 +100,18 @@ but the canonical `volt.part` bytes stay independently loadable and hash-address
 keeps lock entries, future manifests, and design-local snapshots attached to one byte
 representation instead of duplicating embedded copies across designs.
 
-The current implemented artifact format is `format: "volt.part"`, `version: 4`.
-Version 4 carries optional footprint-local `courtyard`, `body`, `fabrication_outline`,
-and `assembly_outline` polygons plus semantic footprint markings such as silkscreen,
-polarity, and pin-1 marks. Omitting a geometry field means no such geometry was
-declared, not an empty extent. Polygon arrays are canonical boundary vertices and must
-not repeat the first vertex at the end.
+The current writer emits `format: "volt.part"`, `version: 5`. Version 5 binds one exact
+part to one `ComponentDefinition` content digest and persists canonical P1 records,
+`PinKey`-to-package-terminal mappings, package-terminal-to-footprint-pad mappings,
+explicit non-electrical dispositions, provenance, manufacturer/package truth, and
+content-addressed assets. The v4 reader is retained only behind an explicit deterministic
+converter; there is no v4 writer.
+
+Version 5 retains optional footprint-local `courtyard`, `body`, `fabrication_outline`, and
+`assembly_outline` polygons plus semantic footprint markings such as silkscreen, polarity,
+and pin-1 marks. Omitting a geometry field means no such geometry was declared, not an
+empty extent. Polygon arrays are canonical boundary vertices and must not repeat the first
+vertex at the end.
 
 ### Projections must line up, and the kernel checks it
 
@@ -118,8 +124,9 @@ Structural — rejected both when a part is assembled and when an artifact is lo
 
 - no symbol pin outside the pin map, and every pin map entry appears in the symbol
   exactly once;
-- every pin-to-pad map entry references a real pin and a real pad; multi-pad pins (for
-  example a tab plus a leg) are explicit in the pin-to-pad map;
+- every `PinKey` maps to one or more package terminals, and every represented package
+  terminal maps separately to one or more real footprint pads;
+- every terminal and pad has exactly one owner or an explicit non-electrical disposition;
 - repeated pin names resolve to distinct pin numbers.
 
 Design-quality — reported as diagnostics over assembled and loaded parts:
