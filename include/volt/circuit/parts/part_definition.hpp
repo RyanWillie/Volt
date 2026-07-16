@@ -1,19 +1,21 @@
 #pragma once
 
 #include <array>
+#include <compare>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <volt/circuit/connectivity/definitions.hpp>
+#include <volt/circuit/electrical/records.hpp>
 #include <volt/circuit/parts/parts.hpp>
 #include <volt/core/content_hash.hpp>
 #include <volt/core/diagnostics.hpp>
-#include <volt/core/electrical_attributes.hpp>
 
 namespace volt {
 
-/** Stable library identity for a kernel-owned part artifact. */
+/** Stable library identity for one exact part artifact. */
 class PartIdentity {
   public:
     /** Construct identity from non-empty namespace, name, and version fields. */
@@ -25,7 +27,7 @@ class PartIdentity {
     /** Return the part name inside the namespace. */
     [[nodiscard]] const std::string &name() const noexcept { return name_; }
 
-    /** Return the part version. */
+    /** Return the human part release version. */
     [[nodiscard]] const std::string &version() const noexcept { return version_; }
 
   private:
@@ -34,26 +36,7 @@ class PartIdentity {
     std::string version_;
 };
 
-/** One canonical logical pin entry in a part artifact pin map. */
-class PartPin {
-  public:
-    /** Construct a pin entry with canonical typed semantics and optional typed constraints. */
-    explicit PartPin(PinDefinition definition, ElectricalAttributeMap electrical_attributes = {});
-
-    /** Return the canonical pin semantics. */
-    [[nodiscard]] const PinDefinition &definition() const noexcept { return definition_; }
-
-    /** Return typed electrical constraints attached to this pin. */
-    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept {
-        return electrical_attributes_;
-    }
-
-  private:
-    PinDefinition definition_;
-    ElectricalAttributeMap electrical_attributes_;
-};
-
-/** Provenance metadata carried by the part artifact itself. */
+/** Provenance metadata carried by the exact part artifact itself. */
 class PartProvenance {
   public:
     /** Construct optional provenance fields; empty strings are omitted when serialized. */
@@ -78,67 +61,145 @@ class PartProvenance {
     std::string derived_from_;
 };
 
-/** One pin occurrence in a schematic symbol projection for a part. */
-class PartSymbolPin {
+/** Hash-addressed schematic asset used by an exact part. */
+class PartSchematicAssetReference {
   public:
-    /** Construct a symbol pin occurrence from non-empty pin name and number labels. */
-    PartSymbolPin(std::string name, std::string number);
+    /** Construct a content-addressed schematic asset reference. */
+    PartSchematicAssetReference(std::string name, std::string variant, ContentHash hash);
 
-    /** Return the projected pin name. */
+    /** Return the symbol asset name. */
     [[nodiscard]] const std::string &name() const noexcept { return name_; }
 
-    /** Return the projected pin number. */
-    [[nodiscard]] const std::string &number() const noexcept { return number_; }
-
-  private:
-    std::string name_;
-    std::string number_;
-};
-
-/** Hash-addressed schematic symbol projection for a part. */
-class HashedSchematicSymbolReference {
-  public:
-    /** Construct a hashed symbol projection reference. */
-    HashedSchematicSymbolReference(std::string name, std::string variant, ContentHash hash,
-                                   std::vector<PartSymbolPin> pins);
-
-    /** Return the symbol name. */
-    [[nodiscard]] const std::string &name() const noexcept { return name_; }
-
-    /** Return the symbol variant label. */
+    /** Return the component-local variant label. */
     [[nodiscard]] const std::string &variant() const noexcept { return variant_; }
 
-    /** Return the content hash for the referenced symbol projection. */
+    /** Return the content hash for the referenced symbol bytes. */
     [[nodiscard]] const ContentHash &hash() const noexcept { return hash_; }
-
-    /** Return the schematic pin occurrences carried by this symbol projection. */
-    [[nodiscard]] const std::vector<PartSymbolPin> &pins() const noexcept { return pins_; }
 
   private:
     std::string name_;
     std::string variant_;
     ContentHash hash_;
-    std::vector<PartSymbolPin> pins_;
 };
 
-/** Optional non-logical role that lets an unmapped footprint pad stay intentional. */
+/** Stable exact-package terminal identity. */
+class PackageTerminalKey {
+  public:
+    /** Construct a package-terminal key from a non-empty label. */
+    explicit PackageTerminalKey(std::string value);
+
+    /** Return the stable package-terminal label. */
+    [[nodiscard]] const std::string &value() const noexcept { return value_; }
+
+    /** Compare package-terminal identities. */
+    [[nodiscard]] bool operator==(const PackageTerminalKey &) const noexcept = default;
+
+    /** Order package-terminal identities for deterministic normalization. */
+    [[nodiscard]] std::strong_ordering
+    operator<=>(const PackageTerminalKey &) const noexcept = default;
+
+  private:
+    std::string value_;
+};
+
+/** Stable selected-footprint pad identity. */
+class FootprintPadKey {
+  public:
+    /** Construct a footprint-pad key from a non-empty label. */
+    explicit FootprintPadKey(std::string value);
+
+    /** Return the stable footprint-pad label. */
+    [[nodiscard]] const std::string &value() const noexcept { return value_; }
+
+    /** Compare footprint-pad identities. */
+    [[nodiscard]] bool operator==(const FootprintPadKey &) const noexcept = default;
+
+    /** Order footprint-pad identities for deterministic normalization. */
+    [[nodiscard]] std::strong_ordering
+    operator<=>(const FootprintPadKey &) const noexcept = default;
+
+  private:
+    std::string value_;
+};
+
+/** Mapping from one contract-local logical PinKey to one or more package terminals. */
+class PinPackageTerminalMapping {
+  public:
+    /** Construct and normalize one non-empty logical-pin to terminal mapping. */
+    PinPackageTerminalMapping(PinKey pin, std::vector<PackageTerminalKey> terminals);
+
+    /** Return the component-contract logical pin. */
+    [[nodiscard]] const PinKey &pin() const noexcept { return pin_; }
+
+    /** Return sorted unique package terminals implementing the logical pin. */
+    [[nodiscard]] const std::vector<PackageTerminalKey> &terminals() const noexcept {
+        return terminals_;
+    }
+
+  private:
+    PinKey pin_;
+    std::vector<PackageTerminalKey> terminals_;
+};
+
+/** Explicit reason why a package terminal is outside the logical electrical interface. */
+enum class PackageTerminalDisposition {
+    NoConnect,
+    NonElectrical,
+};
+
+/** One package terminal explicitly excluded from logical-pin ownership. */
+class DisposedPackageTerminal {
+  public:
+    /** Construct an explicitly disposed package terminal. */
+    DisposedPackageTerminal(PackageTerminalKey terminal, PackageTerminalDisposition disposition);
+
+    /** Return the disposed package terminal. */
+    [[nodiscard]] const PackageTerminalKey &terminal() const noexcept { return terminal_; }
+
+    /** Return why this terminal is outside the logical interface. */
+    [[nodiscard]] PackageTerminalDisposition disposition() const noexcept { return disposition_; }
+
+  private:
+    PackageTerminalKey terminal_;
+    PackageTerminalDisposition disposition_;
+};
+
+/** Mapping from one package terminal to one or more selected-footprint pads. */
+class PackageTerminalPadMapping {
+  public:
+    /** Construct and normalize one non-empty terminal-to-pad mapping. */
+    PackageTerminalPadMapping(PackageTerminalKey terminal, std::vector<FootprintPadKey> pads);
+
+    /** Return the package terminal. */
+    [[nodiscard]] const PackageTerminalKey &terminal() const noexcept { return terminal_; }
+
+    /** Return sorted unique footprint pads implementing the package terminal. */
+    [[nodiscard]] const std::vector<FootprintPadKey> &pads() const noexcept { return pads_; }
+
+  private:
+    PackageTerminalKey terminal_;
+    std::vector<FootprintPadKey> pads_;
+};
+
+/** Explicit non-terminal role or electrical thermal role of a footprint pad. */
 enum class PartFootprintPadRole {
     Mechanical,
     Thermal,
+    NonElectrical,
 };
 
-/** Minimal footprint pad summary carried by the part artifact for lineup checks. */
+/** Minimal footprint pad summary carried by the exact part for lineup checks. */
 class PartFootprintPad {
   public:
     /** Construct an electrical footprint pad with finite center and positive size. */
     PartFootprintPad(std::string label, double x_mm, double y_mm, double width_mm,
                      double height_mm);
 
-    /** Construct a footprint pad with an explicit non-logical role. */
+    /** Construct a footprint pad with an explicit physical role. */
     PartFootprintPad(std::string label, double x_mm, double y_mm, double width_mm, double height_mm,
                      PartFootprintPadRole role);
 
-    /** Return the stable pad label inside the footprint projection. */
+    /** Return the stable pad label inside the selected footprint. */
     [[nodiscard]] const std::string &label() const noexcept { return label_; }
 
     /** Return the footprint-local X center in millimeters. */
@@ -153,11 +214,11 @@ class PartFootprintPad {
     /** Return the pad height in millimeters. */
     [[nodiscard]] double height_mm() const noexcept { return height_mm_; }
 
-    /** Return the optional non-logical role. */
+    /** Return the optional explicit physical role. */
     [[nodiscard]] const std::optional<PartFootprintPadRole> &role() const noexcept { return role_; }
 
-    /** Return whether this pad should normally be mapped to a pin. */
-    [[nodiscard]] bool requires_pin_mapping() const noexcept { return !role_.has_value(); }
+    /** Return whether this pad must be owned through a package-terminal mapping. */
+    [[nodiscard]] bool requires_terminal_mapping() const noexcept;
 
   private:
     PartFootprintPad(std::string label, double x_mm, double y_mm, double width_mm, double height_mm,
@@ -171,7 +232,7 @@ class PartFootprintPad {
     std::optional<PartFootprintPadRole> role_;
 };
 
-/** Point in an orderable part's footprint projection, measured in millimeters. */
+/** Point in an exact part's footprint projection, measured in millimeters. */
 class PartFootprintPoint {
   public:
     /** Construct a finite footprint-projection point. */
@@ -183,16 +244,15 @@ class PartFootprintPoint {
     /** Return the footprint-local Y coordinate in millimeters. */
     [[nodiscard]] double y_mm() const noexcept { return y_mm_; }
 
-    /** Return whether two part footprint points have the same coordinates. */
-    [[nodiscard]] friend bool operator==(PartFootprintPoint lhs,
-                                         PartFootprintPoint rhs) noexcept = default;
+    /** Compare exact footprint points. */
+    [[nodiscard]] bool operator==(const PartFootprintPoint &) const noexcept = default;
 
   private:
     double x_mm_;
     double y_mm_;
 };
 
-/** Closed polygon in an orderable part's footprint projection. */
+/** Closed polygon in an exact part's footprint projection. */
 class PartFootprintPolygon {
   public:
     /** Construct a non-degenerate footprint-projection polygon from boundary vertices. */
@@ -203,24 +263,21 @@ class PartFootprintPolygon {
         return vertices_;
     }
 
-    /** Return whether two part footprint polygons carry the same vertices. */
-    [[nodiscard]] friend bool operator==(const PartFootprintPolygon &lhs,
-                                         const PartFootprintPolygon &rhs) noexcept {
-        return lhs.vertices_ == rhs.vertices_;
-    }
+    /** Compare exact footprint polygon vertices. */
+    [[nodiscard]] bool operator==(const PartFootprintPolygon &) const noexcept = default;
 
   private:
     std::vector<PartFootprintPoint> vertices_;
 };
 
-/** Semantic kind for non-pad markings in an orderable part footprint projection. */
+/** Semantic kind for non-pad markings in an exact part footprint projection. */
 enum class PartFootprintMarkingKind {
     Silkscreen,
     Polarity,
     PinOne,
 };
 
-/** Non-pad marking geometry in an orderable part footprint projection. */
+/** Non-pad marking geometry in an exact part footprint projection. */
 class PartFootprintMarking {
   public:
     /** Construct a semantic part footprint marking polygon. */
@@ -237,7 +294,7 @@ class PartFootprintMarking {
     PartFootprintPolygon polygon_;
 };
 
-/** Hash-addressed footprint projection for an orderable part. */
+/** Hash-addressed footprint projection for an exact part. */
 class HashedFootprintReference {
   public:
     /** Construct a hashed footprint projection reference. */
@@ -252,23 +309,6 @@ class HashedFootprintReference {
   private:
     FootprintRef footprint_;
     ContentHash hash_;
-};
-
-/** Mapping from part pin number to physical footprint pad label. */
-class OrderablePinPadMapping {
-  public:
-    /** Construct a pin-number to pad mapping from non-empty labels. */
-    OrderablePinPadMapping(std::string pin_number, std::string pad);
-
-    /** Return the part pin number. */
-    [[nodiscard]] const std::string &pin_number() const noexcept { return pin_number_; }
-
-    /** Return the physical footprint pad label. */
-    [[nodiscard]] const std::string &pad() const noexcept { return pad_; }
-
-  private:
-    std::string pin_number_;
-    std::string pad_;
 };
 
 /** Hash-addressed 3D artifact reference and footprint-relative placement. */
@@ -303,13 +343,13 @@ class PartModel3DReference {
     double rotation_deg_;
 };
 
-/** Stable manufacturer/orderable identity for a kernel-owned part definition. */
+/** Stable manufacturer, package, footprint, and terminal-to-pad truth for one exact part. */
 class OrderablePart {
   public:
-    /** Construct an orderable part with stable physical identity and mappings. */
+    /** Construct an orderable exact part with content-addressed physical implementation data. */
     OrderablePart(ManufacturerPart manufacturer_part, PackageRef package,
                   HashedFootprintReference footprint, std::vector<PartFootprintPad> footprint_pads,
-                  std::vector<OrderablePinPadMapping> pin_pad_mappings,
+                  std::vector<PackageTerminalPadMapping> terminal_pad_mappings,
                   std::vector<std::string> approved_alternate_mpns = {},
                   std::optional<PartModel3DReference> model_3d = std::nullopt,
                   std::optional<PartFootprintPolygon> footprint_courtyard = std::nullopt,
@@ -323,15 +363,21 @@ class OrderablePart {
         return manufacturer_part_;
     }
 
-    /** Return the package label. */
+    /** Return the exact package label. */
     [[nodiscard]] const PackageRef &package() const noexcept { return package_; }
 
     /** Return the hash-addressed footprint reference. */
     [[nodiscard]] const HashedFootprintReference &footprint() const noexcept { return footprint_; }
 
-    /** Return footprint pad summaries in projection order. */
+    /** Return footprint pad summaries in stable key order. */
     [[nodiscard]] const std::vector<PartFootprintPad> &footprint_pads() const noexcept {
         return footprint_pads_;
+    }
+
+    /** Return normalized package-terminal to footprint-pad mappings. */
+    [[nodiscard]] const std::vector<PackageTerminalPadMapping> &
+    terminal_pad_mappings() const noexcept {
+        return terminal_pad_mappings_;
     }
 
     /** Return the optional declared footprint courtyard polygon. */
@@ -361,12 +407,7 @@ class OrderablePart {
         return footprint_markings_;
     }
 
-    /** Return pin-number to pad mappings in deterministic insertion order. */
-    [[nodiscard]] const std::vector<OrderablePinPadMapping> &pin_pad_mappings() const noexcept {
-        return pin_pad_mappings_;
-    }
-
-    /** Return approved alternate manufacturer part numbers. */
+    /** Return approved alternate manufacturer part numbers retained from current exact truth. */
     [[nodiscard]] const std::vector<std::string> &approved_alternate_mpns() const noexcept {
         return approved_alternate_mpns_;
     }
@@ -381,60 +422,84 @@ class OrderablePart {
     PackageRef package_;
     HashedFootprintReference footprint_;
     std::vector<PartFootprintPad> footprint_pads_;
+    std::vector<PackageTerminalPadMapping> terminal_pad_mappings_;
     std::optional<PartFootprintPolygon> footprint_courtyard_;
     std::optional<PartFootprintPolygon> footprint_body_;
     std::optional<PartFootprintPolygon> footprint_fabrication_outline_;
     std::optional<PartFootprintPolygon> footprint_assembly_outline_;
     std::vector<PartFootprintMarking> footprint_markings_;
-    std::vector<OrderablePinPadMapping> pin_pad_mappings_;
     std::vector<std::string> approved_alternate_mpns_;
     std::optional<PartModel3DReference> model_3d_;
 };
 
-/** Kernel-owned canonical part artifact model. */
+/** One immutable exact manufacturer part implementing exactly one component digest. */
 class PartDefinition {
   public:
-    /** Construct a kernel-owned part definition artifact. */
-    PartDefinition(PartIdentity identity, std::vector<PartPin> pins,
-                   ElectricalAttributeMap electrical_attributes, PartProvenance provenance,
-                   std::vector<HashedSchematicSymbolReference> symbols,
+    /** Construct and structurally validate one exact implementation of a component definition. */
+    PartDefinition(const ComponentDefinition &component, PartIdentity identity,
+                   ElectricalRecordSet electrical_records,
+                   std::vector<PinPackageTerminalMapping> pin_terminal_mappings,
+                   std::vector<DisposedPackageTerminal> terminal_dispositions,
+                   PartProvenance provenance,
+                   std::vector<PartSchematicAssetReference> schematic_assets,
                    OrderablePart orderable_part);
 
-    /** Return stable part identity. */
+    /** Return stable human part identity. */
     [[nodiscard]] const PartIdentity &identity() const noexcept { return identity_; }
 
-    /** Return the canonical pin map. */
-    [[nodiscard]] const std::vector<PartPin> &pins() const noexcept { return pins_; }
+    /** Return the exact immutable ComponentDefinition content identity implemented by this part. */
+    [[nodiscard]] const ContentHash &implemented_component() const noexcept {
+        return implemented_component_;
+    }
 
-    /** Return part-level typed ratings. */
-    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept {
-        return electrical_attributes_;
+    /** Return canonical P1 Voltage and Current records for this exact implementation. */
+    [[nodiscard]] const ElectricalRecordSet &electrical_records() const noexcept {
+        return electrical_records_;
+    }
+
+    /** Return normalized logical PinKey to package-terminal mappings. */
+    [[nodiscard]] const std::vector<PinPackageTerminalMapping> &
+    pin_terminal_mappings() const noexcept {
+        return pin_terminal_mappings_;
+    }
+
+    /** Return explicit package terminals outside the logical electrical interface. */
+    [[nodiscard]] const std::vector<DisposedPackageTerminal> &
+    terminal_dispositions() const noexcept {
+        return terminal_dispositions_;
     }
 
     /** Return provenance fields. */
     [[nodiscard]] const PartProvenance &provenance() const noexcept { return provenance_; }
 
-    /** Return hash-addressed schematic symbol projection references. */
-    [[nodiscard]] const std::vector<HashedSchematicSymbolReference> &symbols() const noexcept {
-        return symbols_;
+    /** Return content-addressed schematic assets used by this exact part. */
+    [[nodiscard]] const std::vector<PartSchematicAssetReference> &
+    schematic_assets() const noexcept {
+        return schematic_assets_;
     }
 
-    /** Return the stable orderable physical identity. */
+    /** Return exact manufacturer, package, footprint, and model truth. */
     [[nodiscard]] const OrderablePart &orderable_part() const noexcept { return orderable_part_; }
 
+    /** Return the immutable semantic content identity of this exact part. */
+    [[nodiscard]] const ContentHash &content_identity() const noexcept { return content_identity_; }
+
   private:
-    void require_symbol_lineup_matches_pins() const;
-    void require_orderable_mappings_match_pins() const;
+    void require_complete_component_implementation(const ComponentDefinition &component) const;
+    void require_complete_physical_mappings(const ComponentDefinition &component) const;
 
     PartIdentity identity_;
-    std::vector<PartPin> pins_;
-    ElectricalAttributeMap electrical_attributes_;
+    ContentHash implemented_component_;
+    ElectricalRecordSet electrical_records_;
+    std::vector<PinPackageTerminalMapping> pin_terminal_mappings_;
+    std::vector<DisposedPackageTerminal> terminal_dispositions_;
     PartProvenance provenance_;
-    std::vector<HashedSchematicSymbolReference> symbols_;
+    std::vector<PartSchematicAssetReference> schematic_assets_;
     OrderablePart orderable_part_;
+    ContentHash content_identity_;
 };
 
-/** Validate design-quality lineup concerns for an assembled or loaded part artifact. */
+/** Validate design-quality geometry concerns for an assembled or loaded exact part. */
 [[nodiscard]] DiagnosticReport validate_part_lineup(const PartDefinition &part);
 
 } // namespace volt

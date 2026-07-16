@@ -3,6 +3,10 @@
 #include "binding_component_conversions.hpp"
 #include "binding_diagnostic_conversions.hpp"
 
+#include <algorithm>
+#include <map>
+#include <ranges>
+
 #include <volt/circuit/parts/part_definition.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
 
@@ -48,8 +52,8 @@ namespace {
     return result;
 }
 
-[[nodiscard]] inline std::vector<volt::PartPin> part_pins_from_list(const py::list &pins) {
-    auto result = std::vector<volt::PartPin>{};
+[[nodiscard]] inline std::vector<volt::PinDefinition> part_pins_from_list(const py::list &pins) {
+    auto result = std::vector<volt::PinDefinition>{};
     result.reserve(static_cast<std::size_t>(py::len(pins)));
     for (const auto item : pins) {
         const auto spec = pin_spec_from_dict(py::cast<py::dict>(item));
@@ -62,32 +66,57 @@ namespace {
                                               volt::UnitDimension::Voltage},
                 volt::ElectricalAttributeValue{spec.voltage_range.value()});
         }
-        result.emplace_back(volt::PinDefinition{spec.name, spec.number, spec.requirement,
-                                                spec.terminal_kind, spec.direction,
-                                                spec.signal_domain, spec.drive_kind, spec.polarity},
+        result.emplace_back(spec.name, spec.number, spec.requirement, spec.terminal_kind,
+                            spec.direction, spec.signal_domain, spec.drive_kind, spec.polarity,
                             std::move(attributes));
     }
     return result;
 }
 
-[[nodiscard]] inline std::vector<volt::HashedSchematicSymbolReference>
-part_symbols_from_list(const py::list &symbols) {
-    auto result = std::vector<volt::HashedSchematicSymbolReference>{};
+[[nodiscard]] inline std::vector<volt::PartSchematicAssetReference>
+part_assets_from_list(const py::list &symbols,
+                      const std::vector<volt::PinDefinition> &component_pins) {
+    auto result = std::vector<volt::PartSchematicAssetReference>{};
     result.reserve(static_cast<std::size_t>(py::len(symbols)));
     for (const auto item : symbols) {
         const auto symbol = py::cast<py::dict>(item);
-        auto pins = std::vector<volt::PartSymbolPin>{};
+        auto seen = std::vector<bool>(component_pins.size(), false);
         const auto pin_list = required_list_field(symbol, "pins");
-        pins.reserve(static_cast<std::size_t>(py::len(pin_list)));
         for (const auto pin_item : pin_list) {
             const auto pin = py::cast<py::dict>(pin_item);
-            pins.emplace_back(required_string_field(pin, "name"),
-                              required_string_field(pin, "number"));
+            const auto name = required_string_field(pin, "name");
+            const auto number = required_string_field(pin, "number");
+            const auto match =
+                std::ranges::find(component_pins, number, &volt::PinDefinition::number);
+            if (match == component_pins.end() || match->name() != name) {
+                throw std::invalid_argument{
+                    "Part artifact schematic symbol pin is outside component pins"};
+            }
+            const auto index =
+                static_cast<std::size_t>(std::distance(component_pins.begin(), match));
+            if (seen[index]) {
+                throw std::invalid_argument{
+                    "Part artifact schematic symbol contains duplicate component pin"};
+            }
+            seen[index] = true;
+        }
+        if (!std::ranges::all_of(seen, [](const auto value) { return value; })) {
+            throw std::invalid_argument{
+                "Part artifact schematic symbol must contain every component pin"};
         }
         result.emplace_back(required_string_field(symbol, "name"),
                             optional_part_string_field(symbol, "variant", "default"),
-                            volt::ContentHash{required_string_field(symbol, "hash")},
-                            std::move(pins));
+                            volt::ContentHash{required_string_field(symbol, "hash")});
+    }
+    return result;
+}
+
+[[nodiscard]] inline std::vector<volt::SchematicSymbolReference>
+component_symbol_references(const std::vector<volt::PartSchematicAssetReference> &assets) {
+    auto result = std::vector<volt::SchematicSymbolReference>{};
+    result.reserve(assets.size());
+    for (const auto &asset : assets) {
+        result.emplace_back(asset.name(), asset.variant());
     }
     return result;
 }
@@ -187,14 +216,18 @@ part_footprint_markings_from_dict(const py::dict &dict, const char *name) {
     return markings;
 }
 
-[[nodiscard]] inline std::vector<volt::OrderablePinPadMapping>
-part_pin_pad_mappings_from_list(const py::list &mappings) {
-    auto result = std::vector<volt::OrderablePinPadMapping>{};
-    result.reserve(static_cast<std::size_t>(py::len(mappings)));
+[[nodiscard]] inline std::vector<volt::PackageTerminalPadMapping>
+part_terminal_pad_mappings_from_list(const py::list &mappings) {
+    auto pads_by_terminal = std::map<std::string, std::vector<volt::FootprintPadKey>>{};
     for (const auto item : mappings) {
         const auto mapping = py::cast<py::dict>(item);
-        result.emplace_back(required_string_field(mapping, "pin_number"),
-                            required_string_field(mapping, "pad"));
+        pads_by_terminal[required_string_field(mapping, "pin_number")].emplace_back(
+            required_string_field(mapping, "pad"));
+    }
+    auto result = std::vector<volt::PackageTerminalPadMapping>{};
+    result.reserve(pads_by_terminal.size());
+    for (auto &[terminal, pads] : pads_by_terminal) {
+        result.emplace_back(volt::PackageTerminalKey{terminal}, std::move(pads));
     }
     return result;
 }
@@ -234,7 +267,7 @@ part_model_3d_reference_from_dict(const py::dict &dict, const char *name) {
                                required_string_field(dict, "footprint_name")},
             volt::ContentHash{required_string_field(dict, "footprint_hash")}},
         part_footprint_pads_from_list(required_list_field(dict, "footprint_pads")),
-        part_pin_pad_mappings_from_list(required_list_field(dict, "pin_pad_mappings")),
+        part_terminal_pad_mappings_from_list(required_list_field(dict, "pin_pad_mappings")),
         string_vector_from_list(required_list_field(dict, "approved_alternate_mpns")),
         part_model_3d_reference_from_dict(dict, "model_3d"),
         optional_part_footprint_polygon_from_dict(dict, "footprint_courtyard"),
@@ -247,16 +280,41 @@ part_model_3d_reference_from_dict(const py::dict &dict, const char *name) {
 [[nodiscard]] inline volt::PartDefinition part_definition_from_dict(const py::dict &dict) {
     const auto identity = required_dict_field(dict, "identity");
     const auto provenance = required_dict_field(dict, "provenance");
+    const auto pins = part_pins_from_list(required_list_field(dict, "pins"));
+    const auto assets = part_assets_from_list(required_list_field(dict, "symbols"), pins);
+    if (assets.empty()) {
+        throw std::invalid_argument{
+            "Part artifact requires at least one schematic symbol projection"};
+    }
+    auto pin_ids = std::vector<volt::PinDefId>{};
+    pin_ids.reserve(pins.size());
+    for (std::size_t index = 0; index < pins.size(); ++index) {
+        pin_ids.emplace_back(index);
+    }
+    const auto component = volt::ComponentDefinition::make(
+        required_string_field(identity, "name"), pins, std::move(pin_ids), {},
+        volt::DefinitionSource{required_string_field(identity, "namespace"),
+                               required_string_field(identity, "name"),
+                               required_string_field(identity, "version")},
+        component_symbol_references(assets));
+    auto pin_mappings = std::vector<volt::PinPackageTerminalMapping>{};
+    pin_mappings.reserve(pins.size());
+    for (std::size_t index = 0; index < pins.size(); ++index) {
+        pin_mappings.emplace_back(component.contract().pin_keys()[index],
+                                  std::vector{volt::PackageTerminalKey{pins[index].number()}});
+    }
     return volt::PartDefinition{
+        component,
         volt::PartIdentity{required_string_field(identity, "namespace"),
                            required_string_field(identity, "name"),
                            required_string_field(identity, "version")},
-        part_pins_from_list(required_list_field(dict, "pins")),
-        volt::ElectricalAttributeMap{},
+        volt::ElectricalRecordSet{pins.size()},
+        std::move(pin_mappings),
+        {},
         volt::PartProvenance{optional_part_string_field(provenance, "datasheet", ""),
                              optional_part_string_field(provenance, "authored_by", ""),
                              optional_part_string_field(provenance, "derived_from", "")},
-        part_symbols_from_list(required_list_field(dict, "symbols")),
+        assets,
         orderable_part_from_dict(required_dict_field(dict, "orderable_part"))};
 }
 

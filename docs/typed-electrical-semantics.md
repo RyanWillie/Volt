@@ -99,10 +99,11 @@ The important architectural result is that Python and JSON are no longer the onl
 where these facts exist. The kernel can inspect, serialize, and validate them directly.
 
 The canonical record substrate is intentionally separate from the older named electrical
-attribute maps. Component contracts now bind its required shapes to stable subjects; P3
-will bind actual records and exact physical implementation into part identity. This work
-does not reinterpret or migrate existing logical-circuit attributes or the current
-`volt.part` v4 artifact.
+attribute maps. Component contracts bind required shapes to stable subjects, and exact
+`PartDefinition` values bind the actual records and physical implementation to one
+component content identity. The current `volt.part` v5 writer persists that truth; the v4
+reader and explicit converter exist only for migration and do not reinterpret existing
+logical-circuit attributes.
 
 ## Quantities And Attributes
 
@@ -537,8 +538,8 @@ Loading malformed typed fields is a structural format error. Loading a well-form
 bad design should succeed and allow validation to report diagnostics.
 
 Canonical Voltage/Current records additionally round-trip through the standalone
-`volt.electrical_records` v1 native codec. This is the P1 persistence seam, not a successor
-`volt.part` writer and not a package or registry format.
+`volt.electrical_records` v1 native codec. That P1 codec is embedded by the `volt.part` v5
+writer but remains independently usable; neither format is a package or registry format.
 
 ## Python Authoring
 
@@ -605,8 +606,8 @@ The accepted post-Circuit part program keeps the remaining ownership changes sep
 
 1. P2 provides stable `PinKey`, relation/domain keys, feature schemas, bindings, and
    component content identity over this substrate.
-2. P3 makes one exact `PartDefinition` implement one component identity and persists the
-   canonical records with exact physical mappings.
+2. P3 provides one exact `PartDefinition` per component identity, canonical records, and
+   the two exact physical mapping seams.
 3. P4 adds native catalogue construction and exact resolution.
 4. P5 consumes resolved records for selected-part truth and circuit-level Voltage/Current
    ERC.

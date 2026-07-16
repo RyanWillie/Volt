@@ -2,9 +2,9 @@
   "goldens": {
     "byte": [
       {
-        "byte_count": 4035,
+        "byte_count": 4733,
         "path": "tests/fixtures/ap1117.part.volt.json",
-        "sha256": "0d5516b713b897ac9d984ea20042ffa2b8436dcc315e1ac9ce310d8e774f5fae"
+        "sha256": "dc5d498a5e3a358d15ae0dfa41df6862afc3bcb4ad9e0fc03dbd43046ba1bb46"
       },
       {
         "byte_count": 1828,
@@ -132,28 +132,34 @@
       },
       {
         "path": "tests/fixtures/ap1117.part.volt.json",
-        "sha256": "0d5516b713b897ac9d984ea20042ffa2b8436dcc315e1ac9ce310d8e774f5fae",
+        "sha256": "dc5d498a5e3a358d15ae0dfa41df6862afc3bcb4ad9e0fc03dbd43046ba1bb46",
         "top_level_counts": {
-          "electrical_attributes": 2,
+          "electrical_records": 5,
           "identity": 3,
           "orderable_part": 7,
-          "pins": 3,
+          "pin_terminal_mappings": 3,
           "provenance": 3,
-          "symbols": 1
+          "schematic_assets": 1,
+          "terminal_dispositions": 0
         },
         "top_level_keys": [
-          "electrical_attributes",
+          "content_identity",
+          "electrical_records",
           "format",
           "identity",
+          "implements",
           "orderable_part",
-          "pins",
+          "pin_terminal_mappings",
           "provenance",
-          "symbols",
+          "schematic_assets",
+          "terminal_dispositions",
           "version"
         ],
         "top_level_scalars": {
+          "content_identity": "sha256:ee0a323046ba0966ce55be811d1ee289c5f74b875ca2bfa271a592542f212f67",
           "format": "volt.part",
-          "version": 4
+          "implements": "sha256:758419641e5722ee2741e509eddd05758105f2445e5762635d847c8580d6fd3c",
+          "version": 5
         }
       },
       {

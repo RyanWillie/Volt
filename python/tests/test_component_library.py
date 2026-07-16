@@ -157,31 +157,30 @@ def test_library_part_build_emits_kernel_owned_artifact_without_role_sugar():
     assert volt._volt.content_hash(artifact.bytes) == artifact.sha256
     assert artifact.bytes == library.build().part("AP1117-15").artifact.bytes
     assert document["format"] == "volt.part"
-    assert document["version"] == 4
+    assert document["version"] == 5
     assert document["identity"] == {
         "namespace": "volt.test",
         "name": "AP1117-15",
         "version": "1.2.3",
     }
     assert b'"role"' not in artifact.bytes
-    assert document["pins"][0]["terminal_kind"] == "Ground"
-    assert document["pins"][0]["direction"] == "Passive"
-    assert document["pins"][1]["terminal_kind"] == "Power"
-    assert document["pins"][1]["direction"] == "Output"
-    assert document["pins"][2]["terminal_kind"] == "Power"
-    assert document["pins"][2]["direction"] == "Input"
+    assert document["implements"].startswith("sha256:")
+    assert document["content_identity"].startswith("sha256:")
+    assert document["electrical_records"]["pin_count"] == 3
+    assert document["electrical_records"]["records"] == []
+    assert document["pin_terminal_mappings"] == [
+        {"pin_key": "pin/0", "terminals": ["1"]},
+        {"pin_key": "pin/1", "terminals": ["2"]},
+        {"pin_key": "pin/2", "terminals": ["3"]},
+    ]
     assert document["orderable_part"]["mpn"] == "AP1117E15G-13"
-    assert document["orderable_part"]["pin_pad_mappings"] == [
-        {"pin_number": "1", "pad": "1"},
-        {"pin_number": "2", "pad": "2"},
-        {"pin_number": "2", "pad": "4"},
-        {"pin_number": "3", "pad": "3"},
+    assert document["orderable_part"]["terminal_pad_mappings"] == [
+        {"terminal": "1", "pads": ["1"]},
+        {"terminal": "2", "pads": ["2", "4"]},
+        {"terminal": "3", "pads": ["3"]},
     ]
-    assert document["symbols"][0]["pins"] == [
-        {"name": "GND", "number": "1"},
-        {"name": "VO", "number": "2"},
-        {"name": "VI", "number": "3"},
-    ]
+    assert document["schematic_assets"][0]["name"] == "volt.power:regulator_3pin"
+    assert document["schematic_assets"][0]["hash"].startswith("sha256:")
     assert [pad["label"] for pad in document["orderable_part"]["footprint"]["pads"]] == [
         "1",
         "2",
@@ -1158,9 +1157,9 @@ def test_part_orderable_same_numbered_preserves_artifact_pin_pad_mappings():
     assert part_result.board_ready
     assert part_result.pad_mapping_complete
     assert artifact is not None
-    assert json.loads(artifact.bytes)["orderable_part"]["pin_pad_mappings"] == [
-        {"pin_number": "1", "pad": "1"},
-        {"pin_number": "2", "pad": "2"},
+    assert json.loads(artifact.bytes)["orderable_part"]["terminal_pad_mappings"] == [
+        {"terminal": "1", "pads": ["1"]},
+        {"terminal": "2", "pads": ["2"]},
     ]
 
 
@@ -1573,20 +1572,12 @@ def test_part_validation_reports_lineup_diagnostics_and_non_serializable_data():
 
     assert not result.ok
     assert [(diagnostic.source, diagnostic.code) for diagnostic in result.diagnostics] == [
-        ("part:MissingElectricalPad", "PART_PAD_WITHOUT_PIN"),
-        ("part:MissingPin", "PART_PIN_WITHOUT_PAD"),
-        ("part:MissingPin", "PART_PAD_WITHOUT_PIN"),
+        ("part:MissingElectricalPad", "LIBRARY_PART_ARTIFACT_INVALID"),
+        ("part:MissingPin", "LIBRARY_PART_ARTIFACT_INVALID"),
         ("part:NonSerializable", "LIBRARY_PART_NON_SERIALIZABLE"),
     ]
-    assert [
-        (diagnostic.category, diagnostic.severity)
-        for diagnostic in result.diagnostics
-        if diagnostic.code.startswith("PART_")
-    ] == [
-        ("part.lineup", "warning"),
-        ("part.lineup", "warning"),
-        ("part.lineup", "warning"),
-    ]
+    assert "ownership does not match" in result.diagnostics[0].message
+    assert "Every package terminal must map" in result.diagnostics[1].message
 
 
 def test_library_result_is_deterministic():
