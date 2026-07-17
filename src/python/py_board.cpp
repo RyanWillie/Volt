@@ -1,11 +1,13 @@
-#include "py_circuit.hpp"
+#include "py_board.hpp"
 
 #include "binding_pcb_conversions.hpp"
-#include "py_circuit_board_helpers.hpp"
+#include "py_board_helpers.hpp"
+#include "py_circuit.hpp"
 
 #include <algorithm>
 
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/io/assembly/cpl_writer.hpp>
 #include <volt/io/pcb/pcb_svg_writer.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
@@ -40,16 +42,26 @@ cpl_projection_options_from_dict(const py::dict &rotation_offsets) {
 
 } // namespace
 
-py::dict PyCircuit::board(const std::string &name) {
-    const auto &projection = board_projection(name);
-    auto result = py::dict{};
-    result["name"] = projection.name().value();
-    result["units"] = "mm";
-    return result;
+bool BoardNameByteLess::operator()(const volt::BoardName &lhs,
+                                   const volt::BoardName &rhs) const noexcept {
+    const auto &lhs_value = lhs.value();
+    const auto &rhs_value = rhs.value();
+    return std::lexicographical_compare(lhs_value.begin(), lhs_value.end(), rhs_value.begin(),
+                                        rhs_value.end(), [](char left, char right) {
+                                            return static_cast<unsigned char>(left) <
+                                                   static_cast<unsigned char>(right);
+                                        });
 }
 
-py::dict PyCircuit::board_design_rules() const {
-    const auto &rules = board_projection().design_rules();
+PyBoard::PyBoard(const PyCircuit &circuit, volt::BoardName name)
+    : board_{circuit.logical_circuit(), std::move(name)} {}
+
+std::string PyBoard::name() const { return board_.name().value(); }
+
+std::string PyBoard::units() const { return "mm"; }
+
+py::dict PyBoard::design_rules() const {
+    const auto &rules = board_.design_rules();
     auto result = py::dict{};
     result["copper_clearance_mm"] = rules.copper_clearance_mm();
     result["minimum_track_width_mm"] = rules.minimum_track_width_mm();
@@ -60,12 +72,12 @@ py::dict PyCircuit::board_design_rules() const {
     return result;
 }
 
-void PyCircuit::board_set_design_rules(double copper_clearance_mm, double minimum_track_width_mm,
-                                       double minimum_via_drill_diameter_mm,
-                                       double minimum_via_annular_diameter_mm,
-                                       double board_outline_clearance_mm,
-                                       double package_assembly_clearance_mm) {
-    board_projection().set_design_rules(volt::BoardDesignRules{
+void PyBoard::set_design_rules(double copper_clearance_mm, double minimum_track_width_mm,
+                               double minimum_via_drill_diameter_mm,
+                               double minimum_via_annular_diameter_mm,
+                               double board_outline_clearance_mm,
+                               double package_assembly_clearance_mm) {
+    board_.set_design_rules(volt::BoardDesignRules{
         copper_clearance_mm,
         minimum_track_width_mm,
         minimum_via_drill_diameter_mm,
@@ -75,24 +87,23 @@ void PyCircuit::board_set_design_rules(double copper_clearance_mm, double minimu
     });
 }
 
-void PyCircuit::board_set_capability_profile(const py::dict &profile) {
-    board_projection().set_capability_profile(board_capability_profile_from_dict(profile));
+void PyBoard::set_capability_profile(const py::dict &profile) {
+    board_.set_capability_profile(board_capability_profile_from_dict(profile));
 }
 
-std::size_t PyCircuit::board_add_layer(const std::string &name, const std::string &role,
-                                       const std::string &side, double thickness_mm, bool enabled,
-                                       std::optional<double> copper_weight_oz) {
+std::size_t PyBoard::add_layer(const std::string &name, const std::string &role,
+                               const std::string &side, double thickness_mm, bool enabled,
+                               std::optional<double> copper_weight_oz) {
     auto layer = volt::BoardLayer{name, parse_board_layer_role(role), parse_board_layer_side(side),
                                   thickness_mm, enabled};
     if (copper_weight_oz.has_value()) {
         layer.set_copper_weight_oz(copper_weight_oz.value());
     }
-    return board_projection().add_layer(std::move(layer)).index();
+    return board_.add_layer(std::move(layer)).index();
 }
 
-void PyCircuit::board_set_layer_stack(const std::vector<std::size_t> &layers,
-                                      double board_thickness_mm,
-                                      const std::vector<std::pair<double, double>> &dielectrics) {
+void PyBoard::set_layer_stack(const std::vector<std::size_t> &layers, double board_thickness_mm,
+                              const std::vector<std::pair<double, double>> &dielectrics) {
     auto layer_ids = std::vector<volt::BoardLayerId>{};
     layer_ids.reserve(layers.size());
     for (const auto layer : layers) {
@@ -103,27 +114,27 @@ void PyCircuit::board_set_layer_stack(const std::vector<std::size_t> &layers,
     for (const auto &[thickness_mm, relative_permittivity] : dielectrics) {
         dielectric_specs.emplace_back(thickness_mm, relative_permittivity);
     }
-    board_projection().set_layer_stack(
+    board_.set_layer_stack(
         volt::LayerStack{std::move(layer_ids), board_thickness_mm, std::move(dielectric_specs)});
 }
 
-void PyCircuit::board_set_rectangular_outline(double x, double y, double width, double height) {
-    board_projection().set_outline(
+void PyBoard::set_rectangular_outline(double x, double y, double width, double height) {
+    board_.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{x, y}, volt::BoardSize{width, height}));
 }
 
-void PyCircuit::board_set_polygon_outline(const std::vector<std::pair<double, double>> &vertices) {
+void PyBoard::set_polygon_outline(const std::vector<std::pair<double, double>> &vertices) {
     auto points = std::vector<volt::BoardPoint>{};
     points.reserve(vertices.size());
     for (const auto &[x, y] : vertices) {
         points.emplace_back(x, y);
     }
-    board_projection().set_outline(volt::BoardOutline{std::move(points)});
+    board_.set_outline(volt::BoardOutline{std::move(points)});
 }
 
-py::list PyCircuit::board_outline_vertices() const {
+py::list PyBoard::outline_vertices() const {
     auto result = py::list{};
-    const auto &outline = board_projection().outline();
+    const auto &outline = board_.outline();
     if (!outline.has_value()) {
         return result;
     }
@@ -133,68 +144,62 @@ py::list PyCircuit::board_outline_vertices() const {
     return result;
 }
 
-std::size_t PyCircuit::board_add_hole(const std::string &label, double x, double y,
-                                      double drill_diameter_mm, bool plated,
-                                      const std::string &role,
-                                      std::optional<double> finished_diameter_mm) {
-    return board_projection()
+std::size_t PyBoard::add_hole(const std::string &label, double x, double y,
+                              double drill_diameter_mm, bool plated, const std::string &role,
+                              std::optional<double> finished_diameter_mm) {
+    return board_
         .add_feature(volt::BoardFeature::hole(label, volt::BoardPoint{x, y}, drill_diameter_mm,
                                               plated, role, finished_diameter_mm))
         .index();
 }
 
-std::size_t PyCircuit::board_add_slot(const std::string &label, double start_x, double start_y,
-                                      double end_x, double end_y, double width_mm, bool plated,
-                                      const std::string &role) {
-    return board_projection()
+std::size_t PyBoard::add_slot(const std::string &label, double start_x, double start_y,
+                              double end_x, double end_y, double width_mm, bool plated,
+                              const std::string &role) {
+    return board_
         .add_feature(volt::BoardFeature::slot(label, volt::BoardPoint{start_x, start_y},
                                               volt::BoardPoint{end_x, end_y}, width_mm, plated,
                                               role))
         .index();
 }
 
-std::size_t PyCircuit::board_add_cutout(const std::string &label,
-                                        const std::vector<std::pair<double, double>> &outline,
-                                        const std::string &role) {
+std::size_t PyBoard::add_cutout(const std::string &label,
+                                const std::vector<std::pair<double, double>> &outline,
+                                const std::string &role) {
     auto points = std::vector<volt::BoardPoint>{};
     points.reserve(outline.size());
     for (const auto &[x, y] : outline) {
         points.emplace_back(x, y);
     }
 
-    return board_projection()
-        .add_feature(volt::BoardFeature::cutout(label, std::move(points), role))
-        .index();
+    return board_.add_feature(volt::BoardFeature::cutout(label, std::move(points), role)).index();
 }
 
-std::size_t PyCircuit::board_add_circle(const std::string &label, double x, double y,
-                                        double diameter_mm, const std::string &side,
-                                        const std::string &role) {
-    return board_projection()
+std::size_t PyBoard::add_circle(const std::string &label, double x, double y, double diameter_mm,
+                                const std::string &side, const std::string &role) {
+    return board_
         .add_feature(volt::BoardFeature::circle(label, volt::BoardPoint{x, y}, diameter_mm,
                                                 parse_board_side(side), role))
         .index();
 }
 
-std::size_t PyCircuit::board_cache_footprint_definition(const py::dict &definition) {
-    return board_projection()
-        .cache_footprint_definition(footprint_definition_from_dict(definition))
-        .index();
+std::size_t PyBoard::cache_footprint_definition(const py::dict &definition) {
+    return board_.cache_footprint_definition(footprint_definition_from_dict(definition)).index();
 }
 
-std::size_t PyCircuit::board_place_component(std::size_t component, double x, double y,
-                                             double rotation_degrees, const std::string &side,
-                                             bool locked) {
-    return board_projection()
+std::size_t PyBoard::place_component(std::size_t component, double x, double y,
+                                     double rotation_degrees, const std::string &side,
+                                     bool locked) {
+    return board_
         .place_component(volt::ComponentPlacement{component_id(component), volt::BoardPoint{x, y},
                                                   volt::BoardRotation::degrees(rotation_degrees),
                                                   parse_board_side(side), locked})
         .index();
 }
 
-py::list PyCircuit::board_placement_refs() const {
+py::list PyBoard::placement_refs() const {
     auto result = py::list{};
-    const auto &board = board_projection();
+    const auto &board = board_;
     for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto placement_id = volt::ComponentPlacementId{index};
         const auto &placement = board.get(placement_id);
@@ -210,9 +215,9 @@ py::list PyCircuit::board_placement_refs() const {
     return result;
 }
 
-py::list PyCircuit::board_stackup() const {
+py::list PyBoard::stackup() const {
     auto result = py::list{};
-    const auto &board = board_projection();
+    const auto &board = board_;
     if (!board.layer_stack().has_value()) {
         return result;
     }
@@ -230,18 +235,19 @@ py::list PyCircuit::board_stackup() const {
     return result;
 }
 
-py::list PyCircuit::board_component_footprint_pads(std::size_t component) const {
+py::list PyBoard::component_footprint_pads(std::size_t component) const {
     const auto component_handle = component_id(component);
-    static_cast<void>(circuit_.get(component_handle));
+    static_cast<void>(board_.circuit().get(component_handle));
 
     auto result = py::list{};
-    const auto &selected_part = volt::queries::selected_physical_part(circuit_, component_handle);
+    const auto &selected_part =
+        volt::queries::selected_physical_part(board_.circuit(), component_handle);
     if (!selected_part.has_value()) {
         return result;
     }
 
-    const auto resolution_footprints = volt::queries::board_resolution_footprints(
-        board_projection(), volt::builtin_footprint_library());
+    const auto resolution_footprints =
+        volt::queries::board_resolution_footprints(board_, volt::builtin_footprint_library());
     const auto footprint_resolution =
         volt::resolve_footprint(selected_part.value(), resolution_footprints);
     const auto *definition = footprint_resolution.definition();
@@ -264,7 +270,8 @@ py::list PyCircuit::board_component_footprint_pads(std::size_t component) const 
         item["position"] = py::make_tuple(pad.position().x_mm(), pad.position().y_mm());
         item["pin"] = py::none{};
         if (binding != footprint_resolution.pad_bindings().end()) {
-            const auto pin = queries::pin_by_definition(circuit_, component_handle, binding->pin());
+            const auto pin =
+                queries::pin_by_definition(board_.circuit(), component_handle, binding->pin());
             if (pin.has_value()) {
                 item["pin"] = pin->index();
             }
@@ -275,29 +282,29 @@ py::list PyCircuit::board_component_footprint_pads(std::size_t component) const 
     return result;
 }
 
-std::size_t PyCircuit::board_add_track(std::size_t net, std::size_t layer,
-                                       const std::vector<std::pair<double, double>> &points,
-                                       double width_mm) {
+std::size_t PyBoard::add_track(std::size_t net, std::size_t layer,
+                               const std::vector<std::pair<double, double>> &points,
+                               double width_mm) {
     auto board_points = std::vector<volt::BoardPoint>{};
     board_points.reserve(points.size());
     for (const auto &[x, y] : points) {
         board_points.emplace_back(x, y);
     }
 
-    return board_projection()
+    return board_
         .add_track(volt::BoardTrack{net_id(net), volt::BoardLayerId{layer}, std::move(board_points),
                                     width_mm})
         .index();
 }
 
-py::dict PyCircuit::board_add_track_for_route(std::optional<std::size_t> net, std::size_t layer,
-                                              const py::list &endpoints, double width_mm) {
+py::dict PyBoard::add_track_for_route(std::optional<std::size_t> net, std::size_t layer,
+                                      const py::list &endpoints, double width_mm) {
     auto route_net = std::optional<volt::NetId>{};
     if (net.has_value()) {
         route_net = net_id(net.value());
     }
 
-    auto router = volt::BoardRouter{board_projection(), volt::builtin_footprint_library()};
+    auto router = volt::BoardRouter{board_, volt::builtin_footprint_library()};
     const auto result = router.add_track(volt::BoardTrackRouteRequest{
         route_net,
         volt::BoardLayerId{layer},
@@ -311,15 +318,15 @@ py::dict PyCircuit::board_add_track_for_route(std::optional<std::size_t> net, st
     return lowered;
 }
 
-std::size_t PyCircuit::board_track_net(std::size_t track) const {
-    return board_projection().get(volt::BoardTrackId{track}).net().index();
+std::size_t PyBoard::track_net(std::size_t track) const {
+    return board_.get(volt::BoardTrackId{track}).net().index();
 }
 
-std::size_t PyCircuit::board_add_via(std::size_t net, double x, double y, std::size_t start_layer,
-                                     std::size_t end_layer, std::optional<double> drill_diameter_mm,
-                                     std::optional<double> annular_diameter_mm) {
+std::size_t PyBoard::add_via(std::size_t net, double x, double y, std::size_t start_layer,
+                             std::size_t end_layer, std::optional<double> drill_diameter_mm,
+                             std::optional<double> annular_diameter_mm) {
     const auto net_id_value = net_id(net);
-    auto &board = board_projection();
+    auto &board = board_;
     const auto default_via_size = volt::resolve_via_size(
         board, net_id_value, default_authoring_via_drill_mm, default_authoring_via_annular_mm);
     const auto resolved_drill_diameter_mm =
@@ -338,10 +345,10 @@ std::size_t PyCircuit::board_add_via(std::size_t net, double x, double y, std::s
         .index();
 }
 
-py::dict PyCircuit::board_assisted_connect(std::size_t net, double start_x, double start_y,
-                                           std::size_t start_layer, double end_x, double end_y,
-                                           std::size_t end_layer) {
-    auto router = volt::BoardRouter{board_projection(), volt::builtin_footprint_library()};
+py::dict PyBoard::assisted_connect(std::size_t net, double start_x, double start_y,
+                                   std::size_t start_layer, double end_x, double end_y,
+                                   std::size_t end_layer) {
+    auto router = volt::BoardRouter{board_, volt::builtin_footprint_library()};
     const auto result = router.connect(volt::BoardRouteRequest{
         net_id(net), volt::BoardPoint{start_x, start_y}, volt::BoardPoint{end_x, end_y},
         volt::BoardLayerId{start_layer}, volt::BoardLayerId{end_layer}});
@@ -367,8 +374,8 @@ py::dict PyCircuit::board_assisted_connect(std::size_t net, double start_x, doub
     return lowered;
 }
 
-py::dict PyCircuit::board_escape(std::size_t component) {
-    auto router = volt::BoardRouter{board_projection(), volt::builtin_footprint_library()};
+py::dict PyBoard::escape(std::size_t component) {
+    auto router = volt::BoardRouter{board_, volt::builtin_footprint_library()};
     const auto result = router.escape(component_id(component));
 
     auto pads = py::list{};
@@ -410,10 +417,10 @@ py::dict PyCircuit::board_escape(std::size_t component) {
     return lowered;
 }
 
-std::size_t PyCircuit::board_add_zone(std::optional<std::size_t> net,
-                                      const std::vector<std::size_t> &layers,
-                                      const std::vector<std::pair<double, double>> &outline,
-                                      const std::string &fill, int priority) {
+std::size_t PyBoard::add_zone(std::optional<std::size_t> net,
+                              const std::vector<std::size_t> &layers,
+                              const std::vector<std::pair<double, double>> &outline,
+                              const std::string &fill, int priority) {
     auto board_layers = std::vector<volt::BoardLayerId>{};
     board_layers.reserve(layers.size());
     for (const auto layer : layers) {
@@ -431,15 +438,15 @@ std::size_t PyCircuit::board_add_zone(std::optional<std::size_t> net,
         board_net = net_id(net.value());
     }
 
-    return board_projection()
+    return board_
         .add_zone(volt::BoardZone{std::move(points), std::move(board_layers), board_net,
                                   parse_board_zone_fill(fill), priority})
         .index();
 }
 
-std::size_t PyCircuit::board_add_keepout(const std::vector<std::size_t> &layers,
-                                         const std::vector<std::pair<double, double>> &outline,
-                                         const std::vector<std::string> &restrictions) {
+std::size_t PyBoard::add_keepout(const std::vector<std::size_t> &layers,
+                                 const std::vector<std::pair<double, double>> &outline,
+                                 const std::vector<std::string> &restrictions) {
     auto board_layers = std::vector<volt::BoardLayerId>{};
     board_layers.reserve(layers.size());
     for (const auto layer : layers) {
@@ -458,17 +465,17 @@ std::size_t PyCircuit::board_add_keepout(const std::vector<std::size_t> &layers,
         keepout_restrictions.push_back(parse_board_keepout_restriction(restriction));
     }
 
-    return board_projection()
+    return board_
         .add_keepout(volt::BoardKeepout{std::move(points), std::move(board_layers),
                                         std::move(keepout_restrictions)})
         .index();
 }
 
-std::size_t PyCircuit::board_add_room(const std::string &name,
-                                      const std::vector<std::pair<double, double>> &outline,
-                                      const std::vector<std::size_t> &layers,
-                                      std::optional<double> copper_clearance_mm,
-                                      std::optional<double> track_width_mm, int priority) {
+std::size_t PyBoard::add_room(const std::string &name,
+                              const std::vector<std::pair<double, double>> &outline,
+                              const std::vector<std::size_t> &layers,
+                              std::optional<double> copper_clearance_mm,
+                              std::optional<double> track_width_mm, int priority) {
     auto board_layers = std::vector<volt::BoardLayerId>{};
     board_layers.reserve(layers.size());
     for (const auto layer : layers) {
@@ -490,23 +497,22 @@ std::size_t PyCircuit::board_add_room(const std::string &name,
         room.set_track_width_mm(track_width_mm.value());
     }
 
-    return board_projection().add_room(std::move(room)).index();
+    return board_.add_room(std::move(room)).index();
 }
 
-std::size_t PyCircuit::board_add_text(const std::string &text, double x, double y,
-                                      std::size_t layer, double rotation_degrees, double size_mm,
-                                      bool locked) {
-    return board_projection()
+std::size_t PyBoard::add_text(const std::string &text, double x, double y, std::size_t layer,
+                              double rotation_degrees, double size_mm, bool locked) {
+    return board_
         .add_text(volt::BoardText{text, volt::BoardPoint{x, y},
                                   volt::BoardRotation::degrees(rotation_degrees),
                                   volt::BoardLayerId{layer}, size_mm, locked})
         .index();
 }
 
-py::list PyCircuit::board_resolve_pads() const {
+py::list PyBoard::resolve_pads() const {
     auto result = py::list{};
     for (const auto &resolution :
-         volt::queries::resolve_pads(board_projection(), volt::builtin_footprint_library())) {
+         volt::queries::resolve_pads(board_, volt::builtin_footprint_library())) {
         auto item = py::dict{};
         item["placement"] = resolution.placement().index();
         item["component"] = resolution.component().index();
@@ -524,70 +530,86 @@ py::list PyCircuit::board_resolve_pads() const {
     return result;
 }
 
-py::list PyCircuit::board_validate() const {
-    return diagnostics_to_list(
-        validate_board(board_projection(), volt::builtin_footprint_library()));
+py::list PyBoard::validate() const {
+    return diagnostics_to_list(validate_board(board_, volt::builtin_footprint_library()));
 }
 
-py::list PyCircuit::board_validate_assembly(const py::dict &rotation_offsets) const {
+py::list PyBoard::validate_assembly(const py::dict &rotation_offsets) const {
     const auto options = cpl_projection_options_from_dict(rotation_offsets);
     return diagnostics_to_list(
-        volt::project_cpl(board_projection(), volt::builtin_footprint_library(), options)
-            .diagnostics());
+        volt::project_cpl(board_, volt::builtin_footprint_library(), options).diagnostics());
 }
 
-std::string PyCircuit::board_cpl_json(const py::dict &rotation_offsets) const {
+std::string PyBoard::cpl_json(const py::dict &rotation_offsets) const {
     const auto options = cpl_projection_options_from_dict(rotation_offsets);
     return volt::io::write_cpl_json(
-        volt::project_cpl(board_projection(), volt::builtin_footprint_library(), options));
+        volt::project_cpl(board_, volt::builtin_footprint_library(), options));
 }
 
-std::string PyCircuit::board_cpl_csv(const py::dict &rotation_offsets) const {
+std::string PyBoard::cpl_csv(const py::dict &rotation_offsets) const {
     const auto options = cpl_projection_options_from_dict(rotation_offsets);
     return volt::io::write_cpl_csv(
-        volt::project_cpl(board_projection(), volt::builtin_footprint_library(), options));
+        volt::project_cpl(board_, volt::builtin_footprint_library(), options));
 }
 
-std::string PyCircuit::board_to_json() const {
-    return volt::io::write_pcb_board(board_projection(), volt::builtin_footprint_library());
+std::string PyBoard::to_json() const {
+    return volt::io::write_pcb_board(board_, volt::builtin_footprint_library());
 }
 
-std::string PyCircuit::board_to_svg(bool pad_net_overlays, bool diagnostic_overlays,
-                                    bool ratsnest_edges,
-                                    std::optional<std::size_t> layer_filter) const {
+std::string PyBoard::to_svg(bool pad_net_overlays, bool diagnostic_overlays, bool ratsnest_edges,
+                            std::optional<std::size_t> layer_filter) const {
     auto options = volt::io::PcbPlacementSvgOptions{.pad_net_overlays = pad_net_overlays,
                                                     .diagnostic_overlays = diagnostic_overlays,
                                                     .ratsnest_edges = ratsnest_edges};
     if (layer_filter.has_value()) {
         options.layer_filter = volt::BoardLayerId{layer_filter.value()};
     }
-    return volt::io::write_pcb_placement_svg(board_projection(), volt::builtin_footprint_library(),
-                                             options);
+    return volt::io::write_pcb_placement_svg(board_, volt::builtin_footprint_library(), options);
 }
 
-volt::Board &PyCircuit::board_projection(const std::string &name) {
-    if (!board_projection_.has_value()) {
-        board_projection_.emplace(circuit_, volt::BoardName{name});
-        return board_projection_.value();
+PyBoardRegistry::PyBoardRegistry(const PyCircuit &circuit) : circuit_{&circuit} {}
+
+PyBoard &PyBoardRegistry::add(const std::string &name) {
+    auto board_name = volt::BoardName{name};
+    if (boards_.contains(board_name)) {
+        throw volt::KernelLogicError{volt::ErrorCode::DuplicateName,
+                                     "Board name already exists: " + name};
     }
-    if (board_projection_->name().value() != name) {
-        throw std::invalid_argument{"Board projection already exists with a different name"};
-    }
-    return board_projection_.value();
+    auto board = std::make_unique<PyBoard>(*circuit_, board_name);
+    auto *result = board.get();
+    boards_.emplace(std::move(board_name), std::move(board));
+    return *result;
 }
 
-volt::Board &PyCircuit::board_projection() {
-    if (!board_projection_.has_value()) {
-        throw std::logic_error{"Board projection has not been created"};
+PyBoard &PyBoardRegistry::board(std::optional<std::string> name) {
+    if (!name.has_value()) {
+        if (boards_.size() != 1U) {
+            const auto count = boards_.empty() ? std::string{"no Boards"}
+                                               : std::to_string(boards_.size()) + " Boards";
+            throw volt::KernelLogicError{volt::ErrorCode::InvalidState,
+                                         "Board registry has " + count};
+        }
+        return *boards_.begin()->second;
     }
-    return board_projection_.value();
+
+    const auto board_name = volt::BoardName{*name};
+    const auto found = boards_.find(board_name);
+    if (found == boards_.end()) {
+        throw volt::KernelRangeError{volt::ErrorCode::UnknownEntity,
+                                     "Board registry has no Board named " + *name};
+    }
+    return *found->second;
 }
 
-const volt::Board &PyCircuit::board_projection() const {
-    if (!board_projection_.has_value()) {
-        throw std::logic_error{"Board projection has not been created"};
+py::tuple PyBoardRegistry::names() const {
+    auto result = py::tuple{boards_.size()};
+    auto index = std::size_t{0};
+    for (const auto &[name, board] : boards_) {
+        static_cast<void>(board);
+        result[index] = name.value();
+        ++index;
     }
-    return board_projection_.value();
+    return result;
 }
 
 } // namespace volt::python

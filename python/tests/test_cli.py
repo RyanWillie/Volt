@@ -713,7 +713,7 @@ def _schematic(design):
     return design.schematic("Main")
 
 def _board(design):
-    board = design.board("Main")
+    board = design.add_board("Main")
     board.set_rectangular_outline(origin=(0, 0), size=(20, 10))
     return board
 
@@ -775,7 +775,7 @@ def _schematic(design):
     return design.schematic("Main")
 
 def _board(design):
-    board = design.board("Main")
+    board = design.add_board("Main")
     board.set_rectangular_outline(origin=(0, 0), size=(20, 10))
     return board
 

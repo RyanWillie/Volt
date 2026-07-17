@@ -97,7 +97,7 @@ def test_project_run_executes_staged_workflow_and_collects_models():
     @project.board
     def board(context):
         calls.append(("board", type(context).__name__, context.design().name))
-        pcb = context.design().board("Main")
+        pcb = context.design().add_board("Main")
         pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
         return pcb
 
@@ -268,7 +268,7 @@ def test_project_run_through_stops_after_stage_handle():
     @project.board
     def board(context):
         calls.append("board")
-        return context.design().board("Main")
+        return context.design().add_board("Main")
 
     result = project.run_through(project.design)
 
@@ -1036,6 +1036,8 @@ def test_project_result_contains_multiple_boards():
     ]
     assert result.board("main-controller:Main")._design.name == "main-controller"
     assert result.board("front-panel:Main")._design.name == "front-panel"
+    with pytest.raises(LookupError, match="multiple board models named Main"):
+        result.board("Main")
 
 
 def test_project_result_contains_multiple_designs():
@@ -1121,7 +1123,7 @@ def test_project_diagnostics_preserve_board_and_design_identity():
 
     @project.board
     def board(context):
-        return context.design().board("Fixture")
+        return context.design().add_board("Fixture")
 
     result = project.run()
 
@@ -1145,7 +1147,7 @@ def test_project_projection_lookup_escapes_ambiguous_names():
     @project.board
     def board(context):
         first = _stage_board(context.design("main:controller"))
-        second = context.design("main").board("controller:Main")
+        second = context.design("main").add_board("controller:Main")
         second.set_rectangular_outline(origin=(0, 0), size=(20, 10))
         return (first, second)
 

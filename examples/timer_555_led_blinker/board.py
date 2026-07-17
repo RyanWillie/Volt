@@ -10,7 +10,7 @@ def build_board(context: volt.BuildContext) -> volt.Board:
     nets = context.resource("nets", dict)
     parts = context.resource("parts", dict)
 
-    board = design.board("555 LED Blinker")
+    board = design.add_board("555 LED Blinker")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     silk = board.add_layer("F.SilkS", role="silkscreen", side="top")

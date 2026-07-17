@@ -10,7 +10,7 @@ This reference covers the five-step board structure sequence: layers → stackup
 
 | Method / class | Required keyword args | Optional keyword args |
 |---|---|---|
-| `design.board(name)` | `name: str` | — |
+| `design.add_board(name)` | `name: str` | — |
 | `board.add_layer(name, ...)` | `role: str`, `side: str` | `thickness=0.0`, `enabled=True`, `copper_weight=None` |
 | `board.set_layer_stack(layers, ...)` | `thickness: float` | `dielectrics=None` |
 | `board.set_design_rules(...)` | — (all optional) | `copper_clearance`, `min_track_width`, `min_via_drill`, `min_via_annular`, `board_outline_clearance`, `package_assembly_clearance` |
@@ -28,7 +28,7 @@ All lengths in millimeters. `Point` = `(x: float, y: float)`.
 The following is the board structure block from `examples/timer_555_led_blinker/board.py` (verbatim, lines 13–29). This is the authoritative, provenance-verified pattern.
 
 ```python
-board = design.board("555 LED Blinker")
+board = design.add_board("555 LED Blinker")
 front = board.add_layer("F.Cu", role="copper", side="top")
 back = board.add_layer("B.Cu", role="copper", side="bottom")
 silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
@@ -62,7 +62,7 @@ Key observations:
 From `examples/pcb_led_board/main.py` `build_board()` (lines 167–174):
 
 ```python
-board = design.board("First Board LED")
+board = design.add_board("First Board LED")
 front = board.add_layer("F.Cu", role="copper", side="top")
 back = board.add_layer("B.Cu", role="copper", side="bottom")
 board.set_layer_stack((front, back), thickness=1.6)
@@ -77,9 +77,13 @@ This minimal two-layer board omits `set_design_rules` (kernel defaults apply) an
 
 ## Method Details
 
-### `design.board(name)`
+### `design.add_board(name)`
 
-Returns a `Board` Python handle over kernel-owned PCB projection state. Source: `python/volt/design.py` line 504. The `name` string identifies the board within the project result and appears in manufacturing package manifests as `board.name`.
+Creates and returns a direct bound `Board` owner over kernel-owned PCB projection state.
+Source: `python/volt/design.py`. The exact non-empty `name` identifies one complete physical
+alternative within the Design and appears in manufacturing package manifests as
+`board.name`; duplicate names are rejected. Use `design.board(name)` for exact lookup and
+`design.boards()` for deterministic enumeration.
 
 ### `board.add_layer(name, *, role, side, thickness=0.0, enabled=True, copper_weight=None)`
 

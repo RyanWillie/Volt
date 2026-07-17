@@ -1,7 +1,6 @@
 #pragma once
 
-#include "py_circuit.hpp"
-
+#include "binding_conversions.hpp"
 #include "py_circuit_py_helpers.hpp"
 
 #include <optional>

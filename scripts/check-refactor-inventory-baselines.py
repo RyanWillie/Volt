@@ -214,7 +214,7 @@ def current_cpp_function(text: str, position: int) -> str:
     prefix = text[:position]
     matches = list(
         re.finditer(
-            r"\b(?:[A-Za-z_:<>~*&\s]+)\s+(PyCircuit::[A-Za-z_]\w*)\s*"
+            r"\b(?:[A-Za-z_:<>~*&\s]+)\s+(Py(?:Circuit|Board)::[A-Za-z_]\w*)\s*"
             r"\([^;{}]*\)\s*(?:const\s*)?\{",
             prefix,
         )
@@ -357,14 +357,23 @@ def collect_inventory() -> dict[str, object]:
                 "design_owner_attributes": init_assigned_attributes(
                     ROOT / "python" / "volt" / "design.py", "Design"
                 ),
+                "python_board_handle_attributes": init_assigned_attributes(
+                    ROOT / "python" / "volt" / "pcb.py", "Board"
+                ),
                 "native_bound_classes": native_bound_classes(),
                 "py_circuit_private_members": binding_private_members(
                     "src/python/py_circuit.hpp"
+                ),
+                "py_board_owner_private_members": binding_private_members(
+                    "src/python/py_board.hpp"
                 ),
                 "py_schematic_private_members": binding_private_members(
                     "src/python/py_schematic.hpp"
                 ),
                 "lifetime_evidence": [
+                    "src/python/board_bindings.cpp: BoardRegistry keep_alive retains its bound Circuit owner",
+                    "src/python/board_bindings.cpp: Board references retain their BoardRegistry owner",
+                    "src/python/py_board.hpp: BoardRegistry directly owns every separately bound native Board",
                     "src/python/schematic_bindings.cpp: SchematicDocument keep_alive retains its bound Circuit owner",
                     "src/python/py_schematic.hpp: SchematicDocument is a direct bound owner of native SchematicDocument state",
                     "tests/architecture/circuit_public_api.txt: deleted rvalue all() overload freezes borrowed range lifetime",
@@ -465,16 +474,16 @@ def run_self_tests() -> int:
 
     fixture = textwrap.dedent(
         """
-        py::dict PyCircuit::board_to_json() const {
-            return write(board_projection(), volt::builtin_footprint_library());
+        py::dict PyBoard::to_json() const {
+            return write(board_, volt::builtin_footprint_library());
         }
         """
     )
     match = re.search(r"volt::builtin_footprint_library\s*\(\)", fixture)
     require(match is not None, "hidden footprint injection sample must be detected")
     require(
-        current_cpp_function(fixture, match.start()) == "PyCircuit::board_to_json",
-        "hidden footprint injection callers must be attributed to the owning PyCircuit method",
+        current_cpp_function(fixture, match.start()) == "PyBoard::to_json",
+        "hidden footprint injection callers must be attributed to the owning PyBoard method",
     )
 
     semantic = {"format": "volt.test", "version": 1, "items": [1, 2], "metadata": {"a": 1}}

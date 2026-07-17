@@ -104,7 +104,7 @@ Do not start placing until you can name each part's role and block.
 ### 1. Board setup — *rubric 1, 2*
 
 ```python
-board = design.board("My Board")
+board = design.add_board("My Board")
 front = board.add_layer("F.Cu", role="copper", side="top")
 back  = board.add_layer("B.Cu", role="copper", side="bottom")
 silk  = board.add_layer("F.SilkS", role="silkscreen", side="top")

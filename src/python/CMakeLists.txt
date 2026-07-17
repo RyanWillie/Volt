@@ -66,9 +66,10 @@ endforeach()
 pybind11_add_module(
     _volt MODULE
     bindings.cpp
+    board_bindings.cpp
     circuit_bindings.cpp
+    py_board.cpp
     py_circuit.cpp
-    py_circuit_board.cpp
     py_circuit_logical.cpp
     py_circuit_modules.cpp
     py_circuit_reports.cpp

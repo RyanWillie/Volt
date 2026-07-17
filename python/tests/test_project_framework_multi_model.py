@@ -83,7 +83,7 @@ def test_project_multi_model_stage_tests_share_projection_lookup_rules():
     @project.board
     def board(context):
         first = _stage_board(context.design("main:controller"))
-        second = context.design("main").board("controller:Main")
+        second = context.design("main").add_board("controller:Main")
         second.set_rectangular_outline(origin=(0, 0), size=(20, 10))
         return (first, second)
 

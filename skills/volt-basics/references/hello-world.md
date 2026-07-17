@@ -106,7 +106,7 @@ def board(context: volt.BuildContext) -> volt.Board:
     d = context.design()
     parts = context.resource("parts", dict)
 
-    pcb = d.board("Main")
+    pcb = d.add_board("Main")
 
     # Layer stack
     front = pcb.add_layer("F.Cu", role="copper", side="top")

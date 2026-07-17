@@ -628,8 +628,17 @@ class ProjectResult:
 
     @property
     def boards(self) -> tuple[Board, ...]:
-        """Return board projections collected by the run."""
-        return tuple(model for model in self._models if isinstance(model, Board))
+        """Return board projections in project-design then exact BoardName byte order."""
+        design_order = {id(design): index for index, design in enumerate(self.designs)}
+        return tuple(
+            sorted(
+                (model for model in self._models if isinstance(model, Board)),
+                key=lambda board: (
+                    design_order[id(board._design)],
+                    board.name.encode("utf-8"),
+                ),
+            )
+        )
 
     def design(self, name: str | None = None) -> Design:
         """Return a collected design by name, or the only design."""
@@ -672,7 +681,10 @@ class ProjectResult:
         used_paths: set[str] = set()
         artifacts: list[dict[str, object]] = []
         board_documents: list[tuple[Board, str]] = []
+        ordered_boards = iter(self.boards)
         for model in self._models:
+            if isinstance(model, Board):
+                model = next(ordered_boards)
             if isinstance(model, Design):
                 design_text = model.to_json()
                 relative = _unique_path(

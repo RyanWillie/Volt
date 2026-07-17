@@ -254,7 +254,7 @@ def schematic(context):
 @project.board
 def board(context):
     design = context.design()
-    pcb = design.board("Main")
+    pcb = design.add_board("Main")
     pcb.set_rectangular_outline(origin=(0, 0), size=(32, 18))
     pcb.place(design.component("J1"), at=(5, 9), locked=True)
     pcb.place(design.component("R1"), at=(15, 7))
@@ -265,6 +265,15 @@ def board(context):
 result = project.run()
 result.write("dist/status-led.volt")
 ```
+
+`Design.add_board(name)` creates one complete physical alternative over the Design's
+logical Circuit. Names are exact, non-empty `BoardName` values; duplicate names are
+rejected. `Design.board(name)` performs exact lookup, while `Design.board()` is valid only
+when exactly one Board exists. `Design.boards()` enumerates zero, one, or many Boards in
+ascending unsigned UTF-8 BoardName byte order. Each Board independently owns its outline,
+stackup, rules, placements, footprints, routing, and physical digest; none of those
+operations can change logical connectivity, selected parts, DNP/BOM meaning, or schematic
+presentation.
 
 The schematic and PCB stages above are intentionally short to show the framework shape.
 A clean `result.ok` also requires normal projection completeness, such as schematic
@@ -279,7 +288,9 @@ authoring resources.
 schematic JSON/SVG, PCB JSON/SVG, diagnostics, test results, and
 `manifest.volt.json`. The output path may be missing, empty, or an existing Volt
 project-result bundle. Other pre-existing content is rejected so the write does not
-delete unrelated files.
+delete unrelated files. Project Board artifacts use deterministic project-design then
+BoardName byte ordering. Use composite selectors such as `product:Compact` whenever more
+than one Board makes an omitted or bare BoardName selector ambiguous.
 
 `result.write_manufacturing_package(path, board=None, manufacturing_profile=None,
 archive=False)` writes the full deterministic manufacturing handoff package for one

@@ -19,7 +19,7 @@ def build_pcb(context: volt.BuildContext) -> volt.Board:
     design = context.design()
     nets = {net.name: net for net in design.nets()}
 
-    board = design.board(BOARD_NAME)
+    board = design.add_board(BOARD_NAME)
     board.set_capability_profile(volt.CapabilityProfile.from_file(JLCPCB_PROFILE_PATH))
     front = board.add_layer("F.Cu", role="copper", side="top")
     inner1 = board.add_layer("In1.Cu", role="copper", side="inner")

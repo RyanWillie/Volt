@@ -1,4 +1,4 @@
-#include "py_circuit.hpp"
+#include "py_board.hpp"
 
 #include "binding_diagnostic_conversions.hpp"
 
@@ -90,9 +90,9 @@ fabrication_exporter_metadata_to_dict(const volt::io::PcbFabricationExporterMeta
 
 } // namespace
 
-py::dict PyCircuit::board_to_fabrication_files() const {
-    const auto export_result = volt::io::write_pcb_fabrication_files(
-        board_projection(), volt::builtin_footprint_library());
+py::dict PyBoard::to_fabrication_files() const {
+    const auto export_result =
+        volt::io::write_pcb_fabrication_files(board_, volt::builtin_footprint_library());
 
     auto result = py::dict{};
 

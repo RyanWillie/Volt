@@ -388,7 +388,7 @@
             <dt>Inspect</dt><dd>They read generic Circuit entities and free connectivity/part/rule queries.</dd>
             <dt>Logical JSON</dt><dd>Logical JSON contains no schematic placement or PCB geometry. Projection formats reference existing typed logical IDs; creating or editing a projection leaves logical JSON bytes unchanged.</dd>
             <dt>Diagnostics</dt><dd>Schematic readiness/visual and PCB DRC/fabrication diagnostics report projection-specific problems while retaining Circuit references.</dd>
-            <dt>Python</dt><dd><code>design.schematic()</code> and <code>design.board()</code> wrap the same borrowed Circuit; regression snapshots assert before/after logical equality.</dd>
+            <dt>Python</dt><dd><code>design.schematic()</code> and each direct owner created by <code>design.add_board(name)</code> retain the same borrowed Circuit; regression snapshots assert before/after logical equality while independently named Boards retain separate physical state.</dd>
             <dt>Projection</dt><dd>Schematic draws canonical connectivity. PCB resolves pads, ratsnest, rules, and exports over it. KiCad adapters and fab/CPL writers remain consumers.</dd>
             <dt>Evidence</dt><dd>Schematic/board borrowing static assertions, projection snapshots, board connectivity/ratsnest tests, PCB JSON/SVG/fabrication, CPL, KiCad schematic/PCB goldens, project examples.</dd>
             <dt>Gap / action</dt><dd>No ownership gap. New architecture searches/checks forbid reintroducing deleted connectivity facades and public raw restore surfaces.</dd>

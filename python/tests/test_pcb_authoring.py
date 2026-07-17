@@ -160,7 +160,7 @@ def _fixture_path(name: str) -> Path:
 
 def test_pcb_layout_session_defaults_and_moves():
     design = volt.Design("pcb-layout-session")
-    board = design.board("Control")
+    board = design.add_board("Control")
     board.set_rectangular_outline(origin=(2.0, 3.0), size=(30.0, 20.0))
 
     with board.layout(at=(1, 2), direction="down", unit=2.5) as layout:
@@ -206,7 +206,7 @@ def test_pcb_layout_session_defaults_and_moves():
 
 def test_pcb_layout_place_returns_placed_component_handle():
     design, r1, d1 = _small_resistor_led_design()
-    board = design.board("Control")
+    board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
@@ -253,7 +253,7 @@ def test_pcb_layout_two_pad_right_left_up_down_places_resolved_coordinates():
             footprint=_passive_0603(("passives", f"R_0603_{index}")),
             pin_pads={1: "1", 2: "2"},
         )
-    board = design.board("Control")
+    board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 30.0))
 
     with board.layout(unit=1.0) as layout:
@@ -300,7 +300,7 @@ def test_pcb_layout_two_pad_directions_follow_actual_pad_vector():
             footprint=footprints[index],
             pin_pads={1: "1", 2: "2"},
         )
-    board = design.board("Control")
+    board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 30.0))
 
     with board.layout(unit=1.0) as layout:
@@ -327,7 +327,7 @@ def test_pcb_layout_two_pad_directions_follow_actual_pad_vector():
 
 def test_pcb_layout_two_pad_uses_kernel_resolved_builtin_footprints():
     design, r1, _d1 = _small_resistor_led_design()
-    board = design.board("Control")
+    board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
 
     with board.layout(unit=1.0) as layout:
@@ -355,7 +355,7 @@ def test_pcb_layout_two_pad_builder_does_not_flush_from_layout_operations():
         footprint=_passive_0603(("passives", "R_0603")),
         pin_pads={1: "1", 2: "2"},
     )
-    board = design.board("Control")
+    board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
 
     with board.layout(unit=1.0) as layout:
@@ -375,7 +375,7 @@ def test_pcb_layout_two_pad_builder_does_not_flush_from_layout_operations():
 def test_pcb_layout_routes_tracks_and_vias_from_relative_anchors():
     design, r1, d1 = _small_resistor_led_design()
     led_a = next(net for net in design.nets() if net.name == "LED_A")
-    board = design.board("Control")
+    board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
@@ -423,7 +423,7 @@ def test_pcb_layout_routes_tracks_and_vias_from_relative_anchors():
 
 def test_pcb_layout_grid_snaps_explicit_authoring_coordinates():
     design, r1, _d1 = _small_resistor_led_design()
-    board = design.board("Control")
+    board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
 
@@ -449,7 +449,7 @@ def test_pcb_layout_grid_snaps_explicit_authoring_coordinates():
 def test_pcb_layout_routes_default_to_octilinear_segments():
     design = volt.Design("pcb-octilinear-routes")
     net = design.net("SIG")
-    board = design.board("Control")
+    board = design.add_board("Control")
     layer = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
 
@@ -474,7 +474,7 @@ def test_pcb_layout_routes_default_to_octilinear_segments():
 def test_pcb_layout_grid_snaps_route_numeric_helpers_without_snapping_anchor_targets():
     design, r1, _d1 = _small_resistor_led_design()
     net = next(net for net in design.nets() if net.name == "LED_A")
-    board = design.board("Control")
+    board = design.add_board("Control")
     layer = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
@@ -524,7 +524,7 @@ def test_pcb_layout_grid_snaps_route_numeric_helpers_without_snapping_anchor_tar
 
 def test_pcb_layout_composes_generic_anchor_sets():
     design = volt.Design("pcb-layout-anchor-composition")
-    board = design.board("Control")
+    board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
 
     with board.layout(grid=0.5) as layout:
@@ -548,7 +548,7 @@ def test_pcb_layout_composes_generic_anchor_sets():
 def test_pcb_layout_connects_pads_through_intermediate_anchors_with_rule_width():
     design, r1, d1 = _small_resistor_led_design()
     led_a = next(net for net in design.nets() if net.name == "LED_A")
-    board = design.board("Control")
+    board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_design_rules(min_track_width=0.25)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 24.0))
@@ -597,7 +597,7 @@ def test_pcb_layout_bundles_independent_routes_with_net_inference():
             pin_pads={1: "1", 2: "2"},
         )
 
-    board = design.board("Control")
+    board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
@@ -646,7 +646,7 @@ def test_pcb_layout_connect_re_resolves_pad_anchor_nets_at_mutation_time():
             pin_pads={1: "1", 2: "2"},
         )
 
-    board = design.board("Control")
+    board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
@@ -683,7 +683,7 @@ def test_pcb_layout_connect_delegates_pad_net_resolution_to_kernel(monkeypatch):
             pin_pads={1: "1", 2: "2"},
         )
 
-    board = design.board("Control")
+    board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
@@ -708,7 +708,7 @@ def test_pcb_layout_connect_delegates_pad_net_resolution_to_kernel(monkeypatch):
 def test_pcb_layout_connect_rejects_explicit_net_that_disagrees_with_pad_endpoint():
     design, r1, _d1 = _small_resistor_led_design()
     led_a = next(net for net in design.nets() if net.name == "LED_A")
-    board = design.board("Control")
+    board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
@@ -722,7 +722,7 @@ def test_pcb_layout_connect_rejects_explicit_net_that_disagrees_with_pad_endpoin
 def test_pcb_layout_route_rejects_explicit_net_that_disagrees_with_pad_endpoint():
     design, r1, _d1 = _small_resistor_led_design()
     led_a = next(net for net in design.nets() if net.name == "LED_A")
-    board = design.board("Control")
+    board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
@@ -738,7 +738,7 @@ def test_pcb_layout_route_rejects_explicit_net_that_disagrees_with_pad_endpoint(
 def test_pcb_layout_fanout_and_stitch_lower_to_tracks_and_vias():
     design, _r1, d1 = _small_resistor_led_design()
     gnd = next(net for net in design.nets() if net.name == "GND")
-    board = design.board("Control")
+    board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
@@ -782,7 +782,7 @@ def test_pcb_layout_fanout_and_stitch_lower_to_tracks_and_vias():
 
 def test_pcb_layout_board_anchors_read_outline_without_serializing(monkeypatch):
     design = volt.Design("pcb-layout-outline-query")
-    board = design.board("Control")
+    board = design.add_board("Control")
     board.set_rectangular_outline(origin=(2.0, 3.0), size=(30.0, 20.0))
 
     def fail_to_json():
@@ -797,7 +797,7 @@ def test_pcb_layout_board_anchors_read_outline_without_serializing(monkeypatch):
 
 def test_pcb_layout_frame_and_json_match_absolute_placement_equivalent():
     relative_design, relative_r1, relative_d1 = _small_resistor_led_design()
-    relative_board = relative_design.board("Control")
+    relative_board = relative_design.add_board("Control")
     relative_board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
     relative_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     relative_board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
@@ -809,7 +809,7 @@ def test_pcb_layout_frame_and_json_match_absolute_placement_equivalent():
             layout.place(relative_d1, at=anchors[1], orient="left")
 
     absolute_design, absolute_r1, absolute_d1 = _small_resistor_led_design()
-    absolute_board = absolute_design.board("Control")
+    absolute_board = absolute_design.add_board("Control")
     absolute_board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
     absolute_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     absolute_board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
@@ -833,7 +833,7 @@ def test_pcb_layout_reports_invalid_components_and_ambiguous_pin_names():
         footprint=_passive_0603(("volt.test", "DuplicatePins")),
         pin_pads={1: "1", 2: "2"},
     )
-    board = design.board("Control")
+    board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
 
     with board.layout() as layout:
@@ -845,7 +845,7 @@ def test_pcb_layout_reports_invalid_components_and_ambiguous_pin_names():
         layout.two_pad(design.test_point(ref="TP1"))
 
     other_design = volt.Design("other")
-    other_board = other_design.board("Other")
+    other_board = other_design.add_board("Other")
     other_board.set_rectangular_outline(origin=(0.0, 0.0), size=(10.0, 10.0))
     with pytest.raises(ValueError, match="different board"):
         layout.move_from(other_board.center)
@@ -865,7 +865,7 @@ def test_pcb_layout_reports_invalid_components_and_ambiguous_pin_names():
 def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     design, r1, d1 = _small_resistor_led_design()
     led_a = next(net for net in design.nets() if net.name == "LED_A")
-    board = design.board("Control")
+    board = design.add_board("Control")
 
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
@@ -954,7 +954,7 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
 def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
     design = volt.Design("assisted-connect")
     route = design.net("ROUTE")
-    board = design.board("Control")
+    board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
 
@@ -974,7 +974,7 @@ def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
 
     blocked = volt.Design("blocked-assisted-connect")
     blocked_net = blocked.net("ROUTE")
-    blocked_board = blocked.board("Control")
+    blocked_board = blocked.add_board("Control")
     blocked_front = blocked_board.add_layer("F.Cu", role="copper", side="top")
     blocked_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
     keepout = blocked_board.add(
@@ -1013,7 +1013,7 @@ def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
 def test_python_board_authoring_assisted_connect_is_octilinear():
     design = volt.Design("assisted-connect-octilinear-repro")
     net = design.net("N")
-    board = design.board("B")
+    board = design.add_board("B")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_layer_stack((front,), thickness=1.6)
     board.set_rectangular_outline(origin=(0, 0), size=(20, 20))
@@ -1037,7 +1037,7 @@ def test_python_board_authoring_assisted_connect_is_octilinear():
 
 def test_python_board_authoring_escape_surfaces_kernel_result():
     design, r1, _ = _small_resistor_led_design()
-    board = design.board("Control")
+    board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
@@ -1100,7 +1100,7 @@ def test_python_board_authoring_escape_surfaces_kernel_result():
         footprint=("passives", "R_0603_1608Metric"),
         pin_pads={1: "1", 2: "2"},
     )
-    blocked_board = blocked.board("Control")
+    blocked_board = blocked.add_board("Control")
     blocked_front = blocked_board.add_layer("F.Cu", role="copper", side="top")
     blocked_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
     blocked_board.set_design_rules(copper_clearance=0.20, min_track_width=0.20)
@@ -1149,7 +1149,7 @@ def test_python_board_authoring_escape_surfaces_failure_reason_strings():
         footprint=("passives", "R_0603_1608Metric"),
         pin_pads={1: "1", 2: "2"},
     )
-    unconnected_board = unconnected.board("Control")
+    unconnected_board = unconnected.add_board("Control")
     front = unconnected_board.add_layer("F.Cu", role="copper", side="top")
     unconnected_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
     unconnected_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
@@ -1174,7 +1174,7 @@ def test_python_board_authoring_escape_surfaces_failure_reason_strings():
         footprint=("tests", "MixedSide"),
         pin_pads={1: "1", 2: "2"},
     )
-    no_copper_board = no_copper.board("Control")
+    no_copper_board = no_copper.add_board("Control")
     no_copper_front = no_copper_board.add_layer("F.Cu", role="copper", side="top")
     no_copper_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
     no_copper_board.cache_footprint(
@@ -1206,7 +1206,7 @@ def test_python_board_authoring_escape_surfaces_failure_reason_strings():
         footprint=("passives", "R_0603_1608Metric"),
         pin_pads={1: "1", 2: "2"},
     )
-    disallowed_board = disallowed.board("Control")
+    disallowed_board = disallowed.add_board("Control")
     disallowed_board.add_layer("F.Cu", role="copper", side="top")
     disallowed_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
     disallowed_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
@@ -1221,7 +1221,7 @@ def test_python_board_authoring_escape_surfaces_failure_reason_strings():
 
 def test_python_board_authoring_escape_rejects_unattemptable_requests():
     design, r1, d1 = _small_resistor_led_design()
-    board = design.board("Control")
+    board = design.add_board("Control")
     board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
@@ -1234,7 +1234,7 @@ def test_python_board_authoring_escape_rejects_unattemptable_requests():
     no_part_net = no_part.net("N")
     no_part_r = no_part.R("1k", ref="R1")
     no_part_net += no_part_r[1], no_part_r[2]
-    no_part_board = no_part.board("Control")
+    no_part_board = no_part.add_board("Control")
     no_part_board.add_layer("F.Cu", role="copper", side="top")
     no_part_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
     no_part_board.place(no_part_r, at=(10.0, 10.0))
@@ -1253,7 +1253,7 @@ def test_python_board_authoring_escape_rejects_unattemptable_requests():
         footprint=("tests", "Missing"),
         pin_pads={1: "1", 2: "2"},
     )
-    missing_board = missing.board("Control")
+    missing_board = missing.add_board("Control")
     missing_board.add_layer("F.Cu", role="copper", side="top")
     missing_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
     missing_board.place(missing_r, at=(10.0, 10.0))
@@ -1265,7 +1265,7 @@ def test_python_board_authoring_escape_rejects_unattemptable_requests():
 def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
     design, r1, d1 = _small_resistor_led_design()
     led_a = next(net for net in design.nets() if net.name == "LED_A")
-    board = design.board("Control")
+    board = design.add_board("Control")
 
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
@@ -1341,7 +1341,7 @@ def test_python_board_authoring_exports_native_fabrication_files(tmp_path):
         pin_pads={"A": "1", "K": "2"},
     )
     led_a = next(net for net in design.nets() if net.name == "LED_A")
-    board = design.board("Control")
+    board = design.add_board("Control")
 
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
@@ -1419,7 +1419,7 @@ def test_python_board_authoring_exports_native_fabrication_files(tmp_path):
 def test_python_board_authoring_writes_zones_keepouts_rooms_and_text():
     design, r1, _d1 = _small_resistor_led_design()
     led_a = next(net for net in design.nets() if net.name == "LED_A")
-    board = design.board("Control")
+    board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
@@ -1479,7 +1479,7 @@ def test_python_board_authoring_writes_zones_keepouts_rooms_and_text():
 def test_pcb_layout_composes_zones_keepouts_and_text_from_anchors():
     design = volt.Design("pcb-layout-copper-composition")
     gnd = design.net("GND", kind="ground")
-    board = design.board("Control")
+    board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
@@ -1529,7 +1529,7 @@ def test_pcb_layout_composes_zones_keepouts_and_text_from_anchors():
 
 def test_python_board_authoring_adds_generic_board_primitives():
     design = volt.Design("generic-board-primitives")
-    board = design.board("Primitives")
+    board = design.add_board("Primitives")
     front = board.add_layer("F.Cu", role="copper", side="top")
     silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 24.0))
@@ -1610,7 +1610,7 @@ def test_python_board_authoring_adds_generic_board_primitives():
 def test_python_board_authoring_sets_rules_and_reports_drc_diagnostics():
     design, r1, _d1 = _small_resistor_led_design()
     vcc = next(net for net in design.nets() if net.name == "VCC")
-    board = design.board()
+    board = design.add_board("Main")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
@@ -1681,7 +1681,7 @@ def test_python_board_drc_treats_bound_module_port_nets_as_same_copper_domain():
     parent += instance["N"]
     nets = {net.name: net for net in design.nets()}
 
-    board = design.board()
+    board = design.add_board("Main")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(12.0, 6.0))
     board.set_design_rules(copper_clearance=0.20)
@@ -1715,7 +1715,7 @@ def test_python_board_drc_treats_bound_module_port_copper_as_routed_connectivity
             pin_pads={1: "1"},
         )
 
-    board = design.board()
+    board = design.add_board("Main")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(12.0, 6.0))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
@@ -1754,7 +1754,7 @@ def test_python_board_drc_reports_bound_module_port_stub_only_copper_as_unrouted
             pin_pads={1: "1"},
         )
 
-    board = design.board()
+    board = design.add_board("Main")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(12.0, 6.0))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
@@ -1776,7 +1776,7 @@ def test_python_board_drc_reports_bound_module_port_stub_only_copper_as_unrouted
 def test_python_board_add_via_defaults_respect_board_rule_floor():
     design = volt.Design("via-rule-floor")
     route = design.net("ROUTE")
-    board = design.board()
+    board = design.add_board("Main")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
@@ -1803,7 +1803,7 @@ def test_python_board_add_via_defaults_respect_net_class_via_size():
     design = volt.Design("via-net-class")
     route = design.net("ROUTE")
     design.net_class("RouteVias", via_drill=0.42, via_diameter=0.90).assign(route)
-    board = design.board()
+    board = design.add_board("Main")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
@@ -1826,7 +1826,7 @@ def test_python_board_add_via_uses_net_class_before_authoring_fallback():
     design = volt.Design("via-net-class-below-fallback")
     route = design.net("ROUTE")
     design.net_class("RouteVias", via_drill=0.25, via_diameter=0.50).assign(route)
-    board = design.board()
+    board = design.add_board("Main")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
@@ -1847,7 +1847,7 @@ def test_python_board_add_via_uses_net_class_before_authoring_fallback():
 def test_python_board_add_via_explicit_annular_violation_reaches_drc():
     design = volt.Design("via-explicit-annular-drc")
     route = design.net("ROUTE")
-    board = design.board()
+    board = design.add_board("Main")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
@@ -1869,7 +1869,7 @@ def test_python_board_add_via_explicit_annular_violation_reaches_drc():
 def test_python_board_add_via_rejects_resolved_impossible_geometry():
     design = volt.Design("via-impossible-geometry")
     route = design.net("ROUTE")
-    board = design.board()
+    board = design.add_board("Main")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
@@ -1882,7 +1882,7 @@ def test_python_board_add_via_rejects_resolved_impossible_geometry():
 
 def test_python_board_authoring_sets_capability_profile_from_file_and_inline():
     design = volt.Design("capability-profile")
-    board = design.board("Control")
+    board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
 
     profile = volt.CapabilityProfile.from_file(
@@ -1944,7 +1944,7 @@ def test_python_board_authoring_sets_capability_profile_from_file_and_inline():
 
 def test_python_capability_profile_invalid_values_raise_value_error():
     design = volt.Design("invalid-capability-profile")
-    board = design.board("Control")
+    board = design.add_board("Control")
 
     with pytest.raises(ValueError):
         board.set_capability_profile(
@@ -1963,7 +1963,7 @@ def test_python_capability_profile_invalid_values_raise_value_error():
 def test_python_board_authoring_exposes_pad_resolution_and_validation_diagnostics():
     design, r1, d1 = _small_resistor_led_design()
     c1 = design.C("100nF", ref="C1")
-    board = design.board()
+    board = design.add_board("Main")
     board.set_polygon_outline(((0.0, 0.0), (12.0, 0.0), (12.0, 12.0), (0.0, 12.0)))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     board.place(r1, at=(6.0, 6.0))
@@ -1994,7 +1994,7 @@ def test_python_board_authoring_exposes_pad_resolution_and_validation_diagnostic
 
 def test_python_board_authoring_surfaces_kernel_structural_rejections():
     design, r1, _d1 = _small_resistor_led_design()
-    board = design.board()
+    board = design.add_board("Main")
     front = board.add_layer("F.Cu", role="copper", side="top")
 
     with pytest.raises(RuntimeError, match="Board layer name already exists"):
@@ -2100,7 +2100,7 @@ def test_python_board_auto_registers_design_local_object_owned_footprint():
     right = design.net("RIGHT")
     left += r1[1]
     right += r1[2]
-    board = design.board("Control")
+    board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
 
     board.place(r1, at=(10.0, 6.0))
@@ -2173,7 +2173,7 @@ def test_python_board_ref_only_missing_geometry_still_reports_unresolved():
         footprint=("missing", "NotARealFootprint"),
         pin_pads={1: "1", 2: "2"},
     )
-    board = design.board()
+    board = design.add_board("Main")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
     board.place(r1, at=(10.0, 6.0))
 
@@ -2183,7 +2183,7 @@ def test_python_board_ref_only_missing_geometry_still_reports_unresolved():
 
 def test_python_board_rejects_non_square_circle_footprint_pad():
     design = volt.Design("bad-circle-pad")
-    board = design.board()
+    board = design.add_board("Main")
     footprint = volt.FootprintDefinition(
         ("volt.test", "BadCirclePad"),
         pads=(
@@ -2242,7 +2242,7 @@ def test_python_board_object_owned_footprints_keep_pad_mapping_diagnostics():
         b_net = design.net(f"{component.reference}_B")
         a_net += component[1]
         b_net += component[2]
-    board = design.board()
+    board = design.add_board("Main")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 12.0))
     board.place(r1, at=(10.0, 6.0))
     board.place(r2, at=(20.0, 6.0))
@@ -2290,7 +2290,7 @@ def test_python_board_object_owned_footprint_supports_tied_and_mechanical_pads()
     a_net += j1[1]
     tied_net = design.net("B")
     tied_net += j1[2]
-    board = design.board()
+    board = design.add_board("Main")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
     board.place(j1, at=(10.0, 6.0))
 
@@ -2354,7 +2354,7 @@ def test_python_board_dedupes_object_owned_footprints_and_rejects_conflicts():
         b_net = design.net(f"{component.reference}_B")
         a_net += component[1]
         b_net += component[2]
-    board = design.board()
+    board = design.add_board("Main")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 12.0))
     board.place(r1, at=(10.0, 6.0))
     board.place(r2, at=(20.0, 6.0))
@@ -2393,7 +2393,7 @@ def test_python_board_rejects_object_owned_footprint_conflicting_with_builtin():
     right = design.net("RIGHT")
     left += r1[1]
     right += r1[2]
-    board = design.board()
+    board = design.add_board("Main")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
     board.place(r1, at=(10.0, 6.0))
 
@@ -2404,7 +2404,7 @@ def test_python_board_rejects_object_owned_footprint_conflicting_with_builtin():
 
 def test_python_board_stackup_authors_copper_weight_and_dielectrics():
     design, _r1, _d1 = _small_resistor_led_design()
-    board = design.board("Stackup")
+    board = design.add_board("Stackup")
 
     front = board.add_layer(
         "F.Cu", role="copper", side="top", thickness=0.035, copper_weight=1.0
