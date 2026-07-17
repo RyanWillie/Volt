@@ -34,14 +34,14 @@ class Design:
         self.name = name
         self._circuit = _volt.Circuit()
         self._schematic_document = _volt.SchematicDocument(self._circuit)
+        self._board_registry = _volt.BoardRegistry(self._circuit)
+        self._boards: dict[str, object] = {}
         self._owner = self._circuit
         self._definitions: dict[str, int] = {}
         self._library_definitions: dict[tuple[str, str, str], ComponentDefinition] = {}
         self._object_footprints: dict[FootprintRef, Footprint] = {}
         self._component_object_footprints: dict[int, FootprintRef] = {}
         self._component_model_3d_asset_sources: dict[int, Path] = {}
-        self._board_cached_footprints: dict[FootprintRef, tuple[int, Footprint]] = {}
-        self._board_placed_components: list[int] = []
         self._net_class_counter = 0
         self._schematic_symbols: dict[str, SchematicSymbolSpec] = {}
         self._schematic_sheets: dict[str, int] = {}
@@ -394,24 +394,6 @@ class Design:
             return None
         return self._object_footprints[ref]
 
-    def _record_board_placement(self, component: int) -> None:
-        self._board_placed_components.append(component)
-
-    def _ensure_board_footprint_cached(self, footprint: Footprint) -> int:
-        cached = self._board_cached_footprints.get(footprint.ref)
-        if cached is not None:
-            footprint_id, cached_footprint = cached
-            if cached_footprint._to_dict() != footprint._to_dict():
-                library, name = footprint.ref
-                raise RuntimeError(
-                    f"Board footprint definition {library}:{name} conflicts with cached geometry"
-                )
-            return footprint_id
-
-        footprint_id = self._circuit.board_cache_footprint_definition(footprint._to_dict())
-        self._board_cached_footprints[footprint.ref] = (footprint_id, footprint)
-        return footprint_id
-
     def LED(self, *, ref: str | None = None) -> Component:
         """Instantiate a generic LED component."""
         return self._instantiate("led", self._circuit.define_led, "D", ref, {})
@@ -505,11 +487,23 @@ class Design:
             )
         return Schematic(self, self._schematic_sheets[name], name)
 
-    def board(self, name: str = "Main"):
-        """Create or return a PCB board projection authoring handle."""
+    def add_board(self, name: str):
+        """Create a complete named PCB alternative, rejecting duplicate names."""
         from .pcb import Board
 
-        return Board(self, name)
+        native = self._board_registry.add(name)
+        board = Board(self, native)
+        self._boards[name] = board
+        return board
+
+    def board(self, name: str | None = None):
+        """Return a Board by exact name, or the only Board in this Design."""
+        native = self._board_registry.board(name)
+        return self._boards[native.name]
+
+    def boards(self):
+        """Return Boards in ascending unsigned UTF-8 BoardName order."""
+        return tuple(self._boards[name] for name in self._board_registry.names())
 
     def load_schematic_json(self, text: str) -> Schematic:
         """Load schematic projection JSON into this design and return the first sheet."""

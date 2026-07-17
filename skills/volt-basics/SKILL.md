@@ -48,7 +48,7 @@ def schematic(context: volt.BuildContext) -> volt.Schematic:
 @project.board
 def board(context: volt.BuildContext) -> volt.Board:
     d = context.design()
-    pcb = d.board("Main")
+    pcb = d.add_board("Main")
     # ... set outline, place footprints, route copper ...
     return pcb
 ```

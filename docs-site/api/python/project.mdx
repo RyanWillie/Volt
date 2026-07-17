@@ -226,7 +226,7 @@ Source: `python/volt/project.py`
 | `stages: tuple[StageResult, ...]` | Return executed stage summaries in run order. |
 | `designs: tuple[Design, ...]` | Return logical designs collected by the run. |
 | `schematics: tuple[Schematic, ...]` | Return schematic projections collected by the run. |
-| `boards: tuple[Board, ...]` | Return board projections collected by the run. |
+| `boards: tuple[Board, ...]` | Return board projections in project-design then exact BoardName byte order. |
 
 ### Methods
 

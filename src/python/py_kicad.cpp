@@ -1,4 +1,4 @@
-#include "py_circuit.hpp"
+#include "py_board.hpp"
 
 #include "binding_diagnostic_conversions.hpp"
 
@@ -59,9 +59,9 @@ kicad_loss_warning_to_dict(const volt::adapters::kicad::LossWarning &warning) {
 
 } // namespace
 
-py::dict PyCircuit::board_to_kicad_pcb() const {
+py::dict PyBoard::to_kicad_pcb() const {
     const auto export_result =
-        volt::adapters::kicad::write_board(board_projection(), volt::builtin_footprint_library());
+        volt::adapters::kicad::write_board(board_, volt::builtin_footprint_library());
 
     auto result = py::dict{};
     result["text"] = export_result.text;

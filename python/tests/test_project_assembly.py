@@ -25,7 +25,7 @@ def _assembly_ready_design():
 
 def test_board_cpl_projection_exposes_kernel_json_and_csv():
     design = _assembly_ready_design()
-    board = design.board("Main")
+    board = design.add_board("Main")
     board.place(design.component("R2"), at=(20.5, 11), rotation=270, side="bottom")
     board.place(design.component("R1"), at=(10, 5.25), rotation=90)
     offsets = {("passives", "R_0603_1608Metric"): 10}
@@ -56,7 +56,7 @@ def test_board_assembly_diagnostics_are_explicit():
     unplaced = design.R("1k", ref="R2").dnp(False)
     design.R("10k", ref="R3").dnp(False)
     _select_resistor(unplaced)
-    board = design.board("Main")
+    board = design.add_board("Main")
     board.place(placed_without_part, at=(1, 2))
 
     report = board.validate_assembly()
@@ -81,7 +81,7 @@ def test_project_bundle_emits_cpl_with_bom_and_board_exports(tmp_path):
 
     @project.board
     def board(context):
-        pcb = context.design().board("Main")
+        pcb = context.design().add_board("Main")
         pcb.place(context.design().component("R2"), at=(20.5, 11), rotation=270, side="bottom")
         pcb.place(context.design().component("R1"), at=(10, 5.25), rotation=90)
         return pcb

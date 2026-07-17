@@ -149,7 +149,7 @@ def _stage_schematic(design):
 
 
 def _stage_board(design):
-    pcb = design.board("Main")
+    pcb = design.add_board("Main")
     pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
     pcb.place(design.component("J1"), at=(4, 5), locked=True)
     pcb.place(design.component("R1"), at=(10, 5))

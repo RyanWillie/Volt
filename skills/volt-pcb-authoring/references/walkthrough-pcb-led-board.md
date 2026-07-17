@@ -88,7 +88,7 @@ def build_board(
     nets: dict[str, volt.Net],
     parts: dict[str, volt.Component],
 ) -> volt.Board:
-    board = design.board("First Board LED")
+    board = design.add_board("First Board LED")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
@@ -269,7 +269,7 @@ Copy or adapt this pattern for your own examples. It surfaces both diagnostic co
 | Instantiate components | `design.connector_1x02(ref="J1")` etc. | Kernel component instances |
 | Select parts | `part.select_part(...)` | Footprint, manufacturer, pin-pad mappings |
 | Mark fitted | `part.dnp(False)` | BOM/CPL assembly flag |
-| Get board handle | `design.board("First Board LED")` | Board projection |
+| Get board handle | `design.add_board("First Board LED")` | Board projection |
 | Add layers | `board.add_layer("F.Cu", role="copper", side="top")` | Copper + stackup indices |
 | Set stackup | `board.set_layer_stack((front, back), thickness=1.6)` | Stack order + board thickness |
 | Set outline | `board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 18.0))` | Board boundary |

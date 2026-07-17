@@ -10,7 +10,6 @@
 
 #include <array>
 #include <cstddef>
-#include <optional>
 #include <string>
 #include <string_view>
 
@@ -166,78 +165,6 @@ void bind_circuit(pybind11::module_ &module) {
         .def("bom_csv", &PyCircuit::bom_csv, py::arg("sourcing_snapshot") = py::dict{})
         .def("bom_sourcing_snapshot_json", &PyCircuit::bom_sourcing_snapshot_json,
              py::arg("sourcing_snapshot") = py::dict{})
-        .def("board", &PyCircuit::board, py::arg("name") = "Main")
-        .def("board_design_rules", &PyCircuit::board_design_rules)
-        .def("board_set_design_rules", &PyCircuit::board_set_design_rules,
-             py::arg("copper_clearance_mm"), py::arg("minimum_track_width_mm"),
-             py::arg("minimum_via_drill_diameter_mm"), py::arg("minimum_via_annular_diameter_mm"),
-             py::arg("board_outline_clearance_mm"), py::arg("package_assembly_clearance_mm"))
-        .def("board_set_capability_profile", &PyCircuit::board_set_capability_profile,
-             py::arg("profile"))
-        .def("board_add_layer", &PyCircuit::board_add_layer, py::arg("name"), py::arg("role"),
-             py::arg("side"), py::arg("thickness_mm") = 0.0, py::arg("enabled") = true,
-             py::arg("copper_weight_oz") = std::nullopt)
-        .def("board_set_layer_stack", &PyCircuit::board_set_layer_stack, py::arg("layers"),
-             py::arg("board_thickness_mm"),
-             py::arg("dielectrics") = std::vector<std::pair<double, double>>{})
-        .def("board_set_rectangular_outline", &PyCircuit::board_set_rectangular_outline,
-             py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"))
-        .def("board_set_polygon_outline", &PyCircuit::board_set_polygon_outline,
-             py::arg("vertices"))
-        .def("board_outline_vertices", &PyCircuit::board_outline_vertices)
-        .def("board_add_hole", &PyCircuit::board_add_hole, py::arg("label"), py::arg("x"),
-             py::arg("y"), py::arg("drill_diameter_mm"), py::arg("plated") = false,
-             py::arg("role") = "", py::arg("finished_diameter_mm") = std::nullopt)
-        .def("board_add_slot", &PyCircuit::board_add_slot, py::arg("label"), py::arg("start_x"),
-             py::arg("start_y"), py::arg("end_x"), py::arg("end_y"), py::arg("width_mm"),
-             py::arg("plated") = false, py::arg("role") = "")
-        .def("board_add_cutout", &PyCircuit::board_add_cutout, py::arg("label"), py::arg("outline"),
-             py::arg("role") = "")
-        .def("board_add_circle", &PyCircuit::board_add_circle, py::arg("label"), py::arg("x"),
-             py::arg("y"), py::arg("diameter_mm"), py::arg("side") = "top", py::arg("role") = "")
-        .def("board_cache_footprint_definition", &PyCircuit::board_cache_footprint_definition,
-             py::arg("definition"))
-        .def("board_place_component", &PyCircuit::board_place_component, py::arg("component"),
-             py::arg("x"), py::arg("y"), py::arg("rotation_degrees") = 0.0, py::arg("side") = "top",
-             py::arg("locked") = false)
-        .def("board_placement_refs", &PyCircuit::board_placement_refs)
-        .def("board_stackup", &PyCircuit::board_stackup)
-        .def("board_component_footprint_pads", &PyCircuit::board_component_footprint_pads,
-             py::arg("component"))
-        .def("board_add_track", &PyCircuit::board_add_track, py::arg("net"), py::arg("layer"),
-             py::arg("points"), py::arg("width_mm"))
-        .def("board_add_track_for_route", &PyCircuit::board_add_track_for_route, py::arg("net"),
-             py::arg("layer"), py::arg("endpoints"), py::arg("width_mm"))
-        .def("board_track_net", &PyCircuit::board_track_net, py::arg("track"))
-        .def("board_add_via", &PyCircuit::board_add_via, py::arg("net"), py::arg("x"), py::arg("y"),
-             py::arg("start_layer"), py::arg("end_layer"), py::arg("drill_diameter_mm"),
-             py::arg("annular_diameter_mm"))
-        .def("board_assisted_connect", &PyCircuit::board_assisted_connect, py::arg("net"),
-             py::arg("start_x"), py::arg("start_y"), py::arg("start_layer"), py::arg("end_x"),
-             py::arg("end_y"), py::arg("end_layer"))
-        .def("board_escape", &PyCircuit::board_escape, py::arg("component"))
-        .def("board_add_zone", &PyCircuit::board_add_zone, py::arg("net"), py::arg("layers"),
-             py::arg("outline"), py::arg("fill"), py::arg("priority"))
-        .def("board_add_keepout", &PyCircuit::board_add_keepout, py::arg("layers"),
-             py::arg("outline"), py::arg("restrictions"))
-        .def("board_add_room", &PyCircuit::board_add_room, py::arg("name"), py::arg("outline"),
-             py::arg("layers"), py::arg("copper_clearance_mm") = std::nullopt,
-             py::arg("track_width_mm") = std::nullopt, py::arg("priority") = 0)
-        .def("board_add_text", &PyCircuit::board_add_text, py::arg("text"), py::arg("x"),
-             py::arg("y"), py::arg("layer"), py::arg("rotation_degrees"), py::arg("size_mm"),
-             py::arg("locked"))
-        .def("board_resolve_pads", &PyCircuit::board_resolve_pads)
-        .def("board_validate", &PyCircuit::board_validate)
-        .def("board_validate_assembly", &PyCircuit::board_validate_assembly,
-             py::arg("rotation_offsets") = py::dict{})
-        .def("board_cpl_json", &PyCircuit::board_cpl_json, py::arg("rotation_offsets") = py::dict{})
-        .def("board_cpl_csv", &PyCircuit::board_cpl_csv, py::arg("rotation_offsets") = py::dict{})
-        .def("board_to_json", &PyCircuit::board_to_json)
-        .def("board_to_svg", &PyCircuit::board_to_svg, py::arg("pad_net_overlays") = true,
-             py::arg("diagnostic_overlays") = true, py::arg("ratsnest_edges") = true,
-             py::arg("layer_filter") = std::nullopt)
-        .def("board_to_kicad_pcb", &PyCircuit::board_to_kicad_pcb)
-        .def("board_to_fabrication_files", &PyCircuit::board_to_fabrication_files)
         .def("to_json", &PyCircuit::to_json);
 }
 

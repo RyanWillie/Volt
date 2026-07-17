@@ -556,17 +556,16 @@ class MechanicalKeepout:
 class Board:
     """Python handle to one kernel-owned PCB projection."""
 
-    def __init__(self, design, name: str = "Main"):
-        if not isinstance(name, str):
-            raise TypeError("Board name must be a string")
+    def __init__(self, design, native):
         self._design = design
-        info = self._design._circuit.board(name)
-        self.name = info["name"]
-        self.units = info["units"]
+        self._native = native
+        self._synced_footprint_refs: set[FootprintRef] = set()
+        self.name = native.name
+        self.units = native.units
 
     def design_rules(self) -> dict[str, float]:
         """Return the board design-rule values currently stored in the kernel."""
-        return dict(self._design._circuit.board_design_rules())
+        return dict(self._native.design_rules())
 
     def set_design_rules(
         self,
@@ -606,7 +605,7 @@ class Board:
             if package_assembly_clearance is None
             else package_assembly_clearance
         )
-        self._design._circuit.board_set_design_rules(
+        self._native.set_design_rules(
             float(copper_clearance_value),
             float(min_track_width_value),
             float(min_via_drill_value),
@@ -620,7 +619,7 @@ class Board:
         """Set the board's pinned manufacturer capability profile snapshot."""
         if not isinstance(profile, CapabilityProfile):
             raise TypeError("set_capability_profile expects a CapabilityProfile")
-        self._design._circuit.board_set_capability_profile(profile._to_dict())
+        self._native.set_capability_profile(profile._to_dict())
         return self
 
     def add_layer(
@@ -634,7 +633,7 @@ class Board:
         copper_weight: float | None = None,
     ) -> int:
         """Add a physical or logical board layer and return its kernel index."""
-        return self._design._circuit.board_add_layer(
+        return self._native.add_layer(
             name,
             role,
             side,
@@ -651,7 +650,7 @@ class Board:
         dielectrics: Iterable[tuple[float, float]] | None = None,
     ) -> Board:
         """Set the stack order, total thickness, and copper-to-copper dielectrics."""
-        self._design._circuit.board_set_layer_stack(
+        self._native.set_layer_stack(
             [_layer_index(layer) for layer in layers],
             float(thickness),
             [
@@ -665,12 +664,12 @@ class Board:
         """Set a rectangular board outline from an origin and size."""
         x, y = _point(origin, "Board outline origin")
         width, height = _point(size, "Board outline size")
-        self._design._circuit.board_set_rectangular_outline(x, y, width, height)
+        self._native.set_rectangular_outline(x, y, width, height)
         return self
 
     def set_polygon_outline(self, vertices: Iterable[Point]) -> Board:
         """Set a polygon board outline from ordered vertices."""
-        self._design._circuit.board_set_polygon_outline(
+        self._native.set_polygon_outline(
             [_point(vertex, "Board outline vertex") for vertex in vertices]
         )
         return self
@@ -711,7 +710,7 @@ class Board:
         """Add a generic board primitive and return its kernel index."""
         if isinstance(primitive, Hole):
             x, y = primitive.center
-            return self._design._circuit.board_add_hole(
+            return self._native.add_hole(
                 primitive.label,
                 x,
                 y,
@@ -723,7 +722,7 @@ class Board:
         if isinstance(primitive, Slot):
             start_x, start_y = primitive.start
             end_x, end_y = primitive.end
-            return self._design._circuit.board_add_slot(
+            return self._native.add_slot(
                 primitive.label,
                 start_x,
                 start_y,
@@ -734,17 +733,17 @@ class Board:
                 primitive.role,
             )
         if isinstance(primitive, Cutout):
-            return self._design._circuit.board_add_cutout(
+            return self._native.add_cutout(
                 primitive.label, list(primitive.outline), primitive.role
             )
         if isinstance(primitive, Circle):
             x, y = primitive.center
-            return self._design._circuit.board_add_circle(
+            return self._native.add_circle(
                 primitive.label, x, y, float(primitive.diameter), primitive.side, primitive.role
             )
         if isinstance(primitive, Text):
             x, y = primitive.at
-            return self._design._circuit.board_add_text(
+            return self._native.add_text(
                 primitive.text,
                 x,
                 y,
@@ -754,7 +753,7 @@ class Board:
                 primitive.locked,
             )
         if isinstance(primitive, MechanicalKeepout):
-            return self._design._circuit.board_add_keepout(
+            return self._native.add_keepout(
                 list(primitive.layers),
                 list(primitive.outline),
                 list(primitive.restrictions),
@@ -765,7 +764,10 @@ class Board:
         """Cache an explicit board-owned footprint definition for importers and low-level tests."""
         if not isinstance(footprint, Footprint):
             raise TypeError("cache_footprint expects a Footprint")
-        return self._design._ensure_board_footprint_cached(footprint)
+        return self._ensure_footprint_cached(footprint)
+
+    def _ensure_footprint_cached(self, footprint: Footprint) -> int:
+        return self._native.cache_footprint_definition(footprint._to_dict())
 
     def place(
         self,
@@ -785,10 +787,9 @@ class Board:
             component_index = _component_index(component)
         x, y = _point(at, "Board placement position")
         self._sync_component_object_footprint(component_index)
-        placement = self._design._circuit.board_place_component(
+        placement = self._native.place_component(
             component_index, x, y, float(rotation), side, locked
         )
-        self._design._record_board_placement(component_index)
         return placement
 
     def _placements(self) -> tuple[_BoardPlacementRef, ...]:
@@ -801,11 +802,11 @@ class Board:
                 side=item["side"],
                 locked=bool(item["locked"]),
             )
-            for item in self._design._circuit.board_placement_refs()
+            for item in self._native.placement_refs()
         )
 
     def _surface_z(self, side: str) -> float:
-        for layer in self._design._circuit.board_stackup():
+        for layer in self._native.stackup():
             if layer["side"] == side:
                 return float(layer["z_mm"])
         return 0.0
@@ -837,7 +838,7 @@ class Board:
             net_index = net.index
         else:
             net_index = _net_index(net)
-        return self._design._circuit.board_add_track(
+        return self._native.add_track(
             net_index,
             _layer_index(layer),
             [_point(point, "Board track point") for point in points],
@@ -854,7 +855,7 @@ class Board:
     ) -> dict:
         """Add a layout route track from endpoint intent resolved by the kernel."""
         self._sync_object_footprints()
-        return self._design._circuit.board_add_track_for_route(
+        return self._native.add_track_for_route(
             _optional_net_index(net, self._design),
             _layer_index(layer),
             list(endpoints),
@@ -864,7 +865,7 @@ class Board:
     def _track_net(self, track: int) -> int:
         if isinstance(track, bool) or not isinstance(track, int):
             raise TypeError("Board track IDs must be integers")
-        return self._design._circuit.board_track_net(track)
+        return self._native.track_net(track)
 
     def add_via(
         self,
@@ -884,7 +885,7 @@ class Board:
         else:
             net_index = _net_index(net)
         x, y = _point(at, "Board via position")
-        return self._design._circuit.board_add_via(
+        return self._native.add_via(
             net_index,
             x,
             y,
@@ -917,7 +918,7 @@ class Board:
             net_index = _net_index(net)
         start_x, start_y = _point(start, "Assisted connection start")
         end_x, end_y = _point(end, "Assisted connection end")
-        return self._design._circuit.board_assisted_connect(
+        return self._native.assisted_connect(
             net_index,
             start_x,
             start_y,
@@ -936,7 +937,7 @@ class Board:
         else:
             component_index = _component_index(component)
         self._sync_object_footprints()
-        return self._design._circuit.board_escape(component_index)
+        return self._native.escape(component_index)
 
     def add_zone(
         self,
@@ -956,7 +957,7 @@ class Board:
             net_index = None
         else:
             net_index = _net_index(net)
-        return self._design._circuit.board_add_zone(
+        return self._native.add_zone(
             net_index,
             _layer_indices(layers),
             [_point(point, "Board zone outline point") for point in outline],
@@ -975,7 +976,7 @@ class Board:
         priority: int = 0,
     ) -> int:
         """Add a named board room with optional local routing rule overrides."""
-        return self._design._circuit.board_add_room(
+        return self._native.add_room(
             name,
             [_point(point, "Board room outline point") for point in outline],
             _layer_indices(layers),
@@ -1025,14 +1026,14 @@ class Board:
                 net=item["net"],
                 status=item["status"],
             )
-            for item in self._design._circuit.board_resolve_pads()
+            for item in self._native.resolve_pads()
         )
 
     def validate(self) -> DiagnosticReport:
         """Run PCB projection validation and return the diagnostic report."""
         self._sync_object_footprints()
         return DiagnosticReport(
-            _diagnostic_from_dict(item) for item in self._design._circuit.board_validate()
+            _diagnostic_from_dict(item) for item in self._native.validate()
         )
 
     def validate_assembly(
@@ -1044,7 +1045,7 @@ class Board:
         self._sync_object_footprints()
         return DiagnosticReport(
             _diagnostic_from_dict(item)
-            for item in self._design._circuit.board_validate_assembly(
+            for item in self._native.validate_assembly(
                 _rotation_offsets_payload(rotation_offsets)
             )
         )
@@ -1064,7 +1065,7 @@ class Board:
     ) -> str:
         """Return the deterministic kernel CPL projection as canonical JSON text."""
         self._sync_object_footprints()
-        return self._design._circuit.board_cpl_json(_rotation_offsets_payload(rotation_offsets))
+        return self._native.cpl_json(_rotation_offsets_payload(rotation_offsets))
 
     def cpl_csv(
         self,
@@ -1073,14 +1074,14 @@ class Board:
     ) -> str:
         """Return the deterministic JLCPCB-shaped CPL projection as CSV text."""
         self._sync_object_footprints()
-        return self._design._circuit.board_cpl_csv(
+        return self._native.cpl_csv(
             _rotation_offsets_payload(rotation_offsets)
         )
 
     def to_json(self) -> str:
         """Serialize the PCB projection to Volt board JSON."""
         self._sync_object_footprints()
-        return self._design._circuit.board_to_json()
+        return self._native.to_json()
 
     def to_svg(
         self,
@@ -1092,7 +1093,7 @@ class Board:
     ) -> str:
         """Render the PCB projection as SVG."""
         self._sync_object_footprints()
-        return self._design._circuit.board_to_svg(
+        return self._native.to_svg(
             pad_net_overlays,
             diagnostic_overlays,
             ratsnest_edges,
@@ -1102,7 +1103,7 @@ class Board:
     def to_kicad_pcb(self) -> KiCadPcbExport:
         """Export the PCB projection to a KiCad `.kicad_pcb` adapter document."""
         self._sync_object_footprints()
-        result = self._design._circuit.board_to_kicad_pcb()
+        result = self._native.to_kicad_pcb()
         return KiCadPcbExport(
             text=result["text"],
             warnings=tuple(KiCadLossWarning(**warning) for warning in result["warnings"]),
@@ -1114,7 +1115,7 @@ class Board:
     def to_fabrication_files(self) -> PcbFabricationExport:
         """Export the PCB projection to native Gerber and Excellon fabrication files."""
         self._sync_object_footprints()
-        result = self._design._circuit.board_to_fabrication_files()
+        result = self._native.to_fabrication_files()
         return PcbFabricationExport(
             files=tuple(PcbFabricationFile(**file) for file in result["files"]),
             warnings=tuple(
@@ -1128,12 +1129,14 @@ class Board:
 
     def _sync_component_object_footprint(self, component: int) -> None:
         footprint = self._design._object_footprint_for_component(component)
-        if footprint is not None:
-            self._design._ensure_board_footprint_cached(footprint)
+        if footprint is None or footprint.ref in self._synced_footprint_refs:
+            return
+        self._ensure_footprint_cached(footprint)
+        self._synced_footprint_refs.add(footprint.ref)
 
     def _sync_object_footprints(self) -> None:
-        for component in self._design._board_placed_components:
-            self._sync_component_object_footprint(component)
+        for placement in self._placements():
+            self._sync_component_object_footprint(placement.component)
 
     def _component_footprint_pads(self, component: int) -> tuple[ComponentFootprintPad, ...]:
         self._sync_component_object_footprint(component)
@@ -1144,11 +1147,11 @@ class Board:
                 position=_point(tuple(item["position"]), "Component footprint pad position"),
                 pin=item["pin"],
             )
-            for item in self._design._circuit.board_component_footprint_pads(component)
+            for item in self._native.component_footprint_pads(component)
         )
 
     def _outline_vertices(self) -> tuple[Point, ...]:
-        vertices = self._design._circuit.board_outline_vertices()
+        vertices = self._native.outline_vertices()
         if not vertices:
             raise ValueError("Board mechanical anchors require a board outline")
         return tuple(

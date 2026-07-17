@@ -1134,7 +1134,7 @@ def main():
     @project.board
     def board(context):
         design = context.design()
-        board = design.board("Main")
+        board = design.add_board("Main")
         front = board.add_layer("F.Cu", role="copper", side="top")
         back = board.add_layer("B.Cu", role="copper", side="bottom")
         board.set_layer_stack((front, back), thickness=1.6)

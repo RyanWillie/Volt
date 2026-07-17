@@ -15,7 +15,7 @@ This skill covers board structure definition and the manufacturing handoff. For 
 
 | This skill | `volt-pcb-layout` |
 |---|---|
-| `design.board(name)` | `board.place(component, at=, ...)` |
+| `design.add_board(name)` | `board.place(component, at=, ...)` |
 | `add_layer`, `set_layer_stack` | `board.add_track`, `board.add_via` |
 | `set_design_rules`, `set_capability_profile` | `board.layout(...)` session |
 | `set_rectangular_outline`, `board.add(volt.Hole(...))` | `board.escape(...)`, `board.assisted_connect(...)` |
@@ -53,10 +53,14 @@ The full structure sequence: get the board handle → add layers → commit the 
 ### 2.1 Board handle
 
 ```python
-board = design.board("Main")
+board = design.add_board("Main")
 ```
 
-`design.board(name)` returns a `Board` handle over kernel-owned state. The name identifies the projection.
+`design.add_board(name)` creates a complete named physical alternative and returns its
+direct bound `Board` owner. Empty or duplicate names are rejected. Use
+`design.board(name)` for exact lookup, `design.board()` only when exactly one Board exists,
+and `design.boards()` for deterministic BoardName order. Boards over the same Design have
+independent physical state; they share only the read-only logical Circuit.
 
 ### 2.2 Layers
 

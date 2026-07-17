@@ -2,8 +2,6 @@
 
 #include "binding_conversions.hpp"
 
-#include <volt/pcb/board.hpp>
-
 #include <cstddef>
 #include <optional>
 #include <utility>
@@ -184,122 +182,6 @@ class PyCircuit {
 
     [[nodiscard]] std::string to_json() const;
 
-    [[nodiscard]] py::dict board(const std::string &name);
-
-    [[nodiscard]] py::dict board_design_rules() const;
-
-    void board_set_design_rules(double copper_clearance_mm, double minimum_track_width_mm,
-                                double minimum_via_drill_diameter_mm,
-                                double minimum_via_annular_diameter_mm,
-                                double board_outline_clearance_mm,
-                                double package_assembly_clearance_mm);
-
-    void board_set_capability_profile(const py::dict &profile);
-
-    [[nodiscard]] std::size_t board_add_layer(const std::string &name, const std::string &role,
-                                              const std::string &side, double thickness_mm,
-                                              bool enabled, std::optional<double> copper_weight_oz);
-
-    void board_set_layer_stack(const std::vector<std::size_t> &layers, double board_thickness_mm,
-                               const std::vector<std::pair<double, double>> &dielectrics);
-
-    void board_set_rectangular_outline(double x, double y, double width, double height);
-
-    void board_set_polygon_outline(const std::vector<std::pair<double, double>> &vertices);
-
-    [[nodiscard]] py::list board_outline_vertices() const;
-
-    [[nodiscard]] std::size_t board_add_hole(const std::string &label, double x, double y,
-                                             double drill_diameter_mm, bool plated,
-                                             const std::string &role,
-                                             std::optional<double> finished_diameter_mm);
-
-    [[nodiscard]] std::size_t board_add_slot(const std::string &label, double start_x,
-                                             double start_y, double end_x, double end_y,
-                                             double width_mm, bool plated, const std::string &role);
-
-    [[nodiscard]] std::size_t
-    board_add_cutout(const std::string &label,
-                     const std::vector<std::pair<double, double>> &outline,
-                     const std::string &role);
-
-    [[nodiscard]] std::size_t board_add_circle(const std::string &label, double x, double y,
-                                               double diameter_mm, const std::string &side,
-                                               const std::string &role);
-
-    [[nodiscard]] std::size_t board_cache_footprint_definition(const py::dict &definition);
-
-    [[nodiscard]] std::size_t board_place_component(std::size_t component, double x, double y,
-                                                    double rotation_degrees,
-                                                    const std::string &side, bool locked);
-
-    [[nodiscard]] py::list board_placement_refs() const;
-
-    [[nodiscard]] py::list board_stackup() const;
-
-    [[nodiscard]] py::list board_component_footprint_pads(std::size_t component) const;
-
-    [[nodiscard]] std::size_t board_add_track(std::size_t net, std::size_t layer,
-                                              const std::vector<std::pair<double, double>> &points,
-                                              double width_mm);
-
-    [[nodiscard]] py::dict board_add_track_for_route(std::optional<std::size_t> net,
-                                                     std::size_t layer, const py::list &endpoints,
-                                                     double width_mm);
-
-    [[nodiscard]] std::size_t board_track_net(std::size_t track) const;
-
-    [[nodiscard]] std::size_t board_add_via(std::size_t net, double x, double y,
-                                            std::size_t start_layer, std::size_t end_layer,
-                                            std::optional<double> drill_diameter_mm,
-                                            std::optional<double> annular_diameter_mm);
-
-    [[nodiscard]] py::dict board_assisted_connect(std::size_t net, double start_x, double start_y,
-                                                  std::size_t start_layer, double end_x,
-                                                  double end_y, std::size_t end_layer);
-
-    [[nodiscard]] py::dict board_escape(std::size_t component);
-
-    [[nodiscard]] std::size_t board_add_zone(std::optional<std::size_t> net,
-                                             const std::vector<std::size_t> &layers,
-                                             const std::vector<std::pair<double, double>> &outline,
-                                             const std::string &fill, int priority);
-
-    [[nodiscard]] std::size_t
-    board_add_keepout(const std::vector<std::size_t> &layers,
-                      const std::vector<std::pair<double, double>> &outline,
-                      const std::vector<std::string> &restrictions);
-
-    [[nodiscard]] std::size_t board_add_room(const std::string &name,
-                                             const std::vector<std::pair<double, double>> &outline,
-                                             const std::vector<std::size_t> &layers,
-                                             std::optional<double> copper_clearance_mm,
-                                             std::optional<double> track_width_mm, int priority);
-
-    [[nodiscard]] std::size_t board_add_text(const std::string &text, double x, double y,
-                                             std::size_t layer, double rotation_degrees,
-                                             double size_mm, bool locked);
-
-    [[nodiscard]] py::list board_resolve_pads() const;
-
-    [[nodiscard]] py::list board_validate() const;
-
-    [[nodiscard]] py::list board_validate_assembly(const py::dict &rotation_offsets) const;
-
-    [[nodiscard]] std::string board_cpl_json(const py::dict &rotation_offsets) const;
-
-    [[nodiscard]] std::string board_cpl_csv(const py::dict &rotation_offsets) const;
-
-    [[nodiscard]] std::string board_to_json() const;
-
-    [[nodiscard]] std::string board_to_svg(bool pad_net_overlays, bool diagnostic_overlays,
-                                           bool ratsnest_edges,
-                                           std::optional<std::size_t> layer_filter) const;
-
-    [[nodiscard]] py::dict board_to_kicad_pcb() const;
-
-    [[nodiscard]] py::dict board_to_fabrication_files() const;
-
   private:
     /** Binding-local typed draft committed atomically through Circuit::define_module. */
     struct ModuleDraft {
@@ -344,14 +226,7 @@ class PyCircuit {
     [[nodiscard]] std::vector<volt::PinDefId>
     module_component_pins_by_name(std::size_t component, const std::string &name) const;
 
-    [[nodiscard]] volt::Board &board_projection(const std::string &name);
-
-    [[nodiscard]] volt::Board &board_projection();
-
-    [[nodiscard]] const volt::Board &board_projection() const;
-
     volt::Circuit circuit_;
-    std::optional<volt::Board> board_projection_;
     std::vector<ModuleDraft> module_drafts_;
     std::size_t next_template_net_handle_ = 0;
     std::size_t next_port_handle_ = 0;

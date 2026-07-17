@@ -67,7 +67,7 @@ def test_project_result_writes_part_model_assets_and_placement_transforms(tmp_pa
     @project.board
     def board(context):
         design = context.design()
-        pcb = design.board("Main")
+        pcb = design.add_board("Main")
         front = pcb.add_layer("F.Cu", role="copper", side="top")
         back = pcb.add_layer("B.Cu", role="copper", side="bottom")
         pcb.set_layer_stack((front, back), thickness=1.6)
@@ -191,7 +191,7 @@ def test_project_result_keeps_distinct_model_assets_with_same_hash(tmp_path):
     @project.board
     def board(context):
         design = context.design()
-        pcb = design.board("Main")
+        pcb = design.add_board("Main")
         pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
         pcb.place(design.component("R1"), at=(6, 5))
         pcb.place(design.component("R2"), at=(14, 5))
@@ -261,7 +261,7 @@ def test_project_result_viewer_profile_reports_missing_part_model_assets(tmp_pat
     @project.board
     def board(context):
         design = context.design()
-        pcb = design.board("Main")
+        pcb = design.add_board("Main")
         pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
         pcb.place(design.component("J1"), at=(4, 5), locked=True)
         pcb.place(design.component("R1"), at=(10, 5))
@@ -311,7 +311,7 @@ def test_project_result_viewer_profile_honors_expected_model_diagnostics(tmp_pat
     @project.board
     def board(context):
         design = context.design()
-        pcb = design.board("Main")
+        pcb = design.add_board("Main")
         pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
         pcb.place(design.component("J1"), at=(4, 5), locked=True)
         pcb.place(design.component("R1"), at=(10, 5))
@@ -371,7 +371,7 @@ def test_project_result_default_profile_keeps_part_models_optional(tmp_path):
     @project.board
     def board(context):
         design = context.design()
-        pcb = design.board("Main")
+        pcb = design.add_board("Main")
         pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
         pcb.place(design.component("J1"), at=(4, 5), locked=True)
         pcb.place(design.component("R1"), at=(10, 5))

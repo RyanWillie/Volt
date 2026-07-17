@@ -142,7 +142,7 @@ def test_python_kernel_error_translator_exposes_typed_structural_failures():
     assert isinstance(invalid_state.value, RuntimeError)
 
     design = volt.Design("cross-reference-error")
-    board = design.board()
+    board = design.add_board("Main")
     silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
     net = design.net("ZONE")
     with pytest.raises(

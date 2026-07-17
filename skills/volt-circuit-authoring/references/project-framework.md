@@ -66,7 +66,7 @@ Runs third. Receives a `volt.BuildContext`.
 @project.board
 def board(context: volt.BuildContext) -> volt.Board:
     design = context.design()
-    pcb = design.board("Main")
+    pcb = design.add_board("Main")
     # ... place footprints, route copper ...
     return pcb
 ```

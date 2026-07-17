@@ -219,7 +219,7 @@ def main():
     @project.board
     def board(context):
         [design] = context.designs
-        board = design.board("Control")
+        board = design.add_board("Control")
 {board_profile_call}
         front = board.add_layer("F.Cu", role="copper", side="top")
         back = board.add_layer("B.Cu", role="copper", side="bottom")
@@ -633,7 +633,7 @@ def main():
     def board(context):
         boards = []
         for design in context.designs:
-            board = design.board("Main")
+            board = design.add_board("Main")
             board.set_rectangular_outline(origin=(0, 0), size=(20, 10))
             boards.append(board)
         return tuple(boards)
@@ -734,7 +734,7 @@ def main():
     def board(context):
         boards = []
         for design in context.designs:
-            board = design.board("Main")
+            board = design.add_board("Main")
             board.set_rectangular_outline(origin=(0, 0), size=(20, 10))
             boards.append(board)
         return tuple(boards)

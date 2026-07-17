@@ -187,7 +187,7 @@ def build_board(
     nets: dict[str, volt.Net],
     parts: dict[str, volt.Component],
 ) -> volt.Board:
-    board = design.board("First Board LED")
+    board = design.add_board("First Board LED")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)

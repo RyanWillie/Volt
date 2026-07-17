@@ -37,7 +37,9 @@ Source: `python/volt/design.py`
 | `regulator(self, *, ref: str \| None = None) -> Component` | Instantiate a generic three-pin regulator component. |
 | `op_amp(self, *, ref: str \| None = None) -> Component` | Instantiate a generic five-pin operational amplifier component. |
 | `schematic(self, name: str, *, size: str \| tuple[float, float] \| dict \| None = None, orientation: str \| None = None, title: str \| None = None, number: str \| int \| None = None, page_count: str \| int \| None = None, revision: str \| None = None, date: str \| None = None, project: str \| None = None, file: str \| None = None, title_block: dict[str, str] \| Iterable[tuple[str, str] \| dict] \| None = None, margins: float \| tuple[float, float, float, float] \| dict \| None = None, coordinate_zones: tuple[int, int] \| dict \| None = None, grid: float \| dict \| None = None) -> Schematic` | Create or return a schematic sheet authoring handle by sheet name. |
-| `board(self, name: str = 'Main')` | Create or return a PCB board projection authoring handle. |
+| `add_board(self, name: str)` | Create a complete named PCB alternative, rejecting duplicate names. |
+| `board(self, name: str \| None = None)` | Return a Board by exact name, or the only Board in this Design. |
+| `boards(self)` | Return Boards in ascending unsigned UTF-8 BoardName order. |
 | `load_schematic_json(self, text: str) -> Schematic` | Load schematic projection JSON into this design and return the first sheet. |
 | `load_schematic(self, path: str \| Path) -> Schematic` | Load schematic projection JSON from a file and return the first sheet. |
 | `validate(self) -> DiagnosticReport` | Run logical design validation and return the diagnostic report. |

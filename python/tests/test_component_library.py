@@ -624,7 +624,7 @@ def test_stm32_usb_buck_library_selected_parts_resolve_builtin_footprints():
         "L1": design.instantiate(stm32_usb_buck.INDUCTOR, ref="L1"),
         "D1": design.instantiate(stm32_usb_buck.DIODE, ref="D1"),
     }
-    board = design.board("First-board library parts")
+    board = design.add_board("First-board library parts")
 
     for index, component in enumerate(components.values()):
         board.place(component, at=(index * 8.0, 0.0))
@@ -1302,7 +1302,7 @@ def test_project_instantiates_imported_part_without_manual_footprint_cache():
     @project.board
     def board(context):
         design = context.design()
-        pcb = design.board("Main")
+        pcb = design.add_board("Main")
         pcb.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
         pcb.place(design.component("R1"), at=(10.0, 6.0))
         return pcb
@@ -1338,7 +1338,7 @@ def test_part_pin_pad_mapping_supports_tied_pads():
     a_net += j1[1]
     tied_net = design.net("B")
     tied_net += j1[2]
-    board = design.board()
+    board = design.add_board("Main")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
     board.place(j1, at=(10.0, 6.0))
 
@@ -1635,7 +1635,7 @@ def test_part_ref_only_missing_geometry_still_reports_unresolved_footprint():
     right = design.net("RIGHT")
     left += r1[1]
     right += r1[2]
-    board = design.board()
+    board = design.add_board("Main")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
     board.place(r1, at=(10.0, 6.0))
 

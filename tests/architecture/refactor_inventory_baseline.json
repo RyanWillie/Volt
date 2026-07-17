@@ -503,8 +503,8 @@
     ],
     "ownership": {
       "design_owner_attributes": [
-        "_board_cached_footprints",
-        "_board_placed_components",
+        "_board_registry",
+        "_boards",
         "_circuit",
         "_component_model_3d_asset_sources",
         "_component_object_footprints",
@@ -521,59 +521,62 @@
       ],
       "hidden_footprint_injections": [
         {
-          "caller": "PyCircuit::board_component_footprint_pads",
-          "path": "src/python/py_circuit_board.cpp"
+          "caller": "PyBoard::component_footprint_pads",
+          "path": "src/python/py_board.cpp"
         },
         {
-          "caller": "PyCircuit::board_add_track_for_route",
-          "path": "src/python/py_circuit_board.cpp"
+          "caller": "PyBoard::add_track_for_route",
+          "path": "src/python/py_board.cpp"
         },
         {
-          "caller": "PyCircuit::board_assisted_connect",
-          "path": "src/python/py_circuit_board.cpp"
+          "caller": "PyBoard::assisted_connect",
+          "path": "src/python/py_board.cpp"
         },
         {
-          "caller": "PyCircuit::board_escape",
-          "path": "src/python/py_circuit_board.cpp"
+          "caller": "PyBoard::escape",
+          "path": "src/python/py_board.cpp"
         },
         {
-          "caller": "PyCircuit::board_resolve_pads",
-          "path": "src/python/py_circuit_board.cpp"
+          "caller": "PyBoard::resolve_pads",
+          "path": "src/python/py_board.cpp"
         },
         {
-          "caller": "PyCircuit::board_validate",
-          "path": "src/python/py_circuit_board.cpp"
+          "caller": "PyBoard::validate",
+          "path": "src/python/py_board.cpp"
         },
         {
-          "caller": "PyCircuit::board_validate_assembly",
-          "path": "src/python/py_circuit_board.cpp"
+          "caller": "PyBoard::validate_assembly",
+          "path": "src/python/py_board.cpp"
         },
         {
-          "caller": "PyCircuit::board_cpl_json",
-          "path": "src/python/py_circuit_board.cpp"
+          "caller": "PyBoard::cpl_json",
+          "path": "src/python/py_board.cpp"
         },
         {
-          "caller": "PyCircuit::board_cpl_csv",
-          "path": "src/python/py_circuit_board.cpp"
+          "caller": "PyBoard::cpl_csv",
+          "path": "src/python/py_board.cpp"
         },
         {
-          "caller": "PyCircuit::board_to_json",
-          "path": "src/python/py_circuit_board.cpp"
+          "caller": "PyBoard::to_json",
+          "path": "src/python/py_board.cpp"
         },
         {
-          "caller": "PyCircuit::board_to_svg",
-          "path": "src/python/py_circuit_board.cpp"
+          "caller": "PyBoard::to_svg",
+          "path": "src/python/py_board.cpp"
         },
         {
-          "caller": "PyCircuit::board_to_fabrication_files",
+          "caller": "PyBoard::to_fabrication_files",
           "path": "src/python/py_fabrication.cpp"
         },
         {
-          "caller": "PyCircuit::board_to_kicad_pcb",
+          "caller": "PyBoard::to_kicad_pcb",
           "path": "src/python/py_kicad.cpp"
         }
       ],
       "lifetime_evidence": [
+        "src/python/board_bindings.cpp: BoardRegistry keep_alive retains its bound Circuit owner",
+        "src/python/board_bindings.cpp: Board references retain their BoardRegistry owner",
+        "src/python/py_board.hpp: BoardRegistry directly owns every separately bound native Board",
         "src/python/schematic_bindings.cpp: SchematicDocument keep_alive retains its bound Circuit owner",
         "src/python/py_schematic.hpp: SchematicDocument is a direct bound owner of native SchematicDocument state",
         "tests/architecture/circuit_public_api.txt: deleted rvalue all() overload freezes borrowed range lifetime",
@@ -581,6 +584,16 @@
         "tests/architecture/schematic_public_api.txt: deleted rvalue Schematic(Circuit&&) constructor freezes Circuit borrow lifetime"
       ],
       "native_bound_classes": [
+        {
+          "cpp_type": "PyBoardRegistry",
+          "path": "src/python/board_bindings.cpp",
+          "python_type": "BoardRegistry"
+        },
+        {
+          "cpp_type": "PyBoard",
+          "path": "src/python/board_bindings.cpp",
+          "python_type": "Board"
+        },
         {
           "cpp_type": "PyCircuit",
           "path": "src/python/circuit_bindings.cpp",
@@ -592,8 +605,12 @@
           "python_type": "SchematicDocument"
         }
       ],
+      "py_board_owner_private_members": [
+        "board",
+        "boards",
+        "circuit"
+      ],
       "py_circuit_private_members": [
-        "board_projection",
         "circuit",
         "module_drafts",
         "next_module_component_handle",
@@ -602,6 +619,13 @@
       ],
       "py_schematic_private_members": [
         "schematic_document"
+      ],
+      "python_board_handle_attributes": [
+        "_design",
+        "_native",
+        "_synced_footprint_refs",
+        "name",
+        "units"
       ]
     },
     "public_contracts": {
