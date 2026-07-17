@@ -23,6 +23,7 @@ endif()
 
 add_subdirectory(src/core)
 add_subdirectory(src/circuit)
+add_subdirectory(src/library)
 add_subdirectory(src/authoring)
 add_subdirectory(src/pcb)
 add_subdirectory(src/schematic)
@@ -36,7 +37,15 @@ endif()
 add_library(volt INTERFACE)
 add_library(Volt::Volt ALIAS volt)
 target_link_libraries(
-    volt INTERFACE Volt::Core Volt::Circuit Volt::Authoring Volt::PCB Volt::Schematic Volt::IO
+    volt
+    INTERFACE
+        Volt::Core
+        Volt::Circuit
+        Volt::Library
+        Volt::Authoring
+        Volt::PCB
+        Volt::Schematic
+        Volt::IO
 )
 
 if(VOLT_BUILD_DOCS)

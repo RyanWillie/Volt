@@ -66,6 +66,7 @@ add_executable(
     io/schematic/schematic_schema_test.cpp
     io/schematic/schematic_svg_writer_test.cpp
     io/schematic/schematic_writer_test.cpp
+    library/part_library_test.cpp
     pcb/geometry/board_geometry_projection_test.cpp
     pcb/assembly/cpl_test.cpp
     pcb/routing/board_escape_router_test.cpp
@@ -101,6 +102,7 @@ target_link_libraries(
         Volt::NlohmannJson
         Volt::PCB
         Volt::KiCadAdapter
+        Volt::Library
         Catch2::Catch2WithMain
 )
 target_compile_features(volt_core_tests PRIVATE cxx_std_23)

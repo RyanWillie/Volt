@@ -46,6 +46,7 @@
 #include <volt/io/schematic/schematic_schema.hpp>
 #include <volt/io/schematic/schematic_svg_writer.hpp>
 #include <volt/io/schematic/schematic_writer.hpp>
+#include <volt/library/part_library.hpp>
 #include <volt/pcb/assembly/cpl.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
