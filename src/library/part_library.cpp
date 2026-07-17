@@ -201,7 +201,7 @@ PartLibrary::PartLibrary(const PartLibraryBuilder &builder, const PartAssetResol
 }
 
 std::optional<std::reference_wrapper<const ComponentDefinition>>
-PartLibrary::component(const ComponentKey &key) const noexcept {
+PartLibrary::component(const ComponentKey &key) const & noexcept {
     const auto match = std::ranges::find(
         components_, key, [](const auto &candidate) { return candidate.contract().key(); });
     if (match == components_.end()) {
@@ -211,7 +211,7 @@ PartLibrary::component(const ComponentKey &key) const noexcept {
 }
 
 std::optional<std::reference_wrapper<const PartDefinition>>
-PartLibrary::part(const PartKey &key) const noexcept {
+PartLibrary::part(const PartKey &key) const & noexcept {
     const auto match = std::ranges::find(
         parts_, key.value(), [](const auto &candidate) { return candidate.identity().name(); });
     if (match == parts_.end()) {
@@ -221,7 +221,7 @@ PartLibrary::part(const PartKey &key) const noexcept {
 }
 
 std::vector<std::reference_wrapper<const PartDefinition>>
-PartLibrary::find(const PartQuery &query) const {
+PartLibrary::find(const PartQuery &query) const & {
     const auto matched_component = component(query.component);
     if (!matched_component.has_value()) {
         return {};
@@ -253,7 +253,7 @@ LibraryPartRef PartLibrary::require(const PartKey &key) const {
                           candidate->get().content_identity()};
 }
 
-const PartDefinition &PartLibrary::resolve(const LibraryPartRef &reference) const {
+const PartDefinition &PartLibrary::resolve(const LibraryPartRef &reference) const & {
     if (reference.library_namespace() != identity_.namespace_name() ||
         reference.library_version() != identity_.version()) {
         throw KernelLogicError{ErrorCode::CrossReferenceViolation,

@@ -163,15 +163,24 @@ class PartLibraryBuilder {
     [[nodiscard]] PartLibrary build(const PartAssetResolver &asset_resolver) const;
 
     /** Return the exact identity of the pending build. */
-    [[nodiscard]] const PartLibraryIdentity &identity() const noexcept { return identity_; }
+    [[nodiscard]] const PartLibraryIdentity &identity() const & noexcept { return identity_; }
+
+    /** Prevent borrowing the pending identity from a temporary builder. */
+    [[nodiscard]] const PartLibraryIdentity &identity() const && = delete;
 
     /** Return complete pending component definitions without mutable access. */
-    [[nodiscard]] std::span<const ComponentDefinition> components() const noexcept {
+    [[nodiscard]] std::span<const ComponentDefinition> components() const & noexcept {
         return components_;
     }
 
+    /** Prevent borrowing pending component definitions from a temporary builder. */
+    [[nodiscard]] std::span<const ComponentDefinition> components() const && = delete;
+
     /** Return complete pending exact parts without mutable access. */
-    [[nodiscard]] std::span<const PartDefinition> parts() const noexcept { return parts_; }
+    [[nodiscard]] std::span<const PartDefinition> parts() const & noexcept { return parts_; }
+
+    /** Prevent borrowing pending exact parts from a temporary builder. */
+    [[nodiscard]] std::span<const PartDefinition> parts() const && = delete;
 
   private:
     PartLibraryIdentity identity_;
@@ -186,36 +195,63 @@ class PartLibrary {
     PartLibrary(const PartLibraryBuilder &builder, const PartAssetResolver &asset_resolver);
 
     /** Return the exact human identity and native schema. */
-    [[nodiscard]] const PartLibraryIdentity &identity() const noexcept { return identity_; }
+    [[nodiscard]] const PartLibraryIdentity &identity() const & noexcept { return identity_; }
+
+    /** Prevent borrowing the library identity from a temporary snapshot. */
+    [[nodiscard]] const PartLibraryIdentity &identity() const && = delete;
 
     /** Return the deterministic semantic digest of this immutable snapshot. */
-    [[nodiscard]] const ContentHash &digest() const noexcept { return digest_; }
+    [[nodiscard]] const ContentHash &digest() const & noexcept { return digest_; }
+
+    /** Prevent borrowing the library digest from a temporary snapshot. */
+    [[nodiscard]] const ContentHash &digest() const && = delete;
 
     /** Return all component definitions in stable ComponentKey order. */
-    [[nodiscard]] std::span<const ComponentDefinition> components() const noexcept {
+    [[nodiscard]] std::span<const ComponentDefinition> components() const & noexcept {
         return components_;
     }
 
+    /** Prevent borrowing component definitions from a temporary snapshot. */
+    [[nodiscard]] std::span<const ComponentDefinition> components() const && = delete;
+
     /** Return all exact parts in stable PartKey order. */
-    [[nodiscard]] std::span<const PartDefinition> parts() const noexcept { return parts_; }
+    [[nodiscard]] std::span<const PartDefinition> parts() const & noexcept { return parts_; }
+
+    /** Prevent borrowing exact parts from a temporary snapshot. */
+    [[nodiscard]] std::span<const PartDefinition> parts() const && = delete;
 
     /** Find one component by its exact typed key. */
     [[nodiscard]] std::optional<std::reference_wrapper<const ComponentDefinition>>
-    component(const ComponentKey &key) const noexcept;
+    component(const ComponentKey &key) const & noexcept;
+
+    /** Prevent borrowing a component definition from a temporary snapshot. */
+    [[nodiscard]] std::optional<std::reference_wrapper<const ComponentDefinition>>
+    component(const ComponentKey &key) const && = delete;
 
     /** Find one part by its exact typed key without integrity resolution. */
     [[nodiscard]] std::optional<std::reference_wrapper<const PartDefinition>>
-    part(const PartKey &key) const noexcept;
+    part(const PartKey &key) const & noexcept;
+
+    /** Prevent borrowing an exact part from a temporary snapshot. */
+    [[nodiscard]] std::optional<std::reference_wrapper<const PartDefinition>>
+    part(const PartKey &key) const && = delete;
 
     /** Return deterministic exact-part candidates matching all typed filters. */
     [[nodiscard]] std::vector<std::reference_wrapper<const PartDefinition>>
-    find(const PartQuery &query) const;
+    find(const PartQuery &query) const &;
+
+    /** Prevent borrowing exact candidates from a temporary snapshot. */
+    [[nodiscard]] std::vector<std::reference_wrapper<const PartDefinition>>
+    find(const PartQuery &query) const && = delete;
 
     /** Pin one existing part as a complete integrity-bearing exact reference. */
     [[nodiscard]] LibraryPartRef require(const PartKey &key) const;
 
     /** Resolve one exact reference or fail with a typed structural kernel error. */
-    [[nodiscard]] const PartDefinition &resolve(const LibraryPartRef &reference) const;
+    [[nodiscard]] const PartDefinition &resolve(const LibraryPartRef &reference) const &;
+
+    /** Prevent resolving a borrowed part from a temporary snapshot. */
+    [[nodiscard]] const PartDefinition &resolve(const LibraryPartRef &reference) const && = delete;
 
   private:
     PartLibraryIdentity identity_;

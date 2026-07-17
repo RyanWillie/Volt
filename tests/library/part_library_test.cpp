@@ -92,6 +92,48 @@ class MemoryAssetResolver final : public volt::PartAssetResolver {
     std::map<std::string, std::string> assets_;
 };
 
+template <typename T>
+concept CanBorrowIdentityFromTemporary = requires(T &&value) { std::forward<T>(value).identity(); };
+
+template <typename T>
+concept CanBorrowDigestFromTemporary = requires(T &&value) { std::forward<T>(value).digest(); };
+
+template <typename T>
+concept CanBorrowComponentsFromTemporary =
+    requires(T &&value) { std::forward<T>(value).components(); };
+
+template <typename T>
+concept CanBorrowPartsFromTemporary = requires(T &&value) { std::forward<T>(value).parts(); };
+
+template <typename T>
+concept CanBorrowComponentFromTemporary =
+    requires(T &&value, const volt::ComponentKey &key) { std::forward<T>(value).component(key); };
+
+template <typename T>
+concept CanBorrowPartFromTemporary =
+    requires(T &&value, const volt::PartKey &key) { std::forward<T>(value).part(key); };
+
+template <typename T>
+concept CanBorrowCandidatesFromTemporary =
+    requires(T &&value, const volt::PartQuery &query) { std::forward<T>(value).find(query); };
+
+template <typename T>
+concept CanResolveFromTemporary = requires(T &&value, const volt::LibraryPartRef &reference) {
+    std::forward<T>(value).resolve(reference);
+};
+
+static_assert(!CanBorrowIdentityFromTemporary<volt::PartLibraryBuilder>);
+static_assert(!CanBorrowComponentsFromTemporary<volt::PartLibraryBuilder>);
+static_assert(!CanBorrowPartsFromTemporary<volt::PartLibraryBuilder>);
+static_assert(!CanBorrowIdentityFromTemporary<volt::PartLibrary>);
+static_assert(!CanBorrowDigestFromTemporary<volt::PartLibrary>);
+static_assert(!CanBorrowComponentsFromTemporary<volt::PartLibrary>);
+static_assert(!CanBorrowPartsFromTemporary<volt::PartLibrary>);
+static_assert(!CanBorrowComponentFromTemporary<volt::PartLibrary>);
+static_assert(!CanBorrowPartFromTemporary<volt::PartLibrary>);
+static_assert(!CanBorrowCandidatesFromTemporary<volt::PartLibrary>);
+static_assert(!CanResolveFromTemporary<volt::PartLibrary>);
+
 [[nodiscard]] volt::PartLibrary build_library(const volt::ComponentDefinition &definition,
                                               const std::vector<volt::PartDefinition> &parts,
                                               const MemoryAssetResolver &resolver) {
@@ -287,5 +329,6 @@ TEST_CASE("Part library build requires explicit complete asset resolution") {
 
     auto complete = MemoryAssetResolver{};
     complete.add(exact, std::string{asset_bytes});
-    CHECK(builder.build(complete).parts().size() == 1U);
+    const auto library = builder.build(complete);
+    CHECK(library.parts().size() == 1U);
 }
