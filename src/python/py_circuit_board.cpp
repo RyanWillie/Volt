@@ -340,11 +340,12 @@ std::size_t PyCircuit::board_add_via(std::size_t net, double x, double y, std::s
 
 py::dict PyCircuit::board_assisted_connect(std::size_t net, double start_x, double start_y,
                                            std::size_t start_layer, double end_x, double end_y,
-                                           std::size_t end_layer) {
+                                           std::size_t end_layer,
+                                           std::optional<double> track_width_mm) {
     auto router = volt::BoardRouter{board_projection(), volt::builtin_footprint_library()};
     const auto result = router.connect(volt::BoardRouteRequest{
         net_id(net), volt::BoardPoint{start_x, start_y}, volt::BoardPoint{end_x, end_y},
-        volt::BoardLayerId{start_layer}, volt::BoardLayerId{end_layer}});
+        volt::BoardLayerId{start_layer}, volt::BoardLayerId{end_layer}, track_width_mm});
 
     auto tracks = py::list{};
     for (const auto track : result.tracks) {

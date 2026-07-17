@@ -256,7 +256,8 @@ class PyCircuit {
 
     [[nodiscard]] py::dict board_assisted_connect(std::size_t net, double start_x, double start_y,
                                                   std::size_t start_layer, double end_x,
-                                                  double end_y, std::size_t end_layer);
+                                                  double end_y, std::size_t end_layer,
+                                                  std::optional<double> track_width_mm);
 
     [[nodiscard]] py::dict board_escape(std::size_t component);
 

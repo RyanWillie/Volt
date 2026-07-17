@@ -366,6 +366,14 @@ TEST_CASE("Router respects net-class width, via size, and allowed layers", "[pcb
         CHECK(copper_drc_codes(report).empty());
     }
 
+    SECTION("uses an explicit request width above the class width") {
+        const auto result = router.connect(
+            volt::BoardRouteRequest{fixture.signal_net, volt::BoardPoint{10.0, 20.0},
+                                    volt::BoardPoint{40.0, 20.0}, layout.front, layout.front, 0.8});
+        REQUIRE(result.routed);
+        CHECK(layout.board.track(result.tracks.front()).width_mm() == Catch::Approx(0.8));
+    }
+
     SECTION("refuses to route onto a disallowed layer") {
         const auto result = router.connect(
             volt::BoardRouteRequest{fixture.signal_net, volt::BoardPoint{10.0, 20.0},
