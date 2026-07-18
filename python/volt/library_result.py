@@ -87,6 +87,8 @@ class LibraryPartResult:
     pad_mapping_complete: bool
     artifact: LibraryPartArtifact | None
     diagnostics: tuple[LibraryDiagnostic, ...]
+    component_sha256: str
+    exact_reference: dict[str, str]
 
 
 class LibraryResult:
@@ -94,19 +96,51 @@ class LibraryResult:
 
     def __init__(self, library):
         self.library = library
+        validation = [(part, *_validate_part(part)) for part in library.parts]
+        native_parts = [
+            part
+            for part, facts, _diagnostics in validation
+            if _part_artifact_prerequisites(part, facts)
+        ]
+        self._snapshot = library._native_snapshot(native_parts)
         part_results: list[LibraryPartResult] = []
         diagnostics: list[LibraryDiagnostic] = []
-        for part in library.parts:
-            facts, part_diagnostics = _validate_part(part)
-            artifact, artifact_diagnostics = _build_part_artifact(part, facts)
+        native_names = {part.name for part in native_parts}
+        for part, facts, preflight_diagnostics in validation:
+            if part.name not in native_names:
+                diagnostics.extend(preflight_diagnostics)
+                part_results.append(
+                    LibraryPartResult(
+                        name=part.name,
+                        schematic_ready=bool(part.pins and part.schematic_symbols),
+                        board_ready=False,
+                        serializable=facts.serializable,
+                        has_footprint=facts.has_object_footprint,
+                        pad_mapping_complete=facts.pad_mapping_complete,
+                        artifact=None,
+                        diagnostics=preflight_diagnostics,
+                        component_sha256="",
+                        exact_reference={},
+                    )
+                )
+                continue
+            native = self._snapshot.part_result(part.source_name)
+            part_diagnostics = _kernel_part_diagnostics(f"part:{part.name}", native["diagnostics"])
             diagnostics.extend(part_diagnostics)
-            diagnostics.extend(artifact_diagnostics)
             part_results.append(
-                _part_result(
-                    part,
-                    facts,
-                    part_diagnostics + artifact_diagnostics,
-                    artifact,
+                LibraryPartResult(
+                    name=part.name,
+                    schematic_ready=bool(part.pins and part.schematic_symbols),
+                    board_ready=True,
+                    serializable=True,
+                    has_footprint=True,
+                    pad_mapping_complete=True,
+                    artifact=LibraryPartArtifact(
+                        bytes=bytes(native["bytes"]), sha256=str(native["sha256"])
+                    ),
+                    diagnostics=part_diagnostics,
+                    component_sha256=str(native["component_sha256"]),
+                    exact_reference=dict(native["exact_reference"]),
                 )
             )
         self._parts = tuple(part_results)
@@ -121,6 +155,11 @@ class LibraryResult:
     def diagnostics(self) -> LibraryDiagnostics:
         """Return diagnostics collected during library validation."""
         return self._diagnostics
+
+    @property
+    def digest(self) -> str:
+        """Return the deterministic native P4 library digest."""
+        return str(self._snapshot.digest)
 
     @property
     def parts(self) -> tuple[LibraryPartResult, ...]:
@@ -189,10 +228,6 @@ def _validate_part(part: Part) -> tuple[_PartValidationFacts, tuple[LibraryDiagn
             )
         )
 
-    pad_mapping_complete = True
-    if has_logical_pins and has_object_footprint:
-        pad_mapping_complete = _part_pad_mapping_complete(part)
-
     serializable = True
     try:
         json.dumps(part._to_dict(), sort_keys=True)
@@ -210,86 +245,11 @@ def _validate_part(part: Part) -> tuple[_PartValidationFacts, tuple[LibraryDiagn
         _PartValidationFacts(
             has_logical_pins=has_logical_pins,
             has_object_footprint=has_object_footprint,
-            pad_mapping_complete=pad_mapping_complete,
+            pad_mapping_complete=False,
             serializable=serializable,
         ),
         tuple(diagnostics),
     )
-
-
-def _part_pad_mapping_complete(part: Part) -> bool:
-    pads = _part_physical_pin_pads(part)
-    mapped_pin_numbers = _mapped_pin_numbers(part.pins, pads)
-    all_pins_mapped = all(str(pin.number) in mapped_pin_numbers for pin in part.pins)
-    if not isinstance(part.footprint, Footprint):
-        return all_pins_mapped
-
-    footprint_labels = {str(pad.label) for pad in part.footprint.pads}
-    mapped_labels = _mapped_pad_labels(pads)
-    all_mapping_keys_resolve = _all_pad_mapping_keys_resolve(part, pads)
-    all_mapped_labels_exist = all(label in footprint_labels for label in mapped_labels)
-    all_electrical_pads_mapped = all(
-        not _pad_requires_mapping(pad) or str(pad.label) in mapped_labels
-        for pad in part.footprint.pads
-    )
-    return (
-        all_pins_mapped
-        and all_mapping_keys_resolve
-        and all_mapped_labels_exist
-        and all_electrical_pads_mapped
-    )
-
-
-def _part_result(
-    part: Part,
-    facts: _PartValidationFacts,
-    diagnostics: tuple[LibraryDiagnostic, ...],
-    artifact: LibraryPartArtifact | None,
-) -> LibraryPartResult:
-    return LibraryPartResult(
-        name=part.name,
-        schematic_ready=bool(part.pins and part.schematic_symbols),
-        board_ready=(
-            facts.has_logical_pins
-            and facts.has_object_footprint
-            and facts.pad_mapping_complete
-        ),
-        serializable=facts.serializable,
-        has_footprint=facts.has_object_footprint,
-        pad_mapping_complete=facts.pad_mapping_complete,
-        artifact=artifact,
-        diagnostics=diagnostics,
-    )
-
-
-def _build_part_artifact(
-    part: Part,
-    facts: _PartValidationFacts,
-) -> tuple[LibraryPartArtifact | None, tuple[LibraryDiagnostic, ...]]:
-    if not _part_artifact_prerequisites(part, facts):
-        return None, ()
-
-    source = f"part:{part.name}"
-    try:
-        artifact = _volt.part_definition_artifact(_part_artifact_payload(part))
-        return (
-            LibraryPartArtifact(
-                bytes=bytes(artifact["bytes"]),
-                sha256=str(artifact["sha256"]),
-            ),
-            _kernel_part_diagnostics(source, artifact["diagnostics"]),
-        )
-    except (TypeError, ValueError, RuntimeError) as error:
-        return (
-            None,
-            (
-                _library_diagnostic(
-                    source,
-                    "LIBRARY_PART_ARTIFACT_INVALID",
-                    f"Part {part.name} cannot build kernel artifact: {error}",
-                ),
-            ),
-        )
 
 
 def _part_artifact_prerequisites(part: Part, facts: _PartValidationFacts) -> bool:
@@ -311,13 +271,19 @@ def _part_artifact_payload(part: Part) -> dict[str, object]:
         raise ValueError("part artifact requires an orderable physical part")
     pads = _part_physical_pin_pads(part, physical)
     footprint_library, footprint_name = footprint_ref(physical.footprint)
-    return {
+    payload = {
         "identity": {
             "namespace": part.library.namespace,
             "name": part.source_name,
             "version": part.source_version or part.library.version,
         },
+        "component_name": part.name,
+        "component_properties": dict(part.properties),
         "pins": [pin._to_dict() for pin in part.pins],
+        "contract": None if part.contract is None else part.contract._to_dict(),
+        "electrical_records": [
+            record._to_dict() for record in part.electrical_records
+        ],
         "provenance": _part_provenance_payload(part),
         "symbols": _part_symbol_refs(part),
         "orderable_part": {
@@ -344,6 +310,43 @@ def _part_artifact_payload(part: Part) -> dict[str, object]:
             "model_3d": _model_3d_reference_payload(physical.model_3d),
         },
     }
+    payload["assets"] = _part_asset_payloads(part, payload)
+    return payload
+
+
+def _part_asset_payloads(part: Part, payload: dict[str, object]) -> list[dict[str, object]]:
+    assets: list[dict[str, object]] = []
+    for symbol, symbol_ref in zip(part.schematic_symbols, payload["symbols"], strict=True):
+        assets.append(
+            {
+                "kind": "schematic",
+                "key": f"symbol:{symbol_ref['name']}@{symbol_ref['variant']}",
+                "bytes": _canonical_bytes(_symbol_payload(symbol)),
+            }
+        )
+    physical = part._physical_part_spec()
+    if physical is None or not isinstance(physical.footprint, Footprint):
+        return assets
+    footprint_library, footprint_name = footprint_ref(physical.footprint)
+    assets.append(
+        {
+            "kind": "footprint",
+            "key": f"footprint:{footprint_library}/{footprint_name}",
+            "bytes": _canonical_bytes(_footprint_payload(physical.footprint)),
+        }
+    )
+    if physical.model_3d is not None:
+        assets.append(
+            {
+                "kind": "model_3d",
+                "key": (
+                    f"model:{physical.model_3d.format}/"
+                    f"{physical.model_3d.file_name}"
+                ),
+                "bytes": physical.model_3d.source_path.read_bytes(),
+            }
+        )
+    return assets
 
 
 def _part_provenance_payload(part: Part) -> dict[str, object]:
@@ -515,12 +518,6 @@ def _unique_pin_names(part: Part) -> set[str]:
     return {name for name, count in names.items() if count == 1}
 
 
-def _all_pad_mapping_keys_resolve(part: Part, pads: dict[int | str, object]) -> bool:
-    pin_numbers = {str(pin.number) for pin in part.pins}
-    unique_pin_names = _unique_pin_names(part)
-    return all(str(key) in pin_numbers or str(key) in unique_pin_names for key in pads)
-
-
 def _model_3d_reference_payload(model) -> dict[str, object] | None:
     if model is None:
         return None
@@ -528,61 +525,22 @@ def _model_3d_reference_payload(model) -> dict[str, object] | None:
     return {
         "format": payload["format"],
         "file_name": payload["file_name"],
-        "hash": _content_hash(payload),
+        "hash": str(_volt.content_hash(model.source_path.read_bytes())),
         "translation_mm": payload["translation_mm"],
         "rotation_deg": payload["rotation_deg"],
     }
 
 
 def _content_hash(payload: object) -> str:
-    canonical = json.dumps(
+    return str(_volt.content_hash(_canonical_bytes(payload)))
+
+
+def _canonical_bytes(payload: object) -> bytes:
+    return json.dumps(
         payload,
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
-    return str(_volt.content_hash(canonical))
-
-
-def _mapped_pin_numbers(
-    pins: tuple[object, ...],
-    pads: dict[int | str, object],
-) -> set[str]:
-    pin_numbers = {str(pin.number) for pin in pins}
-    names: dict[str, str | None] = {}
-    for pin in pins:
-        existing = names.get(pin.name)
-        if existing is None and pin.name in names:
-            continue
-        if existing is not None:
-            names[pin.name] = None
-        else:
-            names[pin.name] = str(pin.number)
-
-    mapped: set[str] = set()
-    for key in pads:
-        key_text = str(key)
-        if key_text in pin_numbers:
-            mapped.add(key_text)
-            continue
-        named_number = names.get(key_text)
-        if named_number is not None:
-            mapped.add(named_number)
-    return mapped
-
-
-def _mapped_pad_labels(pads: dict[int | str, object]) -> set[str]:
-    labels: set[str] = set()
-    for value in pads.values():
-        for label in _pad_labels(value):
-            labels.add(label)
-    return labels
-
-
-def _pad_requires_mapping(pad) -> bool:
-    try:
-        return _part_footprint_pad_role(pad) is None
-    except ValueError:
-        return True
 
 
 def _kernel_part_diagnostics(source: str, diagnostics) -> tuple[LibraryDiagnostic, ...]:
@@ -632,6 +590,8 @@ def _part_result_payload(part: LibraryPartResult) -> dict:
                 "byte_size": len(part.artifact.bytes),
             }
         ),
+        "component_sha256": part.component_sha256,
+        "exact_reference": dict(part.exact_reference),
         "diagnostics": [_library_diagnostic_payload(diagnostic) for diagnostic in part.diagnostics],
     }
 

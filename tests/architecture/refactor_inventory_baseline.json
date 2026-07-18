@@ -509,7 +509,6 @@
         "_component_model_3d_asset_sources",
         "_component_object_footprints",
         "_definitions",
-        "_library_definitions",
         "_net_class_counter",
         "_object_footprints",
         "_owner",
@@ -595,6 +594,11 @@
           "python_type": "Board"
         },
         {
+          "cpp_type": "PyPartLibrary",
+          "path": "src/python/circuit_bindings.cpp",
+          "python_type": "PartLibrarySnapshot"
+        },
+        {
           "cpp_type": "PyCircuit",
           "path": "src/python/circuit_bindings.cpp",
           "python_type": "Circuit"
@@ -615,7 +619,8 @@
         "module_drafts",
         "next_module_component_handle",
         "next_port_handle",
-        "next_template_net_handle"
+        "next_template_net_handle",
+        "part_libraries"
       ],
       "py_schematic_private_members": [
         "schematic_document"
@@ -688,10 +693,15 @@
         "BoardRoute",
         "BoardTwoPadComponent",
         "BuildContext",
+        "CanonicalRecordRequirement",
         "CapabilityProfile",
         "Circle",
         "Component",
+        "ComponentContract",
         "ComponentDefinition",
+        "ContractDirectedRelation",
+        "ContractFramedPin",
+        "ContractSupplyDomain",
         "CrossReferenceError",
         "Cutout",
         "DIAGNOSTIC_CATEGORIES",
@@ -704,8 +714,14 @@
         "DiagnosticReport",
         "DuplicateNameError",
         "ERC_DIAGNOSTIC_CODES",
+        "ElectricalRecord",
+        "ElectricalSubject",
         "ExpectedDiagnostic",
         "ExpectedDiagnosticResult",
+        "FeatureBinding",
+        "FeatureRole",
+        "FeatureRoleBinding",
+        "FeatureSchema",
         "Footprint",
         "FootprintDefinition",
         "FootprintDrill",

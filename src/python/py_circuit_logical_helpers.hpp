@@ -16,13 +16,11 @@ namespace {
     if (py::isinstance<py::str>(value)) {
         return std::vector{py::cast<std::string>(value)};
     }
-
     if (py::isinstance<py::sequence>(value)) {
         const auto sequence = py::reinterpret_borrow<py::sequence>(value);
         if (py::len(sequence) == 0U) {
             throw std::invalid_argument{"Pin-pad mapping pad lists must not be empty"};
         }
-
         auto labels = std::vector<std::string>{};
         labels.reserve(static_cast<std::size_t>(py::len(sequence)));
         for (const auto item : sequence) {
@@ -30,7 +28,6 @@ namespace {
         }
         return labels;
     }
-
     throw py::type_error{"Pin-pad mapping values must be pad labels or sequences of pad labels"};
 }
 
@@ -88,6 +85,21 @@ parse_net_class_layer_scope(const std::string &scope) {
 
 [[nodiscard]] inline py::object
 part_model_3d_to_object(const std::optional<volt::PartModel3D> &model_3d) {
+    if (!model_3d.has_value()) {
+        return py::none{};
+    }
+    auto payload = py::dict{};
+    payload["format"] = model_3d->format();
+    payload["file_name"] = model_3d->file_name();
+    payload["translation_mm"] =
+        py::make_tuple(model_3d->translation_mm()[0], model_3d->translation_mm()[1],
+                       model_3d->translation_mm()[2]);
+    payload["rotation_deg"] = model_3d->rotation_deg();
+    return payload;
+}
+
+[[nodiscard]] inline py::object
+part_model_3d_to_object(const std::optional<volt::PartModel3DReference> &model_3d) {
     if (!model_3d.has_value()) {
         return py::none{};
     }

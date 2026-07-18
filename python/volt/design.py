@@ -19,7 +19,7 @@ from .library import (
     _schematic_symbol_refs,
 )
 from .logical import Component, ComponentDefinition, ModuleDefinition, ModuleInstance, Net, NetClass
-from .part import Part, _PartDefinition
+from .part import ComponentContract, Part, _PartDefinition
 from ._schematic_metadata import _schematic_sheet_metadata
 from .schematic import Schematic
 
@@ -38,7 +38,6 @@ class Design:
         self._boards: dict[str, object] = {}
         self._owner = self._circuit
         self._definitions: dict[str, int] = {}
-        self._library_definitions: dict[tuple[str, str, str], ComponentDefinition] = {}
         self._object_footprints: dict[FootprintRef, Footprint] = {}
         self._component_object_footprints: dict[int, FootprintRef] = {}
         self._component_model_3d_asset_sources: dict[int, Path] = {}
@@ -222,9 +221,12 @@ class Design:
         properties: dict | None = None,
         source: tuple[str, str, str] | None = None,
         schematic_symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
+        contract: ComponentContract | None = None,
     ) -> ComponentDefinition:
-        """Define a reusable component type with pins, properties, and optional symbols."""
+        """Define a reusable component with native pins, properties, symbols, and contract."""
         schematic_symbols = _normalize_schematic_symbols(schematic_symbol)
+        if contract is not None and not isinstance(contract, ComponentContract):
+            raise TypeError("contract must be a ComponentContract")
         for symbol in schematic_symbols:
             self._register_schematic_symbol(symbol)
 
@@ -252,6 +254,7 @@ class Design:
             source_name,
             source_version,
             _schematic_symbol_refs(schematic_symbols),
+            None if contract is None else contract._to_dict(),
         )
         return ComponentDefinition(self, definition, name)
 
@@ -270,8 +273,41 @@ class Design:
     ) -> Component | ModuleInstance:
         """Instantiate a component definition, module definition, library component, or part."""
         if isinstance(definition, Part):
-            definition = definition._to_part_definition()
-        elif isinstance(definition, LibraryComponent):
+            if not definition._has_native_exact_definition():
+                definition = definition._to_part_definition()
+            else:
+                if definition.library is None:
+                    raise ValueError("Part must be added to a Library before instantiation")
+                for symbol in definition.schematic_symbols:
+                    self._register_schematic_symbol(symbol)
+                snapshot = definition.library._native_snapshot(
+                    part
+                    for part in definition.library.parts
+                    if part._has_native_exact_definition()
+                )
+                component_definition = ComponentDefinition(
+                    self,
+                    self._circuit.define_library_part(snapshot, definition.source_name),
+                    definition.name,
+                )
+                component = self.instantiate(
+                    component_definition,
+                    ref=ref,
+                    prefix=definition.prefix if prefix is None else prefix,
+                    properties=properties,
+                )
+                self._circuit.select_library_part(
+                    component.index, snapshot, definition.source_name
+                )
+                self._register_component_object_footprint(
+                    component.index, definition.footprint
+                )
+                if definition.model_3d is not None:
+                    self._register_component_model_3d_asset_source(
+                        component.index, definition.model_3d
+                    )
+                return component
+        if isinstance(definition, LibraryComponent):
             definition = definition._to_part_definition()
 
         if isinstance(definition, _PartDefinition):
@@ -329,19 +365,18 @@ class Design:
         return Component(self, component)
 
     def _define_part_definition(self, part: _PartDefinition) -> ComponentDefinition:
-        if part.cache_key not in self._library_definitions:
-            self._library_definitions[part.cache_key] = self.define_component(
-                part.name,
-                pins=part.pins,
-                properties=part.properties,
-                source=(
-                    part.source_namespace,
-                    part.source_name,
-                    part.source_version,
-                ),
-                schematic_symbol=part.schematic_symbols,
-            )
-        return self._library_definitions[part.cache_key]
+        return self.define_component(
+            part.name,
+            pins=part.pins,
+            properties=part.properties,
+            source=(
+                part.source_namespace,
+                part.source_name,
+                part.source_version,
+            ),
+            schematic_symbol=part.schematic_symbols,
+            contract=part.contract,
+        )
 
     def _define_library_component(self, component: LibraryComponent) -> ComponentDefinition:
         return self._define_part_definition(component._to_part_definition())
@@ -529,6 +564,13 @@ class Design:
         """Run PCB-readiness validation and return the diagnostic report."""
         return DiagnosticReport(
             _diagnostic_from_dict(item) for item in self._circuit.validate_for_pcb()
+        )
+
+    def validate_selected_part_erc(self) -> DiagnosticReport:
+        """Validate native exact-part Voltage and continuous-Current semantics."""
+        return DiagnosticReport(
+            _diagnostic_from_dict(item)
+            for item in self._circuit.validate_selected_part_erc()
         )
 
     def validate_bom_readiness(self) -> DiagnosticReport:

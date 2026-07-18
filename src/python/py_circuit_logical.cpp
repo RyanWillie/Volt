@@ -1,10 +1,16 @@
 #include "py_circuit.hpp"
 
+#include "binding_diagnostic_conversions.hpp"
+#include "binding_part_definition_conversions.hpp"
 #include "py_circuit_logical_helpers.hpp"
+#include "py_part_library.hpp"
 
 #include <volt/circuit/bom/bom.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/circuit/updates.hpp>
 #include <volt/io/bom/bom_writer.hpp>
+
+#include <ranges>
 
 namespace volt::python {
 
@@ -70,7 +76,7 @@ std::size_t PyCircuit::define_component(const std::string &name, const py::list 
                                         const std::string &source_namespace,
                                         const std::string &source_name,
                                         const std::string &source_version,
-                                        const py::list &schematic_symbols) {
+                                        const py::list &schematic_symbols, py::object contract) {
     auto source = std::optional<volt::DefinitionSource>{};
     const auto wants_source =
         !source_namespace.empty() || !source_name.empty() || !source_version.empty();
@@ -82,12 +88,86 @@ std::size_t PyCircuit::define_component(const std::string &name, const py::list 
         source = volt::DefinitionSource{source_namespace, source_name, source_version};
     }
 
-    return volt::authoring::define_component(
-               circuit_,
-               volt::authoring::ComponentSpec{
-                   name, pin_specs_from_list(pins), properties_from_dict(properties), source,
-                   schematic_symbol_references_from_list(schematic_symbols)})
-        .index();
+    auto spec = volt::ComponentSpec{
+        .name = name,
+        .pins = component_pin_specs_from_list(pins),
+        .properties = properties_from_dict(properties),
+        .source = source,
+        .schematic_symbols = schematic_symbol_references_from_list(schematic_symbols),
+        .contract =
+            contract.is_none()
+                ? std::nullopt
+                : std::optional<volt::ComponentContractSpec>{component_contract_spec_from_dict(
+                      py::cast<py::dict>(contract))},
+    };
+    auto temporary = volt::Circuit{};
+    const auto prospective = temporary.define_component(spec);
+    const auto digest = temporary.get(prospective).content_identity();
+    for (std::size_t index = 0; index < circuit_.all<volt::ComponentDefId>().size(); ++index) {
+        if (circuit_.get(volt::ComponentDefId{index}).content_identity() == digest) {
+            return index;
+        }
+    }
+    return circuit_.define_component(std::move(spec)).index();
+}
+
+std::size_t PyCircuit::define_library_part(const PyPartLibrary &library,
+                                           const std::string &part_key) {
+    const auto reference = library.library().require(volt::PartKey{part_key});
+    const auto &part = library.library().resolve(reference);
+    for (std::size_t index = 0; index < circuit_.all<volt::ComponentDefId>().size(); ++index) {
+        const auto definition = volt::ComponentDefId{index};
+        if (circuit_.get(definition).content_identity() == part.implemented_component()) {
+            return index;
+        }
+    }
+    const auto definition = circuit_.define_component(library.component_spec(part_key));
+    if (circuit_.get(definition).content_identity() != part.implemented_component()) {
+        throw volt::KernelLogicError{volt::ErrorCode::CrossReferenceViolation,
+                                     "Python lowering changed the exact component contract"};
+    }
+    return definition.index();
+}
+
+void PyCircuit::select_library_part(std::size_t component, const PyPartLibrary &library,
+                                    const std::string &part_key) {
+    const auto &snapshot = library.library();
+    const auto reference = snapshot.require(volt::PartKey{part_key});
+    circuit_.update(component_id(component), volt::SelectLibraryPart{snapshot, reference});
+    const auto existing = std::ranges::find_if(part_libraries_, [&](const auto &candidate) {
+        return candidate.digest() == snapshot.digest();
+    });
+    if (existing == part_libraries_.end()) {
+        part_libraries_.push_back(snapshot);
+    }
+}
+
+py::list PyCircuit::validate_selected_part_erc() const {
+    const volt::PartLibrary *selected_library = nullptr;
+    for (std::size_t index = 0; index < circuit_.all<volt::ComponentId>().size(); ++index) {
+        const auto &reference =
+            volt::queries::selected_library_part_ref(circuit_, volt::ComponentId{index});
+        if (!reference.has_value()) {
+            continue;
+        }
+        const auto match = std::ranges::find_if(part_libraries_, [&](const auto &candidate) {
+            return candidate.digest() == reference->library_digest();
+        });
+        if (match == part_libraries_.end()) {
+            throw volt::KernelLogicError{volt::ErrorCode::InvalidState,
+                                         "Exact selected-part library is unavailable"};
+        }
+        if (selected_library != nullptr && selected_library->digest() != match->digest()) {
+            throw volt::KernelLogicError{
+                volt::ErrorCode::InvalidState,
+                "Selected-part ERC requires one explicit library snapshot until P6 registry work"};
+        }
+        selected_library = &*match;
+    }
+    if (selected_library == nullptr) {
+        return py::list{};
+    }
+    return diagnostics_to_list(volt::validate_selected_part_erc(circuit_, *selected_library));
 }
 
 std::size_t PyCircuit::add_net(const std::string &name, const std::string &kind) {
@@ -226,6 +306,17 @@ py::list PyCircuit::component_refs() const {
 py::object PyCircuit::component_selected_part_model_3d(std::size_t component) const {
     const auto component_handle = component_id(component);
     static_cast<void>(circuit_.get(component_handle));
+    const auto &exact = volt::queries::selected_library_part_ref(circuit_, component_handle);
+    if (exact.has_value()) {
+        const auto library = std::ranges::find_if(part_libraries_, [&](const auto &candidate) {
+            return candidate.digest() == exact->library_digest();
+        });
+        if (library == part_libraries_.end()) {
+            throw volt::KernelLogicError{volt::ErrorCode::InvalidState,
+                                         "Exact selected-part library is unavailable"};
+        }
+        return part_model_3d_to_object(library->resolve(*exact).orderable_part().model_3d());
+    }
     const auto &selected_part = volt::queries::selected_physical_part(circuit_, component_handle);
     if (!selected_part.has_value()) {
         return py::none{};
