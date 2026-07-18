@@ -575,9 +575,14 @@ build_placement_exports(const Board &board, const FootprintLibrary &footprints,
         const auto &selected_part =
             volt::queries::selected_physical_part(board.circuit(), placement.component());
         if (!selected_part.has_value()) {
+            const auto has_exact_selection =
+                volt::queries::selected_library_part_ref(board.circuit(), placement.component())
+                    .has_value();
             add_fab_critical_warning(
                 loss_report, PcbFabricationLossKind::MissingGeometry, "component.part",
-                "Component placement has no selected physical part for fabrication export",
+                has_exact_selection
+                    ? "Exact selected part requires library resolution for fabrication export"
+                    : "Component placement has no selected physical part for fabrication export",
                 std::vector{EntityRef::component_placement(id)});
             continue;
         }

@@ -166,6 +166,8 @@ include/volt/circuit/parts/part_definition.hpp|class|HashedFootprintReference
 include/volt/circuit/parts/part_definition.hpp|class|PartModel3DReference
 include/volt/circuit/parts/part_definition.hpp|class|OrderablePart
 include/volt/circuit/parts/part_definition.hpp|class|PartDefinition
+include/volt/circuit/parts/selected_part.hpp|class|LibraryPartRef
+include/volt/circuit/parts/selected_part.hpp|class|PartKey
 include/volt/circuit/parts/parts.hpp|class|FootprintRef
 include/volt/circuit/parts/parts.hpp|class|ManufacturerPart
 include/volt/circuit/parts/parts.hpp|class|PackageRef
@@ -173,7 +175,9 @@ include/volt/circuit/parts/parts.hpp|class|PartModel3D
 include/volt/circuit/parts/parts.hpp|class|PhysicalPart
 include/volt/circuit/parts/parts.hpp|class|PinPadMapping
 include/volt/circuit/updates.hpp|struct|AssignNetClass
+include/volt/circuit/updates.hpp|class|PartLibrary
 include/volt/circuit/updates.hpp|struct|MarkIntentionalStub
+include/volt/circuit/updates.hpp|class|SelectLibraryPart
 include/volt/circuit/updates.hpp|struct|SelectPhysicalPart
 include/volt/circuit/updates.hpp|struct|SetAssemblyIntent
 include/volt/circuit/updates.hpp|struct|SetComponentElectricalAttribute

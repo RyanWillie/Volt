@@ -405,6 +405,22 @@ void Circuit::update(ComponentId component, ComponentUpdate change) {
             } else if constexpr (std::same_as<Update, SelectPhysicalPart>) {
                 select_physical_part(component, std::move(update.physical_part),
                                      get(get(component).definition()).pins());
+            } else if constexpr (std::same_as<Update, SelectLibraryPart>) {
+                const auto &instance = get(component);
+                if (instance.selected_physical_part().has_value()) {
+                    throw KernelLogicError{ErrorCode::InvalidState,
+                                           "Component already has a legacy selected physical part",
+                                           EntityRef::component(component)};
+                }
+                const auto &definition = get(instance.definition());
+                if (definition.content_identity() != update.implemented_component()) {
+                    throw KernelLogicError{
+                        ErrorCode::CrossReferenceViolation,
+                        "Selected exact part implements a different component contract",
+                        EntityRef::component(component)};
+                }
+                connectivity_.replace_component(
+                    component, instance.with_selected_library_part_ref(update.reference()));
             } else if constexpr (std::same_as<Update, SetSelectedPartElectricalAttribute>) {
                 set_selected_part_attribute(component, update.spec, std::move(update.value));
             } else if constexpr (std::same_as<Update, SetAssemblyIntent>) {

@@ -17,6 +17,7 @@ add_library(
     hierarchy/hierarchy_model.cpp
     parts/part_definition.cpp
     parts/parts.cpp
+    parts/selected_part.cpp
     validation/validation.cpp
 )
 add_library(Volt::Circuit ALIAS volt_circuit)

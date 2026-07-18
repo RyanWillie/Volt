@@ -97,7 +97,9 @@ void append_component_diagnostics(const Board &board, DiagnosticReport &report) 
                                           EntityRef::component_def(instance.definition())};
         const auto &selected_part =
             volt::queries::selected_physical_part(board.circuit(), component);
-        if (!selected_part.has_value()) {
+        const auto has_exact_selection =
+            volt::queries::selected_library_part_ref(board.circuit(), component).has_value();
+        if (!selected_part.has_value() && !has_exact_selection) {
             report.add(assembly_diagnostic(
                 assembly_diagnostic_codes::ComponentMissingSelectedPart,
                 "Populated component requires a selected physical part for assembly handoff",
@@ -106,6 +108,10 @@ void append_component_diagnostics(const Board &board, DiagnosticReport &report) 
                 assembly_diagnostic_codes::PartIdentityMissing,
                 "Populated component has no manufacturer part identity for assembly handoff",
                 entities));
+        } else if (!selected_part.has_value()) {
+            report.add(assembly_diagnostic(
+                assembly_diagnostic_codes::PartIdentityMissing,
+                "Exact selected part requires library resolution for assembly handoff", entities));
         }
         if (!queries::placement_for_component(board, component).has_value()) {
             report.add(assembly_diagnostic(

@@ -98,6 +98,10 @@ module_component_origins(const Circuit &circuit, ModuleInstanceId instance);
 [[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part(const Circuit &circuit,
                                                                         ComponentId component);
 
+/** Return the selected exact native-library reference for a component, when assigned. */
+[[nodiscard]] const std::optional<LibraryPartRef> &selected_library_part_ref(const Circuit &circuit,
+                                                                             ComponentId component);
+
 /** Return typed electrical attributes for an existing component instance. */
 [[nodiscard]] const ElectricalAttributeMap &component_electrical_attributes(const Circuit &circuit,
                                                                             ComponentId component);

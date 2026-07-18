@@ -609,6 +609,8 @@ void LogicalCircuitParser::read_components() {
         component_reference_ids_.emplace(
             plan_.connectivity.components.back().instance.reference().value(), component_id);
         if (const auto it = component.find("selected_physical_part"); it != component.end()) {
+            require(component.find("selected_library_part") == component.end(),
+                    "Component cannot contain both selected-part representations");
             plan_.selected_physical_parts.push_back(RestoredSelectedPhysicalPart{
                 component_id,
                 physical_part(*it),
@@ -616,7 +618,19 @@ void LogicalCircuitParser::read_components() {
                                       ElectricalAttributeKind::DesignInput),
             });
         }
+        if (const auto it = component.find("selected_library_part"); it != component.end()) {
+            plan_.selected_library_parts.push_back(
+                RestoredSelectedLibraryPart{component_id, library_part_ref(*it)});
+        }
     }
+}
+
+LibraryPartRef LogicalCircuitParser::library_part_ref(const nlohmann::json &object) const {
+    return LibraryPartRef{string_field(object, "library_namespace"),
+                          string_field(object, "library_version"),
+                          PartKey{string_field(object, "part_key")},
+                          ContentHash{string_field(object, "library_digest")},
+                          ContentHash{string_field(object, "part_digest")}};
 }
 
 void LogicalCircuitParser::read_pins() {
