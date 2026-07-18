@@ -540,6 +540,14 @@ void write_selected_physical_part(std::ostream &out, const PhysicalPart &part) {
     out << "\n    }";
 }
 
+void write_selected_library_part(std::ostream &out, const LibraryPartRef &reference) {
+    out << "{ \"library_namespace\": " << json_string(reference.library_namespace())
+        << ", \"library_version\": " << json_string(reference.library_version())
+        << ", \"part_key\": " << json_string(reference.part_key().value())
+        << ", \"library_digest\": " << json_string(reference.library_digest().value())
+        << ", \"part_digest\": " << json_string(reference.part_digest().value()) << " }";
+}
+
 void write_pin_definition_semantics(std::ostream &out, const PinDefinition &pin) {
     if (pin.terminal_kind() != ElectricalTerminalKind::Unspecified) {
         out << ", \"terminal_kind\": "
@@ -758,6 +766,11 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         if (selected_part.has_value()) {
             out << ", \"selected_physical_part\": ";
             detail::write_selected_physical_part(out, selected_part.value());
+        }
+        const auto &selected_library_part = volt::queries::selected_library_part_ref(circuit, id);
+        if (selected_library_part.has_value()) {
+            out << ", \"selected_library_part\": ";
+            detail::write_selected_library_part(out, *selected_library_part);
         }
         out << " }";
         if (index + 1 != circuit.all<volt::ComponentId>().size()) {

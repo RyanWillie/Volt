@@ -1,4 +1,4 @@
-add_library(volt_library part_library.cpp)
+add_library(volt_library part_library.cpp selected_part_erc.cpp)
 add_library(Volt::Library ALIAS volt_library)
 
 set_target_properties(volt_library PROPERTIES POSITION_INDEPENDENT_CODE ON)

@@ -240,6 +240,20 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
           "MULTIPLE_OUTPUTS_ON_NET");
     CHECK(std::string{volt::erc_diagnostic_codes::InputSignalDomainMismatch} ==
           "INPUT_SIGNAL_DOMAIN_MISMATCH");
+    CHECK(std::string{volt::erc_diagnostic_codes::SelectedPartVoltageBelowAcceptedRange} ==
+          "SELECTED_PART_VOLTAGE_BELOW_ACCEPTED_RANGE");
+    CHECK(std::string{volt::erc_diagnostic_codes::SelectedPartVoltageAboveAcceptedRange} ==
+          "SELECTED_PART_VOLTAGE_ABOVE_ACCEPTED_RANGE");
+    CHECK(std::string{volt::erc_diagnostic_codes::SelectedPartVoltageAbsoluteLimitViolation} ==
+          "SELECTED_PART_VOLTAGE_ABSOLUTE_LIMIT_VIOLATION");
+    CHECK(std::string{volt::erc_diagnostic_codes::SelectedPartCurrentAbsoluteLimitViolation} ==
+          "SELECTED_PART_CURRENT_ABSOLUTE_LIMIT_VIOLATION");
+    CHECK(std::string{volt::erc_diagnostic_codes::SelectedPartCurrentCapabilityInsufficient} ==
+          "SELECTED_PART_CURRENT_CAPABILITY_INSUFFICIENT");
+    CHECK(std::string{volt::erc_diagnostic_codes::SelectedPartCurrentBudgetUnknown} ==
+          "SELECTED_PART_CURRENT_BUDGET_UNKNOWN");
+    CHECK(std::string{volt::erc_diagnostic_codes::SelectedPartElectricalSubjectUnresolved} ==
+          "SELECTED_PART_ELECTRICAL_SUBJECT_UNRESOLVED");
 
     CHECK(std::string{volt::drc_diagnostic_codes::TrackWidthBelowMinimum} ==
           "PCB_TRACK_WIDTH_BELOW_MINIMUM");
@@ -285,6 +299,13 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
               "NET_CLASS_VOLTAGE_EXCEEDED",
               "MULTIPLE_OUTPUTS_ON_NET",
               "INPUT_SIGNAL_DOMAIN_MISMATCH",
+              "SELECTED_PART_VOLTAGE_BELOW_ACCEPTED_RANGE",
+              "SELECTED_PART_VOLTAGE_ABOVE_ACCEPTED_RANGE",
+              "SELECTED_PART_VOLTAGE_ABSOLUTE_LIMIT_VIOLATION",
+              "SELECTED_PART_CURRENT_ABSOLUTE_LIMIT_VIOLATION",
+              "SELECTED_PART_CURRENT_CAPABILITY_INSUFFICIENT",
+              "SELECTED_PART_CURRENT_BUDGET_UNKNOWN",
+              "SELECTED_PART_ELECTRICAL_SUBJECT_UNRESOLVED",
           });
 
     CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::Drc.begin(),

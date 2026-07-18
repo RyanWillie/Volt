@@ -502,7 +502,8 @@ void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &
     for (std::size_t index = 0; index < circuit.all<volt::ComponentId>().size(); ++index) {
         const auto component_id = ComponentId{index};
         const auto &component = circuit.get(component_id);
-        if (!volt::queries::selected_physical_part(circuit, component_id).has_value()) {
+        if (!volt::queries::selected_physical_part(circuit, component_id).has_value() &&
+            !volt::queries::selected_library_part_ref(circuit, component_id).has_value()) {
             report.add(Diagnostic{
                 Severity::Error,
                 DiagnosticCode{"PHYSICAL_PART_REQUIRED"},
@@ -528,7 +529,9 @@ void validate_bom_component_readiness(const Circuit &circuit, DiagnosticReport &
         }
 
         const auto &selected_part = volt::queries::selected_physical_part(circuit, component_id);
-        if (!dnp.value_or(false) && !selected_part.has_value()) {
+        const auto has_exact_selection =
+            volt::queries::selected_library_part_ref(circuit, component_id).has_value();
+        if (!dnp.value_or(false) && !selected_part.has_value() && !has_exact_selection) {
             report.add(
                 bom_error(bom_diagnostic_codes::ComponentMissingSelectedPart,
                           "Populated component requires a selected physical part for BOM readiness",

@@ -1,5 +1,7 @@
 #include <volt/library/part_library.hpp>
 
+#include <volt/circuit/updates.hpp>
+
 #include <algorithm>
 #include <sstream>
 #include <string_view>
@@ -60,11 +62,9 @@ void validate_assets(std::span<const PartDefinition> parts,
 
 } // namespace
 
-PartKey::PartKey(std::string value) : value_{std::move(value)} {
-    if (value_.empty()) {
-        throw KernelArgumentError{ErrorCode::InvalidArgument, "Part key must not be empty"};
-    }
-}
+SelectLibraryPart::SelectLibraryPart(const PartLibrary &library, LibraryPartRef reference)
+    : reference_{std::move(reference)},
+      implemented_component_{library.resolve(reference_).implemented_component()} {}
 
 PartLibraryIdentity::PartLibraryIdentity(std::string namespace_name, std::string version,
                                          PartLibrarySchemaVersion schema_version)
@@ -81,22 +81,6 @@ PartLibraryIdentity::PartLibraryIdentity(std::string namespace_name, std::string
     if (schema_version_ != PartLibrarySchemaVersion::V1) {
         throw KernelArgumentError{ErrorCode::InvalidArgument,
                                   "Part library schema version is unsupported"};
-    }
-}
-
-LibraryPartRef::LibraryPartRef(std::string library_namespace, std::string library_version,
-                               PartKey part_key, ContentHash library_digest,
-                               ContentHash part_digest)
-    : library_namespace_{std::move(library_namespace)},
-      library_version_{std::move(library_version)}, part_key_{std::move(part_key)},
-      library_digest_{std::move(library_digest)}, part_digest_{std::move(part_digest)} {
-    if (library_namespace_.empty()) {
-        throw KernelArgumentError{ErrorCode::InvalidArgument,
-                                  "LibraryPartRef namespace must not be empty"};
-    }
-    if (library_version_.empty()) {
-        throw KernelArgumentError{ErrorCode::InvalidArgument,
-                                  "LibraryPartRef version must not be empty"};
     }
 }
 

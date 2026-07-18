@@ -58,6 +58,11 @@ void Circuit::set_net_attribute(NetId net, const ElectricalAttributeSpec &spec,
 
 void Circuit::select_physical_part(ComponentId component, PhysicalPart physical_part,
                                    const std::vector<PinDefId> &component_pins) {
+    if (get(component).selected_library_part_ref().has_value()) {
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Component already has an exact selected library part",
+                               EntityRef::component(component)};
+    }
     require_physical_part_matches_component_definition(component_pins, physical_part);
     connectivity_.replace_component(
         component, get(component).with_selected_physical_part(std::move(physical_part)));

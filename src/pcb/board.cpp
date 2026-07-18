@@ -286,10 +286,18 @@ namespace {
                                                    "Component has no board placement", component));
         }
 
-        if (!volt::queries::selected_physical_part(board.circuit(), component).has_value()) {
+        const auto has_legacy_selection =
+            volt::queries::selected_physical_part(board.circuit(), component).has_value();
+        const auto has_exact_selection =
+            volt::queries::selected_library_part_ref(board.circuit(), component).has_value();
+        if (!has_legacy_selection && !has_exact_selection) {
             report.add(detail::board_component_diagnostic(
                 DiagnosticCode{"PCB_COMPONENT_MISSING_SELECTED_PART"},
                 "Component requires a selected physical part for board placement", component));
+        } else if (!has_legacy_selection) {
+            report.add(detail::board_component_diagnostic(
+                DiagnosticCode{"PCB_FOOTPRINT_UNRESOLVED"},
+                "Exact selected part requires library resolution for board geometry", component));
         }
     }
 

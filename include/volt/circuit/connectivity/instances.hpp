@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <volt/circuit/parts/parts.hpp>
+#include <volt/circuit/parts/selected_part.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
@@ -59,6 +60,11 @@ class ComponentInstance {
         return selected_physical_part_;
     }
 
+    /** Return the selected exact native-library reference, if one has been assigned. */
+    [[nodiscard]] const std::optional<LibraryPartRef> &selected_library_part_ref() const noexcept {
+        return selected_library_part_ref_;
+    }
+
     /** Return explicit do-not-populate intent, when authored. */
     [[nodiscard]] const std::optional<bool> &dnp() const noexcept { return dnp_; }
 
@@ -80,6 +86,9 @@ class ComponentInstance {
     /** Return a copy with the selected physical implementation replaced. */
     [[nodiscard]] ComponentInstance with_selected_physical_part(PhysicalPart part) const;
 
+    /** Return a copy with the selected exact native-library reference replaced. */
+    [[nodiscard]] ComponentInstance with_selected_library_part_ref(LibraryPartRef reference) const;
+
     /** Return a copy with one selected-part electrical attribute set or replaced. */
     [[nodiscard]] ComponentInstance
     with_selected_part_electrical_attribute(const ElectricalAttributeSpec &spec,
@@ -96,6 +105,7 @@ class ComponentInstance {
     PropertyMap properties_;
     ElectricalAttributeMap electrical_attributes_;
     std::optional<PhysicalPart> selected_physical_part_;
+    std::optional<LibraryPartRef> selected_library_part_ref_;
     std::optional<bool> dnp_;
     bool selection_override_;
     std::optional<std::size_t> assembly_intent_order_;

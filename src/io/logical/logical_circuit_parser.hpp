@@ -140,6 +140,8 @@ class LogicalCircuitParser {
 
     [[nodiscard]] PhysicalPart physical_part(const nlohmann::json &object) const;
 
+    [[nodiscard]] LibraryPartRef library_part_ref(const nlohmann::json &object) const;
+
     const nlohmann::json &document_;
     LogicalCircuitRestorationPlan plan_;
     std::vector<std::optional<ComponentDefId>> pin_definition_owners_;

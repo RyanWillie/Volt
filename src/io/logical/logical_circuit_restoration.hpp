@@ -108,6 +108,11 @@ struct RestoredSelectedPhysicalPart {
     ElectricalAttributeMap electrical_attributes;
 };
 
+struct RestoredSelectedLibraryPart {
+    ComponentId component;
+    LibraryPartRef reference;
+};
+
 /** Complete validated input for privately reconstructing one persisted logical circuit. */
 struct LogicalCircuitRestorationPlan {
     ConnectivityRestoration connectivity;
@@ -120,6 +125,7 @@ struct LogicalCircuitRestorationPlan {
     HierarchyDefinitionRestoration hierarchy;
     std::vector<RestoredModuleInstance> module_instances;
     std::vector<RestoredSelectedPhysicalPart> selected_physical_parts;
+    std::vector<RestoredSelectedLibraryPart> selected_library_parts;
 };
 
 /** Apply one complete persistence plan through Circuit's single private restoration boundary. */

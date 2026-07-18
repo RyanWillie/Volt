@@ -134,6 +134,17 @@ namespace volt::io::detail {
         }
     }
 
+    for (auto &selected : plan.selected_library_parts) {
+        const auto &component = circuit.get(selected.component);
+        if (component.selected_physical_part().has_value()) {
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Component cannot restore two selected-part representations"};
+        }
+        circuit.connectivity_.replace_component(
+            selected.component,
+            component.with_selected_library_part_ref(std::move(selected.reference)));
+    }
+
     return circuit;
 }
 

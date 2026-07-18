@@ -43,6 +43,13 @@ ComponentInstance::with_selected_physical_part(PhysicalPart part) const {
 }
 
 [[nodiscard]] ComponentInstance
+ComponentInstance::with_selected_library_part_ref(LibraryPartRef reference) const {
+    auto result = *this;
+    result.selected_library_part_ref_ = std::move(reference);
+    return result;
+}
+
+[[nodiscard]] ComponentInstance
 ComponentInstance::with_selected_part_electrical_attribute(const ElectricalAttributeSpec &spec,
                                                            ElectricalAttributeValue value) const {
     if (!selected_physical_part_.has_value()) {

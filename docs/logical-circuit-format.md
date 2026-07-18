@@ -81,8 +81,10 @@ A component instance traces to library provenance through its definition:
 R1 -> component:0 -> component_def:0 -> source volt.passives/resistor_2pin@1.0.0
 ```
 
-Physical selected-part identity remains separate and uses typed domain fields such as
-manufacturer name, manufacturer part number, package, footprint, and pin/pad mappings.
+Exact selected-part identity remains separate as an integrity-bearing library namespace,
+version, key, library digest, and part digest. Manufacturer, package, footprint, ratings,
+mappings, and assets remain intrinsic library-owned part truth and are not copied onto the
+component occurrence.
 
 ## Deterministic Writer Rules
 
@@ -99,6 +101,8 @@ version:
 - omit hierarchy arrays when no module definitions or module instances are present
 - preserve net pin order
 - preserve selected-part pin/pad mapping order
+- emit exact selected-part reference fields in namespace, version, key, library-digest, and
+  part-digest order
 - use the enum spellings shown in this document
 - omit timestamps and other process-local data from canonical output
 
@@ -329,6 +333,26 @@ Selected parts may also carry:
 - `properties`: typed scalar metadata
 - `electrical_attributes`: selected-part ratings and constraints using the shared typed
   encoding
+
+Native exact selection instead uses the optional `selected_library_part` object:
+
+```json
+{
+  "selected_library_part": {
+    "library_namespace": "volt.optos",
+    "library_version": "2026.1",
+    "part_key": "LTST-C190KRKT",
+    "library_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "part_digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+  }
+}
+```
+
+All five fields are required and structural. A component may contain at most one of
+`selected_library_part` and the retained legacy `selected_physical_part`. Reopening a logical
+circuit preserves the exact reference without copying intrinsic `PartDefinition` content.
+Operations that require intrinsic part truth must resolve the reference through the matching
+immutable library snapshot and verify both digests plus component-contract compatibility.
 
 ## Concrete Pins
 
@@ -611,6 +635,8 @@ including:
 - port bindings whose port does not belong to the module instance definition
 - port bindings that bind a module port to its own module-origin net
 - selected part mappings that do not exactly match the component definition
+- exact selected-part references with empty or placeholder identity fields, malformed digests,
+  or both selected-part representations on one component
 - empty structural strings such as names, reference designators, package labels, footprint
   labels, manufacturer names, part numbers, and pad labels
 - invalid enum or property type spellings
@@ -663,7 +689,7 @@ A compact LED circuit may be represented as:
 ```
 
 The example omits selected physical parts for brevity; component rows may include
-`selected_physical_part` as shown above.
+`selected_library_part` or the retained legacy `selected_physical_part` as shown above.
 
 ## Versioning
 

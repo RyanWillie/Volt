@@ -62,6 +62,20 @@ inline constexpr auto PinVoltageRangeViolation = std::string_view{"PIN_VOLTAGE_R
 inline constexpr auto NetClassVoltageExceeded = std::string_view{"NET_CLASS_VOLTAGE_EXCEEDED"};
 inline constexpr auto MultipleOutputsOnNet = std::string_view{"MULTIPLE_OUTPUTS_ON_NET"};
 inline constexpr auto InputSignalDomainMismatch = std::string_view{"INPUT_SIGNAL_DOMAIN_MISMATCH"};
+inline constexpr auto SelectedPartVoltageBelowAcceptedRange =
+    std::string_view{"SELECTED_PART_VOLTAGE_BELOW_ACCEPTED_RANGE"};
+inline constexpr auto SelectedPartVoltageAboveAcceptedRange =
+    std::string_view{"SELECTED_PART_VOLTAGE_ABOVE_ACCEPTED_RANGE"};
+inline constexpr auto SelectedPartVoltageAbsoluteLimitViolation =
+    std::string_view{"SELECTED_PART_VOLTAGE_ABSOLUTE_LIMIT_VIOLATION"};
+inline constexpr auto SelectedPartCurrentAbsoluteLimitViolation =
+    std::string_view{"SELECTED_PART_CURRENT_ABSOLUTE_LIMIT_VIOLATION"};
+inline constexpr auto SelectedPartCurrentCapabilityInsufficient =
+    std::string_view{"SELECTED_PART_CURRENT_CAPABILITY_INSUFFICIENT"};
+inline constexpr auto SelectedPartCurrentBudgetUnknown =
+    std::string_view{"SELECTED_PART_CURRENT_BUDGET_UNKNOWN"};
+inline constexpr auto SelectedPartElectricalSubjectUnresolved =
+    std::string_view{"SELECTED_PART_ELECTRICAL_SUBJECT_UNRESOLVED"};
 
 } // namespace erc_diagnostic_codes
 
@@ -169,20 +183,28 @@ inline constexpr auto OrientationAmbiguous = std::string_view{"ASSEMBLY_ORIENTAT
 
 namespace diagnostic_code_catalogs {
 
-inline constexpr auto Erc = std::array{erc_diagnostic_codes::PinMustNotConnect,
-                                       erc_diagnostic_codes::PinIntentionalNoConnectIsConnected,
-                                       erc_diagnostic_codes::UnconnectedRequiredPin,
-                                       erc_diagnostic_codes::EmptyNet,
-                                       erc_diagnostic_codes::SinglePinNet,
-                                       erc_diagnostic_codes::UnboundRequiredPort,
-                                       erc_diagnostic_codes::PinGroundOnNonGroundNet,
-                                       erc_diagnostic_codes::PinPowerOnGroundNet,
-                                       erc_diagnostic_codes::PowerInputWithoutSource,
-                                       erc_diagnostic_codes::SelectedPartVoltageRatingExceeded,
-                                       erc_diagnostic_codes::PinVoltageRangeViolation,
-                                       erc_diagnostic_codes::NetClassVoltageExceeded,
-                                       erc_diagnostic_codes::MultipleOutputsOnNet,
-                                       erc_diagnostic_codes::InputSignalDomainMismatch};
+inline constexpr auto Erc =
+    std::array{erc_diagnostic_codes::PinMustNotConnect,
+               erc_diagnostic_codes::PinIntentionalNoConnectIsConnected,
+               erc_diagnostic_codes::UnconnectedRequiredPin,
+               erc_diagnostic_codes::EmptyNet,
+               erc_diagnostic_codes::SinglePinNet,
+               erc_diagnostic_codes::UnboundRequiredPort,
+               erc_diagnostic_codes::PinGroundOnNonGroundNet,
+               erc_diagnostic_codes::PinPowerOnGroundNet,
+               erc_diagnostic_codes::PowerInputWithoutSource,
+               erc_diagnostic_codes::SelectedPartVoltageRatingExceeded,
+               erc_diagnostic_codes::PinVoltageRangeViolation,
+               erc_diagnostic_codes::NetClassVoltageExceeded,
+               erc_diagnostic_codes::MultipleOutputsOnNet,
+               erc_diagnostic_codes::InputSignalDomainMismatch,
+               erc_diagnostic_codes::SelectedPartVoltageBelowAcceptedRange,
+               erc_diagnostic_codes::SelectedPartVoltageAboveAcceptedRange,
+               erc_diagnostic_codes::SelectedPartVoltageAbsoluteLimitViolation,
+               erc_diagnostic_codes::SelectedPartCurrentAbsoluteLimitViolation,
+               erc_diagnostic_codes::SelectedPartCurrentCapabilityInsufficient,
+               erc_diagnostic_codes::SelectedPartCurrentBudgetUnknown,
+               erc_diagnostic_codes::SelectedPartElectricalSubjectUnresolved};
 
 inline constexpr auto Drc = std::array{drc_diagnostic_codes::TrackWidthBelowMinimum,
                                        drc_diagnostic_codes::ViaDrillBelowMinimum,

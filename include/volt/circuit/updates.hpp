@@ -4,11 +4,14 @@
 #include <variant>
 
 #include <volt/circuit/parts/parts.hpp>
+#include <volt/circuit/parts/selected_part.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt {
+
+class PartLibrary;
 
 /** Set or replace one metadata property on a component instance. */
 struct SetComponentProperty {
@@ -32,6 +35,25 @@ struct SelectPhysicalPart {
     PhysicalPart physical_part;
 };
 
+/** Select one exact part resolved through an immutable native library snapshot. */
+class SelectLibraryPart {
+  public:
+    /** Resolve and pin one complete exact reference before Circuit mutation. */
+    SelectLibraryPart(const PartLibrary &library, LibraryPartRef reference);
+
+    /** Return the exact integrity-bearing selected-part reference. */
+    [[nodiscard]] const LibraryPartRef &reference() const noexcept { return reference_; }
+
+    /** Return the resolved reusable component-contract digest. */
+    [[nodiscard]] const ContentHash &implemented_component() const noexcept {
+        return implemented_component_;
+    }
+
+  private:
+    LibraryPartRef reference_;
+    ContentHash implemented_component_;
+};
+
 /** Set or replace one typed electrical attribute on a selected physical part. */
 struct SetSelectedPartElectricalAttribute {
     /** Selected-part-owned attribute specification. */
@@ -51,7 +73,7 @@ struct SetAssemblyIntent {
 /** Closed set of progressive updates accepted for component instances. */
 using ComponentUpdate =
     std::variant<SetComponentProperty, SetComponentElectricalAttribute, SelectPhysicalPart,
-                 SetSelectedPartElectricalAttribute, SetAssemblyIntent>;
+                 SelectLibraryPart, SetSelectedPartElectricalAttribute, SetAssemblyIntent>;
 
 /** Set or replace one typed electrical attribute on a logical net. */
 struct SetNetElectricalAttribute {
