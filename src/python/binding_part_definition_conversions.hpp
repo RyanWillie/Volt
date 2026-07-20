@@ -82,12 +82,12 @@ component_pin_specs_from_list(const py::list &pins) {
         const auto spec = pin_spec_from_dict(py::cast<py::dict>(item));
         auto attributes = std::vector<volt::ElectricalAttributeAssignment>{};
         if (spec.voltage_range.has_value()) {
-            attributes.emplace_back(
+            attributes.push_back(volt::ElectricalAttributeAssignment{
                 volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{"voltage_range"},
                                               volt::ElectricalAttributeOwner::PinSpec,
                                               volt::ElectricalAttributeKind::Constraint,
                                               volt::UnitDimension::Voltage},
-                volt::ElectricalAttributeValue{*spec.voltage_range});
+                volt::ElectricalAttributeValue{*spec.voltage_range}});
         }
         result.push_back(volt::PinSpec{spec.name, spec.number, spec.requirement, spec.terminal_kind,
                                        spec.direction, spec.signal_domain, spec.drive_kind,

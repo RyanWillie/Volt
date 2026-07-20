@@ -28,8 +28,8 @@ class PyPartLibrary {
 
   private:
     struct State {
-        State(volt::PartLibrary library, std::map<std::string, volt::ComponentSpec> specs)
-            : library{std::move(library)}, component_specs{std::move(specs)} {}
+        State(volt::PartLibrary snapshot, std::map<std::string, volt::ComponentSpec> specs)
+            : library{std::move(snapshot)}, component_specs{std::move(specs)} {}
 
         volt::PartLibrary library;
         std::map<std::string, volt::ComponentSpec> component_specs;
