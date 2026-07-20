@@ -92,7 +92,8 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("part_key"))
         .def("select_library_part", &PyCircuit::select_library_part, py::arg("component"),
              py::arg("library"), py::arg("part_key"))
-        .def("validate_selected_part_erc", &PyCircuit::validate_selected_part_erc)
+        .def("validate_selected_part_erc", &PyCircuit::validate_selected_part_erc,
+             py::arg("library"))
         .def("add_net", &PyCircuit::add_net, py::arg("name"), py::arg("kind") = "signal")
         .def("add_net_class", &PyCircuit::add_net_class, py::arg("name"),
              py::arg("options") = py::dict{})

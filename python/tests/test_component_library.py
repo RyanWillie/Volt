@@ -1567,7 +1567,7 @@ def test_library_result_is_deterministic():
     ]
 
 
-def test_part_ref_only_missing_geometry_still_reports_unresolved_footprint():
+def test_part_ref_only_missing_geometry_is_not_an_exact_instantiation_route():
     library = volt.Library("volt.test.missing_geometry")
     resistor = volt.Part(
         name="MissingGeometry",
@@ -1581,22 +1581,15 @@ def test_part_ref_only_missing_geometry_still_reports_unresolved_footprint():
     )
     library.add(resistor)
     design = volt.Design("part-missing-footprint")
-    r1 = design.instantiate(resistor, ref="R1")
-    left = design.net("LEFT")
-    right = design.net("RIGHT")
-    left += r1[1]
-    right += r1[2]
-    board = design.add_board("Main")
-    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
-    board.place(r1, at=(10.0, 6.0))
-
     result = library.build()
 
     assert not result.ok
     assert [diagnostic.code for diagnostic in result.diagnostics] == [
         "LIBRARY_PART_MISSING_FOOTPRINT_GEOMETRY"
     ]
-    assert "PCB_FOOTPRINT_UNRESOLVED" in {diagnostic.code for diagnostic in board.validate()}
+    with pytest.raises(ValueError, match="complete native exact part"):
+        design.instantiate(resistor, ref="R1")
+    assert design.components() == ()
 
 
 def test_component_select_part_accepts_public_footprint_object():

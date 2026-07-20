@@ -10,8 +10,6 @@
 #include <volt/circuit/updates.hpp>
 #include <volt/io/bom/bom_writer.hpp>
 
-#include <ranges>
-
 namespace volt::python {
 
 std::size_t PyCircuit::define_resistor() {
@@ -134,40 +132,10 @@ void PyCircuit::select_library_part(std::size_t component, const PyPartLibrary &
     const auto &snapshot = library.library();
     const auto reference = snapshot.require(volt::PartKey{part_key});
     circuit_.update(component_id(component), volt::SelectLibraryPart{snapshot, reference});
-    const auto existing = std::ranges::find_if(part_libraries_, [&](const auto &candidate) {
-        return candidate.digest() == snapshot.digest();
-    });
-    if (existing == part_libraries_.end()) {
-        part_libraries_.push_back(snapshot);
-    }
 }
 
-py::list PyCircuit::validate_selected_part_erc() const {
-    const volt::PartLibrary *selected_library = nullptr;
-    for (std::size_t index = 0; index < circuit_.all<volt::ComponentId>().size(); ++index) {
-        const auto &reference =
-            volt::queries::selected_library_part_ref(circuit_, volt::ComponentId{index});
-        if (!reference.has_value()) {
-            continue;
-        }
-        const auto match = std::ranges::find_if(part_libraries_, [&](const auto &candidate) {
-            return candidate.digest() == reference->library_digest();
-        });
-        if (match == part_libraries_.end()) {
-            throw volt::KernelLogicError{volt::ErrorCode::InvalidState,
-                                         "Exact selected-part library is unavailable"};
-        }
-        if (selected_library != nullptr && selected_library->digest() != match->digest()) {
-            throw volt::KernelLogicError{
-                volt::ErrorCode::InvalidState,
-                "Selected-part ERC requires one explicit library snapshot until P6 registry work"};
-        }
-        selected_library = &*match;
-    }
-    if (selected_library == nullptr) {
-        return py::list{};
-    }
-    return diagnostics_to_list(volt::validate_selected_part_erc(circuit_, *selected_library));
+py::list PyCircuit::validate_selected_part_erc(const PyPartLibrary &library) const {
+    return diagnostics_to_list(volt::validate_selected_part_erc(circuit_, library.library()));
 }
 
 std::size_t PyCircuit::add_net(const std::string &name, const std::string &kind) {
@@ -306,17 +274,6 @@ py::list PyCircuit::component_refs() const {
 py::object PyCircuit::component_selected_part_model_3d(std::size_t component) const {
     const auto component_handle = component_id(component);
     static_cast<void>(circuit_.get(component_handle));
-    const auto &exact = volt::queries::selected_library_part_ref(circuit_, component_handle);
-    if (exact.has_value()) {
-        const auto library = std::ranges::find_if(part_libraries_, [&](const auto &candidate) {
-            return candidate.digest() == exact->library_digest();
-        });
-        if (library == part_libraries_.end()) {
-            throw volt::KernelLogicError{volt::ErrorCode::InvalidState,
-                                         "Exact selected-part library is unavailable"};
-        }
-        return part_model_3d_to_object(library->resolve(*exact).orderable_part().model_3d());
-    }
     const auto &selected_part = volt::queries::selected_physical_part(circuit_, component_handle);
     if (!selected_part.has_value()) {
         return py::none{};

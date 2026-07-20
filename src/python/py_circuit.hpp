@@ -8,8 +8,6 @@
 #include <variant>
 #include <vector>
 
-#include <volt/library/part_library.hpp>
-
 namespace volt::python {
 
 class PyPartLibrary;
@@ -63,7 +61,7 @@ class PyCircuit {
     void select_library_part(std::size_t component, const PyPartLibrary &library,
                              const std::string &part_key);
 
-    [[nodiscard]] py::list validate_selected_part_erc() const;
+    [[nodiscard]] py::list validate_selected_part_erc(const PyPartLibrary &library) const;
 
     [[nodiscard]] std::size_t add_net(const std::string &name, const std::string &kind);
 
@@ -241,7 +239,6 @@ class PyCircuit {
 
     volt::Circuit circuit_;
     std::vector<ModuleDraft> module_drafts_;
-    std::vector<volt::PartLibrary> part_libraries_;
     std::size_t next_template_net_handle_ = 0;
     std::size_t next_port_handle_ = 0;
     std::size_t next_module_component_handle_ = 0;

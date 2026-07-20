@@ -619,8 +619,7 @@
         "module_drafts",
         "next_module_component_handle",
         "next_port_handle",
-        "next_template_net_handle",
-        "part_libraries"
+        "next_template_net_handle"
       ],
       "py_schematic_private_members": [
         "schematic_document"
@@ -714,8 +713,11 @@
         "DiagnosticReport",
         "DuplicateNameError",
         "ERC_DIAGNOSTIC_CODES",
+        "ElectricalCondition",
         "ElectricalRecord",
+        "ElectricalRecordSelector",
         "ElectricalSubject",
+        "ElectricalValueExpression",
         "ExpectedDiagnostic",
         "ExpectedDiagnosticResult",
         "FeatureBinding",

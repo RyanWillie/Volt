@@ -54,6 +54,24 @@ def _supply_contract(key: str, *, source: bool) -> volt.ComponentContract:
     )
 
 
+def _custom_supply_contract(key: str, *, source: bool) -> volt.ComponentContract:
+    standard = _supply_contract(key, source=source)
+    schema = standard.feature_schemas[0]
+    custom_schema = volt.FeatureSchema(
+        key=schema.key,
+        subject_kind=schema.subject_kind,
+        roles=schema.roles,
+        required_records=schema.required_records,
+    )
+    return volt.ComponentContract(
+        key=key,
+        pin_keys=standard.pin_keys,
+        supply_domains=standard.supply_domains,
+        feature_schemas=(custom_schema,),
+        feature_bindings=standard.feature_bindings,
+    )
+
+
 def _supply_part(
     library: volt.Library,
     name: str,
@@ -90,11 +108,12 @@ def _supply_part(
     )
 
 
-def test_library_part_build_and_instantiation_use_one_native_exact_route():
-    library = volt.Library("test.parts", version="2026.1")
+def _led_part(
+    library: volt.Library, schema: volt.FeatureSchema | None = None
+) -> volt.Part:
     junction = volt.ElectricalSubject.directed_relation("junction")
-    diode_schema = volt.FeatureSchema.diode_junction()
-    part = library.part(
+    diode_schema = schema or volt.FeatureSchema.diode_junction()
+    return library.part(
         "LED-RED",
         pins=(volt.PinSpec("A", 2), volt.PinSpec("K", 1)),
         symbol=_symbol("test:led", (("A", 2), ("K", 1))),
@@ -128,6 +147,11 @@ def test_library_part_build_and_instantiation_use_one_native_exact_route():
         ),
     )
 
+
+def test_library_part_build_and_instantiation_use_one_native_exact_route():
+    library = volt.Library("test.parts", version="2026.1")
+    part = _led_part(library)
+
     result = library.build()
     design = volt.Design("native exact selection")
     d1 = design.instantiate(part, ref="D1")
@@ -143,44 +167,78 @@ def test_library_part_build_and_instantiation_use_one_native_exact_route():
     assert d1.reference == "D1"
     assert d2.reference == "D2"
 
-
-def test_standard_and_custom_feature_schema_lower_to_same_native_component_identity():
-    standard = _supply_contract("test/load@1", source=False)
+    standard_schema = volt.FeatureSchema.diode_junction()
     custom_schema = volt.FeatureSchema(
-        key="volt.feature/supply-consumer@1",
-        subject_kind="supply_domain",
-        roles=(
-            volt.FeatureRole("positive", "one_or_more"),
-            volt.FeatureRole("return", "one_or_more"),
-        ),
-        required_records=(
-            volt.CanonicalRecordRequirement("current", "requirement"),
-            volt.CanonicalRecordRequirement("voltage", "accepted_range"),
-        ),
+        standard_schema.key,
+        standard_schema.subject_kind,
+        standard_schema.roles,
+        standard_schema.required_records,
     )
-    custom = volt.ComponentContract(
-        key="test/load@1",
-        pin_keys=("P", "N"),
-        supply_domains=(volt.ContractSupplyDomain("supply", ("P",), ("N",)),),
-        feature_schemas=(custom_schema,),
-        feature_bindings=standard.feature_bindings,
-    )
+    custom_library = volt.Library("test.parts", version="2026.1")
+    _led_part(custom_library, custom_schema)
+    custom_result = custom_library.build()
 
-    identities = []
-    for contract in (standard, custom):
+    assert result.part("LED-RED").artifact.bytes == custom_result.part(
+        "LED-RED"
+    ).artifact.bytes
+    assert result.part("LED-RED").component_sha256 == custom_result.part(
+        "LED-RED"
+    ).component_sha256
+    assert tuple(result.diagnostics) == tuple(custom_result.diagnostics)
+
+
+def test_standard_and_custom_supply_helpers_have_byte_and_diagnostic_parity():
+    outcomes = []
+    for custom in (False, True):
         library = volt.Library("test.parity")
-        _supply_part(
+        source = _supply_part(
             library,
-            "LOAD",
+            "REGULATOR",
+            source=True,
+            voltage=(5.0, 5.0),
+            current=0.05,
+            contract=(
+                _custom_supply_contract("test/source@1", source=True)
+                if custom
+                else _supply_contract("test/source@1", source=True)
+            ),
+        )
+        load = _supply_part(
+            library,
+            "MCU",
             source=False,
             voltage=(3.0, 3.6),
             current=0.1,
-            contract=contract,
+            contract=(
+                _custom_supply_contract("test/load@1", source=False)
+                if custom
+                else _supply_contract("test/load@1", source=False)
+            ),
         )
-        result = library.build().part("LOAD")
-        identities.append((result.component_sha256, result.artifact.sha256))
+        result = library.build()
+        design = volt.Design("standard custom parity")
+        u1 = design.instantiate(source, ref="U1")
+        u2 = design.instantiate(load, ref="U2")
+        vdd = design.net("VDD", kind="power")
+        gnd = design.net("GND", kind="ground")
+        vdd += (u1[1], u2[1])
+        gnd += (u1[2], u2[2])
+        outcomes.append(
+            (
+                tuple(
+                    (
+                        result.part(name).component_sha256,
+                        result.part(name).artifact.bytes,
+                        result.part(name).exact_reference,
+                    )
+                    for name in ("REGULATOR", "MCU")
+                ),
+                design.to_json(),
+                tuple(design.validate_selected_part_erc(result)),
+            )
+        )
 
-    assert identities[0] == identities[1]
+    assert outcomes[0] == outcomes[1]
 
 
 def test_native_voltage_current_records_drive_selected_part_erc():
@@ -199,7 +257,10 @@ def test_native_voltage_current_records_drive_selected_part_erc():
     vdd += (u1[1], u2[1])
     gnd += (u1[2], u2[2])
 
-    report = design.validate_selected_part_erc()
+    with pytest.raises(TypeError):
+        design.validate_selected_part_erc()
+
+    report = design.validate_selected_part_erc(library)
 
     codes = {diagnostic.code for diagnostic in report}
     assert "SELECTED_PART_VOLTAGE_ABOVE_ACCEPTED_RANGE" in codes
@@ -264,9 +325,173 @@ def test_exact_part_reference_is_shared_by_two_named_boards():
         "dimension": "voltage",
         "maximum": 50.0,
     }
-    assert {diagnostic.code for diagnostic in first.validate()} == {
-        diagnostic.code for diagnostic in second.validate()
+    first_diagnostics = tuple(
+        (
+            diagnostic.severity,
+            diagnostic.code,
+            diagnostic.message,
+            diagnostic.entities,
+        )
+        for diagnostic in first.validate()
+    )
+    second_diagnostics = tuple(
+        (
+            diagnostic.severity,
+            diagnostic.code,
+            diagnostic.message,
+            diagnostic.entities,
+        )
+        for diagnostic in second.validate()
+    )
+    assert first_diagnostics == second_diagnostics
+    assert first.to_json() == first.to_json()
+    assert second.to_json() == second.to_json()
+
+
+def test_selected_part_erc_resolution_is_explicit_and_exact():
+    library = volt.Library("test.explicit")
+    source = _supply_part(
+        library, "REGULATOR", source=True, voltage=(3.3, 3.3), current=0.2
+    )
+    load = _supply_part(
+        library, "MCU", source=False, voltage=(3.0, 3.6), current=0.1
+    )
+    design = volt.Design("explicit resolver")
+    u1 = design.instantiate(source, ref="U1")
+    u2 = design.instantiate(load, ref="U2")
+    vdd = design.net("VDD", kind="power")
+    gnd = design.net("GND", kind="ground")
+    vdd += (u1[1], u2[1])
+    gnd += (u1[2], u2[2])
+
+    result = library.build()
+    assert not design.validate_selected_part_erc(result).has_errors
+
+    other = volt.Library("test.other")
+    _supply_part(other, "REGULATOR", source=True, voltage=(3.3, 3.3), current=0.2)
+    _supply_part(other, "MCU", source=False, voltage=(3.0, 3.6), current=0.1)
+    with pytest.raises(volt.CrossReferenceError):
+        design.validate_selected_part_erc(other)
+
+
+def test_part_instantiation_has_no_legacy_physical_part_fallback():
+    library = volt.Library("test.incomplete")
+    part = library.part(
+        "LOGICAL-ONLY",
+        pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+        symbol=_symbol("test:logical-only", (("1", 1), ("2", 2))),
+    )
+    design = volt.Design("no exact-part fallback")
+
+    with pytest.raises(ValueError, match="complete native exact part"):
+        design.instantiate(part, ref="U1")
+
+    assert json.loads(design.to_json())["components"] == []
+
+
+def test_voltage_rating_shorthand_is_structurally_checked_by_native_lowering():
+    library = volt.Library("test.rating-structure")
+    library.part(
+        "THREE-PIN",
+        pins=(
+            volt.PinSpec("1", 1),
+            volt.PinSpec("2", 2),
+            volt.PinSpec("3", 3),
+        ),
+        footprint=_footprint("THREE-PIN", 3),
+        pads={1: "1", 2: "2", 3: "3"},
+        manufacturer="Test",
+        mpn="THREE-PIN",
+        package="TEST-3",
+        voltage_rating=5.0,
+    )
+
+    with pytest.raises(volt.InvalidArgumentError, match="two-pin part") as failure:
+        library.build()
+
+    assert failure.value.code == "InvalidArgument"
+
+
+def test_native_conditions_tolerance_and_evidence_round_trip_deterministically():
+    library = volt.Library("test.conditions")
+    junction = volt.ElectricalSubject.directed_relation("junction")
+    selector = volt.ElectricalRecordSelector(junction, "current", "characteristic")
+    condition = volt.ElectricalCondition.equal(
+        junction,
+        "current",
+        volt.ElectricalValueExpression.scaled_reference(selector, 1.0),
+    )
+    diode_schema = volt.FeatureSchema.diode_junction()
+    library.part(
+        "LED-CONDITIONED",
+        pins=(volt.PinSpec("A", 2), volt.PinSpec("K", 1)),
+        symbol=_symbol("test:led-conditioned", (("A", 2), ("K", 1))),
+        footprint=_footprint("LED-CONDITIONED", 2),
+        pads={2: "2", 1: "1"},
+        manufacturer="Test",
+        mpn="LED-CONDITIONED",
+        package="TEST-2",
+        contract=volt.ComponentContract(
+            key="test/led-conditioned@1",
+            pin_keys=("A", "K"),
+            relations=(volt.ContractDirectedRelation("junction", "A", "K"),),
+            feature_schemas=(diode_schema,),
+            feature_bindings=(
+                volt.FeatureBinding(
+                    "junction",
+                    diode_schema.key,
+                    junction,
+                    (
+                        volt.FeatureRoleBinding("positive", ("A",)),
+                        volt.FeatureRoleBinding("negative", ("K",)),
+                    ),
+                ),
+            ),
+        ),
+        electrical_records=(
+            volt.ElectricalRecord(
+                subject=junction,
+                observable="voltage",
+                meaning="characteristic",
+                value_kind="toleranced",
+                value=2.0,
+                tolerance_mode="percent",
+                tolerance_minus=0.1,
+                tolerance_plus=0.1,
+                conditions=(condition,),
+                evidence=("sha256:" + "0" * 64,),
+            ),
+            volt.ElectricalRecord(
+                subject=junction,
+                observable="current",
+                meaning="characteristic",
+                value_kind="quantity",
+                value=0.02,
+            ),
+            volt.ElectricalRecord.absolute_current(junction, maximum=0.03),
+            volt.ElectricalRecord.absolute_voltage(junction, minimum=-5.0),
+        ),
+    )
+
+    first = library.build().part("LED-CONDITIONED").artifact.bytes
+    second = library.build().part("LED-CONDITIONED").artifact.bytes
+    record = next(
+        item
+        for item in json.loads(first)["electrical_records"]["records"]
+        if (item["observable"], item["meaning"])
+        == ("voltage", "characteristic")
+    )
+
+    assert first == second
+    assert record["value"] == {
+        "kind": "characteristic_envelope",
+        "dimension": "voltage",
+        "minimum": 1.8,
+        "typical": 2.0,
+        "maximum": 2.2,
     }
+    assert record["conditions"]
+    assert record["evidence"] == ["sha256:" + "0" * 64]
 
 
 def test_opaque_ratings_and_exact_part_power_are_explicitly_rejected():

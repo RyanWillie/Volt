@@ -3,13 +3,14 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import TYPE_CHECKING, Iterable, Mapping
 
 from . import _volt
 from ._footprint import Footprint, FootprintRef
 from ._utils import _number
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
 from .library import (
+    Library,
     LibraryComponent,
     PartModel3D,
     PinSpec,
@@ -22,6 +23,9 @@ from .logical import Component, ComponentDefinition, ModuleDefinition, ModuleIns
 from .part import ComponentContract, Part, _PartDefinition
 from ._schematic_metadata import _schematic_sheet_metadata
 from .schematic import Schematic
+
+if TYPE_CHECKING:
+    from .library_result import LibraryResult
 
 
 class Design:
@@ -273,40 +277,37 @@ class Design:
     ) -> Component | ModuleInstance:
         """Instantiate a component definition, module definition, library component, or part."""
         if isinstance(definition, Part):
+            if definition.library is None:
+                raise ValueError("Part must be added to a Library before instantiation")
             if not definition._has_native_exact_definition():
-                definition = definition._to_part_definition()
-            else:
-                if definition.library is None:
-                    raise ValueError("Part must be added to a Library before instantiation")
-                for symbol in definition.schematic_symbols:
-                    self._register_schematic_symbol(symbol)
-                snapshot = definition.library._native_snapshot(
-                    part
-                    for part in definition.library.parts
-                    if part._has_native_exact_definition()
+                raise ValueError(
+                    "Part instantiation requires a complete native exact part definition"
                 )
-                component_definition = ComponentDefinition(
-                    self,
-                    self._circuit.define_library_part(snapshot, definition.source_name),
-                    definition.name,
+            for symbol in definition.schematic_symbols:
+                self._register_schematic_symbol(symbol)
+            snapshot = definition.library._native_snapshot()
+            component_definition = ComponentDefinition(
+                self,
+                self._circuit.define_library_part(snapshot, definition.source_name),
+                definition.name,
+            )
+            component = self.instantiate(
+                component_definition,
+                ref=ref,
+                prefix=definition.prefix if prefix is None else prefix,
+                properties=properties,
+            )
+            self._circuit.select_library_part(
+                component.index, snapshot, definition.source_name
+            )
+            self._register_component_object_footprint(
+                component.index, definition.footprint
+            )
+            if definition.model_3d is not None:
+                self._register_component_model_3d_asset_source(
+                    component.index, definition.model_3d
                 )
-                component = self.instantiate(
-                    component_definition,
-                    ref=ref,
-                    prefix=definition.prefix if prefix is None else prefix,
-                    properties=properties,
-                )
-                self._circuit.select_library_part(
-                    component.index, snapshot, definition.source_name
-                )
-                self._register_component_object_footprint(
-                    component.index, definition.footprint
-                )
-                if definition.model_3d is not None:
-                    self._register_component_model_3d_asset_source(
-                        component.index, definition.model_3d
-                    )
-                return component
+            return component
         if isinstance(definition, LibraryComponent):
             definition = definition._to_part_definition()
 
@@ -566,11 +567,21 @@ class Design:
             _diagnostic_from_dict(item) for item in self._circuit.validate_for_pcb()
         )
 
-    def validate_selected_part_erc(self) -> DiagnosticReport:
-        """Validate native exact-part Voltage and continuous-Current semantics."""
+    def validate_selected_part_erc(
+        self, library: Library | LibraryResult
+    ) -> DiagnosticReport:
+        """Validate exact-part ERC against one explicit native library snapshot."""
+        from .library_result import LibraryResult
+
+        if isinstance(library, LibraryResult):
+            snapshot = library._snapshot
+        elif isinstance(library, Library):
+            snapshot = library._native_snapshot()
+        else:
+            raise TypeError("validate_selected_part_erc expects a Library or LibraryResult")
         return DiagnosticReport(
             _diagnostic_from_dict(item)
-            for item in self._circuit.validate_selected_part_erc()
+            for item in self._circuit.validate_selected_part_erc(snapshot)
         )
 
     def validate_bom_readiness(self) -> DiagnosticReport:

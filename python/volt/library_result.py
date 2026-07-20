@@ -284,6 +284,7 @@ def _part_artifact_payload(part: Part) -> dict[str, object]:
         "electrical_records": [
             record._to_dict() for record in part.electrical_records
         ],
+        "voltage_rating": part._voltage_rating_input,
         "provenance": _part_provenance_payload(part),
         "symbols": _part_symbol_refs(part),
         "orderable_part": {

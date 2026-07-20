@@ -97,7 +97,10 @@ Inspection records: `volt.TemplateNetInfo`, `volt.PortInfo`, `volt.ModuleCompone
 | `volt.FeatureBinding` | Component-local binding of a feature schema to a named subject. |
 | `volt.FeatureRoleBinding` | Assignment of one feature role to stable component pins. |
 | `volt.ElectricalRecord` | Canonical Voltage or Current record attached to an exact part subject. |
-| `volt.Library` | Namespace/versioned collection of reusable public parts and compatibility `LibraryComponent` specs. |
+| `volt.ElectricalRecordSelector` | Typed selector for a canonical electrical record referenced by a bounded condition. |
+| `volt.ElectricalValueExpression` | Literal quantity or one scaled native record reference used in an electrical condition. |
+| `volt.ElectricalCondition` | Equality or inclusive range condition attached to a canonical electrical record. |
+| `volt.Library` | Namespace/versioned collection of reusable public parts and `LibraryComponent` specs. |
 | `volt.LibraryPartArtifact` | Canonical kernel-owned part artifact bytes plus content hash returned by a library build. |
 | `volt.LibraryResult` | Output of one deterministic library validation run. |
 | `volt.LibraryDiagnostics` | Ordered diagnostics collected from library part validation. |

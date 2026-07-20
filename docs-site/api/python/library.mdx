@@ -83,6 +83,10 @@ Source: `python/volt/part.py`
 | `maximum: float \| None` |
 | `value: float \| None` |
 | `evidence: tuple[str, ...]` |
+| `conditions: tuple[ElectricalCondition, ...]` |
+| `tolerance_mode: str \| None` |
+| `tolerance_minus: float \| None` |
+| `tolerance_plus: float \| None` |
 
 ### Methods
 
@@ -95,6 +99,20 @@ Source: `python/volt/part.py`
 | `absolute_current(cls, subject: ElectricalSubject, *, minimum: float \| None = None, maximum: float \| None = None) -> ElectricalRecord` | Declare a one- or two-sided absolute Current limit. |
 | `current_requirement(cls, subject: ElectricalSubject, value: float) -> ElectricalRecord` | Declare a continuous Current requirement. |
 | `current_capability(cls, subject: ElectricalSubject, value: float) -> ElectricalRecord` | Declare a continuous Current capability. |
+
+## `volt.ElectricalRecordSelector`
+
+Typed selector used by a bounded native electrical-value reference.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `subject: ElectricalSubject` |
+| `observable: str` |
+| `meaning: str` |
 
 ## `volt.ElectricalSubject`
 
@@ -120,6 +138,51 @@ Source: `python/volt/part.py`
 | `supply_domain(cls, key: str) -> ElectricalSubject` | Reference one named supply-domain subject. |
 | `directed_pins(cls, from_pin: str, to_pin: str) -> ElectricalSubject` | Create an explicit directed subject from two stable PinKeys. |
 | `supply_pins(cls, positive_pins: Iterable[str], return_pins: Iterable[str]) -> ElectricalSubject` | Create an explicit supply subject from stable PinKey sets. |
+
+## `volt.ElectricalCondition`
+
+One equality or inclusive range condition lowered to the native record model.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `subject: ElectricalSubject` |
+| `observable: str` |
+| `predicate: str` |
+| `minimum: ElectricalValueExpression \| None` |
+| `maximum: ElectricalValueExpression \| None` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `equal(cls, subject: ElectricalSubject, observable: str, value: ElectricalValueExpression) -> ElectricalCondition` | Create a native equality condition. |
+| `range(cls, subject: ElectricalSubject, observable: str, *, minimum: ElectricalValueExpression \| None = None, maximum: ElectricalValueExpression \| None = None) -> ElectricalCondition` | Create a native one- or two-sided inclusive range condition. |
+
+## `volt.ElectricalValueExpression`
+
+Literal quantity or one native selector multiplied by a scalar.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `kind: str` |
+| `value: float \| None` |
+| `selector: ElectricalRecordSelector \| None` |
+| `scale: float \| None` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `literal(cls, value: float) -> ElectricalValueExpression` | Create a literal condition value in the condition observable's dimension. |
+| `scaled_reference(cls, selector: ElectricalRecordSelector, scale: float) -> ElectricalValueExpression` | Create one bounded native record reference multiplied by a scalar. |
 
 ## `volt.Library`
 

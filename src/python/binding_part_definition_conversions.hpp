@@ -668,6 +668,96 @@ electrical_subject_from_dict(const py::dict &dict, const volt::ComponentContract
     return py::cast<double>(dict[name]);
 }
 
+[[nodiscard]] inline volt::ElectricalRecordSelector
+electrical_record_selector_from_dict(const py::dict &dict,
+                                     const volt::ComponentContract &contract) {
+    return volt::ElectricalRecordSelector{
+        electrical_subject_from_dict(required_dict_field(dict, "subject"), contract),
+        electrical_observable_from_string(required_string_field(dict, "observable")),
+        electrical_meaning_from_string(required_string_field(dict, "meaning"))};
+}
+
+[[nodiscard]] inline volt::ElectricalValueExpression
+electrical_value_expression_from_dict(const py::dict &dict, volt::ElectricalObservable observable,
+                                      const volt::ComponentContract &contract) {
+    const auto kind = required_string_field(dict, "kind");
+    if (kind == "literal") {
+        const auto value = optional_record_double(dict, "value");
+        if (!value.has_value()) {
+            throw volt::KernelArgumentError{volt::ErrorCode::InvalidArgument,
+                                            "Literal electrical expression requires a value"};
+        }
+        return volt::ElectricalValueExpression::literal(quantity(observable, *value));
+    }
+    if (kind == "scaled_reference") {
+        if (!dict.contains("selector") || dict["selector"].is_none()) {
+            throw volt::KernelArgumentError{
+                volt::ErrorCode::InvalidArgument,
+                "Scaled electrical expression requires a record selector"};
+        }
+        const auto scale = optional_record_double(dict, "scale");
+        if (!scale.has_value()) {
+            throw volt::KernelArgumentError{volt::ErrorCode::InvalidArgument,
+                                            "Scaled electrical expression requires a scale"};
+        }
+        return volt::ElectricalValueExpression::scaled_reference(
+            electrical_record_selector_from_dict(py::cast<py::dict>(dict["selector"]), contract),
+            *scale);
+    }
+    throw volt::KernelArgumentError{volt::ErrorCode::InvalidArgument,
+                                    "Electrical expression kind is unsupported"};
+}
+
+[[nodiscard]] inline std::optional<volt::ElectricalValueExpression>
+optional_electrical_value_expression(py::handle value, volt::ElectricalObservable observable,
+                                     const volt::ComponentContract &contract) {
+    if (value.is_none()) {
+        return std::nullopt;
+    }
+    return electrical_value_expression_from_dict(py::cast<py::dict>(value), observable, contract);
+}
+
+[[nodiscard]] inline volt::ElectricalCondition
+electrical_condition_from_dict(const py::dict &dict, const volt::ComponentContract &contract) {
+    const auto observable =
+        electrical_observable_from_string(required_string_field(dict, "observable"));
+    const auto subject =
+        electrical_subject_from_dict(required_dict_field(dict, "subject"), contract);
+    const auto predicate = required_string_field(dict, "predicate");
+    if (predicate == "equal") {
+        if (!dict.contains("minimum") || dict["minimum"].is_none()) {
+            throw volt::KernelArgumentError{volt::ErrorCode::InvalidArgument,
+                                            "Electrical equality requires a value"};
+        }
+        return volt::ElectricalCondition::equal(
+            subject, observable,
+            electrical_value_expression_from_dict(py::cast<py::dict>(dict["minimum"]), observable,
+                                                  contract));
+    }
+    if (predicate == "range") {
+        return volt::ElectricalCondition::range(
+            subject, observable,
+            optional_electrical_value_expression(dict["minimum"], observable, contract),
+            optional_electrical_value_expression(dict["maximum"], observable, contract));
+    }
+    throw volt::KernelArgumentError{volt::ErrorCode::InvalidArgument,
+                                    "Electrical condition predicate is unsupported"};
+}
+
+[[nodiscard]] inline std::vector<volt::ElectricalCondition>
+electrical_conditions_from_dict(const py::dict &dict, const volt::ComponentContract &contract) {
+    auto result = std::vector<volt::ElectricalCondition>{};
+    if (!dict.contains("conditions") || dict["conditions"].is_none()) {
+        return result;
+    }
+    const auto values = py::cast<py::list>(dict["conditions"]);
+    result.reserve(static_cast<std::size_t>(py::len(values)));
+    for (const auto item : values) {
+        result.push_back(electrical_condition_from_dict(py::cast<py::dict>(item), contract));
+    }
+    return result;
+}
+
 [[nodiscard]] inline volt::ElectricalValue
 electrical_value_from_dict(const py::dict &dict, volt::ElectricalObservable observable) {
     const auto kind = required_string_field(dict, "value_kind");
@@ -680,6 +770,27 @@ electrical_value_from_dict(const py::dict &dict, volt::ElectricalObservable obse
     if (kind == "continuous_current") {
         return volt::ElectricalValue{
             volt::ContinuousCurrent{quantity(observable, py::cast<double>(dict["value"]))}};
+    }
+    if (kind == "toleranced") {
+        const auto nominal = optional_record_double(dict, "value");
+        const auto minus = optional_record_double(dict, "tolerance_minus");
+        const auto plus = optional_record_double(dict, "tolerance_plus");
+        if (!nominal.has_value() || !minus.has_value() || !plus.has_value()) {
+            throw volt::KernelArgumentError{
+                volt::ErrorCode::InvalidArgument,
+                "Toleranced electrical value requires nominal minus and plus values"};
+        }
+        const auto mode = required_string_field(dict, "tolerance_mode");
+        auto tolerance = volt::Tolerance::percent(*minus, *plus);
+        if (mode == "absolute") {
+            tolerance = volt::Tolerance::absolute(quantity(observable, *minus),
+                                                  quantity(observable, *plus));
+        } else if (mode != "percent") {
+            throw volt::KernelArgumentError{volt::ErrorCode::InvalidArgument,
+                                            "Electrical tolerance mode is unsupported"};
+        }
+        return volt::ElectricalValue{
+            volt::TolerancedQuantity{quantity(observable, *nominal), tolerance}};
     }
     const auto minimum = optional_record_double(dict, "minimum");
     const auto maximum = optional_record_double(dict, "maximum");
@@ -731,10 +842,24 @@ electrical_records_from_dict(const py::dict &dict, const volt::ComponentDefiniti
                 observable,
                 electrical_meaning_from_string(required_string_field(record, "meaning")),
                 electrical_value_from_dict(record, observable),
-                {},
+                electrical_conditions_from_dict(record, component.contract()),
                 std::move(evidence)};
             records.push_back(std::move(spec));
         }
+    }
+    if (const auto voltage_rating = optional_record_double(dict, "voltage_rating");
+        voltage_rating.has_value()) {
+        if (component.contract().pin_keys().size() != 2U) {
+            throw volt::KernelArgumentError{
+                volt::ErrorCode::InvalidArgument,
+                "voltage_rating shorthand requires an explicitly oriented two-pin part"};
+        }
+        records.push_back(volt::voltage_record(
+            volt::ElectricalSubject::directed_relation(volt::ElectricalPinIndex{0},
+                                                       volt::ElectricalPinIndex{1}),
+            volt::ElectricalMeaning::AbsoluteLimit,
+            volt::ElectricalValue{volt::QuantityRange::maximum(
+                quantity(volt::ElectricalObservable::Voltage, *voltage_rating))}));
     }
     return volt::ElectricalRecordSet{component.contract().pin_keys().size(), std::move(records)};
 }

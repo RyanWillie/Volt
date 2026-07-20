@@ -264,6 +264,94 @@ class ComponentContract:
 
 
 @dataclass(frozen=True)
+class ElectricalRecordSelector:
+    """Typed selector used by a bounded native electrical-value reference."""
+
+    subject: ElectricalSubject
+    observable: str
+    meaning: str
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "subject": self.subject._to_dict(),
+            "observable": self.observable,
+            "meaning": self.meaning,
+        }
+
+
+@dataclass(frozen=True)
+class ElectricalValueExpression:
+    """Literal quantity or one native selector multiplied by a scalar."""
+
+    kind: str
+    value: float | None = None
+    selector: ElectricalRecordSelector | None = None
+    scale: float | None = None
+
+    @classmethod
+    def literal(cls, value: float) -> ElectricalValueExpression:
+        """Create a literal condition value in the condition observable's dimension."""
+        return cls("literal", value=value)
+
+    @classmethod
+    def scaled_reference(
+        cls, selector: ElectricalRecordSelector, scale: float
+    ) -> ElectricalValueExpression:
+        """Create one bounded native record reference multiplied by a scalar."""
+        return cls("scaled_reference", selector=selector, scale=scale)
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "kind": self.kind,
+            "value": self.value,
+            "selector": None if self.selector is None else self.selector._to_dict(),
+            "scale": self.scale,
+        }
+
+
+@dataclass(frozen=True)
+class ElectricalCondition:
+    """One equality or inclusive range condition lowered to the native record model."""
+
+    subject: ElectricalSubject
+    observable: str
+    predicate: str
+    minimum: ElectricalValueExpression | None = None
+    maximum: ElectricalValueExpression | None = None
+
+    @classmethod
+    def equal(
+        cls,
+        subject: ElectricalSubject,
+        observable: str,
+        value: ElectricalValueExpression,
+    ) -> ElectricalCondition:
+        """Create a native equality condition."""
+        return cls(subject, observable, "equal", value, value)
+
+    @classmethod
+    def range(
+        cls,
+        subject: ElectricalSubject,
+        observable: str,
+        *,
+        minimum: ElectricalValueExpression | None = None,
+        maximum: ElectricalValueExpression | None = None,
+    ) -> ElectricalCondition:
+        """Create a native one- or two-sided inclusive range condition."""
+        return cls(subject, observable, "range", minimum, maximum)
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "subject": self.subject._to_dict(),
+            "observable": self.observable,
+            "predicate": self.predicate,
+            "minimum": None if self.minimum is None else self.minimum._to_dict(),
+            "maximum": None if self.maximum is None else self.maximum._to_dict(),
+        }
+
+
+@dataclass(frozen=True)
 class ElectricalRecord:
     """One canonical Voltage or Current source record for an exact part."""
 
@@ -276,9 +364,14 @@ class ElectricalRecord:
     maximum: float | None = None
     value: float | None = None
     evidence: tuple[str, ...] = ()
+    conditions: tuple[ElectricalCondition, ...] = ()
+    tolerance_mode: str | None = None
+    tolerance_minus: float | None = None
+    tolerance_plus: float | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "evidence", tuple(self.evidence))
+        object.__setattr__(self, "conditions", tuple(self.conditions))
 
     @classmethod
     def accepted_voltage(
@@ -350,12 +443,16 @@ class ElectricalRecord:
             "maximum": self.maximum,
             "value": self.value,
             "evidence": list(self.evidence),
+            "conditions": [condition._to_dict() for condition in self.conditions],
+            "tolerance_mode": self.tolerance_mode,
+            "tolerance_minus": self.tolerance_minus,
+            "tolerance_plus": self.tolerance_plus,
         }
 
 
 @dataclass(frozen=True)
 class _PartDefinition:
-    """Normalized part lowering data shared by new parts and compatibility specs."""
+    """Normalized lowering data for logical component specs."""
 
     name: str
     pins: tuple[PinSpec, ...]
@@ -468,26 +565,8 @@ class Part:
         records = tuple(electrical_records)
         if any(not isinstance(record, ElectricalRecord) for record in records):
             raise TypeError("Part electrical_records must contain ElectricalRecord instances")
-        if voltage_rating is not None:
-            if records:
-                raise TypeError(
-                    "Part accepts either voltage_rating shorthand or electrical_records"
-                )
-            if len(normalized_pins) != 2:
-                raise ValueError(
-                    "voltage_rating shorthand requires an explicitly oriented two-pin part"
-                )
-            pin_keys = (
-                contract.pin_keys
-                if contract is not None and len(contract.pin_keys) >= 2
-                else ("pin/0", "pin/1")
-            )
-            records = (
-                ElectricalRecord.absolute_voltage(
-                    ElectricalSubject.directed_pins(pin_keys[0], pin_keys[1]),
-                    maximum=float(voltage_rating),
-                ),
-            )
+        if voltage_rating is not None and records:
+            raise TypeError("Part accepts either voltage_rating shorthand or electrical_records")
 
         logical_properties = dict(properties or {})
         if value is not None:
@@ -513,6 +592,9 @@ class Part:
         )
         self.contract = contract
         self.electrical_records = records
+        self._voltage_rating_input = (
+            None if voltage_rating is None else float(voltage_rating)
+        )
         self.model_3d = model_3d
         self.approved_alternate_mpns = alternate_mpns
         self._same_numbered_pads = same_numbered_pads
@@ -542,22 +624,6 @@ class Part:
         if self._library is not None and self._library is not library:
             raise ValueError(f"Part {self.name!r} already belongs to a different library")
         object.__setattr__(self, "_library", library)
-
-    def _to_part_definition(self) -> _PartDefinition:
-        if self._library is None:
-            raise ValueError("Part must be added to a Library before instantiation")
-        return _PartDefinition(
-            name=self.name,
-            pins=self.pins,
-            properties=_mutable_value(self.properties),
-            source_namespace=self._library.namespace,
-            source_name=self.source_name,
-            source_version=self.source_version or self._library.version,
-            physical_part=self._physical_part_spec(),
-            prefix=self.prefix,
-            schematic_symbols=self.schematic_symbols,
-            contract=self.contract,
-        )
 
     def _physical_part_spec(self) -> PhysicalPartSpec | None:
         if self.footprint is None:
@@ -608,6 +674,7 @@ class Part:
             ),
             "contract": None if self.contract is None else self.contract._to_dict(),
             "electrical_records": [record._to_dict() for record in self.electrical_records],
+            "voltage_rating": self._voltage_rating_input,
             "model_3d": None if self.model_3d is None else self.model_3d._to_dict(),
             "approved_alternate_mpns": list(self.approved_alternate_mpns),
             "prefix": self.prefix,
