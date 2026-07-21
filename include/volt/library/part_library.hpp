@@ -45,10 +45,14 @@ class PartLibraryIdentity {
 };
 
 /** Closed asset kinds referenced by exact P3 part definitions. */
-enum class PartAssetKind {
-    Schematic,
-    Footprint,
-    Model3D,
+enum class PartAssetKind : std::uint32_t {
+    Schematic = 1,
+    Footprint = 2,
+    Model3D = 3,
+    Simulation = 4,
+    Evidence = 5,
+    Licence = 6,
+    Provenance = 7,
 };
 
 /** Typed content-addressed asset request made during native library construction. */
@@ -107,6 +111,9 @@ class PartLibraryBuilder {
     /** Append one complete immutable component definition, rejecting duplicate keys. */
     PartLibraryBuilder &add_component(ComponentDefinition component);
 
+    /** Append one complete serializable component specification, rejecting duplicate keys. */
+    PartLibraryBuilder &add_component(ComponentSpec component);
+
     /** Append one exact immutable part after its implemented component has been added. */
     PartLibraryBuilder &add_part(PartDefinition part);
 
@@ -127,6 +134,14 @@ class PartLibraryBuilder {
     /** Prevent borrowing pending component definitions from a temporary builder. */
     [[nodiscard]] std::span<const ComponentDefinition> components() const && = delete;
 
+    /** Return complete component inputs retained for deterministic bundle construction. */
+    [[nodiscard]] std::span<const ComponentSpec> component_specs() const & noexcept {
+        return component_specs_;
+    }
+
+    /** Prevent borrowing pending component inputs from a temporary builder. */
+    [[nodiscard]] std::span<const ComponentSpec> component_specs() const && = delete;
+
     /** Return complete pending exact parts without mutable access. */
     [[nodiscard]] std::span<const PartDefinition> parts() const & noexcept { return parts_; }
 
@@ -136,6 +151,7 @@ class PartLibraryBuilder {
   private:
     PartLibraryIdentity identity_;
     std::vector<ComponentDefinition> components_;
+    std::vector<ComponentSpec> component_specs_;
     std::vector<PartDefinition> parts_;
 };
 

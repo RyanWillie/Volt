@@ -1,5 +1,6 @@
 #include <volt/library/part_library.hpp>
 
+#include <volt/circuit/circuit.hpp>
 #include <volt/circuit/updates.hpp>
 
 #include <algorithm>
@@ -90,6 +91,10 @@ PartAssetReference::PartAssetReference(PartAssetKind kind, std::string key, Cont
     case PartAssetKind::Schematic:
     case PartAssetKind::Footprint:
     case PartAssetKind::Model3D:
+    case PartAssetKind::Simulation:
+    case PartAssetKind::Evidence:
+    case PartAssetKind::Licence:
+    case PartAssetKind::Provenance:
         break;
     default:
         throw KernelArgumentError{ErrorCode::InvalidArgument, "Part asset kind is unsupported"};
@@ -139,6 +144,14 @@ PartLibraryBuilder &PartLibraryBuilder::add_component(ComponentDefinition compon
                                   "Part library component digest already exists"};
     }
     components_.push_back(std::move(component));
+    return *this;
+}
+
+PartLibraryBuilder &PartLibraryBuilder::add_component(ComponentSpec component) {
+    auto owner = Circuit{};
+    const auto definition = owner.define_component(component);
+    add_component(owner.get(definition));
+    component_specs_.push_back(std::move(component));
     return *this;
 }
 

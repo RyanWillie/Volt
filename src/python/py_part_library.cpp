@@ -80,7 +80,7 @@ struct BuiltLibrary {
         const auto digest = lowered.component.content_identity();
         const auto existing = component_digests.find(component_key);
         if (existing == component_digests.end()) {
-            builder.add_component(lowered.component);
+            builder.add_component(lowered.component_spec);
             component_digests.emplace(component_key, digest);
         } else if (existing->second != digest) {
             throw volt::KernelLogicError{volt::ErrorCode::CrossReferenceViolation,

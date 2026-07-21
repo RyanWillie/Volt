@@ -30,6 +30,7 @@ add_library(
     logical/logical_net_class_format.cpp
     parts/part_definition_reader.cpp
     parts/part_definition_writer.cpp
+    parts/part_library_bundle.cpp
     parts/electrical_records_io.cpp
     pcb/pcb_fabrication_writer.cpp
     pcb/pcb_feature_io.cpp
@@ -59,6 +60,7 @@ target_link_libraries(
     volt_io
     PUBLIC
         Volt::Circuit
+        Volt::Library
         Volt::Schematic
         Volt::PCB
     PRIVATE
