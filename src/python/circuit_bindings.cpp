@@ -3,6 +3,7 @@
 #include "binding_part_definition_conversions.hpp"
 #include "binding_pcb_conversions.hpp"
 #include "py_circuit.hpp"
+#include "py_part_library.hpp"
 
 #include <volt/core/content_hash.hpp>
 #include <volt/core/errors.hpp>
@@ -59,8 +60,13 @@ void bind_circuit(pybind11::module_ &module) {
         const auto data = static_cast<std::string>(bytes);
         return volt::sha256_content_hash(data).value();
     });
-    module.def("part_definition_artifact",
-               [](const py::dict &part) { return part_definition_artifact_from_dict(part); });
+    module.def("standard_feature_schema", &standard_feature_schema_to_dict, py::arg("name"));
+    py::class_<PyPartLibrary>(module, "PartLibrarySnapshot")
+        .def(py::init<std::string, std::string, const py::list &>(), py::arg("namespace"),
+             py::arg("version"), py::arg("parts"))
+        .def_property_readonly("digest", &PyPartLibrary::digest)
+        .def("part_result", &PyPartLibrary::part_result, py::arg("part_key"))
+        .def("exact_reference", &PyPartLibrary::exact_reference, py::arg("part_key"));
 
     py::class_<PyCircuit>(module, "Circuit")
         .def(py::init<>())
@@ -81,7 +87,13 @@ void bind_circuit(pybind11::module_ &module) {
         .def("define_component", &PyCircuit::define_component, py::arg("name"), py::arg("pins"),
              py::arg("properties") = py::dict{}, py::arg("source_namespace") = "",
              py::arg("source_name") = "", py::arg("source_version") = "",
-             py::arg("schematic_symbols") = py::list{})
+             py::arg("schematic_symbols") = py::list{}, py::arg("contract") = py::none())
+        .def("define_library_part", &PyCircuit::define_library_part, py::arg("library"),
+             py::arg("part_key"))
+        .def("select_library_part", &PyCircuit::select_library_part, py::arg("component"),
+             py::arg("library"), py::arg("part_key"))
+        .def("validate_selected_part_erc", &PyCircuit::validate_selected_part_erc,
+             py::arg("library"))
         .def("add_net", &PyCircuit::add_net, py::arg("name"), py::arg("kind") = "signal")
         .def("add_net_class", &PyCircuit::add_net_class, py::arg("name"),
              py::arg("options") = py::dict{})

@@ -23,7 +23,7 @@ Source: `python/volt/design.py`
 | `C(self, value: str \| None = None, *, capacitance: float \| None = None, voltage_rating: float \| None = None, ref: str \| None = None) -> Component` | Instantiate a generic non-polarized capacitor component. |
 | `CP(self, value: str \| None = None, *, capacitance: float \| None = None, voltage_rating: float \| None = None, ref: str \| None = None) -> Component` | Instantiate a generic polarized capacitor component. |
 | `L(self, value: str \| None = None, *, inductance: float \| None = None, ref: str \| None = None) -> Component` | Instantiate a generic inductor component. |
-| `define_component(self, name: str, *, pins: Iterable[PinSpec], properties: dict \| None = None, source: tuple[str, str, str] \| None = None, schematic_symbol: SchematicSymbolSpec \| Iterable[SchematicSymbolSpec] \| None = None) -> ComponentDefinition` | Define a reusable component type with pins, properties, and optional symbols. |
+| `define_component(self, name: str, *, pins: Iterable[PinSpec], properties: dict \| None = None, source: tuple[str, str, str] \| None = None, schematic_symbol: SchematicSymbolSpec \| Iterable[SchematicSymbolSpec] \| None = None, contract: ComponentContract \| None = None) -> ComponentDefinition` | Define a reusable component with native pins, properties, symbols, and contract. |
 | `define_module(self, name: str) -> ModuleDefinition` | Define a reusable module template inside this design. |
 | `instantiate(self, definition: ComponentDefinition \| ModuleDefinition \| LibraryComponent \| Part, *, ref: str \| None = None, prefix: str \| None = None, properties: dict \| None = None) -> Component \| ModuleInstance` | Instantiate a component definition, module definition, library component, or part. |
 | `LED(self, *, ref: str \| None = None) -> Component` | Instantiate a generic LED component. |
@@ -44,6 +44,7 @@ Source: `python/volt/design.py`
 | `load_schematic(self, path: str \| Path) -> Schematic` | Load schematic projection JSON from a file and return the first sheet. |
 | `validate(self) -> DiagnosticReport` | Run logical design validation and return the diagnostic report. |
 | `validate_for_pcb(self) -> DiagnosticReport` | Run PCB-readiness validation and return the diagnostic report. |
+| `validate_selected_part_erc(self, library: Library \| LibraryResult) -> DiagnosticReport` | Validate exact-part ERC against one explicit native library snapshot. |
 | `validate_bom_readiness(self) -> DiagnosticReport` | Run BOM-readiness validation and return the diagnostic report. |
 | `set_sourcing_snapshot(self, snapshot: Mapping[str, Mapping[str, object]]) -> 'Design'` | Set design-owned sourcing metadata keyed by manufacturer part number. |
 | `bom(self) -> dict` | Return the deterministic kernel BOM projection as a JSON-compatible dict. |

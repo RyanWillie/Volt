@@ -23,8 +23,436 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
+class ContractFramedPin:
+    """One stable component pin measured relative to another stable pin."""
+
+    key: str
+    pin: str
+    reference: str
+
+    def _to_dict(self) -> dict[str, object]:
+        return {"key": self.key, "pin": self.pin, "reference": self.reference}
+
+
+@dataclass(frozen=True)
+class ContractDirectedRelation:
+    """One stable directed relation between two component pins."""
+
+    key: str
+    from_pin: str
+    to_pin: str
+
+    def _to_dict(self) -> dict[str, object]:
+        return {"key": self.key, "from": self.from_pin, "to": self.to_pin}
+
+
+@dataclass(frozen=True)
+class ContractSupplyDomain:
+    """One stable supply domain over positive and return pin sets."""
+
+    key: str
+    positive_pins: tuple[str, ...]
+    return_pins: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "positive_pins", tuple(self.positive_pins))
+        object.__setattr__(self, "return_pins", tuple(self.return_pins))
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "key": self.key,
+            "positive_pins": list(self.positive_pins),
+            "return_pins": list(self.return_pins),
+        }
+
+
+@dataclass(frozen=True)
+class ElectricalSubject:
+    """Typed reference to a named contract subject or explicit stable pins."""
+
+    kind: str
+    key: str | None = None
+    positive_pins: tuple[str, ...] = ()
+    return_pins: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "positive_pins", tuple(self.positive_pins))
+        object.__setattr__(self, "return_pins", tuple(self.return_pins))
+
+    @classmethod
+    def framed_pin(cls, key: str) -> ElectricalSubject:
+        """Reference one named framed-pin subject."""
+        return cls("framed_pin", key=key)
+
+    @classmethod
+    def directed_relation(cls, key: str) -> ElectricalSubject:
+        """Reference one named directed-relation subject."""
+        return cls("directed_relation", key=key)
+
+    @classmethod
+    def supply_domain(cls, key: str) -> ElectricalSubject:
+        """Reference one named supply-domain subject."""
+        return cls("supply_domain", key=key)
+
+    @classmethod
+    def directed_pins(cls, from_pin: str, to_pin: str) -> ElectricalSubject:
+        """Create an explicit directed subject from two stable PinKeys."""
+        return cls("directed_pins", positive_pins=(from_pin,), return_pins=(to_pin,))
+
+    @classmethod
+    def supply_pins(
+        cls, positive_pins: Iterable[str], return_pins: Iterable[str]
+    ) -> ElectricalSubject:
+        """Create an explicit supply subject from stable PinKey sets."""
+        return cls(
+            "supply_pins",
+            positive_pins=tuple(positive_pins),
+            return_pins=tuple(return_pins),
+        )
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "kind": self.kind,
+            "key": self.key,
+            "positive_pins": list(self.positive_pins),
+            "return_pins": list(self.return_pins),
+        }
+
+
+@dataclass(frozen=True)
+class FeatureRole:
+    """One typed terminal role in a feature schema."""
+
+    key: str
+    cardinality: str
+
+    def _to_dict(self) -> dict[str, str]:
+        return {"key": self.key, "cardinality": self.cardinality}
+
+
+@dataclass(frozen=True)
+class CanonicalRecordRequirement:
+    """One canonical observable/meaning pair required by a feature."""
+
+    observable: str
+    meaning: str
+
+    def _to_dict(self) -> dict[str, str]:
+        return {"observable": self.observable, "meaning": self.meaning}
+
+
+@dataclass(frozen=True)
+class FeatureSchema:
+    """One versioned feature schema over a canonical electrical subject."""
+
+    key: str
+    subject_kind: str
+    roles: tuple[FeatureRole, ...]
+    required_records: tuple[CanonicalRecordRequirement, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "roles", tuple(self.roles))
+        object.__setattr__(self, "required_records", tuple(self.required_records))
+
+    @classmethod
+    def _native_standard(cls, name: str) -> FeatureSchema:
+        from . import _volt
+
+        payload = _volt.standard_feature_schema(name)
+        return cls(
+            payload["key"],
+            payload["subject_kind"],
+            tuple(FeatureRole(role["key"], role["cardinality"]) for role in payload["roles"]),
+            tuple(
+                CanonicalRecordRequirement(record["observable"], record["meaning"])
+                for record in payload["required_records"]
+            ),
+        )
+
+    @classmethod
+    def supply_consumer(cls) -> FeatureSchema:
+        """Return the canonical native supply-consumer feature schema."""
+        return cls._native_standard("supply_consumer")
+
+    @classmethod
+    def supply_source(cls) -> FeatureSchema:
+        """Return the canonical native supply-source feature schema."""
+        return cls._native_standard("supply_source")
+
+    @classmethod
+    def diode_junction(cls) -> FeatureSchema:
+        """Return the canonical native diode-junction feature schema."""
+        return cls._native_standard("diode_junction")
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "key": self.key,
+            "subject_kind": self.subject_kind,
+            "roles": [role._to_dict() for role in self.roles],
+            "required_records": [record._to_dict() for record in self.required_records],
+        }
+
+
+@dataclass(frozen=True)
+class FeatureRoleBinding:
+    """One feature role assigned to stable component pins."""
+
+    role: str
+    pins: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "pins", tuple(self.pins))
+
+    def _to_dict(self) -> dict[str, object]:
+        return {"role": self.role, "pins": list(self.pins)}
+
+
+@dataclass(frozen=True)
+class FeatureBinding:
+    """One component-local binding of a schema to a named subject."""
+
+    key: str
+    schema: str
+    subject: ElectricalSubject
+    roles: tuple[FeatureRoleBinding, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "roles", tuple(self.roles))
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "key": self.key,
+            "schema": self.schema,
+            "subject": self.subject._to_dict(),
+            "roles": [role._to_dict() for role in self.roles],
+        }
+
+
+@dataclass(frozen=True)
+class ComponentContract:
+    """Complete portable component identity and feature-binding contract."""
+
+    key: str
+    pin_keys: tuple[str, ...]
+    framed_pins: tuple[ContractFramedPin, ...] = ()
+    relations: tuple[ContractDirectedRelation, ...] = ()
+    supply_domains: tuple[ContractSupplyDomain, ...] = ()
+    feature_schemas: tuple[FeatureSchema, ...] = ()
+    feature_bindings: tuple[FeatureBinding, ...] = ()
+
+    def __post_init__(self) -> None:
+        for name in (
+            "pin_keys",
+            "framed_pins",
+            "relations",
+            "supply_domains",
+            "feature_schemas",
+            "feature_bindings",
+        ):
+            object.__setattr__(self, name, tuple(getattr(self, name)))
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "key": self.key,
+            "pin_keys": list(self.pin_keys),
+            "framed_pins": [item._to_dict() for item in self.framed_pins],
+            "relations": [item._to_dict() for item in self.relations],
+            "supply_domains": [item._to_dict() for item in self.supply_domains],
+            "feature_schemas": [item._to_dict() for item in self.feature_schemas],
+            "feature_bindings": [item._to_dict() for item in self.feature_bindings],
+        }
+
+
+@dataclass(frozen=True)
+class ElectricalRecordSelector:
+    """Typed selector used by a bounded native electrical-value reference."""
+
+    subject: ElectricalSubject
+    observable: str
+    meaning: str
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "subject": self.subject._to_dict(),
+            "observable": self.observable,
+            "meaning": self.meaning,
+        }
+
+
+@dataclass(frozen=True)
+class ElectricalValueExpression:
+    """Literal quantity or one native selector multiplied by a scalar."""
+
+    kind: str
+    value: float | None = None
+    selector: ElectricalRecordSelector | None = None
+    scale: float | None = None
+
+    @classmethod
+    def literal(cls, value: float) -> ElectricalValueExpression:
+        """Create a literal condition value in the condition observable's dimension."""
+        return cls("literal", value=value)
+
+    @classmethod
+    def scaled_reference(
+        cls, selector: ElectricalRecordSelector, scale: float
+    ) -> ElectricalValueExpression:
+        """Create one bounded native record reference multiplied by a scalar."""
+        return cls("scaled_reference", selector=selector, scale=scale)
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "kind": self.kind,
+            "value": self.value,
+            "selector": None if self.selector is None else self.selector._to_dict(),
+            "scale": self.scale,
+        }
+
+
+@dataclass(frozen=True)
+class ElectricalCondition:
+    """One equality or inclusive range condition lowered to the native record model."""
+
+    subject: ElectricalSubject
+    observable: str
+    predicate: str
+    minimum: ElectricalValueExpression | None = None
+    maximum: ElectricalValueExpression | None = None
+
+    @classmethod
+    def equal(
+        cls,
+        subject: ElectricalSubject,
+        observable: str,
+        value: ElectricalValueExpression,
+    ) -> ElectricalCondition:
+        """Create a native equality condition."""
+        return cls(subject, observable, "equal", value, value)
+
+    @classmethod
+    def range(
+        cls,
+        subject: ElectricalSubject,
+        observable: str,
+        *,
+        minimum: ElectricalValueExpression | None = None,
+        maximum: ElectricalValueExpression | None = None,
+    ) -> ElectricalCondition:
+        """Create a native one- or two-sided inclusive range condition."""
+        return cls(subject, observable, "range", minimum, maximum)
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "subject": self.subject._to_dict(),
+            "observable": self.observable,
+            "predicate": self.predicate,
+            "minimum": None if self.minimum is None else self.minimum._to_dict(),
+            "maximum": None if self.maximum is None else self.maximum._to_dict(),
+        }
+
+
+@dataclass(frozen=True)
+class ElectricalRecord:
+    """One canonical Voltage or Current source record for an exact part."""
+
+    subject: ElectricalSubject
+    observable: str
+    meaning: str
+    value_kind: str
+    minimum: float | None = None
+    typical: float | None = None
+    maximum: float | None = None
+    value: float | None = None
+    evidence: tuple[str, ...] = ()
+    conditions: tuple[ElectricalCondition, ...] = ()
+    tolerance_mode: str | None = None
+    tolerance_minus: float | None = None
+    tolerance_plus: float | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "evidence", tuple(self.evidence))
+        object.__setattr__(self, "conditions", tuple(self.conditions))
+
+    @classmethod
+    def accepted_voltage(
+        cls, subject: ElectricalSubject, minimum: float, maximum: float
+    ) -> ElectricalRecord:
+        """Declare an accepted Voltage range on one subject."""
+        return cls(subject, "voltage", "accepted_range", "range", minimum, None, maximum)
+
+    @classmethod
+    def provided_voltage(
+        cls, subject: ElectricalSubject, minimum: float, maximum: float
+    ) -> ElectricalRecord:
+        """Declare a provided Voltage range on one subject."""
+        return cls(subject, "voltage", "provided_range", "range", minimum, None, maximum)
+
+    @classmethod
+    def absolute_voltage(
+        cls,
+        subject: ElectricalSubject,
+        *,
+        minimum: float | None = None,
+        maximum: float | None = None,
+    ) -> ElectricalRecord:
+        """Declare a one- or two-sided absolute Voltage limit."""
+        return cls(subject, "voltage", "absolute_limit", "range", minimum, None, maximum)
+
+    @classmethod
+    def characteristic_voltage(
+        cls, subject: ElectricalSubject, minimum: float, typical: float, maximum: float
+    ) -> ElectricalRecord:
+        """Declare a characteristic Voltage envelope."""
+        return cls(
+            subject, "voltage", "characteristic", "envelope", minimum, typical, maximum
+        )
+
+    @classmethod
+    def absolute_current(
+        cls,
+        subject: ElectricalSubject,
+        *,
+        minimum: float | None = None,
+        maximum: float | None = None,
+    ) -> ElectricalRecord:
+        """Declare a one- or two-sided absolute Current limit."""
+        return cls(subject, "current", "absolute_limit", "range", minimum, None, maximum)
+
+    @classmethod
+    def current_requirement(
+        cls, subject: ElectricalSubject, value: float
+    ) -> ElectricalRecord:
+        """Declare a continuous Current requirement."""
+        return cls(subject, "current", "requirement", "continuous_current", value=value)
+
+    @classmethod
+    def current_capability(
+        cls, subject: ElectricalSubject, value: float
+    ) -> ElectricalRecord:
+        """Declare a continuous Current capability."""
+        return cls(subject, "current", "capability", "continuous_current", value=value)
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "subject": self.subject._to_dict(),
+            "observable": self.observable,
+            "meaning": self.meaning,
+            "value_kind": self.value_kind,
+            "minimum": self.minimum,
+            "typical": self.typical,
+            "maximum": self.maximum,
+            "value": self.value,
+            "evidence": list(self.evidence),
+            "conditions": [condition._to_dict() for condition in self.conditions],
+            "tolerance_mode": self.tolerance_mode,
+            "tolerance_minus": self.tolerance_minus,
+            "tolerance_plus": self.tolerance_plus,
+        }
+
+
+@dataclass(frozen=True)
 class _PartDefinition:
-    """Normalized part lowering data shared by new parts and compatibility specs."""
+    """Normalized lowering data for logical component specs."""
 
     name: str
     pins: tuple[PinSpec, ...]
@@ -35,16 +463,7 @@ class _PartDefinition:
     physical_part: PhysicalPartSpec | None = None
     prefix: str = "U"
     schematic_symbols: tuple[SchematicSymbolSpec, ...] = ()
-
-    @property
-    def cache_key(self) -> tuple[str, str, str, str]:
-        """Return the stable design-local cache key for this part definition."""
-        return (
-            self.source_namespace,
-            self.source_name,
-            self.source_version,
-            self.name,
-        )
+    contract: ComponentContract | None = None
 
     @property
     def schematic_symbol(self) -> SchematicSymbolSpec | None:
@@ -53,7 +472,7 @@ class _PartDefinition:
 
 
 class Part:
-    """Reusable public part definition for Python-authored Volt libraries."""
+    """Reusable Python declaration lowered into an exact native library part."""
 
     def __setattr__(self, name: str, value: object) -> None:
         if getattr(self, "_frozen", False):
@@ -76,9 +495,10 @@ class Part:
         package: str | None = None,
         properties: dict | None = None,
         physical_properties: dict | None = None,
-        ratings: dict | None = None,
         voltage_rating: float | None = None,
         power_rating: float | None = None,
+        contract: ComponentContract | None = None,
+        electrical_records: Iterable[ElectricalRecord] = (),
         model_3d: PartModel3D | None = None,
         approved_alternate_mpns: Iterable[str] = (),
         orderable: PhysicalPartSpec | None = None,
@@ -96,6 +516,7 @@ class Part:
             raise TypeError("Part prefix must be a string")
         if not prefix:
             raise ValueError("Part prefix must not be empty")
+        normalized_pins = tuple(pins)
         if symbol is not None and schematic_symbol is not None:
             raise TypeError("Part accepts either symbol or schematic_symbol")
         if mpn is not None and part_number is not None and mpn != part_number:
@@ -104,7 +525,7 @@ class Part:
             if orderable_part is not None:
                 raise TypeError("Part accepts either orderable or orderable_part")
             orderable_part = orderable
-        normalized_orderable_part = orderable_part
+        same_numbered_pads = False
         alternate_mpns = tuple(str(mpn) for mpn in approved_alternate_mpns)
         if orderable_part is not None:
             if (
@@ -133,13 +554,26 @@ class Part:
             power_rating = orderable_part.power_rating
             model_3d = orderable_part.model_3d
             alternate_mpns = orderable_part.approved_alternate_mpns
+            same_numbered_pads = orderable_part.same_numbered_pads
+
+        if power_rating is not None:
+            raise NotImplementedError(
+                "Power is not canonical exact-part data in this slice; use a later typed Power record"
+            )
+        if contract is not None and not isinstance(contract, ComponentContract):
+            raise TypeError("Part contract must be a ComponentContract")
+        records = tuple(electrical_records)
+        if any(not isinstance(record, ElectricalRecord) for record in records):
+            raise TypeError("Part electrical_records must contain ElectricalRecord instances")
+        if voltage_rating is not None and records:
+            raise TypeError("Part accepts either voltage_rating shorthand or electrical_records")
 
         logical_properties = dict(properties or {})
         if value is not None:
             logical_properties["value"] = value
 
         self.name = name
-        self.pins = tuple(pins)
+        self.pins = normalized_pins
         for pin in self.pins:
             if not isinstance(pin, PinSpec):
                 raise TypeError("Part pins must be PinSpec instances")
@@ -156,12 +590,14 @@ class Part:
         self.physical_properties = None if physical_properties is None else _freeze_value(
             physical_properties
         )
-        self.ratings = _freeze_value(ratings or {})
-        self.voltage_rating = voltage_rating
-        self.power_rating = power_rating
+        self.contract = contract
+        self.electrical_records = records
+        self._voltage_rating_input = (
+            None if voltage_rating is None else float(voltage_rating)
+        )
         self.model_3d = model_3d
         self.approved_alternate_mpns = alternate_mpns
-        self._orderable_part = normalized_orderable_part
+        self._same_numbered_pads = same_numbered_pads
         self.prefix = prefix
         self.extensions = _freeze_value(extensions or {})
         self.source_name = source_name or name
@@ -189,24 +625,7 @@ class Part:
             raise ValueError(f"Part {self.name!r} already belongs to a different library")
         object.__setattr__(self, "_library", library)
 
-    def _to_part_definition(self) -> _PartDefinition:
-        if self._library is None:
-            raise ValueError("Part must be added to a Library before instantiation")
-        return _PartDefinition(
-            name=self.name,
-            pins=self.pins,
-            properties=_mutable_value(self.properties),
-            source_namespace=self._library.namespace,
-            source_name=self.source_name,
-            source_version=self.source_version or self._library.version,
-            physical_part=self._physical_part_spec(),
-            prefix=self.prefix,
-            schematic_symbols=self.schematic_symbols,
-        )
-
     def _physical_part_spec(self) -> PhysicalPartSpec | None:
-        if self._orderable_part is not None:
-            return self._orderable_part
         if self.footprint is None:
             return None
         return PhysicalPartSpec(
@@ -220,10 +639,21 @@ class Part:
                 if self.physical_properties is None
                 else _mutable_value(self.physical_properties)
             ),
-            voltage_rating=self.voltage_rating,
-            power_rating=self.power_rating,
             model_3d=self.model_3d,
             approved_alternate_mpns=self.approved_alternate_mpns,
+            same_numbered_pads=self._same_numbered_pads,
+        )
+
+    def _has_native_exact_definition(self) -> bool:
+        """Return whether this declaration can form a complete native P3 part."""
+        physical = self._physical_part_spec()
+        return bool(
+            self.pins
+            and isinstance(self.footprint, Footprint)
+            and physical is not None
+            and physical.manufacturer
+            and physical.part_number
+            and physical.package
         )
 
     def _to_dict(self) -> dict:
@@ -242,9 +672,9 @@ class Part:
                 if self.physical_properties is None
                 else _mutable_value(self.physical_properties)
             ),
-            "ratings": _mutable_value(self.ratings),
-            "voltage_rating": self.voltage_rating,
-            "power_rating": self.power_rating,
+            "contract": None if self.contract is None else self.contract._to_dict(),
+            "electrical_records": [record._to_dict() for record in self.electrical_records],
+            "voltage_rating": self._voltage_rating_input,
             "model_3d": None if self.model_3d is None else self.model_3d._to_dict(),
             "approved_alternate_mpns": list(self.approved_alternate_mpns),
             "prefix": self.prefix,

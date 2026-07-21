@@ -85,8 +85,22 @@ Inspection records: `volt.TemplateNetInfo`, `volt.PortInfo`, `volt.ModuleCompone
 | `volt.PartModel3D` | Footprint-relative 3D asset declaration for a selected physical part. |
 | `volt.PhysicalPartSpec` | Reusable selected physical part data. |
 | `volt.OrderablePart` | Artifact-facing selected physical part identity with manufacturer, MPN, package, footprint, pad map, and approved alternates. |
-| `volt.Part` | Public reusable part definition with logical pins, symbols, footprint geometry, pad mapping, ratings, and manufacturer metadata. |
-| `volt.Library` | Namespace/versioned collection of reusable public parts and compatibility `LibraryComponent` specs. |
+| `volt.Part` | Public reusable part definition with logical pins, symbols, footprint geometry, exact pad mapping, canonical electrical records, and manufacturer metadata. |
+| `volt.ComponentContract` | Native-lowered stable component identity, subject definitions, feature schemas, and feature bindings. |
+| `volt.ContractFramedPin` | Named component-contract voltage frame over a pin and reference pin. |
+| `volt.ContractDirectedRelation` | Named component-contract relation from one stable pin to another. |
+| `volt.ContractSupplyDomain` | Named component-contract supply domain over positive and return pin sets. |
+| `volt.ElectricalSubject` | Typed reference to a contract subject or explicit stable pin sets. |
+| `volt.FeatureSchema` | Versioned feature schema over a canonical electrical subject. |
+| `volt.FeatureRole` | Typed terminal role and cardinality within a feature schema. |
+| `volt.CanonicalRecordRequirement` | Canonical Voltage or Current observable/meaning requirement for a feature. |
+| `volt.FeatureBinding` | Component-local binding of a feature schema to a named subject. |
+| `volt.FeatureRoleBinding` | Assignment of one feature role to stable component pins. |
+| `volt.ElectricalRecord` | Canonical Voltage or Current record attached to an exact part subject. |
+| `volt.ElectricalRecordSelector` | Typed selector for a canonical electrical record referenced by a bounded condition. |
+| `volt.ElectricalValueExpression` | Literal quantity or one scaled native record reference used in an electrical condition. |
+| `volt.ElectricalCondition` | Equality or inclusive range condition attached to a canonical electrical record. |
+| `volt.Library` | Namespace/versioned collection of reusable public parts and `LibraryComponent` specs. |
 | `volt.LibraryPartArtifact` | Canonical kernel-owned part artifact bytes plus content hash returned by a library build. |
 | `volt.LibraryResult` | Output of one deterministic library validation run. |
 | `volt.LibraryDiagnostics` | Ordered diagnostics collected from library part validation. |

@@ -2,6 +2,7 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
 import volt
 from volt.libraries import stm32_usb_buck
 
@@ -238,14 +239,8 @@ def test_library_part_build_reports_pin_role_contradictions():
         pads={1: "1"},
     )
 
-    result = library.build()
-
-    assert not result.ok
-    assert any(
-        diagnostic.code == "LIBRARY_PART_ARTIFACT_INVALID"
-        and "PinSpec role preset contradicts explicit terminal kind" in diagnostic.message
-        for diagnostic in result.diagnostics
-    )
+    with pytest.raises(volt.InvalidArgumentError, match="contradicts explicit terminal"):
+        library.build()
 
 def test_library_component_schematic_symbol_default_is_definition_owned():
     design = volt.Design("library-symbol")
@@ -993,14 +988,12 @@ def test_library_parts_family_overrides_are_isolated_snapshots():
         "series": {"name": "RC"},
         "tags": ["default"],
     }
-    default_ratings = {"power": {"max": 0.1}}
     default_extensions = {"lifecycle": {"status": "active"}}
     library = volt.Library("volt.test.passives")
     r0603 = _resistor_0603_family(
         library,
         pads=default_pads,
         properties=default_properties,
-        ratings=default_ratings,
         extensions=default_extensions,
         source_version="catalog-v1",
     )
@@ -1008,19 +1001,16 @@ def test_library_parts_family_overrides_are_isolated_snapshots():
     default_pads[1].append("9")
     default_properties["series"]["name"] = "changed"
     default_properties["tags"].append("changed")
-    default_ratings["power"]["max"] = 0.25
     default_extensions["lifecycle"]["status"] = "changed"
 
     override_pads = {1: ["1"], 2: "2"}
     override_properties = {"tolerance": {"percent": 1}}
-    override_ratings = {"resistance": {"tolerance": "1%"}}
     override_extensions = {"stock": {"sku": "RC0603-10K"}}
     ten_k = r0603.part(
         "10K",
         mpn="RC0603FR-0710KL",
         pads=override_pads,
         properties=override_properties,
-        ratings=override_ratings,
         extensions=override_extensions,
         source_name="catalog/R0603/10K",
         source_version="catalog-v2",
@@ -1028,7 +1018,6 @@ def test_library_parts_family_overrides_are_isolated_snapshots():
 
     override_pads[1].append("9")
     override_properties["tolerance"]["percent"] = 5
-    override_ratings["resistance"]["tolerance"] = "5%"
     override_extensions["stock"]["sku"] = "changed"
 
     hundred_k = r0603.part(
@@ -1046,8 +1035,6 @@ def test_library_parts_family_overrides_are_isolated_snapshots():
     assert ten_k.properties["series"]["name"] == "RC"
     assert ten_k.properties["tags"] == ("default",)
     assert ten_k.properties["tolerance"]["percent"] == 1
-    assert ten_k.ratings["power"]["max"] == 0.1
-    assert ten_k.ratings["resistance"]["tolerance"] == "1%"
     assert ten_k.extensions["lifecycle"]["status"] == "active"
     assert ten_k.extensions["stock"]["sku"] == "RC0603-10K"
     assert ten_k.source_name == "catalog/R0603/10K"
@@ -1193,9 +1180,8 @@ def test_library_part_is_immutable_after_construction():
 
 def test_library_part_collection_fields_are_immutable_snapshots():
     pads = {1: ["1"], 2: "2"}
-    properties = {"metadata": {"bin": "A"}, "aliases": ["R10K"]}
+    properties = {"bin": "A"}
     physical_properties = {"assembly": {"feeder": "F1"}}
-    ratings = {"voltage": {"max": 50}}
     extensions = {"tags": ["passive"]}
     symbol_primitive = volt.SchematicSymbolSpec.line((0, 0), (20, 0))
     symbol = volt.SchematicSymbolSpec(
@@ -1219,15 +1205,13 @@ def test_library_part_collection_fields_are_immutable_snapshots():
         package="0603",
         properties=properties,
         physical_properties=physical_properties,
-        ratings=ratings,
         prefix="R",
         extensions=extensions,
     )
 
     pads[1].append("9")
-    properties["metadata"]["bin"] = "B"
+    properties["bin"] = "B"
     physical_properties["assembly"]["feeder"] = "F2"
-    ratings["voltage"]["max"] = 100
     extensions["tags"].append("changed")
     symbol_primitive["start"]["x"] = 99
     library.add(part)
@@ -1243,13 +1227,10 @@ def test_library_part_collection_fields_are_immutable_snapshots():
         part.pads[1] += ("9",)
 
     def mutate_properties():
-        part.properties["metadata"]["bin"] = "B"
+        part.properties["bin"] = "B"
 
     def mutate_physical_properties():
         part.physical_properties["assembly"]["feeder"] = "F2"
-
-    def mutate_ratings():
-        part.ratings["voltage"]["max"] = 100
 
     def mutate_extensions():
         part.extensions["tags"][0] = "changed"
@@ -1258,9 +1239,8 @@ def test_library_part_collection_fields_are_immutable_snapshots():
         part.schematic_symbols[0].primitives[0]["start"]["x"] = 99
 
     assert tuple(part.pads[1]) == ("1",)
-    assert part.properties["metadata"]["bin"] == "A"
+    assert part.properties["bin"] == "A"
     assert part.physical_properties["assembly"]["feeder"] == "F1"
-    assert part.ratings["voltage"]["max"] == 50
     assert part.extensions["tags"] == ("passive",)
     assert part.schematic_symbols[0].primitives[0]["start"]["x"] == 0.0
 
@@ -1268,7 +1248,6 @@ def test_library_part_collection_fields_are_immutable_snapshots():
         mutate_pads,
         mutate_properties,
         mutate_physical_properties,
-        mutate_ratings,
         mutate_extensions,
         mutate_symbol_primitive,
     ):
@@ -1309,13 +1288,16 @@ def test_project_instantiates_imported_part_without_manual_footprint_cache():
 
     result = project.run()
 
-    assert result.ok
+    assert not result.ok
+    assert "PCB_FOOTPRINT_UNRESOLVED" in {
+        diagnostic.code for diagnostic in result.diagnostics
+    }
     document = json.loads(result.board().to_json())
     definitions = document["board"]["footprint_definitions"]
     assert [definition["ref"] for definition in definitions] == [
         {"library": "Resistor_SMD", "name": "R_0603_1608Metric"}
     ]
-    assert document["board"]["placements"][0]["footprint"] == "footprint_def:0"
+    assert document["board"]["placements"][0]["footprint"] is None
 
 
 def test_part_pin_pad_mapping_supports_tied_pads():
@@ -1344,15 +1326,20 @@ def test_part_pin_pad_mapping_supports_tied_pads():
 
     result = library.build()
     resolutions = {resolution.pad_label: resolution for resolution in board.resolve_pads()}
+    artifact = json.loads(result.part("TieAndMechanical").artifact.bytes)
 
     assert result.ok
-    assert resolutions["2"].pin == j1[2].index
-    assert resolutions["4"].pin == j1[2].index
-    assert resolutions["2"].net == tied_net.index
-    assert resolutions["4"].net == tied_net.index
+    assert resolutions == {}
+    assert artifact["orderable_part"]["terminal_pad_mappings"] == [
+        {"terminal": "1", "pads": ["1"]},
+        {"terminal": "2", "pads": ["2", "4"]},
+    ]
+    assert "PCB_FOOTPRINT_UNRESOLVED" in {
+        diagnostic.code for diagnostic in board.validate()
+    }
 
 
-def test_part_validation_reports_unknown_pad_label():
+def test_part_validation_rejects_unknown_pad_label():
     library = volt.Library("volt.test.bad")
     library.add(
         volt.Part(
@@ -1367,13 +1354,8 @@ def test_part_validation_reports_unknown_pad_label():
         )
     )
 
-    result = library.build()
-
-    assert not result.ok
-    assert [diagnostic.code for diagnostic in result.diagnostics] == [
-        "LIBRARY_PART_ARTIFACT_INVALID",
-    ]
-    assert result.part("BadPad").board_ready is False
+    with pytest.raises(volt.CrossReferenceError, match="foreign footprint pad"):
+        library.build()
 
 
 def test_part_validation_rejects_closed_footprint_polygons_at_artifact_boundary():
@@ -1398,18 +1380,11 @@ def test_part_validation_rejects_closed_footprint_polygons_at_artifact_boundary(
         )
     )
 
-    result = library.build()
-    part_result = result.part("ClosedCourtyard")
-
-    assert not result.ok
-    assert part_result.artifact is None
-    assert [diagnostic.code for diagnostic in result.diagnostics] == [
-        "LIBRARY_PART_ARTIFACT_INVALID",
-    ]
-    assert "must not repeat vertices" in result.diagnostics[0].message
+    with pytest.raises(volt.InvalidArgumentError, match="must not repeat vertices"):
+        library.build()
 
 
-def test_part_validation_reports_unresolvable_pad_mapping_key_not_board_ready():
+def test_part_validation_rejects_unresolvable_pad_mapping_key():
     library = volt.Library("volt.test.bad")
     library.add(
         volt.Part(
@@ -1431,16 +1406,11 @@ def test_part_validation_reports_unresolvable_pad_mapping_key_not_board_ready():
         )
     )
 
-    result = library.build()
-
-    assert not result.ok
-    assert [diagnostic.code for diagnostic in result.diagnostics] == [
-        "LIBRARY_PART_ARTIFACT_INVALID",
-    ]
-    assert result.part("BadPadKey").board_ready is False
+    with pytest.raises(volt.CrossReferenceError, match="Every package terminal must map"):
+        library.build()
 
 
-def test_part_validation_rejects_missing_symbol_projection_at_artifact_boundary():
+def test_part_validation_accepts_exact_part_without_optional_symbol_projection():
     library = volt.Library("volt.test.bad")
     library.add(
         volt.Part(
@@ -1456,11 +1426,7 @@ def test_part_validation_rejects_missing_symbol_projection_at_artifact_boundary(
 
     result = library.build()
 
-    assert not result.ok
-    assert [diagnostic.code for diagnostic in result.diagnostics] == [
-        "LIBRARY_PART_ARTIFACT_INVALID",
-    ]
-    assert "at least one schematic symbol projection" in result.diagnostics[0].message
+    assert result.ok
     assert result.part("NoSymbol").schematic_ready is False
 
 
@@ -1512,30 +1478,12 @@ def test_part_validation_rejects_unknown_mechanical_pad_role():
         )
     )
 
-    result = library.build()
-
-    assert not result.ok
-    assert [(diagnostic.code, diagnostic.severity) for diagnostic in result.diagnostics] == [
-        ("LIBRARY_PART_ARTIFACT_INVALID", "error")
-    ]
-    assert "Unknown footprint pad mechanical role" in result.diagnostics[0].message
-    assert result.part("TypoMechanicalPad").board_ready is False
+    with pytest.raises(ValueError, match="Unknown footprint pad mechanical role"):
+        library.build()
 
 
-def test_part_validation_reports_lineup_diagnostics_and_non_serializable_data():
+def test_part_validation_rejects_unowned_electrical_footprint_pads():
     library = volt.Library("volt.test.incomplete")
-    library.add(
-        volt.Part(
-            name="MissingPin",
-            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
-            symbol=_two_pin_test_symbol("volt.test:MissingPin"),
-            footprint=_resistor_0603_footprint(),
-            pads={1: "1"},
-            manufacturer="Yageo",
-            mpn="MISSING",
-            package="0603",
-        )
-    )
     library.add(
         volt.Part(
             name="MissingElectricalPad",
@@ -1554,6 +1502,13 @@ def test_part_validation_reports_lineup_diagnostics_and_non_serializable_data():
             package="0603",
         )
     )
+
+    with pytest.raises(volt.CrossReferenceError, match="ownership does not match"):
+        library.build()
+
+
+def test_part_validation_reports_non_serializable_source_metadata():
+    library = volt.Library("volt.test.non-serializable")
     library.add(
         volt.Part(
             name="NonSerializable",
@@ -1572,12 +1527,9 @@ def test_part_validation_reports_lineup_diagnostics_and_non_serializable_data():
 
     assert not result.ok
     assert [(diagnostic.source, diagnostic.code) for diagnostic in result.diagnostics] == [
-        ("part:MissingElectricalPad", "LIBRARY_PART_ARTIFACT_INVALID"),
-        ("part:MissingPin", "LIBRARY_PART_ARTIFACT_INVALID"),
-        ("part:NonSerializable", "LIBRARY_PART_NON_SERIALIZABLE"),
+        ("part:NonSerializable", "LIBRARY_PART_NON_SERIALIZABLE")
     ]
-    assert "ownership does not match" in result.diagnostics[0].message
-    assert "Every package terminal must map" in result.diagnostics[1].message
+    assert result.part("NonSerializable").serializable is False
 
 
 def test_library_result_is_deterministic():
@@ -1585,9 +1537,9 @@ def test_library_result_is_deterministic():
     library.add(
         volt.Part(
             name="Zeta",
-            pins=[volt.PinSpec("1", 1)],
+            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
             footprint=_resistor_0603_footprint(),
-            pads={1: "9"},
+            pads={1: "1", 2: "2"},
             manufacturer="Yageo",
             mpn="ZETA",
             package="0603",
@@ -1612,11 +1564,10 @@ def test_library_result_is_deterministic():
     ] == [
         ("part:Alpha", "LIBRARY_PART_MISSING_PINS"),
         ("part:Alpha", "LIBRARY_PART_MISSING_FOOTPRINT"),
-        ("part:Zeta", "LIBRARY_PART_ARTIFACT_INVALID"),
     ]
 
 
-def test_part_ref_only_missing_geometry_still_reports_unresolved_footprint():
+def test_part_ref_only_missing_geometry_is_not_an_exact_instantiation_route():
     library = volt.Library("volt.test.missing_geometry")
     resistor = volt.Part(
         name="MissingGeometry",
@@ -1630,22 +1581,15 @@ def test_part_ref_only_missing_geometry_still_reports_unresolved_footprint():
     )
     library.add(resistor)
     design = volt.Design("part-missing-footprint")
-    r1 = design.instantiate(resistor, ref="R1")
-    left = design.net("LEFT")
-    right = design.net("RIGHT")
-    left += r1[1]
-    right += r1[2]
-    board = design.add_board("Main")
-    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
-    board.place(r1, at=(10.0, 6.0))
-
     result = library.build()
 
     assert not result.ok
     assert [diagnostic.code for diagnostic in result.diagnostics] == [
         "LIBRARY_PART_MISSING_FOOTPRINT_GEOMETRY"
     ]
-    assert "PCB_FOOTPRINT_UNRESOLVED" in {diagnostic.code for diagnostic in board.validate()}
+    with pytest.raises(ValueError, match="complete native exact part"):
+        design.instantiate(resistor, ref="R1")
+    assert design.components() == ()
 
 
 def test_component_select_part_accepts_public_footprint_object():

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
 from ._immutable import _freeze_value, _mutable_value
 from ._library_symbol_builders import (
@@ -23,6 +23,9 @@ from ._footprint import FootprintInput
 from ._utils import _coordinate, _number, _positive_coordinate
 
 PinPadValue = str | tuple[str, ...] | list[str]
+
+if TYPE_CHECKING:
+    from .part import ComponentContract
 
 
 def _point3(value: tuple[float, float, float], context: str) -> tuple[float, float, float]:
@@ -565,11 +568,7 @@ class LibraryComponent:
     physical_part: PhysicalPartSpec | None = None
     prefix: str = "U"
     schematic_symbols: tuple[SchematicSymbolSpec, ...] = ()
-
-    @property
-    def cache_key(self) -> tuple[str, str, str, str]:
-        """Return the stable design-local cache key for this library component."""
-        return (self.library.namespace, self.source_name, self.source_version, self.name)
+    contract: ComponentContract | None = None
 
     @property
     def schematic_symbol(self) -> SchematicSymbolSpec | None:
@@ -589,6 +588,7 @@ class LibraryComponent:
             physical_part=self.physical_part,
             prefix=self.prefix,
             schematic_symbols=self.schematic_symbols,
+            contract=self.contract,
         )
 
 
@@ -623,6 +623,18 @@ class Library:
 
         return LibraryResult(self)
 
+    def _native_snapshot(self, parts=None):
+        """Build one immutable native P4 snapshot from the complete library closure."""
+        from . import _volt
+        from .library_result import _part_artifact_payload
+
+        selected = self._ordered_parts() if parts is None else tuple(parts)
+        return _volt.PartLibrarySnapshot(
+            self.namespace,
+            self.version,
+            [_part_artifact_payload(part) for part in selected],
+        )
+
     @property
     def parts(self) -> tuple[Part, ...]:
         """Return registered public parts in deterministic order."""
@@ -649,6 +661,7 @@ class Library:
         physical_part: PhysicalPartSpec | None = None,
         prefix: str = "U",
         schematic_symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
+        contract: ComponentContract | None = None,
     ) -> LibraryComponent:
         """Register a reusable component entry in this Python library."""
         if not name:
@@ -667,6 +680,7 @@ class Library:
             physical_part=physical_part,
             prefix=prefix,
             schematic_symbols=_normalize_schematic_symbols(schematic_symbol),
+            contract=contract,
         )
         self._components[name] = component
         return component
@@ -718,7 +732,7 @@ class _PartFamily:
 def _merge_part_family_payload(defaults: dict, overrides: dict) -> dict:
     result = dict(defaults)
     for key, value in overrides.items():
-        if key in {"properties", "physical_properties", "ratings", "extensions"}:
+        if key in {"properties", "physical_properties", "extensions"}:
             result[key] = _merge_part_family_mapping(result.get(key), value)
         else:
             result[key] = value

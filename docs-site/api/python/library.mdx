@@ -4,6 +4,186 @@ description: Generated reference for library, component, pin, and schematic symb
 ---
 This page is generated from the public Python source. Add or improve docstrings in `python/volt` to improve the reference.
 
+## `volt.ComponentContract`
+
+Complete portable component identity and feature-binding contract.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `key: str` |
+| `pin_keys: tuple[str, ...]` |
+| `framed_pins: tuple[ContractFramedPin, ...]` |
+| `relations: tuple[ContractDirectedRelation, ...]` |
+| `supply_domains: tuple[ContractSupplyDomain, ...]` |
+| `feature_schemas: tuple[FeatureSchema, ...]` |
+| `feature_bindings: tuple[FeatureBinding, ...]` |
+
+## `volt.ContractDirectedRelation`
+
+One stable directed relation between two component pins.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `key: str` |
+| `from_pin: str` |
+| `to_pin: str` |
+
+## `volt.ContractFramedPin`
+
+One stable component pin measured relative to another stable pin.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `key: str` |
+| `pin: str` |
+| `reference: str` |
+
+## `volt.ContractSupplyDomain`
+
+One stable supply domain over positive and return pin sets.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `key: str` |
+| `positive_pins: tuple[str, ...]` |
+| `return_pins: tuple[str, ...]` |
+
+## `volt.ElectricalRecord`
+
+One canonical Voltage or Current source record for an exact part.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `subject: ElectricalSubject` |
+| `observable: str` |
+| `meaning: str` |
+| `value_kind: str` |
+| `minimum: float \| None` |
+| `typical: float \| None` |
+| `maximum: float \| None` |
+| `value: float \| None` |
+| `evidence: tuple[str, ...]` |
+| `conditions: tuple[ElectricalCondition, ...]` |
+| `tolerance_mode: str \| None` |
+| `tolerance_minus: float \| None` |
+| `tolerance_plus: float \| None` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `accepted_voltage(cls, subject: ElectricalSubject, minimum: float, maximum: float) -> ElectricalRecord` | Declare an accepted Voltage range on one subject. |
+| `provided_voltage(cls, subject: ElectricalSubject, minimum: float, maximum: float) -> ElectricalRecord` | Declare a provided Voltage range on one subject. |
+| `absolute_voltage(cls, subject: ElectricalSubject, *, minimum: float \| None = None, maximum: float \| None = None) -> ElectricalRecord` | Declare a one- or two-sided absolute Voltage limit. |
+| `characteristic_voltage(cls, subject: ElectricalSubject, minimum: float, typical: float, maximum: float) -> ElectricalRecord` | Declare a characteristic Voltage envelope. |
+| `absolute_current(cls, subject: ElectricalSubject, *, minimum: float \| None = None, maximum: float \| None = None) -> ElectricalRecord` | Declare a one- or two-sided absolute Current limit. |
+| `current_requirement(cls, subject: ElectricalSubject, value: float) -> ElectricalRecord` | Declare a continuous Current requirement. |
+| `current_capability(cls, subject: ElectricalSubject, value: float) -> ElectricalRecord` | Declare a continuous Current capability. |
+
+## `volt.ElectricalRecordSelector`
+
+Typed selector used by a bounded native electrical-value reference.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `subject: ElectricalSubject` |
+| `observable: str` |
+| `meaning: str` |
+
+## `volt.ElectricalSubject`
+
+Typed reference to a named contract subject or explicit stable pins.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `kind: str` |
+| `key: str \| None` |
+| `positive_pins: tuple[str, ...]` |
+| `return_pins: tuple[str, ...]` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `framed_pin(cls, key: str) -> ElectricalSubject` | Reference one named framed-pin subject. |
+| `directed_relation(cls, key: str) -> ElectricalSubject` | Reference one named directed-relation subject. |
+| `supply_domain(cls, key: str) -> ElectricalSubject` | Reference one named supply-domain subject. |
+| `directed_pins(cls, from_pin: str, to_pin: str) -> ElectricalSubject` | Create an explicit directed subject from two stable PinKeys. |
+| `supply_pins(cls, positive_pins: Iterable[str], return_pins: Iterable[str]) -> ElectricalSubject` | Create an explicit supply subject from stable PinKey sets. |
+
+## `volt.ElectricalCondition`
+
+One equality or inclusive range condition lowered to the native record model.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `subject: ElectricalSubject` |
+| `observable: str` |
+| `predicate: str` |
+| `minimum: ElectricalValueExpression \| None` |
+| `maximum: ElectricalValueExpression \| None` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `equal(cls, subject: ElectricalSubject, observable: str, value: ElectricalValueExpression) -> ElectricalCondition` | Create a native equality condition. |
+| `range(cls, subject: ElectricalSubject, observable: str, *, minimum: ElectricalValueExpression \| None = None, maximum: ElectricalValueExpression \| None = None) -> ElectricalCondition` | Create a native one- or two-sided inclusive range condition. |
+
+## `volt.ElectricalValueExpression`
+
+Literal quantity or one native selector multiplied by a scalar.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `kind: str` |
+| `value: float \| None` |
+| `selector: ElectricalRecordSelector \| None` |
+| `scale: float \| None` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `literal(cls, value: float) -> ElectricalValueExpression` | Create a literal condition value in the condition observable's dimension. |
+| `scaled_reference(cls, selector: ElectricalRecordSelector, scale: float) -> ElectricalValueExpression` | Create one bounded native record reference multiplied by a scalar. |
+
 ## `volt.Library`
 
 Collection of reusable Python-authored component definitions.
@@ -24,7 +204,7 @@ Source: `python/volt/library.py`
 | `build(self) -> LibraryResult` | Validate this library's public parts and return a deterministic result. |
 | `part_family(self, **defaults) -> _PartFamily` | Create a helper that registers parts using shared defaults. |
 | `part(self, name: str, **kwargs) -> Part` | Create and register a public part in this library. |
-| `component(self, name: str, *, pins: Iterable[PinSpec], properties: dict \| None = None, source_name: str \| None = None, source_version: str \| None = None, physical_part: PhysicalPartSpec \| None = None, prefix: str = 'U', schematic_symbol: SchematicSymbolSpec \| Iterable[SchematicSymbolSpec] \| None = None) -> LibraryComponent` | Register a reusable component entry in this Python library. |
+| `component(self, name: str, *, pins: Iterable[PinSpec], properties: dict \| None = None, source_name: str \| None = None, source_version: str \| None = None, physical_part: PhysicalPartSpec \| None = None, prefix: str = 'U', schematic_symbol: SchematicSymbolSpec \| Iterable[SchematicSymbolSpec] \| None = None, contract: ComponentContract \| None = None) -> LibraryComponent` | Register a reusable component entry in this Python library. |
 | `__getitem__(self, name: str) -> Part \| LibraryComponent` | Return a registered public part or legacy library component by name. |
 
 ## `volt.LibraryComponent`
@@ -46,12 +226,12 @@ Source: `python/volt/library.py`
 | `physical_part: PhysicalPartSpec \| None` |
 | `prefix: str` |
 | `schematic_symbols: tuple[SchematicSymbolSpec, ...]` |
+| `contract: ComponentContract \| None` |
 
 ### Properties
 
 | Property | Summary |
 | --- | --- |
-| `cache_key: tuple[str, str, str, str]` | Return the stable design-local cache key for this library component. |
 | `schematic_symbol: SchematicSymbolSpec \| None` | Return this component's default schematic symbol, if one is registered. |
 
 ## `volt.LibraryDiagnostic`
@@ -127,6 +307,8 @@ Source: `python/volt/library_result.py`
 | `pad_mapping_complete: bool` |
 | `artifact: LibraryPartArtifact \| None` |
 | `diagnostics: tuple[LibraryDiagnostic, ...]` |
+| `component_sha256: str` |
+| `exact_reference: dict[str, str]` |
 
 ## `volt.LibraryResult`
 
@@ -140,6 +322,7 @@ Source: `python/volt/library_result.py`
 | --- | --- |
 | `ok: bool` | Return whether the library build has no error diagnostics. |
 | `diagnostics: LibraryDiagnostics` | Return diagnostics collected during library validation. |
+| `digest: str` | Return the deterministic native P4 library digest. |
 | `parts: tuple[LibraryPartResult, ...]` | Return per-part validation summaries in deterministic name order. |
 
 ### Methods
@@ -169,6 +352,70 @@ Source: `python/volt/library.py`
 | `drive: str` |
 | `polarity: str` |
 | `voltage_range: tuple[float \| None, float \| None] \| None` |
+
+## `volt.FeatureBinding`
+
+One component-local binding of a schema to a named subject.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `key: str` |
+| `schema: str` |
+| `subject: ElectricalSubject` |
+| `roles: tuple[FeatureRoleBinding, ...]` |
+
+## `volt.FeatureRole`
+
+One typed terminal role in a feature schema.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `key: str` |
+| `cardinality: str` |
+
+## `volt.FeatureRoleBinding`
+
+One feature role assigned to stable component pins.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `role: str` |
+| `pins: tuple[str, ...]` |
+
+## `volt.FeatureSchema`
+
+One versioned feature schema over a canonical electrical subject.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `key: str` |
+| `subject_kind: str` |
+| `roles: tuple[FeatureRole, ...]` |
+| `required_records: tuple[CanonicalRecordRequirement, ...]` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `supply_consumer(cls) -> FeatureSchema` | Return the canonical native supply-consumer feature schema. |
+| `supply_source(cls) -> FeatureSchema` | Return the canonical native supply-source feature schema. |
+| `diode_junction(cls) -> FeatureSchema` | Return the canonical native diode-junction feature schema. |
 
 ## `volt.PhysicalPartSpec`
 
@@ -207,7 +454,7 @@ Source: `python/volt/library.py`
 
 ## `volt.Part`
 
-Reusable public part definition for Python-authored Volt libraries.
+Reusable Python declaration lowered into an exact native library part.
 
 Source: `python/volt/part.py`
 
@@ -218,6 +465,19 @@ Source: `python/volt/part.py`
 | `library: Library \| None` | Return the library this part was added to, if any. |
 | `schematic_symbol: SchematicSymbolSpec \| None` | Return this part's default schematic symbol, if one is registered. |
 | `part_number: str \| None` | Return the manufacturer part number carried by this part. |
+
+## `volt.CanonicalRecordRequirement`
+
+One canonical observable/meaning pair required by a feature.
+
+Source: `python/volt/part.py`
+
+### Fields
+
+| Field |
+| --- |
+| `observable: str` |
+| `meaning: str` |
 
 ## `volt.PartModel3D`
 
