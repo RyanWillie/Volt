@@ -348,6 +348,43 @@ def test_exact_part_reference_is_shared_by_two_named_boards():
     assert second.to_json() == second.to_json()
 
 
+def test_exact_part_instantiation_preserves_model_3d_for_board_export(tmp_path):
+    asset_path = tmp_path / "resistor-body.glb"
+    asset_path.write_bytes(b"placeholder-glb")
+    library = volt.Library("test.models")
+    part = library.part(
+        "R-1K",
+        pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+        symbol=_symbol("test:r", (("1", 1), ("2", 2))),
+        footprint=_footprint("R-1K", 2),
+        pads={1: "1", 2: "2"},
+        manufacturer="Test",
+        mpn="R-1K",
+        package="TEST-2",
+        model_3d=volt.PartModel3D(
+            asset_path,
+            offset=(0.5, -0.25, 0.8),
+            rotation=15,
+        ),
+    )
+    design = volt.Design("exact model projection")
+    component = design.instantiate(part, ref="R1")
+    board = design.add_board("Main")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+    board.place(component, at=(10.0, 6.0))
+
+    placed_model = board._placed_model_3d_refs()[0]
+
+    assert placed_model.model is not None
+    assert placed_model.model._to_dict() == {
+        "format": "glb",
+        "file_name": "resistor-body.glb",
+        "translation_mm": [0.5, -0.25, 0.8],
+        "rotation_deg": 15.0,
+    }
+    assert placed_model.source_path == asset_path
+
+
 def test_selected_part_erc_resolution_is_explicit_and_exact():
     library = volt.Library("test.explicit")
     source = _supply_part(
