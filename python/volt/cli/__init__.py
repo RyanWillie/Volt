@@ -94,6 +94,15 @@ class _NativePartLibraryBundle:
 
         return dict(_volt.part_library_bundle_inspect(self.bytes))
 
+    def validate(self) -> None:
+        """Verify that native reopen accepts these immutable bundle bytes."""
+        _ = self.digest
+
+    def part_keys(self) -> list[str]:
+        from .. import _volt
+
+        return [str(part_key) for part_key in _volt.part_library_bundle_part_keys(self.bytes)]
+
     def part_result(self, part_key: str) -> dict[str, object]:
         from .. import _volt
 
@@ -745,6 +754,7 @@ def _library_result_from_source(source: str | Path) -> tuple[LibraryConfig, Libr
             config, library = _library_from_source(source)
             result = library.build()
     except CliError:
+        _forward_project_stdout(source_stdout)
         raise
     except Exception as error:
         _forward_project_stdout(source_stdout)
@@ -780,8 +790,7 @@ def _handle_library_build(args: argparse.Namespace) -> int | None:
         return EXIT_CHECK_FAILED
     try:
         bundle_bytes = _native_bundle_query("build", lambda: result.bundle_bytes)
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_bytes(bundle_bytes)
+        _write_bundle_atomically(output, bundle_bytes)
     except OSError as error:
         raise CliError(f"Failed to write PartLibraryBundle {output}: {error}") from error
     payload["bundle_digest"] = _bundle_from_path(output).digest
@@ -795,8 +804,7 @@ def _handle_library_build(args: argparse.Namespace) -> int | None:
 
 def _handle_library_test(args: argparse.Namespace) -> int | None:
     bundle = _bundle_from_path(args.bundle)
-    inspection = _native_bundle_query("inspect", bundle.inspect)
-    parts = _bundle_part_keys(inspection)
+    parts = _native_bundle_query("query part keys", bundle.part_keys)
     for part in parts:
         _native_bundle_query(f"query part {part!r}", lambda part=part: bundle.part_result(part))
         _native_bundle_query(f"query assets for part {part!r}", lambda part=part: bundle.part_assets(part))
@@ -874,7 +882,7 @@ def _bundle_from_path(path: str | Path):
     bundle_path = Path(path).expanduser()
     try:
         bundle = _NativePartLibraryBundle(bundle_path.read_bytes())
-        bundle.digest
+        bundle.validate()
         return bundle
     except OSError as error:
         raise CliError(f"Failed to read PartLibraryBundle {bundle_path}: {error}") from error
@@ -891,18 +899,6 @@ def _native_bundle_query(action: str, callback: Callable[[], Any]) -> Any:
         raise CliError(f"Native PartLibraryBundle {action} failed: {error}") from error
 
 
-def _bundle_part_keys(inspection: Mapping[str, object]) -> list[str]:
-    entries = inspection["entries"]
-    assert isinstance(entries, list)
-    return [
-        str(entry["id"])[len("reference:") :]
-        for entry in entries
-        if isinstance(entry, Mapping)
-        and entry.get("role") == "library_part_reference"
-        and str(entry.get("id", "")).startswith("reference:")
-    ]
-
-
 def _library_part_payload(part_key: str, result: Mapping[str, object]) -> dict[str, object]:
     return {
         "key": part_key,
@@ -916,6 +912,17 @@ def _library_part_payload(part_key: str, result: Mapping[str, object]) -> dict[s
 def _library_output_path(output: Path) -> Path:
     path = output.expanduser()
     return path if path.is_absolute() else Path.cwd() / path
+
+
+def _write_bundle_atomically(output: Path, bundle_bytes: bytes) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary = output.with_name(f".{output.name}.tmp")
+    try:
+        temporary.write_bytes(bundle_bytes)
+        os.replace(temporary, output)
+    except OSError:
+        temporary.unlink(missing_ok=True)
+        raise
 
 
 def _write_library_assets(output: Path, assets: Sequence[Mapping[str, object]]) -> list[dict[str, str]]:

@@ -56,6 +56,8 @@ class PyPartLibraryBundle {
 
     [[nodiscard]] py::dict inspect() const;
 
+    [[nodiscard]] py::list part_keys() const;
+
     [[nodiscard]] py::dict part_result(const std::string &part_key) const;
 
     [[nodiscard]] py::list part_assets(const std::string &part_key) const;

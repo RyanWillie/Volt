@@ -309,6 +309,14 @@ py::dict PyPartLibraryBundle::inspect() const {
     return result;
 }
 
+py::list PyPartLibraryBundle::part_keys() const {
+    auto result = py::list{};
+    for (const auto &part : bundle_.library().parts()) {
+        result.append(part.identity().name());
+    }
+    return result;
+}
+
 py::dict PyPartLibraryBundle::part_result(const std::string &part_key) const {
     const auto reference = bundle_.require(volt::PartKey{part_key});
     const auto &part = bundle_.resolve(reference);

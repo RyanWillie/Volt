@@ -1094,3 +1094,23 @@ LIB.add(volt.Part(name="Broken", pins=(), footprint=None, pads={}))
     build = _read_stdout_json(capsys)
     assert build["written"] is False
     assert not output.exists()
+
+
+def test_library_build_preserves_existing_output_on_write_failure(tmp_path, capsys, monkeypatch):
+    source = tmp_path / "library"
+    output = tmp_path / "library.voltlib"
+    _write_library(source)
+    output.write_bytes(b"previous bundle")
+    original_write_bytes = Path.write_bytes
+
+    def fail_temporary_write(path: Path, data: bytes) -> int:
+        if path == output.with_name(f".{output.name}.tmp"):
+            raise OSError("disk full")
+        return original_write_bytes(path, data)
+
+    monkeypatch.setattr(Path, "write_bytes", fail_temporary_write)
+
+    assert main(["library", "build", str(source), "--output", str(output)]) == 2
+    assert "Failed to write PartLibraryBundle" in capsys.readouterr().err
+    assert output.read_bytes() == b"previous bundle"
+    assert not output.with_name(f".{output.name}.tmp").exists()

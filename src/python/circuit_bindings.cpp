@@ -77,6 +77,9 @@ void bind_circuit(pybind11::module_ &module) {
     module.def("part_library_bundle_inspect", [](const py::bytes &bytes) {
         return PyPartLibraryBundle{static_cast<std::string>(bytes)}.inspect();
     });
+    module.def("part_library_bundle_part_keys", [](const py::bytes &bytes) {
+        return PyPartLibraryBundle{static_cast<std::string>(bytes)}.part_keys();
+    });
     module.def(
         "part_library_bundle_part_result", [](const py::bytes &bytes, const std::string &part_key) {
             return PyPartLibraryBundle{static_cast<std::string>(bytes)}.part_result(part_key);
