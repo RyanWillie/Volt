@@ -120,6 +120,9 @@ class PartLibraryBuilder {
     /** Build one immutable snapshot after resolving and verifying every referenced asset. */
     [[nodiscard]] PartLibrary build(const PartAssetResolver &asset_resolver) const;
 
+    /** Return the canonical admitted-library digest without resolving asset payloads. */
+    [[nodiscard]] ContentHash reference_digest() const;
+
     /** Return the exact identity of the pending build. */
     [[nodiscard]] const PartLibraryIdentity &identity() const & noexcept { return identity_; }
 
@@ -155,14 +158,32 @@ class PartLibraryBuilder {
     std::vector<PartDefinition> parts_;
 };
 
+/** Canonical immutable integrity boundary for selecting and resolving one exact part. */
+class ExactPartResolver {
+  public:
+    virtual ~ExactPartResolver() = default;
+
+    /** Return the admitted library identity carried by exact references. */
+    [[nodiscard]] virtual const PartLibraryIdentity &identity() const & noexcept = 0;
+
+    /** Return the exact digest that resolved references must carry. */
+    [[nodiscard]] virtual const ContentHash &reference_digest() const & noexcept = 0;
+
+    /** Resolve one complete exact reference or reject every integrity mismatch. */
+    [[nodiscard]] virtual const PartDefinition &
+    resolve(const LibraryPartRef &reference) const & = 0;
+};
+
 /** Immutable validated C++-owned in-memory part-library snapshot. */
-class PartLibrary {
+class PartLibrary : public ExactPartResolver {
   public:
     /** Build from one structurally valid builder and one explicit asset resolver. */
     PartLibrary(const PartLibraryBuilder &builder, const PartAssetResolver &asset_resolver);
 
     /** Return the exact human identity and native schema. */
-    [[nodiscard]] const PartLibraryIdentity &identity() const & noexcept { return identity_; }
+    [[nodiscard]] const PartLibraryIdentity &identity() const & noexcept override {
+        return identity_;
+    }
 
     /** Prevent borrowing the library identity from a temporary snapshot. */
     [[nodiscard]] const PartLibraryIdentity &identity() const && = delete;
@@ -172,6 +193,10 @@ class PartLibrary {
 
     /** Prevent borrowing the library digest from a temporary snapshot. */
     [[nodiscard]] const ContentHash &digest() const && = delete;
+
+    [[nodiscard]] const ContentHash &reference_digest() const & noexcept override {
+        return digest_;
+    }
 
     /** Return all component definitions in stable ComponentKey order. */
     [[nodiscard]] std::span<const ComponentDefinition> components() const & noexcept {
@@ -215,7 +240,7 @@ class PartLibrary {
     [[nodiscard]] LibraryPartRef require(const PartKey &key) const;
 
     /** Resolve one exact reference or fail with a typed structural kernel error. */
-    [[nodiscard]] const PartDefinition &resolve(const LibraryPartRef &reference) const &;
+    [[nodiscard]] const PartDefinition &resolve(const LibraryPartRef &reference) const & override;
 
     /** Prevent resolving a borrowed part from a temporary snapshot. */
     [[nodiscard]] const PartDefinition &resolve(const LibraryPartRef &reference) const && = delete;
@@ -229,6 +254,6 @@ class PartLibrary {
 
 /** Validate selected exact-part Voltage and continuous-Current semantics against connectivity. */
 [[nodiscard]] DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
-                                                          const PartLibrary &library);
+                                                          const ExactPartResolver &resolver);
 
 } // namespace volt

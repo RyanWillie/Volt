@@ -3,6 +3,7 @@
 #include "binding_conversions.hpp"
 
 #include <volt/pcb/board.hpp>
+#include <volt/pcb/resolution/board_resolution.hpp>
 
 #include <cstddef>
 #include <map>
@@ -70,13 +71,13 @@ class PyBoard {
                                          double diameter_mm, const std::string &side,
                                          const std::string &role);
 
-    [[nodiscard]] std::size_t cache_footprint_definition(const py::dict &definition);
-
     [[nodiscard]] std::size_t place_component(std::size_t component, double x, double y,
                                               double rotation_degrees, const std::string &side,
                                               bool locked);
 
     [[nodiscard]] py::list placement_refs() const;
+
+    [[nodiscard]] py::list placed_model_3d_refs() const;
 
     [[nodiscard]] py::list stackup() const;
 
@@ -142,6 +143,10 @@ class PyBoard {
     [[nodiscard]] py::dict to_fabrication_files() const;
 
   private:
+    [[nodiscard]] volt::BoardResolution
+    resolve(std::vector<volt::BoardAssetCapability> additional = {}) const;
+
+    const PyCircuit *circuit_;
     volt::Board board_;
 };
 

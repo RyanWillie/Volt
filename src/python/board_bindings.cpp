@@ -47,12 +47,11 @@ void bind_board(pybind11::module_ &module) {
              py::arg("role") = "")
         .def("add_circle", &PyBoard::add_circle, py::arg("label"), py::arg("x"), py::arg("y"),
              py::arg("diameter_mm"), py::arg("side") = "top", py::arg("role") = "")
-        .def("cache_footprint_definition", &PyBoard::cache_footprint_definition,
-             py::arg("definition"))
         .def("place_component", &PyBoard::place_component, py::arg("component"), py::arg("x"),
              py::arg("y"), py::arg("rotation_degrees") = 0.0, py::arg("side") = "top",
              py::arg("locked") = false)
         .def("placement_refs", &PyBoard::placement_refs)
+        .def("placed_model_3d_refs", &PyBoard::placed_model_3d_refs)
         .def("stackup", &PyBoard::stackup)
         .def("component_footprint_pads", &PyBoard::component_footprint_pads, py::arg("component"))
         .def("add_track", &PyBoard::add_track, py::arg("net"), py::arg("layer"), py::arg("points"),

@@ -221,83 +221,12 @@ def test_project_result_keeps_distinct_model_assets_with_same_hash(tmp_path):
     ]
 
 
-def test_project_result_viewer_profile_reports_missing_part_model_assets(tmp_path):
-    header_asset = tmp_path / "header-body.glb"
-    header_asset.write_bytes(b"header-glb")
-    project = volt.Project("viewer-profile")
+def test_missing_part_model_asset_is_rejected_at_exact_part_admission(tmp_path):
+    design = volt.Design("model-admission")
+    resistor = design.R("330", ref="R1")
 
-    @project.design
-    def design():
-        design = volt.Design("viewer-profile")
-        vcc = design.net("VCC", kind="power")
-        gnd = design.net("GND", kind="ground")
-        j1 = design.connector_1x02(ref="J1")
-        r1 = design.R("330", ref="R1")
-        vcc += j1[1], r1[1]
-        gnd += r1[2], j1[2]
-
-        design.component("J1").select_part(
-            manufacturer="Generic",
-            part_number="HDR-1x02",
-            package="2.54mm-1x02",
-            footprint=_header_1x02(),
-            pin_pads={1: "1", 2: "2"},
-            model_3d=volt.PartModel3D(header_asset),
-        )
-        design.component("R1").select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
-            package="0603",
-            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-            pin_pads={1: "1", 2: "2"},
-            model_3d=volt.PartModel3D(
-                tmp_path / "missing-body.glb",
-                offset=(0.0, 0.0, 0.3),
-            ),
-        )
-        _mark_populated(design, "J1", "R1")
-        return design
-
-    @project.board
-    def board(context):
-        design = context.design()
-        pcb = design.add_board("Main")
-        pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
-        pcb.place(design.component("J1"), at=(4, 5), locked=True)
-        pcb.place(design.component("R1"), at=(10, 5))
-        return pcb
-
-    output = tmp_path / "viewer-profile.volt"
-    project.run().write(output, profile="viewer")
-
-    diagnostics = json.loads((output / "diagnostics" / "diagnostics.json").read_text(encoding="utf-8"))
-    assert diagnostics["summary"]["errors"] == 1
-    assert [diagnostic["code"] for diagnostic in diagnostics["diagnostics"]] == [
-        "PROJECT_PART_MODEL_3D_MISSING",
-    ]
-
-
-def test_project_result_viewer_profile_honors_expected_model_diagnostics(tmp_path):
-    project = volt.Project("expected-viewer-profile")
-    project.expect_diagnostic(code="PROJECT_PART_MODEL_3D_MISSING", stage="bundle")
-
-    @project.design
-    def design():
-        design = volt.Design("expected-viewer-profile")
-        vcc = design.net("VCC", kind="power")
-        gnd = design.net("GND", kind="ground")
-        j1 = design.connector_1x02(ref="J1")
-        r1 = design.R("330", ref="R1")
-        vcc += j1[1], r1[1]
-        gnd += r1[2], j1[2]
-        design.component("J1").select_part(
-            manufacturer="Generic",
-            part_number="HDR-1x02",
-            package="2.54mm-1x02",
-            footprint=_header_1x02(),
-            pin_pads={1: "1", 2: "2"},
-        )
-        design.component("R1").select_part(
+    with pytest.raises(FileNotFoundError):
+        resistor.select_part(
             manufacturer="Yageo",
             part_number="RC0603FR-07330RL",
             package="0603",
@@ -305,33 +234,39 @@ def test_project_result_viewer_profile_honors_expected_model_diagnostics(tmp_pat
             pin_pads={1: "1", 2: "2"},
             model_3d=volt.PartModel3D(tmp_path / "missing-body.glb"),
         )
-        _mark_populated(design, "J1", "R1")
-        return design
 
-    @project.board
-    def board(context):
-        design = context.design()
-        pcb = design.add_board("Main")
-        pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
-        pcb.place(design.component("J1"), at=(4, 5), locked=True)
-        pcb.place(design.component("R1"), at=(10, 5))
-        return pcb
-
-    result = project.run()
-    output = tmp_path / "expected-viewer-profile.volt"
-    result.write(output, profile="viewer")
-
-    manifest = json.loads((output / "manifest.volt.json").read_text(encoding="utf-8"))
-    diagnostics = json.loads((output / "diagnostics" / "diagnostics.json").read_text(encoding="utf-8"))
-
-    assert manifest["ok"] is True
-    assert manifest["status"] == "expected-diagnostics"
-    assert [item["code"] for item in diagnostics["expected"]] == ["PROJECT_PART_MODEL_3D_MISSING"]
-    assert diagnostics["unexpected"] == []
-    assert diagnostics["missing_expected"] == []
+    assert "selected_library_part" not in json.loads(design.to_json())["components"][0]
 
 
-def test_project_result_default_profile_keeps_part_models_optional(tmp_path):
+def test_missing_part_model_asset_preserves_existing_exact_selection(tmp_path):
+    asset = tmp_path / "body.glb"
+    asset.write_bytes(b"body")
+    design = volt.Design("model-admission-atomic")
+    resistor = design.R("330", ref="R1")
+    resistor.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603FR-07330RL",
+        package="0603",
+        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+        pin_pads={1: "1", 2: "2"},
+        model_3d=volt.PartModel3D(asset),
+    )
+    before = design.to_json()
+
+    with pytest.raises(FileNotFoundError):
+        resistor.select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-07330RL",
+            package="0603",
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+            pin_pads={1: "1", 2: "2"},
+            model_3d=volt.PartModel3D(tmp_path / "missing-body.glb"),
+        )
+
+    assert design.to_json() == before
+
+
+def test_project_result_default_profile_keeps_absent_part_models_optional(tmp_path):
     header_asset = tmp_path / "header-body.glb"
     header_asset.write_bytes(b"header-glb")
     project = volt.Project("default-profile")
@@ -360,10 +295,6 @@ def test_project_result_default_profile_keeps_part_models_optional(tmp_path):
             package="0603",
             footprint=_passive_0603(("passives", "R_0603_1608Metric")),
             pin_pads={1: "1", 2: "2"},
-            model_3d=volt.PartModel3D(
-                tmp_path / "missing-body.glb",
-                offset=(0.0, 0.0, 0.3),
-            ),
         )
         _mark_populated(design, "J1", "R1")
         return design

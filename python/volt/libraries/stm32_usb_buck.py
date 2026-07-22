@@ -899,7 +899,6 @@ RESISTOR = LIB.component(
         part_number="RC0603FR-0710KL",
         package="0603",
         footprint=RESISTOR_0603_FOOTPRINT,
-        power_rating=0.1,
     ),
     prefix="R",
     schematic_symbol=_two_pin_symbol("Resistor", "R"),

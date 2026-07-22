@@ -188,16 +188,11 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "OUT",
         "LED_A",
     }
-    assert {
-        component["selected_physical_part"]["footprint"]["name"]
+    assert all(
+        component["selected_library_part"]["library_namespace"]
+        == "volt.python.design"
         for component in logical["components"]
-    } == {
-        "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
-        "SOIC-8_3.9x4.9mm_P1.27mm",
-        "R_0805_2012Metric",
-        "C_0805_2012Metric",
-        "LED_0805_2012Metric",
-    }
+    )
     assert sum(validation["summary"].values()) == len(validation["diagnostics"])
     assert validation["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
     assert validation["diagnostics"] == []

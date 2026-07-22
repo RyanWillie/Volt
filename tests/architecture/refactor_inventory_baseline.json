@@ -82,19 +82,19 @@
         "sha256": "333a12ea3448977fda0230f161761025cc264eefce7b21dfec4fb73b9aa373f1"
       },
       {
-        "byte_count": 89869,
+        "byte_count": 90652,
         "path": "examples/stm32_usb_buck/artifacts/stm32_usb_buck.kicad_pcb",
-        "sha256": "2f2bf4328e5b290760fe7a94bb325544d60c8a86720c8ffccfa94cace7adb91c"
+        "sha256": "afe25e07de7ed13d343c6a7b812446ad74d80e68e51f25dea19cd897878328dc"
       },
       {
-        "byte_count": 167991,
+        "byte_count": 173086,
         "path": "examples/stm32_usb_buck/artifacts/stm32_usb_buck.pcb.svg",
-        "sha256": "08f06dd20fd73cb4d53547b20822f952d5b877b9ea6e4317b015405fbd3e9b59"
+        "sha256": "4ada48908b8f7eb5e387b81e8d51d36ea6e5c0e38c1fa55e01d436ac44e31793"
       },
       {
-        "byte_count": 189794,
+        "byte_count": 199103,
         "path": "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/pcb/STM32-USB-Buck-PCB.volt.pcb.json",
-        "sha256": "806d578affe0772b00756efdc0eaa5964bf308936685c78fcf5f45dd615b687b"
+        "sha256": "63786990b790f9610040c69f4a657fa56754f1b267020efeb95534e90b180b5a"
       }
     ],
     "semantic": [
@@ -264,7 +264,7 @@
           "schematic_svg"
         ],
         "path": "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/manifest.volt.json",
-        "sha256": "eea45cc1846c50e3f6978edaf82c1b4783ad7df56953b57dda6c7293e6a93842",
+        "sha256": "67eb9f156231541568fa059da824ec8dc97426f2981ccb92e8d3d36b2669b57f",
         "top_level_counts": {
           "artifacts": 14,
           "diagnostics": 3,
@@ -294,15 +294,15 @@
       },
       {
         "path": "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/logical/stm32_usb_buck.volt.json",
-        "sha256": "0e4c011c8a5bb36ad8f70f13a9a5b023501b3971c5474ca4ceaae407568c17ef",
+        "sha256": "71236ea61b5a5829530aee8a4a27717cb5376e4188b2495cbd5f3b57e81448ac",
         "top_level_counts": {
-          "component_definitions": 16,
+          "component_definitions": 14,
           "components": 28,
           "design_intent": 3,
           "module_definitions": 4,
           "module_instances": 4,
           "nets": 41,
-          "pin_definitions": 117,
+          "pin_definitions": 113,
           "pins": 139
         },
         "top_level_keys": [
@@ -358,7 +358,7 @@
       },
       {
         "path": "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/pcb/STM32-USB-Buck-PCB.volt.pcb.json",
-        "sha256": "806d578affe0772b00756efdc0eaa5964bf308936685c78fcf5f45dd615b687b",
+        "sha256": "63786990b790f9610040c69f4a657fa56754f1b267020efeb95534e90b180b5a",
         "top_level_counts": {
           "board": 16,
           "viewer": 3
@@ -506,12 +506,8 @@
         "_board_registry",
         "_boards",
         "_circuit",
-        "_component_exact_model_3d",
-        "_component_model_3d_asset_sources",
-        "_component_object_footprints",
         "_definitions",
         "_net_class_counter",
-        "_object_footprints",
         "_owner",
         "_schematic_document",
         "_schematic_sheets",
@@ -519,60 +515,7 @@
         "_sourcing_snapshot",
         "name"
       ],
-      "hidden_footprint_injections": [
-        {
-          "caller": "PyBoard::component_footprint_pads",
-          "path": "src/python/py_board.cpp"
-        },
-        {
-          "caller": "PyBoard::add_track_for_route",
-          "path": "src/python/py_board.cpp"
-        },
-        {
-          "caller": "PyBoard::assisted_connect",
-          "path": "src/python/py_board.cpp"
-        },
-        {
-          "caller": "PyBoard::escape",
-          "path": "src/python/py_board.cpp"
-        },
-        {
-          "caller": "PyBoard::resolve_pads",
-          "path": "src/python/py_board.cpp"
-        },
-        {
-          "caller": "PyBoard::validate",
-          "path": "src/python/py_board.cpp"
-        },
-        {
-          "caller": "PyBoard::validate_assembly",
-          "path": "src/python/py_board.cpp"
-        },
-        {
-          "caller": "PyBoard::cpl_json",
-          "path": "src/python/py_board.cpp"
-        },
-        {
-          "caller": "PyBoard::cpl_csv",
-          "path": "src/python/py_board.cpp"
-        },
-        {
-          "caller": "PyBoard::to_json",
-          "path": "src/python/py_board.cpp"
-        },
-        {
-          "caller": "PyBoard::to_svg",
-          "path": "src/python/py_board.cpp"
-        },
-        {
-          "caller": "PyBoard::to_fabrication_files",
-          "path": "src/python/py_fabrication.cpp"
-        },
-        {
-          "caller": "PyBoard::to_kicad_pcb",
-          "path": "src/python/py_kicad.cpp"
-        }
-      ],
+      "hidden_footprint_injections": [],
       "lifetime_evidence": [
         "src/python/board_bindings.cpp: BoardRegistry keep_alive retains its bound Circuit owner",
         "src/python/board_bindings.cpp: Board references retain their BoardRegistry owner",
@@ -613,6 +556,7 @@
       "py_board_owner_private_members": [
         "board",
         "boards",
+        "circuit",
         "circuit"
       ],
       "py_circuit_private_members": [
@@ -620,7 +564,8 @@
         "module_drafts",
         "next_module_component_handle",
         "next_port_handle",
-        "next_template_net_handle"
+        "next_template_net_handle",
+        "selected_part_bundle"
       ],
       "py_schematic_private_members": [
         "schematic_document"
@@ -628,7 +573,6 @@
       "python_board_handle_attributes": [
         "_design",
         "_native",
-        "_synced_footprint_refs",
         "name",
         "units"
       ]
@@ -641,7 +585,7 @@
         },
         "BoardRouter": {
           "path": "tests/architecture/boardrouter_public_api.txt",
-          "sha256": "8cbbf02ce4faebc669d205e03893128cc83e8c8c86e2c81adde85dba506573c0"
+          "sha256": "1f416966f5c8a73b5dc1626b1816fb68d123b50034a92cc4c0072bc3671944eb"
         },
         "BoardSpatialIndex": {
           "path": "tests/architecture/boardspatialindex_public_api.txt",

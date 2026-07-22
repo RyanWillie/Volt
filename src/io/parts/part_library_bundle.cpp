@@ -295,25 +295,6 @@ void append_sized(std::string &out, std::string_view value) {
     return sha256_content_hash(canonical);
 }
 
-[[nodiscard]] ContentHash
-bundle_library_digest(const PartLibrary &library, std::span<const PartLibraryBundleEntry> entries,
-                      const std::map<std::string, std::string> &payloads_by_id) {
-    auto entry_documents = Json::array();
-    for (const auto &entry : entries) {
-        entry_documents.push_back(entry_json(entry));
-    }
-    const auto identity = Json{
-        {"entries", std::move(entry_documents)},
-        {"format", "volt.part-library-bundle-library"},
-        {"library",
-         {{"namespace", library.identity().namespace_name()},
-          {"schema_version", static_cast<std::uint32_t>(library.identity().schema_version())},
-          {"version", library.identity().version()}}},
-        {"schema_version", static_cast<std::uint32_t>(PartLibraryBundleSchemaVersion::V1)},
-    };
-    return content_digest(identity, entries, payloads_by_id);
-}
-
 [[nodiscard]] std::string encode_archive(const Json &manifest,
                                          std::span<const PartLibraryBundleEntry> entries,
                                          const std::map<std::string, std::string> &payloads_by_id) {
@@ -829,14 +810,14 @@ PartLibraryBundle::build(const PartLibraryBuilder &builder, std::span<const Part
     }
 
     std::ranges::sort(entries, {}, &PartLibraryBundleEntry::path);
-    const auto closure_digest = bundle_library_digest(library, entries, payloads);
+    const auto reference_digest = builder.reference_digest();
     auto selected_roots = std::vector<std::string>{};
     for (const auto &part : selected_definitions) {
         const auto part_entry_id = part_id(part);
         const auto key = PartKey{part.identity().name()};
         const auto reference =
             LibraryPartRef{library.identity().namespace_name(), library.identity().version(), key,
-                           closure_digest, part.content_identity()};
+                           reference_digest, part.content_identity()};
         const auto reference_entry_id = reference_id(key);
         const auto reference_document = library_part_reference_document(reference);
         add_entry(PartLibraryBundleEntry{reference_entry_id,
@@ -852,11 +833,11 @@ PartLibraryBundle::build(const PartLibraryBuilder &builder, std::span<const Part
 
     std::ranges::sort(entries, {}, &PartLibraryBundleEntry::path);
     std::ranges::sort(selected_roots);
-    auto core = manifest_core(library, closure_digest, entries, selected_roots);
+    auto core = manifest_core(library, reference_digest, entries, selected_roots);
     auto manifest = core;
     manifest["content_digest"] = content_digest(core, entries, payloads).value();
     auto bytes = encode_archive(manifest, entries, payloads);
-    return PartLibraryBundle{std::move(bytes), closure_digest, std::move(library),
+    return PartLibraryBundle{std::move(bytes), reference_digest, std::move(library),
                              std::move(entries), std::move(payloads)};
 }
 
@@ -1021,16 +1002,7 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
                        "PartLibraryBundle snapshot digest does not match reopened meaning",
                        ErrorCode::CrossReferenceViolation);
 
-        auto closure_entries = std::vector<PartLibraryBundleEntry>{};
-        for (const auto &entry : entries) {
-            if (entry.role() != PartLibraryBundleEntryRole::LibraryPartReference) {
-                closure_entries.push_back(entry);
-            }
-        }
-        const auto closure_digest = bundle_library_digest(library, closure_entries, payloads_by_id);
-        require_bundle(closure_digest == ContentHash{required_string(library_document, "digest")},
-                       "PartLibraryBundle library digest does not match its exact closure",
-                       ErrorCode::CrossReferenceViolation);
+        const auto reference_digest = ContentHash{required_string(library_document, "digest")};
 
         auto reference_ids = std::vector<std::string>{};
         for (const auto &entry : entries) {
@@ -1049,9 +1021,9 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
             const auto part = library.part(recorded.part_key());
             require_bundle(part.has_value(), "PartLibraryBundle LibraryPartRef part key is missing",
                            ErrorCode::UnknownEntity);
-            const auto expected =
-                LibraryPartRef{library.identity().namespace_name(), library.identity().version(),
-                               recorded.part_key(), closure_digest, part->get().content_identity()};
+            const auto expected = LibraryPartRef{library.identity().namespace_name(),
+                                                 library.identity().version(), recorded.part_key(),
+                                                 reference_digest, part->get().content_identity()};
             require_bundle(same_reference(recorded, expected),
                            "PartLibraryBundle LibraryPartRef does not resolve exactly",
                            ErrorCode::CrossReferenceViolation);
@@ -1083,7 +1055,7 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
             "PartLibraryBundle contains entries outside the exact selected dependency closure",
             ErrorCode::CrossReferenceViolation);
 
-        return PartLibraryBundle{std::string{bytes}, closure_digest, std::move(library),
+        return PartLibraryBundle{std::string{bytes}, reference_digest, std::move(library),
                                  std::move(entries), std::move(payloads_by_id)};
     } catch (const KernelError &) {
         throw;

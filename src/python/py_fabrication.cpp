@@ -91,8 +91,9 @@ fabrication_exporter_metadata_to_dict(const volt::io::PcbFabricationExporterMeta
 } // namespace
 
 py::dict PyBoard::to_fabrication_files() const {
+    const auto resolution = resolve();
     const auto export_result =
-        volt::io::write_pcb_fabrication_files(board_, volt::builtin_footprint_library());
+        volt::io::write_pcb_fabrication_files(resolution.board(), resolution.footprints());
 
     auto result = py::dict{};
 

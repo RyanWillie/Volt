@@ -225,12 +225,11 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
             "DISCH": "7",
             "VCC": "8",
         },
-        voltage_rating=16.0,
     )
-    for component, part_number, power_rating in (
-        (parts["RA"], "RMCF0805FT100K", 0.125),
-        (parts["RB"], "RMCF0805FT47K0", 0.125),
-        (parts["RLED"], "RMCF0805FT1K00", 0.125),
+    for component, part_number in (
+        (parts["RA"], "RMCF0805FT100K"),
+        (parts["RB"], "RMCF0805FT47K0"),
+        (parts["RLED"], "RMCF0805FT1K00"),
     ):
         component.select_part(
             manufacturer="Stackpole",
@@ -238,7 +237,6 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
             package="0805",
             footprint=FOOTPRINTS["resistor_0805"],
             pin_pads={1: "1", 2: "2"},
-            power_rating=power_rating,
         )
     for component, part_number, voltage_rating in (
         (parts["CT"], "CL21B105KBFNNNE", 50.0),

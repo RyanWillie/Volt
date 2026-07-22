@@ -38,6 +38,7 @@ ComponentInstance::with_electrical_attribute(const ElectricalAttributeSpec &spec
 [[nodiscard]] ComponentInstance
 ComponentInstance::with_selected_physical_part(PhysicalPart part) const {
     auto result = *this;
+    result.selected_library_part_ref_.reset();
     result.selected_physical_part_ = std::move(part);
     return result;
 }

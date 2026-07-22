@@ -3,6 +3,7 @@ import json
 import pytest
 
 import volt
+from project_framework_helpers import _passive_0603
 from volt import _volt
 from volt.diagnostics import _diagnostic_from_dict
 from volt.project import _flat_diagnostic_payload, _report_diagnostics
@@ -131,7 +132,7 @@ def test_voltage_rating_diagnostic_is_inspectable():
         manufacturer="Example",
         part_number="LOW-VOLTAGE-CAP",
         package="0603",
-        footprint=("Capacitor_SMD", "C_0603"),
+        footprint=_passive_0603(("Capacitor_SMD", "C_0603")),
         pin_pads={1: "1", 2: "2"},
         voltage_rating=3.3,
     )

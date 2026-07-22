@@ -337,6 +337,8 @@ board_keepout_restriction_from_name(const std::string &value) {
         return "fiducial";
     case FootprintPadMechanicalRole::MechanicalSupport:
         return "mechanical_support";
+    case FootprintPadMechanicalRole::Thermal:
+        return "thermal";
     }
     throw KernelLogicError{ErrorCode::InvalidState, "Unhandled PCB footprint pad mechanical role"};
 }
@@ -351,6 +353,9 @@ footprint_pad_mechanical_role_from_name(const std::string &value) {
     }
     if (value == "mechanical_support") {
         return FootprintPadMechanicalRole::MechanicalSupport;
+    }
+    if (value == "thermal") {
+        return FootprintPadMechanicalRole::Thermal;
     }
     throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid PCB footprint pad mechanical role"};
 }

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Iterable, Iterator
 
 from . import _volt
-from ._footprint import Footprint, FootprintInput, footprint_ref
+from ._footprint import Footprint
 from .library import PartModel3D
 from ._utils import _number
 from .library import LibraryComponent, PinPadValue
@@ -542,7 +542,7 @@ class Component:
         manufacturer: str,
         part_number: str,
         package: str,
-        footprint: FootprintInput,
+        footprint: Footprint,
         pin_pads: dict[int | str, PinPadValue],
         properties: dict | None = None,
         voltage_rating: float | None = None,
@@ -551,45 +551,36 @@ class Component:
         approved_alternate_mpns: Iterable[str] = (),
         selection_override: bool = False,
     ) -> Component:
-        """Attach selected physical part data; pass a Footprint object for board-ready geometry."""
+        """Select one exact P6-backed physical part with explicit footprint geometry."""
         if not isinstance(pin_pads, dict):
             raise TypeError("pin_pads must be a dict")
-        object_footprint = footprint if isinstance(footprint, Footprint) else None
-        if object_footprint is not None:
-            self._design._check_object_footprint(object_footprint)
-        footprint_library, footprint_name = footprint_ref(footprint)
-
-        selected_part_ratings = []
-        if voltage_rating is not None:
-            selected_part_ratings.append(("voltage_rating", "voltage", _number(voltage_rating)))
+        if not isinstance(footprint, Footprint):
+            raise TypeError("select_part footprint must be a complete Footprint")
+        if properties:
+            raise NotImplementedError(
+                "Physical properties are not part of the canonical exact-part contract"
+            )
         if power_rating is not None:
-            selected_part_ratings.append(("power_rating", "power", _number(power_rating)))
-
-        self._design._circuit.select_physical_part(
+            raise NotImplementedError(
+                "Power is not canonical exact-part data in this slice; use a later typed Power record"
+            )
+        model_payload = None if model_3d is None else model_3d._selected_part_payload()
+        model_bytes = None if model_3d is None else model_3d.source_path.read_bytes()
+        self._design._circuit.select_authored_part(
             self._index,
             manufacturer,
             part_number,
             package,
-            footprint_library,
-            footprint_name,
+            footprint._to_dict(),
             pin_pads,
-            properties or {},
-            None if model_3d is None else model_3d._selected_part_payload(),
+            None if voltage_rating is None else _number(voltage_rating),
+            model_payload,
+            model_bytes,
             tuple(str(mpn) for mpn in approved_alternate_mpns),
         )
         self._design._circuit.set_component_selection_override(
             self._index, bool(selection_override)
         )
-        for name, dimension, value in selected_part_ratings:
-            self._design._circuit.set_selected_part_quantity(self._index, name, dimension, value)
-        if object_footprint is not None:
-            self._design._register_component_object_footprint(self._index, object_footprint)
-        else:
-            self._design._clear_component_object_footprint(self._index)
-        if model_3d is not None:
-            self._design._register_component_model_3d_asset_source(self._index, model_3d)
-        else:
-            self._design._clear_component_model_3d_asset_source(self._index)
         return self
 
     def dnp(self, value: bool = True) -> Component:

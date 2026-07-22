@@ -15,7 +15,7 @@
           "kind": "component"
         },
         {
-          "index": 54,
+          "index": 50,
           "kind": "pin_definition"
         }
       ],
@@ -44,6 +44,42 @@
       "entities": [
         {
           "index": 74,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 51,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 78,
           "kind": "pin"
         },
         {
@@ -79,42 +115,6 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 78,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 59,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
           "index": 79,
           "kind": "pin"
         },
@@ -123,7 +123,7 @@
           "kind": "component"
         },
         {
-          "index": 60,
+          "index": 56,
           "kind": "pin_definition"
         }
       ],
@@ -152,6 +152,78 @@
       "entities": [
         {
           "index": 80,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 57,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 81,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 58,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 84,
           "kind": "pin"
         },
         {
@@ -187,7 +259,7 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 81,
+          "index": 85,
           "kind": "pin"
         },
         {
@@ -223,79 +295,79 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 84,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 65,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 85,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 66,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
           "index": 86,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 63,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 87,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 64,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 90,
           "kind": "pin"
         },
         {
@@ -331,7 +403,7 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 87,
+          "index": 91,
           "kind": "pin"
         },
         {
@@ -367,7 +439,79 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 90,
+          "index": 92,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 69,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 93,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 70,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 94,
           "kind": "pin"
         },
         {
@@ -403,7 +547,7 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 91,
+          "index": 95,
           "kind": "pin"
         },
         {
@@ -439,7 +583,7 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 92,
+          "index": 96,
           "kind": "pin"
         },
         {
@@ -475,7 +619,7 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 93,
+          "index": 97,
           "kind": "pin"
         },
         {
@@ -511,7 +655,7 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 94,
+          "index": 98,
           "kind": "pin"
         },
         {
@@ -547,7 +691,7 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 95,
+          "index": 99,
           "kind": "pin"
         },
         {
@@ -583,7 +727,7 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 96,
+          "index": 100,
           "kind": "pin"
         },
         {
@@ -619,79 +763,7 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 97,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 78,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 98,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 79,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 99,
+          "index": 103,
           "kind": "pin"
         },
         {
@@ -727,7 +799,7 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 100,
+          "index": 104,
           "kind": "pin"
         },
         {
@@ -763,78 +835,6 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 103,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 84,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 104,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 85,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
           "index": 105,
           "kind": "pin"
         },
@@ -843,7 +843,7 @@
           "kind": "component"
         },
         {
-          "index": 86,
+          "index": 82,
           "kind": "pin_definition"
         }
       ],
@@ -879,7 +879,7 @@
           "kind": "component"
         },
         {
-          "index": 87,
+          "index": 83,
           "kind": "pin_definition"
         }
       ],
@@ -915,7 +915,7 @@
           "kind": "component"
         },
         {
-          "index": 88,
+          "index": 84,
           "kind": "pin_definition"
         }
       ],
@@ -951,7 +951,7 @@
           "kind": "component"
         },
         {
-          "index": 89,
+          "index": 85,
           "kind": "pin_definition"
         }
       ],
@@ -987,7 +987,7 @@
           "kind": "component"
         },
         {
-          "index": 90,
+          "index": 86,
           "kind": "pin_definition"
         }
       ],
@@ -1023,7 +1023,7 @@
           "kind": "component"
         },
         {
-          "index": 91,
+          "index": 87,
           "kind": "pin_definition"
         }
       ],
@@ -1059,7 +1059,7 @@
           "kind": "component"
         },
         {
-          "index": 92,
+          "index": 88,
           "kind": "pin_definition"
         }
       ],
@@ -1095,7 +1095,7 @@
           "kind": "component"
         },
         {
-          "index": 93,
+          "index": 89,
           "kind": "pin_definition"
         }
       ],
@@ -1131,7 +1131,7 @@
           "kind": "component"
         },
         {
-          "index": 94,
+          "index": 90,
           "kind": "pin_definition"
         }
       ],
@@ -1167,7 +1167,7 @@
           "kind": "component"
         },
         {
-          "index": 101,
+          "index": 97,
           "kind": "pin_definition"
         }
       ],
@@ -1203,7 +1203,7 @@
           "kind": "component"
         },
         {
-          "index": 102,
+          "index": 98,
           "kind": "pin_definition"
         }
       ],
@@ -1239,7 +1239,7 @@
           "kind": "component"
         },
         {
-          "index": 103,
+          "index": 99,
           "kind": "pin_definition"
         }
       ],
@@ -1275,7 +1275,7 @@
           "kind": "component"
         },
         {
-          "index": 104,
+          "index": 100,
           "kind": "pin_definition"
         }
       ],
@@ -1311,7 +1311,7 @@
           "kind": "component"
         },
         {
-          "index": 105,
+          "index": 101,
           "kind": "pin_definition"
         }
       ],
@@ -1347,7 +1347,7 @@
           "kind": "component"
         },
         {
-          "index": 107,
+          "index": 103,
           "kind": "pin_definition"
         }
       ],
@@ -1383,7 +1383,7 @@
           "kind": "component"
         },
         {
-          "index": 108,
+          "index": 104,
           "kind": "pin_definition"
         }
       ],
@@ -1419,7 +1419,7 @@
           "kind": "component"
         },
         {
-          "index": 109,
+          "index": 105,
           "kind": "pin_definition"
         }
       ],
@@ -1455,7 +1455,7 @@
           "kind": "component"
         },
         {
-          "index": 110,
+          "index": 106,
           "kind": "pin_definition"
         }
       ],
@@ -1491,7 +1491,7 @@
           "kind": "component"
         },
         {
-          "index": 112,
+          "index": 108,
           "kind": "pin_definition"
         }
       ],
@@ -1527,7 +1527,7 @@
           "kind": "component"
         },
         {
-          "index": 113,
+          "index": 109,
           "kind": "pin_definition"
         }
       ],
@@ -1883,6 +1883,1266 @@
       "severity": "warning",
       "source": "schematic:STM32 USB Buck",
       "stage": "schematic"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 0,
+          "kind": "net"
+        },
+        {
+          "index": 0,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 4,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 2,
+          "kind": "net"
+        },
+        {
+          "index": 6,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 18,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 2,
+          "kind": "net"
+        },
+        {
+          "index": 15,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 31,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 2,
+          "kind": "net"
+        },
+        {
+          "index": 15,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 22,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 2,
+          "kind": "net"
+        },
+        {
+          "index": 19,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 47,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 3,
+          "kind": "net"
+        },
+        {
+          "index": 7,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 12,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 4,
+          "kind": "net"
+        },
+        {
+          "index": 18,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 62,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 4,
+          "kind": "net"
+        },
+        {
+          "index": 7,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 16,
+          "kind": "component_placement"
+        },
+        {
+          "index": 3,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 4,
+          "kind": "net"
+        },
+        {
+          "index": 16,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 11,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 4,
+          "kind": "net"
+        },
+        {
+          "index": 5,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 10,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 4,
+          "kind": "net"
+        },
+        {
+          "index": 3,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 10,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 4,
+          "kind": "net"
+        },
+        {
+          "index": 10,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 17,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 4,
+          "kind": "net"
+        },
+        {
+          "index": 15,
+          "kind": "component_placement"
+        },
+        {
+          "index": 2,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 22,
+          "kind": "component_placement"
+        },
+        {
+          "index": 8,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 4,
+          "kind": "net"
+        },
+        {
+          "index": 12,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 62,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 4,
+          "kind": "net"
+        },
+        {
+          "index": 8,
+          "kind": "component_placement"
+        },
+        {
+          "index": 5,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 23,
+          "kind": "component_placement"
+        },
+        {
+          "index": 3,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 4,
+          "kind": "net"
+        },
+        {
+          "index": 8,
+          "kind": "component_placement"
+        },
+        {
+          "index": 4,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 27,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 4,
+          "kind": "net"
+        },
+        {
+          "index": 9,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 20,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 4,
+          "kind": "net"
+        },
+        {
+          "index": 6,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 14,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 6,
+          "kind": "net"
+        },
+        {
+          "index": 3,
+          "kind": "component_placement"
+        },
+        {
+          "index": 2,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 9,
+          "kind": "component_placement"
+        },
+        {
+          "index": 4,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 12,
+          "kind": "net"
+        },
+        {
+          "index": 9,
+          "kind": "component_placement"
+        },
+        {
+          "index": 5,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 44,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 13,
+          "kind": "net"
+        },
+        {
+          "index": 9,
+          "kind": "component_placement"
+        },
+        {
+          "index": 3,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 43,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 28,
+          "kind": "net"
+        },
+        {
+          "index": 13,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 6,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 29,
+          "kind": "net"
+        },
+        {
+          "index": 15,
+          "kind": "component_placement"
+        },
+        {
+          "index": 1,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 22,
+          "kind": "component_placement"
+        },
+        {
+          "index": 7,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 29,
+          "kind": "net"
+        },
+        {
+          "index": 14,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 59,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 30,
+          "kind": "net"
+        },
+        {
+          "index": 16,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 4,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 31,
+          "kind": "net"
+        },
+        {
+          "index": 16,
+          "kind": "component_placement"
+        },
+        {
+          "index": 2,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 5,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 32,
+          "kind": "net"
+        },
+        {
+          "index": 11,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 30,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "drc",
+      "code": "PCB_NET_UNROUTED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 33,
+          "kind": "net"
+        },
+        {
+          "index": 12,
+          "kind": "component_placement"
+        },
+        {
+          "index": 0,
+          "kind": "footprint_pad"
+        },
+        {
+          "index": 21,
+          "kind": "component_placement"
+        },
+        {
+          "index": 46,
+          "kind": "footprint_pad"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Logical net still has unrouted placed pads",
+      "overlays": [],
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
     }
   ],
   "expected": [
@@ -1960,6 +3220,24 @@
       "severity": "warning",
       "source": null,
       "stage": null
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "code": "PCB_NET_UNROUTED",
+      "design": null,
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_NET_UNROUTED",
+        "report": "pcb.board",
+        "severity": "warning",
+        "stage": "board"
+      },
+      "matched": true,
+      "report": "pcb.board",
+      "rule": null,
+      "severity": "warning",
+      "source": null,
+      "stage": "board"
     }
   ],
   "missing_expected": [],
@@ -1967,7 +3245,7 @@
   "summary": {
     "errors": 0,
     "infos": 0,
-    "warnings": 48
+    "warnings": 76
   },
   "unexpected": []
 }

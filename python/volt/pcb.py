@@ -378,7 +378,7 @@ class _BoardPlacedModel3DRef:
     placement: _BoardPlacementRef
     reference: str
     model: _SelectedPartModel3D | None
-    source_path: Path | None
+    asset_bytes: bytes | None
     surface_z: float
 
 
@@ -559,7 +559,6 @@ class Board:
     def __init__(self, design, native):
         self._design = design
         self._native = native
-        self._synced_footprint_refs: set[FootprintRef] = set()
         self.name = native.name
         self.units = native.units
 
@@ -760,15 +759,6 @@ class Board:
             )
         raise TypeError("Board.add expects a Volt board primitive")
 
-    def cache_footprint(self, footprint: Footprint) -> int:
-        """Cache an explicit board-owned footprint definition for importers and low-level tests."""
-        if not isinstance(footprint, Footprint):
-            raise TypeError("cache_footprint expects a Footprint")
-        return self._ensure_footprint_cached(footprint)
-
-    def _ensure_footprint_cached(self, footprint: Footprint) -> int:
-        return self._native.cache_footprint_definition(footprint._to_dict())
-
     def place(
         self,
         component: Component | int,
@@ -786,7 +776,6 @@ class Board:
         else:
             component_index = _component_index(component)
         x, y = _point(at, "Board placement position")
-        self._sync_component_object_footprint(component_index)
         placement = self._native.place_component(
             component_index, x, y, float(rotation), side, locked
         )
@@ -812,15 +801,20 @@ class Board:
         return 0.0
 
     def _placed_model_3d_refs(self) -> tuple[_BoardPlacedModel3DRef, ...]:
+        placements = {placement.index: placement for placement in self._placements()}
         return tuple(
             _BoardPlacedModel3DRef(
-                placement=placement,
-                reference=self._design._component_reference(placement.component),
-                model=self._design._selected_part_model_3d(placement.component),
-                source_path=self._design._component_model_3d_asset_source(placement.component),
-                surface_z=self._surface_z(placement.side),
+                placement=placements[item["placement"]],
+                reference=item["reference"],
+                model=(
+                    None
+                    if item["model"] is None
+                    else _SelectedPartModel3D.from_payload(item["model"])
+                ),
+                asset_bytes=item["bytes"],
+                surface_z=self._surface_z(placements[item["placement"]].side),
             )
-            for placement in self._placements()
+            for item in self._native.placed_model_3d_refs()
         )
 
     def add_track(
@@ -854,7 +848,6 @@ class Board:
         width: float,
     ) -> dict:
         """Add a layout route track from endpoint intent resolved by the kernel."""
-        self._sync_object_footprints()
         return self._native.add_track_for_route(
             _optional_net_index(net, self._design),
             _layer_index(layer),
@@ -936,7 +929,6 @@ class Board:
             component_index = component.index
         else:
             component_index = _component_index(component)
-        self._sync_object_footprints()
         return self._native.escape(component_index)
 
     def add_zone(
@@ -1014,7 +1006,6 @@ class Board:
 
     def resolve_pads(self) -> tuple[PadResolution, ...]:
         """Resolve placed footprint pads to component pins and logical nets."""
-        self._sync_object_footprints()
         return tuple(
             PadResolution(
                 placement=item["placement"],
@@ -1031,7 +1022,6 @@ class Board:
 
     def validate(self) -> DiagnosticReport:
         """Run PCB projection validation and return the diagnostic report."""
-        self._sync_object_footprints()
         return DiagnosticReport(
             _diagnostic_from_dict(item) for item in self._native.validate()
         )
@@ -1042,7 +1032,6 @@ class Board:
         rotation_offsets: dict[FootprintRef, float] | None = None,
     ) -> DiagnosticReport:
         """Run assembly handoff validation and return the diagnostic report."""
-        self._sync_object_footprints()
         return DiagnosticReport(
             _diagnostic_from_dict(item)
             for item in self._native.validate_assembly(
@@ -1064,7 +1053,6 @@ class Board:
         rotation_offsets: dict[FootprintRef, float] | None = None,
     ) -> str:
         """Return the deterministic kernel CPL projection as canonical JSON text."""
-        self._sync_object_footprints()
         return self._native.cpl_json(_rotation_offsets_payload(rotation_offsets))
 
     def cpl_csv(
@@ -1073,14 +1061,12 @@ class Board:
         rotation_offsets: dict[FootprintRef, float] | None = None,
     ) -> str:
         """Return the deterministic JLCPCB-shaped CPL projection as CSV text."""
-        self._sync_object_footprints()
         return self._native.cpl_csv(
             _rotation_offsets_payload(rotation_offsets)
         )
 
     def to_json(self) -> str:
         """Serialize the PCB projection to Volt board JSON."""
-        self._sync_object_footprints()
         return self._native.to_json()
 
     def to_svg(
@@ -1092,7 +1078,6 @@ class Board:
         layer: int | None = None,
     ) -> str:
         """Render the PCB projection as SVG."""
-        self._sync_object_footprints()
         return self._native.to_svg(
             pad_net_overlays,
             diagnostic_overlays,
@@ -1102,7 +1087,6 @@ class Board:
 
     def to_kicad_pcb(self) -> KiCadPcbExport:
         """Export the PCB projection to a KiCad `.kicad_pcb` adapter document."""
-        self._sync_object_footprints()
         result = self._native.to_kicad_pcb()
         return KiCadPcbExport(
             text=result["text"],
@@ -1114,7 +1098,6 @@ class Board:
 
     def to_fabrication_files(self) -> PcbFabricationExport:
         """Export the PCB projection to native Gerber and Excellon fabrication files."""
-        self._sync_object_footprints()
         result = self._native.to_fabrication_files()
         return PcbFabricationExport(
             files=tuple(PcbFabricationFile(**file) for file in result["files"]),
@@ -1127,19 +1110,7 @@ class Board:
             exporter=dict(result["exporter"]),
         )
 
-    def _sync_component_object_footprint(self, component: int) -> None:
-        footprint = self._design._object_footprint_for_component(component)
-        if footprint is None or footprint.ref in self._synced_footprint_refs:
-            return
-        self._ensure_footprint_cached(footprint)
-        self._synced_footprint_refs.add(footprint.ref)
-
-    def _sync_object_footprints(self) -> None:
-        for placement in self._placements():
-            self._sync_component_object_footprint(placement.component)
-
     def _component_footprint_pads(self, component: int) -> tuple[ComponentFootprintPad, ...]:
-        self._sync_component_object_footprint(component)
         return tuple(
             ComponentFootprintPad(
                 pad=item["pad"],

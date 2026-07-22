@@ -40,14 +40,14 @@ def _small_resistor_led_design():
         manufacturer="Yageo",
         part_number="RC0603FR-07330RL",
         package="0603",
-        footprint=("passives", "R_0603_1608Metric"),
+        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
         pin_pads={1: "1", 2: "2"},
     )
     d1.select_part(
         manufacturer="Lite-On",
         part_number="LTST-C190KRKT",
         package="0603",
-        footprint=("leds", "LED_0603_1608Metric"),
+        footprint=_passive_0603(("leds", "LED_0603_1608Metric")),
         pin_pads={"A": "1", "K": "2"},
     )
 
@@ -119,6 +119,20 @@ def _two_pad_footprint(ref, *, start=(0.0, 0.0), end=(1.5, 0.0)):
             volt.FootprintPad.surface_mount(
                 "2",
                 at=end,
+                size=(0.8, 0.95),
+                shape="rounded_rectangle",
+            ),
+        ),
+    )
+
+
+def _one_pad_footprint(ref):
+    return volt.FootprintDefinition(
+        ref,
+        pads=(
+            volt.FootprintPad.surface_mount(
+                "1",
+                at=(-0.75, 0.0),
                 size=(0.8, 0.95),
                 shape="rounded_rectangle",
             ),
@@ -208,8 +222,6 @@ def test_pcb_layout_place_returns_placed_component_handle():
     design, r1, d1 = _small_resistor_led_design()
     board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
-    board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
 
     with board.layout(unit=1.0) as layout:
         resistor = layout.place(
@@ -380,8 +392,6 @@ def test_pcb_layout_routes_tracks_and_vias_from_relative_anchors():
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
-    board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
 
     with board.layout(unit=1.0) as layout:
         resistor = layout.two_pad(r1).at((10.0, 10.0)).right()
@@ -425,7 +435,6 @@ def test_pcb_layout_grid_snaps_explicit_authoring_coordinates():
     design, r1, _d1 = _small_resistor_led_design()
     board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
 
     with board.layout(at=(0.26, 0.74), grid=0.5) as layout:
         assert layout.grid == 0.5
@@ -477,7 +486,6 @@ def test_pcb_layout_grid_snaps_route_numeric_helpers_without_snapping_anchor_tar
     board = design.add_board("Control")
     layer = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
 
     with board.layout(grid=0.5) as layout:
         helper = (
@@ -552,8 +560,6 @@ def test_pcb_layout_connects_pads_through_intermediate_anchors_with_rule_width()
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_design_rules(min_track_width=0.25)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 24.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
-    board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
 
     with board.layout(unit=1.0) as layout:
         resistor = layout.two_pad(r1).at((10.0, 10.0)).right()
@@ -593,14 +599,13 @@ def test_pcb_layout_bundles_independent_routes_with_net_inference():
             manufacturer="Yageo",
             part_number="RC0603FR-071KL",
             package="0603",
-            footprint=("passives", "R_0603_1608Metric"),
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
             pin_pads={1: "1", 2: "2"},
         )
 
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
 
     with board.layout(unit=1.0) as layout:
         left = layout.two_pad(left_component).at((10.0, 8.0)).right()
@@ -642,14 +647,13 @@ def test_pcb_layout_connect_re_resolves_pad_anchor_nets_at_mutation_time():
             manufacturer="Yageo",
             part_number="RC0603FR-071KL",
             package="0603",
-            footprint=("passives", "R_0603_1608Metric"),
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
             pin_pads={1: "1", 2: "2"},
         )
 
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
 
     with board.layout(unit=1.0) as layout:
         left = layout.two_pad(left_component).at((10.0, 8.0)).right()
@@ -679,14 +683,13 @@ def test_pcb_layout_connect_delegates_pad_net_resolution_to_kernel(monkeypatch):
             manufacturer="Yageo",
             part_number="RC0603FR-071KL",
             package="0603",
-            footprint=("passives", "R_0603_1608Metric"),
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
             pin_pads={1: "1", 2: "2"},
         )
 
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
 
     with board.layout(unit=1.0) as layout:
         left = layout.two_pad(left_component).at((10.0, 8.0)).right()
@@ -711,7 +714,6 @@ def test_pcb_layout_connect_rejects_explicit_net_that_disagrees_with_pad_endpoin
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
 
     with board.layout(unit=1.0) as layout:
         resistor = layout.two_pad(r1).at((10.0, 8.0)).right()
@@ -725,7 +727,6 @@ def test_pcb_layout_route_rejects_explicit_net_that_disagrees_with_pad_endpoint(
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
 
     with board.layout(unit=1.0) as layout:
         resistor = layout.two_pad(r1).at((10.0, 8.0)).right()
@@ -743,7 +744,6 @@ def test_pcb_layout_fanout_and_stitch_lower_to_tracks_and_vias():
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
-    board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
 
     with board.layout(grid=0.5) as layout:
         led = layout.place(d1, at=(12.0, 10.0), orient="right")
@@ -799,8 +799,6 @@ def test_pcb_layout_frame_and_json_match_absolute_placement_equivalent():
     relative_design, relative_r1, relative_d1 = _small_resistor_led_design()
     relative_board = relative_design.add_board("Control")
     relative_board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
-    relative_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
-    relative_board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
 
     with relative_board.layout(unit=1.0) as layout:
         with layout.frame((10.0, 5.0), direction="Right"):
@@ -811,8 +809,6 @@ def test_pcb_layout_frame_and_json_match_absolute_placement_equivalent():
     absolute_design, absolute_r1, absolute_d1 = _small_resistor_led_design()
     absolute_board = absolute_design.add_board("Control")
     absolute_board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
-    absolute_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
-    absolute_board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
     absolute_board.place(absolute_r1, at=(10.0, 5.0), rotation=0.0, locked=True)
     absolute_board.place(absolute_d1, at=(20.0, 5.0), rotation=180.0)
 
@@ -851,15 +847,14 @@ def test_pcb_layout_reports_invalid_components_and_ambiguous_pin_names():
         layout.move_from(other_board.center)
 
     missing = design.R("1k", ref="R1")
-    missing.select_part(
-        manufacturer="Yageo",
-        part_number="RC0603",
-        package="0603",
-        footprint=("missing", "R_0603_1608Metric"),
-        pin_pads={1: "1", 2: "2"},
-    )
-    with pytest.raises(ValueError, match="resolved footprint pad geometry"):
-        layout.two_pad(missing).right()
+    with pytest.raises(TypeError, match="complete Footprint"):
+        missing.select_part(
+            manufacturer="Yageo",
+            part_number="RC0603",
+            package="0603",
+            footprint=("missing", "R_0603_1608Metric"),
+            pin_pads={1: "1", 2: "2"},
+        )
 
 
 def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
@@ -872,8 +867,6 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     board.set_layer_stack((front, back), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
     board.add(volt.Hole(center=(3.0, 3.0), diameter=3.2, role="mounting", label="MH1"))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
-    board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
     board.place(r1, at=(18.0, 15.0), rotation=0.0, side="top", locked=True)
     board.place(d1, at=(28.0, 15.0), rotation=180.0, side="top")
     track = board.add_track(
@@ -1043,7 +1036,6 @@ def test_python_board_authoring_escape_surfaces_kernel_result():
     board.set_layer_stack((front, back), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
     board.set_design_rules(copper_clearance=0.20, min_track_width=0.20)
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     board.place(r1, at=(10.0, 10.0))
 
     result = board.escape(r1)
@@ -1097,14 +1089,13 @@ def test_python_board_authoring_escape_surfaces_kernel_result():
         manufacturer="Yageo",
         part_number="RC0603FR-071KL",
         package="0603",
-        footprint=("passives", "R_0603_1608Metric"),
+        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
         pin_pads={1: "1", 2: "2"},
     )
     blocked_board = blocked.add_board("Control")
     blocked_front = blocked_board.add_layer("F.Cu", role="copper", side="top")
     blocked_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
     blocked_board.set_design_rules(copper_clearance=0.20, min_track_width=0.20)
-    blocked_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     blocked_board.place(blocked_r, at=(10.0, 10.0))
     keepout = blocked_board.add_keepout(
         outline=((8.6, 9.5), (9.6, 9.5), (9.6, 10.5), (8.6, 10.5)),
@@ -1146,13 +1137,12 @@ def test_python_board_authoring_escape_surfaces_failure_reason_strings():
         manufacturer="Yageo",
         part_number="RC0603FR-071KL",
         package="0603",
-        footprint=("passives", "R_0603_1608Metric"),
+        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
         pin_pads={1: "1", 2: "2"},
     )
     unconnected_board = unconnected.add_board("Control")
     front = unconnected_board.add_layer("F.Cu", role="copper", side="top")
     unconnected_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
-    unconnected_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     unconnected_board.place(unconnected_r, at=(10.0, 10.0))
 
     unconnected_result = unconnected_board.escape(unconnected_r)
@@ -1171,15 +1161,12 @@ def test_python_board_authoring_escape_surfaces_failure_reason_strings():
         manufacturer="Yageo",
         part_number="RC0603FR-071KL",
         package="0603",
-        footprint=("tests", "MixedSide"),
+        footprint=_passive_0603(("tests", "MixedSide"), second_pad_layers="back_smd"),
         pin_pads={1: "1", 2: "2"},
     )
     no_copper_board = no_copper.add_board("Control")
     no_copper_front = no_copper_board.add_layer("F.Cu", role="copper", side="top")
     no_copper_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
-    no_copper_board.cache_footprint(
-        _passive_0603(("tests", "MixedSide"), second_pad_layers="back_smd")
-    )
     no_copper_board.place(no_copper_r, at=(10.0, 10.0))
 
     no_copper_result = no_copper_board.escape(no_copper_r)
@@ -1203,13 +1190,12 @@ def test_python_board_authoring_escape_surfaces_failure_reason_strings():
         manufacturer="Yageo",
         part_number="RC0603FR-071KL",
         package="0603",
-        footprint=("passives", "R_0603_1608Metric"),
+        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
         pin_pads={1: "1", 2: "2"},
     )
     disallowed_board = disallowed.add_board("Control")
     disallowed_board.add_layer("F.Cu", role="copper", side="top")
     disallowed_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
-    disallowed_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     disallowed_board.place(disallowed_r, at=(10.0, 10.0))
 
     disallowed_result = disallowed_board.escape(disallowed_r)
@@ -1224,7 +1210,6 @@ def test_python_board_authoring_escape_rejects_unattemptable_requests():
     board = design.add_board("Control")
     board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     board.place(r1, at=(10.0, 10.0))
 
     with pytest.raises(ValueError, match="without a board placement"):
@@ -1246,20 +1231,14 @@ def test_python_board_authoring_escape_rejects_unattemptable_requests():
     missing_net = missing.net("N")
     missing_r = missing.R("1k", ref="R1")
     missing_net += missing_r[1], missing_r[2]
-    missing_r.select_part(
-        manufacturer="Yageo",
-        part_number="RC0603FR-071KL",
-        package="0603",
-        footprint=("tests", "Missing"),
-        pin_pads={1: "1", 2: "2"},
-    )
-    missing_board = missing.add_board("Control")
-    missing_board.add_layer("F.Cu", role="copper", side="top")
-    missing_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
-    missing_board.place(missing_r, at=(10.0, 10.0))
-
-    with pytest.raises(ValueError, match="with an unresolved footprint"):
-        missing_board.escape(missing_r)
+    with pytest.raises(TypeError, match="complete Footprint"):
+        missing_r.select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-071KL",
+            package="0603",
+            footprint=("tests", "Missing"),
+            pin_pads={1: "1", 2: "2"},
+        )
 
 
 def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
@@ -1272,8 +1251,6 @@ def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
     board.set_layer_stack((front, back), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
     board.add(volt.Hole(center=(3.0, 3.0), diameter=3.2, role="mounting", label="MH1"))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
-    board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
     board.place(r1, at=(18.0, 15.0), rotation=0.0, side="top", locked=True)
     board.place(d1, at=(28.0, 15.0), rotation=180.0, side="top")
     board.add_track(
@@ -1330,14 +1307,14 @@ def test_python_board_authoring_exports_native_fabrication_files(tmp_path):
         manufacturer="Volt",
         part_number="RECT-R",
         package="0603",
-        footprint=("test", "RectR0603"),
+        footprint=_rect_0603(("test", "RectR0603")),
         pin_pads={1: "1", 2: "2"},
     )
     d1.select_part(
         manufacturer="Volt",
         part_number="RECT-D",
         package="0603",
-        footprint=("test", "RectD0603"),
+        footprint=_rect_0603(("test", "RectD0603")),
         pin_pads={"A": "1", "K": "2"},
     )
     led_a = next(net for net in design.nets() if net.name == "LED_A")
@@ -1348,8 +1325,6 @@ def test_python_board_authoring_exports_native_fabrication_files(tmp_path):
     board.set_layer_stack((front, back), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
     board.add(volt.Hole(center=(3.0, 3.0), diameter=3.2, role="mounting", label="MH1"))
-    board.cache_footprint(_rect_0603(("test", "RectR0603")))
-    board.cache_footprint(_rect_0603(("test", "RectD0603")))
     board.place(r1, at=(18.0, 15.0), rotation=0.0, side="top", locked=True)
     board.place(d1, at=(28.0, 15.0), rotation=180.0, side="top")
     board.add_track(
@@ -1615,7 +1590,6 @@ def test_python_board_authoring_sets_rules_and_reports_drc_diagnostics():
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     board.place(r1, at=(10.0, 10.0))
     board.set_design_rules(
         copper_clearance=0.20,
@@ -1711,14 +1685,13 @@ def test_python_board_drc_treats_bound_module_port_copper_as_routed_connectivity
             manufacturer="Volt",
             part_number="ONE-PIN-0603",
             package="0603",
-            footprint=("passives", "R_0603_1608Metric"),
+            footprint=_one_pad_footprint(("passives", "OnePin0603")),
             pin_pads={1: "1"},
         )
 
     board = design.add_board("Main")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(12.0, 6.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     board.place(p1, at=(3.0, 3.0))
     board.place(p2, at=(9.0, 3.0))
     board.add_track(parent, layer=front, points=((2.25, 3.0), (5.0, 3.0)), width=0.40)
@@ -1750,14 +1723,13 @@ def test_python_board_drc_reports_bound_module_port_stub_only_copper_as_unrouted
             manufacturer="Volt",
             part_number="ONE-PIN-0603",
             package="0603",
-            footprint=("passives", "R_0603_1608Metric"),
+            footprint=_one_pad_footprint(("passives", "OnePin0603")),
             pin_pads={1: "1"},
         )
 
     board = design.add_board("Main")
     front = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(12.0, 6.0))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     board.place(p1, at=(3.0, 3.0))
     board.place(module_pad, at=(9.0, 3.0))
     board.add_track(parent, layer=front, points=((2.25, 3.0), (4.5, 3.0)), width=0.40)
@@ -1965,7 +1937,6 @@ def test_python_board_authoring_exposes_pad_resolution_and_validation_diagnostic
     c1 = design.C("100nF", ref="C1")
     board = design.add_board("Main")
     board.set_polygon_outline(((0.0, 0.0), (12.0, 0.0), (12.0, 12.0), (0.0, 12.0)))
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     board.place(r1, at=(6.0, 6.0))
 
     resolutions = board.resolve_pads()
@@ -2003,12 +1974,7 @@ def test_python_board_authoring_surfaces_kernel_structural_rejections():
         board.set_layer_stack((front, 99), thickness=1.6)
     with pytest.raises(ValueError, match="Board point coordinates must be finite"):
         board.set_rectangular_outline(origin=(math.nan, 0.0), size=(10.0, 10.0))
-    footprint_id = board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
-    assert board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric"))) == footprint_id
-    with pytest.raises(RuntimeError, match="conflicts"):
-        board.cache_footprint(
-            _passive_0603(("passives", "R_0603_1608Metric"), pad_span=1.7)
-        )
+    assert not hasattr(board, "cache_footprint")
     with pytest.raises(IndexError, match="Volt entity id is out of range"):
         board.place(99, at=(1.0, 1.0))
     with pytest.raises(TypeError, match="Board component IDs must be integers"):
@@ -2159,31 +2125,25 @@ def test_python_board_auto_registers_design_local_object_owned_footprint():
     assert 'class="footprint-pad' in svg
 
 
-def test_python_board_ref_only_missing_geometry_still_reports_unresolved():
+def test_python_board_rejects_ref_only_footprint_at_selection_boundary():
     design = volt.Design("missing-footprint")
     r1 = design.R("1k", ref="R1")
     left = design.net("LEFT")
     right = design.net("RIGHT")
     left += r1[1]
     right += r1[2]
-    r1.select_part(
-        manufacturer="Yageo",
-        part_number="RC0603FR-071KL",
-        package="0603",
-        footprint=("missing", "NotARealFootprint"),
-        pin_pads={1: "1", 2: "2"},
-    )
-    board = design.add_board("Main")
-    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
-    board.place(r1, at=(10.0, 6.0))
-
-    assert board.resolve_pads() == ()
-    assert "PCB_FOOTPRINT_UNRESOLVED" in {diagnostic.code for diagnostic in board.validate()}
+    with pytest.raises(TypeError, match="complete Footprint"):
+        r1.select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-071KL",
+            package="0603",
+            footprint=("missing", "NotARealFootprint"),
+            pin_pads={1: "1", 2: "2"},
+        )
 
 
 def test_python_board_rejects_non_square_circle_footprint_pad():
     design = volt.Design("bad-circle-pad")
-    board = design.add_board("Main")
     footprint = volt.FootprintDefinition(
         ("volt.test", "BadCirclePad"),
         pads=(
@@ -2196,11 +2156,18 @@ def test_python_board_rejects_non_square_circle_footprint_pad():
         ),
     )
 
+    r1 = design.R("1k", ref="R1")
     with pytest.raises(ValueError, match="Circle footprint pads"):
-        board.cache_footprint(footprint)
+        r1.select_part(
+            manufacturer="Yageo",
+            part_number="BAD-CIRCLE",
+            package="custom",
+            footprint=footprint,
+            pin_pads={1: "1", 2: "1"},
+        )
 
 
-def test_python_board_object_owned_footprints_keep_pad_mapping_diagnostics():
+def test_python_board_object_owned_footprints_reject_invalid_pad_mappings_atomically():
     footprint = _passive_0603(("volt.test", "Mapped0603"))
     missing_pad_footprint = volt.Footprint(
         ("volt.test", "Mapped0603WithExtraPad"),
@@ -2235,23 +2202,13 @@ def test_python_board_object_owned_footprints_keep_pad_mapping_diagnostics():
         prefix="R",
     )
     design = volt.Design("object-footprint-mapping-diagnostics")
-    r1 = design.instantiate(unknown_pad, ref="R1")
-    r2 = design.instantiate(missing_pin, ref="R2")
-    for component in (r1, r2):
-        a_net = design.net(f"{component.reference}_A")
-        b_net = design.net(f"{component.reference}_B")
-        a_net += component[1]
-        b_net += component[2]
-    board = design.add_board("Main")
-    board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 12.0))
-    board.place(r1, at=(10.0, 6.0))
-    board.place(r2, at=(20.0, 6.0))
+    with pytest.raises(ValueError, match="foreign footprint pad"):
+        design.instantiate(unknown_pad, ref="R1")
+    assert "selected_library_part_ref" not in design.to_json()
 
-    codes = {diagnostic.code for diagnostic in board.validate()}
-
-    assert "PCB_FOOTPRINT_UNRESOLVED" not in codes
-    assert "PCB_PAD_MAPPING_UNKNOWN_PAD" in codes
-    assert "PCB_PAD_MAPPING_MISSING_PIN" in codes
+    with pytest.raises(ValueError, match="ownership"):
+        design.instantiate(missing_pin, ref="R2")
+    assert "selected_library_part_ref" not in design.to_json()
 
 
 def test_python_board_object_owned_footprint_supports_tied_and_mechanical_pads():
@@ -2366,11 +2323,11 @@ def test_python_board_dedupes_object_owned_footprints_and_rejects_conflicts():
         "footprint_def:0",
         "footprint_def:0",
     ]
-    with pytest.raises(ValueError, match="conflicts with already registered geometry"):
+    with pytest.raises(ValueError, match="Authored part asset key has conflicting bytes"):
         design.instantiate(conflicting, ref="R3")
 
 
-def test_python_board_rejects_object_owned_footprint_conflicting_with_builtin():
+def test_python_board_resolves_object_owned_footprint_without_builtin_ambient_source():
     footprint = _passive_0603(
         ("passives", "R_0603_1608Metric"),
         body=((-0.6, -0.4), (0.6, -0.4), (0.6, 0.4), (-0.6, 0.4)),
@@ -2397,9 +2354,9 @@ def test_python_board_rejects_object_owned_footprint_conflicting_with_builtin():
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
     board.place(r1, at=(10.0, 6.0))
 
-    for export_or_resolution in (board.resolve_pads, board.validate, board.to_json, board.to_svg):
-        with pytest.raises(RuntimeError, match="conflicts with footprint library definition"):
-            export_or_resolution()
+    assert [resolution.status for resolution in board.resolve_pads()] == ["connected", "connected"]
+    assert "PCB_FOOTPRINT_UNRESOLVED" not in {diagnostic.code for diagnostic in board.validate()}
+    assert 'data-footprint="passives:R_0603_1608Metric"' in board.to_svg()
 
 
 def test_python_board_stackup_authors_copper_weight_and_dielectrics():

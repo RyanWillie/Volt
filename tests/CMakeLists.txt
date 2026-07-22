@@ -75,6 +75,7 @@ add_executable(
     pcb/routing/board_router_test.cpp
     pcb/routing/board_spatial_index_test.cpp
     pcb/board_queries_test.cpp
+    io/pcb/board_resolution_test.cpp
     pcb/board_root_cutover_test.cpp
     pcb/board_test.cpp
     pcb/canonical_public_include_paths_test.cpp
@@ -123,6 +124,30 @@ volt_apply_coverage(volt_core_tests)
 
 include(Catch)
 catch_discover_tests(volt_core_tests PROPERTIES LABELS cpp)
+
+add_executable(
+    volt_pcb_resolution_link_contract
+    pcb/board_resolution_pcb_link_test.cpp
+)
+target_link_libraries(volt_pcb_resolution_link_contract PRIVATE Volt::PCB)
+target_compile_features(volt_pcb_resolution_link_contract PRIVATE cxx_std_23)
+volt_apply_project_warnings(volt_pcb_resolution_link_contract PRIVATE)
+volt_apply_sanitizers(volt_pcb_resolution_link_contract)
+volt_apply_coverage(volt_pcb_resolution_link_contract)
+add_test(NAME pcb_resolution_link_contract COMMAND volt_pcb_resolution_link_contract)
+set_tests_properties(pcb_resolution_link_contract PROPERTIES LABELS cpp)
+
+add_executable(
+    volt_io_resolution_link_contract
+    io/pcb/board_resolution_io_link_test.cpp
+)
+target_link_libraries(volt_io_resolution_link_contract PRIVATE Volt::IO)
+target_compile_features(volt_io_resolution_link_contract PRIVATE cxx_std_23)
+volt_apply_project_warnings(volt_io_resolution_link_contract PRIVATE)
+volt_apply_sanitizers(volt_io_resolution_link_contract)
+volt_apply_coverage(volt_io_resolution_link_contract)
+add_test(NAME io_resolution_link_contract COMMAND volt_io_resolution_link_contract)
+set_tests_properties(io_resolution_link_contract PROPERTIES LABELS cpp)
 
 add_test(
     NAME kicad_adapter_boundary

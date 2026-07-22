@@ -30,9 +30,11 @@ add_library(
     logical/logical_net_class_format.cpp
     parts/part_definition_reader.cpp
     parts/part_definition_writer.cpp
+    parts/footprint_asset.cpp
     parts/part_library_bundle.cpp
     parts/electrical_records_io.cpp
     pcb/pcb_fabrication_writer.cpp
+    pcb/board_resolution.cpp
     pcb/pcb_feature_io.cpp
     pcb/pcb_feature_svg.cpp
     pcb/pcb_reader.cpp

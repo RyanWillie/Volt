@@ -28,7 +28,7 @@ class MaterializedPartModel3DAsset:
     format: str
     suffix: str
     sha256: str
-    source_path: Path
+    source_bytes: bytes
 
 
 @dataclass(frozen=True)
@@ -101,8 +101,8 @@ def collect_project_part_models_3d(
                     )
                 continue
 
-            source_path = placed_model.source_path
-            if source_path is None or not source_path.is_file():
+            source_bytes = placed_model.asset_bytes
+            if source_bytes is None:
                 if profile == "viewer":
                     missing.append(
                         MissingPartModel3D(
@@ -116,16 +116,17 @@ def collect_project_part_models_3d(
                     )
                 continue
 
-            asset_hash = _file_sha256(source_path)
-            asset_key = (asset_hash, model_3d.format, source_path.suffix.lower())
+            asset_hash = hashlib.sha256(source_bytes).hexdigest()
+            suffix = Path(model_3d.file_name).suffix.lower()
+            asset_key = (asset_hash, model_3d.format, suffix)
             asset = assets_by_key.get(asset_key)
             if asset is None:
                 asset = MaterializedPartModel3DAsset(
                     id=f"part_model_asset:{len(assets_by_key)}",
                     format=model_3d.format,
-                    suffix=source_path.suffix.lower(),
+                    suffix=suffix,
                     sha256=asset_hash,
-                    source_path=source_path,
+                    source_bytes=source_bytes,
                 )
                 assets_by_key[asset_key] = asset
                 assets.append(asset)
@@ -183,24 +184,12 @@ def collect_project_part_models_3d(
 
 
 def copy_part_model_3d_asset(asset: MaterializedPartModel3DAsset, destination: Path) -> None:
-    """Copy one model asset without carrying binary payloads in the collected graph."""
+    """Write one exact model asset resolved from the selected native closure."""
     destination.parent.mkdir(parents=True, exist_ok=True)
-    digest = hashlib.sha256()
-    with asset.source_path.open("rb") as source, destination.open("wb") as target:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            digest.update(chunk)
-            target.write(chunk)
-    if digest.hexdigest() != asset.sha256:
+    destination.write_bytes(asset.source_bytes)
+    if hashlib.sha256(asset.source_bytes).hexdigest() != asset.sha256:
         destination.unlink(missing_ok=True)
-        raise OSError(f"3D model asset changed while copying: {asset.source_path}")
-
-
-def _file_sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+        raise OSError("Resolved 3D model asset digest changed during materialization")
 
 
 def _part_model_3d_transform_matrix(

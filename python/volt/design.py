@@ -6,16 +6,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, Mapping
 
 from . import _volt
-from ._footprint import Footprint, FootprintRef
 from ._utils import _number
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
 from .library import (
     Library,
     LibraryComponent,
-    PartModel3D,
     PinSpec,
     SchematicSymbolSpec,
-    _SelectedPartModel3D,
     _normalize_schematic_symbols,
     _schematic_symbol_refs,
 )
@@ -42,10 +39,6 @@ class Design:
         self._boards: dict[str, object] = {}
         self._owner = self._circuit
         self._definitions: dict[str, int] = {}
-        self._object_footprints: dict[FootprintRef, Footprint] = {}
-        self._component_object_footprints: dict[int, FootprintRef] = {}
-        self._component_model_3d_asset_sources: dict[int, Path] = {}
-        self._component_exact_model_3d: dict[int, _SelectedPartModel3D] = {}
         self._net_class_counter = 0
         self._schematic_symbols: dict[str, SchematicSymbolSpec] = {}
         self._schematic_sheets: dict[str, int] = {}
@@ -161,8 +154,7 @@ class Design:
             )
         if voltage_rating is not None:
             voltage_rating_value = _number(voltage_rating)
-            self._circuit.select_generic_physical_part(component.index)
-            self._circuit.set_selected_part_quantity(
+            self._circuit.set_component_quantity(
                 component.index, "voltage_rating", "voltage", voltage_rating_value
             )
         return component
@@ -192,8 +184,7 @@ class Design:
             )
         if voltage_rating is not None:
             voltage_rating_value = _number(voltage_rating)
-            self._circuit.select_generic_physical_part(component.index)
-            self._circuit.set_selected_part_quantity(
+            self._circuit.set_component_quantity(
                 component.index, "voltage_rating", "voltage", voltage_rating_value
             )
         return component
@@ -286,7 +277,7 @@ class Design:
                 )
             for symbol in definition.schematic_symbols:
                 self._register_schematic_symbol(symbol)
-            snapshot = definition.library._native_snapshot()
+            snapshot = definition.library._native_snapshot(selected_bundle=True)
             component_definition = ComponentDefinition(
                 self,
                 self._circuit.define_library_part(snapshot, definition.source_name),
@@ -301,14 +292,6 @@ class Design:
             self._circuit.select_library_part(
                 component.index, snapshot, definition.source_name
             )
-            self._register_component_object_footprint(
-                component.index, definition.footprint
-            )
-            if definition.model_3d is not None:
-                self._register_component_model_3d_asset_source(
-                    component.index, definition.model_3d
-                )
-                self._register_component_exact_model_3d(component.index, definition.model_3d)
             return component
         if isinstance(definition, LibraryComponent):
             definition = definition._to_part_definition()
@@ -387,61 +370,6 @@ class Design:
     def _register_schematic_symbol(self, symbol: SchematicSymbolSpec) -> None:
         self._schematic_document.register_schematic_symbol(symbol._to_dict())
         self._schematic_symbols[symbol.name] = symbol
-
-    def _check_object_footprint(self, footprint: Footprint) -> None:
-        existing = self._object_footprints.get(footprint.ref)
-        if existing is not None and existing._to_dict() != footprint._to_dict():
-            library, name = footprint.ref
-            raise ValueError(
-                f"Footprint {library}:{name} conflicts with already registered geometry"
-            )
-
-    def _register_component_object_footprint(self, component: int, footprint: Footprint) -> None:
-        self._check_object_footprint(footprint)
-        self._object_footprints[footprint.ref] = footprint
-        self._component_object_footprints[component] = footprint.ref
-
-    def _clear_component_object_footprint(self, component: int) -> None:
-        self._component_object_footprints.pop(component, None)
-
-    def _register_component_model_3d_asset_source(
-        self,
-        component: int,
-        model_3d: PartModel3D,
-    ) -> None:
-        self._component_model_3d_asset_sources[component] = model_3d.source_path
-        self._component_exact_model_3d.pop(component, None)
-
-    def _clear_component_model_3d_asset_source(self, component: int) -> None:
-        self._component_model_3d_asset_sources.pop(component, None)
-        self._component_exact_model_3d.pop(component, None)
-
-    def _component_model_3d_asset_source(self, component: int) -> Path | None:
-        return self._component_model_3d_asset_sources.get(component)
-
-    def _register_component_exact_model_3d(
-        self,
-        component: int,
-        model_3d: PartModel3D,
-    ) -> None:
-        self._component_exact_model_3d[component] = model_3d._selected_part_model()
-
-    def _selected_part_model_3d(self, component: int) -> _SelectedPartModel3D | None:
-        if component in self._component_exact_model_3d:
-            return self._component_exact_model_3d[component]
-        payload = self._circuit.component_selected_part_model_3d(component)
-        if payload is None:
-            return None
-        return _SelectedPartModel3D.from_payload(payload)
-
-    def _component_reference(self, component: int) -> str:
-        return self._circuit.component_reference(component)
-
-    def _object_footprint_for_component(self, component: int) -> Footprint | None:
-        ref = self._component_object_footprints.get(component)
-        if ref is None:
-            return None
-        return self._object_footprints[ref]
 
     def LED(self, *, ref: str | None = None) -> Component:
         """Instantiate a generic LED component."""

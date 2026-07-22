@@ -1,15 +1,12 @@
 import json
-from pathlib import Path
 
 import pytest
 
 import volt
+from project_framework_helpers import _header_1x02, _passive_0603
 
 
-ROOT = Path(__file__).resolve().parents[2]
-
-
-def test_python_led_matches_cpp_logical_and_diagnostic_golden():
+def test_python_led_serializes_exact_selected_part_closure():
     design = volt.Design("led")
 
     vcc = design.net("VCC", kind="power")
@@ -24,21 +21,21 @@ def test_python_led_matches_cpp_logical_and_diagnostic_golden():
         manufacturer="Generic",
         part_number="HDR-1x02-2.54mm",
         package="2.54mm-1x02",
-        footprint=("connectors", "PinHeader_1x02_P2.54mm_Vertical"),
+        footprint=_header_1x02(),
         pin_pads={1: "1", 2: "2"},
     )
     r1.select_part(
         manufacturer="Yageo",
         part_number="RC0603FR-07330RL",
         package="0603",
-        footprint=("passives", "R_0603_1608Metric"),
+        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
         pin_pads={1: "1", 2: "2"},
     )
     d1.select_part(
         manufacturer="Lite-On",
         part_number="LTST-C190KRKT",
         package="0603",
-        footprint=("leds", "LED_0603_1608Metric"),
+        footprint=_passive_0603(("leds", "LED_0603_1608Metric")),
         pin_pads={"K": "1", "A": "2"},
     )
 
@@ -50,10 +47,22 @@ def test_python_led_matches_cpp_logical_and_diagnostic_golden():
     assert len(report) == 0
     assert not report.has_errors
 
-    assert design.to_json() == (ROOT / "tests/fixtures/led_circuit.volt.json").read_text()
+    serialized = design.to_json()
+    logical = json.loads(serialized)
+
+    assert serialized == design.to_json()
+    assert all("contract" in definition for definition in logical["component_definitions"])
+    assert all("selected_physical_part" not in component for component in logical["components"])
+    selected = [component["selected_library_part"] for component in logical["components"]]
+    assert len({reference["library_digest"] for reference in selected}) == 1
+    assert [reference["part_key"] for reference in selected] == [
+        "component-0",
+        "component-1",
+        "component-2",
+    ]
 
 
-def test_python_diagnostic_design_matches_cpp_logical_and_diagnostic_golden():
+def test_python_diagnostic_design_serializes_component_contract():
     design = volt.Design("single-pin")
     output_driver = design.define_component(
         "OutputDriver", pins=[volt.PinSpec("OUT", 1, role="output")]
@@ -62,9 +71,8 @@ def test_python_diagnostic_design_matches_cpp_logical_and_diagnostic_golden():
     floating = design.net("FLOATING_OUT")
     floating += u1["OUT"]
 
-    assert design.to_json() == (
-        ROOT / "tests/fixtures/single_pin_net.volt.json"
-    ).read_text()
+    logical = json.loads(design.to_json())
+    assert logical["component_definitions"][0]["contract"]["pin_keys"] == ["pin/0"]
     report = design.validate()
     assert [
         (
@@ -200,7 +208,7 @@ def test_natural_electrical_values_serialize_as_kernel_attributes():
         "dimension": "capacitance",
         "value": 100e-9,
     }
-    assert capacitor["selected_physical_part"]["electrical_attributes"]["voltage_rating"] == {
+    assert capacitor["electrical_attributes"]["voltage_rating"] == {
         "type": "quantity",
         "dimension": "voltage",
         "value": 16.0,

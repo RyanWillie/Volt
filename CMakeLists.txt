@@ -89,7 +89,14 @@ if(VOLT_ENABLE_COVERAGE)
     set(VOLT_COVERAGE_INFO "${VOLT_COVERAGE_DIR}/volt-coverage.info")
     set(VOLT_COVERAGE_DEPENDS)
 
-    foreach(target volt_core_tests volt_led_circuit_example volt_kernel_benchmarks)
+    foreach(
+        target
+        volt_core_tests
+        volt_pcb_resolution_link_contract
+        volt_io_resolution_link_contract
+        volt_led_circuit_example
+        volt_kernel_benchmarks
+    )
         if(TARGET ${target})
             list(APPEND VOLT_COVERAGE_DEPENDS ${target})
         endif()

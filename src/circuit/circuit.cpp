@@ -404,7 +404,8 @@ void Circuit::update(ComponentId component, ComponentUpdate change) {
                 set_component_attribute(component, update.spec, std::move(update.value));
             } else if constexpr (std::same_as<Update, SelectPhysicalPart>) {
                 select_physical_part(component, std::move(update.physical_part),
-                                     get(get(component).definition()).pins());
+                                     get(get(component).definition()).pins(),
+                                     std::move(update.source_reference));
             } else if constexpr (std::same_as<Update, SelectLibraryPart>) {
                 const auto &instance = get(component);
                 if (instance.selected_physical_part().has_value()) {

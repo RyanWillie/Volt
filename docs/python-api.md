@@ -418,25 +418,31 @@ r1.select_part(
     manufacturer="Yageo",
     part_number="RC0603FR-07330RL",
     package="0603",
-    footprint=("Resistor_SMD", "R_0603_1608Metric"),
+    footprint=volt.Footprint(
+        ("Resistor_SMD", "R_0603_1608Metric"),
+        pads=(
+            volt.FootprintPad.surface_mount("1", at=(-0.75, 0), size=(0.8, 0.9)),
+            volt.FootprintPad.surface_mount("2", at=(0.75, 0), size=(0.8, 0.9)),
+        ),
+    ),
     pin_pads={
         1: "1",
         2: "2",
     },
-    properties={"supplier": "Digi-Key"},
     voltage_rating=75,
-    power_rating=0.1,
 )
 ```
 
-For custom components, `pin_pads` may use pin names:
+`footprint` must be a complete `Footprint`, not only a `(library, name)` reference.
+For custom components, `pin_pads` may use pin names. This example reuses a complete
+SOIC-8 footprint defined by the authoring library:
 
 ```python
 u1.select_part(
     manufacturer="Texas Instruments",
     part_number="TLV9002IDR",
     package="SOIC-8",
-    footprint=("Package_SO", "SOIC-8_3.9x4.9mm_P1.27mm"),
+    footprint=soic8_footprint,
     pin_pads={
         "OUT": "1",
         "IN-": "2",
@@ -448,17 +454,19 @@ u1.select_part(
 )
 ```
 
-`select_part()` lowers into the kernel's `PhysicalPart` selection for that component. The
-manufacturer identity, package, footprint, pin-pad mapping, properties, and selected-part
-ratings serialize through logical JSON as `selected_physical_part`. The kernel rejects
-structurally invalid mappings, including missing logical pins, unknown pins, and duplicate
-physical pads. A logical pin may map to more than one physical pad when the selected package
-exposes tied lands, such as a tabbed regulator package.
+`select_part()` admits the authored component contract, part, footprint asset, and optional
+3D model into an exact native P6 library closure, then stores only its `LibraryPartRef` on
+the component. Logical JSON therefore serializes `selected_library_part`; Python does not
+retain a footprint cache or an alternate physical-part record. At each PCB/report boundary,
+Volt resolves one named Board against that exact selected closure and atomically validates
+the contract, terminal-to-pad mapping, assets, digests, ownership, and capabilities.
 
-Selected-part manufacturer information is not only BOM metadata. It is the selected
-physical implementation record that owns package, footprint, logical-pin-to-pad mapping,
-and selected-part electrical ratings. `voltage_rating` and `power_rating` lower into
-typed selected-part electrical attributes.
+The kernel rejects structurally invalid mappings, including missing or unknown logical pins,
+duplicate physical pads, and incomplete footprint assets. A logical pin may map to more than
+one physical pad when the selected package exposes tied lands, such as a tabbed regulator
+package. `voltage_rating` lowers into a canonical typed `Voltage` limit in the exact part.
+Free-form selected-part `properties` and `power_rating` are not accepted by this API because
+neither belongs to the current canonical exact-part schema.
 
 ## Module Definitions
 

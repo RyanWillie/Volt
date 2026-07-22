@@ -62,16 +62,19 @@ class PayloadAssetResolver final : public volt::PartAssetResolver {
 
 struct BuiltLibrary {
     volt::PartLibrary library;
+    std::optional<volt::io::PartLibraryBundle> bundle;
     std::map<std::string, volt::ComponentSpec> component_specs;
 };
 
 [[nodiscard]] BuiltLibrary build_library(const std::string &namespace_name,
-                                         const std::string &version, const py::list &parts) {
+                                         const std::string &version, const py::list &parts,
+                                         bool selected_bundle) {
     auto builder = volt::PartLibraryBuilder{
         volt::PartLibraryIdentity{namespace_name, version, volt::PartLibrarySchemaVersion::V1}};
     auto resolver = PayloadAssetResolver{};
     auto specs = std::map<std::string, volt::ComponentSpec>{};
     auto component_digests = std::map<std::string, volt::ContentHash>{};
+    auto selected = std::vector<volt::PartKey>{};
 
     for (const auto item : parts) {
         const auto payload = py::cast<py::dict>(item);
@@ -87,23 +90,28 @@ struct BuiltLibrary {
                                          "ComponentKey resolves to conflicting component content"};
         }
         const auto part_key = lowered.part.identity().name();
+        selected.emplace_back(part_key);
         specs.emplace(part_key, std::move(lowered.component_spec));
         builder.add_part(std::move(lowered.part));
         for (const auto asset_item : required_list_field(payload, "assets")) {
             resolver.add(py::cast<py::dict>(asset_item));
         }
     }
-    return BuiltLibrary{builder.build(resolver), std::move(specs)};
+    auto bundle = std::optional<volt::io::PartLibraryBundle>{};
+    if (selected_bundle) {
+        bundle.emplace(volt::io::PartLibraryBundle::build(builder, selected, resolver));
+    }
+    return BuiltLibrary{builder.build(resolver), std::move(bundle), std::move(specs)};
 }
 
 } // namespace
 
-PyPartLibrary::PyPartLibrary(std::string namespace_name, std::string version,
-                             const py::list &parts) {
+PyPartLibrary::PyPartLibrary(std::string namespace_name, std::string version, const py::list &parts,
+                             bool selected_bundle) {
     try {
-        auto built = build_library(namespace_name, version, parts);
-        state_ =
-            std::make_shared<State>(std::move(built.library), std::move(built.component_specs));
+        auto built = build_library(namespace_name, version, parts, selected_bundle);
+        state_ = std::make_shared<State>(std::move(built.library), std::move(built.bundle),
+                                         std::move(built.component_specs));
     } catch (const volt::KernelError &) {
         throw;
     } catch (const std::invalid_argument &error) {
@@ -114,6 +122,34 @@ PyPartLibrary::PyPartLibrary(std::string namespace_name, std::string version,
 }
 
 const volt::PartLibrary &PyPartLibrary::library() const noexcept { return state_->library; }
+
+const volt::io::PartLibraryBundle &PyPartLibrary::bundle() const {
+    if (!state_->bundle.has_value()) {
+        throw volt::KernelLogicError{volt::ErrorCode::InvalidState,
+                                     "Part snapshot was not built as a selected P6 closure"};
+    }
+    return *state_->bundle;
+}
+
+const volt::ExactPartResolver &PyPartLibrary::resolver() const noexcept {
+    if (state_->bundle.has_value()) {
+        return *state_->bundle;
+    }
+    return state_->library;
+}
+
+volt::LibraryPartRef PyPartLibrary::require(const std::string &part_key) const {
+    const auto key = volt::PartKey{part_key};
+    if (state_->bundle.has_value()) {
+        return state_->bundle->require(key);
+    }
+    return state_->library.require(key);
+}
+
+std::shared_ptr<const volt::io::PartLibraryBundle> PyPartLibrary::bundle_owner() const {
+    static_cast<void>(bundle());
+    return {state_, &*state_->bundle};
+}
 
 const volt::ComponentSpec &PyPartLibrary::component_spec(const std::string &part_key) const {
     const auto match = state_->component_specs.find(part_key);
@@ -135,8 +171,8 @@ py::dict library_part_reference_to_dict(const volt::LibraryPartRef &reference) {
 }
 
 py::dict PyPartLibrary::part_result(const std::string &part_key) const {
-    const auto key = volt::PartKey{part_key};
-    const auto &part = state_->library.resolve(state_->library.require(key));
+    const auto reference = require(part_key);
+    const auto &part = resolver().resolve(reference);
     auto result = py::dict{};
     const auto bytes = volt::io::write_part_definition(part);
     result["bytes"] = py::bytes{bytes};
@@ -148,9 +184,9 @@ py::dict PyPartLibrary::part_result(const std::string &part_key) const {
 }
 
 py::dict PyPartLibrary::exact_reference(const std::string &part_key) const {
-    return library_part_reference_to_dict(state_->library.require(volt::PartKey{part_key}));
+    return library_part_reference_to_dict(require(part_key));
 }
 
-std::string PyPartLibrary::digest() const { return state_->library.digest().value(); }
+std::string PyPartLibrary::digest() const { return resolver().reference_digest().value(); }
 
 } // namespace volt::python

@@ -448,11 +448,8 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert labelled_only_multi_pin_nets == set()
 
     stm32 = next(component for component in logical["components"] if component["reference"] == "U1")
-    assert stm32["selected_physical_part"]["footprint"] == {
-        "library": "Package_QFP",
-        "name": "LQFP-64_10x10mm_P0.5mm",
-    }
-    assert all("selected_physical_part" in component for component in logical["components"])
+    assert stm32["selected_library_part"]["part_digest"].startswith("sha256:")
+    assert all("selected_library_part" in component for component in logical["components"])
 
     component_definitions = {
         definition["id"]: definition for definition in logical["component_definitions"]

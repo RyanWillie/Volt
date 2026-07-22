@@ -1,6 +1,7 @@
 import json
 
 import volt
+from project_framework_helpers import _passive_0603
 
 
 def _select_resistor(component, *, part_number, alternates=(), selection_override=False):
@@ -8,7 +9,7 @@ def _select_resistor(component, *, part_number, alternates=(), selection_overrid
         manufacturer="Yageo",
         part_number=part_number,
         package="0603",
-        footprint=("passives", "R_0603_1608Metric"),
+        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
         pin_pads={1: "1", 2: "2"},
         approved_alternate_mpns=alternates,
         selection_override=selection_override,

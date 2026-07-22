@@ -232,7 +232,8 @@ void add_record(Claim &claim, const ElectricalRecord &record) {
 
 } // namespace
 
-DiagnosticReport validate_selected_part_erc(const Circuit &circuit, const PartLibrary &library) {
+DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
+                                            const ExactPartResolver &resolver) {
     const auto continuity = detail::NetContinuityView{circuit};
     auto claims = std::map<ClaimKey, Claim>{};
     auto unresolved_current = std::vector<ComponentId>{};
@@ -244,7 +245,7 @@ DiagnosticReport validate_selected_part_erc(const Circuit &circuit, const PartLi
         if (!reference.has_value()) {
             continue;
         }
-        const auto &part = library.resolve(*reference);
+        const auto &part = resolver.resolve(*reference);
         const auto &instance = circuit.get(component);
         if (part.implemented_component() != circuit.get(instance.definition()).content_identity()) {
             throw KernelLogicError{ErrorCode::CrossReferenceViolation,

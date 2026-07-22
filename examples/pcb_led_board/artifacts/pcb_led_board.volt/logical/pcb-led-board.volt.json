@@ -10,57 +10,21 @@
     { "id": "pin_def:5", "name": "K", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" }
   ],
   "component_definitions": [
-    { "id": "component_def:0", "name": "Two-pin connector", "source": { "namespace": "volt.connectors", "name": "connector_1x02", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.connectors:connector_1x02", "variant": "default" }], "pins": ["pin_def:0", "pin_def:1"], "properties": {} },
-    { "id": "component_def:1", "name": "Resistor", "source": { "namespace": "volt.passives", "name": "resistor_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.passives:resistor", "variant": "default" }], "pins": ["pin_def:2", "pin_def:3"], "properties": {
+    { "id": "component_def:0", "name": "Two-pin connector", "source": { "namespace": "volt.connectors", "name": "connector_1x02", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.connectors:connector_1x02", "variant": "default" }], "contract": { "semantic_model_version": 1, "key": "volt.python.component/sha256:8ecd9465b94ab9a4e443e12dab89e672ef9326fd6b5e92f2c3d9e4589e856f6b", "content_identity": "sha256:bbc5eb4ae167845c4a14777d82e29ab19ddfe7308820d4854a75df51c795ccf2", "pin_keys": ["pin/0", "pin/1"], "framed_pins": [], "relations": [], "supply_domains": [], "feature_schemas": [], "feature_bindings": [] }, "pins": ["pin_def:0", "pin_def:1"], "properties": {} },
+    { "id": "component_def:1", "name": "Resistor", "source": { "namespace": "volt.passives", "name": "resistor_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.passives:resistor", "variant": "default" }], "contract": { "semantic_model_version": 1, "key": "volt.python.component/sha256:ef65b7ae06c865aa70d0a991bbdb23918825290b794338d04e84d3938490fb8a", "content_identity": "sha256:a0854072a8caa4d3dc7bdd06b5cbe3fe05ef6fffde4fae94189932e0c6c69293", "pin_keys": ["pin/0", "pin/1"], "framed_pins": [], "relations": [], "supply_domains": [], "feature_schemas": [], "feature_bindings": [] }, "pins": ["pin_def:2", "pin_def:3"], "properties": {
         "category": { "type": "string", "value": "passive" }
       } },
-    { "id": "component_def:2", "name": "LED", "source": { "namespace": "volt.optos", "name": "led_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.optos:led", "variant": "default" }], "pins": ["pin_def:4", "pin_def:5"], "properties": {} }
+    { "id": "component_def:2", "name": "LED", "source": { "namespace": "volt.optos", "name": "led_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.optos:led", "variant": "default" }], "contract": { "semantic_model_version": 1, "key": "volt.python.component/sha256:ee48f9e524a14c1b2c657b65e6393abfe8d3ef4e7442f0e54543c7b9acdb46fc", "content_identity": "sha256:a77d5fb1d9b44a040e95290cdc9fe4b302531d8f1387bf278b23d5f3a5ddf357", "pin_keys": ["pin/0", "pin/1"], "framed_pins": [], "relations": [], "supply_domains": [], "feature_schemas": [], "feature_bindings": [] }, "pins": ["pin_def:4", "pin_def:5"], "properties": {} }
   ],
   "components": [
-    { "id": "component:0", "definition": "component_def:0", "reference": "J1", "properties": {}, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Generic", "part_number": "HDR-1x02-2.54mm" },
-      "package": "2.54mm-1x02",
-      "footprint": { "library": "connectors", "name": "PinHeader_1x02_P2.54mm_Vertical" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:0", "pad": "1" },
-        { "pin": "pin_def:1", "pad": "2" }
-      ],
-      "properties": {}
-    } },
+    { "id": "component:0", "definition": "component_def:0", "reference": "J1", "properties": {}, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-0", "library_digest": "sha256:f6cc75f63d8df8a50a14851b42a36e7c84a377705b72e66244959b59b37c71ec", "part_digest": "sha256:ab08b58435d6ca6086bd39e0895430f4c05eba6a5faaad46adb4b5b8b9dfdd9e" } },
     { "id": "component:1", "definition": "component_def:1", "reference": "R1", "properties": {
         "value": { "type": "string", "value": "330 ohm" }
       }, "electrical_attributes": {
         "resistance": { "type": "quantity", "dimension": "resistance", "value": 330 },
         "tolerance": { "type": "tolerance", "mode": "percent", "dimension": "ratio", "minus": 0.01, "plus": 0.01 }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-07330RL" },
-      "package": "0603",
-      "footprint": { "library": "passives", "name": "R_0603_1608Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:2", "pad": "1" },
-        { "pin": "pin_def:3", "pad": "2" }
-      ],
-      "model_3d": {
-        "format": "step",
-        "file_name": "r_0603_body.step",
-        "translation_mm": [0, 0, 0.34999999999999998],
-        "rotation_deg": 0
-      },
-      "properties": {},
-      "electrical_attributes": {
-        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.10000000000000001 }
-      }
-    } },
-    { "id": "component:2", "definition": "component_def:2", "reference": "D1", "properties": {}, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Lite-On", "part_number": "LTST-C190KRKT" },
-      "package": "0603",
-      "footprint": { "library": "leds", "name": "LED_0603_1608Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:4", "pad": "1" },
-        { "pin": "pin_def:5", "pad": "2" }
-      ],
-      "properties": {}
-    } }
+      }, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-1", "library_digest": "sha256:f6cc75f63d8df8a50a14851b42a36e7c84a377705b72e66244959b59b37c71ec", "part_digest": "sha256:2ea51767417068c2f5d14828a9ecb904548029aac11b7402ce71094f29cc9e5e" } },
+    { "id": "component:2", "definition": "component_def:2", "reference": "D1", "properties": {}, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-2", "library_digest": "sha256:f6cc75f63d8df8a50a14851b42a36e7c84a377705b72e66244959b59b37c71ec", "part_digest": "sha256:b99850ce2311f6899541e70197ee2cf7930f63188d414e5ea0e7270c37be0cea" } }
   ],
   "pins": [
     { "id": "pin:0", "component": "component:0", "definition": "pin_def:0" },

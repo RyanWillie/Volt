@@ -60,8 +60,9 @@ kicad_loss_warning_to_dict(const volt::adapters::kicad::LossWarning &warning) {
 } // namespace
 
 py::dict PyBoard::to_kicad_pcb() const {
+    const auto resolution = resolve();
     const auto export_result =
-        volt::adapters::kicad::write_board(board_, volt::builtin_footprint_library());
+        volt::adapters::kicad::write_board(resolution.board(), resolution.footprints());
 
     auto result = py::dict{};
     result["text"] = export_result.text;
