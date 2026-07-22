@@ -37,6 +37,7 @@
 #include <volt/io/parts/electrical_records_io.hpp>
 #include <volt/io/parts/part_definition_reader.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
+#include <volt/io/parts/part_library_bundle.hpp>
 #include <volt/io/pcb/pcb_fabrication_writer.hpp>
 #include <volt/io/pcb/pcb_reader.hpp>
 #include <volt/io/pcb/pcb_schema.hpp>

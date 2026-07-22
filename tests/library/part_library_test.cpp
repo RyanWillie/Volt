@@ -103,6 +103,10 @@ concept CanBorrowComponentsFromTemporary =
     requires(T &&value) { std::forward<T>(value).components(); };
 
 template <typename T>
+concept CanBorrowComponentSpecsFromTemporary =
+    requires(T &&value) { std::forward<T>(value).component_specs(); };
+
+template <typename T>
 concept CanBorrowPartsFromTemporary = requires(T &&value) { std::forward<T>(value).parts(); };
 
 template <typename T>
@@ -124,6 +128,7 @@ concept CanResolveFromTemporary = requires(T &&value, const volt::LibraryPartRef
 
 static_assert(!CanBorrowIdentityFromTemporary<volt::PartLibraryBuilder>);
 static_assert(!CanBorrowComponentsFromTemporary<volt::PartLibraryBuilder>);
+static_assert(!CanBorrowComponentSpecsFromTemporary<volt::PartLibraryBuilder>);
 static_assert(!CanBorrowPartsFromTemporary<volt::PartLibraryBuilder>);
 static_assert(!CanBorrowIdentityFromTemporary<volt::PartLibrary>);
 static_assert(!CanBorrowDigestFromTemporary<volt::PartLibrary>);

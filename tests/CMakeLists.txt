@@ -67,6 +67,7 @@ add_executable(
     io/schematic/schematic_svg_writer_test.cpp
     io/schematic/schematic_writer_test.cpp
     library/part_library_test.cpp
+    library/part_library_bundle_test.cpp
     library/selected_part_erc_test.cpp
     pcb/geometry/board_geometry_projection_test.cpp
     pcb/assembly/cpl_test.cpp
