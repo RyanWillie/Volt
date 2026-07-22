@@ -239,7 +239,9 @@ void append_sized(std::string &out, std::string_view value) {
     const auto entry_count = read_u64(bytes, cursor);
     auto entries = std::vector<std::pair<std::string, std::string>>{};
     for (auto index = std::uint64_t{0}; index < entry_count; ++index) {
-        entries.emplace_back(read_sized(bytes, cursor), read_sized(bytes, cursor));
+        auto path = read_sized(bytes, cursor);
+        auto payload = read_sized(bytes, cursor);
+        entries.emplace_back(std::move(path), std::move(payload));
     }
     return TestArchive{std::move(manifest), std::move(entries)};
 }
