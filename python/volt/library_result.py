@@ -162,6 +162,11 @@ class LibraryResult:
         return str(self._snapshot.digest)
 
     @property
+    def bundle_bytes(self) -> bytes:
+        """Build the complete deterministic native PartLibraryBundle closure."""
+        return bytes(self._snapshot.bundle_bytes())
+
+    @property
     def parts(self) -> tuple[LibraryPartResult, ...]:
         """Return per-part validation summaries in deterministic name order."""
         return self._parts

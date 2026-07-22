@@ -66,7 +66,25 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("version"), py::arg("parts"), py::arg("selected_bundle") = false)
         .def_property_readonly("digest", &PyPartLibrary::digest)
         .def("part_result", &PyPartLibrary::part_result, py::arg("part_key"))
-        .def("exact_reference", &PyPartLibrary::exact_reference, py::arg("part_key"));
+        .def("exact_reference", &PyPartLibrary::exact_reference, py::arg("part_key"))
+        .def("bundle_bytes", &PyPartLibrary::bundle_bytes);
+    module.def("part_library_bundle_digest", [](const py::bytes &bytes) {
+        return PyPartLibraryBundle{static_cast<std::string>(bytes)}.digest();
+    });
+    module.def("part_library_bundle_library_digest", [](const py::bytes &bytes) {
+        return PyPartLibraryBundle{static_cast<std::string>(bytes)}.library_digest();
+    });
+    module.def("part_library_bundle_inspect", [](const py::bytes &bytes) {
+        return PyPartLibraryBundle{static_cast<std::string>(bytes)}.inspect();
+    });
+    module.def(
+        "part_library_bundle_part_result", [](const py::bytes &bytes, const std::string &part_key) {
+            return PyPartLibraryBundle{static_cast<std::string>(bytes)}.part_result(part_key);
+        });
+    module.def(
+        "part_library_bundle_part_assets", [](const py::bytes &bytes, const std::string &part_key) {
+            return PyPartLibraryBundle{static_cast<std::string>(bytes)}.part_assets(part_key);
+        });
 
     py::class_<PyCircuit>(module, "Circuit")
         .def(py::init<>())

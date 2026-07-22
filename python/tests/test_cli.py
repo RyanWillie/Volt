@@ -31,6 +31,51 @@ def _write_entrypoint(root: Path, body: str):
     sys.modules.pop("project_entry", None)
 
 
+def _write_library(root: Path):
+    root.mkdir(parents=True, exist_ok=True)
+    root.joinpath("volt.toml").write_text(
+        """[library]
+entrypoint = "library_entry:LIB"
+""",
+        encoding="utf-8",
+    )
+    root.joinpath("resistor.glb").write_bytes(b"cli-library-model")
+    root.joinpath("library_entry.py").write_text(
+        f'''from pathlib import Path
+
+import volt
+
+LIB = volt.Library("test.cli.library", version="1.0.0")
+LIB.part(
+    "R-1K",
+    pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+    symbol=volt.SchematicSymbolSpec(
+        "test.cli:R-1K",
+        pins=(
+            volt.SchematicSymbolSpec.pin("1", 1, (-5, 0)),
+            volt.SchematicSymbolSpec.pin("2", 2, (5, 0)),
+        ),
+        primitives=(volt.SchematicSymbolSpec.line((-3, 0), (3, 0)),),
+    ),
+    manufacturer="Test",
+    mpn="R-1K",
+    package="0603",
+    footprint=volt.Footprint(
+        ("Test", "R-1K"),
+        pads=(
+            volt.FootprintPad.surface_mount("1", at=(-1, 0), size=(1, 1)),
+            volt.FootprintPad.surface_mount("2", at=(1, 0), size=(1, 1)),
+        ),
+    ),
+    pads={{1: "1", 2: "2"}},
+    model_3d=volt.PartModel3D(Path(__file__).with_name("resistor.glb")),
+)
+''',
+        encoding="utf-8",
+    )
+    sys.modules.pop("library_entry", None)
+
+
 def _read_model_json(capsys):
     captured = capsys.readouterr()
     assert captured.err == ""
@@ -876,3 +921,176 @@ def main():
     assert missing.out == ""
     assert "No board named 'missing'" in missing.err
     assert "Candidates: <none>" in missing.err
+
+
+def test_library_commands_build_reopen_inspect_and_extract_deterministically(tmp_path, capsys):
+    source = tmp_path / "library"
+    first = tmp_path / "first.voltlib"
+    second = tmp_path / "second.voltlib"
+    first_render = tmp_path / "first-render"
+    second_render = tmp_path / "second-render"
+    _write_library(source)
+
+    assert main(["library", "check", str(source), "--json"]) == 0
+    check = _read_stdout_json(capsys)
+    assert check["format"] == "volt.library_result"
+    assert check["schema_version"] == 1
+    assert check["ok"] is True
+    assert check["library_digest"].startswith("sha256:")
+
+    assert main(["library", "build", str(source), "--output", str(first), "--json"]) == 0
+    build = _read_stdout_json(capsys)
+    assert build["written"] is True
+    assert build["bundle_digest"].startswith("sha256:")
+    assert main(["library", "build", str(source), "--output", str(second)]) == 0
+    capsys.readouterr()
+    assert first.read_bytes() == second.read_bytes()
+
+    assert main(["library", "test", str(first), "--json"]) == 0
+    tested = _read_stdout_json(capsys)
+    assert tested["format"] == "volt.library-test-result"
+    assert tested["parts"] == ["R-1K"]
+
+    assert main(["library", "inspect", str(first), "R-1K", "--json"]) == 0
+    inspection = _read_stdout_json(capsys)
+    assert inspection["format"] == "volt.part-library-bundle"
+    assert inspection["schema_version"] == 1
+    assert inspection["part"]["exact_reference"]["part_key"] == "R-1K"
+    assert [entry["path"] for entry in inspection["entries"]] == sorted(
+        entry["path"] for entry in inspection["entries"]
+    )
+
+    assert (
+        main(
+            [
+                "library",
+                "render",
+                str(first),
+                "R-1K",
+                "--output",
+                str(first_render),
+                "--json",
+            ]
+        )
+        == 0
+    )
+    rendered = _read_stdout_json(capsys)
+    assert [asset["kind"] for asset in rendered["assets"]] == [
+        "schematic",
+        "footprint",
+        "model_3d",
+    ]
+    assert first_render.joinpath("03-model_3d.glb").read_bytes() == b"cli-library-model"
+    assert (
+        main(
+            [
+                "library",
+                "render",
+                str(second),
+                "R-1K",
+                "--output",
+                str(second_render),
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    assert first_render.joinpath("render.volt.json").read_bytes() == second_render.joinpath(
+        "render.volt.json"
+    ).read_bytes()
+
+
+def test_library_commands_run_standard_library_end_to_end(tmp_path, capsys):
+    source = tmp_path / "standard-library"
+    bundle = tmp_path / "standard.voltlib"
+    source.mkdir()
+    source.joinpath("volt.toml").write_text(
+        """[library]
+entrypoint = "volt.libraries.stm32_usb_buck:LIB"
+""",
+        encoding="utf-8",
+    )
+
+    assert main(["library", "check", str(source), "--json"]) == 0
+    check = _read_stdout_json(capsys)
+    assert check["ok"] is True
+    assert check["parts"] == []
+
+    assert main(["library", "build", str(source), "--output", str(bundle)]) == 0
+    capsys.readouterr()
+    assert main(["library", "test", str(bundle), "--json"]) == 0
+    tested = _read_stdout_json(capsys)
+    assert tested["parts"] == check["parts"]
+
+    assert main(["library", "inspect", str(bundle), "--json"]) == 0
+    inspection = _read_stdout_json(capsys)
+    assert inspection["library"]["namespace"] == "volt.benchmarks.stm32_usb_buck"
+
+
+def test_library_commands_report_missing_assets_and_corrupt_bundles(tmp_path, capsys):
+    source = tmp_path / "library"
+    bundle = tmp_path / "library.voltlib"
+    _write_library(source)
+    source.joinpath("resistor.glb").unlink()
+
+    assert main(["library", "check", str(source)]) == 2
+    assert "Native library validation failed" in capsys.readouterr().err
+
+    source.joinpath("resistor.glb").write_bytes(b"cli-library-model")
+    assert main(["library", "build", str(source), "--output", str(bundle)]) == 0
+    capsys.readouterr()
+    assert (
+        main(
+            [
+                "library",
+                "render",
+                str(bundle),
+                "MISSING",
+                "--output",
+                str(tmp_path / "missing"),
+            ]
+        )
+        == 2
+    )
+    assert "Native PartLibraryBundle query assets" in capsys.readouterr().err
+
+    bundle.write_bytes(b"not a PartLibraryBundle")
+    assert main(["library", "test", str(bundle)]) == 2
+    assert "Invalid PartLibraryBundle" in capsys.readouterr().err
+
+
+def test_library_commands_return_validation_failures_without_building(tmp_path, capsys):
+    source = tmp_path / "invalid-library"
+    output = tmp_path / "invalid.voltlib"
+    source.mkdir()
+    source.joinpath("volt.toml").write_text(
+        """[library]
+entrypoint = "library_entry:LIB"
+""",
+        encoding="utf-8",
+    )
+    source.joinpath("library_entry.py").write_text(
+        """import volt
+
+LIB = volt.Library("test.cli.invalid")
+LIB.add(volt.Part(name="Broken", pins=(), footprint=None, pads={}))
+""",
+        encoding="utf-8",
+    )
+    sys.modules.pop("library_entry", None)
+
+    assert main(["library", "check", str(source), "--json"]) == 1
+    check = _read_stdout_json(capsys)
+    assert check["ok"] is False
+    assert {item["code"] for item in check["diagnostics"]["diagnostics"]} == {
+        "LIBRARY_PART_MISSING_FOOTPRINT",
+        "LIBRARY_PART_MISSING_PINS",
+    }
+
+    assert (
+        main(["library", "build", str(source), "--output", str(output), "--json"])
+        == 1
+    )
+    build = _read_stdout_json(capsys)
+    assert build["written"] is False
+    assert not output.exists()

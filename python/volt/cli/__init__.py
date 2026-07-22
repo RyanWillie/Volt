@@ -18,6 +18,8 @@ from typing import Any, Callable
 
 from .._project_model_lookup import model_output_name
 from ..design import Design
+from ..library import Library
+from ..library_result import LibraryResult
 from ..pcb import Board
 from ..project import (
     ManufacturingPackageError,
@@ -58,6 +60,52 @@ class ProjectConfig:
     manufacturing_profile_path: str | None
     manufacturing_profile: Path | None
     raw: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class LibraryConfig:
+    """Parsed ``volt.toml`` declaration for one local part library."""
+
+    root: Path
+    config_path: Path
+    entrypoint: str
+
+
+@dataclass(frozen=True)
+class _NativePartLibraryBundle:
+    """Opaque native bundle bytes with native query-only operations."""
+
+    bytes: bytes
+
+    @property
+    def digest(self) -> str:
+        from .. import _volt
+
+        return str(_volt.part_library_bundle_digest(self.bytes))
+
+    @property
+    def library_digest(self) -> str:
+        from .. import _volt
+
+        return str(_volt.part_library_bundle_library_digest(self.bytes))
+
+    def inspect(self) -> dict[str, object]:
+        from .. import _volt
+
+        return dict(_volt.part_library_bundle_inspect(self.bytes))
+
+    def part_result(self, part_key: str) -> dict[str, object]:
+        from .. import _volt
+
+        return dict(_volt.part_library_bundle_part_result(self.bytes, part_key))
+
+    def part_assets(self, part_key: str) -> list[dict[str, object]]:
+        from .. import _volt
+
+        return [
+            dict(asset)
+            for asset in _volt.part_library_bundle_part_assets(self.bytes, part_key)
+        ]
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -362,6 +410,54 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     init_parser.set_defaults(handler=_handle_init)
 
+    library_parser = subparsers.add_parser(
+        "library",
+        help="check, build, test, inspect, and render native part libraries",
+        description="Operate on local part-library source declarations and immutable bundles.",
+    )
+    library_subparsers = library_parser.add_subparsers(
+        dest="library_command",
+        metavar="library-command",
+    )
+    library_check_parser = library_subparsers.add_parser(
+        "check", help="validate a local library source declaration"
+    )
+    library_check_parser.add_argument("source", type=Path, help="Library root or volt.toml path.")
+    library_check_parser.add_argument("--json", dest="emit_json", action="store_true")
+    library_check_parser.set_defaults(handler=_handle_library_check)
+
+    library_build_parser = library_subparsers.add_parser(
+        "build", help="build one deterministic native PartLibraryBundle"
+    )
+    library_build_parser.add_argument("source", type=Path, help="Library root or volt.toml path.")
+    library_build_parser.add_argument("--output", required=True, type=Path)
+    library_build_parser.add_argument("--json", dest="emit_json", action="store_true")
+    library_build_parser.set_defaults(handler=_handle_library_build)
+
+    library_test_parser = library_subparsers.add_parser(
+        "test", help="reopen and query a prebuilt native PartLibraryBundle"
+    )
+    library_test_parser.add_argument("bundle", type=Path, help="PartLibraryBundle file.")
+    library_test_parser.add_argument("--json", dest="emit_json", action="store_true")
+    library_test_parser.set_defaults(handler=_handle_library_test)
+
+    library_inspect_parser = library_subparsers.add_parser(
+        "inspect", help="inspect a prebuilt native PartLibraryBundle"
+    )
+    library_inspect_parser.add_argument("bundle", type=Path, help="PartLibraryBundle file.")
+    library_inspect_parser.add_argument("part", nargs="?", help="Optional exact part key.")
+    library_inspect_parser.add_argument("--json", dest="emit_json", action="store_true")
+    library_inspect_parser.set_defaults(handler=_handle_library_inspect)
+
+    library_render_parser = library_subparsers.add_parser(
+        "render", help="write exact supported part assets from a native bundle"
+    )
+    library_render_parser.add_argument("bundle", type=Path, help="PartLibraryBundle file.")
+    library_render_parser.add_argument("part", help="Exact part key.")
+    library_render_parser.add_argument("--output", required=True, type=Path)
+    library_render_parser.add_argument("--json", dest="emit_json", action="store_true")
+    library_render_parser.set_defaults(handler=_handle_library_render)
+
     return parser
 
 
@@ -584,6 +680,272 @@ def _handle_init(args: argparse.Namespace) -> None:
         encoding="utf-8",
     )
     print(f"Initialized Volt project at {root}")
+
+
+def discover_library(source: str | Path) -> LibraryConfig:
+    """Load a library declaration from a local ``volt.toml`` file."""
+
+    path = Path(source).expanduser()
+    config_path = path / "volt.toml" if path.is_dir() else path
+    config_path = config_path.resolve()
+    if not config_path.is_file():
+        raise CliError(f"Library config not found: {config_path}")
+    try:
+        with config_path.open("rb") as handle:
+            payload = tomllib.load(handle)
+    except tomllib.TOMLDecodeError as error:
+        raise CliError(f"Failed to parse {config_path}: {error}") from error
+    except OSError as error:
+        raise CliError(f"Failed to read {config_path}: {error}") from error
+
+    table = _required_table(payload, "library", config_path)
+    entrypoint = table.get("entrypoint")
+    if not isinstance(entrypoint, str) or not entrypoint.strip():
+        raise CliError(
+            f"{config_path} must define [library].entrypoint as module:attribute"
+        )
+    _split_entrypoint(entrypoint.strip())
+    return LibraryConfig(
+        root=config_path.parent,
+        config_path=config_path,
+        entrypoint=entrypoint.strip(),
+    )
+
+
+def _library_from_source(source: str | Path) -> tuple[LibraryConfig, Library]:
+    config = discover_library(source)
+    module_name, attribute_name = _split_entrypoint(config.entrypoint)
+    with _project_runtime(config.root):
+        _evict_project_entrypoint_modules(module_name, config.root)
+        importlib.invalidate_caches()
+        try:
+            module = importlib.import_module(module_name)
+        except Exception as error:
+            raise CliError(
+                "Failed to import library entrypoint module "
+                f"{module_name!r} from library root {config.root}: {error}"
+            ) from error
+        try:
+            value = getattr(module, attribute_name)
+        except AttributeError as error:
+            raise CliError(
+                f"Library entrypoint {config.entrypoint!r} has no attribute {attribute_name!r}."
+            ) from error
+    if not isinstance(value, Library):
+        raise CliError(
+            f"Library entrypoint {config.entrypoint!r} must resolve to volt.Library."
+        )
+    return config, value
+
+
+def _library_result_from_source(source: str | Path) -> tuple[LibraryConfig, LibraryResult]:
+    source_stdout = StringIO()
+    try:
+        with redirect_stdout(source_stdout):
+            config, library = _library_from_source(source)
+            result = library.build()
+    except CliError:
+        raise
+    except Exception as error:
+        _forward_project_stdout(source_stdout)
+        raise CliError(f"Native library validation failed: {error}") from error
+    _forward_project_stdout(source_stdout)
+    return config, result
+
+
+def _handle_library_check(args: argparse.Namespace) -> int | None:
+    config, result = _library_result_from_source(args.source)
+    payload = _library_check_payload(config, result)
+    if args.emit_json:
+        print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+    else:
+        print(
+            f"Library check: {'ok' if result.ok else 'failed'} "
+            f"({len(result.parts)} parts, {len(result.diagnostics)} diagnostics)"
+        )
+    return None if result.ok else EXIT_CHECK_FAILED
+
+
+def _handle_library_build(args: argparse.Namespace) -> int | None:
+    config, result = _library_result_from_source(args.source)
+    output = _library_output_path(args.output)
+    payload = _library_check_payload(config, result)
+    payload["output"] = str(output)
+    payload["written"] = False
+    if not result.ok:
+        if args.emit_json:
+            print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+        else:
+            print("Library build refused: validation failed.", file=sys.stderr)
+        return EXIT_CHECK_FAILED
+    try:
+        bundle_bytes = _native_bundle_query("build", lambda: result.bundle_bytes)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(bundle_bytes)
+    except OSError as error:
+        raise CliError(f"Failed to write PartLibraryBundle {output}: {error}") from error
+    payload["bundle_digest"] = _bundle_from_path(output).digest
+    payload["written"] = True
+    if args.emit_json:
+        print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+    else:
+        print(f"Library build: {payload['bundle_digest']} -> {output}")
+    return None
+
+
+def _handle_library_test(args: argparse.Namespace) -> int | None:
+    bundle = _bundle_from_path(args.bundle)
+    inspection = _native_bundle_query("inspect", bundle.inspect)
+    parts = _bundle_part_keys(inspection)
+    for part in parts:
+        _native_bundle_query(f"query part {part!r}", lambda part=part: bundle.part_result(part))
+        _native_bundle_query(f"query assets for part {part!r}", lambda part=part: bundle.part_assets(part))
+    payload = {
+        "format": "volt.library-test-result",
+        "schema_version": 1,
+        "ok": True,
+        "bundle_digest": bundle.digest,
+        "library_digest": bundle.library_digest,
+        "parts": parts,
+    }
+    if args.emit_json:
+        print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+    else:
+        print(f"Library test: ok ({len(parts)} parts)")
+    return None
+
+
+def _handle_library_inspect(args: argparse.Namespace) -> None:
+    bundle = _bundle_from_path(args.bundle)
+    payload = _native_bundle_query("inspect", bundle.inspect)
+    if args.part is not None:
+        part = _native_bundle_query(
+            f"query part {args.part!r}", lambda: bundle.part_result(args.part)
+        )
+        payload["part"] = _library_part_payload(args.part, part)
+    if args.emit_json:
+        print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+        return
+    print(
+        f"PartLibraryBundle: {payload['library']['namespace']} "
+        f"{payload['library']['version']}"
+    )
+    print(f"Digest: {payload['bundle_digest']}")
+    print(f"Entries: {len(payload['entries'])}")
+    if args.part is not None:
+        print(f"Part: {args.part} ({payload['part']['sha256']})")
+
+
+def _handle_library_render(args: argparse.Namespace) -> None:
+    bundle = _bundle_from_path(args.bundle)
+    assets = _native_bundle_query(
+        f"query assets for part {args.part!r}", lambda: bundle.part_assets(args.part)
+    )
+    output = _library_output_path(args.output)
+    try:
+        output.mkdir(parents=True, exist_ok=True)
+        written = _write_library_assets(output, assets)
+        payload = {
+            "format": "volt.library-render-result",
+            "schema_version": 1,
+            "bundle_digest": bundle.digest,
+            "part": args.part,
+            "assets": written,
+        }
+        (output / "render.volt.json").write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+    except OSError as error:
+        raise CliError(f"Failed to write rendered part assets to {output}: {error}") from error
+    if args.emit_json:
+        print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+    else:
+        print(f"Library render: {args.part} -> {output}")
+
+
+def _library_check_payload(config: LibraryConfig, result: LibraryResult) -> dict[str, object]:
+    payload = result.to_dict()
+    payload["config"] = {"root": str(config.root), "path": str(config.config_path)}
+    payload["library_digest"] = result.digest
+    return payload
+
+
+def _bundle_from_path(path: str | Path):
+    bundle_path = Path(path).expanduser()
+    try:
+        bundle = _NativePartLibraryBundle(bundle_path.read_bytes())
+        bundle.digest
+        return bundle
+    except OSError as error:
+        raise CliError(f"Failed to read PartLibraryBundle {bundle_path}: {error}") from error
+    except Exception as error:
+        raise CliError(f"Invalid PartLibraryBundle {bundle_path}: {error}") from error
+
+
+def _native_bundle_query(action: str, callback: Callable[[], Any]) -> Any:
+    try:
+        return callback()
+    except CliError:
+        raise
+    except Exception as error:
+        raise CliError(f"Native PartLibraryBundle {action} failed: {error}") from error
+
+
+def _bundle_part_keys(inspection: Mapping[str, object]) -> list[str]:
+    entries = inspection["entries"]
+    assert isinstance(entries, list)
+    return [
+        str(entry["id"])[len("reference:") :]
+        for entry in entries
+        if isinstance(entry, Mapping)
+        and entry.get("role") == "library_part_reference"
+        and str(entry.get("id", "")).startswith("reference:")
+    ]
+
+
+def _library_part_payload(part_key: str, result: Mapping[str, object]) -> dict[str, object]:
+    return {
+        "key": part_key,
+        "sha256": result["sha256"],
+        "component_sha256": result["component_sha256"],
+        "exact_reference": result["exact_reference"],
+        "diagnostics": result["diagnostics"],
+    }
+
+
+def _library_output_path(output: Path) -> Path:
+    path = output.expanduser()
+    return path if path.is_absolute() else Path.cwd() / path
+
+
+def _write_library_assets(output: Path, assets: Sequence[Mapping[str, object]]) -> list[dict[str, str]]:
+    written: list[dict[str, str]] = []
+    for index, asset in enumerate(assets, start=1):
+        kind = str(asset["kind"])
+        suffix = _library_asset_suffix(kind, str(asset["key"]))
+        path = output / f"{index:02d}-{kind}{suffix}"
+        path.write_bytes(bytes(asset["bytes"]))
+        written.append(
+            {
+                "kind": kind,
+                "key": str(asset["key"]),
+                "sha256": str(asset["sha256"]),
+                "path": path.name,
+            }
+        )
+    return written
+
+
+def _library_asset_suffix(kind: str, key: str) -> str:
+    if kind == "schematic":
+        return ".symbol.json"
+    if kind == "footprint":
+        return ".footprint.json"
+    if kind == "model_3d" and key.startswith("model:glb/"):
+        return ".glb"
+    if kind == "model_3d" and key.startswith("model:step/"):
+        return ".step"
+    return ".bin"
 
 
 def _forward_project_stdout(stream: StringIO) -> None:
