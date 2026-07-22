@@ -506,6 +506,7 @@
         "_board_registry",
         "_boards",
         "_circuit",
+        "_component_exact_model_3d",
         "_component_model_3d_asset_sources",
         "_component_object_footprints",
         "_definitions",

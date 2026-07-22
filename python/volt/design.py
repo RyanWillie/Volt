@@ -45,6 +45,7 @@ class Design:
         self._object_footprints: dict[FootprintRef, Footprint] = {}
         self._component_object_footprints: dict[int, FootprintRef] = {}
         self._component_model_3d_asset_sources: dict[int, Path] = {}
+        self._component_exact_model_3d: dict[int, _SelectedPartModel3D] = {}
         self._net_class_counter = 0
         self._schematic_symbols: dict[str, SchematicSymbolSpec] = {}
         self._schematic_sheets: dict[str, int] = {}
@@ -307,6 +308,7 @@ class Design:
                 self._register_component_model_3d_asset_source(
                     component.index, definition.model_3d
                 )
+                self._register_component_exact_model_3d(component.index, definition.model_3d)
             return component
         if isinstance(definition, LibraryComponent):
             definition = definition._to_part_definition()
@@ -408,14 +410,25 @@ class Design:
         model_3d: PartModel3D,
     ) -> None:
         self._component_model_3d_asset_sources[component] = model_3d.source_path
+        self._component_exact_model_3d.pop(component, None)
 
     def _clear_component_model_3d_asset_source(self, component: int) -> None:
         self._component_model_3d_asset_sources.pop(component, None)
+        self._component_exact_model_3d.pop(component, None)
 
     def _component_model_3d_asset_source(self, component: int) -> Path | None:
         return self._component_model_3d_asset_sources.get(component)
 
+    def _register_component_exact_model_3d(
+        self,
+        component: int,
+        model_3d: PartModel3D,
+    ) -> None:
+        self._component_exact_model_3d[component] = model_3d._selected_part_model()
+
     def _selected_part_model_3d(self, component: int) -> _SelectedPartModel3D | None:
+        if component in self._component_exact_model_3d:
+            return self._component_exact_model_3d[component]
         payload = self._circuit.component_selected_part_model_3d(component)
         if payload is None:
             return None
