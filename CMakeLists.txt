@@ -94,6 +94,8 @@ if(VOLT_ENABLE_COVERAGE)
         volt_core_tests
         volt_pcb_resolution_link_contract
         volt_io_resolution_link_contract
+        volt_pcb_compiled_board_link_contract
+        volt_io_compiled_board_link_contract
         volt_led_circuit_example
         volt_kernel_benchmarks
     )

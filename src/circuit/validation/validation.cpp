@@ -503,7 +503,8 @@ void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &
         const auto component_id = ComponentId{index};
         const auto &component = circuit.get(component_id);
         if (!volt::queries::selected_physical_part(circuit, component_id).has_value() &&
-            !volt::queries::selected_library_part_ref(circuit, component_id).has_value()) {
+            !volt::queries::selected_library_part_ref(circuit, component_id).has_value() &&
+            !volt::queries::component_dnp(circuit, component_id).value_or(false)) {
             report.add(Diagnostic{
                 Severity::Error,
                 DiagnosticCode{"PHYSICAL_PART_REQUIRED"},

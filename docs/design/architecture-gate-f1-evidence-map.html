@@ -197,6 +197,30 @@
     </section>
 
     <section>
+      <span class="kicker">Resolved by #314</span>
+      <h2>Immutable CompiledBoard v1</h2>
+      <p>The explicit native <code>compile_board()</code> boundary consumes exactly one logical <code>Circuit</code>, one same-owner named <code>Board</code>, its exact selected P6 closure through <code>BoardResolution</code>, and one required concrete capability record. It publishes either one standalone immutable historical <code>CompiledBoard</code> or one typed structural failure; design-quality findings remain diagnostics.</p>
+      <div class="grid">
+        <div class="panel">
+          <h3>Frozen owner state</h3>
+          <ul>
+            <li>Source Board name, canonical PCB snapshot and the minimum logical dependency snapshot are content-addressed.</li>
+            <li>The consumed selected closure excludes unreferenced bundle roots and embeds exact footprint assets plus optional consumed <code>models3d</code> bytes.</li>
+            <li>Capability, schema, compiler and canonical input digests form deterministic provenance; exact archive bytes have a separate content digest.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Offline fail-closed reopen</h3>
+          <ul>
+            <li>The owner codec checks canonical ordering, safe paths, exact roles, closed fields, digests, mappings, capability coverage and closure completeness before publication.</li>
+            <li>Reopened Board, Circuit, footprint, selected-part and model storage is artifact-owned and remains valid across source destruction and artifact moves.</li>
+            <li>PCB and IO link-contract executables prove the public headers are provided by <code>Volt::PCB</code> and <code>Volt::IO</code> respectively.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
       <span class="kicker">Separation of roles</span>
       <h2>Evidence and invariants</h2>
       <div class="grid">

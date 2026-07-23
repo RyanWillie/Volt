@@ -35,6 +35,8 @@ add_library(
     parts/electrical_records_io.cpp
     pcb/pcb_fabrication_writer.cpp
     pcb/board_resolution.cpp
+    pcb/board_resolution_detail.cpp
+    pcb/compiled_board.cpp
     pcb/pcb_feature_io.cpp
     pcb/pcb_feature_svg.cpp
     pcb/pcb_reader.cpp
