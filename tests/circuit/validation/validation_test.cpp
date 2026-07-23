@@ -11,6 +11,7 @@
 #include <volt/circuit/connectivity/instances.hpp>
 #include <volt/circuit/connectivity/nets.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/circuit/updates.hpp>
 #include <volt/circuit/validation/validation.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/electrical_attributes.hpp>
@@ -494,6 +495,12 @@ TEST_CASE("PCB readiness validation reports components without selected physical
     REQUIRE(diagnostic.entities().size() == 2);
     CHECK(diagnostic.entities()[0] == volt::EntityRef::component(resistor));
     CHECK(diagnostic.entities()[1] == volt::EntityRef::component_def(resistor_def));
+
+    circuit.update(resistor, volt::SetAssemblyIntent{.dnp = true});
+    const auto dnp_report = volt::validate_for_pcb(circuit);
+    REQUIRE(dnp_report.count() == 2);
+    CHECK(dnp_report.diagnostics()[0].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
+    CHECK(dnp_report.diagnostics()[1].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
 }
 
 TEST_CASE("PCB readiness validation accepts components with selected physical parts") {
