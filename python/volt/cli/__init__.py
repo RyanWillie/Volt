@@ -14,7 +14,7 @@ from contextlib import contextmanager, redirect_stdout
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from .._project_model_lookup import model_output_name
 from ..design import Design
@@ -779,10 +779,10 @@ def _handle_library_check(args: argparse.Namespace) -> int | None:
 def _handle_library_build(args: argparse.Namespace) -> int | None:
     config, result = _library_result_from_source(args.source)
     output = _library_output_path(args.output)
-    payload = _library_check_payload(config, result)
-    payload["output"] = str(output)
-    payload["written"] = False
     if not result.ok:
+        payload = _library_check_payload(config, result)
+        payload["output"] = str(output)
+        payload["written"] = False
         if args.emit_json:
             print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
         else:
@@ -793,7 +793,10 @@ def _handle_library_build(args: argparse.Namespace) -> int | None:
         _write_bundle_atomically(output, bundle_bytes)
     except OSError as error:
         raise CliError(f"Failed to write PartLibraryBundle {output}: {error}") from error
-    payload["bundle_digest"] = _bundle_from_path(output).digest
+    bundle = _bundle_from_path(output)
+    payload = _library_bundle_build_payload(config, result, bundle)
+    payload["bundle_digest"] = bundle.digest
+    payload["output"] = str(output)
     payload["written"] = True
     if args.emit_json:
         print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
@@ -875,6 +878,34 @@ def _library_check_payload(config: LibraryConfig, result: LibraryResult) -> dict
     payload = result.to_dict()
     payload["config"] = {"root": str(config.root), "path": str(config.config_path)}
     payload["library_digest"] = result.digest
+    return payload
+
+
+def _library_bundle_build_payload(
+    config: LibraryConfig,
+    result: LibraryResult,
+    bundle: _NativePartLibraryBundle,
+) -> dict[str, object]:
+    """Report successful build identity only from the reopened native bundle."""
+
+    payload = _library_check_payload(config, result)
+    payload["library_digest"] = bundle.library_digest
+    native_parts = {
+        part_key: _native_bundle_query(
+            f"query part {part_key!r}", lambda part_key=part_key: bundle.part_result(part_key)
+        )
+        for part_key in _native_bundle_query("query part keys", bundle.part_keys)
+    }
+    parts = cast(list[dict[str, object]], payload["parts"])
+    for part in parts:
+        exact_reference = cast(Mapping[str, object], part["exact_reference"])
+        part_key = cast(str, exact_reference["part_key"])
+        native = native_parts[part_key]
+        artifact = cast(dict[str, object], part["artifact"])
+        artifact["sha256"] = native["sha256"]
+        artifact["byte_size"] = len(bytes(native["bytes"]))
+        part["component_sha256"] = native["component_sha256"]
+        part["exact_reference"] = native["exact_reference"]
     return payload
 
 
