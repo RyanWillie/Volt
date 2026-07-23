@@ -2,13 +2,12 @@
 
 #include "binding_conversions.hpp"
 
-#include <map>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/io/parts/part_library_bundle.hpp>
+#include <volt/library/part_library.hpp>
 
 namespace volt::python {
 
@@ -37,20 +36,34 @@ class PyPartLibrary {
 
     [[nodiscard]] std::string digest() const;
 
-  private:
-    struct State {
-        State(volt::PartLibrary selected_library,
-              std::optional<volt::io::PartLibraryBundle> selected_bundle,
-              std::map<std::string, volt::ComponentSpec> specs)
-            : library{std::move(selected_library)}, bundle{std::move(selected_bundle)},
-              component_specs{std::move(specs)} {}
+    /** Build the complete native bundle closure for this immutable source snapshot. */
+    [[nodiscard]] py::bytes bundle_bytes() const;
 
-        volt::PartLibrary library;
-        std::optional<volt::io::PartLibraryBundle> bundle;
-        std::map<std::string, volt::ComponentSpec> component_specs;
-    };
+  private:
+    struct State;
 
     std::shared_ptr<const State> state_;
+};
+
+/** Owning native reopened PartLibraryBundle exposed only as typed query results. */
+class PyPartLibraryBundle {
+  public:
+    explicit PyPartLibraryBundle(std::string bytes);
+
+    [[nodiscard]] std::string digest() const;
+
+    [[nodiscard]] std::string library_digest() const;
+
+    [[nodiscard]] py::dict inspect() const;
+
+    [[nodiscard]] py::list part_keys() const;
+
+    [[nodiscard]] py::dict part_result(const std::string &part_key) const;
+
+    [[nodiscard]] py::list part_assets(const std::string &part_key) const;
+
+  private:
+    volt::io::PartLibraryBundle bundle_;
 };
 
 [[nodiscard]] py::dict library_part_reference_to_dict(const volt::LibraryPartRef &reference);

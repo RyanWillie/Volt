@@ -323,6 +323,7 @@ Source: `python/volt/library_result.py`
 | `ok: bool` | Return whether the library build has no error diagnostics. |
 | `diagnostics: LibraryDiagnostics` | Return diagnostics collected during library validation. |
 | `digest: str` | Return the deterministic native P4 library digest. |
+| `bundle_bytes: bytes` | Build the complete deterministic native PartLibraryBundle closure. |
 | `parts: tuple[LibraryPartResult, ...]` | Return per-part validation summaries in deterministic name order. |
 
 ### Methods

@@ -53,6 +53,30 @@ ctest --preset dev -L cpp --output-on-failure
 ctest --preset dev -L example --output-on-failure
 ```
 
+## Part-library CLI
+
+Library source directories declare a `volt.Library` object in `volt.toml`:
+
+```toml
+[library]
+entrypoint = "parts:LIB"
+```
+
+The CLI validates and builds source locally, then reopens and queries only the produced
+native bundle. It never needs a registry or network connection:
+
+```sh
+volt library check .
+volt library build . --output dist/my-parts.voltlib
+volt library test dist/my-parts.voltlib
+volt library inspect dist/my-parts.voltlib
+volt library render dist/my-parts.voltlib vendor/R-1K --output review/
+```
+
+Use `--json` on each command for its versioned machine-readable result. `render` writes the
+exact supported symbol, footprint, and model assets plus a deterministic `render.volt.json`
+manifest; it does not reinterpret or regenerate their library-owned meaning.
+
 Generate API documentation with:
 
 ```sh
