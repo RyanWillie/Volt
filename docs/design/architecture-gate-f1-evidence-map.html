@@ -221,6 +221,30 @@
     </section>
 
     <section>
+      <span class="kicker">Resolved by #315</span>
+      <h2>CompiledBoard physical consumer fan-out</h2>
+      <p>Physical validation and DRC, deterministic ratsnest queries, CPL projection, full and layer-filtered SVG rendering, and compact 3D/view preparation now expose exact-revision native entry points whose sole physical input is one immutable <code>CompiledBoard</code>. Each result carries the source Board name plus provenance digest through <code>CompiledBoardIdentity</code>; no authoring <code>Board</code>, live <code>Circuit</code>, resolver, library, Python object, cache, registry or source import participates after compilation.</p>
+      <div class="grid">
+        <div class="panel">
+          <h3>Offline consumers</h3>
+          <ul>
+            <li><code>CompiledBoardValidation</code>, <code>CompiledBoardRatsnest</code> and <code>CompiledBoardCpl</code> preserve deterministic diagnostics, geometry and row ordering while binding evidence to one exact revision.</li>
+            <li><code>CompiledBoardSvg</code> preserves full-board and layer-filtered bytes, selector identity and the exact source provenance.</li>
+            <li>Focused parity tests destroy or mutate every source owner, reopen canonical bytes, move the artifact owner and repeat every consumer without output drift.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Compact BoardScene</h3>
+          <ul>
+            <li><code>BoardScene</code> contains only render geometry, stable placement selections, display transforms and checked model references; it cannot reconstruct or mutate Board, connectivity, selected-part truth or compilation rules.</li>
+            <li>Without <code>models3d</code> its GLB set is empty. With <code>models3d</code>, it contains only consumed GLBs from that exact compiled revision; STEP and unselected library assets do not enter the set.</li>
+            <li>Model byte lookup rejects foreign named Boards, stale revisions, missing or extraneous assets and digest mismatches before returning an artifact-owned view; raw paths are not representable as scene references.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
       <span class="kicker">Separation of roles</span>
       <h2>Evidence and invariants</h2>
       <div class="grid">

@@ -40,6 +40,7 @@
 #include <volt/io/parts/part_library_bundle.hpp>
 #include <volt/io/pcb/board_resolution.hpp>
 #include <volt/io/pcb/compiled_board.hpp>
+#include <volt/io/pcb/compiled_board_consumers.hpp>
 #include <volt/io/pcb/pcb_fabrication_writer.hpp>
 #include <volt/io/pcb/pcb_reader.hpp>
 #include <volt/io/pcb/pcb_schema.hpp>

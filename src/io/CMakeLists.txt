@@ -37,6 +37,7 @@ add_library(
     pcb/board_resolution.cpp
     pcb/board_resolution_detail.cpp
     pcb/compiled_board.cpp
+    pcb/compiled_board_consumers.cpp
     pcb/pcb_feature_io.cpp
     pcb/pcb_feature_svg.cpp
     pcb/pcb_reader.cpp
