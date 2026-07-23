@@ -322,7 +322,8 @@ class Circuit final {
     void set_net_attribute(NetId net, const ElectricalAttributeSpec &spec,
                            ElectricalAttributeValue value);
     void select_physical_part(ComponentId component, PhysicalPart physical_part,
-                              const std::vector<PinDefId> &component_pins);
+                              const std::vector<PinDefId> &component_pins,
+                              std::optional<LibraryPartRef> source_reference = std::nullopt);
     void set_selected_part_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
                                      ElectricalAttributeValue value);
     void require_pin_definition(PinDefId pin_definition) const;

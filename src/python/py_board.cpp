@@ -9,6 +9,7 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/io/assembly/cpl_writer.hpp>
+#include <volt/io/pcb/board_resolution.hpp>
 #include <volt/io/pcb/pcb_svg_writer.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/pcb/assembly/cpl.hpp>
@@ -54,7 +55,13 @@ bool BoardNameByteLess::operator()(const volt::BoardName &lhs,
 }
 
 PyBoard::PyBoard(const PyCircuit &circuit, volt::BoardName name)
-    : board_{circuit.logical_circuit(), std::move(name)} {}
+    : circuit_{&circuit}, board_{circuit.logical_circuit(), std::move(name)} {}
+
+volt::BoardResolution PyBoard::resolve(std::vector<volt::BoardAssetCapability> additional) const {
+    return volt::io::resolve_board(
+        board_, circuit_->selected_part_bundle(),
+        volt::BoardResolutionCapabilities{board_.capability_profile(), std::move(additional)});
+}
 
 std::string PyBoard::name() const { return board_.name().value(); }
 
@@ -183,10 +190,6 @@ std::size_t PyBoard::add_circle(const std::string &label, double x, double y, do
         .index();
 }
 
-std::size_t PyBoard::cache_footprint_definition(const py::dict &definition) {
-    return board_.cache_footprint_definition(footprint_definition_from_dict(definition)).index();
-}
-
 std::size_t PyBoard::place_component(std::size_t component, double x, double y,
                                      double rotation_degrees, const std::string &side,
                                      bool locked) {
@@ -215,6 +218,37 @@ py::list PyBoard::placement_refs() const {
     return result;
 }
 
+py::list PyBoard::placed_model_3d_refs() const {
+    const auto resolution = resolve({volt::BoardAssetCapability::Models3D});
+    auto result = py::list{};
+    for (std::size_t index = 0; index < board_.all<volt::ComponentPlacementId>().size(); ++index) {
+        const auto placement_id = volt::ComponentPlacementId{index};
+        const auto &placement = board_.get(placement_id);
+        const auto &component = board_.circuit().get(placement.component());
+        const auto *part = resolution.part(placement.component());
+        auto item = py::dict{};
+        item["placement"] = placement_id.index();
+        item["component"] = placement.component().index();
+        item["reference"] = component.reference().value();
+        if (part == nullptr || !part->physical_part().model_3d().has_value()) {
+            item["model"] = py::none{};
+            item["bytes"] = py::none{};
+        } else {
+            const auto &model = *part->physical_part().model_3d();
+            auto metadata = py::dict{};
+            metadata["format"] = model.format();
+            metadata["file_name"] = model.file_name();
+            metadata["translation_mm"] = py::make_tuple(
+                model.translation_mm()[0], model.translation_mm()[1], model.translation_mm()[2]);
+            metadata["rotation_deg"] = model.rotation_deg();
+            item["model"] = std::move(metadata);
+            item["bytes"] = py::bytes{*part->model_3d_bytes()};
+        }
+        result.append(std::move(item));
+    }
+    return result;
+}
+
 py::list PyBoard::stackup() const {
     auto result = py::list{};
     const auto &board = board_;
@@ -238,16 +272,18 @@ py::list PyBoard::stackup() const {
 py::list PyBoard::component_footprint_pads(std::size_t component) const {
     const auto component_handle = component_id(component);
     static_cast<void>(board_.circuit().get(component_handle));
+    const auto resolution = resolve();
+    const auto &resolved_board = resolution.board();
 
     auto result = py::list{};
     const auto &selected_part =
-        volt::queries::selected_physical_part(board_.circuit(), component_handle);
+        volt::queries::selected_physical_part(resolved_board.circuit(), component_handle);
     if (!selected_part.has_value()) {
         return result;
     }
 
     const auto resolution_footprints =
-        volt::queries::board_resolution_footprints(board_, volt::builtin_footprint_library());
+        volt::queries::board_resolution_footprints(resolved_board, resolution.footprints());
     const auto footprint_resolution =
         volt::resolve_footprint(selected_part.value(), resolution_footprints);
     const auto *definition = footprint_resolution.definition();
@@ -270,8 +306,8 @@ py::list PyBoard::component_footprint_pads(std::size_t component) const {
         item["position"] = py::make_tuple(pad.position().x_mm(), pad.position().y_mm());
         item["pin"] = py::none{};
         if (binding != footprint_resolution.pad_bindings().end()) {
-            const auto pin =
-                queries::pin_by_definition(board_.circuit(), component_handle, binding->pin());
+            const auto pin = queries::pin_by_definition(resolved_board.circuit(), component_handle,
+                                                        binding->pin());
             if (pin.has_value()) {
                 item["pin"] = pin->index();
             }
@@ -304,7 +340,8 @@ py::dict PyBoard::add_track_for_route(std::optional<std::size_t> net, std::size_
         route_net = net_id(net.value());
     }
 
-    auto router = volt::BoardRouter{board_, volt::builtin_footprint_library()};
+    const auto resolution = resolve();
+    auto router = volt::BoardRouter{board_, resolution};
     const auto result = router.add_track(volt::BoardTrackRouteRequest{
         route_net,
         volt::BoardLayerId{layer},
@@ -348,7 +385,8 @@ std::size_t PyBoard::add_via(std::size_t net, double x, double y, std::size_t st
 py::dict PyBoard::assisted_connect(std::size_t net, double start_x, double start_y,
                                    std::size_t start_layer, double end_x, double end_y,
                                    std::size_t end_layer) {
-    auto router = volt::BoardRouter{board_, volt::builtin_footprint_library()};
+    const auto resolution = resolve();
+    auto router = volt::BoardRouter{board_, resolution};
     const auto result = router.connect(volt::BoardRouteRequest{
         net_id(net), volt::BoardPoint{start_x, start_y}, volt::BoardPoint{end_x, end_y},
         volt::BoardLayerId{start_layer}, volt::BoardLayerId{end_layer}});
@@ -375,7 +413,8 @@ py::dict PyBoard::assisted_connect(std::size_t net, double start_x, double start
 }
 
 py::dict PyBoard::escape(std::size_t component) {
-    auto router = volt::BoardRouter{board_, volt::builtin_footprint_library()};
+    const auto resolution = resolve();
+    auto router = volt::BoardRouter{board_, resolution};
     const auto result = router.escape(component_id(component));
 
     auto pads = py::list{};
@@ -510,9 +549,10 @@ std::size_t PyBoard::add_text(const std::string &text, double x, double y, std::
 }
 
 py::list PyBoard::resolve_pads() const {
+    const auto board_resolution = resolve();
     auto result = py::list{};
     for (const auto &resolution :
-         volt::queries::resolve_pads(board_, volt::builtin_footprint_library())) {
+         volt::queries::resolve_pads(board_resolution.board(), board_resolution.footprints())) {
         auto item = py::dict{};
         item["placement"] = resolution.placement().index();
         item["component"] = resolution.component().index();
@@ -531,29 +571,34 @@ py::list PyBoard::resolve_pads() const {
 }
 
 py::list PyBoard::validate() const {
-    return diagnostics_to_list(validate_board(board_, volt::builtin_footprint_library()));
+    const auto resolution = resolve();
+    return diagnostics_to_list(validate_board(resolution.board(), resolution.footprints()));
 }
 
 py::list PyBoard::validate_assembly(const py::dict &rotation_offsets) const {
     const auto options = cpl_projection_options_from_dict(rotation_offsets);
+    const auto resolution = resolve();
     return diagnostics_to_list(
-        volt::project_cpl(board_, volt::builtin_footprint_library(), options).diagnostics());
+        volt::project_cpl(resolution.board(), resolution.footprints(), options).diagnostics());
 }
 
 std::string PyBoard::cpl_json(const py::dict &rotation_offsets) const {
     const auto options = cpl_projection_options_from_dict(rotation_offsets);
+    const auto resolution = resolve();
     return volt::io::write_cpl_json(
-        volt::project_cpl(board_, volt::builtin_footprint_library(), options));
+        volt::project_cpl(resolution.board(), resolution.footprints(), options));
 }
 
 std::string PyBoard::cpl_csv(const py::dict &rotation_offsets) const {
     const auto options = cpl_projection_options_from_dict(rotation_offsets);
+    const auto resolution = resolve();
     return volt::io::write_cpl_csv(
-        volt::project_cpl(board_, volt::builtin_footprint_library(), options));
+        volt::project_cpl(resolution.board(), resolution.footprints(), options));
 }
 
 std::string PyBoard::to_json() const {
-    return volt::io::write_pcb_board(board_, volt::builtin_footprint_library());
+    const auto resolution = resolve();
+    return volt::io::write_pcb_board(resolution.board(), resolution.footprints());
 }
 
 std::string PyBoard::to_svg(bool pad_net_overlays, bool diagnostic_overlays, bool ratsnest_edges,
@@ -564,7 +609,8 @@ std::string PyBoard::to_svg(bool pad_net_overlays, bool diagnostic_overlays, boo
     if (layer_filter.has_value()) {
         options.layer_filter = volt::BoardLayerId{layer_filter.value()};
     }
-    return volt::io::write_pcb_placement_svg(board_, volt::builtin_footprint_library(), options);
+    const auto resolution = resolve();
+    return volt::io::write_pcb_placement_svg(resolution.board(), resolution.footprints(), options);
 }
 
 PyBoardRegistry::PyBoardRegistry(const PyCircuit &circuit) : circuit_{&circuit} {}

@@ -275,7 +275,6 @@ def _select_library_physical_part(
         pin_pads=physical_part.pin_pads_for(library_component),
         properties=physical_part.properties,
         voltage_rating=physical_part.voltage_rating,
-        power_rating=physical_part.power_rating,
         model_3d=physical_part.model_3d,
         approved_alternate_mpns=physical_part.approved_alternate_mpns,
     )

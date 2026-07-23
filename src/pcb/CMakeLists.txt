@@ -15,6 +15,7 @@ add_library(
     projection/board_geometry_projection.cpp
     projection/footprint_visual_projection.cpp
     queries/board_queries.cpp
+    resolution/board_resolution.cpp
     routing/board_router.cpp
     routing/board_spatial_index.cpp
     validation/board_capability_validation.cpp

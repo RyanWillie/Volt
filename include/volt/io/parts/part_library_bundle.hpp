@@ -100,7 +100,7 @@ class PartLibraryBundleEntry {
 };
 
 /** Owning immutable selected-library closure reopened entirely from native archive bytes. */
-class PartLibraryBundle {
+class PartLibraryBundle : public ExactPartResolver {
   public:
     /** Build exactly the requested part closure, or publish no bundle on any failure. */
     [[nodiscard]] static PartLibraryBundle
@@ -123,11 +123,19 @@ class PartLibraryBundle {
     /** Prevent borrowing the whole-bundle digest from a temporary bundle. */
     [[nodiscard]] const ContentHash &digest() const && = delete;
 
-    /** Return the deterministic digest pinned by LibraryPartRefs from this bundle closure. */
+    /** Return the canonical semantic-library digest pinned by LibraryPartRefs. */
     [[nodiscard]] const ContentHash &library_digest() const & noexcept { return library_digest_; }
 
     /** Prevent borrowing the bundle-library digest from a temporary bundle. */
     [[nodiscard]] const ContentHash &library_digest() const && = delete;
+
+    [[nodiscard]] const PartLibraryIdentity &identity() const & noexcept override {
+        return library_.identity();
+    }
+
+    [[nodiscard]] const ContentHash &reference_digest() const & noexcept override {
+        return library_digest_;
+    }
 
     /** Return the owning immutable native part-library snapshot. */
     [[nodiscard]] const PartLibrary &library() const & noexcept { return library_; }
@@ -139,7 +147,7 @@ class PartLibraryBundle {
     [[nodiscard]] LibraryPartRef require(const PartKey &key) const;
 
     /** Resolve one exact bundle reference without ambient catalogue fallback. */
-    [[nodiscard]] const PartDefinition &resolve(const LibraryPartRef &reference) const &;
+    [[nodiscard]] const PartDefinition &resolve(const LibraryPartRef &reference) const & override;
 
     /** Prevent resolving a borrowed part from a temporary bundle. */
     [[nodiscard]] const PartDefinition &resolve(const LibraryPartRef &reference) const && = delete;

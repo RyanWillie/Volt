@@ -232,6 +232,7 @@ enum class FootprintPadMechanicalRole {
     Mounting,
     Fiducial,
     MechanicalSupport,
+    Thermal,
 };
 
 /** Drill data for through-hole footprint pads. */

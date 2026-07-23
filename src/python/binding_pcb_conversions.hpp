@@ -175,6 +175,9 @@ parse_optional_footprint_mechanical_role(py::handle value) {
         role == "MechanicalSupport") {
         return volt::FootprintPadMechanicalRole::MechanicalSupport;
     }
+    if (role == "thermal" || role == "Thermal") {
+        return volt::FootprintPadMechanicalRole::Thermal;
+    }
     throw std::invalid_argument{"Unknown footprint pad mechanical role"};
 }
 

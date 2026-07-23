@@ -63,9 +63,9 @@ void validate_assets(std::span<const PartDefinition> parts,
 
 } // namespace
 
-SelectLibraryPart::SelectLibraryPart(const PartLibrary &library, LibraryPartRef reference)
+SelectLibraryPart::SelectLibraryPart(const ExactPartResolver &resolver, LibraryPartRef reference)
     : reference_{std::move(reference)},
-      implemented_component_{library.resolve(reference_).implemented_component()} {}
+      implemented_component_{resolver.resolve(reference_).implemented_component()} {}
 
 PartLibraryIdentity::PartLibraryIdentity(std::string namespace_name, std::string version,
                                          PartLibrarySchemaVersion schema_version)
@@ -186,6 +186,15 @@ PartLibrary PartLibraryBuilder::build(const PartAssetResolver &asset_resolver) c
     return PartLibrary{*this, asset_resolver};
 }
 
+ContentHash PartLibraryBuilder::reference_digest() const {
+    auto components = components_;
+    auto parts = parts_;
+    std::ranges::sort(components, {},
+                      [](const auto &component) { return component.contract().key(); });
+    std::ranges::sort(parts, {}, [](const auto &part) { return part_key(part); });
+    return library_digest(identity_, components, parts);
+}
+
 PartLibrary::PartLibrary(const PartLibraryBuilder &builder, const PartAssetResolver &asset_resolver)
     : identity_{builder.identity()},
       components_{builder.components().begin(), builder.components().end()},
@@ -194,7 +203,7 @@ PartLibrary::PartLibrary(const PartLibraryBuilder &builder, const PartAssetResol
                       [](const auto &component) { return component.contract().key(); });
     std::ranges::sort(parts_, {}, [](const auto &part) { return part_key(part); });
     validate_assets(parts_, asset_resolver);
-    digest_ = library_digest(identity_, components_, parts_);
+    digest_ = builder.reference_digest();
 }
 
 std::optional<std::reference_wrapper<const ComponentDefinition>>

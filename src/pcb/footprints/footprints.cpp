@@ -157,7 +157,8 @@ FootprintPad::mechanical_role() const noexcept {
 }
 
 [[nodiscard]] bool FootprintPad::requires_pin_mapping() const noexcept {
-    return !mechanical_role_.has_value();
+    return !mechanical_role_.has_value() ||
+           *mechanical_role_ == FootprintPadMechanicalRole::Thermal;
 }
 
 FootprintPad::FootprintPad(std::string label, FootprintPadKind kind, FootprintPadShape shape,

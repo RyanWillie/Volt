@@ -20,150 +20,42 @@
     { "id": "pin_def:15", "name": "K", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" }
   ],
   "component_definitions": [
-    { "id": "component_def:0", "name": "ExternalSupply", "source": { "namespace": "volt.examples.timer_555_led_blinker", "name": "external_supply", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.examples.timer_555_led_blinker:ExternalSupply", "variant": "default" }], "pins": ["pin_def:0", "pin_def:1"], "properties": {
+    { "id": "component_def:0", "name": "ExternalSupply", "source": { "namespace": "volt.examples.timer_555_led_blinker", "name": "external_supply", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.examples.timer_555_led_blinker:ExternalSupply", "variant": "default" }], "contract": { "semantic_model_version": 1, "key": "volt.python.component/sha256:f738f2b92091802a2707b684c0e8bb7e6b1a407fc98002cf0578d083c9e45d4e", "content_identity": "sha256:b89c00161fe2579ed322c2187daf919f6159dbd9e34362b270ed0a93aeaef0d2", "pin_keys": ["pin/0", "pin/1"], "framed_pins": [], "relations": [], "supply_domains": [], "feature_schemas": [], "feature_bindings": [] }, "pins": ["pin_def:0", "pin_def:1"], "properties": {
         "category": { "type": "string", "value": "validation_source" }
       } },
-    { "id": "component_def:1", "name": "NE555", "source": { "namespace": "volt.examples.timer_555_led_blinker", "name": "ne555", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.examples.timer_555_led_blinker:NE555", "variant": "default" }], "pins": ["pin_def:2", "pin_def:3", "pin_def:4", "pin_def:5", "pin_def:6", "pin_def:7", "pin_def:8", "pin_def:9"], "properties": {} },
-    { "id": "component_def:2", "name": "Resistor", "source": { "namespace": "volt.passives", "name": "resistor_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.passives:resistor", "variant": "default" }], "pins": ["pin_def:10", "pin_def:11"], "properties": {
+    { "id": "component_def:1", "name": "NE555", "source": { "namespace": "volt.examples.timer_555_led_blinker", "name": "ne555", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.examples.timer_555_led_blinker:NE555", "variant": "default" }], "contract": { "semantic_model_version": 1, "key": "volt.python.component/sha256:f052ea6183d163ccb7c098e23ab2d708f1b8367ce5c76ab3bd8a7bda9aa1af57", "content_identity": "sha256:98d89ee49ca7dba7cb7948d671eab3d61c8dfa6344bfc75d002f2a11ea4f7dab", "pin_keys": ["pin/0", "pin/1", "pin/2", "pin/3", "pin/4", "pin/5", "pin/6", "pin/7"], "framed_pins": [], "relations": [], "supply_domains": [], "feature_schemas": [], "feature_bindings": [] }, "pins": ["pin_def:2", "pin_def:3", "pin_def:4", "pin_def:5", "pin_def:6", "pin_def:7", "pin_def:8", "pin_def:9"], "properties": {} },
+    { "id": "component_def:2", "name": "Resistor", "source": { "namespace": "volt.passives", "name": "resistor_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.passives:resistor", "variant": "default" }], "contract": { "semantic_model_version": 1, "key": "volt.python.component/sha256:ef65b7ae06c865aa70d0a991bbdb23918825290b794338d04e84d3938490fb8a", "content_identity": "sha256:a0854072a8caa4d3dc7bdd06b5cbe3fe05ef6fffde4fae94189932e0c6c69293", "pin_keys": ["pin/0", "pin/1"], "framed_pins": [], "relations": [], "supply_domains": [], "feature_schemas": [], "feature_bindings": [] }, "pins": ["pin_def:10", "pin_def:11"], "properties": {
         "category": { "type": "string", "value": "passive" }
       } },
-    { "id": "component_def:3", "name": "Capacitor", "source": { "namespace": "volt.passives", "name": "capacitor_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.passives:capacitor", "variant": "default" }], "pins": ["pin_def:12", "pin_def:13"], "properties": {
+    { "id": "component_def:3", "name": "Capacitor", "source": { "namespace": "volt.passives", "name": "capacitor_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.passives:capacitor", "variant": "default" }], "contract": { "semantic_model_version": 1, "key": "volt.python.component/sha256:d8b8a2c03e3439921fbe25052e152ddedf2132a62fe25022c486495565917533", "content_identity": "sha256:e6a270bcabc5effa2df4fc03623dfd0ba15a8621c0a46432b3d977feca58ac55", "pin_keys": ["pin/0", "pin/1"], "framed_pins": [], "relations": [], "supply_domains": [], "feature_schemas": [], "feature_bindings": [] }, "pins": ["pin_def:12", "pin_def:13"], "properties": {
         "category": { "type": "string", "value": "passive" }
       } },
-    { "id": "component_def:4", "name": "LED", "source": { "namespace": "volt.optos", "name": "led_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.optos:led", "variant": "default" }], "pins": ["pin_def:14", "pin_def:15"], "properties": {} }
+    { "id": "component_def:4", "name": "LED", "source": { "namespace": "volt.optos", "name": "led_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.optos:led", "variant": "default" }], "contract": { "semantic_model_version": 1, "key": "volt.python.component/sha256:ee48f9e524a14c1b2c657b65e6393abfe8d3ef4e7442f0e54543c7b9acdb46fc", "content_identity": "sha256:a77d5fb1d9b44a040e95290cdc9fe4b302531d8f1387bf278b23d5f3a5ddf357", "pin_keys": ["pin/0", "pin/1"], "framed_pins": [], "relations": [], "supply_domains": [], "feature_schemas": [], "feature_bindings": [] }, "pins": ["pin_def:14", "pin_def:15"], "properties": {} }
   ],
   "components": [
-    { "id": "component:0", "definition": "component_def:0", "reference": "J1", "properties": {}, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "JST", "part_number": "S2B-PH-SM4-TB(LF)(SN)" },
-      "package": "JST-PH-SMD-1x02",
-      "footprint": { "library": "Connector_JST", "name": "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:0", "pad": "1" },
-        { "pin": "pin_def:1", "pad": "2" }
-      ],
-      "properties": {}
-    } },
+    { "id": "component:0", "definition": "component_def:0", "reference": "J1", "properties": {}, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-0", "library_digest": "sha256:b06f43abeac1153a9dffc016d51f80f3bf7215488b603875f4960860244f8447", "part_digest": "sha256:2c3a6586f81e2e96948f36358800e6e6ff9fc8d2a6ef10895ad04f74afdd594f" } },
     { "id": "component:1", "definition": "component_def:1", "reference": "U1", "properties": {
         "value": { "type": "string", "value": "NE555" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Texas Instruments", "part_number": "NE555DR" },
-      "package": "SOIC-8",
-      "footprint": { "library": "KiCad_Package_SO", "name": "SOIC-8_3.9x4.9mm_P1.27mm" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:2", "pad": "1" },
-        { "pin": "pin_def:3", "pad": "2" },
-        { "pin": "pin_def:4", "pad": "3" },
-        { "pin": "pin_def:5", "pad": "4" },
-        { "pin": "pin_def:6", "pad": "5" },
-        { "pin": "pin_def:7", "pad": "6" },
-        { "pin": "pin_def:8", "pad": "7" },
-        { "pin": "pin_def:9", "pad": "8" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
-      }
-    } },
+      }, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-1", "library_digest": "sha256:b06f43abeac1153a9dffc016d51f80f3bf7215488b603875f4960860244f8447", "part_digest": "sha256:139b628e6d0196fa2d4b5d5d17bc214b6a1a954cfb1ed7f7a3defaa3395b8503" } },
     { "id": "component:2", "definition": "component_def:2", "reference": "R1", "properties": {
         "value": { "type": "string", "value": "100 kOhm" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Stackpole", "part_number": "RMCF0805FT100K" },
-      "package": "0805",
-      "footprint": { "library": "Resistor_SMD", "name": "R_0805_2012Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:10", "pad": "1" },
-        { "pin": "pin_def:11", "pad": "2" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.125 }
-      }
-    } },
+      }, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-2", "library_digest": "sha256:b06f43abeac1153a9dffc016d51f80f3bf7215488b603875f4960860244f8447", "part_digest": "sha256:9617fa2f3d5d8823a5a469b5aada3427f23f5cfc2ef438b8fa0b420539549326" } },
     { "id": "component:3", "definition": "component_def:2", "reference": "R2", "properties": {
         "value": { "type": "string", "value": "47 kOhm" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Stackpole", "part_number": "RMCF0805FT47K0" },
-      "package": "0805",
-      "footprint": { "library": "Resistor_SMD", "name": "R_0805_2012Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:10", "pad": "1" },
-        { "pin": "pin_def:11", "pad": "2" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.125 }
-      }
-    } },
+      }, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-3", "library_digest": "sha256:b06f43abeac1153a9dffc016d51f80f3bf7215488b603875f4960860244f8447", "part_digest": "sha256:2e7a47e3984216f5d6b2e5bb4ef84bfc80a6ba8ddfa5a9ba15efdea4d0a01283" } },
     { "id": "component:4", "definition": "component_def:3", "reference": "C1", "properties": {
         "value": { "type": "string", "value": "1 uF" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Samsung Electro-Mechanics", "part_number": "CL21B105KBFNNNE" },
-      "package": "0805",
-      "footprint": { "library": "Capacitor_SMD", "name": "C_0805_2012Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:12", "pad": "1" },
-        { "pin": "pin_def:13", "pad": "2" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 50 }
-      }
-    } },
+      }, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-4", "library_digest": "sha256:b06f43abeac1153a9dffc016d51f80f3bf7215488b603875f4960860244f8447", "part_digest": "sha256:2a544c0cfd7b2eece3e8c52b26306b3b5cebeb86a80c3e5275e83d300474eb7e" } },
     { "id": "component:5", "definition": "component_def:3", "reference": "C2", "properties": {
         "value": { "type": "string", "value": "10 nF" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Samsung Electro-Mechanics", "part_number": "CL21B103KBANNNC" },
-      "package": "0805",
-      "footprint": { "library": "Capacitor_SMD", "name": "C_0805_2012Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:12", "pad": "1" },
-        { "pin": "pin_def:13", "pad": "2" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 50 }
-      }
-    } },
+      }, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-5", "library_digest": "sha256:b06f43abeac1153a9dffc016d51f80f3bf7215488b603875f4960860244f8447", "part_digest": "sha256:9dfeeece7a36a0f3ffc06033437419d2e6fc93ebf03e5f58ca3f803bbe3cac80" } },
     { "id": "component:6", "definition": "component_def:3", "reference": "C3", "properties": {
         "value": { "type": "string", "value": "100 nF" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Samsung Electro-Mechanics", "part_number": "CL21B104KBCNNNC" },
-      "package": "0805",
-      "footprint": { "library": "Capacitor_SMD", "name": "C_0805_2012Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:12", "pad": "1" },
-        { "pin": "pin_def:13", "pad": "2" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 50 }
-      }
-    } },
+      }, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-6", "library_digest": "sha256:b06f43abeac1153a9dffc016d51f80f3bf7215488b603875f4960860244f8447", "part_digest": "sha256:7ce783ac385764979fa3052ad51ca1bf2a28bf5d9777c72951da7be671b8ee0d" } },
     { "id": "component:7", "definition": "component_def:2", "reference": "R3", "properties": {
         "value": { "type": "string", "value": "1 kOhm" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Stackpole", "part_number": "RMCF0805FT1K00" },
-      "package": "0805",
-      "footprint": { "library": "Resistor_SMD", "name": "R_0805_2012Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:10", "pad": "1" },
-        { "pin": "pin_def:11", "pad": "2" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.125 }
-      }
-    } },
-    { "id": "component:8", "definition": "component_def:4", "reference": "D1", "properties": {}, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Lite-On", "part_number": "LTST-C171KRKT" },
-      "package": "0805",
-      "footprint": { "library": "LED_SMD", "name": "LED_0805_2012Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:15", "pad": "1" },
-        { "pin": "pin_def:14", "pad": "2" }
-      ],
-      "properties": {}
-    } }
+      }, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-7", "library_digest": "sha256:b06f43abeac1153a9dffc016d51f80f3bf7215488b603875f4960860244f8447", "part_digest": "sha256:37fd3e726399321aed7e076ce8e47415eb279bdf63ffa37dab899cad60d0bcc2" } },
+    { "id": "component:8", "definition": "component_def:4", "reference": "D1", "properties": {}, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-8", "library_digest": "sha256:b06f43abeac1153a9dffc016d51f80f3bf7215488b603875f4960860244f8447", "part_digest": "sha256:4522c93a02abe4cd4b2bbc623079ba68e5627c05e7a8b2b8b18513b15d004cc0" } }
   ],
   "pins": [
     { "id": "pin:0", "component": "component:0", "definition": "pin_def:0" },

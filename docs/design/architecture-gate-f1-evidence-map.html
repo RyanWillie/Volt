@@ -160,7 +160,7 @@
       <dl class="summary">
         <div class="metric"><dt>C++ API evidence</dt><dd>7</dd><p>Content-addressed snapshots for Circuit, Schematic, Board, BoardRouter, BoardSpatialIndex and two retained domain owners.</p></div>
         <div class="metric"><dt>Python exports</dt><dd>113</dd><p><code>python/volt/__init__.py</code> remains the public export contract.</p></div>
-        <div class="metric"><dt>Footprint injections</dt><dd>13</dd><p>Exact production callers that still inject <code>builtin_footprint_library()</code>, without line-number churn.</p></div>
+        <div class="metric"><dt>Footprint injections</dt><dd>0</dd><p>All 13 former Python binding callers now consume one explicit native <code>BoardResolution</code>.</p></div>
         <div class="metric"><dt>Artifacts</dt><dd>18 / 17</dd><p>Project record kinds and checked-in manifest artifact kinds.</p></div>
         <div class="metric"><dt>Offline fixtures</dt><dd>17</dd><p>Exact part, electrical, capability, fabrication and KiCad fixtures.</p></div>
         <div class="metric"><dt>Goldens</dt><dd>10 / 19</dd><p>Semantic JSON summaries and byte-level SHA-256 fixtures.</p></div>
@@ -170,6 +170,30 @@
         <h3>Review delta, not a permission slip</h3>
         <p>The evidence baseline lives in <code>tests/architecture/refactor_inventory_baseline.json</code>. The checker compares public snapshot hashes, Python contracts, canonical artifact shapes, ownership evidence, exact offline fixtures, semantic summaries and raw byte hashes. Drift fails so a reviewer sees the change. Updating the evidence records the reviewed delta; it does not make the change architecturally valid.</p>
       </div>
+    </section>
+
+    <section>
+      <span class="kicker">Resolved by #313</span>
+      <h2>Hidden footprint injection inventory</h2>
+      <p>The Gate F1 inventory previously found 13 production calls to <code>builtin_footprint_library()</code>. Each caller now resolves the named authoring Board through the public <code>Volt::IO</code> <code>resolve_board()</code> boundary against its retained exact P6 <code>PartLibraryBundle</code> closure before consuming the PCB-owned immutable result, footprints, or model assets. The evidence checker reports an empty injection list.</p>
+      <table>
+        <thead><tr><th>Former caller</th><th>Owning source</th><th>Explicit input now used</th></tr></thead>
+        <tbody>
+          <tr><td><code>PyBoard::component_footprint_pads</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
+          <tr><td><code>PyBoard::add_track_for_route</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
+          <tr><td><code>PyBoard::assisted_connect</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
+          <tr><td><code>PyBoard::escape</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
+          <tr><td><code>PyBoard::resolve_pads</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
+          <tr><td><code>PyBoard::validate</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
+          <tr><td><code>PyBoard::validate_assembly</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
+          <tr><td><code>PyBoard::cpl_json</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
+          <tr><td><code>PyBoard::cpl_csv</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
+          <tr><td><code>PyBoard::to_json</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
+          <tr><td><code>PyBoard::to_svg</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
+          <tr><td><code>PyBoard::to_fabrication_files</code></td><td><code>src/python/py_fabrication.cpp</code></td><td><code>BoardResolution</code></td></tr>
+          <tr><td><code>PyBoard::to_kicad_pcb</code></td><td><code>src/python/py_kicad.cpp</code></td><td><code>BoardResolution</code></td></tr>
+        </tbody>
+      </table>
     </section>
 
     <section>

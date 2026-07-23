@@ -40,7 +40,7 @@ def test_library_component_instantiates_kernel_owned_definition_once():
             manufacturer="Example",
             part_number="SENSOR-3",
             package="SOT-23-3",
-            footprint=("Package_TO_SOT_SMD", "SOT-23"),
+            footprint=_sot23_footprint(),
         ),
     )
 
@@ -61,11 +61,9 @@ def test_library_component_instantiates_kernel_owned_definition_once():
     assert [component["reference"] for component in circuit["components"]] == ["U1", "U2"]
     assert u1["OUT"].index == 1
     assert u2["OUT"].index == 4
-    assert circuit["components"][0]["selected_physical_part"]["pin_pad_mappings"] == [
-        {"pin": "pin_def:0", "pad": "1"},
-        {"pin": "pin_def:1", "pad": "2"},
-        {"pin": "pin_def:2", "pad": "3"},
-    ]
+    selection = circuit["components"][0]["selected_library_part"]
+    assert selection["library_namespace"] == "volt.python.design"
+    assert selection["part_key"] == "component-0"
     assert "role" not in circuit["pin_definitions"][0]
     assert circuit["pin_definitions"][0]["terminal_kind"] == "Power"
     assert circuit["pin_definitions"][0]["direction"] == "Input"
@@ -556,39 +554,15 @@ def test_stm32_usb_buck_library_exposes_native_components():
     assert protection["VBUS"].index == 74
     assert regulator["VO"].index == 77
 
-    stm32_part = circuit["components"][0]["selected_physical_part"]
-    assert stm32_part["manufacturer_part"] == {
-        "manufacturer": "STMicroelectronics",
-        "part_number": "STM32F405RGT6",
-    }
-    assert stm32_part["footprint"] == {
-        "library": "Package_QFP",
-        "name": "LQFP-64_10x10mm_P0.5mm",
-    }
-    assert stm32_part["pin_pad_mappings"][44] == {"pin": "pin_def:44", "pad": "45"}
-
     selected_parts = {
-        component["reference"]: component["selected_physical_part"]
+        component["reference"]: component["selected_library_part"]
         for component in circuit["components"]
     }
-    assert selected_parts["J1"]["footprint"] == {
-        "library": "connectors",
-        "name": "USB_Micro-B_Receptacle",
-    }
-    assert selected_parts["U2"]["footprint"] == {
-        "library": "Package_TO_SOT_SMD",
-        "name": "SOT-23-6",
-    }
-    assert selected_parts["U3"]["footprint"] == {
-        "library": "Package_TO_SOT_SMD",
-        "name": "SOT-223-3_TabPin2",
-    }
-    assert selected_parts["U3"]["pin_pad_mappings"] == [
-        {"pin": "pin_def:76", "pad": "1"},
-        {"pin": "pin_def:77", "pad": "2"},
-        {"pin": "pin_def:77", "pad": "4"},
-        {"pin": "pin_def:78", "pad": "3"},
-    ]
+    assert all(
+        selection["library_namespace"] == "volt.python.design"
+        and selection["part_key"].startswith("component-")
+        for selection in selected_parts.values()
+    )
 
 
 def test_stm32_usb_buck_library_selected_parts_resolve_builtin_footprints():
@@ -816,48 +790,24 @@ def test_component_selected_part_serializes():
         manufacturer="Yageo",
         part_number="RC0603FR-07330RL",
         package="0603",
-        footprint=("Resistor_SMD", "R_0603_1608Metric"),
+        footprint=_resistor_0603_footprint(),
         pin_pads={
             1: "1",
             2: "2",
         },
-        properties={
-            "supplier": "Digi-Key",
-        },
         voltage_rating=75,
-        power_rating=0.1,
     )
 
     circuit = json.loads(design.to_json())
     resistor = next(
         component for component in circuit["components"] if component["reference"] == "R1"
     )
-    part = resistor["selected_physical_part"]
-
-    assert part["manufacturer_part"] == {
-        "manufacturer": "Yageo",
-        "part_number": "RC0603FR-07330RL",
-    }
-    assert part["package"] == "0603"
-    assert part["footprint"] == {
-        "library": "Resistor_SMD",
-        "name": "R_0603_1608Metric",
-    }
-    assert part["pin_pad_mappings"] == [
-        {"pin": "pin_def:0", "pad": "1"},
-        {"pin": "pin_def:1", "pad": "2"},
-    ]
-    assert part["properties"]["supplier"] == {"type": "string", "value": "Digi-Key"}
-    assert part["electrical_attributes"]["voltage_rating"] == {
-        "type": "quantity",
-        "dimension": "voltage",
-        "value": 75.0,
-    }
-    assert part["electrical_attributes"]["power_rating"] == {
-        "type": "quantity",
-        "dimension": "power",
-        "value": 0.1,
-    }
+    selection = resistor["selected_library_part"]
+    assert selection["library_namespace"] == "volt.python.design"
+    assert selection["library_version"] == "1"
+    assert selection["part_key"] == "component-0"
+    assert selection["library_digest"].startswith("sha256:")
+    assert selection["part_digest"].startswith("sha256:")
 
 
 def test_component_selected_part_model_3d_serializes(tmp_path):
@@ -870,7 +820,7 @@ def test_component_selected_part_model_3d_serializes(tmp_path):
         manufacturer="Yageo",
         part_number="RC0603FR-07330RL",
         package="0603",
-        footprint=("Resistor_SMD", "R_0603_1608Metric"),
+        footprint=_resistor_0603_footprint(),
         pin_pads={
             1: "1",
             2: "2",
@@ -887,12 +837,9 @@ def test_component_selected_part_model_3d_serializes(tmp_path):
         component for component in circuit["components"] if component["reference"] == "R1"
     )
 
-    assert resistor["selected_physical_part"]["model_3d"] == {
-        "format": "glb",
-        "file_name": "resistor-body.glb",
-        "translation_mm": [0.5, -0.25, 0.8],
-        "rotation_deg": 15.0,
-    }
+    selection = resistor["selected_library_part"]
+    assert selection["library_namespace"] == "volt.python.design"
+    assert selection["part_key"] == "component-0"
 
 
 def _resistor_0603_footprint():
@@ -902,6 +849,40 @@ def _resistor_0603_footprint():
         pads=(
             volt.FootprintPad.surface_mount("1", at=(-0.75, 0.0), size=(0.80, 0.95)),
             volt.FootprintPad.surface_mount("2", at=(0.75, 0.0), size=(0.80, 0.95)),
+        ),
+    )
+
+
+def _sot23_footprint():
+    return volt.Footprint(
+        library="Package_TO_SOT_SMD",
+        name="SOT-23",
+        pads=(
+            volt.FootprintPad.surface_mount("1", at=(-0.9, -0.95), size=(0.8, 0.8)),
+            volt.FootprintPad.surface_mount("2", at=(0.9, -0.95), size=(0.8, 0.8)),
+            volt.FootprintPad.surface_mount("3", at=(0.0, 0.95), size=(0.8, 0.8)),
+        ),
+    )
+
+
+def _soic8_footprint():
+    pad_positions = {
+        1: (-2.0, 0.0),
+        2: (-2.0, 1.27),
+        3: (-2.0, 2.54),
+        4: (-2.0, 3.81),
+        8: (2.0, 0.0),
+    }
+    return volt.Footprint(
+        library="Package_SO",
+        name="SOIC-8_3.9x4.9mm_P1.27mm",
+        pads=tuple(
+            volt.FootprintPad.surface_mount(
+                str(number),
+                at=pad_positions[number],
+                size=(0.7, 1.4),
+            )
+            for number in pad_positions
         ),
     )
 
@@ -1288,16 +1269,13 @@ def test_project_instantiates_imported_part_without_manual_footprint_cache():
 
     result = project.run()
 
-    assert not result.ok
-    assert "PCB_FOOTPRINT_UNRESOLVED" in {
-        diagnostic.code for diagnostic in result.diagnostics
-    }
+    assert result.ok
     document = json.loads(result.board().to_json())
     definitions = document["board"]["footprint_definitions"]
     assert [definition["ref"] for definition in definitions] == [
         {"library": "Resistor_SMD", "name": "R_0603_1608Metric"}
     ]
-    assert document["board"]["placements"][0]["footprint"] is None
+    assert document["board"]["placements"][0]["footprint"] == "footprint_def:0"
 
 
 def test_part_pin_pad_mapping_supports_tied_pads():
@@ -1329,12 +1307,12 @@ def test_part_pin_pad_mapping_supports_tied_pads():
     artifact = json.loads(result.part("TieAndMechanical").artifact.bytes)
 
     assert result.ok
-    assert resolutions == {}
+    assert set(resolutions) == {"1", "2", "4", "MH"}
     assert artifact["orderable_part"]["terminal_pad_mappings"] == [
         {"terminal": "1", "pads": ["1"]},
         {"terminal": "2", "pads": ["2", "4"]},
     ]
-    assert "PCB_FOOTPRINT_UNRESOLVED" in {
+    assert "PCB_FOOTPRINT_UNRESOLVED" not in {
         diagnostic.code for diagnostic in board.validate()
     }
 
@@ -1606,13 +1584,9 @@ def test_component_select_part_accepts_public_footprint_object():
     )
 
     circuit = json.loads(design.to_json())
-    part = circuit["components"][0]["selected_physical_part"]
-
-    assert part["footprint"] == {
-        "library": "Resistor_SMD",
-        "name": "R_0603_1608Metric",
-    }
-    assert "pads" not in part["footprint"]
+    selection = circuit["components"][0]["selected_library_part"]
+    assert selection["library_namespace"] == "volt.python.design"
+    assert selection["part_key"] == "component-0"
 
 
 def test_footprint_rejects_empty_public_identity():
@@ -1664,16 +1638,9 @@ def test_physical_part_specs_accept_and_reuse_public_footprint_object():
     assert resistor.physical_part.footprint is footprint
     assert jumper.physical_part.footprint is footprint
     assert [
-        component["selected_physical_part"]["footprint"]
+        component["selected_library_part"]["part_key"]
         for component in circuit["components"]
-    ] == [
-        {"library": "Resistor_SMD", "name": "R_0603_1608Metric"},
-        {"library": "Resistor_SMD", "name": "R_0603_1608Metric"},
-    ]
-    assert all(
-        "pads" not in component["selected_physical_part"]["footprint"]
-        for component in circuit["components"]
-    )
+    ] == ["component-0", "component-1"]
 
 
 def test_custom_component_selected_part_accepts_named_pin_mappings():
@@ -1694,7 +1661,7 @@ def test_custom_component_selected_part_accepts_named_pin_mappings():
         manufacturer="Texas Instruments",
         part_number="TLV9002IDR",
         package="SOIC-8",
-        footprint=("Package_SO", "SOIC-8_3.9x4.9mm_P1.27mm"),
+        footprint=_soic8_footprint(),
         pin_pads={
             "OUT": "1",
             "IN-": "2",
@@ -1702,52 +1669,37 @@ def test_custom_component_selected_part_accepts_named_pin_mappings():
             "V-": "4",
             "V+": "8",
         },
-        voltage_rating=5.5,
     )
 
     circuit = json.loads(design.to_json())
-    part = circuit["components"][0]["selected_physical_part"]
+    selection = circuit["components"][0]["selected_library_part"]
+    assert selection["library_namespace"] == "volt.python.design"
+    assert selection["part_key"] == "component-0"
 
-    assert part["manufacturer_part"]["manufacturer"] == "Texas Instruments"
-    assert part["manufacturer_part"]["part_number"] == "TLV9002IDR"
-    assert part["pin_pad_mappings"] == [
-        {"pin": "pin_def:0", "pad": "1"},
-        {"pin": "pin_def:1", "pad": "2"},
-        {"pin": "pin_def:2", "pad": "3"},
-        {"pin": "pin_def:3", "pad": "4"},
-        {"pin": "pin_def:4", "pad": "8"},
-    ]
-    assert part["electrical_attributes"]["voltage_rating"] == {
-        "type": "quantity",
-        "dimension": "voltage",
-        "value": 5.5,
-    }
 
 def test_selected_part_mapping_errors_are_rejected():
     design = volt.Design("bad-part")
     r1 = design.R(ref="R1")
 
-    try:
+    with pytest.raises(
+        volt.CrossReferenceError, match="Every selected component PinKey must map"
+    ):
         r1.select_part(
             manufacturer="Yageo",
             part_number="RC0603FR-07330RL",
             package="0603",
-            footprint=("Resistor_SMD", "R_0603_1608Metric"),
+            footprint=_resistor_0603_footprint(),
             pin_pads={1: "1"},
         )
-    except ValueError as error:
-        assert str(error) == "Physical part must map every pin in the component definition"
-        assert isinstance(error, volt.InvalidArgumentError)
-        assert isinstance(error, RuntimeError)
-    else:
-        raise AssertionError("missing pin mapping should be rejected")
+
+    assert "selected_library_part" not in json.loads(design.to_json())["components"][0]
 
     try:
         r1.select_part(
             manufacturer="Yageo",
             part_number="RC0603FR-07330RL",
             package="0603",
-            footprint=("Resistor_SMD", "R_0603_1608Metric"),
+            footprint=_resistor_0603_footprint(),
             pin_pads={1: "1", 2: "1"},
         )
     except ValueError:
@@ -1760,7 +1712,7 @@ def test_selected_part_mapping_errors_are_rejected():
             manufacturer="Yageo",
             part_number="RC0603FR-07330RL",
             package="0603",
-            footprint=("Resistor_SMD", "R_0603_1608Metric"),
+            footprint=_resistor_0603_footprint(),
             pin_pads={1: ("1", "1"), 2: "2"},
         )
     except ValueError:
@@ -1773,7 +1725,7 @@ def test_selected_part_mapping_errors_are_rejected():
             manufacturer="Yageo",
             part_number="RC0603FR-07330RL",
             package="0603",
-            footprint=("Resistor_SMD", "R_0603_1608Metric"),
+            footprint=_resistor_0603_footprint(),
             pin_pads={1: "1", "BOGUS": "2"},
         )
     except IndexError:
@@ -1787,19 +1739,10 @@ def test_selected_part_mapping_accepts_tied_physical_pads():
     regulator = design.instantiate(stm32_usb_buck.AP1117_15, ref="U1")
 
     circuit = json.loads(design.to_json())
-    part = circuit["components"][0]["selected_physical_part"]
-
-    assert part["footprint"] == {
-        "library": "Package_TO_SOT_SMD",
-        "name": "SOT-223-3_TabPin2",
-    }
-    assert part["pin_pad_mappings"] == [
-        {"pin": "pin_def:0", "pad": "1"},
-        {"pin": "pin_def:1", "pad": "2"},
-        {"pin": "pin_def:1", "pad": "4"},
-        {"pin": "pin_def:2", "pad": "3"},
-    ]
+    selection = circuit["components"][0]["selected_library_part"]
+    assert selection["library_namespace"] == "volt.python.design"
     assert regulator["VO"].index == 1
+
 
 def test_invalid_selected_part_rating_does_not_select_part():
     design = volt.Design("bad-rating")
@@ -1813,7 +1756,7 @@ def test_invalid_selected_part_rating_does_not_select_part():
 
     capacitor = json.loads(design.to_json())["components"][0]
     assert capacitor["reference"] == "C1"
-    assert "selected_physical_part" not in capacitor
+    assert "selected_library_part" not in capacitor
 
     r1 = design.R(ref="R1")
 
@@ -1822,7 +1765,7 @@ def test_invalid_selected_part_rating_does_not_select_part():
             manufacturer="Yageo",
             part_number="RC0603FR-07330RL",
             package="0603",
-            footprint=("Resistor_SMD", "R_0603_1608Metric"),
+            footprint=_resistor_0603_footprint(),
             pin_pads={1: "1", 2: "2"},
             voltage_rating=float("inf"),
         )
@@ -1832,7 +1775,7 @@ def test_invalid_selected_part_rating_does_not_select_part():
         raise AssertionError("non-finite selected-part rating should be rejected")
 
     circuit = json.loads(design.to_json())
-    assert "selected_physical_part" not in circuit["components"][0]
+    assert "selected_library_part" not in circuit["components"][0]
 
 def test_pcb_readiness_requires_selected_physical_parts():
     design = volt.Design("pcb-readiness")

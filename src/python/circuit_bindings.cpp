@@ -62,8 +62,8 @@ void bind_circuit(pybind11::module_ &module) {
     });
     module.def("standard_feature_schema", &standard_feature_schema_to_dict, py::arg("name"));
     py::class_<PyPartLibrary>(module, "PartLibrarySnapshot")
-        .def(py::init<std::string, std::string, const py::list &>(), py::arg("namespace"),
-             py::arg("version"), py::arg("parts"))
+        .def(py::init<std::string, std::string, const py::list &, bool>(), py::arg("namespace"),
+             py::arg("version"), py::arg("parts"), py::arg("selected_bundle") = false)
         .def_property_readonly("digest", &PyPartLibrary::digest)
         .def("part_result", &PyPartLibrary::part_result, py::arg("part_key"))
         .def("exact_reference", &PyPartLibrary::exact_reference, py::arg("part_key"));
@@ -102,12 +102,10 @@ void bind_circuit(pybind11::module_ &module) {
         .def("net_class_info", &PyCircuit::net_class_info, py::arg("net_class"))
         .def("net_refs", &PyCircuit::net_refs)
         .def("component_refs", &PyCircuit::component_refs)
-        .def("component_selected_part_model_3d", &PyCircuit::component_selected_part_model_3d,
-             py::arg("component"))
-        .def("select_physical_part", &PyCircuit::select_physical_part, py::arg("component"),
+        .def("select_authored_part", &PyCircuit::select_authored_part, py::arg("component"),
              py::arg("manufacturer"), py::arg("part_number"), py::arg("package"),
-             py::arg("footprint_library"), py::arg("footprint_name"), py::arg("pin_pads"),
-             py::arg("properties") = py::dict{}, py::arg("model_3d") = py::none(),
+             py::arg("footprint"), py::arg("pin_pads"), py::arg("voltage_rating") = py::none(),
+             py::arg("model_3d") = py::none(), py::arg("model_3d_bytes") = py::none(),
              py::arg("approved_alternate_mpns") = py::tuple{})
         .def("set_component_quantity", &PyCircuit::set_component_quantity, py::arg("component"),
              py::arg("name"), py::arg("dimension"), py::arg("value"))
@@ -115,10 +113,6 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("component"), py::arg("value"))
         .def("set_net_quantity", &PyCircuit::set_net_quantity, py::arg("net"), py::arg("name"),
              py::arg("dimension"), py::arg("value"))
-        .def("select_generic_physical_part", &PyCircuit::select_generic_physical_part,
-             py::arg("component"))
-        .def("set_selected_part_quantity", &PyCircuit::set_selected_part_quantity,
-             py::arg("component"), py::arg("name"), py::arg("dimension"), py::arg("value"))
         .def("instantiate_ref", &PyCircuit::instantiate_ref, py::arg("definition"),
              py::arg("reference"), py::arg("properties") = py::dict{})
         .def("instantiate_auto", &PyCircuit::instantiate_auto, py::arg("definition"),

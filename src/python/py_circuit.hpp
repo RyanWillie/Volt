@@ -3,10 +3,20 @@
 #include "binding_conversions.hpp"
 
 #include <cstddef>
+#include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <variant>
 #include <vector>
+
+#include <volt/circuit/connectivity/definitions.hpp>
+#include <volt/circuit/parts/part_definition.hpp>
+#include <volt/library/part_library.hpp>
+
+namespace volt::io {
+class PartLibraryBundle;
+}
 
 namespace volt::python {
 
@@ -20,6 +30,9 @@ class PyCircuit {
 
     /** Read-only logical dependency for separately bound projection owners. */
     [[nodiscard]] const volt::Circuit &logical_circuit() const noexcept { return circuit_; }
+
+    /** Return the exact selected P6 closure retained by this authoring circuit. */
+    [[nodiscard]] const volt::io::PartLibraryBundle &selected_part_bundle() const noexcept;
 
     [[nodiscard]] std::size_t define_resistor();
 
@@ -75,14 +88,11 @@ class PyCircuit {
 
     [[nodiscard]] py::list component_refs() const;
 
-    [[nodiscard]] py::object component_selected_part_model_3d(std::size_t component) const;
-
-    void select_physical_part(std::size_t component, const std::string &manufacturer,
+    void select_authored_part(std::size_t component, const std::string &manufacturer,
                               const std::string &part_number, const std::string &package,
-                              const std::string &footprint_library,
-                              const std::string &footprint_name, const py::dict &pin_pads,
-                              const py::dict &properties, py::object model_3d,
-                              py::object approved_alternate_mpns);
+                              const py::dict &footprint, const py::dict &pin_pads,
+                              std::optional<double> voltage_rating, py::object model_3d,
+                              py::object model_3d_bytes, py::object approved_alternate_mpns);
 
     void set_component_quantity(std::size_t component, const std::string &name,
                                 const std::string &dimension_name, double value);
@@ -91,11 +101,6 @@ class PyCircuit {
 
     void set_net_quantity(std::size_t net, const std::string &name,
                           const std::string &dimension_name, double value);
-
-    void select_generic_physical_part(std::size_t component);
-
-    void set_selected_part_quantity(std::size_t component, const std::string &name,
-                                    const std::string &dimension_name, double value);
 
     [[nodiscard]] std::size_t instantiate_ref(std::size_t definition, const std::string &reference,
                                               const py::dict &properties);
@@ -194,6 +199,19 @@ class PyCircuit {
     [[nodiscard]] std::string to_json() const;
 
   private:
+    struct AuthoredPartAsset {
+        volt::PartAssetKind kind;
+        std::string key;
+        std::string bytes;
+    };
+
+    struct AuthoredPartDraft {
+        volt::PartKey key;
+        volt::ComponentSpec component;
+        volt::PartDefinition part;
+        std::vector<AuthoredPartAsset> assets;
+    };
+
     /** Binding-local typed draft committed atomically through Circuit::define_module. */
     struct ModuleDraft {
         std::size_t handle;
@@ -231,6 +249,8 @@ class PyCircuit {
 
     [[nodiscard]] volt::Circuit materialized_circuit() const;
 
+    [[nodiscard]] volt::Circuit materialized_physical_circuit() const;
+
     [[nodiscard]] std::vector<volt::PinId> pins_by_name(volt::ComponentId component,
                                                         const std::string &name) const;
 
@@ -238,6 +258,7 @@ class PyCircuit {
     module_component_pins_by_name(std::size_t component, const std::string &name) const;
 
     volt::Circuit circuit_;
+    std::shared_ptr<const volt::io::PartLibraryBundle> selected_part_bundle_;
     std::vector<ModuleDraft> module_drafts_;
     std::size_t next_template_net_handle_ = 0;
     std::size_t next_port_handle_ = 0;

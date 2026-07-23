@@ -13,6 +13,8 @@
 
 namespace volt {
 
+class BoardResolution;
+
 /** Authoring request to connect two board points on one existing logical net. */
 struct BoardRouteRequest {
     /** Existing logical net the route physically implements. */
@@ -139,6 +141,10 @@ class BoardRouter {
     /** Build a router with a spatial index over all current board copper. */
     BoardRouter(Board &board, const FootprintLibrary &footprints);
 
+    /** Build a router over one explicit resolved physical view while mutating its authoring Board.
+     */
+    BoardRouter(Board &board, const BoardResolution &resolution);
+
     /** Resolve the copper sizing and allowed layers a net would route with. */
     [[nodiscard]] BoardRouteParameters resolve_parameters(NetId net) const;
 
@@ -206,6 +212,7 @@ class BoardRouter {
     [[nodiscard]] BoardSpatialIndex &index() const;
 
     Board *board_;
+    const Board *physical_board_;
     FootprintLibrary footprints_;
     mutable std::optional<BoardSpatialIndex> index_;
 };

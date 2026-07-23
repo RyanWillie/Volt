@@ -57,10 +57,13 @@ void Circuit::set_net_attribute(NetId net, const ElectricalAttributeSpec &spec,
 }
 
 void Circuit::select_physical_part(ComponentId component, PhysicalPart physical_part,
-                                   const std::vector<PinDefId> &component_pins) {
-    if (get(component).selected_library_part_ref().has_value()) {
+                                   const std::vector<PinDefId> &component_pins,
+                                   std::optional<LibraryPartRef> source_reference) {
+    const auto &selected_reference = get(component).selected_library_part_ref();
+    if (selected_reference.has_value() != source_reference.has_value() ||
+        (selected_reference.has_value() && *selected_reference != *source_reference)) {
         throw KernelLogicError{ErrorCode::InvalidState,
-                               "Component already has an exact selected library part",
+                               "Physical materialization does not match the exact selected part",
                                EntityRef::component(component)};
     }
     require_physical_part_matches_component_definition(component_pins, physical_part);

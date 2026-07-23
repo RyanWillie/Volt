@@ -623,7 +623,7 @@ class Library:
 
         return LibraryResult(self)
 
-    def _native_snapshot(self, parts=None):
+    def _native_snapshot(self, parts=None, *, selected_bundle: bool = False):
         """Build one immutable native P4 snapshot from the complete library closure."""
         from . import _volt
         from .library_result import _part_artifact_payload
@@ -633,6 +633,7 @@ class Library:
             self.namespace,
             self.version,
             [_part_artifact_payload(part) for part in selected],
+            selected_bundle,
         )
 
     @property

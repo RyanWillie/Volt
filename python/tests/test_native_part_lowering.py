@@ -382,7 +382,7 @@ def test_exact_part_instantiation_preserves_model_3d_for_board_export(tmp_path):
         "translation_mm": [0.5, -0.25, 0.8],
         "rotation_deg": 15.0,
     }
-    assert placed_model.source_path == asset_path
+    assert placed_model.asset_bytes == asset_path.read_bytes()
 
 
 def test_selected_part_erc_resolution_is_explicit_and_exact():

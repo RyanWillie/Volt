@@ -99,13 +99,8 @@ def _committed_artifact_texts(main):
     }
 
 
-def test_pcb_led_board_example_uses_object_owned_footprints(monkeypatch, tmp_path):
+def test_pcb_led_board_example_uses_native_explicit_footprints(tmp_path):
     main = importlib.import_module("examples.pcb_led_board.main")
-
-    def reject_manual_cache(*_args, **_kwargs):
-        raise AssertionError("PCB LED board example should use object-owned footprints")
-
-    monkeypatch.setattr(volt.Board, "cache_footprint", reject_manual_cache)
 
     artifacts = main.write_artifacts(tmp_path)
     pcb = json.loads(artifacts.pcb_json.read_text(encoding="utf-8"))
@@ -144,23 +139,15 @@ def test_pcb_led_board_example_writes_stable_public_api_artifacts():
     assert logical["format"] == "volt.logical_circuit"
     assert [component["reference"] for component in logical["components"]] == ["J1", "R1", "D1"]
     assert {net["name"] for net in logical["nets"]} == {"+3V3", "LED_A", "GND"}
-    assert {
-        component["selected_physical_part"]["footprint"]["name"]
+    assert all(
+        component["selected_library_part"]["library_namespace"]
+        == "volt.python.design"
         for component in logical["components"]
-    } == {
-        "PinHeader_1x02_P2.54mm_Vertical",
-        "R_0603_1608Metric",
-        "LED_0603_1608Metric",
-    }
+    )
     resistor = next(
         component for component in logical["components"] if component["reference"] == "R1"
     )
-    assert resistor["selected_physical_part"]["model_3d"] == {
-        "format": "step",
-        "file_name": "r_0603_body.step",
-        "translation_mm": [0.0, 0.0, 0.35],
-        "rotation_deg": 0,
-    }
+    assert resistor["selected_library_part"]["part_digest"].startswith("sha256:")
 
     assert schematic["format"] == "volt.schematic"
     assert [sheet["name"] for sheet in schematic["sheets"]] == ["First Board LED"]

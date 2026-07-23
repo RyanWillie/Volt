@@ -366,10 +366,10 @@ PinDefinition
   electrical_attributes:
     voltage_range = accepted pin voltage range, when the part contract is known
 
-SelectedPhysicalPart
-  electrical_attributes:
-    voltage_rating = selected-part rating used by current ERC checks
-    current_rating, power_rating, and related limits = planned follow-ups
+Exact selected PartDefinition
+  canonical typed records:
+    Voltage AbsoluteLimit = selected-part rating used by current ERC checks
+    Current, Power, and related limits = planned follow-ups
 
 PinInstance
   intentional_no_connect
@@ -554,10 +554,15 @@ r1.select_part(
     manufacturer="Yageo",
     part_number="RC0603FR-07330RL",
     package="0603",
-    footprint=("Resistor_SMD", "R_0603_1608Metric"),
+    footprint=volt.Footprint(
+        ("Resistor_SMD", "R_0603_1608Metric"),
+        pads=(
+            volt.FootprintPad.surface_mount("1", at=(-0.75, 0), size=(0.8, 0.9)),
+            volt.FootprintPad.surface_mount("2", at=(0.75, 0), size=(0.8, 0.9)),
+        ),
+    ),
     pin_pads={1: "1", 2: "2"},
     voltage_rating=75,
-    power_rating=0.1,
 )
 
 diagnostics = d.validate_for_pcb()

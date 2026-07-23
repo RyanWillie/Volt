@@ -117,7 +117,6 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
             MODEL_DIR / "r_0603_body.step",
             offset=(0.0, 0.0, 0.35),
         ),
-        power_rating=0.1,
     )
     parts["D1"].select_part(
         manufacturer="Lite-On",

@@ -325,6 +325,8 @@ TEST_CASE("Selected PartLibraryBundle builds byte-identically and reopens fully 
         std::vector{volt::PartKey{"vendor/A-LED"}, volt::PartKey{"vendor/Z-LED"}};
     const auto second_selected =
         std::vector{volt::PartKey{"vendor/Z-LED"}, volt::PartKey{"vendor/A-LED"}};
+    const auto admitted = first_fixture.builder.build(first_fixture.resolver);
+    const auto admitted_reference = admitted.require(volt::PartKey{"vendor/A-LED"});
 
     const auto first = volt::io::PartLibraryBundle::build(
         first_fixture.builder, first_selected, first_fixture.resolver, first_fixture.attachments);
@@ -334,12 +336,13 @@ TEST_CASE("Selected PartLibraryBundle builds byte-identically and reopens fully 
 
     CHECK(std::string{first.bytes()} == std::string{second.bytes()});
     CHECK(first.digest() == second.digest());
-    CHECK(first.digest() ==
-          volt::ContentHash{
-              "sha256:4a22c45ab4fda77465f0c3112fc654129612b27d7589334c0d17848bfd3d0cac"});
+    CHECK(first.digest().value() ==
+          "sha256:a1e7ea48eefa0f8950843e908e944db23347e54ffe31fb6699c47a832b48a5aa");
     CHECK(std::ranges::is_sorted(first.entries(), {}, &volt::io::PartLibraryBundleEntry::path));
     CHECK(first.library().components().size() == 2U);
     CHECK(first.library().parts().size() == 2U);
+    CHECK(first.resolve(admitted_reference).content_identity() ==
+          first_fixture.selected_part.content_identity());
 
     const auto reopened = volt::io::PartLibraryBundle::open(first.bytes());
     CHECK(std::string{reopened.bytes()} == std::string{first.bytes()});
@@ -355,12 +358,10 @@ TEST_CASE("Selected PartLibraryBundle builds byte-identically and reopens fully 
     CHECK(reference.library_digest() == reopened.library_digest());
     CHECK(reopened.resolve(reference).content_identity() ==
           first_fixture.selected_part.content_identity());
-    check_kernel_error(
-        [&] {
-            static_cast<void>(
-                reopened.resolve(reopened.library().require(volt::PartKey{"vendor/A-LED"})));
-        },
-        volt::ErrorCode::CrossReferenceViolation);
+    CHECK(reopened.resolve(admitted_reference).content_identity() ==
+          first_fixture.selected_part.content_identity());
+    CHECK(reopened.resolve(reopened.library().require(volt::PartKey{"vendor/A-LED"}))
+              .content_identity() == first_fixture.selected_part.content_identity());
 
     for (const auto &asset : volt::part_asset_references(first_fixture.selected_part)) {
         REQUIRE(reopened.asset(asset).has_value());
@@ -404,6 +405,19 @@ TEST_CASE("PartLibraryBundle closure is explicit and empty closure is valid") {
                                                            fixture.attachments);
     CHECK(bundle.library().components().size() == 1U);
     CHECK(bundle.library().parts().size() == 1U);
+    const auto admitted = fixture.builder.build(fixture.resolver);
+    const auto admitted_reference = admitted.require(selected.front());
+    CHECK(bundle.library_digest() == admitted.digest());
+    CHECK(bundle.resolve(admitted_reference).content_identity() ==
+          fixture.selected_part.content_identity());
+
+    const auto reopened = volt::io::PartLibraryBundle::open(bundle.bytes());
+    CHECK(reopened.library_digest() == admitted.digest());
+    CHECK(reopened.resolve(admitted_reference).content_identity() ==
+          fixture.selected_part.content_identity());
+    check_kernel_error(
+        [&] { static_cast<void>(reopened.resolve(reopened.library().require(selected.front()))); },
+        volt::ErrorCode::CrossReferenceViolation);
 }
 
 TEST_CASE("PartLibraryBundle build is all-or-nothing over selected assets") {
@@ -490,7 +504,8 @@ TEST_CASE("Existing PartLibraryBundle bytes are immutable after later catalogue 
         volt::io::PartLibraryBundleAttachment{volt::PartKey{"vendor/A-LED"}, changed_reference};
     const auto changed = volt::io::PartLibraryBundle::build(fixture.builder, selected,
                                                             fixture.resolver, attachment_changed);
-    CHECK(changed.library_digest() != historical.library_digest());
+    CHECK(changed.library_digest() == historical.library_digest());
+    CHECK(changed.digest() != historical.digest());
 
     const auto reopened = volt::io::PartLibraryBundle::open(historical_bytes);
     CHECK(reopened.digest() == historical_digest);
