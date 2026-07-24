@@ -19,6 +19,7 @@
 
 #include "../capabilities/board_capability_profile_io.hpp"
 #include "pcb_feature_io.hpp"
+#include "pcb_reader_detail.hpp"
 
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
@@ -30,12 +31,18 @@
 
 namespace volt::io::detail {
 
+enum class PcbBoardReadMode {
+    Current,
+    LegacyViewerConversion,
+    LegacyProjectBundleV1,
+};
+
 /** Internal implementation for loading the v2 PCB projection JSON format. */
 class PcbBoardReader {
   public:
     /** Construct a reader over a parsed JSON document and its logical circuit context. */
-    PcbBoardReader(const Circuit &circuit, const nlohmann::json &document, bool allow_legacy_viewer)
-        : circuit_{circuit}, document_{document}, allow_legacy_viewer_{allow_legacy_viewer} {}
+    PcbBoardReader(const Circuit &circuit, const nlohmann::json &document, PcbBoardReadMode mode)
+        : circuit_{circuit}, document_{document}, mode_{mode} {}
 
     /** Load and structurally validate the document into a board projection. */
     [[nodiscard]] Board read();
@@ -202,7 +209,7 @@ class PcbBoardReader {
 
     const Circuit &circuit_;
     const nlohmann::json &document_;
-    bool allow_legacy_viewer_;
+    PcbBoardReadMode mode_;
 };
 
 [[nodiscard]] Board PcbBoardReader::read() {
@@ -211,9 +218,10 @@ class PcbBoardReader {
     require_version(document_);
     const auto &board_json = object_field(document_, "board");
     const auto has_legacy_viewer = document_.find("viewer") != document_.end();
-    require(allow_legacy_viewer_ || !has_legacy_viewer,
+    const auto legacy_viewer = mode_ == PcbBoardReadMode::LegacyViewerConversion;
+    require(legacy_viewer || !has_legacy_viewer,
             "PCB document contains a legacy viewer cache; use the explicit legacy converter");
-    require(!allow_legacy_viewer_ || has_legacy_viewer,
+    require(!legacy_viewer || has_legacy_viewer,
             "Legacy PCB conversion requires a mixed viewer-cache document");
     // One board is stored per document; this stable ID anchors canonical Board identity.
     require(string_field(board_json, "id") == "board:0", "PCB board id must be board:0");
@@ -234,7 +242,7 @@ class PcbBoardReader {
     read_keepouts(board, board_json);
     read_rooms(board, board_json);
     read_texts(board, board_json);
-    if (allow_legacy_viewer_) {
+    if (legacy_viewer) {
         validate_viewer_cache(board);
     }
     return board;
@@ -902,6 +910,9 @@ void PcbBoardReader::validate_placement_footprint(const Board &board, ComponentI
                                "PCB placement references missing footprint definition"};
     }
     const auto &selected_part = volt::queries::selected_physical_part(circuit_, component);
+    if (!selected_part.has_value() && mode_ == PcbBoardReadMode::LegacyProjectBundleV1) {
+        return;
+    }
     require_valid_state(selected_part.has_value(),
                         "PCB placement footprint requires selected physical part");
     require_cross_reference(board.get(footprint_id).ref() == selected_part->footprint(),
@@ -1366,8 +1377,8 @@ namespace {
 
 [[nodiscard]] volt::Board read_pcb_board_document(const volt::Circuit &circuit,
                                                   const nlohmann::json &document,
-                                                  bool allow_legacy_viewer) {
-    return volt::io::detail::PcbBoardReader{circuit, document, allow_legacy_viewer}.read();
+                                                  volt::io::detail::PcbBoardReadMode mode) {
+    return volt::io::detail::PcbBoardReader{circuit, document, mode}.read();
 }
 
 } // namespace
@@ -1376,7 +1387,7 @@ namespace volt::io {
 
 [[nodiscard]] Board read_pcb_board_text(const Circuit &circuit, std::string_view text) {
     const auto document = nlohmann::json::parse(text.begin(), text.end());
-    return read_pcb_board_document(circuit, document, false);
+    return read_pcb_board_document(circuit, document, detail::PcbBoardReadMode::Current);
 }
 
 [[nodiscard]] Board read_pcb_board(const Circuit &circuit, std::istream &input) {
@@ -1387,7 +1398,8 @@ namespace volt::io {
 
 [[nodiscard]] Board read_legacy_pcb_board_text(const Circuit &circuit, std::string_view text) {
     const auto document = nlohmann::json::parse(text.begin(), text.end());
-    return read_pcb_board_document(circuit, document, true);
+    return read_pcb_board_document(circuit, document,
+                                   detail::PcbBoardReadMode::LegacyViewerConversion);
 }
 
 [[nodiscard]] Board read_legacy_pcb_board(const Circuit &circuit, std::istream &input) {
@@ -1397,3 +1409,12 @@ namespace volt::io {
 }
 
 } // namespace volt::io
+
+namespace volt::io::detail {
+
+Board read_project_bundle_v1_pcb_board_text(const Circuit &circuit, std::string_view text) {
+    const auto document = nlohmann::json::parse(text.begin(), text.end());
+    return read_pcb_board_document(circuit, document, PcbBoardReadMode::LegacyProjectBundleV1);
+}
+
+} // namespace volt::io::detail

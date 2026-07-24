@@ -21,6 +21,8 @@
 #include <volt/pcb/footprints/footprints.hpp>
 #include <volt/pcb/queries/board_queries.hpp>
 
+#include "../../../src/io/pcb/pcb_reader_detail.hpp"
+
 namespace {
 
 struct ResistorCircuit {
@@ -35,7 +37,7 @@ struct ResistorCircuit {
     volt::NetId second_net;
 };
 
-[[nodiscard]] ResistorCircuit make_resistor_circuit() {
+[[nodiscard]] ResistorCircuit make_resistor_circuit(bool select_physical_part = true) {
     auto circuit = volt::Circuit{};
     const auto first_pin_spec = volt::PinSpec{"A",
                                               "1",
@@ -70,13 +72,15 @@ struct ResistorCircuit {
 
     circuit.connect(first_net, first_pin);
     circuit.connect(second_net, second_pin);
-    circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                  volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                  volt::PackageRef{"0603"},
-                                  volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                  std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                              volt::PinPadMapping{second_pin_definition, "2"}},
-                              }});
+    if (select_physical_part) {
+        circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
+                                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                                      volt::PackageRef{"0603"},
+                                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                                  }});
+    }
 
     return ResistorCircuit{std::move(circuit),
                            component_definition,
@@ -271,6 +275,32 @@ TEST_CASE("Legacy PCB viewer caches require explicit validated conversion") {
         volt::io::write_pcb_board(converted, volt::builtin_footprint_library()));
     CHECK_FALSE(rewritten.contains("viewer"));
     CHECK(rewritten["board"] == current["board"]);
+}
+
+TEST_CASE("ProjectBundle v1 PCB mode relaxes only an absent selected physical part") {
+    const auto source = make_resistor_circuit();
+    const auto document = make_board_json(source);
+
+    const auto unselected = make_resistor_circuit(false);
+    CHECK_NOTHROW(volt::io::detail::read_project_bundle_v1_pcb_board_text(unselected.circuit,
+                                                                          document.dump()));
+    CHECK_THROWS_MATCHES(
+        volt::io::read_pcb_board_text(unselected.circuit, document.dump()), std::logic_error,
+        Catch::Matchers::Message("PCB placement footprint requires selected physical part"));
+
+    auto mismatched = make_resistor_circuit();
+    mismatched.circuit.update(
+        mismatched.component,
+        volt::SelectPhysicalPart{volt::PhysicalPart{
+            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"}, volt::PackageRef{"0603"},
+            volt::FootprintRef{"other", "R_0603_1608Metric"},
+            std::vector{volt::PinPadMapping{mismatched.first_pin_definition, "1"},
+                        volt::PinPadMapping{mismatched.second_pin_definition, "2"}}}});
+    CHECK_THROWS_MATCHES(
+        volt::io::detail::read_project_bundle_v1_pcb_board_text(mismatched.circuit,
+                                                                document.dump()),
+        std::logic_error,
+        Catch::Matchers::Message("PCB placement footprint does not match selected physical part"));
 }
 
 TEST_CASE("PCB projection writer and reader round-trip footprint package geometry") {

@@ -46,6 +46,7 @@
 #include <volt/io/pcb/pcb_schema.hpp>
 #include <volt/io/pcb/pcb_svg_writer.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
+#include <volt/io/project_bundle.hpp>
 #include <volt/io/schematic/schematic_reader.hpp>
 #include <volt/io/schematic/schematic_schema.hpp>
 #include <volt/io/schematic/schematic_svg_writer.hpp>
