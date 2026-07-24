@@ -157,6 +157,44 @@ class CompiledBoardFailure {
     std::optional<EntityRef> entity_;
 };
 
+/** Materialization status for one placement's frozen physical definition. */
+enum class CompiledBoardPlacementStatus {
+    Resolved,
+    MissingPart,
+    MissingFootprint,
+};
+
+/** Frozen delivery inputs for one placement in a CompiledBoard revision. */
+class CompiledBoardPlacement {
+  public:
+    /** Record one placement's verified footprint and pad mapping at materialization time. */
+    CompiledBoardPlacement(ComponentPlacementId placement, CompiledBoardPlacementStatus status,
+                           std::optional<FootprintDefinition> footprint,
+                           std::vector<PadResolution> pad_resolutions);
+
+    /** Return the artifact-owned Board placement identity. */
+    [[nodiscard]] ComponentPlacementId placement() const noexcept { return placement_; }
+
+    /** Return whether physical resolution completed or which input was absent. */
+    [[nodiscard]] CompiledBoardPlacementStatus status() const noexcept { return status_; }
+
+    /** Return the exact frozen footprint, or no footprint when the design is incomplete. */
+    [[nodiscard]] const std::optional<FootprintDefinition> &footprint() const noexcept {
+        return footprint_;
+    }
+
+    /** Return the verified pad mapping frozen for this placement. */
+    [[nodiscard]] std::span<const PadResolution> pad_resolutions() const noexcept {
+        return pad_resolutions_;
+    }
+
+  private:
+    ComponentPlacementId placement_;
+    CompiledBoardPlacementStatus status_;
+    std::optional<FootprintDefinition> footprint_;
+    std::vector<PadResolution> pad_resolutions_;
+};
+
 /** Standalone immutable historical physical artifact for exactly one named Board. */
 class CompiledBoard final {
   public:
@@ -198,6 +236,12 @@ class CompiledBoard final {
 
     /** Return exact selected implementations in component order. */
     [[nodiscard]] std::span<const ResolvedBoardPart> parts() const noexcept;
+
+    /** Return the verified pad resolutions frozen for delivery consumers. */
+    [[nodiscard]] std::span<const PadResolution> pad_resolutions() const noexcept;
+
+    /** Return exact frozen delivery inputs in Board placement order. */
+    [[nodiscard]] std::span<const CompiledBoardPlacement> placements() const noexcept;
 
     /** Return the exact minimum logical dependency payload bytes. */
     [[nodiscard]] std::string_view logical_dependency_snapshot() const & noexcept;

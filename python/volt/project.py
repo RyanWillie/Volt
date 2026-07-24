@@ -806,12 +806,15 @@ class ProjectResult:
                 )
                 _write_text(root / relative_json, board_text)
                 _write_text(root / relative_svg, model.to_svg())
-                kicad_export = model.to_kicad_pcb()
-                relative_kicad = _unique_path(
-                    Path("pcb") / f"{_safe_slug(output_name)}.kicad_pcb",
-                    used_paths,
-                )
-                _write_text(root / relative_kicad, kicad_export.text)
+                kicad_export = None
+                relative_kicad = None
+                if model.has_capability_profile:
+                    kicad_export = model.to_kicad_pcb()
+                    relative_kicad = _unique_path(
+                        Path("pcb") / f"{_safe_slug(output_name)}.kicad_pcb",
+                        used_paths,
+                    )
+                    _write_text(root / relative_kicad, kicad_export.text)
                 cpl_json_path, cpl_csv_path = _cpl_artifact_paths(output_name)
                 relative_cpl_json = _unique_path(cpl_json_path, used_paths)
                 relative_cpl_csv = _unique_path(cpl_csv_path, used_paths)
@@ -836,15 +839,22 @@ class ProjectResult:
                         group=group,
                     )
                 )
-                artifacts.append(
-                    _artifact_record(
-                        "kicad_pcb",
-                        output_name,
-                        relative_kicad,
-                        "application/x-kicad-pcb",
-                        group=group,
+                if kicad_export is not None and relative_kicad is not None:
+                    artifacts.append(
+                        _artifact_record(
+                            "kicad_pcb",
+                            output_name,
+                            relative_kicad,
+                            "application/x-kicad-pcb",
+                            group=group,
+                            source={
+                                "board": kicad_export.source.board,
+                                "compiled_board_provenance_digest": (
+                                    kicad_export.source.provenance_digest
+                                ),
+                            },
+                        )
                     )
-                )
                 artifacts.append(
                     _artifact_record(
                         "cpl",
@@ -984,7 +994,11 @@ class ProjectResult:
         schematic_pages_dir = root / f"{base}.pages"
         pcb_json = root / f"{base}.volt.pcb.json" if board is not None else None
         pcb_svg = root / f"{base}.pcb.svg" if board is not None else None
-        kicad_pcb = root / f"{base}.kicad_pcb" if board is not None else None
+        kicad_pcb = (
+            root / f"{base}.kicad_pcb"
+            if board is not None and board.has_capability_profile
+            else None
+        )
         cpl_json = root / f"{base}.cpl.json" if board is not None else None
         cpl_csv = root / f"{base}.cpl.csv" if board is not None else None
         diagnostics_json = root / f"{base}.validation.json"
@@ -1021,7 +1035,8 @@ class ProjectResult:
                     _write_text(layer_svg, board.to_svg(**svg_options, layer=layer_index))
                     layer_paths.append(layer_svg)
                 pcb_layer_svgs = tuple(layer_paths)
-            _write_text(kicad_pcb, board.to_kicad_pcb().text)
+            if kicad_pcb is not None:
+                _write_text(kicad_pcb, board.to_kicad_pcb().text)
             _write_text(cpl_json, board.cpl_json())
             _write_text(cpl_csv, board.cpl_csv())
         _write_json(diagnostics_json, _flat_diagnostics_payload(self))
@@ -1350,16 +1365,17 @@ def _collect_default_diagnostics(runs: tuple[_StageRun, ...]) -> tuple[ProjectDi
                         board=model.name,
                     )
                 )
-                diagnostics.extend(
-                    _report_diagnostics(
-                        run.stage.name,
-                        f"pcb:{model.name}",
-                        "pcb.kicad_export",
-                        model.to_kicad_pcb().diagnostics,
-                        design=model._design.name,
-                        board=model.name,
+                if model.has_capability_profile:
+                    diagnostics.extend(
+                        _report_diagnostics(
+                            run.stage.name,
+                            f"pcb:{model.name}",
+                            "pcb.kicad_export",
+                            model.to_kicad_pcb().diagnostics,
+                            design=model._design.name,
+                            board=model.name,
+                        )
                     )
-                )
     return tuple(diagnostics)
 
 
@@ -1609,6 +1625,7 @@ def _artifact_record(
     *,
     group: dict[str, str] | None = None,
     sha256: str | None = None,
+    source: dict[str, str] | None = None,
 ) -> dict[str, object]:
     record: dict[str, object] = {
         "kind": kind,
@@ -1620,6 +1637,8 @@ def _artifact_record(
         record["group"] = group
     if sha256 is not None:
         record["sha256"] = sha256
+    if source is not None:
+        record["source"] = source
     return record
 
 

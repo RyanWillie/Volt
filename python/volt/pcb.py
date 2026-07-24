@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -404,9 +405,18 @@ class KiCadLossWarning:
 
 
 @dataclass(frozen=True)
+class CompiledBoardIdentity:
+    """Exact named Board and immutable compilation provenance used by a delivery export."""
+
+    board: str
+    provenance_digest: str
+
+
+@dataclass(frozen=True)
 class KiCadPcbExport:
     """Result of exporting a board projection to a KiCad PCB file."""
 
+    source: CompiledBoardIdentity
     text: str
     warnings: tuple[KiCadLossWarning, ...]
     diagnostics: DiagnosticReport
@@ -436,6 +446,7 @@ class PcbFabricationFile:
 class PcbFabricationExport:
     """Result of exporting a board projection to native fabrication files."""
 
+    source: CompiledBoardIdentity
     files: tuple[PcbFabricationFile, ...]
     warnings: tuple[PcbFabricationLossWarning, ...]
     diagnostics: DiagnosticReport
@@ -620,6 +631,11 @@ class Board:
             raise TypeError("set_capability_profile expects a CapabilityProfile")
         self._native.set_capability_profile(profile._to_dict())
         return self
+
+    @property
+    def has_capability_profile(self) -> bool:
+        """Whether this named Board pins a concrete manufacturing capability snapshot."""
+        return bool(self._native.has_capability_profile)
 
     def add_layer(
         self,
@@ -1089,6 +1105,7 @@ class Board:
         """Export the PCB projection to a KiCad `.kicad_pcb` adapter document."""
         result = self._native.to_kicad_pcb()
         return KiCadPcbExport(
+            source=CompiledBoardIdentity(**result["source"]),
             text=result["text"],
             warnings=tuple(KiCadLossWarning(**warning) for warning in result["warnings"]),
             diagnostics=DiagnosticReport(
@@ -1100,6 +1117,7 @@ class Board:
         """Export the PCB projection to native Gerber and Excellon fabrication files."""
         result = self._native.to_fabrication_files()
         return PcbFabricationExport(
+            source=CompiledBoardIdentity(**result["source"]),
             files=tuple(PcbFabricationFile(**file) for file in result["files"]),
             warnings=tuple(
                 PcbFabricationLossWarning(**warning) for warning in result["warnings"]
@@ -1147,7 +1165,14 @@ class Board:
     def write_kicad_pcb(self, path: str | Path) -> KiCadPcbExport:
         """Write the KiCad PCB adapter document and return its loss report."""
         export = self.to_kicad_pcb()
-        Path(path).write_text(export.text, encoding="utf-8")
+        destination = Path(path)
+        with tempfile.TemporaryDirectory(
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+        ) as temp_dir:
+            staged = Path(temp_dir) / destination.name
+            staged.write_text(export.text, encoding="utf-8")
+            staged.replace(destination)
         return export
 
     def write_fabrication_files(self, path: str | Path) -> PcbFabricationExport:
@@ -1160,9 +1185,18 @@ class Board:
             if any(root.iterdir()):
                 raise FileExistsError("Fabrication output directory must be empty")
         else:
-            root.mkdir(parents=True, exist_ok=True)
-        for file in export.files:
-            (root / file.filename).write_text(file.text, encoding="utf-8")
+            root.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(
+            dir=root.parent,
+            prefix=f".{root.name}.",
+        ) as temp_dir:
+            staged = Path(temp_dir) / root.name
+            staged.mkdir()
+            for file in export.files:
+                (staged / file.filename).write_text(file.text, encoding="utf-8")
+            if root.exists():
+                root.rmdir()
+            staged.replace(root)
         return export
 
 

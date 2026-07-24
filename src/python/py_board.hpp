@@ -3,6 +3,7 @@
 #include "binding_conversions.hpp"
 
 #include <volt/pcb/board.hpp>
+#include <volt/pcb/compiled/compiled_board.hpp>
 #include <volt/pcb/resolution/board_resolution.hpp>
 
 #include <cstddef>
@@ -40,6 +41,8 @@ class PyBoard {
                           double package_assembly_clearance_mm);
 
     void set_capability_profile(const py::dict &profile);
+
+    [[nodiscard]] bool has_capability_profile() const noexcept;
 
     [[nodiscard]] std::size_t add_layer(const std::string &name, const std::string &role,
                                         const std::string &side, double thickness_mm, bool enabled,
@@ -143,6 +146,8 @@ class PyBoard {
     [[nodiscard]] py::dict to_fabrication_files() const;
 
   private:
+    [[nodiscard]] volt::CompiledBoard compile_for_delivery() const;
+
     [[nodiscard]] volt::BoardResolution
     resolve(std::vector<volt::BoardAssetCapability> additional = {}) const;
 

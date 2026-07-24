@@ -190,8 +190,8 @@
           <tr><td><code>PyBoard::cpl_csv</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
           <tr><td><code>PyBoard::to_json</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
           <tr><td><code>PyBoard::to_svg</code></td><td><code>src/python/py_board.cpp</code></td><td><code>BoardResolution</code></td></tr>
-          <tr><td><code>PyBoard::to_fabrication_files</code></td><td><code>src/python/py_fabrication.cpp</code></td><td><code>BoardResolution</code></td></tr>
-          <tr><td><code>PyBoard::to_kicad_pcb</code></td><td><code>src/python/py_kicad.cpp</code></td><td><code>BoardResolution</code></td></tr>
+          <tr><td><code>PyBoard::to_fabrication_files</code></td><td><code>src/python/py_fabrication.cpp</code></td><td><code>CompiledBoard</code></td></tr>
+          <tr><td><code>PyBoard::to_kicad_pcb</code></td><td><code>src/python/py_kicad.cpp</code></td><td><code>CompiledBoard</code></td></tr>
         </tbody>
       </table>
     </section>
@@ -239,6 +239,30 @@
             <li><code>BoardScene</code> contains only render geometry, stable placement selections, display transforms and checked model references; it cannot reconstruct or mutate Board, connectivity, selected-part truth or compilation rules.</li>
             <li>Without <code>models3d</code> its GLB set is empty. With <code>models3d</code>, it contains only consumed GLBs from that exact compiled revision; STEP and unselected library assets do not enter the set.</li>
             <li>Model byte lookup rejects foreign named Boards, stale revisions, missing or extraneous assets and digest mismatches before returning an artifact-owned view; raw paths are not representable as scene references.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <span class="kicker">Resolved by #316</span>
+      <h2>CompiledBoard delivery boundary</h2>
+      <p>The existing KiCad and native Gerber/Excellon delivery services now accept only one reopened <code>const CompiledBoard&amp;</code>. Python selects and compiles the intended named Board, then orchestrates those typed native services without decoding artifacts or reconstructing manufacturing meaning. Both result types carry <code>CompiledBoardIdentity</code>, and manufacturing manifests record the same Board name and provenance digest before atomic publication.</p>
+      <div class="grid">
+        <div class="panel">
+          <h3>Frozen export inputs</h3>
+          <ul>
+            <li>PCB geometry, logical connectivity, selected parts, exact footprints, pin-pad mappings and capability evidence are consumed only from the verified artifact-owned closure.</li>
+            <li>Reopen rejects structural corruption, missing mandatory mappings or assets, unsupported capability records and ownership or provenance mismatch before an exporter can publish.</li>
+            <li>Identical CompiledBoard bytes and typed options produce byte-identical KiCad, Gerber and Excellon outputs with deterministic file and archive ordering.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>One current authority</h3>
+          <ul>
+            <li>Current PCB JSON writers emit canonical Board state and never write the former mixed <code>viewer</code> cache.</li>
+            <li>Legacy mixed-cache input is accepted only by an explicitly named conversion reader, which validates and discards the cache; it is never an implicit fallback.</li>
+            <li>Focused offline tests destroy the Circuit, authoring Board, selected library bundle and Python owners, reopen the CompiledBoard, and require export parity plus exact source identity.</li>
           </ul>
         </div>
       </div>

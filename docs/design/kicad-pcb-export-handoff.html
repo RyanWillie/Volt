@@ -161,9 +161,9 @@
         <h1>KiCad PCB is a manufacturing bridge, not Volt's board model.</h1>
       </div>
       <p class="dek">
-        Volt board JSON and kernel board data stay canonical. The KiCad writer consumes
-        that data and emits a deterministic <code>.kicad_pcb</code> file for inspection and
-        downstream fabrication tooling.
+        One exact immutable <code>CompiledBoard</code> revision is the physical source. The
+        KiCad writer reopens and consumes that artifact offline, then emits a deterministic
+        <code>.kicad_pcb</code> file for inspection and downstream fabrication tooling.
       </p>
     </header>
 
@@ -172,14 +172,15 @@
       <div class="stack">
         <h2>Export is one-way and adapter-shaped.</h2>
         <p>
-          The writer lives under <code>volt/adapters/kicad</code>, depends on Volt circuit
-          and PCB model targets, and does not make KiCad file structures part of core,
-          IO, or board mutation APIs.
+          The writer lives under <code>volt/adapters/kicad</code>, is a typed read-only
+          service over <code>const CompiledBoard&amp;</code>, and does not make KiCad file
+          structures part of core, IO, or board mutation APIs.
         </p>
         <div class="callout">
-          Logical nets, selected parts, footprint geometry, placements, copper routes,
-          board text, and board outline come from Volt-owned data. The exporter never
-          creates, merges, splits, infers, or repairs logical connectivity.
+          Logical nets, selected parts, pad mappings, footprint geometry, placements,
+          copper routes, board text, and board outline are frozen before publication.
+          Export performs no source import, library lookup, pad resolution, cache lookup,
+          or logical-connectivity mutation.
         </div>
       </div>
     </section>
@@ -250,11 +251,18 @@
     <section>
       <aside>Python handoff</aside>
       <div class="stack">
-        <h2>Call the adapter from a board projection.</h2>
+        <h2>Select the named Board; native code compiles and exports it.</h2>
         <pre><code>export = board.write_kicad_pcb("artifacts/pcb_led_board.kicad_pcb")
 if export.warnings:
     for warning in export.warnings:
         print(warning.fabrication_impact, warning.construct, warning.message)</code></pre>
+        <p>
+          Python only selects the named Board and invokes the typed native delivery
+          boundary. The result records the exact Board name and CompiledBoard provenance
+          digest in <code>export.source</code>; manufacturing-package manifests retain the
+          same identity. A different Board name or compiled revision cannot silently reuse
+          that output.
+        </p>
         <p>
           The example board at <code>examples/pcb_led_board</code> commits a generated
           <code>pcb_led_board.kicad_pcb</code> artifact alongside Volt JSON and SVG output.
@@ -292,7 +300,9 @@ if export.warnings:
         <div class="callout">
           A clean badge-class routed board should export with no fab-critical losses. The
           <code>kicad_routed_badge.kicad_pcb</code> golden fixture pins byte-stable ordering,
-          units, coordinates, pad counts, track segments, vias, and net-table output.
+          units, coordinates, pad counts, track segments, vias, and net-table output. Tests
+          also reopen the CompiledBoard after destroying all authoring and library owners
+          and require identical bytes and loss reports.
         </div>
       </div>
     </section>

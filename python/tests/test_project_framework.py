@@ -832,6 +832,39 @@ def test_project_result_write_flat_artifacts_emits_legacy_example_outputs(tmp_pa
     assert diagnostics["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
 
 
+def test_project_result_writers_omit_kicad_for_unprofiled_board(tmp_path):
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return _board_ready_design()
+
+    @project.board
+    def board(context):
+        pcb = context.design().add_board("Main")
+        pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
+        pcb.place(context.design().component("J1"), at=(4, 5), locked=True)
+        pcb.place(context.design().component("R1"), at=(10, 5))
+        pcb.place(context.design().component("D1"), at=(15, 5), rotation=180)
+        return pcb
+
+    result = project.run()
+    bundle = tmp_path / "status-led.volt"
+    result.write(bundle)
+    manifest = json.loads((bundle / "manifest.volt.json").read_text(encoding="utf-8"))
+
+    assert result.ok
+    assert (bundle / "pcb" / "Main.volt.pcb.json").exists()
+    assert not (bundle / "pcb" / "Main.kicad_pcb").exists()
+    assert "kicad_pcb" not in {artifact["kind"] for artifact in manifest["artifacts"]}
+
+    flat_root = tmp_path / "flat"
+    artifacts = result.write_artifacts(flat_root, slug="status_led")
+    assert artifacts.pcb_json == flat_root / "status_led.volt.pcb.json"
+    assert artifacts.kicad_pcb is None
+    assert not (flat_root / "status_led.kicad_pcb").exists()
+
+
 def test_project_result_write_flat_artifacts_can_omit_pcb_diagnostic_overlays(tmp_path):
     project = volt.Project("off-board-text")
 
@@ -855,10 +888,7 @@ def test_project_result_write_flat_artifacts_can_omit_pcb_diagnostic_overlays(tm
     pcb_json = json.loads(artifacts.pcb_json.read_text(encoding="utf-8"))
     pcb_svg = artifacts.pcb_svg.read_text(encoding="utf-8")
 
-    assert any(
-        item["code"] == "PCB_VISUAL_LABEL_OUTSIDE_BOARD"
-        for item in pcb_json["viewer"]["diagnostics"]
-    )
+    assert "viewer" not in pcb_json
     assert "data-diagnostic-code=" not in pcb_svg
     assert "diagnostic-overlay" not in pcb_svg
 

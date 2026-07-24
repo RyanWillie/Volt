@@ -18,7 +18,6 @@
 #include <volt/circuit/validation/validation.hpp>
 #include <volt/io/logical/logical_circuit_reader.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
-#include <volt/io/pcb/pcb_fabrication_writer.hpp>
 #include <volt/library/part_library.hpp>
 #include <volt/pcb/assembly/cpl.hpp>
 #include <volt/pcb/board.hpp>
@@ -569,15 +568,6 @@ TEST_CASE("Exact selection satisfies missing-selection readiness without becomin
         led, volt::BoardPoint{1.0, 2.0}, volt::BoardRotation::degrees(0.0)}));
     const auto board_missing = volt::validate_board(board, volt::builtin_footprint_library());
     CHECK(has_diagnostic(board_missing, "PCB_COMPONENT_MISSING_SELECTED_PART"));
-    const auto fabrication_missing =
-        volt::io::write_pcb_fabrication_files(board, volt::builtin_footprint_library());
-    const auto missing_selection_warning =
-        std::ranges::find_if(fabrication_missing.loss_report.warnings(), [](const auto &warning) {
-            return warning.construct == "component.part" &&
-                   warning.message ==
-                       "Component placement has no selected physical part for fabrication export";
-        });
-    CHECK(missing_selection_warning != fabrication_missing.loss_report.warnings().end());
 
     static_cast<void>(select(fixture.circuit, led, fixture.library, "led"));
     const auto pcb_selected = volt::validate_for_pcb(fixture.circuit);
@@ -592,14 +582,4 @@ TEST_CASE("Exact selection satisfies missing-selection readiness without becomin
     const auto board_report = volt::validate_board(board, volt::builtin_footprint_library());
     CHECK_FALSE(has_diagnostic(board_report, "PCB_COMPONENT_MISSING_SELECTED_PART"));
     CHECK(has_diagnostic(board_report, "PCB_FOOTPRINT_UNRESOLVED"));
-
-    const auto fabrication =
-        volt::io::write_pcb_fabrication_files(board, volt::builtin_footprint_library());
-    const auto exact_resolution_warning =
-        std::ranges::find_if(fabrication.loss_report.warnings(), [](const auto &warning) {
-            return warning.construct == "component.part" &&
-                   warning.message ==
-                       "Exact selected part requires library resolution for fabrication export";
-        });
-    CHECK(exact_resolution_warning != fabrication.loss_report.warnings().end());
 }

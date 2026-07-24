@@ -16,10 +16,8 @@
 #include <utility>
 #include <vector>
 
-#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/core/properties.hpp>
-#include <volt/pcb/queries/board_queries.hpp>
 
 namespace volt::adapters::kicad::detail {
 
@@ -235,35 +233,6 @@ void report_layer_mapping_collision(const Board &board, BoardLayerId current, Bo
     return component.reference().value();
 }
 
-[[nodiscard]] const FootprintDefinition *
-definition_for_placement(const Board &board, const ComponentPlacement &placement,
-                         const FootprintLibrary &footprints) {
-    const auto &selected_part =
-        volt::queries::selected_physical_part(board.circuit(), placement.component());
-    if (!selected_part.has_value()) {
-        return nullptr;
-    }
-
-    const auto cached = queries::footprint_definition_id(board, selected_part->footprint());
-    if (cached.has_value()) {
-        return &board.get(cached.value());
-    }
-    return footprints.find(selected_part->footprint());
-}
-
-[[nodiscard]] const PadResolution *pad_resolution_for(const std::vector<PadResolution> &resolutions,
-                                                      ComponentPlacementId placement,
-                                                      FootprintPadId pad) {
-    const auto match = std::find_if(
-        resolutions.begin(), resolutions.end(), [placement, pad](const PadResolution &candidate) {
-            return candidate.placement() == placement && candidate.pad() == pad;
-        });
-    if (match == resolutions.end()) {
-        return nullptr;
-    }
-    return &*match;
-}
-
 [[nodiscard]] std::string pad_shape_name(FootprintPadShape shape) {
     switch (shape) {
     case FootprintPadShape::Rectangle:
@@ -451,14 +420,13 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
     }
 }
 
-[[nodiscard]] std::vector<PlacementExport>
-build_placement_exports(const Board &board, const FootprintLibrary &footprints,
-                        LossReport &loss_report) {
-    const auto resolutions = queries::resolve_pads(board, footprints);
+[[nodiscard]] std::vector<PlacementExport> build_placement_exports(const CompiledBoard &compiled,
+                                                                   LossReport &loss_report) {
+    const auto &board = compiled.board();
     auto exports = std::vector<PlacementExport>{};
 
-    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
-        const auto id = ComponentPlacementId{index};
+    for (const auto &frozen : compiled.placements()) {
+        const auto id = frozen.placement();
         const auto &placement = board.get(id);
         if (placement.side() != BoardSide::Top) {
             add_fab_critical_warning(
@@ -467,26 +435,32 @@ build_placement_exports(const Board &board, const FootprintLibrary &footprints,
             continue;
         }
 
-        const auto *definition = definition_for_placement(board, placement, footprints);
-        if (definition == nullptr) {
+        if (!frozen.footprint().has_value()) {
             add_fab_critical_warning(
                 loss_report, LossKind::IncompleteConstruct, "footprint",
                 "Component placement has no resolved footprint definition for KiCad export");
             continue;
         }
+        const auto &definition = *frozen.footprint();
 
         auto placement_export =
-            PlacementExport{id, &placement, definition, std::vector<PadResolution>{}};
-        placement_export.pad_resolutions.reserve(definition->pad_count());
-        for (std::size_t pad_index = 0; pad_index < definition->pad_count(); ++pad_index) {
+            PlacementExport{id, &placement, &definition, std::vector<PadResolution>{}};
+        placement_export.pad_resolutions.reserve(definition.pad_count());
+        const auto frozen_pads = frozen.pad_resolutions();
+        if (frozen_pads.size() != definition.pad_count()) {
+            throw KernelLogicError{
+                ErrorCode::InvalidState,
+                "KiCad placement export requires one frozen pad resolution for every pad"};
+        }
+        for (std::size_t pad_index = 0; pad_index < definition.pad_count(); ++pad_index) {
             const auto pad_id = FootprintPadId{pad_index};
-            const auto *resolution = pad_resolution_for(resolutions, id, pad_id);
-            if (resolution == nullptr) {
+            const auto &resolution = frozen_pads[pad_index];
+            if (resolution.placement() != id || resolution.pad() != pad_id) {
                 throw KernelLogicError{
                     ErrorCode::InvalidState,
-                    "KiCad placement export requires an explicit pad resolution for every pad"};
+                    "KiCad placement export received a mismatched frozen pad resolution"};
             }
-            placement_export.pad_resolutions.push_back(*resolution);
+            placement_export.pad_resolutions.push_back(resolution);
         }
         exports.push_back(std::move(placement_export));
     }
@@ -532,9 +506,10 @@ void write_pad(std::ostream &out, const FootprintPad &pad, const PadResolution &
     out << "    )\n";
 }
 
-void write_component_footprints(std::ostream &out, const Board &board,
-                                const FootprintLibrary &footprints, LossReport &loss_report) {
-    for (const auto &placement_export : build_placement_exports(board, footprints, loss_report)) {
+void write_component_footprints(std::ostream &out, const CompiledBoard &compiled,
+                                LossReport &loss_report) {
+    const auto &board = compiled.board();
+    for (const auto &placement_export : build_placement_exports(compiled, loss_report)) {
         const auto &placement = *placement_export.placement;
         const auto &definition = *placement_export.definition;
         const auto &component = board.circuit().get(placement.component());
@@ -781,9 +756,9 @@ void report_unsupported_board_constructs(const Board &board, LossReport &loss_re
 
 namespace volt::adapters::kicad {
 
-[[nodiscard]] BoardExportResult write_board(const Board &board,
-                                            const FootprintLibrary &footprints) {
-    auto result = BoardExportResult{};
+[[nodiscard]] BoardExportResult write_board(const CompiledBoard &compiled) {
+    const auto &board = compiled.board();
+    auto result = BoardExportResult{compiled.identity(), {}, {}};
     detail::report_unsupported_board_constructs(board, result.loss_report);
     const auto layer_map = detail::build_layer_map(board, result.loss_report);
 
@@ -802,7 +777,7 @@ namespace volt::adapters::kicad {
     detail::write_setup(out);
     detail::write_nets(out, board.circuit());
     detail::write_board_features(out, board, result.loss_report);
-    detail::write_component_footprints(out, board, footprints, result.loss_report);
+    detail::write_component_footprints(out, compiled, result.loss_report);
     detail::write_tracks(out, board, layer_map, result.loss_report);
     detail::write_vias(out, board, layer_map, result.loss_report);
     detail::write_zones(out, board, layer_map, result.loss_report);

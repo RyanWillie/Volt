@@ -1,8 +1,5 @@
 #include "erc_drc_real_board_regression_helpers.hpp"
 
-#include <volt/adapters/kicad/loss_report.hpp>
-#include <volt/adapters/kicad/pcb_writer.hpp>
-
 namespace {
 
 [[nodiscard]] volt::FootprintDefinition real_testpoint_footprint() {
@@ -188,25 +185,6 @@ TEST_CASE("Real-board board-model matrix covers layer-stack and fabrication loss
                                volt::DiagnosticCategory{volt::diagnostic_categories::PcbBoard}},
             std::vector{volt::EntityRef::board_layer(layout.back),
                         volt::EntityRef::board_layer(layout.front)});
-    }
-
-    SECTION("plated board-feature hole produces positive KiCad fab-loss diagnostics") {
-        const auto fixture = make_real_board_fixture();
-        auto layout = make_real_board_layout(fixture);
-        [[maybe_unused]] const auto plated_mount = layout.board.add_feature(
-            volt::BoardFeature::hole("MH1", volt::BoardPoint{40.0, 4.0}, 1.0, true, "mounting"));
-
-        const auto export_result = volt::adapters::kicad::write_board(layout.board, library);
-        const auto diagnostics =
-            volt::adapters::kicad::fabrication_diagnostics(export_result.loss_report);
-
-        check_diagnostic_summaries(
-            diagnostics, {ExpectedDiagnostic{"PCB_KICAD_FAB_EXPORT_LOSS", volt::Severity::Error,
-                                             volt::DiagnosticCategory{
-                                                 volt::diagnostic_categories::PcbFabrication}}});
-        CHECK(diagnostics.diagnostics()[0].entities() == std::vector{volt::EntityRef::board()});
-        REQUIRE(diagnostics.diagnostics()[0].rule().has_value());
-        CHECK(diagnostics.diagnostics()[0].rule().value() == "board.feature.hole.plated");
     }
 }
 

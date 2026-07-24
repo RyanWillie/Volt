@@ -15,9 +15,11 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/io/pcb/pcb_reader.hpp>
+#include <volt/io/pcb/pcb_schema.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 namespace {
 
@@ -112,6 +114,71 @@ struct ResistorCircuit {
         volt::io::write_pcb_board(board, volt::builtin_footprint_library()));
 }
 
+[[nodiscard]] nlohmann::json make_legacy_board_json(const ResistorCircuit &fixture) {
+    const auto board = make_viewer_ready_board(fixture);
+    auto document =
+        nlohmann::json::parse(volt::io::write_pcb_board(board, volt::builtin_footprint_library()));
+    const auto resolutions = volt::queries::resolve_pads(board, volt::builtin_footprint_library());
+    auto pads = nlohmann::json::array();
+    for (const auto &resolution : resolutions) {
+        const auto &geometry =
+            document["board"]["footprint_definitions"][0]["pads"][resolution.pad().index()];
+        pads.push_back(
+            {{"id", "pcb_pad:" + std::to_string(resolution.placement().index()) + ":" +
+                        std::to_string(resolution.pad().index())},
+             {"placement", "component_placement:" + std::to_string(resolution.placement().index())},
+             {"component", "component:" + std::to_string(resolution.component().index())},
+             {"footprint", "footprint_def:0"},
+             {"pad", "footprint_pad:" + std::to_string(resolution.pad().index())},
+             {"label", resolution.pad_label()},
+             {"position",
+              nlohmann::json::array({resolution.position().x_mm(), resolution.position().y_mm()})},
+             {"pin", resolution.pin().has_value()
+                         ? nlohmann::json("pin:" + std::to_string(resolution.pin()->index()))
+                         : nlohmann::json{nullptr}},
+             {"net", resolution.net().has_value()
+                         ? nlohmann::json("net:" + std::to_string(resolution.net()->index()))
+                         : nlohmann::json{nullptr}},
+             {"status", volt::io::detail::pad_resolution_status_name(resolution.status())},
+             {"geometry",
+              {{"kind", geometry["kind"]},
+               {"shape", geometry["shape"]},
+               {"size", geometry["size"]},
+               {"layers", geometry["layers"]},
+               {"drill", geometry["drill"]},
+               {"mechanical_role", geometry["mechanical_role"]}}}});
+    }
+    document["viewer"] = {
+        {"layers", nlohmann::json::array(
+                       {{{"id", "viewer_layer:board_outline"},
+                         {"kind", "board_outline"},
+                         {"name", "Board outline"}},
+                        {{"id", "viewer_layer:copper"}, {"kind", "copper"}, {"name", "Copper"}},
+                        {{"id", "viewer_layer:pads"}, {"kind", "pads"}, {"name", "Pads"}},
+                        {{"id", "viewer_layer:package_bodies"},
+                         {"kind", "package_bodies"},
+                         {"name", "Package bodies"}},
+                        {{"id", "viewer_layer:package_courtyards"},
+                         {"kind", "package_courtyards"},
+                         {"name", "Package courtyards"}},
+                        {{"id", "viewer_layer:package_fabrication"},
+                         {"kind", "package_fabrication"},
+                         {"name", "Fabrication outlines"}},
+                        {{"id", "viewer_layer:package_assembly"},
+                         {"kind", "package_assembly"},
+                         {"name", "Assembly outlines"}},
+                        {{"id", "viewer_layer:annotations"},
+                         {"kind", "annotations"},
+                         {"name", "Annotations"}},
+                        {{"id", "viewer_layer:diagnostics"},
+                         {"kind", "diagnostics"},
+                         {"name", "Diagnostics"}}})},
+        {"pad_resolutions", std::move(pads)},
+        {"diagnostics", nlohmann::json::array()},
+    };
+    return document;
+}
+
 } // namespace
 
 TEST_CASE("PCB writer exposes declared entity reference helper symbols") {
@@ -119,7 +186,7 @@ TEST_CASE("PCB writer exposes declared entity reference helper symbols") {
     CHECK(volt::io::detail::entity_ref_id(volt::EntityRef::net(volt::NetId{2})) == "net:2");
 }
 
-TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON") {
+TEST_CASE("PCB writer emits deterministic canonical board JSON without a viewer cache") {
     const auto fixture = make_resistor_circuit();
     const auto board = make_viewer_ready_board(fixture);
 
@@ -183,33 +250,27 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["board"]["placements"][0]["side"] == "top");
     CHECK(document["board"]["placements"][0]["locked"] == true);
 
-    REQUIRE(document["viewer"]["pad_resolutions"].size() == 2);
-    CHECK(document["viewer"]["pad_resolutions"][0]["id"] == "pcb_pad:0:0");
-    CHECK(document["viewer"]["pad_resolutions"][0]["placement"] == "component_placement:0");
-    CHECK(document["viewer"]["pad_resolutions"][0]["component"] == "component:0");
-    CHECK(document["viewer"]["pad_resolutions"][0]["footprint"] == "footprint_def:0");
-    CHECK(document["viewer"]["pad_resolutions"][0]["pad"] == "footprint_pad:0");
-    CHECK(document["viewer"]["pad_resolutions"][0]["label"] == "1");
-    CHECK(document["viewer"]["pad_resolutions"][0]["position"] ==
-          nlohmann::json::array({25.0, 14.25}));
-    CHECK(document["viewer"]["pad_resolutions"][0]["pin"] == "pin:0");
-    CHECK(document["viewer"]["pad_resolutions"][0]["net"] == "net:0");
-    CHECK(document["viewer"]["pad_resolutions"][0]["status"] == "connected");
-    CHECK(document["viewer"]["pad_resolutions"][0]["geometry"]["shape"] == "rounded_rectangle");
-    CHECK(document["viewer"]["pad_resolutions"][0]["geometry"]["layers"] ==
-          nlohmann::json::array({"front_copper", "front_solder_mask", "front_paste"}));
-    REQUIRE(document["viewer"]["layers"].size() == 9);
-    CHECK(document["viewer"]["layers"][0]["id"] == "viewer_layer:board_outline");
-    CHECK(document["viewer"]["layers"][0]["kind"] == "board_outline");
-    CHECK(document["viewer"]["layers"][1]["id"] == "viewer_layer:copper");
-    CHECK(document["viewer"]["layers"][2]["id"] == "viewer_layer:pads");
-    CHECK(document["viewer"]["layers"][3]["id"] == "viewer_layer:package_bodies");
-    CHECK(document["viewer"]["layers"][4]["id"] == "viewer_layer:package_courtyards");
-    CHECK(document["viewer"]["layers"][5]["id"] == "viewer_layer:package_fabrication");
-    CHECK(document["viewer"]["layers"][6]["id"] == "viewer_layer:package_assembly");
-    CHECK(document["viewer"]["layers"][7]["id"] == "viewer_layer:annotations");
-    CHECK(document["viewer"]["layers"][8]["id"] == "viewer_layer:diagnostics");
-    CHECK(document["viewer"]["diagnostics"] == nlohmann::json::array());
+    CHECK_FALSE(document.contains("viewer"));
+}
+
+TEST_CASE("Legacy PCB viewer caches require explicit validated conversion") {
+    const auto fixture = make_resistor_circuit();
+    const auto legacy = make_legacy_board_json(fixture);
+    const auto current = make_board_json(fixture);
+
+    CHECK_THROWS_MATCHES(
+        volt::io::read_pcb_board_text(fixture.circuit, legacy.dump()), std::logic_error,
+        Catch::Matchers::Message(
+            "PCB document contains a legacy viewer cache; use the explicit legacy converter"));
+    CHECK_THROWS_MATCHES(
+        volt::io::read_legacy_pcb_board_text(fixture.circuit, current.dump()), std::logic_error,
+        Catch::Matchers::Message("Legacy PCB conversion requires a mixed viewer-cache document"));
+
+    const auto converted = volt::io::read_legacy_pcb_board_text(fixture.circuit, legacy.dump());
+    const auto rewritten = nlohmann::json::parse(
+        volt::io::write_pcb_board(converted, volt::builtin_footprint_library()));
+    CHECK_FALSE(rewritten.contains("viewer"));
+    CHECK(rewritten["board"] == current["board"]);
 }
 
 TEST_CASE("PCB projection writer and reader round-trip footprint package geometry") {
@@ -461,7 +522,7 @@ TEST_CASE("PCB projection reader recomputes bare-board geometry from canonical f
     CHECK(rewritten["board"]["geometry"]["stackup"][0]["z_mm"] == 0.8);
 }
 
-TEST_CASE("PCB projection JSON contains renderer-ready geometry without SVG") {
+TEST_CASE("PCB JSON retains canonical footprint geometry without a derived viewer cache") {
     const auto fixture = make_resistor_circuit();
     const auto document = make_board_json(fixture);
 
@@ -471,12 +532,7 @@ TEST_CASE("PCB projection JSON contains renderer-ready geometry without SVG") {
     const auto &placement = document["board"]["placements"][0];
     const auto &footprint = document["board"]["footprint_definitions"][0];
     const auto &pad = footprint["pads"][0];
-    const auto &pad_projection = document["viewer"]["pad_resolutions"][0];
-
     CHECK(placement["footprint"] == footprint["id"]);
-    CHECK(pad_projection["placement"] == placement["id"]);
-    CHECK(pad_projection["footprint"] == footprint["id"]);
-    CHECK(pad_projection["pad"] == pad["id"]);
 
     CHECK(pad["shape"] == "rounded_rectangle");
     CHECK(pad["position"] == nlohmann::json::array({-0.75, 0.0}));
@@ -484,16 +540,9 @@ TEST_CASE("PCB projection JSON contains renderer-ready geometry without SVG") {
     CHECK(pad["layers"] ==
           nlohmann::json::array({"front_copper", "front_solder_mask", "front_paste"}));
 
-    const auto placement_x = placement["position"][0].get<double>();
-    const auto placement_y = placement["position"][1].get<double>();
-    const auto pad_x = pad["position"][0].get<double>();
-    const auto pad_y = pad["position"][1].get<double>();
     CHECK(placement["rotation_deg"] == 90.0);
     CHECK(placement["side"] == "top");
-    CHECK(pad_projection["position"] ==
-          nlohmann::json::array({placement_x - pad_y, placement_y + pad_x}));
-    CHECK(pad_projection["pin"] == "pin:0");
-    CHECK(pad_projection["net"] == "net:0");
+    CHECK_FALSE(document.contains("viewer"));
 }
 
 TEST_CASE("PCB projection reader round-trips board metadata, placements, and pad geometry") {
@@ -694,21 +743,7 @@ TEST_CASE("PCB projection writer and reader round-trip board design rules") {
     CHECK(document["board"]["rules"]["minimum_via_annular_diameter_mm"] == 0.70);
     CHECK(document["board"]["rules"]["board_outline_clearance_mm"] == 0.10);
     CHECK(document["board"]["rules"]["package_assembly_clearance_mm"] == 0.35);
-    REQUIRE_FALSE(document["viewer"]["diagnostics"].empty());
-    const auto &track_width = document["viewer"]["diagnostics"][0];
-    CHECK(track_width["code"] == "PCB_TRACK_WIDTH_BELOW_MINIMUM");
-    CHECK(track_width["entities"] ==
-          nlohmann::json::array({"board_track:0", "net:0", "board_layer:0"}));
-    REQUIRE(track_width["overlays"].size() == 1);
-    CHECK(track_width["overlays"][0]["kind"] == "segment");
-    CHECK(track_width["overlays"][0]["points"] ==
-          nlohmann::json::array(
-              {nlohmann::json::array({5.0, 5.0}), nlohmann::json::array({12.0, 5.0})}));
-    CHECK(track_width["overlays"][0]["entities"] == nlohmann::json::array({"board_track:0"}));
-    CHECK(track_width["overlays"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
-    CHECK(track_width["measurement"] ==
-          nlohmann::json::object({{"actual_mm", 0.10}, {"required_mm", 0.25}}));
-
+    CHECK_FALSE(document.contains("viewer"));
     const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
     CHECK(restored.design_rules().copper_clearance_mm() == 0.20);
     CHECK(restored.design_rules().minimum_track_width_mm() == 0.25);
@@ -786,7 +821,7 @@ TEST_CASE("PCB projection reader rejects malformed embedded capability profiles"
                     std::invalid_argument);
 }
 
-TEST_CASE("PCB projection writer includes highlightable diagnostic references") {
+TEST_CASE("PCB writer does not emit derived diagnostic caches") {
     const auto fixture = make_resistor_circuit();
     auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
     board.set_outline(
@@ -799,56 +834,7 @@ TEST_CASE("PCB projection writer includes highlightable diagnostic references") 
     const auto document =
         nlohmann::json::parse(volt::io::write_pcb_board(board, volt::builtin_footprint_library()));
 
-    REQUIRE_FALSE(document["viewer"]["diagnostics"].empty());
-    CHECK(document["viewer"]["diagnostics"][0]["severity"] == "error");
-    CHECK(document["viewer"]["diagnostics"][0]["code"] == "PCB_PLACEMENT_OUTSIDE_OUTLINE");
-    CHECK(document["viewer"]["diagnostics"][0]["message"] ==
-          "Placement pad '1' is outside the board outline");
-    CHECK(document["viewer"]["diagnostics"][0]["entities"] ==
-          nlohmann::json::array({"component:0", "component_placement:0"}));
-}
-
-TEST_CASE("PCB projection writer serializes overlay-ready diagnostic geometry") {
-    const auto diagnostic = volt::Diagnostic{
-        volt::Severity::Warning,
-        volt::DiagnosticCode{"PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE"},
-        volt::DiagnosticCategory{"pcb.visual"},
-        "Reference designator is difficult to read",
-        std::vector{volt::EntityRef::board(), volt::EntityRef::board_room(volt::BoardRoomId{1}),
-                    volt::EntityRef::board_text(volt::BoardTextId{0})},
-        std::vector{
-            volt::DiagnosticOverlay::bounding_box(
-                volt::DiagnosticPoint{2.0, 3.0}, volt::DiagnosticPoint{6.0, 4.5},
-                std::vector{volt::EntityRef::board_text(volt::BoardTextId{0})},
-                std::vector{volt::BoardLayerId{0}}),
-            volt::DiagnosticOverlay::point(volt::DiagnosticPoint{4.0, 3.75}, {},
-                                           std::vector{volt::BoardLayerId{0}}),
-            volt::DiagnosticOverlay::polygon(std::vector{volt::DiagnosticPoint{1.0, 1.0},
-                                                         volt::DiagnosticPoint{2.0, 1.0},
-                                                         volt::DiagnosticPoint{2.0, 2.0}},
-                                             {}, std::vector{volt::BoardLayerId{0}}),
-        },
-        std::nullopt,
-        "reference-designator-obstruction",
-    };
-
-    auto out = std::ostringstream{};
-    volt::io::detail::write_diagnostic(out, diagnostic);
-    const auto payload = nlohmann::json::parse(out.str());
-
-    CHECK(payload["category"] == "pcb.visual");
-    CHECK(payload["entities"] ==
-          nlohmann::json::array({"board:0", "board_room:1", "board_text:0"}));
-    REQUIRE(payload["overlays"].size() == 3);
-    CHECK(payload["overlays"][0]["kind"] == "bounding_box");
-    CHECK(payload["overlays"][0]["points"] ==
-          nlohmann::json::array(
-              {nlohmann::json::array({2.0, 3.0}), nlohmann::json::array({6.0, 4.5})}));
-    CHECK(payload["overlays"][0]["entities"] == nlohmann::json::array({"board_text:0"}));
-    CHECK(payload["overlays"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
-    CHECK(payload["overlays"][1]["kind"] == "point");
-    CHECK(payload["overlays"][2]["kind"] == "polygon");
-    CHECK(payload["rule"] == "reference-designator-obstruction");
+    CHECK_FALSE(document.contains("viewer"));
 }
 
 TEST_CASE("PCB projection writer serializes emitted PCB visual placement diagnostics") {
@@ -882,35 +868,10 @@ TEST_CASE("PCB projection writer serializes emitted PCB visual placement diagnos
     const auto document =
         nlohmann::json::parse(volt::io::write_pcb_board(board, volt::builtin_footprint_library()));
 
-    const auto diagnostic = std::find_if(
-        document["viewer"]["diagnostics"].begin(), document["viewer"]["diagnostics"].end(),
-        [](const nlohmann::json &item) { return item["code"] == "PCB_VISUAL_PLACEMENT_OVERLAP"; });
-    REQUIRE(diagnostic != document["viewer"]["diagnostics"].end());
-    CHECK((*diagnostic)["severity"] == "warning");
-    CHECK((*diagnostic)["category"] == "pcb.visual");
-    CHECK((*diagnostic)["code"] == "PCB_VISUAL_PLACEMENT_OVERLAP");
-    CHECK((*diagnostic)["message"] == "Placed footprint extents for R1 and R2 overlap");
-    CHECK((*diagnostic)["entities"] ==
-          nlohmann::json::array(
-              {"component:0", "component_placement:0", "component:1", "component_placement:1"}));
-    REQUIRE((*diagnostic)["overlays"].size() == 2);
-    CHECK((*diagnostic)["overlays"][0]["kind"] == "bounding_box");
-    CHECK((*diagnostic)["overlays"][0]["points"] ==
-          nlohmann::json::array(
-              {nlohmann::json::array({8.85, 9.525}), nlohmann::json::array({11.15, 10.475})}));
-    CHECK((*diagnostic)["overlays"][0]["entities"] ==
-          nlohmann::json::array({"component:0", "component_placement:0"}));
-    CHECK((*diagnostic)["overlays"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
-    CHECK((*diagnostic)["overlays"][1]["kind"] == "bounding_box");
-    CHECK((*diagnostic)["overlays"][1]["points"] ==
-          nlohmann::json::array(
-              {nlohmann::json::array({9.35, 9.525}), nlohmann::json::array({11.65, 10.475})}));
-    CHECK((*diagnostic)["overlays"][1]["entities"] ==
-          nlohmann::json::array({"component:1", "component_placement:1"}));
-    CHECK((*diagnostic)["overlays"][1]["layers"] == nlohmann::json::array({"board_layer:0"}));
+    CHECK_FALSE(document.contains("viewer"));
 }
 
-TEST_CASE("PCB projection reader and writer preserve emitted PCB visual text diagnostics") {
+TEST_CASE("PCB reader and writer preserve canonical board text without diagnostic caches") {
     const auto fixture = make_resistor_circuit();
     auto board = make_viewer_ready_board(fixture);
     static_cast<void>(board.add_text(volt::BoardText{"REV A", volt::BoardPoint{-1.0, 5.0},
@@ -923,33 +884,12 @@ TEST_CASE("PCB projection reader and writer preserve emitted PCB visual text dia
     const auto rewritten = nlohmann::json::parse(
         volt::io::write_pcb_board(restored, volt::builtin_footprint_library()));
 
-    const auto diagnostic =
-        std::find_if(document["viewer"]["diagnostics"].begin(),
-                     document["viewer"]["diagnostics"].end(), [](const nlohmann::json &item) {
-                         return item["code"] == "PCB_VISUAL_LABEL_OUTSIDE_BOARD";
-                     });
-    const auto rewritten_diagnostic =
-        std::find_if(rewritten["viewer"]["diagnostics"].begin(),
-                     rewritten["viewer"]["diagnostics"].end(), [](const nlohmann::json &item) {
-                         return item["code"] == "PCB_VISUAL_LABEL_OUTSIDE_BOARD";
-                     });
-    REQUIRE(diagnostic != document["viewer"]["diagnostics"].end());
-    REQUIRE(rewritten_diagnostic != rewritten["viewer"]["diagnostics"].end());
-    CHECK(*rewritten_diagnostic == *diagnostic);
-    CHECK((*diagnostic)["severity"] == "warning");
-    CHECK((*diagnostic)["category"] == "pcb.visual");
-    CHECK((*diagnostic)["message"] == "Board text 'REV A' is outside the board outline");
-    CHECK((*diagnostic)["entities"] == nlohmann::json::array({"board_text:0"}));
-    REQUIRE((*diagnostic)["overlays"].size() == 1);
-    CHECK((*diagnostic)["overlays"][0]["kind"] == "bounding_box");
-    CHECK((*diagnostic)["overlays"][0]["points"] ==
-          nlohmann::json::array(
-              {nlohmann::json::array({-1.0, 4.0}), nlohmann::json::array({2.0, 5.0})}));
-    CHECK((*diagnostic)["overlays"][0]["entities"] == nlohmann::json::array({"board_text:0"}));
-    CHECK((*diagnostic)["overlays"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
+    CHECK_FALSE(document.contains("viewer"));
+    CHECK_FALSE(rewritten.contains("viewer"));
+    CHECK(rewritten["board"]["texts"] == document["board"]["texts"]);
 }
 
-TEST_CASE("PCB projection JSON orders emitted PCB visual diagnostics deterministically") {
+TEST_CASE("PCB writer remains deterministic for boards that have derived visual diagnostics") {
     auto fixture = make_resistor_circuit();
     const auto second_component = fixture.circuit.instantiate_component(
         fixture.component_definition,
@@ -987,17 +927,8 @@ TEST_CASE("PCB projection JSON orders emitted PCB visual diagnostics determinist
         nlohmann::json::parse(volt::io::write_pcb_board(board, volt::builtin_footprint_library()));
     const auto second =
         nlohmann::json::parse(volt::io::write_pcb_board(board, volt::builtin_footprint_library()));
-    auto visual_codes = std::vector<std::string>{};
-    for (const auto &diagnostic : first["viewer"]["diagnostics"]) {
-        if (diagnostic["category"] == "pcb.visual") {
-            visual_codes.push_back(diagnostic["code"].get<std::string>());
-        }
-    }
-
-    CHECK(first["viewer"]["diagnostics"] == second["viewer"]["diagnostics"]);
-    CHECK(visual_codes == std::vector<std::string>{"PCB_VISUAL_PLACEMENT_OVERLAP",
-                                                   "PCB_VISUAL_LABEL_OUTSIDE_BOARD",
-                                                   "PCB_VISUAL_LABEL_OVERLAP"});
+    CHECK(first == second);
+    CHECK_FALSE(first.contains("viewer"));
 }
 
 TEST_CASE("PCB projection reader rejects dangling references") {
@@ -1031,20 +962,22 @@ TEST_CASE("PCB projection reader rejects dangling references") {
     }
 
     SECTION("pad references") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["pad_resolutions"][0]["pad"] = "footprint_pad:99";
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
+            std::logic_error,
             Catch::Matchers::Message("PCB viewer pad resolution references missing footprint pad"));
     }
 
     SECTION("net references") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["pad_resolutions"][0]["net"] = "net:99";
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
+            std::logic_error,
             Catch::Matchers::Message("PCB viewer pad resolution references missing net"));
     }
 
@@ -1267,14 +1200,16 @@ TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
     const auto fixture = make_resistor_circuit();
 
     SECTION("missing resolved pads") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["pad_resolutions"].erase(1);
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
+            std::logic_error,
             Catch::Matchers::Message("PCB viewer pad resolutions must match resolved pads"));
         try {
-            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            static_cast<void>(
+                volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()));
             FAIL("Expected typed kernel error");
         } catch (const volt::KernelError &error) {
             CHECK(error.code() == volt::ErrorCode::InvalidState);
@@ -1284,15 +1219,16 @@ TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
     }
 
     SECTION("duplicate resolved pads") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["pad_resolutions"][1] = document["viewer"]["pad_resolutions"][0];
 
-        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+        CHECK_THROWS_MATCHES(volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
                              std::logic_error,
                              Catch::Matchers::Message(
                                  "PCB viewer pad resolution order does not match resolved pads"));
         try {
-            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            static_cast<void>(
+                volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()));
             FAIL("Expected typed kernel error");
         } catch (const volt::KernelError &error) {
             CHECK(error.code() == volt::ErrorCode::InvalidState);
@@ -1302,15 +1238,16 @@ TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
     }
 
     SECTION("stale pad labels") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["pad_resolutions"][0]["label"] = "stale";
 
-        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+        CHECK_THROWS_MATCHES(volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
                              std::logic_error,
                              Catch::Matchers::Message(
                                  "PCB viewer pad resolution label does not match footprint pad"));
         try {
-            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            static_cast<void>(
+                volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()));
             FAIL("Expected typed kernel error");
         } catch (const volt::KernelError &error) {
             CHECK(error.code() == volt::ErrorCode::InvalidState);
@@ -1320,16 +1257,18 @@ TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
     }
 
     SECTION("stale pin mapping") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["pad_resolutions"][0]["pin"] =
             document["viewer"]["pad_resolutions"][1]["pin"];
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
+            std::logic_error,
             Catch::Matchers::Message(
                 "PCB viewer pad resolution pin does not match selected-part data"));
         try {
-            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            static_cast<void>(
+                volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()));
             FAIL("Expected typed kernel error");
         } catch (const volt::KernelError &error) {
             CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
@@ -1339,16 +1278,18 @@ TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
     }
 
     SECTION("stale pad geometry") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["pad_resolutions"][0]["geometry"]["size"] =
             nlohmann::json::array({99.0, 99.0});
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
+            std::logic_error,
             Catch::Matchers::Message(
                 "PCB viewer pad resolution geometry does not match footprint pad"));
         try {
-            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            static_cast<void>(
+                volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()));
             FAIL("Expected typed kernel error");
         } catch (const volt::KernelError &error) {
             CHECK(error.code() == volt::ErrorCode::InvalidState);
@@ -1362,7 +1303,7 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
     const auto fixture = make_resistor_circuit();
 
     SECTION("dangling diagnostic refs") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["diagnostics"] =
             nlohmann::json::array({{{"severity", "error"},
                                     {"code", "PCB_FIXTURE"},
@@ -1370,12 +1311,13 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
                                     {"entities", nlohmann::json::array({"component:99"})}}});
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
+            std::logic_error,
             Catch::Matchers::Message("PCB viewer diagnostic references missing component"));
     }
 
     SECTION("footprint pad diagnostic refs are checked against paired footprint definitions") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         auto extra_definition = document["board"]["footprint_definitions"][0];
         extra_definition["id"] = "footprint_def:1";
         extra_definition["ref"]["name"] = "R_0603_1608Metric_Derived";
@@ -1392,12 +1334,13 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
               {"entities", nlohmann::json::array({"footprint_def:0", "footprint_pad:2"})}}});
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
+            std::logic_error,
             Catch::Matchers::Message("PCB viewer diagnostic references missing footprint pad"));
     }
 
     SECTION("malformed diagnostic refs") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["diagnostics"] =
             nlohmann::json::array({{{"severity", "error"},
                                     {"code", "PCB_FIXTURE"},
@@ -1405,12 +1348,13 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
                                     {"entities", nlohmann::json::array({"not-an-entity"})}}});
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
+            std::logic_error,
             Catch::Matchers::Message("PCB viewer diagnostic has unsupported entity reference"));
     }
 
     SECTION("empty diagnostic code") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["diagnostics"] =
             nlohmann::json::array({{{"severity", "error"},
                                     {"category", "drc"},
@@ -1418,11 +1362,12 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
                                     {"message", "fixture"},
                                     {"entities", nlohmann::json::array({"board:0"})}}});
 
-        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+        CHECK_THROWS_MATCHES(volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
                              std::invalid_argument,
                              Catch::Matchers::Message("Diagnostic code must not be empty"));
         try {
-            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            static_cast<void>(
+                volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()));
             FAIL("Expected typed kernel error");
         } catch (const volt::KernelError &error) {
             CHECK(error.code() == volt::ErrorCode::InvalidArgument);
@@ -1431,7 +1376,7 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
     }
 
     SECTION("empty diagnostic category") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["diagnostics"] =
             nlohmann::json::array({{{"severity", "error"},
                                     {"category", ""},
@@ -1439,11 +1384,12 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
                                     {"message", "fixture"},
                                     {"entities", nlohmann::json::array({"board:0"})}}});
 
-        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+        CHECK_THROWS_MATCHES(volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
                              std::invalid_argument,
                              Catch::Matchers::Message("Diagnostic category must not be empty"));
         try {
-            static_cast<void>(volt::io::read_pcb_board_text(fixture.circuit, document.dump()));
+            static_cast<void>(
+                volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()));
             FAIL("Expected typed kernel error");
         } catch (const volt::KernelError &error) {
             CHECK(error.code() == volt::ErrorCode::InvalidArgument);
@@ -1452,7 +1398,7 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
     }
 
     SECTION("dangling diagnostic overlay layer refs") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["diagnostics"] = nlohmann::json::array(
             {{{"severity", "warning"},
               {"category", "pcb.visual"},
@@ -1468,12 +1414,13 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
                      {"layers", nlohmann::json::array({"board_layer:99"})}}})}}});
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
+            std::logic_error,
             Catch::Matchers::Message("PCB viewer diagnostic references missing board layer"));
     }
 
     SECTION("diagnostic overlay layer refs must be board layers") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["diagnostics"] = nlohmann::json::array(
             {{{"severity", "warning"},
               {"category", "pcb.visual"},
@@ -1488,12 +1435,13 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
                      {"layers", nlohmann::json::array({"component:0"})}}})}}});
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
+            std::logic_error,
             Catch::Matchers::Message("PCB viewer diagnostic overlay layer must be a board layer"));
     }
 
     SECTION("non-object diagnostic measurement") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["diagnostics"] =
             nlohmann::json::array({{{"severity", "error"},
                                     {"category", "drc"},
@@ -1503,12 +1451,13 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
                                     {"measurement", 1.5}}});
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
+            std::logic_error,
             Catch::Matchers::Message("PCB viewer diagnostic measurement must be an object"));
     }
 
     SECTION("diagnostic measurement missing required fields") {
-        auto document = make_board_json(fixture);
+        auto document = make_legacy_board_json(fixture);
         document["viewer"]["diagnostics"] =
             nlohmann::json::array({{{"severity", "error"},
                                     {"category", "drc"},
@@ -1517,7 +1466,7 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
                                     {"entities", nlohmann::json::array({"board:0"})},
                                     {"measurement", {{"actual_mm", 0.1}}}}});
 
-        CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+        CHECK_THROWS_AS(volt::io::read_legacy_pcb_board_text(fixture.circuit, document.dump()),
                         std::logic_error);
     }
 }

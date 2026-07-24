@@ -3,9 +3,18 @@
 #include "binding_common.hpp"
 
 #include <volt/pcb/board.hpp>
+#include <volt/pcb/compiled/compiled_board.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
 
 namespace volt::python {
+
+[[nodiscard]] inline py::dict
+compiled_board_identity_to_dict(const volt::CompiledBoardIdentity &identity) {
+    auto result = py::dict{};
+    result["board"] = identity.board().value();
+    result["provenance_digest"] = identity.provenance_digest().value();
+    return result;
+}
 
 namespace {
 

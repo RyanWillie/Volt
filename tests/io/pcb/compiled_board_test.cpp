@@ -14,11 +14,13 @@
 
 #include <nlohmann/json.hpp>
 
+#include <volt/adapters/kicad/pcb_writer.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/io/assembly/cpl_writer.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
 #include <volt/io/pcb/compiled_board.hpp>
 #include <volt/io/pcb/compiled_board_consumers.hpp>
+#include <volt/io/pcb/pcb_fabrication_writer.hpp>
 #include <volt/pcb/queries/board_queries.hpp>
 
 namespace {
@@ -386,7 +388,13 @@ TEST_CASE("CompiledBoard is deterministic and freezes one historical revision") 
                                  volt::BoardRotation::degrees(0.0), volt::BoardSide::Top, false}));
     const auto changed = take_success(
         volt::io::compile_board(*authored.circuit, changed_board, bundle, baseline_capabilities()));
+    const auto original_delivery = volt::adapters::kicad::write_board(first);
+    const auto changed_delivery = volt::adapters::kicad::write_board(changed);
     CHECK_FALSE(changed.identity() == old_identity);
+    CHECK(original_delivery.source == old_identity);
+    CHECK(changed_delivery.source == changed.identity());
+    CHECK_FALSE(changed_delivery.source == original_delivery.source);
+    CHECK(changed_delivery.text != original_delivery.text);
     CHECK(std::string{changed.bytes()} != old_bytes);
     CHECK(std::string{first.bytes()} == old_bytes);
     CHECK(volt::io::open_compiled_board(old_bytes).identity() == old_identity);
@@ -398,6 +406,50 @@ TEST_CASE("CompiledBoard is deterministic and freezes one historical revision") 
     CHECK_FALSE(logical_change.identity() == old_identity);
     CHECK(logical_change.bytes().find("UNUSED-0603") != std::string_view::npos);
     CHECK(std::string{first.bytes()} == old_bytes);
+}
+
+TEST_CASE("KiCad and fabrication delivery are deterministic from a reopened CompiledBoard") {
+    auto archive_bytes = std::string{};
+    auto expected_kicad = std::string{};
+    auto expected_fabrication = std::vector<volt::io::PcbFabricationFile>{};
+    auto source_identity =
+        volt::CompiledBoardIdentity{volt::BoardName{"Main"}, volt::sha256_content_hash("pending")};
+
+    {
+        auto source = fixture();
+        const auto bundle = volt::io::PartLibraryBundle::build(
+            source.builder, std::array{source.selected_key}, source.resolver);
+        auto authored = design(source.spec, bundle, source.selected_key);
+        auto compiled = take_success(volt::io::compile_board(*authored.circuit, authored.board,
+                                                             bundle, baseline_capabilities()));
+        const auto kicad = volt::adapters::kicad::write_board(compiled);
+        const auto fabrication = volt::io::write_pcb_fabrication_files(compiled);
+
+        source_identity = compiled.identity();
+        archive_bytes = std::string{compiled.bytes()};
+        expected_kicad = kicad.text;
+        expected_fabrication = fabrication.files;
+        CHECK(kicad.source == source_identity);
+        CHECK(fabrication.source == source_identity);
+    }
+
+    const auto reopened = volt::io::open_compiled_board(archive_bytes);
+    const auto kicad = volt::adapters::kicad::write_board(reopened);
+    const auto fabrication = volt::io::write_pcb_fabrication_files(reopened);
+    const auto repeated = volt::io::write_pcb_fabrication_files(reopened);
+
+    CHECK(reopened.identity() == source_identity);
+    CHECK(kicad.source == source_identity);
+    CHECK(kicad.text == expected_kicad);
+    CHECK(fabrication.source == source_identity);
+    REQUIRE(fabrication.files.size() == expected_fabrication.size());
+    REQUIRE(repeated.files.size() == fabrication.files.size());
+    for (auto index = std::size_t{0}; index < fabrication.files.size(); ++index) {
+        CHECK(fabrication.files[index].filename == expected_fabrication[index].filename);
+        CHECK(fabrication.files[index].text == expected_fabrication[index].text);
+        CHECK(repeated.files[index].filename == fabrication.files[index].filename);
+        CHECK(repeated.files[index].text == fabrication.files[index].text);
+    }
 }
 
 TEST_CASE("CompiledBoard revisions keep named Boards and storage lifetimes independent") {
@@ -413,6 +465,10 @@ TEST_CASE("CompiledBoard revisions keep named Boards and storage lifetimes indep
     CHECK(first.board_name().value() == "First");
     CHECK(second.board_name().value() == "Second");
     CHECK_FALSE(first.identity() == second.identity());
+    CHECK(volt::adapters::kicad::write_board(first).source == first.identity());
+    CHECK(volt::adapters::kicad::write_board(second).source == second.identity());
+    CHECK(volt::io::write_pcb_fabrication_files(first).source == first.identity());
+    CHECK(volt::io::write_pcb_fabrication_files(second).source == second.identity());
 
     const auto offline_bytes = [] {
         auto offline_source = fixture();
@@ -434,6 +490,13 @@ TEST_CASE("CompiledBoard revisions keep named Boards and storage lifetimes indep
                                                 moved.parts().front().component())
               .has_value());
     CHECK(moved.footprints().definitions().size() == 1U);
+    REQUIRE(moved.placements().size() == 1U);
+    CHECK(moved.placements().front().placement() == volt::ComponentPlacementId{0});
+    CHECK(moved.placements().front().status() == volt::CompiledBoardPlacementStatus::Resolved);
+    REQUIRE(moved.placements().front().footprint().has_value());
+    CHECK(moved.placements().front().footprint()->ref().name() ==
+          volt::passive_0603_footprint().ref().name());
+    CHECK(moved.placements().front().pad_resolutions().size() == 2U);
 }
 
 TEST_CASE(

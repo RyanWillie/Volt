@@ -51,6 +51,18 @@ def write_project_manufacturing_package(
         diagnostics=diagnostics,
     )
     native_export = board.to_fabrication_files()
+    if native_export.source.board != board.name:
+        raise ManufacturingPackageError(
+            "Manufacturing export refused because CompiledBoard identity does not match the "
+            "selected Board.",
+            status="compiled-board-identity-mismatch",
+            output=output,
+            board=board_record,
+            diagnostics=diagnostics,
+        )
+    board_record["compiled_board_provenance_digest"] = (
+        native_export.source.provenance_digest
+    )
     native_payload = native_fabrication_payload(native_export)
     if native_payload["coverage"]["fab_critical_loss"]:
         raise ManufacturingPackageError(
@@ -190,6 +202,10 @@ def native_fabrication_payload(native_export: Any) -> dict[str, object]:
         warning["fabrication_impact"] == "fab-critical" for warning in warnings
     )
     return {
+        "source": {
+            "board": native_export.source.board,
+            "provenance_digest": native_export.source.provenance_digest,
+        },
         "coverage": {
             "classification": "fab-critical-loss" if fab_critical else "complete",
             "fab_critical_loss": fab_critical,

@@ -1,6 +1,7 @@
 #include "py_board.hpp"
 
 #include "binding_diagnostic_conversions.hpp"
+#include "binding_pcb_conversions.hpp"
 
 #include <stdexcept>
 #include <string>
@@ -91,11 +92,11 @@ fabrication_exporter_metadata_to_dict(const volt::io::PcbFabricationExporterMeta
 } // namespace
 
 py::dict PyBoard::to_fabrication_files() const {
-    const auto resolution = resolve();
-    const auto export_result =
-        volt::io::write_pcb_fabrication_files(resolution.board(), resolution.footprints());
+    const auto compiled = compile_for_delivery();
+    const auto export_result = volt::io::write_pcb_fabrication_files(compiled);
 
     auto result = py::dict{};
+    result["source"] = compiled_board_identity_to_dict(export_result.source);
 
     auto files = py::list{};
     for (const auto &file : export_result.files) {

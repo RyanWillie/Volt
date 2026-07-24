@@ -201,8 +201,8 @@
   <main>
     <header>
       <div class="stack">
-        <p class="label">Format v2</p>
-        <h1>Volt PCB projection data is stable board state plus recomputable viewer affordances.</h1>
+        <p class="label">Format v3</p>
+        <h1>Volt PCB projection data stores canonical Board state, not a mixed viewer cache.</h1>
       </div>
       <div class="meta">
         <p><strong>Format:</strong> <code>volt.pcb</code></p>
@@ -226,9 +226,9 @@
             <p><code>board</code> data is loaded into <code>volt::Board</code>: name, units, layers, stack, outline, features, footprint definitions, and placements.</p>
           </div>
           <div class="panel">
-            <span class="label">Derived</span>
-            <h3>Viewer cache</h3>
-            <p><code>viewer.pad_resolutions</code> and <code>viewer.diagnostics</code> are validated when present, then recomputed from kernel-owned board and circuit state.</p>
+            <span class="label">Legacy input only</span>
+            <h3>Viewer cache conversion</h3>
+            <p>Current writers omit <code>viewer</code>, and current readers reject it. An explicitly named legacy conversion reader validates the old derived cache against kernel-owned state, discards it, and returns only canonical Board data.</p>
           </div>
           <div class="panel">
             <span class="label amber">Consumer-owned</span>
@@ -264,10 +264,6 @@
     "features": [],
     "footprint_definitions": [],
     "placements": []
-  },
-  "viewer": {
-    "pad_resolutions": [],
-    "diagnostics": []
   }
 }</code></pre>
         <p>Field order is deterministic. Entity arrays use insertion order. Local IDs are stable within a document and use typed prefixes such as <code>board_layer:</code>, <code>board_feature:</code>, <code>footprint_def:</code>, <code>footprint_pad:</code>, <code>footprint_marking:</code>, <code>component_placement:</code>, and <code>pcb_pad:</code>.</p>
@@ -387,7 +383,7 @@
             <tr><td>Footprint pad bodies</td><td><code>board.footprint_definitions[].pads[]</code></td><td>Render pad shape, size, drill, and layer membership in footprint-local coordinates.</td></tr>
             <tr><td>Footprint package geometry</td><td><code>body</code>, <code>courtyard</code>, <code>fabrication_outline</code>, <code>assembly_outline</code>, <code>markings[]</code></td><td>Render package occupancy and semantic marks from declared footprint geometry. Missing fields mean no such geometry was declared.</td></tr>
             <tr><td>Placed pads</td><td><code>board.placements[]</code> plus referenced <code>footprint_def</code></td><td>Apply placement side, rotation, and translation to every footprint-local pad. Bottom-side placements mirror local X before rotation.</td></tr>
-            <tr><td>Selection identity</td><td><code>viewer.pad_resolutions[]</code>, <code>viewer.diagnostics[]</code></td><td>Use derived pad projection IDs, pin refs, net refs, and diagnostic entity refs for overlays and inspection panels.</td></tr>
+            <tr><td>Selection identity</td><td>Typed validation, ratsnest and rendering results over <code>CompiledBoard</code></td><td>Use exact-revision derived services for pad projections, pin and net refs, and diagnostic overlays. Current PCB JSON does not cache them.</td></tr>
           </tbody>
         </table>
         <p>Rich package bodies, component heights, external 3D model references, asset bundles, and generated model files are intentionally absent from this board-only 3D readiness slice. They should be added as kernel-owned PCB projection data when those concepts exist in Volt.</p>
@@ -395,8 +391,12 @@
     </section>
 
     <section>
-      <aside>Viewer Cache</aside>
+      <aside>Legacy Conversion</aside>
       <div class="stack">
+        <div class="callout">
+          <h2>The mixed viewer cache is no longer a current artifact.</h2>
+          <p>The fields below describe legacy input accepted only by <code>read_legacy_pcb_board*</code>. Conversion validates them against recomputed kernel-owned state and discards them. <code>read_pcb_board*</code> rejects the same document, so legacy data cannot become an implicit fallback or competing source of truth.</p>
+        </div>
         <table>
           <thead>
             <tr><th>Path</th><th>Derived meaning</th><th>Stability rule</th></tr>
@@ -409,7 +409,7 @@
             <tr><td><code>pin</code>, <code>net</code></td><td>Concrete logical pin and current logical net, or <code>null</code>.</td><td>References existing circuit IDs only; no netlist mutation.</td></tr>
             <tr><td><code>status</code></td><td><code>connected</code>, <code>unconnected</code>, <code>non_electrical</code>, or <code>invalid</code>.</td><td>Recomputed from selected physical part mappings.</td></tr>
             <tr><td><code>geometry</code></td><td>Pad geometry copy for quick preview checks.</td><td>Validated against the referenced footprint pad and discarded on load.</td></tr>
-            <tr><td><code>viewer.diagnostics[]</code></td><td>Severity, code, message, and entity refs from board validation.</td><td>Refs are for highlighting and reporting, not traversal handles.</td></tr>
+            <tr><td><code>viewer.diagnostics[]</code></td><td>Legacy severity, code, message, and entity refs from board validation.</td><td>Validated during explicit conversion and then discarded; refs never become traversal handles.</td></tr>
           </tbody>
         </table>
       </div>
@@ -431,7 +431,7 @@
             <tr><td><code>.board-outline</code></td><td><code>data-board</code></td><td><code>board.id</code></td></tr>
             <tr><td><code>.board-feature</code>, <code>.board-feature-label</code></td><td><code>data-board-feature</code></td><td><code>board.features[].id</code></td></tr>
             <tr><td><code>.component-placement</code></td><td><code>data-placement</code>, <code>data-component</code>, <code>data-footprint-def</code>, <code>data-footprint</code></td><td><code>placements[].id</code>, <code>placements[].component</code>, <code>placements[].footprint</code>, footprint ref token</td></tr>
-            <tr><td><code>.footprint-pad</code></td><td><code>data-pad-projection</code>, <code>data-pad</code>, <code>data-pin</code>, <code>data-net</code></td><td><code>viewer.pad_resolutions[]</code>, <code>footprint_pad</code>, logical pin, logical net</td></tr>
+            <tr><td><code>.footprint-pad</code></td><td><code>data-pad-projection</code>, <code>data-pad</code>, <code>data-pin</code>, <code>data-net</code></td><td>Typed pad-resolution result, <code>footprint_pad</code>, logical pin, logical net</td></tr>
             <tr><td><code>.pad-overlay</code>, <code>.pad-net-label</code></td><td><code>data-pad-projection</code>, <code>data-net</code></td><td>Derived pad projection and logical net.</td></tr>
             <tr><td><code>.diagnostic-label</code>, <code>.diagnostic-marker</code></td><td><code>data-diagnostic-code</code>, <code>data-entities</code></td><td><code>viewer.diagnostics[].code</code> and entity refs.</td></tr>
           </tbody>
@@ -460,12 +460,12 @@
       <div class="stack">
         <div class="callout red">
           <h2>Malformed structure fails at the load boundary.</h2>
-          <p>The reader rejects duplicate or non-sequential IDs, dangling layer-stack entries, placements that reference missing components, footprint references that do not match selected physical parts, stale pad projection caches, dangling pin or net refs, and malformed diagnostic entity refs.</p>
+          <p>The current reader rejects duplicate or non-sequential IDs, dangling layer-stack entries, placements that reference missing components, footprint references that do not match selected physical parts, and any legacy <code>viewer</code> object. The explicit legacy conversion reader additionally rejects stale pad projection caches, dangling pin or net refs, and malformed diagnostic entity refs.</p>
         </div>
         <ul>
           <li>Structural integrity is enforced by the reader and kernel mutation APIs.</li>
           <li>Bad design intent, such as missing placement data or off-board pads, is reported through diagnostics.</li>
-          <li>Viewer cache values must match recomputed kernel-owned state; the cache is never trusted as a source of truth.</li>
+          <li>Legacy viewer cache values must match recomputed kernel-owned state during explicit conversion; current reads and writes never treat the cache as authoritative.</li>
         </ul>
       </div>
     </section>

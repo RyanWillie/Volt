@@ -14,6 +14,7 @@ Source: `python/volt/pcb.py`
 
 | Property | Summary |
 | --- | --- |
+| `has_capability_profile: bool` | Whether this named Board pins a concrete manufacturing capability snapshot. |
 | `center` | Return the center anchor of the board outline bounding box. |
 
 ### Methods
@@ -245,6 +246,19 @@ Source: `python/volt/pcb.py`
 | `side: str` |
 | `role: str` |
 
+## `volt.CompiledBoardIdentity`
+
+Exact named Board and immutable compilation provenance used by a delivery export.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `board: str` |
+| `provenance_digest: str` |
+
 ## `volt.Cutout`
 
 Generic board cutout primitive.
@@ -403,6 +417,7 @@ Source: `python/volt/pcb.py`
 
 | Field |
 | --- |
+| `source: CompiledBoardIdentity` |
 | `text: str` |
 | `warnings: tuple[KiCadLossWarning, ...]` |
 | `diagnostics: DiagnosticReport` |

@@ -14,9 +14,7 @@
 #include <utility>
 #include <vector>
 
-#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
-#include <volt/pcb/queries/board_queries.hpp>
 
 namespace volt::io {
 namespace {
@@ -535,17 +533,6 @@ void report_unsupported_copper_content(const Board &board,
     }
 }
 
-[[nodiscard]] const FootprintDefinition *
-definition_for_placement(const FootprintLibrary &footprints, const PhysicalPart &part) {
-    return footprints.find(part.footprint());
-}
-
-[[nodiscard]] const PadResolution *pad_resolution_for(const std::vector<PadResolution> &resolutions,
-                                                      ComponentPlacementId placement,
-                                                      FootprintPadId pad) {
-    return volt::detail::find_board_pad_resolution(resolutions, placement, pad);
-}
-
 void report_invalid_pad_resolution(const Board &board, const PadResolution &resolution,
                                    ComponentPlacementId placement_id, FootprintPadId pad_id,
                                    PcbFabricationLossReport &loss_report) {
@@ -562,53 +549,51 @@ void report_invalid_pad_resolution(const Board &board, const PadResolution &reso
 }
 
 [[nodiscard]] std::vector<PlacementExport>
-build_placement_exports(const Board &board, const FootprintLibrary &footprints,
-                        PcbFabricationLossReport &loss_report) {
-    const auto resolution_footprints =
-        volt::queries::board_resolution_footprints(board, footprints);
-    const auto resolutions = volt::queries::resolve_pads(board, resolution_footprints);
+build_placement_exports(const CompiledBoard &compiled, PcbFabricationLossReport &loss_report) {
+    const auto &board = compiled.board();
     auto exports = std::vector<PlacementExport>{};
 
-    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
-        const auto id = ComponentPlacementId{index};
+    for (const auto &frozen : compiled.placements()) {
+        const auto id = frozen.placement();
         const auto &placement = board.get(id);
-        const auto &selected_part =
-            volt::queries::selected_physical_part(board.circuit(), placement.component());
-        if (!selected_part.has_value()) {
-            const auto has_exact_selection =
-                volt::queries::selected_library_part_ref(board.circuit(), placement.component())
-                    .has_value();
+        if (frozen.status() == CompiledBoardPlacementStatus::MissingPart) {
             add_fab_critical_warning(
                 loss_report, PcbFabricationLossKind::MissingGeometry, "component.part",
-                has_exact_selection
-                    ? "Exact selected part requires library resolution for fabrication export"
-                    : "Component placement has no selected physical part for fabrication export",
+                "Component placement has no selected physical part for fabrication export",
                 std::vector{EntityRef::component_placement(id)});
             continue;
         }
-        const auto *definition =
-            definition_for_placement(resolution_footprints, selected_part.value());
-        if (definition == nullptr) {
+        if (frozen.status() == CompiledBoardPlacementStatus::MissingFootprint) {
             add_fab_critical_warning(
                 loss_report, PcbFabricationLossKind::MissingGeometry, "footprint",
                 "Component placement has no resolved footprint definition for fabrication export",
                 std::vector{EntityRef::component_placement(id)});
             continue;
         }
+        if (!frozen.footprint().has_value()) {
+            throw KernelLogicError{ErrorCode::InvalidState,
+                                   "Resolved CompiledBoard placement has no frozen footprint"};
+        }
 
-        auto placement_export = PlacementExport{id, &placement, *definition, {}};
+        auto placement_export = PlacementExport{id, &placement, *frozen.footprint(), {}};
         placement_export.pad_resolutions.reserve(placement_export.definition.pad_count());
+        const auto frozen_pads = frozen.pad_resolutions();
+        if (frozen_pads.size() != placement_export.definition.pad_count()) {
+            throw KernelLogicError{
+                ErrorCode::InvalidState,
+                "Native fabrication export requires one frozen pad resolution for every pad"};
+        }
         for (std::size_t pad_index = 0; pad_index < placement_export.definition.pad_count();
              ++pad_index) {
             const auto pad_id = FootprintPadId{pad_index};
-            const auto *resolution = pad_resolution_for(resolutions, id, pad_id);
-            if (resolution == nullptr) {
+            const auto &resolution = frozen_pads[pad_index];
+            if (resolution.placement() != id || resolution.pad() != pad_id) {
                 throw KernelLogicError{
                     ErrorCode::InvalidState,
-                    "Native fabrication export requires a pad resolution for every pad"};
+                    "Native fabrication export received a mismatched frozen pad resolution"};
             }
-            report_invalid_pad_resolution(board, *resolution, id, pad_id, loss_report);
-            placement_export.pad_resolutions.push_back(*resolution);
+            report_invalid_pad_resolution(board, resolution, id, pad_id, loss_report);
+            placement_export.pad_resolutions.push_back(resolution);
         }
         exports.push_back(std::move(placement_export));
     }
@@ -1115,16 +1100,16 @@ PcbFabricationLossReport::fab_critical_warnings() const {
 }
 
 [[nodiscard]] PcbFabricationExportResult
-write_pcb_fabrication_files(const Board &board, const FootprintLibrary &footprints,
-                            PcbFabricationExportOptions options) {
-    auto result = PcbFabricationExportResult{};
+write_pcb_fabrication_files(const CompiledBoard &compiled, PcbFabricationExportOptions options) {
+    const auto &board = compiled.board();
+    auto result = PcbFabricationExportResult{compiled.identity(), {}, {}, {}};
     const auto basename = output_basename(board, options);
     const auto transform = BoardFabricationTransform::from_board(board);
     report_unsupported_board_features(board, result.loss_report);
     report_unsupported_board_text_layers(board, result.loss_report);
     const auto copper_layers = build_copper_layer_exports(board, result.loss_report);
     report_unsupported_copper_content(board, copper_layers, result.loss_report);
-    const auto placements = build_placement_exports(board, footprints, result.loss_report);
+    const auto placements = build_placement_exports(compiled, result.loss_report);
 
     for (const auto &layer : copper_layers) {
         auto writer = GerberWriter{copper_file_function(layer, copper_layers.size()), transform};

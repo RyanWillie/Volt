@@ -4,7 +4,7 @@ import json
 import pytest
 
 import volt
-from project_framework_helpers import _header_1x02, _passive_0603
+from project_framework_helpers import _delivery_profile, _header_1x02, _passive_0603
 
 
 def _mark_populated(design, *references):
@@ -68,6 +68,7 @@ def test_project_result_writes_part_model_assets_and_placement_transforms(tmp_pa
     def board(context):
         design = context.design()
         pcb = design.add_board("Main")
+        pcb.set_capability_profile(_delivery_profile())
         front = pcb.add_layer("F.Cu", role="copper", side="top")
         back = pcb.add_layer("B.Cu", role="copper", side="bottom")
         pcb.set_layer_stack((front, back), thickness=1.6)
@@ -192,6 +193,7 @@ def test_project_result_keeps_distinct_model_assets_with_same_hash(tmp_path):
     def board(context):
         design = context.design()
         pcb = design.add_board("Main")
+        pcb.set_capability_profile(_delivery_profile())
         pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
         pcb.place(design.component("R1"), at=(6, 5))
         pcb.place(design.component("R2"), at=(14, 5))
@@ -303,6 +305,7 @@ def test_project_result_default_profile_keeps_absent_part_models_optional(tmp_pa
     def board(context):
         design = context.design()
         pcb = design.add_board("Main")
+        pcb.set_capability_profile(_delivery_profile())
         pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
         pcb.place(design.component("J1"), at=(4, 5), locked=True)
         pcb.place(design.component("R1"), at=(10, 5))

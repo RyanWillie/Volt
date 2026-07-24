@@ -337,11 +337,14 @@ def test_export_manufacturing_writes_deterministic_native_package(tmp_path, caps
     assert payload["written"] is True
     assert payload["output"] == str(output)
     assert payload["archive"] == str(archive)
-    assert payload["board"] == {
+    assert {
+        key: payload["board"][key] for key in ("design", "name", "output_name")
+    } == {
         "design": "status-led",
         "name": "Control",
         "output_name": "Control",
     }
+    assert payload["board"]["compiled_board_provenance_digest"].startswith("sha256:")
 
     manifest_path = output / "manufacturing" / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -366,6 +369,10 @@ def test_export_manufacturing_writes_deterministic_native_package(tmp_path, caps
     assert manifest["native_fabrication"]["coverage"] == {
         "classification": "complete",
         "fab_critical_loss": False,
+    }
+    assert manifest["native_fabrication"]["source"] == {
+        "board": "Control",
+        "provenance_digest": payload["board"]["compiled_board_provenance_digest"],
     }
     assert manifest["native_fabrication"]["warnings"] == []
     assert [item["filename"] for item in manifest["native_fabrication"]["files"]] == [
@@ -461,11 +468,12 @@ def test_project_result_writes_same_manufacturing_package_as_cli(tmp_path, capsy
     assert written.status == "clean"
     assert written.output == direct_output
     assert written.archive == direct_output.with_suffix(".zip")
-    assert written.board == {
+    assert {key: written.board[key] for key in ("design", "name", "output_name")} == {
         "design": "status-led",
         "name": "Control",
         "output_name": "Control",
     }
+    assert written.board["compiled_board_provenance_digest"].startswith("sha256:")
 
     assert (
         main(

@@ -9,6 +9,17 @@ import volt
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def _delivery_profile():
+    return volt.CapabilityProfile(
+        name="PCB delivery fixture",
+        source="Volt Python test fixture",
+        as_of="2026-07-24",
+        minimum_track_width=0.01,
+        minimum_via_drill=0.01,
+        minimum_via_annular=0.02,
+    )
+
+
 def _rectangle(width, height):
     return (
         (-width / 2.0, -height / 2.0),
@@ -916,8 +927,8 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     assert document["board"]["vias"][0]["start_layer"] == "board_layer:0"
     assert document["board"]["vias"][0]["end_layer"] == "board_layer:1"
     assert len(document["board"]["footprint_definitions"]) == 2
-    assert len(document["viewer"]["pad_resolutions"]) == 4
-    assert document["viewer"]["diagnostics"] == []
+    assert "viewer" not in document
+    assert "viewer" not in document
 
     svg = board.to_svg()
     assert board.to_svg() == svg
@@ -1245,6 +1256,7 @@ def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
     design, r1, d1 = _small_resistor_led_design()
     led_a = next(net for net in design.nets() if net.name == "LED_A")
     board = design.add_board("Control")
+    board.set_capability_profile(_delivery_profile())
 
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
@@ -1263,6 +1275,10 @@ def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
     export = board.to_kicad_pcb()
 
     assert export.warnings == ()
+    assert isinstance(export.source, volt.CompiledBoardIdentity)
+    assert "CompiledBoardIdentity" in volt.__all__
+    assert export.source.board == "Control"
+    assert export.source.provenance_digest.startswith("sha256:")
     assert export.text == board.to_kicad_pcb().text
     assert export.text.startswith("(kicad_pcb\n")
     assert '(generator "Volt")' in export.text
@@ -1301,7 +1317,7 @@ def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
     assert '(layer "In1.Cu")' in with_inner_zone.text
 
 
-def test_python_board_authoring_exports_native_fabrication_files(tmp_path):
+def test_python_board_authoring_exports_native_fabrication_files(tmp_path, monkeypatch):
     design, r1, d1 = _small_resistor_led_design()
     r1.select_part(
         manufacturer="Volt",
@@ -1319,6 +1335,7 @@ def test_python_board_authoring_exports_native_fabrication_files(tmp_path):
     )
     led_a = next(net for net in design.nets() if net.name == "LED_A")
     board = design.add_board("Control")
+    board.set_capability_profile(_delivery_profile())
 
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
@@ -1345,6 +1362,8 @@ def test_python_board_authoring_exports_native_fabrication_files(tmp_path):
     export = board.to_fabrication_files()
 
     assert export.warnings == ()
+    assert export.source.board == "Control"
+    assert export.source.provenance_digest.startswith("sha256:")
     assert export.text_by_filename("Control.GTL") == board.to_fabrication_files().text_by_filename(
         "Control.GTL"
     )
@@ -1372,6 +1391,23 @@ def test_python_board_authoring_exports_native_fabrication_files(tmp_path):
         assert (tmp_path / file.filename).read_text(encoding="utf-8") == file.text
     with pytest.raises(FileExistsError, match="Fabrication output directory must be empty"):
         board.write_fabrication_files(tmp_path)
+
+    atomic_root = tmp_path / "atomic"
+    atomic_root.mkdir()
+    original_write_text = Path.write_text
+
+    def fail_second_staged_file(path, text, *, encoding):
+        if (
+            path.parent.name == atomic_root.name
+            and path.name == export.files[1].filename
+        ):
+            raise OSError("injected staged publication failure")
+        return original_write_text(path, text, encoding=encoding)
+
+    monkeypatch.setattr(Path, "write_text", fail_second_staged_file)
+    with pytest.raises(OSError, match="injected staged publication failure"):
+        board.write_fabrication_files(atomic_root)
+    assert list(atomic_root.iterdir()) == []
 
     board.add(
         volt.Slot(
@@ -1505,6 +1541,7 @@ def test_pcb_layout_composes_zones_keepouts_and_text_from_anchors():
 def test_python_board_authoring_adds_generic_board_primitives():
     design = volt.Design("generic-board-primitives")
     board = design.add_board("Primitives")
+    board.set_capability_profile(_delivery_profile())
     front = board.add_layer("F.Cu", role="copper", side="top")
     silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 24.0))
@@ -2118,7 +2155,7 @@ def test_python_board_auto_registers_design_local_object_owned_footprint():
         },
     ]
     assert document["board"]["placements"][0]["footprint"] == "footprint_def:0"
-    assert len(document["viewer"]["pad_resolutions"]) == 2
+    assert "viewer" not in document
 
     svg = board.to_svg()
     assert 'data-footprint="volt.test:CustomR0603"' in svg

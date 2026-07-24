@@ -6,8 +6,7 @@
 #include <vector>
 
 #include <volt/core/diagnostics.hpp>
-#include <volt/pcb/board.hpp>
-#include <volt/pcb/footprints/footprints.hpp>
+#include <volt/pcb/compiled/compiled_board.hpp>
 
 namespace volt::io {
 
@@ -146,6 +145,9 @@ struct PcbFabricationExporterMetadata {
 
 /** Result of exporting Volt board projection data to native fabrication files. */
 struct PcbFabricationExportResult {
+    /** Exact immutable physical revision consumed by this export. */
+    CompiledBoardIdentity source;
+
     /** Metadata describing the native Gerber and Excellon exporter. */
     PcbFabricationExporterMetadata exporter;
 
@@ -161,7 +163,7 @@ struct PcbFabricationExportResult {
 
 /** Write deterministic native Gerber RS-274X and Excellon NC drill fabrication files. */
 [[nodiscard]] PcbFabricationExportResult
-write_pcb_fabrication_files(const Board &board, const FootprintLibrary &footprints,
+write_pcb_fabrication_files(const CompiledBoard &compiled,
                             PcbFabricationExportOptions options = {});
 
 } // namespace volt::io

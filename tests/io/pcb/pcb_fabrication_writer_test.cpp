@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "support/circuit_test_helpers.hpp"
+#include "support/compiled_board_export_helpers.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -21,6 +22,7 @@ namespace {
 
 struct FabricationCircuit {
     volt::Circuit circuit;
+    volt::io::PartLibraryBundle parts;
     volt::ComponentId resistor;
     volt::ComponentId header;
     volt::NetId signal;
@@ -44,6 +46,9 @@ class ScopedLocale {
   private:
     std::locale previous_;
 };
+
+[[nodiscard]] volt::FootprintDefinition rect_smd_footprint();
+[[nodiscard]] volt::FootprintDefinition through_hole_footprint();
 
 [[nodiscard]] FabricationCircuit make_fabrication_circuit() {
     auto circuit = volt::Circuit{};
@@ -69,13 +74,14 @@ class ScopedLocale {
                                                volt::ElectricalSignalDomain::Unspecified,
                                                volt::ElectricalDriveKind::Passive};
 
-    const auto resistor_definition = volt::test::define_component(
-        circuit, "Resistor", std::vector{passive_a_spec, passive_b_spec});
+    const auto resistor_spec =
+        volt::ComponentSpec{.name = "Resistor", .pins = {passive_a_spec, passive_b_spec}};
+    const auto header_spec = volt::ComponentSpec{.name = "Header", .pins = {header_pin_spec}};
+    const auto resistor_definition = circuit.define_component(resistor_spec);
     const auto resistor_pins = circuit.get(resistor_definition).pins();
     const auto passive_a = resistor_pins[0];
     const auto passive_b = resistor_pins[1];
-    const auto header_definition =
-        volt::test::define_component(circuit, "Header", std::vector{header_pin_spec});
+    const auto header_definition = circuit.define_component(header_spec);
     const auto header_pin = circuit.get(header_definition).pins()[0];
     const auto resistor = circuit.instantiate_component(
         resistor_definition,
@@ -92,21 +98,24 @@ class ScopedLocale {
     circuit.connect(signal, volt::queries::pin_by_definition(circuit, header, header_pin).value());
     circuit.connect(ground, volt::queries::pin_by_definition(circuit, resistor, passive_b).value());
 
-    circuit.update(resistor, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                 volt::ManufacturerPart{"Volt", "RECT-0603"},
-                                 volt::PackageRef{"0603"},
-                                 volt::FootprintRef{"test", "RectSmd"},
-                                 std::vector{volt::PinPadMapping{passive_a, "1"},
-                                             volt::PinPadMapping{passive_b, "2"}},
-                             }});
-    circuit.update(header, volt::SelectPhysicalPart{volt::PhysicalPart{
-                               volt::ManufacturerPart{"Volt", "TH-1"},
-                               volt::PackageRef{"TH"},
-                               volt::FootprintRef{"test", "OnePinThroughHole"},
-                               std::vector{volt::PinPadMapping{header_pin, "1"}},
-                           }});
+    const auto resistor_part = volt::PhysicalPart{
+        volt::ManufacturerPart{"Volt", "RECT-0603"}, volt::PackageRef{"0603"},
+        volt::FootprintRef{"test", "RectSmd"},
+        std::vector{volt::PinPadMapping{passive_a, "1"}, volt::PinPadMapping{passive_b, "2"}}};
+    const auto header_part =
+        volt::PhysicalPart{volt::ManufacturerPart{"Volt", "TH-1"}, volt::PackageRef{"TH"},
+                           volt::FootprintRef{"test", "OnePinThroughHole"},
+                           std::vector{volt::PinPadMapping{header_pin, "1"}}};
+    auto library = volt::test::make_export_fixture_library(
+        {{resistor_spec, resistor_part, rect_smd_footprint(), volt::PartKey{"resistor"}},
+         {header_spec, header_part, through_hole_footprint(), volt::PartKey{"header"}}});
+    circuit.update(
+        resistor, volt::SelectLibraryPart{library.bundle, library.bundle.require(library.keys[0])});
+    circuit.update(
+        header, volt::SelectLibraryPart{library.bundle, library.bundle.require(library.keys[1])});
 
-    return FabricationCircuit{std::move(circuit), resistor, header, signal, ground};
+    return FabricationCircuit{
+        std::move(circuit), std::move(library.bundle), resistor, header, signal, ground};
 }
 
 [[nodiscard]] volt::FootprintDefinition rect_smd_footprint() {
@@ -140,13 +149,6 @@ class ScopedLocale {
     };
 }
 
-[[nodiscard]] volt::FootprintLibrary fabrication_footprints() {
-    auto footprints = volt::FootprintLibrary{};
-    footprints.add(rect_smd_footprint());
-    footprints.add(through_hole_footprint());
-    return footprints;
-}
-
 [[nodiscard]] volt::Board make_fabrication_board(const FabricationCircuit &fixture) {
     auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
     const auto front = board.add_layer(
@@ -160,8 +162,6 @@ class ScopedLocale {
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
     static_cast<void>(board.add_feature(
         volt::BoardFeature::hole("MH1", volt::BoardPoint{4.0, 4.0}, 2.4, false, "mounting")));
-    static_cast<void>(board.cache_footprint_definition(rect_smd_footprint()));
-    static_cast<void>(board.cache_footprint_definition(through_hole_footprint()));
     static_cast<void>(board.place_component(volt::ComponentPlacement{
         fixture.resistor, volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)}));
     static_cast<void>(board.place_component(volt::ComponentPlacement{
@@ -196,8 +196,6 @@ make_fabrication_y_axis_regression_board(const FabricationCircuit &fixture) {
     board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{2.0, 3.0}, volt::BoardSize{45.0, 30.0}));
-    static_cast<void>(board.cache_footprint_definition(rect_smd_footprint()));
-    static_cast<void>(board.cache_footprint_definition(through_hole_footprint()));
     static_cast<void>(board.place_component(volt::ComponentPlacement{
         fixture.resistor, volt::BoardPoint{18.0, 6.0}, volt::BoardRotation::degrees(0.0)}));
     static_cast<void>(board.place_component(volt::ComponentPlacement{
@@ -284,10 +282,10 @@ file_names(const volt::io::PcbFabricationExportResult &result) {
 TEST_CASE("PCB fabrication writer exports deterministic Gerber and Excellon files") {
     const auto fixture = make_fabrication_circuit();
     const auto board = make_fabrication_board(fixture);
-    const auto footprints = fabrication_footprints();
 
-    const auto result = volt::io::write_pcb_fabrication_files(board, footprints);
-    const auto repeated = volt::io::write_pcb_fabrication_files(board, footprints);
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::io::write_pcb_fabrication_files(compiled);
+    const auto repeated = volt::io::write_pcb_fabrication_files(compiled);
 
     CHECK_FALSE(result.loss_report.has_warnings());
     CHECK(result.exporter.name == "volt.native_fabrication");
@@ -379,9 +377,9 @@ TEST_CASE("PCB fabrication writer exports deterministic Gerber and Excellon file
 TEST_CASE("PCB fabrication writer matches representative golden native output fixtures") {
     const auto fixture = make_fabrication_circuit();
     const auto board = make_fabrication_board(fixture);
-    const auto footprints = fabrication_footprints();
 
-    const auto result = volt::io::write_pcb_fabrication_files(board, footprints);
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::io::write_pcb_fabrication_files(compiled);
 
     REQUIRE_FALSE(result.loss_report.has_warnings());
     const auto expected = std::vector<std::pair<std::string, std::string>>{
@@ -416,7 +414,8 @@ TEST_CASE("PCB fabrication writer matches representative golden native output fi
 TEST_CASE("PCB fabrication writer converts board y-down coordinates to fabrication y-up output") {
     const auto fixture = make_fabrication_circuit();
     const auto board = make_fabrication_y_axis_regression_board(fixture);
-    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::io::write_pcb_fabrication_files(compiled);
 
     CHECK_FALSE(result.loss_report.has_warnings());
 
@@ -484,7 +483,8 @@ TEST_CASE("PCB fabrication writer exports ordered inner copper Gerbers") {
         0.25,
     }));
 
-    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::io::write_pcb_fabrication_files(compiled);
 
     CHECK_FALSE(result.loss_report.has_fab_critical_warnings());
     CHECK(file_names(result) == std::vector<std::string>{
@@ -528,17 +528,19 @@ TEST_CASE("PCB fabrication writer emits unconnected mapped pads without fabricat
                                             volt::ElectricalDirection::Passive,
                                             volt::ElectricalSignalDomain::Unspecified,
                                             volt::ElectricalDriveKind::Passive};
-    const auto definition =
-        volt::test::define_component(circuit, "TestPoint", std::vector{passive_spec});
+    const auto component_spec = volt::ComponentSpec{.name = "TestPoint", .pins = {passive_spec}};
+    const auto definition = circuit.define_component(component_spec);
     const auto passive = circuit.get(definition).pins()[0];
     const auto component = circuit.instantiate_component(
         definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"TP1"}});
-    circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                  volt::ManufacturerPart{"Volt", "TP-SMD"},
-                                  volt::PackageRef{"TH"},
-                                  volt::FootprintRef{"test", "OnePinThroughHole"},
-                                  std::vector{volt::PinPadMapping{passive, "1"}},
-                              }});
+    const auto physical =
+        volt::PhysicalPart{volt::ManufacturerPart{"Volt", "TP-SMD"}, volt::PackageRef{"TH"},
+                           volt::FootprintRef{"test", "OnePinThroughHole"},
+                           std::vector{volt::PinPadMapping{passive, "1"}}};
+    auto library = volt::test::make_export_fixture_library(
+        {{component_spec, physical, through_hole_footprint(), volt::PartKey{"test-point"}}});
+    circuit.update(component, volt::SelectLibraryPart{library.bundle,
+                                                      library.bundle.require(library.keys[0])});
 
     auto board = volt::Board{circuit, volt::BoardName{"Control"}};
     const auto front = board.add_layer(
@@ -548,11 +550,11 @@ TEST_CASE("PCB fabrication writer emits unconnected mapped pads without fabricat
     board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{10.0, 10.0}));
-    static_cast<void>(board.cache_footprint_definition(through_hole_footprint()));
     static_cast<void>(board.place_component(volt::ComponentPlacement{
         component, volt::BoardPoint{5.0, 5.0}, volt::BoardRotation::degrees(0.0)}));
 
-    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+    const auto compiled = volt::test::compile_export_fixture(circuit, board, library.bundle);
+    const auto result = volt::io::write_pcb_fabrication_files(compiled);
 
     CHECK_FALSE(result.loss_report.has_warnings());
     const auto *top_copper = find_file(result, "Control.GTL");
@@ -563,11 +565,11 @@ TEST_CASE("PCB fabrication writer emits unconnected mapped pads without fabricat
 TEST_CASE("PCB fabrication writer keeps numeric output locale-stable") {
     const auto fixture = make_fabrication_circuit();
     const auto board = make_fabrication_board(fixture);
-    const auto footprints = fabrication_footprints();
     [[maybe_unused]] const auto scoped_locale =
         ScopedLocale{std::locale{std::locale::classic(), new CommaDecimalNumpunct}};
 
-    const auto result = volt::io::write_pcb_fabrication_files(board, footprints);
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::io::write_pcb_fabrication_files(compiled);
 
     const auto *top_copper = find_file(result, "Control.GTL");
     REQUIRE(top_copper != nullptr);
@@ -586,7 +588,8 @@ TEST_CASE("PCB fabrication writer reports unsupported board text glyphs") {
                                                      volt::BoardRotation::degrees(0.0),
                                                      volt::BoardLayerId{2}, 1.0, true});
 
-    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::io::write_pcb_fabrication_files(compiled);
 
     REQUIRE(result.loss_report.warnings().size() == 1);
     CHECK(result.loss_report.warnings().front().construct == "board.text.character");
@@ -611,7 +614,8 @@ TEST_CASE("PCB fabrication writer reports finished hole diameter loss") {
     static_cast<void>(board.add_feature(
         volt::BoardFeature::hole("FH", volt::BoardPoint{8.0, 4.0}, 2.4, false, "mounting", 2.0)));
 
-    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::io::write_pcb_fabrication_files(compiled);
 
     REQUIRE(result.loss_report.warnings().size() == 1);
     CHECK(result.loss_report.warnings().front().construct ==
@@ -630,6 +634,32 @@ TEST_CASE("PCB fabrication writer reports finished hole diameter loss") {
           "board.feature.hole.finished_diameter");
 }
 
+TEST_CASE("PCB fabrication writer preserves missing selected-part loss from CompiledBoard") {
+    auto circuit = volt::Circuit{};
+    const auto definition =
+        volt::test::define_component(circuit, "Unselected", {volt::test::passive_pin("A", "1")});
+    const auto component = volt::test::instantiate_component(circuit, definition, "U1");
+    auto board = volt::Board{circuit, volt::BoardName{"Missing selected part"}};
+    const auto placement = board.place_component(volt::ComponentPlacement{
+        component, volt::BoardPoint{1.0, 2.0}, volt::BoardRotation::degrees(0.0)});
+    const auto library = volt::test::make_export_fixture_library({});
+    const auto compiled = volt::test::compile_export_fixture(circuit, board, library.bundle);
+
+    REQUIRE(compiled.placements().size() == 1U);
+    CHECK(compiled.placements().front().status() ==
+          volt::CompiledBoardPlacementStatus::MissingPart);
+    const auto result = volt::io::write_pcb_fabrication_files(compiled);
+    const auto warning =
+        std::ranges::find_if(result.loss_report.warnings(), [](const auto &candidate) {
+            return candidate.construct == "component.part";
+        });
+    REQUIRE(warning != result.loss_report.warnings().end());
+    CHECK(warning->message ==
+          "Component placement has no selected physical part for fabrication export");
+    CHECK(warning->fabrication_impact == volt::io::PcbFabricationLossImpact::FabCritical);
+    CHECK(warning->entities == std::vector{volt::EntityRef::component_placement(placement)});
+}
+
 TEST_CASE("PCB fabrication writer reports unsupported geometry and native diagnostics") {
     const auto fixture = make_fabrication_circuit();
     auto board = make_fabrication_board(fixture);
@@ -641,7 +671,8 @@ TEST_CASE("PCB fabrication writer reports unsupported geometry and native diagno
     const auto circle =
         board.add_feature(volt::BoardFeature::circle("FID", volt::BoardPoint{26.0, 5.0}, 1.0));
 
-    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::io::write_pcb_fabrication_files(compiled);
 
     REQUIRE(result.loss_report.warnings().size() == 3);
     CHECK(result.loss_report.warnings().at(0).construct == "board.feature.slot");
@@ -689,7 +720,8 @@ TEST_CASE("PCB fabrication writer reports unsupported copper layer data") {
         0.25,
     });
 
-    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::io::write_pcb_fabrication_files(compiled);
 
     REQUIRE(result.loss_report.warnings().size() >= 4);
     CHECK(result.loss_report.has_fab_critical_warnings());
@@ -717,7 +749,8 @@ TEST_CASE("PCB fabrication writer rejects non-inner middle stack copper") {
     board.set_layer_stack(
         volt::LayerStack{{volt::BoardLayerId{0}, duplicate_top, volt::BoardLayerId{1}}, 1.6});
 
-    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::io::write_pcb_fabrication_files(compiled);
 
     const auto diagnostics = volt::io::fabrication_diagnostics(result.loss_report);
     const auto *diagnostic = find_diagnostic(diagnostics, "PCB_NATIVE_FAB_UNSUPPORTED_LAYER",
@@ -741,7 +774,8 @@ TEST_CASE("PCB fabrication writer reports missing stackup without inventing copp
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
 
-    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::io::write_pcb_fabrication_files(compiled);
 
     const auto diagnostics = volt::io::fabrication_diagnostics(result.loss_report);
     const auto *diagnostic =

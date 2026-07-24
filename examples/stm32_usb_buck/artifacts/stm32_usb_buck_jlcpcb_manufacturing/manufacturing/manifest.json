@@ -70,6 +70,7 @@
     }
   ],
   "board": {
+    "compiled_board_provenance_digest": "sha256:3d6c36d2692491bca935477ae9fff80d111a02f0604c6e7110eb274f1d1212ef",
     "design": "stm32_usb_buck",
     "name": "STM32 USB Buck PCB",
     "output_name": "STM32 USB Buck PCB"
@@ -6530,6 +6531,10 @@
         "path": "manufacturing/fabrication/drill/STM32_USB_Buck_PCB-NPTH.TXT"
       }
     ],
+    "source": {
+      "board": "STM32 USB Buck PCB",
+      "provenance_digest": "sha256:3d6c36d2692491bca935477ae9fff80d111a02f0604c6e7110eb274f1d1212ef"
+    },
     "warnings": [
       {
         "construct": "footprint.pad.rounded_rectangle",

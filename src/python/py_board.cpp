@@ -10,6 +10,7 @@
 #include <volt/core/errors.hpp>
 #include <volt/io/assembly/cpl_writer.hpp>
 #include <volt/io/pcb/board_resolution.hpp>
+#include <volt/io/pcb/compiled_board.hpp>
 #include <volt/io/pcb/pcb_svg_writer.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/pcb/assembly/cpl.hpp>
@@ -63,6 +64,22 @@ volt::BoardResolution PyBoard::resolve(std::vector<volt::BoardAssetCapability> a
         volt::BoardResolutionCapabilities{board_.capability_profile(), std::move(additional)});
 }
 
+volt::CompiledBoard PyBoard::compile_for_delivery() const {
+    if (!board_.capability_profile().has_value()) {
+        throw volt::KernelLogicError{
+            volt::ErrorCode::InvalidState,
+            "CompiledBoard delivery requires one concrete Board capability profile"};
+    }
+    auto result = volt::io::compile_board(
+        circuit_->logical_circuit(), board_, circuit_->selected_part_bundle(),
+        volt::CompiledBoardCapabilities{*board_.capability_profile()});
+    if (!result.has_artifact()) {
+        const auto &failure = *result.failure();
+        throw volt::KernelLogicError{failure.code(), failure.message(), failure.entity()};
+    }
+    return std::move(result).take_artifact();
+}
+
 std::string PyBoard::name() const { return board_.name().value(); }
 
 std::string PyBoard::units() const { return "mm"; }
@@ -96,6 +113,10 @@ void PyBoard::set_design_rules(double copper_clearance_mm, double minimum_track_
 
 void PyBoard::set_capability_profile(const py::dict &profile) {
     board_.set_capability_profile(board_capability_profile_from_dict(profile));
+}
+
+bool PyBoard::has_capability_profile() const noexcept {
+    return board_.capability_profile().has_value();
 }
 
 std::size_t PyBoard::add_layer(const std::string &name, const std::string &role,
