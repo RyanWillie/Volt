@@ -27,6 +27,7 @@ void bind_board(pybind11::module_ &module) {
              py::arg("minimum_via_annular_diameter_mm"), py::arg("board_outline_clearance_mm"),
              py::arg("package_assembly_clearance_mm"))
         .def("set_capability_profile", &PyBoard::set_capability_profile, py::arg("profile"))
+        .def_property_readonly("has_capability_profile", &PyBoard::has_capability_profile)
         .def("add_layer", &PyBoard::add_layer, py::arg("name"), py::arg("role"), py::arg("side"),
              py::arg("thickness_mm") = 0.0, py::arg("enabled") = true,
              py::arg("copper_weight_oz") = std::nullopt)

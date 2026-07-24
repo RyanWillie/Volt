@@ -570,11 +570,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert len(pcb["board"]["zones"]) >= 1
     assert len(pcb["board"]["texts"]) >= 10
     assert all(_is_octilinear_track(track) for track in pcb["board"]["tracks"])
-    assert len(pcb["viewer"]["diagnostics"]) == 28
-    assert {diagnostic["code"] for diagnostic in pcb["viewer"]["diagnostics"]} == {
-        "PCB_NET_UNROUTED"
-    }
-    assert len(pcb["viewer"]["pad_resolutions"]) >= 90
+    assert "viewer" not in pcb
     pcb_net_names = {
         net_names_by_id[track["net"]] for track in pcb["board"]["tracks"]
     } | {
@@ -770,7 +766,12 @@ def test_stm32_usb_buck_example_writes_jlcpcb_manufacturing_package():
         assert package.output == output
         assert package.archive == output.with_suffix(".zip")
         assert package.archive.is_file()
-        assert package.board == {
+        assert package.board["compiled_board_provenance_digest"].startswith("sha256:")
+        assert {
+            key: value
+            for key, value in package.board.items()
+            if key != "compiled_board_provenance_digest"
+        } == {
             "design": "stm32_usb_buck",
             "name": "STM32 USB Buck PCB",
             "output_name": "STM32 USB Buck PCB",
@@ -790,6 +791,8 @@ def test_stm32_usb_buck_example_writes_jlcpcb_manufacturing_package():
             "classification": "complete",
             "fab_critical_loss": False,
         }
+        assert manifest["native_fabrication"]["source"]["board"] == "STM32 USB Buck PCB"
+        assert manifest["native_fabrication"]["source"]["provenance_digest"].startswith("sha256:")
         assert not any(
             warning["fabrication_impact"] == "fab-critical"
             for warning in manifest["native_fabrication"]["warnings"]

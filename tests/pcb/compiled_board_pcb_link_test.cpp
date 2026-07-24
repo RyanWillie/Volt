@@ -23,6 +23,9 @@ namespace {
                    artifact.capabilities().profile().name() == profile().name() &&
                    artifact.board().name() == artifact.board_name() &&
                    artifact.footprints().definitions().size() <= artifact.parts().size() &&
+                   artifact.pad_resolutions().size() >= artifact.parts().size() &&
+                   artifact.placements().size() ==
+                       artifact.board().all<volt::ComponentPlacementId>().size() &&
                    !artifact.logical_dependency_snapshot().empty() &&
                    !artifact.physical_snapshot().empty() && !artifact.bytes().empty() &&
                    artifact.content_digest() == volt::sha256_content_hash(artifact.bytes())
@@ -86,6 +89,12 @@ int main() {
     };
     const auto identity =
         volt::CompiledBoardIdentity{volt::BoardName{"PCB link contract"}, provenance_digest};
+    const auto placement = volt::CompiledBoardPlacement{
+        volt::ComponentPlacementId{0},
+        volt::CompiledBoardPlacementStatus::MissingPart,
+        std::nullopt,
+        {},
+    };
     if (capabilities.profile().name() != profile().name() || !capabilities.additional().empty() ||
         capabilities.has(volt::BoardAssetCapability::Models3D) ||
         provenance.schema_version() != volt::CompiledBoardSchemaVersion::V1 ||
@@ -99,6 +108,9 @@ int main() {
         provenance.provenance_digest() != provenance_digest ||
         identity.board().value() != "PCB link contract" ||
         identity.provenance_digest() != provenance_digest ||
+        placement.placement() != volt::ComponentPlacementId{0} ||
+        placement.status() != volt::CompiledBoardPlacementStatus::MissingPart ||
+        placement.footprint().has_value() || !placement.pad_resolutions().empty() ||
         !(identity ==
           volt::CompiledBoardIdentity{volt::BoardName{"PCB link contract"}, provenance_digest})) {
         return 1;

@@ -1,7 +1,7 @@
 import json
 
 import volt
-from project_framework_helpers import _passive_0603
+from project_framework_helpers import _delivery_profile, _passive_0603
 
 
 def _select_resistor(component, *, part_number="RC0603FR-07330RL"):
@@ -83,6 +83,7 @@ def test_project_bundle_emits_cpl_with_bom_and_board_exports(tmp_path):
     @project.board
     def board(context):
         pcb = context.design().add_board("Main")
+        pcb.set_capability_profile(_delivery_profile())
         pcb.place(context.design().component("R2"), at=(20.5, 11), rotation=270, side="bottom")
         pcb.place(context.design().component("R1"), at=(10, 5.25), rotation=90)
         return pcb
@@ -109,3 +110,8 @@ def test_project_bundle_emits_cpl_with_bom_and_board_exports(tmp_path):
         ("cpl_csv", "pcb/Main.cpl.csv"),
         ("kicad_pcb", "pcb/Main.kicad_pcb"),
     }
+    kicad_record = next(
+        artifact for artifact in manifest["artifacts"] if artifact["kind"] == "kicad_pcb"
+    )
+    assert kicad_record["source"]["board"] == "Main"
+    assert kicad_record["source"]["compiled_board_provenance_digest"].startswith("sha256:")

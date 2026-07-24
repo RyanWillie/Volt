@@ -95,7 +95,11 @@
       "kind": "kicad_pcb",
       "media_type": "application/x-kicad-pcb",
       "name": "First Board LED",
-      "path": "pcb/First-Board-LED.kicad_pcb"
+      "path": "pcb/First-Board-LED.kicad_pcb",
+      "source": {
+        "board": "First Board LED",
+        "compiled_board_provenance_digest": "sha256:ec8015796e2854d14cf6d19a2723372b5fd3a525aca43528fb64982f2df06f48"
+      }
     },
     {
       "group": {

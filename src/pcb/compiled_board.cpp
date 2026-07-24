@@ -1,10 +1,12 @@
 #include <volt/pcb/compiled/compiled_board.hpp>
 
 #include <algorithm>
+#include <iterator>
 #include <ranges>
 #include <utility>
 
 #include <volt/circuit/updates.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 namespace volt {
 namespace {
@@ -95,7 +97,69 @@ namespace {
     return circuit;
 }
 
+[[nodiscard]] CompiledBoardPlacement
+freeze_placement(const Board &board, const FootprintLibrary &footprints,
+                 std::span<const ResolvedBoardPart> parts,
+                 std::span<const PadResolution> pad_resolutions,
+                 ComponentPlacementId placement_id) {
+    const auto &placement = board.get(placement_id);
+    const auto selected_part =
+        std::ranges::find(parts, placement.component(), &ResolvedBoardPart::component);
+    if (selected_part == parts.end()) {
+        return CompiledBoardPlacement{
+            placement_id, CompiledBoardPlacementStatus::MissingPart, std::nullopt, {}};
+    }
+
+    const auto &footprint = selected_part->physical_part().footprint();
+    const auto board_definition = queries::footprint_definition_id(board, footprint);
+    const auto *definition = board_definition.has_value() ? &board.get(board_definition.value())
+                                                          : footprints.find(footprint);
+    if (definition == nullptr) {
+        return CompiledBoardPlacement{
+            placement_id, CompiledBoardPlacementStatus::MissingFootprint, std::nullopt, {}};
+    }
+
+    auto placement_pads = std::vector<PadResolution>{};
+    std::ranges::copy_if(pad_resolutions, std::back_inserter(placement_pads),
+                         [placement_id](const PadResolution &resolution) {
+                             return resolution.placement() == placement_id;
+                         });
+    return CompiledBoardPlacement{placement_id, CompiledBoardPlacementStatus::Resolved, *definition,
+                                  std::move(placement_pads)};
+}
+
+[[nodiscard]] std::vector<CompiledBoardPlacement>
+freeze_placements(const Board &board, const FootprintLibrary &footprints,
+                  std::span<const ResolvedBoardPart> parts,
+                  std::span<const PadResolution> pad_resolutions) {
+    auto result = std::vector<CompiledBoardPlacement>{};
+    result.reserve(board.all<ComponentPlacementId>().size());
+    for (std::size_t index = 0; index < board.all<ComponentPlacementId>().size(); ++index) {
+        result.push_back(freeze_placement(board, footprints, parts, pad_resolutions,
+                                          ComponentPlacementId{index}));
+    }
+    return result;
+}
+
 } // namespace
+
+CompiledBoardPlacement::CompiledBoardPlacement(ComponentPlacementId placement,
+                                               CompiledBoardPlacementStatus status,
+                                               std::optional<FootprintDefinition> footprint,
+                                               std::vector<PadResolution> pad_resolutions)
+    : placement_{placement}, status_{status}, footprint_{std::move(footprint)},
+      pad_resolutions_{std::move(pad_resolutions)} {
+    const auto valid_status = status_ == CompiledBoardPlacementStatus::Resolved ||
+                              status_ == CompiledBoardPlacementStatus::MissingPart ||
+                              status_ == CompiledBoardPlacementStatus::MissingFootprint;
+    const auto resolved = status_ == CompiledBoardPlacementStatus::Resolved;
+    if (!valid_status || resolved != footprint_.has_value() ||
+        (!resolved && !pad_resolutions_.empty())) {
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
+            "CompiledBoard placement status must match its frozen footprint and pad mapping"};
+    }
+}
 
 class CompiledBoard::Storage {
   public:
@@ -106,8 +170,10 @@ class CompiledBoard::Storage {
         : parts_{resolution.parts().begin(), resolution.parts().end()},
           circuit_{materialize_logical_dependencies(std::move(logical_dependencies), parts_)},
           board_{copy_board_snapshot(resolution.board(), circuit_)},
-          footprints_{resolution.footprints()}, capabilities_{std::move(capabilities)},
-          provenance_{std::move(provenance)},
+          footprints_{resolution.footprints()},
+          pad_resolutions_{queries::resolve_pads(board_, footprints_)},
+          placements_{freeze_placements(board_, footprints_, parts_, pad_resolutions_)},
+          capabilities_{std::move(capabilities)}, provenance_{std::move(provenance)},
           identity_{board_.name(), provenance_.provenance_digest()},
           logical_dependency_snapshot_{std::move(logical_dependency_snapshot)},
           physical_snapshot_{std::move(physical_snapshot)}, bytes_{std::move(bytes)},
@@ -117,6 +183,8 @@ class CompiledBoard::Storage {
     Circuit circuit_;
     Board board_;
     FootprintLibrary footprints_;
+    std::vector<PadResolution> pad_resolutions_;
+    std::vector<CompiledBoardPlacement> placements_;
     CompiledBoardCapabilities capabilities_;
     CompiledBoardProvenance provenance_;
     CompiledBoardIdentity identity_;
@@ -249,6 +317,14 @@ const FootprintLibrary &CompiledBoard::footprints() const noexcept { return stor
 
 std::span<const ResolvedBoardPart> CompiledBoard::parts() const noexcept {
     return storage_->parts_;
+}
+
+std::span<const PadResolution> CompiledBoard::pad_resolutions() const noexcept {
+    return storage_->pad_resolutions_;
+}
+
+std::span<const CompiledBoardPlacement> CompiledBoard::placements() const noexcept {
+    return storage_->placements_;
 }
 
 std::string_view CompiledBoard::logical_dependency_snapshot() const & noexcept {

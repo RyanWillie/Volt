@@ -106,8 +106,10 @@ def test_pcb_led_board_example_uses_native_explicit_footprints(tmp_path):
     pcb = json.loads(artifacts.pcb_json.read_text(encoding="utf-8"))
 
     assert len(pcb["board"]["footprint_definitions"]) == 3
-    assert len(pcb["viewer"]["pad_resolutions"]) == 6
-    assert pcb["viewer"]["diagnostics"] == []
+    assert "viewer" not in pcb
+    assert artifacts.pcb_svg.read_text(encoding="utf-8").count(
+        '<circle class="pad-overlay '
+    ) == 6
 
 
 def test_pcb_led_board_example_writes_stable_public_api_artifacts():
@@ -165,8 +167,8 @@ def test_pcb_led_board_example_writes_stable_public_api_artifacts():
         "component:2",
     ]
     assert len(pcb["board"]["footprint_definitions"]) == 3
-    assert len(pcb["viewer"]["pad_resolutions"]) == 6
-    assert pcb["viewer"]["diagnostics"] == []
+    assert "viewer" not in pcb
+    assert first_texts["pcb_svg"].count('<circle class="pad-overlay ') == 6
 
     assert validation["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
     assert validation["diagnostics"] == []

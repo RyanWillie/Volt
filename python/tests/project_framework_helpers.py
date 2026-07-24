@@ -1,6 +1,17 @@
 import volt
 
 
+def _delivery_profile():
+    return volt.CapabilityProfile(
+        name="Project framework delivery fixture",
+        source="Volt Python test fixture",
+        as_of="2026-07-24",
+        minimum_track_width=0.01,
+        minimum_via_drill=0.01,
+        minimum_via_annular=0.02,
+    )
+
+
 def _rectangle(width, height):
     return (
         (-width / 2.0, -height / 2.0),
@@ -150,6 +161,7 @@ def _stage_schematic(design):
 
 def _stage_board(design):
     pcb = design.add_board("Main")
+    pcb.set_capability_profile(_delivery_profile())
     pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
     pcb.place(design.component("J1"), at=(4, 5), locked=True)
     pcb.place(design.component("R1"), at=(10, 5))

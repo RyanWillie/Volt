@@ -95,7 +95,11 @@
       "kind": "kicad_pcb",
       "media_type": "application/x-kicad-pcb",
       "name": "STM32 USB Buck PCB",
-      "path": "pcb/STM32-USB-Buck-PCB.kicad_pcb"
+      "path": "pcb/STM32-USB-Buck-PCB.kicad_pcb",
+      "source": {
+        "board": "STM32 USB Buck PCB",
+        "compiled_board_provenance_digest": "sha256:3d6c36d2692491bca935477ae9fff80d111a02f0604c6e7110eb274f1d1212ef"
+      }
     },
     {
       "group": {

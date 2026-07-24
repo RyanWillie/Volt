@@ -174,6 +174,18 @@ volt_apply_coverage(volt_io_compiled_board_link_contract)
 add_test(NAME io_compiled_board_link_contract COMMAND volt_io_compiled_board_link_contract)
 set_tests_properties(io_compiled_board_link_contract PROPERTIES LABELS cpp)
 
+add_executable(
+    volt_kicad_compiled_board_link_contract
+    adapters/kicad_compiled_board_link_test.cpp
+)
+target_link_libraries(volt_kicad_compiled_board_link_contract PRIVATE Volt::KiCadAdapter)
+target_compile_features(volt_kicad_compiled_board_link_contract PRIVATE cxx_std_23)
+volt_apply_project_warnings(volt_kicad_compiled_board_link_contract PRIVATE)
+volt_apply_sanitizers(volt_kicad_compiled_board_link_contract)
+volt_apply_coverage(volt_kicad_compiled_board_link_contract)
+add_test(NAME kicad_compiled_board_link_contract COMMAND volt_kicad_compiled_board_link_contract)
+set_tests_properties(kicad_compiled_board_link_contract PROPERTIES LABELS cpp)
+
 add_test(
     NAME kicad_adapter_boundary
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-kicad-boundary.py

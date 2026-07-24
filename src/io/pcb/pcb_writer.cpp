@@ -2,9 +2,6 @@
 
 #include "../capabilities/board_capability_profile_io.hpp"
 #include "../detail/entity_ref_format.hpp"
-
-#include <array>
-#include <string_view>
 #include <variant>
 
 #include <volt/circuit/connectivity/queries.hpp>
@@ -28,20 +25,6 @@ namespace volt::io::detail {
 
 [[nodiscard]] std::string entity_ref_id(EntityRef entity) {
     return entity_ref_serialized_id(entity);
-}
-
-[[nodiscard]] std::string overlay_kind_name(DiagnosticOverlayKind kind) {
-    switch (kind) {
-    case DiagnosticOverlayKind::BoundingBox:
-        return "bounding_box";
-    case DiagnosticOverlayKind::Point:
-        return "point";
-    case DiagnosticOverlayKind::Polygon:
-        return "polygon";
-    case DiagnosticOverlayKind::Segment:
-        return "segment";
-    }
-    throw KernelLogicError{ErrorCode::InvalidState, "Unhandled diagnostic overlay kind"};
 }
 
 [[nodiscard]] std::optional<FootprintDefId>
@@ -110,47 +93,6 @@ void write_board_point(std::ostream &out, BoardPoint point) {
     write_number(out, point.x_mm());
     out << ", ";
     write_number(out, point.y_mm());
-    out << ']';
-}
-
-void write_diagnostic_point(std::ostream &out, DiagnosticPoint point) {
-    out << '[';
-    write_number(out, point.x_mm);
-    out << ", ";
-    write_number(out, point.y_mm);
-    out << ']';
-}
-
-void write_diagnostic_points(std::ostream &out, const std::vector<DiagnosticPoint> &points) {
-    out << '[';
-    for (std::size_t index = 0; index < points.size(); ++index) {
-        if (index != 0U) {
-            out << ", ";
-        }
-        write_diagnostic_point(out, points[index]);
-    }
-    out << ']';
-}
-
-void write_entity_refs(std::ostream &out, const std::vector<EntityRef> &entities) {
-    out << '[';
-    for (std::size_t index = 0; index < entities.size(); ++index) {
-        if (index != 0U) {
-            out << ", ";
-        }
-        out << json_string(entity_ref_serialized_id(entities[index]));
-    }
-    out << ']';
-}
-
-void write_board_layer_refs(std::ostream &out, const std::vector<BoardLayerId> &layers) {
-    out << '[';
-    for (std::size_t index = 0; index < layers.size(); ++index) {
-        if (index != 0U) {
-            out << ", ";
-        }
-        out << json_string(encode_local_id(layers[index]));
-    }
     out << ']';
 }
 
@@ -628,179 +570,6 @@ void write_board_texts(std::ostream &out, const Board &board, bool trailing_comm
     out << '\n';
 }
 
-void write_pad_resolution(std::ostream &out, const Board &board,
-                          const std::vector<FootprintDefinition> &definitions,
-                          const PadResolution &resolution, const FootprintDefinition &definition) {
-    const auto &pad = definition.pad(resolution.pad());
-    out << "      {\n";
-    out << "        \"id\": "
-        << json_string(pcb_pad_projection_id(resolution.placement(), resolution.pad())) << ",\n";
-    out << "        \"placement\": " << json_string(encode_local_id(resolution.placement()))
-        << ",\n";
-    out << "        \"component\": " << json_string(encode_local_id(resolution.component()))
-        << ",\n";
-    const auto &selected_part =
-        volt::queries::selected_physical_part(board.circuit(), resolution.component());
-    const auto footprint = selected_part.has_value()
-                               ? find_footprint_definition(definitions, selected_part->footprint())
-                               : std::nullopt;
-    out << "        \"footprint\": ";
-    if (footprint.has_value()) {
-        out << json_string(encode_local_id(footprint.value()));
-    } else {
-        out << "null";
-    }
-    out << ",\n";
-    out << "        \"pad\": " << json_string(encode_local_id(resolution.pad())) << ",\n";
-    out << "        \"label\": " << json_string(resolution.pad_label()) << ",\n";
-    out << "        \"position\": ";
-    write_board_point(out, resolution.position());
-    out << ",\n";
-    out << "        \"pin\": ";
-    if (resolution.pin().has_value()) {
-        out << json_string(encode_local_id(resolution.pin().value()));
-    } else {
-        out << "null";
-    }
-    out << ",\n";
-    out << "        \"net\": ";
-    if (resolution.net().has_value()) {
-        out << json_string(encode_local_id(resolution.net().value()));
-    } else {
-        out << "null";
-    }
-    out << ",\n";
-    out << "        \"status\": " << json_string(pad_resolution_status_name(resolution.status()))
-        << ",\n";
-    out << "        \"geometry\": {";
-    out << "\"kind\": " << json_string(footprint_pad_kind_name(pad.kind())) << ", ";
-    out << "\"shape\": " << json_string(footprint_pad_shape_name(pad.shape())) << ", ";
-    out << "\"size\": ";
-    write_footprint_size(out, pad.size());
-    out << ", \"layers\": ";
-    write_footprint_layers(out, pad.layers());
-    out << ", \"drill\": ";
-    write_drill(out, pad.drill());
-    out << ", \"mechanical_role\": ";
-    write_mechanical_role(out, pad.mechanical_role());
-    out << "}\n";
-    out << "      }";
-}
-
-void write_diagnostic(std::ostream &out, const Diagnostic &diagnostic) {
-    out << "      {\"severity\": " << json_string(severity_name(diagnostic.severity()))
-        << ", \"category\": " << json_string(diagnostic.category().value())
-        << ", \"code\": " << json_string(diagnostic.code().value())
-        << ", \"message\": " << json_string(diagnostic.message()) << ", \"entities\": ";
-    write_entity_refs(out, diagnostic.entities());
-    out << ", \"overlays\": [";
-    for (std::size_t index = 0; index < diagnostic.overlays().size(); ++index) {
-        if (index != 0U) {
-            out << ", ";
-        }
-        const auto &overlay = diagnostic.overlays()[index];
-        out << "{\"kind\": " << json_string(overlay_kind_name(overlay.kind())) << ", \"points\": ";
-        write_diagnostic_points(out, overlay.points());
-        out << ", \"entities\": ";
-        write_entity_refs(out, overlay.entities());
-        out << ", \"layers\": ";
-        write_board_layer_refs(out, overlay.layers());
-        out << '}';
-    }
-    out << "], \"measurement\": ";
-    if (diagnostic.measurement().has_value()) {
-        out << "{\"actual_mm\": ";
-        write_number(out, diagnostic.measurement()->actual_mm);
-        out << ", \"required_mm\": ";
-        write_number(out, diagnostic.measurement()->required_mm);
-        out << '}';
-    } else {
-        out << "null";
-    }
-    out << ", \"rule\": ";
-    if (diagnostic.rule().has_value()) {
-        out << json_string(diagnostic.rule().value());
-    } else {
-        out << "null";
-    }
-    out << '}';
-}
-
-void write_viewer_layers(std::ostream &out) {
-    struct ViewerLayer {
-        std::string_view id;
-        std::string_view kind;
-        std::string_view name;
-    };
-
-    constexpr auto layers = std::array{
-        ViewerLayer{"viewer_layer:board_outline", "board_outline", "Board outline"},
-        ViewerLayer{"viewer_layer:copper", "copper", "Copper"},
-        ViewerLayer{"viewer_layer:pads", "pads", "Pads"},
-        ViewerLayer{"viewer_layer:package_bodies", "package_bodies", "Package bodies"},
-        ViewerLayer{"viewer_layer:package_courtyards", "package_courtyards", "Package courtyards"},
-        ViewerLayer{"viewer_layer:package_fabrication", "package_fabrication",
-                    "Fabrication outlines"},
-        ViewerLayer{"viewer_layer:package_assembly", "package_assembly", "Assembly outlines"},
-        ViewerLayer{"viewer_layer:annotations", "annotations", "Annotations"},
-        ViewerLayer{"viewer_layer:diagnostics", "diagnostics", "Diagnostics"},
-    };
-
-    out << "    \"layers\": [\n";
-    for (std::size_t index = 0; index < layers.size(); ++index) {
-        const auto &layer = layers[index];
-        out << "      {\"id\": " << json_string(layer.id)
-            << ", \"kind\": " << json_string(layer.kind)
-            << ", \"name\": " << json_string(layer.name) << '}';
-        if (index + 1U != layers.size()) {
-            out << ',';
-        }
-        out << '\n';
-    }
-    out << "    ],\n";
-}
-
-void write_viewer(std::ostream &out, const Board &board,
-                  const std::vector<FootprintDefinition> &definitions) {
-    const auto footprint_library = footprint_library_from_definitions(definitions);
-    const auto resolutions = queries::resolve_pads(board, footprint_library);
-    const auto diagnostics = validate_board(board, footprint_library);
-
-    out << "  \"viewer\": {\n";
-    write_viewer_layers(out);
-    out << "    \"pad_resolutions\": [\n";
-    for (std::size_t index = 0; index < resolutions.size(); ++index) {
-        const auto &resolution = resolutions[index];
-        const auto &selected_part =
-            volt::queries::selected_physical_part(board.circuit(), resolution.component());
-        const auto footprint_id =
-            selected_part.has_value()
-                ? find_footprint_definition(definitions, selected_part->footprint())
-                : std::nullopt;
-        if (!footprint_id.has_value()) {
-            throw KernelLogicError{ErrorCode::InvalidState,
-                                   "Resolved PCB pad references missing footprint definition"};
-        }
-        write_pad_resolution(out, board, definitions, resolution,
-                             definitions[footprint_id->index()]);
-        if (index + 1U != resolutions.size()) {
-            out << ',';
-        }
-        out << '\n';
-    }
-    out << "    ],\n";
-    out << "    \"diagnostics\": [\n";
-    for (std::size_t index = 0; index < diagnostics.diagnostics().size(); ++index) {
-        write_diagnostic(out, diagnostics.diagnostics()[index]);
-        if (index + 1U != diagnostics.diagnostics().size()) {
-            out << ',';
-        }
-        out << '\n';
-    }
-    out << "    ]\n";
-    out << "  }\n";
-}
-
 } // namespace volt::io::detail
 
 namespace volt::io {
@@ -811,7 +580,7 @@ void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibra
     out << "  \"format\": " << detail::json_string(pcb_format_name()) << ",\n";
     out << "  \"version\": " << pcb_format_version() << ",\n";
     out << "  \"board\": {\n";
-    // v1 stores one board per document; this stable ID anchors viewer references.
+    // One board is stored per document; this stable ID anchors canonical Board identity.
     out << "    \"id\": \"board:0\",\n";
     out << "    \"name\": " << detail::json_string(board.name().value()) << ",\n";
     out << "    \"units\": " << detail::json_string(detail::board_units_name(board.units()))
@@ -867,8 +636,7 @@ void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibra
     if (board.all<volt::BoardTextId>().size() != 0U) {
         detail::write_board_texts(out, board, false);
     }
-    out << "  },\n";
-    detail::write_viewer(out, board, definitions);
+    out << "  }\n";
     out << "}\n";
 }
 

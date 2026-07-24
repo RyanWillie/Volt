@@ -1,10 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "support/circuit_test_helpers.hpp"
+#include "support/compiled_board_export_helpers.hpp"
 
 #include <fstream>
 #include <iterator>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -31,22 +31,9 @@ std::string read_fixture(const std::string &name) {
     return count;
 }
 
-[[nodiscard]] std::vector<std::string> extract_uuids(const std::string &text) {
-    auto uuids = std::vector<std::string>{};
-    const auto marker = std::string{"(uuid \""};
-    auto position = std::size_t{0};
-    while ((position = text.find(marker, position)) != std::string::npos) {
-        const auto start = position + marker.size();
-        const auto end = text.find('"', start);
-        REQUIRE(end != std::string::npos);
-        uuids.push_back(text.substr(start, end - start));
-        position = end;
-    }
-    return uuids;
-}
-
 struct ResistorCircuit {
     volt::Circuit circuit;
+    volt::io::PartLibraryBundle parts;
     volt::ComponentId component;
     volt::PinDefId first_pin_definition;
     volt::PinDefId second_pin_definition;
@@ -70,8 +57,9 @@ struct ResistorCircuit {
                                                volt::ElectricalDirection::Passive,
                                                volt::ElectricalSignalDomain::Unspecified,
                                                volt::ElectricalDriveKind::Passive};
-    const auto component_definition = volt::test::define_component(
-        circuit, "Resistor", std::vector{first_pin_spec, second_pin_spec});
+    const auto component_spec =
+        volt::ComponentSpec{.name = "Resistor", .pins = {first_pin_spec, second_pin_spec}};
+    const auto component_definition = circuit.define_component(component_spec);
     const auto pin_definitions = circuit.get(component_definition).pins();
     const auto first_pin_definition = pin_definitions[0];
     const auto second_pin_definition = pin_definitions[1];
@@ -91,16 +79,23 @@ struct ResistorCircuit {
         volt::NetSpec{.name = volt::NetName{"RIGHT"}, .kind = volt::NetKind::Signal});
     circuit.connect(left_net, first_pin);
     circuit.connect(right_net, second_pin);
-    circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                  volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                  volt::PackageRef{"0603"},
-                                  volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                  std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                              volt::PinPadMapping{second_pin_definition, "2"}},
-                              }});
+    const auto physical = volt::PhysicalPart{
+        volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"}, volt::PackageRef{"0603"},
+        volt::FootprintRef{"passives", "R_0603_1608Metric"},
+        std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                    volt::PinPadMapping{second_pin_definition, "2"}}};
+    auto library = volt::test::make_export_fixture_library(
+        {{component_spec, physical, volt::passive_0603_footprint(), volt::PartKey{"resistor"}}});
+    circuit.update(component, volt::SelectLibraryPart{library.bundle,
+                                                      library.bundle.require(library.keys[0])});
 
-    return ResistorCircuit{std::move(circuit),    component, first_pin_definition,
-                           second_pin_definition, left_net,  right_net};
+    return ResistorCircuit{std::move(circuit),
+                           std::move(library.bundle),
+                           component,
+                           first_pin_definition,
+                           second_pin_definition,
+                           left_net,
+                           right_net};
 }
 
 [[nodiscard]] volt::Board make_routed_board(const ResistorCircuit &fixture) {
@@ -114,8 +109,6 @@ struct ResistorCircuit {
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
     [[maybe_unused]] const auto feature = board.add_feature(
         volt::BoardFeature::hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2, false, "mounting"));
-    [[maybe_unused]] const auto footprint =
-        board.cache_footprint_definition(volt::passive_0603_footprint());
     [[maybe_unused]] const auto placement = board.place_component(
         volt::ComponentPlacement{fixture.component, volt::BoardPoint{25.0, 15.0},
                                  volt::BoardRotation::degrees(90.0), volt::BoardSide::Top, true});
@@ -139,6 +132,7 @@ struct ResistorCircuit {
 
 struct LedBadgeCircuit {
     volt::Circuit circuit;
+    volt::io::PartLibraryBundle parts;
     volt::ComponentId header;
     volt::ComponentId resistor;
     volt::ComponentId led;
@@ -192,18 +186,21 @@ struct LedBadgeCircuit {
                                                 volt::ElectricalSignalDomain::Unspecified,
                                                 volt::ElectricalDriveKind::Passive};
 
-    const auto header_definition = volt::test::define_component(
-        circuit, "Header", std::vector{header_one_spec, header_two_spec});
+    const auto header_spec =
+        volt::ComponentSpec{.name = "Header", .pins = {header_one_spec, header_two_spec}};
+    const auto passive_spec =
+        volt::ComponentSpec{.name = "Resistor", .pins = {passive_one_spec, passive_two_spec}};
+    const auto led_spec =
+        volt::ComponentSpec{.name = "LED", .pins = {led_anode_spec, led_cathode_spec}};
+    const auto header_definition = circuit.define_component(header_spec);
     const auto header_pins = circuit.get(header_definition).pins();
     const auto header_one = header_pins[0];
     const auto header_two = header_pins[1];
-    const auto passive_definition = volt::test::define_component(
-        circuit, "Resistor", std::vector{passive_one_spec, passive_two_spec});
+    const auto passive_definition = circuit.define_component(passive_spec);
     const auto passive_pins = circuit.get(passive_definition).pins();
     const auto passive_one = passive_pins[0];
     const auto passive_two = passive_pins[1];
-    const auto led_definition =
-        volt::test::define_component(circuit, "LED", std::vector{led_anode_spec, led_cathode_spec});
+    const auto led_definition = circuit.define_component(led_spec);
     const auto led_pins = circuit.get(led_definition).pins();
     const auto led_anode = led_pins[0];
     const auto led_cathode = led_pins[1];
@@ -236,29 +233,34 @@ struct LedBadgeCircuit {
     circuit.connect(gnd, volt::queries::pin_by_definition(circuit, led, led_cathode).value());
     circuit.connect(gnd, volt::queries::pin_by_definition(circuit, header, header_two).value());
 
-    circuit.update(header, volt::SelectPhysicalPart{volt::PhysicalPart{
-                               volt::ManufacturerPart{"Generic", "HDR-1x02"},
-                               volt::PackageRef{"2.54mm-1x02"},
-                               volt::FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
-                               std::vector{volt::PinPadMapping{header_one, "1"},
-                                           volt::PinPadMapping{header_two, "2"}},
-                           }});
-    circuit.update(resistor, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                 volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                 volt::PackageRef{"0603"},
-                                 volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                 std::vector{volt::PinPadMapping{passive_one, "1"},
-                                             volt::PinPadMapping{passive_two, "2"}},
-                             }});
-    circuit.update(led, volt::SelectPhysicalPart{volt::PhysicalPart{
-                            volt::ManufacturerPart{"Lite-On", "LTST-C190KRKT"},
-                            volt::PackageRef{"0603"},
-                            volt::FootprintRef{"leds", "LED_0603_1608Metric"},
-                            std::vector{volt::PinPadMapping{led_anode, "1"},
-                                        volt::PinPadMapping{led_cathode, "2"}},
-                        }});
+    const auto header_part = volt::PhysicalPart{
+        volt::ManufacturerPart{"Generic", "HDR-1x02"}, volt::PackageRef{"2.54mm-1x02"},
+        volt::FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
+        std::vector{volt::PinPadMapping{header_one, "1"}, volt::PinPadMapping{header_two, "2"}}};
+    const auto resistor_part = volt::PhysicalPart{
+        volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"}, volt::PackageRef{"0603"},
+        volt::FootprintRef{"passives", "R_0603_1608Metric"},
+        std::vector{volt::PinPadMapping{passive_one, "1"}, volt::PinPadMapping{passive_two, "2"}}};
+    const auto led_part = volt::PhysicalPart{
+        volt::ManufacturerPart{"Lite-On", "LTST-C190KRKT"}, volt::PackageRef{"0603"},
+        volt::FootprintRef{"leds", "LED_0603_1608Metric"},
+        std::vector{volt::PinPadMapping{led_anode, "1"}, volt::PinPadMapping{led_cathode, "2"}}};
+    const auto builtin = volt::builtin_footprint_library();
+    auto library = volt::test::make_export_fixture_library(
+        {{header_spec, header_part, *builtin.find(header_part.footprint()),
+          volt::PartKey{"header"}},
+         {passive_spec, resistor_part, *builtin.find(resistor_part.footprint()),
+          volt::PartKey{"resistor"}},
+         {led_spec, led_part, *builtin.find(led_part.footprint()), volt::PartKey{"led"}}});
+    circuit.update(
+        header, volt::SelectLibraryPart{library.bundle, library.bundle.require(library.keys[0])});
+    circuit.update(
+        resistor, volt::SelectLibraryPart{library.bundle, library.bundle.require(library.keys[1])});
+    circuit.update(
+        led, volt::SelectLibraryPart{library.bundle, library.bundle.require(library.keys[2])});
 
-    return LedBadgeCircuit{std::move(circuit), header, resistor, led, vcc, led_a, gnd};
+    return LedBadgeCircuit{
+        std::move(circuit), std::move(library.bundle), header, resistor, led, vcc, led_a, gnd};
 }
 
 [[nodiscard]] volt::Board make_led_badge_board(const LedBadgeCircuit &fixture) {
@@ -320,77 +322,8 @@ struct LedBadgeCircuit {
     return count;
 }
 
-[[nodiscard]] std::size_t exported_pad_count(const volt::Board &board) {
-    auto count = board.all<volt::BoardFeatureId>().size();
-    const auto library = volt::builtin_footprint_library();
-    for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
-        const auto &placement = board.get(volt::ComponentPlacementId{index});
-        const auto &part =
-            volt::queries::selected_physical_part(board.circuit(), placement.component()).value();
-        const auto *definition = library.find(part.footprint());
-        REQUIRE(definition != nullptr);
-        count += definition->pad_count();
-    }
-    return count;
-}
-
-[[nodiscard]] volt::FootprintDefinition make_large_footprint(std::size_t pad_count) {
-    auto pads = std::vector<volt::FootprintPad>{};
-    pads.reserve(pad_count);
-    for (std::size_t index = 0; index < pad_count; ++index) {
-        pads.push_back(volt::FootprintPad::surface_mount(
-            std::to_string(index + 1U), volt::FootprintPadShape::Rectangle,
-            volt::FootprintPoint{static_cast<double>(index) * 0.1, 0.0},
-            volt::FootprintSize{0.05, 0.05}, volt::FootprintLayerSet::front_smd()));
-    }
-    return volt::FootprintDefinition{volt::FootprintRef{"test", "LargePadArray"}, std::move(pads)};
-}
-
-struct TwoLargeFootprintComponents {
-    volt::Circuit circuit;
-    volt::ComponentId first_component;
-    volt::ComponentId second_component;
-};
-
-[[nodiscard]] TwoLargeFootprintComponents make_two_large_footprint_components() {
-    auto circuit = volt::Circuit{};
-    const auto first_pin_spec = volt::PinSpec{"A",
-                                              "1",
-                                              volt::ConnectionRequirement::Required,
-                                              volt::ElectricalTerminalKind::Passive,
-                                              volt::ElectricalDirection::Passive,
-                                              volt::ElectricalSignalDomain::Unspecified,
-                                              volt::ElectricalDriveKind::Passive};
-    const auto second_pin_spec = volt::PinSpec{"B",
-                                               "2",
-                                               volt::ConnectionRequirement::Required,
-                                               volt::ElectricalTerminalKind::Passive,
-                                               volt::ElectricalDirection::Passive,
-                                               volt::ElectricalSignalDomain::Unspecified,
-                                               volt::ElectricalDriveKind::Passive};
-    const auto component_definition = volt::test::define_component(
-        circuit, "LargePackage", std::vector{first_pin_spec, second_pin_spec});
-    const auto pin_definitions = circuit.get(component_definition).pins();
-    const auto first_pin_definition = pin_definitions[0];
-    const auto second_pin_definition = pin_definitions[1];
-    const auto first_component = circuit.instantiate_component(
-        component_definition,
-        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U1"}});
-    const auto second_component = circuit.instantiate_component(
-        component_definition,
-        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U2"}});
-
-    for (const auto component : {first_component, second_component}) {
-        circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                      volt::ManufacturerPart{"Test", "LargePadArray"},
-                                      volt::PackageRef{"LARGE"},
-                                      volt::FootprintRef{"test", "LargePadArray"},
-                                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                                  volt::PinPadMapping{second_pin_definition, "2"}},
-                                  }});
-    }
-
-    return TwoLargeFootprintComponents{std::move(circuit), first_component, second_component};
+[[nodiscard]] std::size_t exported_pad_count(const volt::CompiledBoard &compiled) {
+    return compiled.board().all<volt::BoardFeatureId>().size() + compiled.pad_resolutions().size();
 }
 
 } // namespace
@@ -398,31 +331,27 @@ struct TwoLargeFootprintComponents {
 TEST_CASE("KiCad PCB writer exports a deterministic manufacturable board subset") {
     const auto fixture = make_resistor_circuit();
     const auto board = make_routed_board(fixture);
-
-    const auto result =
-        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::adapters::kicad::write_board(compiled);
 
     CHECK_FALSE(result.loss_report.has_warnings());
     CHECK(result.text == read_fixture("kicad_flat_resistor.kicad_pcb"));
-    CHECK(result.text ==
-          volt::adapters::kicad::write_board(board, volt::builtin_footprint_library()).text);
+    CHECK(result.text == volt::adapters::kicad::write_board(compiled).text);
 }
 
 TEST_CASE("KiCad PCB writer pins a routed multi-net golden board") {
     const auto fixture = make_led_badge_circuit();
     const auto board = make_led_badge_board(fixture);
-
-    const auto result =
-        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::adapters::kicad::write_board(compiled);
 
     CHECK_FALSE(result.loss_report.has_fab_critical_warnings());
     CHECK(result.text == read_fixture("kicad_routed_badge.kicad_pcb"));
-    CHECK(result.text ==
-          volt::adapters::kicad::write_board(board, volt::builtin_footprint_library()).text);
+    CHECK(result.text == volt::adapters::kicad::write_board(compiled).text);
     CHECK(count_occurrences(result.text, "(footprint ") ==
           board.all<volt::ComponentPlacementId>().size() +
               board.all<volt::BoardFeatureId>().size());
-    CHECK(count_occurrences(result.text, "(pad ") == exported_pad_count(board));
+    CHECK(count_occurrences(result.text, "(pad ") == exported_pad_count(compiled));
     CHECK(count_occurrences(result.text, "(segment\n") == exported_segment_count(board));
     CHECK(count_occurrences(result.text, "(via\n") == board.all<volt::BoardViaId>().size());
     CHECK(count_occurrences(result.text, "\n  (net ") ==
@@ -460,8 +389,8 @@ TEST_CASE("KiCad PCB writer reports unsupported out-of-subset board constructs")
     static_cast<void>(board.add_feature(volt::BoardFeature::circle(
         "FID", volt::BoardPoint{42.0, 2.0}, 1.0, volt::BoardSide::Top, "fiducial")));
 
-    const auto result =
-        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::adapters::kicad::write_board(compiled);
 
     REQUIRE(result.loss_report.warnings().size() == 4);
     CHECK(result.loss_report.warnings().at(0).kind ==
@@ -496,8 +425,8 @@ TEST_CASE("KiCad PCB writer classifies fab-critical and informational losses") {
         volt::BoardText{"FAB NOTE", volt::BoardPoint{2.0, 22.0}, volt::BoardRotation::degrees(0.0),
                         fabrication_layer, 1.0, true});
 
-    const auto result =
-        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::adapters::kicad::write_board(compiled);
 
     REQUIRE(result.loss_report.warnings().size() == 2);
     CHECK(result.loss_report.warnings().at(0).construct == "board.text.layer");
@@ -514,12 +443,33 @@ TEST_CASE("KiCad PCB writer classifies fab-critical and informational losses") {
     CHECK(result.loss_report.has_fab_critical_warnings());
 }
 
+TEST_CASE("KiCad PCB writer preserves plated board-hole diagnostic identity") {
+    const auto fixture = make_resistor_circuit();
+    auto board = make_routed_board(fixture);
+    static_cast<void>(board.add_feature(
+        volt::BoardFeature::hole("MH2", volt::BoardPoint{42.0, 4.0}, 1.0, true, "mounting")));
+
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::adapters::kicad::write_board(compiled);
+    const auto diagnostics = volt::adapters::kicad::fabrication_diagnostics(result.loss_report);
+
+    REQUIRE(diagnostics.diagnostics().size() == 1);
+    const auto &diagnostic = diagnostics.diagnostics().front();
+    CHECK(diagnostic.code() == volt::DiagnosticCode{"PCB_KICAD_FAB_EXPORT_LOSS"});
+    CHECK(diagnostic.severity() == volt::Severity::Error);
+    CHECK(diagnostic.category() ==
+          volt::DiagnosticCategory{volt::diagnostic_categories::PcbFabrication});
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::board()});
+    REQUIRE(diagnostic.rule().has_value());
+    CHECK(diagnostic.rule().value() == "board.feature.hole.plated");
+}
+
 TEST_CASE("KiCad PCB writer keeps generated footprint metadata DRC-neutral") {
     const auto fixture = make_resistor_circuit();
     const auto board = make_routed_board(fixture);
 
-    const auto result =
-        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::adapters::kicad::write_board(compiled);
 
     CHECK(result.text.find("(footprint \"passives:") == std::string::npos);
     CHECK(result.text.find("(footprint \"Volt:") == std::string::npos);
@@ -546,56 +496,11 @@ TEST_CASE("KiCad PCB writer does not collapse distinct Volt layers onto one KiCa
         0.25,
     });
 
-    const auto result =
-        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::adapters::kicad::write_board(compiled);
 
     CHECK(count_occurrences(result.text, "(segment\n") == 2);
     REQUIRE(result.loss_report.warnings().size() == 2);
     CHECK(result.loss_report.warnings().at(0).construct == "board.layer.mapping");
     CHECK(result.loss_report.warnings().at(1).construct == "board.track.layer");
-}
-
-TEST_CASE("KiCad PCB writer generates unique UUIDs without footprint pad range contracts") {
-    auto fixture = make_two_large_footprint_components();
-    auto board = volt::Board{fixture.circuit, volt::BoardName{"LargeFootprints"}};
-    [[maybe_unused]] const auto front = board.add_layer(
-        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
-    [[maybe_unused]] const auto first_placement = board.place_component(
-        volt::ComponentPlacement{fixture.first_component, volt::BoardPoint{0.0, 0.0},
-                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top, true});
-    [[maybe_unused]] const auto second_placement = board.place_component(
-        volt::ComponentPlacement{fixture.second_component, volt::BoardPoint{200.0, 0.0},
-                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top, true});
-
-    auto footprints = volt::FootprintLibrary{};
-    footprints.add(make_large_footprint(950U));
-
-    const auto result = volt::adapters::kicad::write_board(board, footprints);
-    const auto uuids = extract_uuids(result.text);
-    const auto unique_uuids = std::set<std::string>{uuids.begin(), uuids.end()};
-
-    CHECK(uuids.size() == unique_uuids.size());
-}
-
-TEST_CASE("KiCad PCB writer reports invalid pad resolutions before omitting pad nets") {
-    auto fixture = make_resistor_circuit();
-    fixture.circuit.update(fixture.component,
-                           volt::SelectPhysicalPart{volt::PhysicalPart{
-                               volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                               volt::PackageRef{"0603"},
-                               volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                               std::vector{volt::PinPadMapping{fixture.first_pin_definition, "99"},
-                                           volt::PinPadMapping{fixture.second_pin_definition, "2"}},
-                           }});
-    const auto board = make_routed_board(fixture);
-
-    const auto result =
-        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
-
-    REQUIRE(result.loss_report.warnings().size() == 1);
-    const auto &warning = result.loss_report.warnings().at(0);
-    CHECK(warning.kind == volt::adapters::kicad::LossKind::IncompleteConstruct);
-    CHECK(warning.construct == "pad_resolution");
-    CHECK(warning.message.find("R1") != std::string::npos);
-    CHECK(warning.message.find("without a net") != std::string::npos);
 }

@@ -512,7 +512,8 @@ void filter_net_classes(Json &logical) {
 
 [[nodiscard]] std::string build_physical_snapshot(const Board &board) {
     auto document = parse_json(write_pcb_board(board, FootprintLibrary{}), "PCB snapshot");
-    document.erase("viewer");
+    require(document.find("viewer") == document.end(),
+            "Current PCB writer emitted legacy derived viewer state", ErrorCode::InvalidState);
     const auto &board_json = field(document, "board", "PCB snapshot");
     const auto &footprints = field(board_json, "footprint_definitions", "PCB Board snapshot");
     require(footprints.is_array() && footprints.empty(),

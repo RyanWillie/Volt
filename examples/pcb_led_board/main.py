@@ -187,6 +187,16 @@ def build_board(
     parts: dict[str, volt.Component],
 ) -> volt.Board:
     board = design.add_board("First Board LED")
+    board.set_capability_profile(
+        volt.CapabilityProfile(
+            name="PCB LED board example capability snapshot",
+            source="Volt example contract",
+            as_of="2026-07-24",
+            minimum_track_width=0.01,
+            minimum_via_drill=0.01,
+            minimum_via_annular=0.02,
+        )
+    )
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)

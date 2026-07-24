@@ -92,9 +92,9 @@
         "sha256": "4ada48908b8f7eb5e387b81e8d51d36ea6e5c0e38c1fa55e01d436ac44e31793"
       },
       {
-        "byte_count": 199103,
+        "byte_count": 105603,
         "path": "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/pcb/STM32-USB-Buck-PCB.volt.pcb.json",
-        "sha256": "63786990b790f9610040c69f4a657fa56754f1b267020efeb95534e90b180b5a"
+        "sha256": "e4fe20d3405b0bf72ec23a48c34550ac82eb7e20ecd8617d17d4d670f72eb23e"
       }
     ],
     "semantic": [
@@ -264,7 +264,7 @@
           "schematic_svg"
         ],
         "path": "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/manifest.volt.json",
-        "sha256": "67eb9f156231541568fa059da824ec8dc97426f2981ccb92e8d3d36b2669b57f",
+        "sha256": "2f5e866bc146bdbdd8393ce11bc70f0db295bb1c2a61616c91a0edbd20d4ab91",
         "top_level_counts": {
           "artifacts": 14,
           "diagnostics": 3,
@@ -358,16 +358,14 @@
       },
       {
         "path": "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/pcb/STM32-USB-Buck-PCB.volt.pcb.json",
-        "sha256": "63786990b790f9610040c69f4a657fa56754f1b267020efeb95534e90b180b5a",
+        "sha256": "e4fe20d3405b0bf72ec23a48c34550ac82eb7e20ecd8617d17d4d670f72eb23e",
         "top_level_counts": {
-          "board": 16,
-          "viewer": 3
+          "board": 16
         },
         "top_level_keys": [
           "board",
           "format",
-          "version",
-          "viewer"
+          "version"
         ],
         "top_level_scalars": {
           "format": "volt.pcb",
@@ -640,6 +638,7 @@
         "CanonicalRecordRequirement",
         "CapabilityProfile",
         "Circle",
+        "CompiledBoardIdentity",
         "Component",
         "ComponentContract",
         "ComponentDefinition",

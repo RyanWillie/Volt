@@ -3,6 +3,9 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 
+#include <array>
+#include <charconv>
+
 #include "logical_net_class_format.hpp"
 
 namespace volt::io::detail {
@@ -376,7 +379,14 @@ void write_json_number(std::ostream &out, double value) {
     if (!std::isfinite(value)) {
         throw KernelLogicError{ErrorCode::InvalidArgument, "Cannot write non-finite JSON number"};
     }
-    out << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
+    auto buffer = std::array<char, 64>{};
+    const auto [end, error] =
+        std::to_chars(buffer.data(), buffer.data() + buffer.size(), value,
+                      std::chars_format::general, std::numeric_limits<double>::max_digits10);
+    if (error != std::errc{}) {
+        throw KernelLogicError{ErrorCode::InvalidState, "Cannot format finite JSON number"};
+    }
+    out.write(buffer.data(), static_cast<std::streamsize>(end - buffer.data()));
 }
 
 void write_property_value(std::ostream &out, const PropertyValue &value) {
@@ -392,12 +402,8 @@ void write_property_value(std::ostream &out, const PropertyValue &value) {
         out << "\"integer\", \"value\": " << value.as_integer();
         break;
     case PropertyValueKind::Number:
-        if (!std::isfinite(value.as_number())) {
-            throw KernelLogicError{ErrorCode::InvalidArgument,
-                                   "Cannot write non-finite JSON number"};
-        }
-        out << "\"number\", \"value\": "
-            << std::setprecision(std::numeric_limits<double>::max_digits10) << value.as_number();
+        out << "\"number\", \"value\": ";
+        write_json_number(out, value.as_number());
         break;
     }
     out << " }";

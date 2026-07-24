@@ -1,6 +1,7 @@
 #include "py_board.hpp"
 
 #include "binding_diagnostic_conversions.hpp"
+#include "binding_pcb_conversions.hpp"
 
 #include <string>
 #include <utility>
@@ -60,11 +61,11 @@ kicad_loss_warning_to_dict(const volt::adapters::kicad::LossWarning &warning) {
 } // namespace
 
 py::dict PyBoard::to_kicad_pcb() const {
-    const auto resolution = resolve();
-    const auto export_result =
-        volt::adapters::kicad::write_board(resolution.board(), resolution.footprints());
+    const auto compiled = compile_for_delivery();
+    const auto export_result = volt::adapters::kicad::write_board(compiled);
 
     auto result = py::dict{};
+    result["source"] = compiled_board_identity_to_dict(export_result.source);
     result["text"] = export_result.text;
     result["diagnostics"] = diagnostics_to_list(
         volt::adapters::kicad::fabrication_diagnostics(export_result.loss_report));

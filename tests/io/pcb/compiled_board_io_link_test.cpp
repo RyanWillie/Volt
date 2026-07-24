@@ -2,6 +2,7 @@
 
 #include <volt/io/pcb/compiled_board.hpp>
 #include <volt/io/pcb/compiled_board_consumers.hpp>
+#include <volt/io/pcb/pcb_fabrication_writer.hpp>
 
 namespace {
 
@@ -41,10 +42,12 @@ int main() {
     }
     auto artifact = std::move(result).take_artifact();
     const auto svg = volt::io::render_pcb_svg(artifact);
+    const auto fabrication = volt::io::write_pcb_fabrication_files(artifact);
     const auto bytes = volt::io::write_compiled_board(artifact);
     const auto reopened = volt::io::open_compiled_board(bytes);
     return reopened.bytes() == bytes && reopened.board_name().value() == "IO link contract" &&
-                   svg.source() == artifact.identity() && !svg.bytes().empty()
+                   svg.source() == artifact.identity() && !svg.bytes().empty() &&
+                   fabrication.source == artifact.identity()
                ? 0
                : 1;
 }

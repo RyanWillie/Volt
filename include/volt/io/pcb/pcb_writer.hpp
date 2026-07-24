@@ -89,21 +89,12 @@ void write_board_rooms(std::ostream &out, const Board &board, bool trailing_comm
 
 void write_board_texts(std::ostream &out, const Board &board, bool trailing_comma = false);
 
-void write_pad_resolution(std::ostream &out, const Board &board,
-                          const std::vector<FootprintDefinition> &definitions,
-                          const PadResolution &resolution, const FootprintDefinition &definition);
-
-void write_diagnostic(std::ostream &out, const Diagnostic &diagnostic);
-
-void write_viewer(std::ostream &out, const Board &board,
-                  const std::vector<FootprintDefinition> &definitions);
-
 } // namespace detail
 
-/** Write deterministic product-viewer-ready PCB projection JSON. */
+/** Write deterministic canonical PCB projection JSON without derived viewer state. */
 void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibrary &footprints);
 
-/** Return deterministic product-viewer-ready PCB projection JSON. */
+/** Return deterministic canonical PCB projection JSON without derived viewer state. */
 [[nodiscard]] std::string write_pcb_board(const Board &board, const FootprintLibrary &footprints);
 
 } // namespace volt::io

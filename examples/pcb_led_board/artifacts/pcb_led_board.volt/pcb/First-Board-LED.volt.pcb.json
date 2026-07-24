@@ -6,6 +6,7 @@
     "name": "First Board LED",
     "units": "mm",
     "rules": {"copper_clearance_mm": 0.14999999999999999, "minimum_track_width_mm": 0.14999999999999999, "minimum_via_drill_diameter_mm": 0.20000000000000001, "minimum_via_annular_diameter_mm": 0.45000000000000001, "board_outline_clearance_mm": 0, "package_assembly_clearance_mm": 0.25},
+    "capability_profile": {"name": "PCB LED board example capability snapshot", "provenance": {"source": "Volt example contract", "as_of": "2026-07-24"}, "minimum_track_width_mm": 0.01, "minimum_via_drill_mm": 0.01, "minimum_via_annular_mm": 0.02, "minimum_clearances": []},
     "layers": [
       {"id": "board_layer:0", "name": "F.Cu", "role": "copper", "side": "top", "thickness_mm": 0, "enabled": true},
       {"id": "board_layer:1", "name": "B.Cu", "role": "copper", "side": "bottom", "thickness_mm": 0, "enabled": true}
@@ -134,101 +135,6 @@
       {"id": "board_track:0", "net": "net:0", "layer": "board_layer:0", "points": [[5, 7.7300000000000004], [14.25, 7]], "width_mm": 0.25},
       {"id": "board_track:1", "net": "net:1", "layer": "board_layer:0", "points": [[15.75, 7], [20, 3], [24.75, 7]], "width_mm": 0.25},
       {"id": "board_track:2", "net": "net:2", "layer": "board_layer:0", "points": [[5, 10.27], [23.25, 7]], "width_mm": 0.25}
-    ]
-  },
-  "viewer": {
-    "layers": [
-      {"id": "viewer_layer:board_outline", "kind": "board_outline", "name": "Board outline"},
-      {"id": "viewer_layer:copper", "kind": "copper", "name": "Copper"},
-      {"id": "viewer_layer:pads", "kind": "pads", "name": "Pads"},
-      {"id": "viewer_layer:package_bodies", "kind": "package_bodies", "name": "Package bodies"},
-      {"id": "viewer_layer:package_courtyards", "kind": "package_courtyards", "name": "Package courtyards"},
-      {"id": "viewer_layer:package_fabrication", "kind": "package_fabrication", "name": "Fabrication outlines"},
-      {"id": "viewer_layer:package_assembly", "kind": "package_assembly", "name": "Assembly outlines"},
-      {"id": "viewer_layer:annotations", "kind": "annotations", "name": "Annotations"},
-      {"id": "viewer_layer:diagnostics", "kind": "diagnostics", "name": "Diagnostics"}
-    ],
-    "pad_resolutions": [
-      {
-        "id": "pcb_pad:0:0",
-        "placement": "component_placement:0",
-        "component": "component:0",
-        "footprint": "footprint_def:0",
-        "pad": "footprint_pad:0",
-        "label": "1",
-        "position": [5, 7.7300000000000004],
-        "pin": "pin:0",
-        "net": "net:0",
-        "status": "connected",
-        "geometry": {"kind": "through_hole", "shape": "circle", "size": [1.7, 1.7], "layers": ["front_copper", "back_copper", "front_solder_mask", "back_solder_mask"], "drill": {"diameter_mm": 1, "plating": "plated"}, "mechanical_role": null}
-      },
-      {
-        "id": "pcb_pad:0:1",
-        "placement": "component_placement:0",
-        "component": "component:0",
-        "footprint": "footprint_def:0",
-        "pad": "footprint_pad:1",
-        "label": "2",
-        "position": [5, 10.27],
-        "pin": "pin:1",
-        "net": "net:2",
-        "status": "connected",
-        "geometry": {"kind": "through_hole", "shape": "circle", "size": [1.7, 1.7], "layers": ["front_copper", "back_copper", "front_solder_mask", "back_solder_mask"], "drill": {"diameter_mm": 1, "plating": "plated"}, "mechanical_role": null}
-      },
-      {
-        "id": "pcb_pad:1:0",
-        "placement": "component_placement:1",
-        "component": "component:1",
-        "footprint": "footprint_def:1",
-        "pad": "footprint_pad:0",
-        "label": "1",
-        "position": [14.25, 7],
-        "pin": "pin:2",
-        "net": "net:0",
-        "status": "connected",
-        "geometry": {"kind": "surface_mount", "shape": "rounded_rectangle", "size": [0.80000000000000004, 0.94999999999999996], "layers": ["front_copper", "front_solder_mask", "front_paste"], "drill": null, "mechanical_role": null}
-      },
-      {
-        "id": "pcb_pad:1:1",
-        "placement": "component_placement:1",
-        "component": "component:1",
-        "footprint": "footprint_def:1",
-        "pad": "footprint_pad:1",
-        "label": "2",
-        "position": [15.75, 7],
-        "pin": "pin:3",
-        "net": "net:1",
-        "status": "connected",
-        "geometry": {"kind": "surface_mount", "shape": "rounded_rectangle", "size": [0.80000000000000004, 0.94999999999999996], "layers": ["front_copper", "front_solder_mask", "front_paste"], "drill": null, "mechanical_role": null}
-      },
-      {
-        "id": "pcb_pad:2:0",
-        "placement": "component_placement:2",
-        "component": "component:2",
-        "footprint": "footprint_def:2",
-        "pad": "footprint_pad:0",
-        "label": "1",
-        "position": [24.75, 7],
-        "pin": "pin:4",
-        "net": "net:1",
-        "status": "connected",
-        "geometry": {"kind": "surface_mount", "shape": "rounded_rectangle", "size": [0.80000000000000004, 0.94999999999999996], "layers": ["front_copper", "front_solder_mask", "front_paste"], "drill": null, "mechanical_role": null}
-      },
-      {
-        "id": "pcb_pad:2:1",
-        "placement": "component_placement:2",
-        "component": "component:2",
-        "footprint": "footprint_def:2",
-        "pad": "footprint_pad:1",
-        "label": "2",
-        "position": [23.25, 7],
-        "pin": "pin:5",
-        "net": "net:2",
-        "status": "connected",
-        "geometry": {"kind": "surface_mount", "shape": "rounded_rectangle", "size": [0.80000000000000004, 0.94999999999999996], "layers": ["front_copper", "front_solder_mask", "front_paste"], "drill": null, "mechanical_role": null}
-      }
-    ],
-    "diagnostics": [
     ]
   }
 }

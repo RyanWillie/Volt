@@ -6,7 +6,7 @@ import pytest
 
 import volt
 
-from project_framework_helpers import _board_ready_design, _stage_schematic
+from project_framework_helpers import _board_ready_design, _delivery_profile, _stage_schematic
 
 
 BOARD_FORWARDING_METHODS = (
@@ -174,8 +174,10 @@ def test_named_board_project_persistence_is_ordered_and_composite_selectable(tmp
     def boards(context):
         product = context.design()
         production = product.add_board("Production")
+        production.set_capability_profile(_delivery_profile())
         production.set_rectangular_outline(origin=(0, 0), size=(80, 50))
         compact = product.add_board("Compact")
+        compact.set_capability_profile(_delivery_profile())
         compact.set_rectangular_outline(origin=(0, 0), size=(20, 10))
         return tuple(reversed(product.boards()))
 

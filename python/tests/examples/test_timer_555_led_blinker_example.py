@@ -371,6 +371,13 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert len(pcb["board"]["vias"]) == 6
     component_ids = {component["reference"]: component["id"] for component in logical["components"]}
     net_ids = {net["name"]: net["id"] for net in logical["nets"]}
+    overlay_svg = main.run_project().board().to_svg()
+    overlay_pads = re.findall(
+        r'<circle class="pad-overlay [^"]+" '
+        r'data-pad-projection="pcb_pad:(\d+):\d+" '
+        r'data-net="([^"]+)" cx="([^"]+)" cy="([^"]+)"',
+        overlay_svg,
+    )
     for track in pcb["board"]["tracks"]:
         for start, end in zip(track["points"], track["points"][1:]):
             dx = abs(end[0] - start[0])
@@ -379,10 +386,11 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
 
     def pad_position(component_ref: str, net_name: str) -> tuple[float, float]:
         matches = [
-            pad["position"]
-            for pad in pcb["viewer"]["pad_resolutions"]
-            if pad["component"] == component_ids[component_ref]
-            and pad["net"] == net_ids[net_name]
+            (float(x), float(y))
+            for placement_index, net, x, y in overlay_pads
+            if pcb["board"]["placements"][int(placement_index)]["component"]
+            == component_ids[component_ref]
+            and net == net_ids[net_name]
         ]
         assert len(matches) == 1
         return tuple(matches[0])
@@ -496,8 +504,8 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "GND",
         "K",
     ]
-    assert len(pcb["viewer"]["pad_resolutions"]) == 26
-    assert pcb["viewer"]["diagnostics"] == []
+    assert "viewer" not in pcb
+    assert overlay_svg.count('<circle class="pad-overlay ') == 26
 
     svg_text = first_texts["svg"]
     assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in svg_text
