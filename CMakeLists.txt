@@ -15,6 +15,9 @@ option(VOLT_BUILD_TESTS "Build Volt tests" ON)
 option(VOLT_BUILD_DOCS "Add the Doxygen documentation target" ON)
 option(VOLT_BUILD_PYTHON "Build Volt Python bindings" OFF)
 option(VOLT_BUILD_BENCHMARKS "Build Volt benchmark executables" OFF)
+option(VOLT_INSTALL "Generate Volt install and package export rules" ${PROJECT_IS_TOP_LEVEL})
+
+include(cmake/VoltInstallRules.cmake)
 
 if(VOLT_BUILD_TESTS)
     enable_testing()
@@ -46,6 +49,10 @@ target_link_libraries(
         Volt::Schematic
         Volt::IO
 )
+volt_install_library(volt Volt)
+
+# Must follow every volt_install_library call so the export set is complete.
+volt_install_package()
 
 if(VOLT_BUILD_DOCS)
     find_package(Doxygen)

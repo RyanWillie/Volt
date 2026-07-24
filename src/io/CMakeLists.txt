@@ -91,7 +91,11 @@ target_link_libraries(
         Volt::Schematic
         Volt::PCB
     PRIVATE
-        Volt::NlohmannJson
+        # Wrapped in $<BUILD_INTERFACE:> so the header-only JSON dependency stays out of the
+        # installed link interface. A static library normally records even PRIVATE deps as
+        # $<LINK_ONLY:...>, which would force Volt::NlohmannJson into the export set and make
+        # consumers resolve a dependency that is already compiled into libvolt_io.
+        $<BUILD_INTERFACE:Volt::NlohmannJson>
         ZLIB::ZLIB
 )
 target_include_directories(
@@ -104,3 +108,4 @@ volt_apply_project_warnings(volt_io PRIVATE)
 volt_apply_clang_tidy(volt_io)
 volt_apply_sanitizers(volt_io)
 volt_apply_coverage(volt_io)
+volt_install_library(volt_io IO)

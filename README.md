@@ -71,7 +71,8 @@ the kernel can establish stable invariants first.
 - Golden fixture round-trip tests
 - CMake/Ninja presets, CTest-based unit tests, strict project warnings, and Doxygen docs
 - Layered CMake targets: `Volt::Core`, `Volt::Circuit`, `Volt::Authoring`,
-  `Volt::Schematic`, `Volt::PCB`, `Volt::IO`, and `Volt::Volt`
+  `Volt::Schematic`, `Volt::PCB`, `Volt::IO`, and `Volt::Volt`, installable as a
+  `find_package(Volt CONFIG REQUIRED)` package
 
 ## Build And Test
 
@@ -81,6 +82,33 @@ Volt uses CMake presets. From the repository root:
 cmake --preset dev
 cmake --build --preset dev
 ctest --preset dev
+```
+
+## Install And Consume
+
+Install the C++ libraries, headers, and CMake package configuration:
+
+```sh
+cmake --preset release
+cmake --build --preset release
+cmake --install build/release --prefix /your/prefix
+```
+
+Then consume Volt from a downstream project:
+
+```cmake
+find_package(Volt CONFIG REQUIRED)
+target_link_libraries(my_target PRIVATE Volt::Volt)
+```
+
+`Volt::Volt` is an umbrella over the layered targets; link a single layer such as
+`Volt::Circuit` or `Volt::IO` instead when that is all you need. `Volt::KiCadAdapter` is
+installed but deliberately sits outside the umbrella, so link it explicitly.
+
+Verify the install tree and a downstream build at any time with:
+
+```sh
+python3 scripts/check-package-install.py
 ```
 
 ## Project Layout

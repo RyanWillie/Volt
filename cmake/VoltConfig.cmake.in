@@ -1,0 +1,9 @@
+@PACKAGE_INIT@
+
+# Volt links its only third-party dependency (header-only nlohmann_json) privately and
+# exposes no part of it through public headers, so consumers need no transitive
+# find_dependency call here.
+
+include("${CMAKE_CURRENT_LIST_DIR}/VoltTargets.cmake")
+
+check_required_components(Volt)

@@ -40,5 +40,8 @@ VOLT_BUILD_PYTHON = "ON"
 VOLT_BUILD_TESTS = "OFF"
 VOLT_BUILD_DOCS = "OFF"
 VOLT_BUILD_BENCHMARKS = "OFF"
+# scikit-build-core stages the wheel with `cmake --install`. The C++ SDK install rules would
+# otherwise pack headers, static archives, and package config files into the wheel.
+VOLT_INSTALL = "OFF"
 CMAKE_POSITION_INDEPENDENT_CODE = "ON"
 CMAKE_OSX_SYSROOT = "macosx"

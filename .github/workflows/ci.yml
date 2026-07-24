@@ -54,6 +54,9 @@ jobs:
       - name: Test
         run: ctest --preset dev
 
+      - name: Check package install and downstream consumer
+        run: python scripts/check-package-install.py
+
       - name: Build Python wheel
         if: startsWith(github.ref, 'refs/tags/')
         run: python scripts/build-python-wheel.py
