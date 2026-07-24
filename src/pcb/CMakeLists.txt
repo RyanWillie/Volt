@@ -2,6 +2,7 @@ add_library(
     volt_pcb
     board.cpp
     compiled_board.cpp
+    compiled_board_consumers.cpp
     copper/board_capability.cpp
     copper/board_copper.cpp
     copper/board_copper_geometry.cpp

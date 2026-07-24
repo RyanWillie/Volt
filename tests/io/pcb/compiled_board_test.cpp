@@ -15,8 +15,11 @@
 #include <nlohmann/json.hpp>
 
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/io/assembly/cpl_writer.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
 #include <volt/io/pcb/compiled_board.hpp>
+#include <volt/io/pcb/compiled_board_consumers.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 namespace {
 
@@ -85,7 +88,8 @@ struct Fixture {
     std::string model_bytes;
 };
 
-[[nodiscard]] Fixture fixture(bool bad_footprint_mapping = false, bool implicit_contract = false) {
+[[nodiscard]] Fixture fixture(bool bad_footprint_mapping = false, bool implicit_contract = false,
+                              std::string model_format = "glb") {
     auto spec = resistor_spec();
     if (implicit_contract) {
         spec.contract.reset();
@@ -105,8 +109,11 @@ struct Fixture {
         "footprint:" + footprint.ref().library() + "/" + footprint.ref().name(),
         volt::sha256_content_hash(footprint_bytes)};
     auto model_bytes = std::string{"compiled-board-model-v1"};
-    const auto model_reference = volt::PartModel3DReference{
-        "glb", "resistor.glb", volt::sha256_content_hash(model_bytes), {0.0, 0.0, 0.0}, 0.0};
+    const auto model_reference = volt::PartModel3DReference{model_format,
+                                                            "resistor." + model_format,
+                                                            volt::sha256_content_hash(model_bytes),
+                                                            {0.0, 0.0, 0.0},
+                                                            0.0};
 
     const auto make_part = [&](std::string key, std::string mpn) {
         const auto &pin_keys = definition.contract().pin_keys();
@@ -322,6 +329,30 @@ void refresh_capability_provenance(Archive &archive, const ArchiveEntry &capabil
     return std::ranges::any_of(report.diagnostics(), [&](const volt::Diagnostic &diagnostic) {
         return diagnostic.code().value() == code;
     });
+}
+
+[[nodiscard]] std::vector<std::string> diagnostic_signature(const volt::DiagnosticReport &report) {
+    auto result = std::vector<std::string>{};
+    result.reserve(report.diagnostics().size());
+    for (const auto &diagnostic : report.diagnostics()) {
+        result.push_back(std::to_string(static_cast<unsigned int>(diagnostic.severity())) + ":" +
+                         diagnostic.code().value() + ":" + diagnostic.message());
+    }
+    return result;
+}
+
+[[nodiscard]] std::vector<std::string>
+ratsnest_signature(std::span<const volt::RatsnestEdge> edges) {
+    auto result = std::vector<std::string>{};
+    result.reserve(edges.size());
+    for (const auto &edge : edges) {
+        result.push_back(std::to_string(edge.net().index()) + ":" +
+                         std::to_string(edge.from().placement().index()) + ":" +
+                         std::to_string(edge.from().pad().index()) + ":" +
+                         std::to_string(edge.to().placement().index()) + ":" +
+                         std::to_string(edge.to().pad().index()));
+    }
+    return result;
 }
 
 } // namespace
@@ -734,4 +765,182 @@ TEST_CASE("CompiledBoard capabilities freeze exact consumed assets and retain de
     CHECK_THROWS_AS((volt::CompiledBoardCapabilities{
                         profile(), {static_cast<volt::BoardAssetCapability>(999)}}),
                     volt::KernelArgumentError);
+}
+
+TEST_CASE("CompiledBoard consumers reopen offline with deterministic identity-preserving parity") {
+    struct Witness {
+        std::string archive;
+        std::vector<std::string> diagnostics;
+        std::vector<std::string> ratsnest;
+        std::string cpl_json;
+        std::string svg;
+        std::string layer_svg;
+        std::string model_bytes;
+    };
+
+    const auto witness = [] {
+        auto source = fixture();
+        const auto bundle = volt::io::PartLibraryBundle::build(
+            source.builder, std::array{source.selected_key, source.unused_key}, source.resolver);
+        auto authored = design(source.spec, bundle, source.selected_key);
+        auto artifact = take_success(volt::io::compile_board(*authored.circuit, authored.board,
+                                                             bundle, models3d_capabilities()));
+
+        const auto validation = volt::validate_board(artifact);
+        const auto legacy_validation =
+            volt::validate_board(artifact.board(), artifact.footprints());
+        CHECK(validation.source() == artifact.identity());
+        CHECK(diagnostic_signature(validation.diagnostics()) ==
+              diagnostic_signature(legacy_validation));
+        CHECK(has_diagnostic(validation.diagnostics(), "PCB_RULE_AT_CAPABILITY_MINIMUM"));
+        CHECK(has_diagnostic(validation.diagnostics(), "PCB_NET_UNROUTED"));
+
+        const auto ratsnest = volt::compute_ratsnest(artifact);
+        const auto legacy_ratsnest =
+            volt::queries::ratsnest_edges(artifact.board(), artifact.footprints());
+        CHECK(ratsnest.source() == artifact.identity());
+        CHECK(ratsnest_signature(ratsnest.edges()) == ratsnest_signature(legacy_ratsnest));
+
+        const auto cpl = volt::project_cpl(artifact);
+        const auto legacy_cpl = volt::project_cpl(artifact.board(), artifact.footprints());
+        CHECK(cpl.source() == artifact.identity());
+        CHECK(volt::io::write_cpl_json(cpl.cpl()) == volt::io::write_cpl_json(legacy_cpl));
+
+        const auto svg = volt::io::render_pcb_svg(artifact);
+        const auto legacy_svg =
+            volt::io::write_pcb_placement_svg(artifact.board(), artifact.footprints());
+        CHECK(svg.source() == artifact.identity());
+        CHECK_FALSE(svg.layer().has_value());
+        CHECK(svg.bytes() == legacy_svg);
+
+        const auto layer = volt::io::render_pcb_svg(
+            artifact, volt::io::PcbPlacementSvgOptions{.layer_filter = volt::BoardLayerId{0}});
+        CHECK(layer.source() == artifact.identity());
+        REQUIRE(layer.layer().has_value());
+        CHECK(*layer.layer() == volt::BoardLayerId{0});
+
+        const auto scene = volt::prepare_board_scene(artifact);
+        CHECK(scene.source() == artifact.identity());
+        CHECK(scene.geometry().outline.has_value());
+        REQUIRE(scene.placements().size() == 1U);
+        REQUIRE(scene.models().size() == 1U);
+        REQUIRE(scene.placements().front().model().has_value());
+        CHECK(*scene.placements().front().model() == scene.models().front().reference());
+        CHECK(std::string{volt::resolve_board_scene_model(
+                  scene, artifact, scene.models().front().reference())} == source.model_bytes);
+
+        const auto archive = std::string{artifact.bytes()};
+        authored.board.move(volt::BoardPlacementMove{
+            volt::ComponentPlacementId{0},
+            volt::BoardPoint{42.0, 24.0},
+            volt::BoardRotation::degrees(180.0),
+            volt::BoardSide::Bottom,
+        });
+        CHECK(std::string{artifact.bytes()} == archive);
+        CHECK(volt::io::render_pcb_svg(artifact).bytes() == svg.bytes());
+
+        return Witness{
+            archive,
+            diagnostic_signature(validation.diagnostics()),
+            ratsnest_signature(ratsnest.edges()),
+            volt::io::write_cpl_json(cpl.cpl()),
+            svg.bytes(),
+            layer.bytes(),
+            source.model_bytes,
+        };
+    }();
+
+    auto reopened = volt::io::open_compiled_board(witness.archive);
+    const auto reopened_scene = volt::prepare_board_scene(reopened);
+    const auto reopened_reference = reopened_scene.models().front().reference();
+    CHECK(diagnostic_signature(volt::validate_board(reopened).diagnostics()) ==
+          witness.diagnostics);
+    CHECK(ratsnest_signature(volt::compute_ratsnest(reopened).edges()) == witness.ratsnest);
+    CHECK(volt::io::write_cpl_json(volt::project_cpl(reopened).cpl()) == witness.cpl_json);
+    CHECK(volt::io::render_pcb_svg(reopened).bytes() == witness.svg);
+    CHECK(volt::io::render_pcb_svg(
+              reopened, volt::io::PcbPlacementSvgOptions{.layer_filter = volt::BoardLayerId{0}})
+              .bytes() == witness.layer_svg);
+    CHECK(std::string{volt::resolve_board_scene_model(reopened_scene, reopened,
+                                                      reopened_reference)} == witness.model_bytes);
+
+    auto moved = std::move(reopened);
+    CHECK(std::string{volt::resolve_board_scene_model(reopened_scene, moved, reopened_reference)} ==
+          witness.model_bytes);
+    CHECK(volt::io::render_pcb_svg(moved).bytes() == witness.svg);
+}
+
+TEST_CASE("BoardScene accepts only the exact compiled revision GLB closure") {
+    auto source = fixture();
+    const auto bundle = volt::io::PartLibraryBundle::build(
+        source.builder, std::array{source.selected_key, source.unused_key}, source.resolver);
+    auto unplaced = design(source.spec, bundle, source.selected_key, "Unplaced", false);
+    auto unplaced_compiled = take_success(volt::io::compile_board(*unplaced.circuit, unplaced.board,
+                                                                  bundle, models3d_capabilities()));
+    CHECK(has_diagnostic(volt::project_cpl(unplaced_compiled).cpl().diagnostics(),
+                         "ASSEMBLY_COMPONENT_UNPLACED"));
+    const auto unplaced_scene = volt::prepare_board_scene(unplaced_compiled);
+    CHECK(unplaced_scene.placements().empty());
+    CHECK(unplaced_scene.models().size() == 1U);
+
+    auto main = design(source.spec, bundle, source.selected_key, "Main", true, true);
+    auto baseline = take_success(
+        volt::io::compile_board(*main.circuit, main.board, bundle, baseline_capabilities()));
+    const auto baseline_scene = volt::prepare_board_scene(baseline);
+    CHECK(baseline_scene.models().empty());
+
+    auto models = take_success(
+        volt::io::compile_board(*main.circuit, main.board, bundle, models3d_capabilities()));
+    const auto scene = volt::prepare_board_scene(models);
+    REQUIRE(scene.models().size() == 1U);
+    REQUIRE(scene.placements().size() == 2U);
+    CHECK(scene.placements()[0].placement() == volt::ComponentPlacementId{0});
+    CHECK(scene.placements()[0].component() == main.component);
+    CHECK(scene.placements()[0].reference() == "R1");
+    CHECK(scene.placements()[0].transform() == std::array{1.0, 0.0, 0.0, 2.0, 0.0, 1.0, 0.0, 3.0,
+                                                          0.0, 0.0, 1.0, 0.8, 0.0, 0.0, 0.0, 1.0});
+    REQUIRE(scene.placements()[0].model().has_value());
+    REQUIRE(scene.placements()[1].model().has_value());
+    CHECK(*scene.placements()[0].model() == *scene.placements()[1].model());
+    const auto reference = scene.models().front().reference();
+    CHECK(std::string{volt::resolve_board_scene_model(scene, models, reference)} ==
+          source.model_bytes);
+
+    auto alternative = design(source.spec, bundle, source.selected_key, "Alternative");
+    auto alternative_models = take_success(volt::io::compile_board(
+        *alternative.circuit, alternative.board, bundle, models3d_capabilities()));
+    const auto alternative_scene = volt::prepare_board_scene(alternative_models);
+    REQUIRE(alternative_scene.models().size() == 1U);
+    CHECK_THROWS_AS(volt::resolve_board_scene_model(scene, alternative_models, reference),
+                    volt::KernelLogicError);
+    CHECK_THROWS_AS(volt::resolve_board_scene_model(scene, models,
+                                                    alternative_scene.models().front().reference()),
+                    volt::KernelLogicError);
+
+    main.board.move(volt::BoardPlacementMove{
+        volt::ComponentPlacementId{0},
+        volt::BoardPoint{9.0, 9.0},
+        volt::BoardRotation::degrees(90.0),
+        volt::BoardSide::Top,
+    });
+    auto changed = take_success(
+        volt::io::compile_board(*main.circuit, main.board, bundle, models3d_capabilities()));
+    CHECK_FALSE(changed.identity() == models.identity());
+    const auto changed_scene = volt::prepare_board_scene(changed);
+    CHECK_THROWS_AS(volt::resolve_board_scene_model(changed_scene, changed, reference),
+                    volt::KernelLogicError);
+
+    CHECK_THROWS_AS((volt::BoardSceneModelRef{models, volt::ComponentId{999}}),
+                    volt::KernelLogicError);
+    CHECK_THROWS_AS((volt::BoardSceneModelRef{baseline, baseline.parts().front().component()}),
+                    volt::KernelLogicError);
+
+    auto step_source = fixture(false, false, "step");
+    const auto step_bundle = volt::io::PartLibraryBundle::build(
+        step_source.builder, std::array{step_source.selected_key}, step_source.resolver);
+    auto step_design = design(step_source.spec, step_bundle, step_source.selected_key, "STEP");
+    auto step = take_success(volt::io::compile_board(*step_design.circuit, step_design.board,
+                                                     step_bundle, models3d_capabilities()));
+    REQUIRE(step.parts().front().model_3d_bytes().has_value());
+    CHECK(volt::prepare_board_scene(step).models().empty());
 }

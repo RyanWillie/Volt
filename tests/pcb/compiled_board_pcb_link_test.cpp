@@ -1,6 +1,7 @@
 #include <string>
 #include <utility>
 
+#include <volt/pcb/compiled/board_consumers.hpp>
 #include <volt/pcb/compiled/compiled_board.hpp>
 
 namespace {
@@ -29,6 +30,19 @@ namespace {
                : 1;
 }
 
+[[nodiscard]] int inspect_consumers(const volt::CompiledBoard &artifact,
+                                    const volt::BoardSceneModelRef &reference) {
+    const auto validation = volt::validate_board(artifact);
+    const auto ratsnest = volt::compute_ratsnest(artifact);
+    const auto cpl = volt::project_cpl(artifact);
+    const auto scene = volt::prepare_board_scene(artifact);
+    return validation.source() == artifact.identity() && ratsnest.source() == artifact.identity() &&
+                   cpl.source() == artifact.identity() && scene.source() == artifact.identity() &&
+                   reference.source() == artifact.identity()
+               ? 0
+               : 1;
+}
+
 [[nodiscard]] volt::CompiledBoard move_artifact(volt::CompiledBoard artifact) { return artifact; }
 
 void assign_artifact(volt::CompiledBoard &target, volt::CompiledBoard source) {
@@ -47,6 +61,7 @@ void assign_artifact(volt::CompiledBoard &target, volt::CompiledBoard source) {
 
 int main() {
     static_cast<void>(&inspect_artifact);
+    static_cast<void>(&inspect_consumers);
     static_cast<void>(&move_artifact);
     static_cast<void>(&assign_artifact);
     static_cast<void>(&successful_result);
