@@ -46,19 +46,40 @@ def run(command: list[str]) -> None:
     subprocess.run(command, cwd=ROOT, check=True)
 
 
+def cmake_cache_value(name: str) -> str:
+    for line in (BUILD_DIR / "CMakeCache.txt").read_text(encoding="utf-8").splitlines():
+        if line.startswith(f"{name}:"):
+            return line.split("=", 1)[1]
+    raise RuntimeError(f"{name} was not written to {BUILD_DIR / 'CMakeCache.txt'}")
+
+
 def consumer_configure_command() -> list[str]:
+    # Build the consumer with the same generator, compiler, and configuration that produced
+    # the installed archives. A consumer can only link artifacts from a compatible toolchain,
+    # so letting CMake pick a platform default is not a realistic downstream simulation. On
+    # Windows it actively breaks: CMake defaults to Visual Studio/MSVC, which cannot consume
+    # the GNU-format archives that Volt's Windows CI toolchain produces.
     command = [
         "cmake",
         "-S",
         str(CONSUMER_SOURCE_DIR),
         "-B",
         str(CONSUMER_BUILD_DIR),
+        "-G",
+        cmake_cache_value("CMAKE_GENERATOR"),
+        f"-DCMAKE_CXX_COMPILER={cmake_cache_value('CMAKE_CXX_COMPILER')}",
         f"-DCMAKE_PREFIX_PATH={PREFIX_DIR}",
     ]
+
+    build_type = cmake_cache_value("CMAKE_BUILD_TYPE")
+    if build_type:
+        command.append(f"-DCMAKE_BUILD_TYPE={build_type}")
+
     if platform.system() == "Darwin":
         # Volt's own presets pin this. Without it CMake selects the CommandLineTools SDK,
         # whose libc++ headers can require a newer clang than /usr/bin/c++ provides.
         command.append("-DCMAKE_OSX_SYSROOT=macosx")
+
     return command
 
 
@@ -76,6 +97,14 @@ def check_installed_package_files() -> None:
         raise RuntimeError(
             f"Installed package is missing {', '.join(str(name) for name in missing)} "
             f"in {config_dir}"
+        )
+
+    # The per-configuration file carries IMPORTED_LOCATION for each archive. Without it the
+    # imported targets still resolve, so a consumer compiles and only fails at link time.
+    if not list(config_dir.glob("VoltTargets-*.cmake")):
+        raise RuntimeError(
+            f"Installed package has no VoltTargets-<config>.cmake in {config_dir}, so imported "
+            "targets would carry no library location"
         )
 
     if not (PREFIX_DIR / "include" / "volt" / "volt.hpp").exists():
