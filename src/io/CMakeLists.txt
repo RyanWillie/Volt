@@ -1,6 +1,7 @@
 include(FetchContent)
 
 find_package(nlohmann_json 3.11.3 CONFIG QUIET)
+find_package(ZLIB QUIET)
 
 if(NOT nlohmann_json_FOUND)
     FetchContent_Declare(
@@ -10,6 +11,17 @@ if(NOT nlohmann_json_FOUND)
     )
     set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(nlohmann_json)
+endif()
+
+if(NOT ZLIB_FOUND)
+    FetchContent_Declare(
+        zlib
+        URL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.xz
+        URL_HASH SHA256=38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32
+    )
+    set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(zlib)
+    add_library(ZLIB::ZLIB ALIAS zlibstatic)
 endif()
 
 add_library(volt_nlohmann_json INTERFACE)
@@ -48,6 +60,9 @@ add_library(
     pcb/pcb_writer.cpp
     pcb/pcb_writer_footprints.cpp
     pcb/pcb_writer_rooms.cpp
+    project_bundle.cpp
+    project_bundle_source.cpp
+    project_bundle_v1.cpp
     schematic/detail_schematic_svg_common.cpp
     schematic/detail_schematic_svg_elements.cpp
     schematic/detail_schematic_svg_layers.cpp
@@ -70,6 +85,7 @@ target_link_libraries(
         Volt::PCB
     PRIVATE
         Volt::NlohmannJson
+        ZLIB::ZLIB
 )
 target_include_directories(
     volt_io

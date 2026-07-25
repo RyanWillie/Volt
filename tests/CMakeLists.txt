@@ -62,6 +62,7 @@ add_executable(
     io/pcb/pcb_projection_io_test.cpp
     io/pcb/pcb_svg_writer_test.cpp
     io/pcb/compiled_board_test.cpp
+    io/project_bundle_test.cpp
     io/schematic/schematic_reader_test.cpp
     io/schematic/schematic_round_trip_test.cpp
     io/schematic/schematic_schema_test.cpp
@@ -173,6 +174,18 @@ volt_apply_sanitizers(volt_io_compiled_board_link_contract)
 volt_apply_coverage(volt_io_compiled_board_link_contract)
 add_test(NAME io_compiled_board_link_contract COMMAND volt_io_compiled_board_link_contract)
 set_tests_properties(io_compiled_board_link_contract PROPERTIES LABELS cpp)
+
+add_executable(
+    volt_io_project_bundle_link_contract
+    io/project_bundle_io_link_test.cpp
+)
+target_link_libraries(volt_io_project_bundle_link_contract PRIVATE Volt::IO)
+target_compile_features(volt_io_project_bundle_link_contract PRIVATE cxx_std_23)
+volt_apply_project_warnings(volt_io_project_bundle_link_contract PRIVATE)
+volt_apply_sanitizers(volt_io_project_bundle_link_contract)
+volt_apply_coverage(volt_io_project_bundle_link_contract)
+add_test(NAME io_project_bundle_link_contract COMMAND volt_io_project_bundle_link_contract)
+set_tests_properties(io_project_bundle_link_contract PROPERTIES LABELS cpp)
 
 add_executable(
     volt_kicad_compiled_board_link_contract
