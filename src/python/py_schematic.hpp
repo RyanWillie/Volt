@@ -121,6 +121,11 @@ class PySchematicDocument {
 
     [[nodiscard]] py::list validate_schematic_readability();
 
+    /** Return the exact native projection for ProjectBundle orchestration. */
+    [[nodiscard]] const volt::Schematic &native_schematic() const noexcept {
+        return schematic_document_.schematic();
+    }
+
   private:
     [[nodiscard]] volt::Schematic &schematic_projection();
 

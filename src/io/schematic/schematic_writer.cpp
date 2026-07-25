@@ -633,4 +633,39 @@ void write_schematic(std::ostream &out, const SchematicDocument &document) {
     return write_schematic(document.schematic());
 }
 
+void write_symbol_definition(std::ostream &out, const SymbolDefinition &symbol) {
+    out << "{\n";
+    out << "  \"format\": " << detail::json_string(symbol_definition_format_name()) << ",\n";
+    out << "  \"schema_version\": " << symbol_definition_format_version() << ",\n";
+    out << "  \"name\": " << detail::json_string(symbol.name()) << ",\n";
+    out << "  \"pins\": [";
+    for (std::size_t index = 0; index < symbol.pins().size(); ++index) {
+        const auto &pin = symbol.pins()[index];
+        if (index != 0U) {
+            out << ", ";
+        }
+        out << "{ \"name\": " << detail::json_string(pin.name())
+            << ", \"number\": " << detail::json_string(pin.number()) << ", \"anchor\": ";
+        detail::write_point(out, pin.anchor());
+        out << ", \"orientation\": "
+            << detail::json_string(schematic_orientation_name(pin.orientation())) << " }";
+    }
+    out << "],\n";
+    out << "  \"primitives\": [";
+    for (std::size_t index = 0; index < symbol.primitives().size(); ++index) {
+        if (index != 0U) {
+            out << ", ";
+        }
+        detail::write_symbol_primitive(out, symbol.primitives()[index]);
+    }
+    out << "]\n";
+    out << "}\n";
+}
+
+std::string write_symbol_definition(const SymbolDefinition &symbol) {
+    auto out = std::ostringstream{};
+    write_symbol_definition(out, symbol);
+    return out.str();
+}
+
 } // namespace volt::io

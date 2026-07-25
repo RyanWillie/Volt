@@ -237,11 +237,256 @@ def hidden_footprint_injections() -> list[dict[str, str]]:
     return injections
 
 
-def project_artifact_record_kinds() -> list[str]:
-    source = read(ROOT / "python" / "volt" / "project.py")
-    return sorted(
-        set(re.findall(r'_artifact_record\(\s*"([^"]+)"', source, flags=re.DOTALL))
+def qualified_python_name(node: ast.expr) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        owner = qualified_python_name(node.value)
+        return node.attr if owner is None else f"{owner}.{node.attr}"
+    return None
+
+
+def cpp_parenthesized_call(source: str, marker: str) -> str:
+    marker_offset = source.find(marker)
+    require(marker_offset >= 0, f"C++ binding marker is missing: {marker}")
+    call_offset = source.rfind("module.def", 0, marker_offset)
+    require(call_offset >= 0, f"C++ binding call is missing for: {marker}")
+    open_offset = source.find("(", call_offset, marker_offset)
+    require(open_offset >= 0, f"C++ binding call has no argument list: {marker}")
+
+    depth = 0
+    quote: str | None = None
+    escaped = False
+    line_comment = False
+    block_comment = False
+    index = open_offset
+    while index < len(source):
+        char = source[index]
+        next_char = source[index + 1] if index + 1 < len(source) else ""
+        if line_comment:
+            if char == "\n":
+                line_comment = False
+        elif block_comment:
+            if char == "*" and next_char == "/":
+                block_comment = False
+                index += 1
+        elif quote is not None:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+        elif char == "/" and next_char == "/":
+            line_comment = True
+            index += 1
+        elif char == "/" and next_char == "*":
+            block_comment = True
+            index += 1
+        elif char in {'"', "'"}:
+            quote = char
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return source[call_offset : index + 1]
+        index += 1
+    raise AssertionError(f"C++ binding call is unterminated: {marker}")
+
+
+def cpp_code_only(source: str) -> str:
+    result: list[str] = []
+    quote: str | None = None
+    escaped = False
+    line_comment = False
+    block_comment = False
+    index = 0
+    while index < len(source):
+        char = source[index]
+        next_char = source[index + 1] if index + 1 < len(source) else ""
+        if line_comment:
+            result.append("\n" if char == "\n" else " ")
+            if char == "\n":
+                line_comment = False
+        elif block_comment:
+            result.append("\n" if char == "\n" else " ")
+            if char == "*" and next_char == "/":
+                result.append(" ")
+                block_comment = False
+                index += 1
+        elif quote is not None:
+            result.append("\n" if char == "\n" else " ")
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+        elif char == "/" and next_char == "/":
+            result.extend((" ", " "))
+            line_comment = True
+            index += 1
+        elif char == "/" and next_char == "*":
+            result.extend((" ", " "))
+            block_comment = True
+            index += 1
+        elif char in {'"', "'"}:
+            result.append(" ")
+            quote = char
+        else:
+            result.append(char)
+        index += 1
+    return "".join(result)
+
+
+def current_project_writer_ownership(
+    project_source: str,
+    binding_source: str,
+    registration_source: str,
+) -> dict[str, object]:
+    tree = ast.parse(project_source, filename="python/volt/project.py")
+    project_result = next(
+        (
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "ProjectResult"
+        ),
+        None,
     )
+    require(project_result is not None, "ProjectResult must remain the current Project owner")
+    write_method = next(
+        (
+            node
+            for node in project_result.body
+            if isinstance(node, ast.FunctionDef) and node.name == "write"
+        ),
+        None,
+    )
+    require(write_method is not None, "ProjectResult.write must remain the current write entrypoint")
+
+    calls = [node for node in ast.walk(write_method) if isinstance(node, ast.Call)]
+    call_names = [qualified_python_name(call.func) for call in calls]
+    native_calls = [
+        call
+        for call, name in zip(calls, call_names)
+        if name == "_volt._write_project_bundle_v2"
+    ]
+    require(
+        len(native_calls) == 1,
+        "ProjectResult.write must call the native typed v2 writer exactly once",
+    )
+    native_call = native_calls[0]
+    require(
+        any(
+            isinstance(statement, ast.Expr) and statement.value is native_call
+            for statement in write_method.body
+        ),
+        "ProjectResult.write must invoke the native typed v2 writer directly",
+    )
+    board_preparation_calls = [
+        call
+        for call, name in zip(calls, call_names)
+        if name == "_volt._prepare_project_bundle_board"
+    ]
+    require(
+        len(board_preparation_calls) == 1,
+        "ProjectResult.write must prepare complete native Board artifacts exactly once",
+    )
+    require(
+        board_preparation_calls[0] in set(ast.walk(native_call)),
+        "native Board artifacts must flow directly into the native v2 writer",
+    )
+
+    allowed_calls = {
+        "Path",
+        "ValueError",
+        "_bundle_policy_snapshot",
+        "_canonical_report_bytes",
+        "_diagnostics_payload",
+        "_project_authoring_inputs",
+        "_tests_payload",
+        "_volt._prepare_project_bundle_board",
+        "_volt._write_project_bundle_v2",
+        "str",
+    }
+    unexpected_calls = sorted(
+        name for name in call_names if name is None or name not in allowed_calls
+    )
+    require(
+        not unexpected_calls,
+        "ProjectResult.write may only prepare typed native inputs before publication; "
+        f"unexpected calls: {unexpected_calls}",
+    )
+
+    native_nodes = set(ast.walk(native_call))
+    path_uses = [
+        node for node in ast.walk(write_method) if isinstance(node, ast.Name) and node.id == "path"
+    ]
+    require(path_uses, "ProjectResult.write must consume its requested destination")
+    require(
+        all(node in native_nodes for node in path_uses),
+        "ProjectResult.write may pass its destination only to the native typed v2 writer",
+    )
+
+    legacy_definitions = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name == "_artifact_record"
+    ]
+    legacy_calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and qualified_python_name(node.func) in {"_artifact_record", "self._artifact_record"}
+    ]
+    require(
+        not legacy_definitions and not legacy_calls,
+        "the legacy Python _artifact_record/v1 writer must not exist in the current Project path",
+    )
+
+    binding_call = cpp_code_only(
+        cpp_parenthesized_call(binding_source, '"_write_project_bundle_v2"')
+    )
+    require(
+        re.search(r"\bvolt::io::ProjectBundleV2Builder\s*\{", binding_call) is not None,
+        "the native v2 binding must construct ProjectBundleV2Builder",
+    )
+    require(
+        re.search(r"\bauto\s+bundle\s*=\s*builder\.build\s*\(\s*\)\s*;", binding_call)
+        is not None,
+        "the native v2 binding must build one validated ProjectBundleV2",
+    )
+    require(
+        re.search(r"\bbundle\.write\s*\(\s*destination\s*\)\s*;", binding_call) is not None,
+        "the native v2 binding must publish through ProjectBundleV2::write",
+    )
+    require(
+        "compile_for_delivery" not in binding_call and "prepare_board_scene" not in binding_call,
+        "the native v2 writer must consume complete Board artifacts rather than create them",
+    )
+    require(
+        re.search(r"\bvolt::io::ProjectBundle(?!V2)\b", binding_call) is None
+        and "ProjectBundleSchemaVersion::V1" not in binding_call,
+        "the current native binding must not route through ProjectBundle v1",
+    )
+    require(
+        re.search(
+            r"\bvolt::python::bind_project_bundle\s*\(\s*module\s*\)\s*;",
+            cpp_code_only(registration_source),
+        )
+        is not None,
+        "the native v2 ProjectBundle binding must remain registered",
+    )
+    return {
+        "entrypoint": "ProjectResult.write",
+        "legacy_python_artifact_record": False,
+        "native_board_preparation": "_volt._prepare_project_bundle_board",
+        "native_binding": "_volt._write_project_bundle_v2",
+        "native_builder": "volt::io::ProjectBundleV2Builder",
+        "native_publication": "ProjectBundleV2::write",
+    }
 
 
 def manifest_payloads() -> dict[str, dict[str, object]]:
@@ -266,10 +511,14 @@ def manifest_artifact_kinds(payloads: dict[str, dict[str, object]]) -> list[str]
 def canonical_artifact_inventory() -> dict[str, object]:
     payloads = manifest_payloads()
     return {
+        "current_writer_ownership": current_project_writer_ownership(
+            read(ROOT / "python" / "volt" / "project.py"),
+            read(ROOT / "src" / "python" / "project_bundle_bindings.cpp"),
+            read(ROOT / "src" / "python" / "bindings.cpp"),
+        ),
         "project_artifact_path_fields": dataclass_fields(
             ROOT / "python" / "volt" / "project.py", "ProjectArtifactPaths"
         ),
-        "project_record_kinds": project_artifact_record_kinds(),
         "manifest_artifact_kinds": manifest_artifact_kinds(payloads),
         "manifest_fields": {
             path: sorted(payload) for path, payload in sorted(payloads.items())
@@ -444,6 +693,23 @@ def require(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def require_writer_ownership_rejection(
+    project_source: str,
+    binding_source: str,
+    registration_source: str,
+    message: str,
+) -> None:
+    try:
+        current_project_writer_ownership(
+            project_source,
+            binding_source,
+            registration_source,
+        )
+    except AssertionError:
+        return
+    raise AssertionError(message)
+
+
 def run_self_tests() -> int:
     inventory = collect_inventory()
     require(
@@ -495,6 +761,117 @@ def run_self_tests() -> int:
             "top_level_scalars": {"format": "volt.test", "version": 1},
         },
         "semantic summaries must freeze top-level scalars and collection sizes",
+    )
+
+    project_source = read(ROOT / "python" / "volt" / "project.py")
+    binding_source = read(ROOT / "src" / "python" / "project_bundle_bindings.cpp")
+    registration_source = read(ROOT / "src" / "python" / "bindings.cpp")
+    ownership = current_project_writer_ownership(
+        project_source,
+        binding_source,
+        registration_source,
+    )
+    require(
+        ownership["native_builder"] == "volt::io::ProjectBundleV2Builder"
+        and ownership["native_board_preparation"] == "_volt._prepare_project_bundle_board"
+        and ownership["legacy_python_artifact_record"] is False,
+        "current writer evidence must retain native v2 ownership and reject Python v1",
+    )
+
+    bypassed_project = project_source.replace(
+        "_volt._write_project_bundle_v2(",
+        "self.write_artifacts(",
+        1,
+    )
+    require_writer_ownership_rejection(
+        bypassed_project,
+        binding_source,
+        registration_source,
+        "the ownership gate must reject bypassing the native v2 route",
+    )
+
+    restored_flat_writer = project_source.replace(
+        "        _volt._write_project_bundle_v2(",
+        "        self.write_artifacts(path)\n        _volt._write_project_bundle_v2(",
+        1,
+    )
+    require_writer_ownership_rejection(
+        restored_flat_writer,
+        binding_source,
+        registration_source,
+        "the ownership gate must reject restoring a current Python flat writer",
+    )
+
+    restored_artifact_record = project_source.replace(
+        "        _volt._write_project_bundle_v2(",
+        '        _artifact_record("logical")\n        _volt._write_project_bundle_v2(',
+        1,
+    )
+    require_writer_ownership_rejection(
+        restored_artifact_record,
+        binding_source,
+        registration_source,
+        "the ownership gate must reject restoring the Python v1 artifact-record writer",
+    )
+
+    bypassed_board_preparation = project_source.replace(
+        "_volt._prepare_project_bundle_board(",
+        "(",
+        1,
+    )
+    require_writer_ownership_rejection(
+        bypassed_board_preparation,
+        binding_source,
+        registration_source,
+        "the ownership gate must reject bypassing complete native Board preparation",
+    )
+
+    writer_owned_compilation = binding_source.replace(
+        "                const auto &board = artifacts.board();\n",
+        "                const auto &board = artifacts.board();\n"
+        "                static_cast<void>(board.compile_for_delivery(false));\n",
+        1,
+    )
+    require_writer_ownership_rejection(
+        project_source,
+        writer_owned_compilation,
+        registration_source,
+        "the ownership gate must reject moving Board compilation into the v2 writer",
+    )
+
+    missing_native_publication = binding_source.replace(
+        "            bundle.write(destination);\n",
+        "",
+        1,
+    )
+    require_writer_ownership_rejection(
+        project_source,
+        missing_native_publication,
+        registration_source,
+        "the ownership gate must reject a native binding that does not publish ProjectBundleV2",
+    )
+    spoofed_native_publication = missing_native_publication.replace(
+        "            auto result = py::dict{};\n",
+        "            // bundle.write(destination);\n            auto result = py::dict{};\n",
+        1,
+    )
+    require_writer_ownership_rejection(
+        project_source,
+        spoofed_native_publication,
+        registration_source,
+        "the ownership gate must ignore native-publication text in comments",
+    )
+
+    missing_registration = registration_source.replace(
+        "    volt::python::bind_project_bundle(module);\n",
+        "",
+        1,
+    )
+    require_writer_ownership_rejection(
+        project_source,
+        binding_source,
+        missing_registration,
+        "the ownership gate must reject removing the native ProjectBundle binding",
     )
     return 0
 

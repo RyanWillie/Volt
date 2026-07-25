@@ -14,6 +14,10 @@
 #include <utility>
 #include <vector>
 
+namespace volt::io {
+class PartLibraryBundle;
+}
+
 namespace volt::python {
 
 class PyCircuit;
@@ -145,9 +149,16 @@ class PyBoard {
 
     [[nodiscard]] py::dict to_fabrication_files() const;
 
-  private:
-    [[nodiscard]] volt::CompiledBoard compile_for_delivery() const;
+    /** Return the exact native authoring Board for ProjectBundle orchestration. */
+    [[nodiscard]] const volt::Board &authoring_board() const noexcept { return board_; }
 
+    /** Compile one complete immutable native artifact for ProjectBundle publication. */
+    [[nodiscard]] volt::CompiledBoard compile_for_delivery(bool models3d = false) const;
+
+    /** Return the exact selected closure used by native Board compilation. */
+    [[nodiscard]] const volt::io::PartLibraryBundle &selected_part_bundle() const noexcept;
+
+  private:
     [[nodiscard]] volt::BoardResolution
     resolve(std::vector<volt::BoardAssetCapability> additional = {}) const;
 

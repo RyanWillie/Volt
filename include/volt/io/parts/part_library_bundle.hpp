@@ -15,6 +15,7 @@ namespace volt::io {
 /** Supported deterministic PartLibraryBundle manifest and archive schema. */
 enum class PartLibraryBundleSchemaVersion : std::uint32_t {
     V1 = 1,
+    V2 = 2,
 };
 
 /** Supported native producer contract for deterministic PartLibraryBundle bytes. */
@@ -50,6 +51,23 @@ class PartLibraryBundleAttachment {
 
   private:
     PartKey part_;
+    PartAssetReference reference_;
+};
+
+/** One explicit symbol attachment owned directly by a component-definition root. */
+class PartLibraryBundleComponentAttachment {
+  public:
+    /** Attach one owner-declared symbol payload to an exact component-definition root. */
+    PartLibraryBundleComponentAttachment(ComponentKey component, PartAssetReference reference);
+
+    /** Return the exact component-definition root that owns this attachment. */
+    [[nodiscard]] const ComponentKey &component() const noexcept { return component_; }
+
+    /** Return the typed content-addressed symbol attachment request. */
+    [[nodiscard]] const PartAssetReference &reference() const noexcept { return reference_; }
+
+  private:
+    ComponentKey component_;
     PartAssetReference reference_;
 };
 
@@ -107,6 +125,19 @@ class PartLibraryBundle : public ExactPartResolver {
     build(const PartLibraryBuilder &builder, std::span<const PartKey> selected_parts,
           const PartAssetResolver &asset_resolver,
           std::span<const PartLibraryBundleAttachment> attachments = {});
+
+    /**
+     * Build exact selected-part and direct component-definition roots.
+     *
+     * Component roots retain their owner-declared default symbol bytes without inventing a
+     * selected part. This is the closure form used by ProjectBundle for external logical
+     * component references, including DNP and unplaced instances.
+     */
+    [[nodiscard]] static PartLibraryBundle build_with_component_roots(
+        const PartLibraryBuilder &builder, std::span<const PartKey> selected_parts,
+        std::span<const ComponentKey> selected_components, const PartAssetResolver &asset_resolver,
+        std::span<const PartLibraryBundleAttachment> attachments = {},
+        std::span<const PartLibraryBundleComponentAttachment> component_attachments = {});
 
     /** Reopen and completely validate one deterministic archive before exposing state. */
     [[nodiscard]] static PartLibraryBundle open(std::string_view bytes);
@@ -167,6 +198,22 @@ class PartLibraryBundle : public ExactPartResolver {
     /** Prevent borrowing asset bytes from a temporary bundle. */
     [[nodiscard]] std::optional<std::string_view>
     asset(const PartAssetReference &reference) const && = delete;
+
+    /** Return exact owner-canonical bytes for one admitted component definition. */
+    [[nodiscard]] std::optional<std::string_view>
+    component_document(const ComponentKey &key) const & noexcept;
+
+    /** Prevent borrowing component bytes from a temporary bundle. */
+    [[nodiscard]] std::optional<std::string_view>
+    component_document(const ComponentKey &key) const && = delete;
+
+    /** Return exact owner-canonical bytes for one admitted part definition. */
+    [[nodiscard]] std::optional<std::string_view>
+    part_document(const PartKey &key) const & noexcept;
+
+    /** Prevent borrowing part bytes from a temporary bundle. */
+    [[nodiscard]] std::optional<std::string_view>
+    part_document(const PartKey &key) const && = delete;
 
   private:
     PartLibraryBundle(std::string bytes, ContentHash library_digest, PartLibrary library,

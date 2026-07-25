@@ -41,6 +41,10 @@ int main() {
         return 1;
     }
     auto artifact = std::move(result).take_artifact();
+    if (volt::io::compiled_board_logical_dependency_digest(circuit) !=
+        artifact.provenance().logical_dependency_digest()) {
+        return 1;
+    }
     const auto svg = volt::io::render_pcb_svg(artifact);
     const auto fabrication = volt::io::write_pcb_fabrication_files(artifact);
     const auto bytes = volt::io::write_compiled_board(artifact);

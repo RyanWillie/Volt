@@ -785,8 +785,11 @@ def _normalize_schematic_symbols(
     return result
 
 
-def _schematic_symbol_refs(symbols: Iterable[SchematicSymbolSpec]) -> list[dict[str, str]]:
-    return [{"name": symbol.name, "variant": symbol.variant} for symbol in symbols]
+def _schematic_symbol_refs(symbols: Iterable[SchematicSymbolSpec]) -> list[dict[str, object]]:
+    return [
+        {**symbol._to_dict(), "variant": symbol.variant}
+        for symbol in symbols
+    ]
 
 
 def _schematic_symbol_for_variant(

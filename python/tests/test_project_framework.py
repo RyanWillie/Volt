@@ -683,7 +683,9 @@ def test_project_stage_tests_include_schematic_and_board_helpers():
     assert result.test_failures() == ()
 
 
-def test_project_result_write_emits_deterministic_bundle(tmp_path):
+def test_project_result_write_emits_deterministic_bundle_across_working_roots(
+    tmp_path, monkeypatch
+):
     project = volt.Project("status-led", version="0.1.0", description="LED module")
 
     @project.design
@@ -701,72 +703,72 @@ def test_project_result_write_emits_deterministic_bundle(tmp_path):
     first = project.run()
     second = project.run()
     first.write(tmp_path / "first.volt")
+    other_working_root = tmp_path / "other-working-root"
+    other_working_root.mkdir()
+    monkeypatch.chdir(other_working_root)
     second.write(tmp_path / "second.volt")
 
-    first_texts = {
-        path.relative_to(tmp_path / "first.volt").as_posix(): path.read_text(
-            encoding="utf-8"
-        )
+    first_bytes = {
+        path.relative_to(tmp_path / "first.volt").as_posix(): path.read_bytes()
         for path in sorted((tmp_path / "first.volt").rglob("*"))
         if path.is_file()
     }
-    second_texts = {
-        path.relative_to(tmp_path / "second.volt").as_posix(): path.read_text(
-            encoding="utf-8"
-        )
+    second_bytes = {
+        path.relative_to(tmp_path / "second.volt").as_posix(): path.read_bytes()
         for path in sorted((tmp_path / "second.volt").rglob("*"))
         if path.is_file()
     }
 
-    assert first_texts == second_texts
-    manifest = json.loads(first_texts["manifest.volt.json"])
+    assert first_bytes == second_bytes
+    manifest = json.loads(first_bytes["manifest.volt.json"])
     assert manifest["format"] == "volt.project_result"
-    assert manifest["schema_version"] == 1
+    assert manifest["schema_version"] == 2
     assert manifest["project"] == {
         "description": "LED module",
         "name": "status-led",
         "version": "0.1.0",
     }
-    assert manifest["ok"] is True
-    assert manifest["diagnostics"]["summary"] == {
+    assert manifest["run"] == {
+        "ok": True,
+        "profile": "default",
+        "stages": ["design", "schematic", "board"],
+        "status": "clean",
+    }
+    assert manifest["export_selection"] == []
+    assert manifest["build_id"].startswith("sha256:")
+    assert manifest["bundle_digest"].startswith("sha256:")
+    assert manifest["authoring_inputs"]["digest"].startswith("sha256:")
+    assert len(manifest["dependency_lock"]["selected_parts"]) == 3
+    kinds = [artifact["kind"] for artifact in manifest["artifacts"]]
+    assert kinds.count("logical_model") == 1
+    assert kinds.count("schematic_model") == 1
+    assert kinds.count("board_model") == 1
+    assert kinds.count("compiled_board") == 1
+    assert kinds.count("board_scene") == 1
+    assert kinds.count("diagnostics") == 1
+    assert kinds.count("project_tests") == 1
+    assert not {
+        "schematic_svg",
+        "board_svg",
+        "kicad_pcb",
+        "bom",
+        "cpl",
+    }.intersection(kinds)
+    assert set(first_bytes) == {
+        artifact["path"] for artifact in manifest["artifacts"]
+    } | {"manifest.volt.json"}
+
+    reports = {
+        artifact["kind"]: json.loads(first_bytes[artifact["path"]])
+        for artifact in manifest["artifacts"]
+        if artifact["kind"] in {"diagnostics", "project_tests"}
+    }
+    assert reports["diagnostics"]["summary"] == {
         "errors": 0,
         "infos": 0,
         "warnings": 0,
     }
-    assert manifest["tests"]["summary"] == {"failed": 0, "passed": 0}
-    assert [artifact["path"] for artifact in manifest["artifacts"]] == [
-        "logical/status-led.volt.json",
-        "bom/bom.json",
-        "bom/bom.csv",
-        "schematic/Main.volt.schematic.json",
-        "schematic/Main.svg",
-        "schematic/Main.body.svg",
-        "schematic/Main.pages/Main.svg",
-        "pcb/Main.volt.pcb.json",
-        "pcb/Main.svg",
-        "pcb/Main.kicad_pcb",
-        "pcb/Main.cpl.json",
-        "pcb/Main.cpl.csv",
-        "diagnostics/diagnostics.json",
-        "diagnostics/tests.json",
-    ]
-    assert set(first_texts) == {
-        "bom/bom.csv",
-        "bom/bom.json",
-        "diagnostics/diagnostics.json",
-        "diagnostics/tests.json",
-        "logical/status-led.volt.json",
-        "manifest.volt.json",
-        "pcb/Main.cpl.csv",
-        "pcb/Main.cpl.json",
-        "pcb/Main.kicad_pcb",
-        "pcb/Main.svg",
-        "pcb/Main.volt.pcb.json",
-        "schematic/Main.body.svg",
-        "schematic/Main.pages/Main.svg",
-        "schematic/Main.svg",
-        "schematic/Main.volt.schematic.json",
-    }
+    assert reports["project_tests"]["summary"] == {"failed": 0, "passed": 0}
 
 
 def test_project_result_write_preserves_expected_diagnostic_status(tmp_path):
@@ -790,9 +792,14 @@ def test_project_result_write_preserves_expected_diagnostic_status(tmp_path):
     manifest = json.loads((output / "manifest.volt.json").read_text(encoding="utf-8"))
 
     assert result.ok
-    assert manifest["ok"] is True
-    assert manifest["status"] == "expected-diagnostics"
-    assert manifest["profile"] == "default"
+    assert manifest["run"]["ok"] is True
+    assert manifest["run"]["status"] == "expected-diagnostics"
+    assert manifest["run"]["profile"] == "default"
+    assert manifest["dependency_lock"]["selected_parts"] == []
+    assert len(manifest["dependency_lock"]["libraries"]) == 1
+    assert [artifact["kind"] for artifact in manifest["artifacts"]].count(
+        "component_definition"
+    ) == 1
 
 
 def test_project_result_write_flat_artifacts_emits_legacy_example_outputs(tmp_path):
@@ -850,13 +857,14 @@ def test_project_result_writers_omit_kicad_for_unprofiled_board(tmp_path):
 
     result = project.run()
     bundle = tmp_path / "status-led.volt"
-    result.write(bundle)
-    manifest = json.loads((bundle / "manifest.volt.json").read_text(encoding="utf-8"))
 
     assert result.ok
-    assert (bundle / "pcb" / "Main.volt.pcb.json").exists()
-    assert not (bundle / "pcb" / "Main.kicad_pcb").exists()
-    assert "kicad_pcb" not in {artifact["kind"] for artifact in manifest["artifacts"]}
+    with pytest.raises(
+        RuntimeError,
+        match="CompiledBoard delivery requires one concrete Board capability profile",
+    ):
+        result.write(bundle)
+    assert not bundle.exists()
 
     flat_root = tmp_path / "flat"
     artifacts = result.write_artifacts(flat_root, slug="status_led")
@@ -969,7 +977,7 @@ def test_project_result_write_artifacts_disambiguates_layer_svg_filenames(tmp_pa
     assert 'id="pcb-layer-F_Cu_2"' in artifacts.pcb_layer_svgs[1].read_text(encoding="utf-8")
 
 
-def test_project_result_write_cleans_stale_bundle_artifacts(tmp_path):
+def test_project_result_write_never_rewrites_historical_bundle(tmp_path):
     full = volt.Project("status-led")
 
     @full.design
@@ -992,21 +1000,21 @@ def test_project_result_write_cleans_stale_bundle_artifacts(tmp_path):
 
     output = tmp_path / "status-led.volt"
     full.run().write(output)
-    assert (output / "pcb" / "Main.volt.pcb.json").exists()
-    assert (output / "schematic" / "Main.volt.schematic.json").exists()
+    before = {
+        path.relative_to(output).as_posix(): path.read_bytes()
+        for path in output.rglob("*")
+        if path.is_file()
+    }
 
-    design_only.run().write(output)
+    with pytest.raises(RuntimeError, match="destination already contains content"):
+        design_only.run().write(output)
 
-    assert not (output / "pcb").exists()
-    assert not (output / "schematic").exists()
-    manifest = json.loads((output / "manifest.volt.json").read_text(encoding="utf-8"))
-    assert [artifact["path"] for artifact in manifest["artifacts"]] == [
-        "logical/status-led.volt.json",
-        "bom/bom.json",
-        "bom/bom.csv",
-        "diagnostics/diagnostics.json",
-        "diagnostics/tests.json",
-    ]
+    after = {
+        path.relative_to(output).as_posix(): path.read_bytes()
+        for path in output.rglob("*")
+        if path.is_file()
+    }
+    assert after == before
 
 
 def test_project_result_write_allows_empty_existing_output_root(tmp_path):
@@ -1035,7 +1043,7 @@ def test_project_result_write_refuses_non_bundle_output_root(tmp_path):
     (output / "logical").mkdir(parents=True)
     (output / "logical" / "notes.txt").write_text("do not delete\n", encoding="utf-8")
 
-    with pytest.raises(FileExistsError, match="not an existing Volt project-result bundle"):
+    with pytest.raises(RuntimeError, match="destination already contains content"):
         project.run().write(output)
 
     assert (output / "logical" / "notes.txt").read_text(encoding="utf-8") == "do not delete\n"
@@ -1053,10 +1061,24 @@ def test_project_result_contains_multiple_boards():
 
     @project.board
     def board(context):
-        return (
-            _stage_board(context.design("main-controller")),
-            _stage_board(context.design("front-panel")),
+        main = _stage_board(context.design("main-controller"))
+        front_design = context.design("front-panel")
+        front = front_design.add_board("FrontPanel")
+        front.set_capability_profile(
+            volt.CapabilityProfile(
+                name="Project framework delivery fixture",
+                source="Volt Python test fixture",
+                as_of="2026-07-24",
+                minimum_track_width=0.01,
+                minimum_via_drill=0.01,
+                minimum_via_annular=0.02,
+            )
         )
+        front.set_rectangular_outline(origin=(0, 0), size=(20, 10))
+        front.place(front_design.component("J1"), at=(4, 5), locked=True)
+        front.place(front_design.component("R1"), at=(10, 5))
+        front.place(front_design.component("D1"), at=(15, 5), rotation=180)
+        return main, front
 
     result = project.run()
 
@@ -1065,9 +1087,8 @@ def test_project_result_contains_multiple_boards():
         "front-panel",
     ]
     assert result.board("main-controller:Main")._design.name == "main-controller"
-    assert result.board("front-panel:Main")._design.name == "front-panel"
-    with pytest.raises(LookupError, match="multiple board models named Main"):
-        result.board("Main")
+    assert result.board("front-panel:FrontPanel")._design.name == "front-panel"
+    assert result.board("Main")._design.name == "main-controller"
 
 
 def test_project_result_contains_multiple_designs():
@@ -1112,17 +1133,28 @@ def test_project_result_artifact_manifest_groups_outputs_by_board(tmp_path):
 
     @project.design
     def design():
-        return (
-            _board_ready_design("main-controller"),
-            _board_ready_design("front-panel"),
-        )
+        return _board_ready_design("control-panel")
 
     @project.board
     def board(context):
-        return (
-            _stage_board(context.design("main-controller")),
-            _stage_board(context.design("front-panel")),
+        design = context.design()
+        main = _stage_board(design)
+        alternate = design.add_board("Alternate")
+        alternate.set_capability_profile(
+            volt.CapabilityProfile(
+                name="Project framework delivery fixture",
+                source="Volt Python test fixture",
+                as_of="2026-07-24",
+                minimum_track_width=0.01,
+                minimum_via_drill=0.01,
+                minimum_via_annular=0.02,
+            )
         )
+        alternate.set_rectangular_outline(origin=(0, 0), size=(20, 10))
+        alternate.place(design.component("J1"), at=(4, 5), locked=True)
+        alternate.place(design.component("R1"), at=(10, 5))
+        alternate.place(design.component("D1"), at=(15, 5), rotation=180)
+        return main, alternate
 
     project.run().write(tmp_path / "control-panel.volt")
 
@@ -1131,16 +1163,15 @@ def test_project_result_artifact_manifest_groups_outputs_by_board(tmp_path):
             encoding="utf-8"
         )
     )
-    pcb_artifacts = [
-        artifact for artifact in manifest["artifacts"] if artifact["kind"] == "pcb"
+    board_owners = [
+        artifact["id"]["owner"]["value"]
+        for artifact in manifest["artifacts"]
+        if artifact["kind"] == "board_model"
     ]
 
-    assert [
-        (artifact["name"], artifact["group"])
-        for artifact in pcb_artifacts
-    ] == [
-        ("main-controller:Main", {"design": "main-controller", "board": "Main"}),
-        ("front-panel:Main", {"design": "front-panel", "board": "Main"}),
+    assert board_owners == [
+        {"board": "Alternate", "design": "control-panel"},
+        {"board": "Main", "design": "control-panel"},
     ]
 
 
@@ -1217,50 +1248,49 @@ def test_two_board_project_fixture_writes_deterministic_bundle(tmp_path):
 
     @project.board
     def board(context):
-        return (
-            _stage_board(context.design("main-controller")),
-            _stage_board(context.design("front-panel")),
+        main = _stage_board(context.design("main-controller"))
+        front_design = context.design("front-panel")
+        front = front_design.add_board("FrontPanel")
+        front.set_capability_profile(
+            volt.CapabilityProfile(
+                name="Project framework delivery fixture",
+                source="Volt Python test fixture",
+                as_of="2026-07-24",
+                minimum_track_width=0.01,
+                minimum_via_drill=0.01,
+                minimum_via_annular=0.02,
+            )
         )
+        front.set_rectangular_outline(origin=(0, 0), size=(20, 10))
+        front.place(front_design.component("J1"), at=(4, 5), locked=True)
+        front.place(front_design.component("R1"), at=(10, 5))
+        front.place(front_design.component("D1"), at=(15, 5), rotation=180)
+        return main, front
 
     first = project.run()
     second = project.run()
     first.write(tmp_path / "first.volt")
     second.write(tmp_path / "second.volt")
 
-    first_texts = {
-        path.relative_to(tmp_path / "first.volt").as_posix(): path.read_text(
-            encoding="utf-8"
-        )
+    first_bytes = {
+        path.relative_to(tmp_path / "first.volt").as_posix(): path.read_bytes()
         for path in sorted((tmp_path / "first.volt").rglob("*"))
         if path.is_file()
     }
-    second_texts = {
-        path.relative_to(tmp_path / "second.volt").as_posix(): path.read_text(
-            encoding="utf-8"
-        )
+    second_bytes = {
+        path.relative_to(tmp_path / "second.volt").as_posix(): path.read_bytes()
         for path in sorted((tmp_path / "second.volt").rglob("*"))
         if path.is_file()
     }
 
-    assert first_texts == second_texts
-    assert set(first_texts) == {
-        "bom/front-panel.bom.csv",
-        "bom/front-panel.bom.json",
-        "bom/main-controller.bom.csv",
-        "bom/main-controller.bom.json",
-        "diagnostics/diagnostics.json",
-        "diagnostics/tests.json",
-        "logical/front-panel.volt.json",
-        "logical/main-controller.volt.json",
-        "manifest.volt.json",
-        "pcb/front-panel-Main.cpl.csv",
-        "pcb/front-panel-Main.cpl.json",
-        "pcb/front-panel-Main.kicad_pcb",
-        "pcb/front-panel-Main.svg",
-        "pcb/front-panel-Main.volt.pcb.json",
-        "pcb/main-controller-Main.cpl.csv",
-        "pcb/main-controller-Main.cpl.json",
-        "pcb/main-controller-Main.kicad_pcb",
-        "pcb/main-controller-Main.svg",
-        "pcb/main-controller-Main.volt.pcb.json",
-    }
+    assert first_bytes == second_bytes
+    manifest = json.loads(first_bytes["manifest.volt.json"])
+    kinds = [artifact["kind"] for artifact in manifest["artifacts"]]
+    assert kinds.count("logical_model") == 2
+    assert kinds.count("board_model") == 2
+    assert kinds.count("compiled_board") == 2
+    assert kinds.count("board_scene") == 2
+    assert manifest["export_selection"] == []
+    assert set(first_bytes) == {
+        artifact["path"] for artifact in manifest["artifacts"]
+    } | {"manifest.volt.json"}

@@ -113,14 +113,28 @@ def test_project_multi_model_stage_tests_keep_deterministic_order_in_results(tmp
 
     @project.board
     def board(context):
-        return (
-            _stage_board(context.design("main-controller")),
-            _stage_board(context.design("front-panel")),
+        main = _stage_board(context.design("main-controller"))
+        front_design = context.design("front-panel")
+        front = front_design.add_board("FrontPanel")
+        front.set_capability_profile(
+            volt.CapabilityProfile(
+                name="Project framework delivery fixture",
+                source="Volt Python test fixture",
+                as_of="2026-07-24",
+                minimum_track_width=0.01,
+                minimum_via_drill=0.01,
+                minimum_via_annular=0.02,
+            )
         )
+        front.set_rectangular_outline(origin=(0, 0), size=(20, 10))
+        front.place(front_design.component("J1"), at=(4, 5), locked=True)
+        front.place(front_design.component("R1"), at=(10, 5))
+        front.place(front_design.component("D1"), at=(15, 5), rotation=180)
+        return main, front
 
     @project.board.test
     def every_board_has_an_outline(check):
-        assert check.names() == ("main-controller:Main", "front-panel:Main")
+        assert check.names() == ("main-controller:Main", "front-panel:FrontPanel")
         for board in check.boards():
             board.has_outline()
 
@@ -129,37 +143,33 @@ def test_project_multi_model_stage_tests_keep_deterministic_order_in_results(tmp
     first.write(tmp_path / "first.volt")
     second.write(tmp_path / "second.volt")
 
-    first_tests = json.loads(
-        (tmp_path / "first.volt" / "diagnostics" / "tests.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    second_tests = json.loads(
-        (tmp_path / "second.volt" / "diagnostics" / "tests.json").read_text(
-            encoding="utf-8"
-        )
-    )
     first_manifest = json.loads(
         (tmp_path / "first.volt" / "manifest.volt.json").read_text(encoding="utf-8")
     )
     second_manifest = json.loads(
         (tmp_path / "second.volt" / "manifest.volt.json").read_text(encoding="utf-8")
     )
+    first_tests_path = next(
+        artifact["path"]
+        for artifact in first_manifest["artifacts"]
+        if artifact["kind"] == "project_tests"
+    )
+    second_tests_path = next(
+        artifact["path"]
+        for artifact in second_manifest["artifacts"]
+        if artifact["kind"] == "project_tests"
+    )
+    first_tests = json.loads((tmp_path / "first.volt" / first_tests_path).read_text())
+    second_tests = json.loads((tmp_path / "second.volt" / second_tests_path).read_text())
 
     assert first_tests == second_tests
-    assert first_manifest["stages"] == second_manifest["stages"]
-    assert first_manifest["stages"] == [
-        {"name": "design", "model_count": 2, "tests": []},
+    assert first_manifest["run"]["stages"] == second_manifest["run"]["stages"]
+    assert first_manifest["run"]["stages"] == ["design", "board"]
+    assert first_tests["tests"] == [
         {
-            "name": "board",
-            "model_count": 2,
-            "tests": [
-                {
-                    "stage": "board",
-                    "name": "every_board_has_an_outline",
-                    "ok": True,
-                    "message": "",
-                }
-            ],
-        },
+            "stage": "board",
+            "name": "every_board_has_an_outline",
+            "ok": True,
+            "message": "",
+        }
     ]

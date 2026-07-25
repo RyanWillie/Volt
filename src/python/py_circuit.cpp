@@ -1,4 +1,5 @@
 #include "py_circuit.hpp"
+#include "py_circuit_part_closure.hpp"
 
 #include <optional>
 
@@ -25,10 +26,11 @@ class EmptyAssetResolver final : public volt::PartAssetResolver {
 
 } // namespace
 
-PyCircuit::PyCircuit() : selected_part_bundle_{empty_selected_bundle()} {}
+PyCircuit::PyCircuit()
+    : selected_part_bundle_{std::make_shared<PyCircuitPartClosure>(empty_selected_bundle())} {}
 
 const volt::io::PartLibraryBundle &PyCircuit::selected_part_bundle() const noexcept {
-    return *selected_part_bundle_;
+    return selected_part_bundle_->bundle();
 }
 
 } // namespace volt::python

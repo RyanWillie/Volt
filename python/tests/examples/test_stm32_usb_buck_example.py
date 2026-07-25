@@ -7,12 +7,13 @@ from collections import Counter
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import pytest
 import volt
 
 
 def _project_bundle_texts(bundle):
     return {
-        path.relative_to(bundle).as_posix(): path.read_text(encoding="utf-8")
+        path.relative_to(bundle).as_posix(): path.read_bytes()
         for path in sorted(bundle.rglob("*"))
         if path.is_file()
     }
@@ -140,14 +141,9 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
 
         stale_page = artifacts.schematic_svg_pages[0].parent / "stale.svg"
         stale_page.write_text("<svg></svg>\n", encoding="utf-8")
-        repeated_artifacts = main.write_artifacts(Path(temp_dir))
-        assert not stale_page.exists()
-        assert [path.name for path in repeated_artifacts.schematic_svg_pages] == [
-            "stm32_usb_buck_STM32_USB_Buck.svg"
-        ]
-        assert [path.name for path in repeated_artifacts.pcb_layer_svgs] == (
-            expected_pcb_layer_svg_names
-        )
+        with pytest.raises(RuntimeError, match="destination already contains content"):
+            main.write_artifacts(Path(temp_dir))
+        assert stale_page.exists()
 
         second_artifacts = main.write_artifacts(Path(temp_dir) / "second")
         assert second_artifacts.logical_json.read_text(encoding="utf-8") == first_logical_text
@@ -733,16 +729,22 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     }
 
     project_manifest = json.loads(first_project_texts["manifest.volt.json"])
-    project_tests = json.loads(first_project_texts["diagnostics/tests.json"])
+    tests_artifact = next(
+        artifact
+        for artifact in project_manifest["artifacts"]
+        if artifact["kind"] == "project_tests"
+    )
+    project_tests = json.loads(first_project_texts[tests_artifact["path"]])
     assert project_manifest["format"] == "volt.project_result"
-    assert project_manifest["ok"] is True
-    assert project_manifest["status"] == "expected-diagnostics"
-    assert project_manifest["tests"]["summary"] == {"failed": 0, "passed": 5}
-    assert "pcb/STM32-USB-Buck-PCB.volt.pcb.json" in first_project_texts
-    assert "pcb/STM32-USB-Buck-PCB.svg" in first_project_texts
-    assert "pcb/STM32-USB-Buck-PCB.kicad_pcb" in first_project_texts
-    assert "pcb/STM32-USB-Buck-PCB.cpl.json" in first_project_texts
-    assert "pcb/STM32-USB-Buck-PCB.cpl.csv" in first_project_texts
+    assert project_manifest["schema_version"] == 2
+    assert project_manifest["run"]["ok"] is True
+    assert project_manifest["run"]["status"] == "expected-diagnostics"
+    assert project_manifest["export_selection"] == []
+    kinds = [artifact["kind"] for artifact in project_manifest["artifacts"]]
+    assert kinds.count("logical_model") == 1
+    assert kinds.count("board_model") == 1
+    assert kinds.count("compiled_board") == 1
+    assert kinds.count("board_scene") == 1
     assert project_tests["summary"] == {"failed": 0, "passed": 5}
     assert {
         (test["stage"], test["name"], test["ok"]) for test in project_tests["tests"]
@@ -832,10 +834,10 @@ def test_stm32_usb_buck_example_writes_jlcpcb_manufacturing_package():
         ].read_text(encoding="utf-8")
 
         artifact_paths = {item["kind"]: item["path"] for item in manifest["artifacts"]}
-        assert artifact_paths["bom"] == "bom/bom.json"
-        assert artifact_paths["bom_csv"] == "bom/bom.csv"
-        assert artifact_paths["cpl"] == "pcb/STM32-USB-Buck-PCB.cpl.json"
-        assert artifact_paths["cpl_csv"] == "pcb/STM32-USB-Buck-PCB.cpl.csv"
+        assert artifact_paths["bom"] == "manufacturing/assembly/bom.json"
+        assert artifact_paths["bom_csv"] == "manufacturing/assembly/bom.csv"
+        assert artifact_paths["cpl"] == "manufacturing/assembly/cpl.json"
+        assert artifact_paths["cpl_csv"] == "manufacturing/assembly/cpl.csv"
         assert output.joinpath("manufacturing", "inspection.html").is_file()
 
         with zipfile.ZipFile(package.archive) as archive:

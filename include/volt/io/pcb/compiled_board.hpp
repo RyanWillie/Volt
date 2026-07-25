@@ -32,6 +32,9 @@ namespace volt::io {
 /** Return the exact canonical bytes owned by one immutable CompiledBoard. */
 [[nodiscard]] std::string write_compiled_board(const CompiledBoard &compiled);
 
+/** Derive the owner-canonical logical dependency digest for one CompiledBoard input. */
+[[nodiscard]] ContentHash compiled_board_logical_dependency_digest(const Circuit &circuit);
+
 /** Fail-closed reopen of one standalone immutable CompiledBoard archive. */
 [[nodiscard]] CompiledBoard open_compiled_board(std::string_view bytes);
 

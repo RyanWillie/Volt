@@ -17,14 +17,14 @@
     { "id": "component_def:2", "name": "LED", "source": { "namespace": "volt.optos", "name": "led_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.optos:led", "variant": "default" }], "contract": { "semantic_model_version": 1, "key": "volt.python.component/sha256:ee48f9e524a14c1b2c657b65e6393abfe8d3ef4e7442f0e54543c7b9acdb46fc", "content_identity": "sha256:a77d5fb1d9b44a040e95290cdc9fe4b302531d8f1387bf278b23d5f3a5ddf357", "pin_keys": ["pin/0", "pin/1"], "framed_pins": [], "relations": [], "supply_domains": [], "feature_schemas": [], "feature_bindings": [] }, "pins": ["pin_def:4", "pin_def:5"], "properties": {} }
   ],
   "components": [
-    { "id": "component:0", "definition": "component_def:0", "reference": "J1", "properties": {}, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-0", "library_digest": "sha256:f6cc75f63d8df8a50a14851b42a36e7c84a377705b72e66244959b59b37c71ec", "part_digest": "sha256:ab08b58435d6ca6086bd39e0895430f4c05eba6a5faaad46adb4b5b8b9dfdd9e" } },
+    { "id": "component:0", "definition": "component_def:0", "reference": "J1", "properties": {}, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-0", "library_digest": "sha256:26a516c4030587b623e46cc32bb8930bc6f90cae317ffdc078e0d37754c5f9ba", "part_digest": "sha256:70d55a4ece404697b55fd01ead17cdb3325c6f44dde5f8c6a315422ed0147d35" } },
     { "id": "component:1", "definition": "component_def:1", "reference": "R1", "properties": {
         "value": { "type": "string", "value": "330 ohm" }
       }, "electrical_attributes": {
         "resistance": { "type": "quantity", "dimension": "resistance", "value": 330 },
         "tolerance": { "type": "tolerance", "mode": "percent", "dimension": "ratio", "minus": 0.01, "plus": 0.01 }
-      }, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-1", "library_digest": "sha256:f6cc75f63d8df8a50a14851b42a36e7c84a377705b72e66244959b59b37c71ec", "part_digest": "sha256:2ea51767417068c2f5d14828a9ecb904548029aac11b7402ce71094f29cc9e5e" } },
-    { "id": "component:2", "definition": "component_def:2", "reference": "D1", "properties": {}, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-2", "library_digest": "sha256:f6cc75f63d8df8a50a14851b42a36e7c84a377705b72e66244959b59b37c71ec", "part_digest": "sha256:b99850ce2311f6899541e70197ee2cf7930f63188d414e5ea0e7270c37be0cea" } }
+      }, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-1", "library_digest": "sha256:26a516c4030587b623e46cc32bb8930bc6f90cae317ffdc078e0d37754c5f9ba", "part_digest": "sha256:e197aa780062bf6fd6b0910963635dbfa9bc95a5d4b59be6d9716ab5180025aa" } },
+    { "id": "component:2", "definition": "component_def:2", "reference": "D1", "properties": {}, "selected_library_part": { "library_namespace": "volt.python.design", "library_version": "1", "part_key": "component-2", "library_digest": "sha256:26a516c4030587b623e46cc32bb8930bc6f90cae317ffdc078e0d37754c5f9ba", "part_digest": "sha256:8c225278cff83f84ab339e6b889b4395ba634bb04d4293c878c98934d966c7a0" } }
   ],
   "pins": [
     { "id": "pin:0", "component": "component:0", "definition": "pin_def:0" },

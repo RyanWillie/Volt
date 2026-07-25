@@ -75,6 +75,7 @@ pybind11_add_module(
     py_circuit_reports.cpp
     py_part_library.cpp
     py_schematic.cpp
+    project_bundle_bindings.cpp
     py_fabrication.cpp
     py_kicad.cpp
     schematic_bindings.cpp

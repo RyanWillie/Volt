@@ -420,6 +420,57 @@ TEST_CASE("PartLibraryBundle closure is explicit and empty closure is valid") {
         volt::ErrorCode::CrossReferenceViolation);
 }
 
+TEST_CASE("PartLibraryBundle retains component roots without inventing selected parts") {
+    auto fixture = bundle_fixture();
+    auto resolver = MemoryAssetResolver{};
+    const auto symbol_bytes = std::string{"component-root-symbol"};
+    const auto symbol =
+        volt::PartAssetReference{volt::PartAssetKind::Schematic, "symbol:test.symbols:led@default",
+                                 volt::sha256_content_hash(symbol_bytes)};
+    resolver.add(symbol, symbol_bytes);
+    const auto component_key = fixture.component.definition.contract().key();
+    const auto attachment = volt::io::PartLibraryBundleComponentAttachment{component_key, symbol};
+
+    const auto first = volt::io::PartLibraryBundle::build_with_component_roots(
+        fixture.builder, {}, std::vector{component_key}, resolver, {}, std::vector{attachment});
+    const auto second = volt::io::PartLibraryBundle::build_with_component_roots(
+        fixture.builder, {}, std::vector{component_key}, resolver, {}, std::vector{attachment});
+
+    CHECK(std::string{first.bytes()} == std::string{second.bytes()});
+    CHECK(first.library().components().size() == 1U);
+    CHECK(first.library().parts().empty());
+    CHECK(first.component_document(component_key).has_value());
+    CHECK(decode_test_archive(first.bytes()).manifest.at("schema_version") == 2U);
+    CHECK(std::ranges::count(first.entries(),
+                             volt::io::PartLibraryBundleEntryRole::ComponentDefinition,
+                             &volt::io::PartLibraryBundleEntry::role) == 1U);
+    CHECK(std::ranges::count(first.entries(), volt::io::PartLibraryBundleEntryRole::Symbol,
+                             &volt::io::PartLibraryBundleEntry::role) == 1U);
+
+    const auto reopened = volt::io::PartLibraryBundle::open(first.bytes());
+    CHECK(reopened.library().parts().empty());
+    CHECK(reopened.component_document(component_key) == first.component_document(component_key));
+
+    auto wrong_schema = decode_test_archive(first.bytes());
+    wrong_schema.manifest["schema_version"] = 1U;
+    refresh_content_digest(wrong_schema);
+    check_reopen_rejected(encode_test_archive(wrong_schema));
+
+    check_kernel_error(
+        [&] {
+            static_cast<void>(volt::io::PartLibraryBundle::build_with_component_roots(
+                fixture.builder, {}, std::vector{component_key}, resolver));
+        },
+        volt::ErrorCode::CrossReferenceViolation);
+    check_kernel_error(
+        [&] {
+            static_cast<void>(volt::io::PartLibraryBundle::build_with_component_roots(
+                fixture.builder, {}, std::vector{component_key, component_key}, resolver, {},
+                std::vector{attachment}));
+        },
+        volt::ErrorCode::DuplicateName);
+}
+
 TEST_CASE("PartLibraryBundle build is all-or-nothing over selected assets") {
     auto fixture = bundle_fixture();
     const auto selected = std::vector{volt::PartKey{"vendor/A-LED"}};

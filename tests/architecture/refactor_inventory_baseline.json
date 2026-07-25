@@ -376,6 +376,14 @@
   },
   "inventories": {
     "canonical_artifacts": {
+      "current_writer_ownership": {
+        "entrypoint": "ProjectResult.write",
+        "legacy_python_artifact_record": false,
+        "native_board_preparation": "_volt._prepare_project_bundle_board",
+        "native_binding": "_volt._write_project_bundle_v2",
+        "native_builder": "volt::io::ProjectBundleV2Builder",
+        "native_publication": "ProjectBundleV2::write"
+      },
       "manifest_artifact_kinds": [
         "bom",
         "bom_csv",
@@ -458,26 +466,6 @@
         "schematic_json",
         "schematic_svg",
         "schematic_svg_pages"
-      ],
-      "project_record_kinds": [
-        "bom",
-        "bom_csv",
-        "bom_sourcing_snapshot",
-        "cpl",
-        "cpl_csv",
-        "diagnostics",
-        "kicad_pcb",
-        "logical",
-        "part_model_asset",
-        "part_models_3d",
-        "pcb",
-        "pcb_models_3d",
-        "pcb_svg",
-        "project_tests",
-        "schematic",
-        "schematic_body_svg",
-        "schematic_page_svg",
-        "schematic_svg"
       ]
     },
     "offline_fixtures": [
