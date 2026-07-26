@@ -65,6 +65,8 @@ int main() {
                    project_bundle.artifacts().size() == 3U &&
                    project_bundle.dependency_lock().libraries().empty() &&
                    !project_bundle.build_id().content_hash().value().empty() &&
+                   project_bundle.manifest_bytes().starts_with(
+                       R"({"format":"volt.project_result","schema_version":2,)") &&
                    volt::io::artifact_kind_name(volt::io::ArtifactKind::LogicalModel) ==
                        "logical_model" &&
                    volt::io::symbol_definition_format_name() == "volt.symbol-definition"

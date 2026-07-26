@@ -380,9 +380,7 @@
         "entrypoint": "ProjectResult.write",
         "legacy_python_artifact_record": false,
         "native_board_preparation": "_volt._prepare_project_bundle_board",
-        "native_binding": "_volt._write_project_bundle_v2",
-        "native_builder": "volt::io::ProjectBundleV2Builder",
-        "native_publication": "ProjectBundleV2::write"
+        "native_binding": "_volt._write_project_bundle_v2"
       },
       "manifest_artifact_kinds": [
         "bom",

@@ -19,6 +19,10 @@ namespace volt::io {
 class PartLibraryBundle;
 }
 
+namespace volt::authoring {
+struct ComponentSpec;
+}
+
 namespace volt::python {
 
 class PyPartLibrary;
@@ -259,14 +263,11 @@ class PyCircuit {
     [[nodiscard]] std::vector<volt::PinDefId>
     module_component_pins_by_name(std::size_t component, const std::string &name) const;
 
-    void retain_builtin_symbol_assets(volt::ComponentDefId definition);
+    [[nodiscard]] std::size_t
+    define_builtin_component(const volt::authoring::ComponentSpec &source);
 
     [[nodiscard]] std::optional<std::string>
     retained_symbol_asset(const volt::SchematicSymbolReference &reference) const;
-
-    void rebuild_authored_definition_bundle(
-        std::span<const std::pair<volt::SchematicSymbolReference, std::string>> additional_symbols =
-            {});
 
     volt::Circuit circuit_;
     std::shared_ptr<PyCircuitPartClosure> selected_part_bundle_;

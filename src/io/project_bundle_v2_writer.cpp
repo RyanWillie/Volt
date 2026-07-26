@@ -1140,6 +1140,153 @@ void ProjectBundleV2::write(const std::filesystem::path &destination,
     }
 }
 
+namespace {
+
+struct ValidatedProjectBuild {
+    Json authoring_records;
+    ContentHash authoring_digest;
+    std::map<std::string, const LogicalInput *> logical_by_design;
+};
+
+[[nodiscard]] Json parse_project_report(std::string_view bytes, std::string_view name) {
+    try {
+        return Json::parse(bytes.begin(), bytes.end());
+    } catch (const std::exception &error) {
+        reject(std::string{name} + " report is not valid JSON: " + error.what(),
+               ErrorCode::InvalidArgument);
+    }
+}
+
+[[nodiscard]] ValidatedProjectBuild
+validate_project_build(const ProjectRunSummary &run, const LogicalInputName &entrypoint,
+                       std::span<const AuthoringInput> inputs, const ProjectReport &diagnostics,
+                       const ProjectReport &tests, std::span<const LogicalInput> logicals) {
+    require(!logicals.empty(), "a complete bundle requires at least one logical model",
+            ErrorCode::InvalidState);
+    require(run.ok == (run.status != ProjectStatus::Failed),
+            "run ok flag disagrees with its closed status");
+    const auto diagnostics_report = parse_project_report(diagnostics.bytes, "diagnostics");
+    require(
+        diagnostics_report.is_object() && diagnostics_report.size() == 6U &&
+            diagnostics_report.contains("status") && diagnostics_report.contains("summary") &&
+            diagnostics_report.contains("diagnostics") && diagnostics_report.contains("expected") &&
+            diagnostics_report.contains("unexpected") &&
+            diagnostics_report.contains("missing_expected"),
+        "diagnostics report does not match its closed project codec", ErrorCode::InvalidArgument);
+    require(diagnostics_report.at("status").is_string() &&
+                diagnostics_report.at("status").get<std::string>() == status_name(run.status),
+            "run status disagrees with the diagnostics report");
+    const auto tests_report = parse_project_report(tests.bytes, "project-tests");
+    require(
+        tests_report.is_object() && tests_report.size() == 2U && tests_report.contains("summary") &&
+            tests_report.contains("tests") && tests_report.at("summary").is_object() &&
+            tests_report.at("summary").contains("failed") &&
+            tests_report.at("summary").at("failed").is_number_unsigned(),
+        "project-tests report does not match its closed project codec", ErrorCode::InvalidArgument);
+    const auto failed_tests = tests_report.at("summary").at("failed").get<std::uint64_t>();
+    require(failed_tests == 0U || run.status == ProjectStatus::Failed,
+            "run status disagrees with failed project tests");
+
+    auto input_records = std::vector<std::tuple<AuthoringInputKind, std::string, ContentHash>>{};
+    input_records.reserve(inputs.size());
+    for (const auto &input : inputs) {
+        input_records.emplace_back(input.kind(), input.name().value(),
+                                   sha256_content_hash(input.bytes()));
+    }
+    std::ranges::sort(input_records, [](const auto &lhs, const auto &rhs) {
+        return std::tuple{authoring_kind_name(std::get<0>(lhs)), std::get<1>(lhs),
+                          std::get<2>(lhs).value()} <
+               std::tuple{authoring_kind_name(std::get<0>(rhs)), std::get<1>(rhs),
+                          std::get<2>(rhs).value()};
+    });
+    require(std::ranges::adjacent_find(input_records,
+                                       [](const auto &lhs, const auto &rhs) {
+                                           return std::get<0>(lhs) == std::get<0>(rhs) &&
+                                                  std::get<1>(lhs) == std::get<1>(rhs);
+                                       }) == input_records.end(),
+            "authoring inputs contain a duplicate kind/name pair", ErrorCode::DuplicateName);
+    const auto entrypoint_count = std::ranges::count_if(input_records, [&](const auto &record) {
+        return std::get<0>(record) == AuthoringInputKind::ProjectSource &&
+               std::get<1>(record) == entrypoint.value();
+    });
+    require(entrypoint_count == 1, "entrypoint must name exactly one ProjectSource input record",
+            ErrorCode::InvalidArgument);
+    auto authoring_records = Json::array();
+    for (const auto &[kind, name, digest] : input_records) {
+        authoring_records.push_back(Json{{"kind", authoring_kind_name(kind)},
+                                         {"name", name},
+                                         {"content_digest", digest.value()}});
+    }
+    const auto authoring_core =
+        Json{{"entrypoint", entrypoint.value()}, {"records", authoring_records}};
+
+    auto logical_by_design = std::map<std::string, const LogicalInput *>{};
+    for (const auto &logical : logicals) {
+        const auto [unused, inserted] = logical_by_design.emplace(logical.design.value(), &logical);
+        static_cast<void>(unused);
+        require(inserted, "logical DesignKey is duplicated", ErrorCode::DuplicateName);
+    }
+    return ValidatedProjectBuild{std::move(authoring_records),
+                                 sha256_content_hash(canonical(authoring_core)),
+                                 std::move(logical_by_design)};
+}
+
+class ProjectArtifactGraph {
+  public:
+    void accumulate_authoritative_artifacts(const ValidatedProjectBuild &validated,
+                                            std::span<const LogicalInput> logicals,
+                                            std::span<const SchematicInput> schematics,
+                                            std::span<const BoardInput> boards,
+                                            const ProjectReport &diagnostics,
+                                            const ProjectReport &tests);
+
+    void materialize_selected_exports(const ValidatedProjectBuild &validated,
+                                      std::span<const SchematicInput> schematics,
+                                      std::span<const BoardInput> boards,
+                                      const ExportSelection &exports);
+
+    void validate();
+
+    [[nodiscard]] DependencyLock dependency_lock() const;
+
+    [[nodiscard]] const std::map<std::string, DraftArtifact> &artifacts() const noexcept {
+        return artifacts_;
+    }
+
+    [[nodiscard]] const Json &export_selection() const noexcept { return export_selection_; }
+
+  private:
+    [[nodiscard]] const DraftArtifact &add_artifact(ArtifactId id, std::string bytes,
+                                                    std::vector<ArtifactRef> dependencies,
+                                                    ContentHash producer_build_value,
+                                                    bool required_default = true);
+
+    void admit_library(const PartLibraryBundle &bundle);
+
+    [[nodiscard]] ArtifactRef add_component(const PartLibraryBundle &bundle,
+                                            const ComponentDefinition &component);
+
+    [[nodiscard]] ArtifactRef add_part(const PartLibraryBundle &bundle,
+                                       const LibraryPartRef &selected);
+
+    [[nodiscard]] const DraftArtifact &require_target(const ArtifactRef &target) const;
+
+    [[nodiscard]] const BoardInput &board_for_compiled(const ArtifactRef &target,
+                                                       std::span<const BoardInput> boards) const;
+
+    std::map<std::string, DraftArtifact> artifacts_;
+    std::map<std::string, const PartLibraryBundle *> library_rows_;
+    std::map<std::string, ArtifactRef> selected_refs_;
+    std::map<std::string, ArtifactRef> component_artifacts_;
+    std::map<std::string, ArtifactRef> part_artifacts_;
+    std::map<std::string, ArtifactRef> attachment_artifacts_;
+    std::map<std::string, ArtifactRef> glb_artifacts_;
+    std::set<std::string> consumed_glb_assets_;
+    Json export_selection_ = Json::array();
+};
+
+} // namespace
+
 class ProjectBundleV2Builder::Storage {
   public:
     ProjectIdentity project;
@@ -1160,6 +1307,195 @@ class ProjectBundleV2Builder::Storage {
           entrypoint{std::move(entrypoint_value)}, inputs{std::move(input_values)},
           diagnostics{std::move(diagnostics_value)}, tests{std::move(tests_value)} {}
 };
+
+namespace {
+
+const DraftArtifact &ProjectArtifactGraph::add_artifact(ArtifactId id, std::string bytes,
+                                                        std::vector<ArtifactRef> dependencies,
+                                                        ContentHash producer_build_value,
+                                                        bool required_default) {
+    normalize_dependencies(dependencies);
+    auto artifact = DraftArtifact{std::move(id), std::move(bytes), std::move(dependencies),
+                                  std::move(producer_build_value), required_default};
+    const auto key = artifact_key(artifact.id);
+    const auto [position, inserted] = artifacts_.emplace(key, std::move(artifact));
+    require(inserted, "artifact identity is duplicated", ErrorCode::DuplicateName);
+    return position->second;
+}
+
+void ProjectArtifactGraph::admit_library(const PartLibraryBundle &bundle) {
+    const auto key = bundle.identity().namespace_name() + '\n' + bundle.identity().version() +
+                     '\n' + bundle.library_digest().value();
+    const auto same_release = std::ranges::find_if(library_rows_, [&](const auto &candidate) {
+        const auto &admitted = *candidate.second;
+        return admitted.identity().namespace_name() == bundle.identity().namespace_name() &&
+               admitted.identity().version() == bundle.identity().version();
+    });
+    require(same_release == library_rows_.end() ||
+                same_release->second->library_digest() == bundle.library_digest(),
+            "one library release has conflicting exact digests");
+    library_rows_.emplace(key, &bundle);
+}
+
+ArtifactRef ProjectArtifactGraph::add_component(const PartLibraryBundle &bundle,
+                                                const ComponentDefinition &component) {
+    admit_library(bundle);
+    const auto owner = component_ref(bundle, component);
+    const auto id = ArtifactId{ArtifactKind::ComponentDefinition, owner};
+    const auto key = artifact_key(id);
+    if (const auto existing = component_artifacts_.find(key);
+        existing != component_artifacts_.end()) {
+        return existing->second;
+    }
+    const auto bytes = bundle.component_document(component.contract().key());
+    require(bytes.has_value(), "reachable component definition bytes are missing",
+            ErrorCode::UnknownEntity);
+    require(sha256_content_hash(*bytes) != sha256_content_hash(""),
+            "component definition bytes are empty", ErrorCode::InvalidState);
+    auto symbol_dependencies = std::vector<ArtifactRef>{};
+    for (const auto &symbol : component.schematic_symbols()) {
+        if (symbol.variant() != "default") {
+            continue;
+        }
+        const auto component_entry =
+            std::ranges::find(bundle.entries(), "component:" + component.contract().key().value(),
+                              &PartLibraryBundleEntry::id);
+        require(component_entry != bundle.entries().end(),
+                "component definition entry is absent from the selected closure",
+                ErrorCode::UnknownEntity);
+        const auto symbol_key = "symbol:" + symbol.name() + "@" + symbol.variant();
+        const auto symbol_entry =
+            std::ranges::find_if(bundle.entries(), [&](const auto &candidate) {
+                return candidate.role() == PartLibraryBundleEntryRole::Symbol &&
+                       candidate.source_key() == std::optional{symbol_key} &&
+                       std::ranges::find(component_entry->dependencies(), candidate.id()) !=
+                           component_entry->dependencies().end();
+            });
+        require(symbol_entry != bundle.entries().end(),
+                "component default symbol is absent from the selected closure",
+                ErrorCode::UnknownEntity);
+        const auto reference =
+            PartAssetReference{PartAssetKind::Schematic, symbol_key, symbol_entry->digest()};
+        const auto symbol_owner = attachment_ref(bundle, reference, LibraryAttachmentKind::Symbol);
+        const auto symbol_id = ArtifactId{ArtifactKind::SymbolDefinition, symbol_owner};
+        const auto symbol_artifact_key = artifact_key(symbol_id);
+        auto symbol_ref = attachment_artifacts_.find(symbol_artifact_key);
+        if (symbol_ref == attachment_artifacts_.end()) {
+            const auto symbol_bytes = bundle.asset(reference);
+            require(symbol_bytes.has_value(), "component default symbol bytes are missing",
+                    ErrorCode::UnknownEntity);
+            const auto &added =
+                add_artifact(symbol_id, std::string{*symbol_bytes}, {}, bundle.library_digest());
+            symbol_ref = attachment_artifacts_.emplace(symbol_artifact_key, ref_for(added)).first;
+        }
+        symbol_dependencies.push_back(symbol_ref->second);
+    }
+    const auto &added = add_artifact(id, std::string{*bytes}, std::move(symbol_dependencies),
+                                     bundle.library_digest());
+    const auto reference = ref_for(added);
+    component_artifacts_.emplace(key, reference);
+    return reference;
+}
+
+ArtifactRef ProjectArtifactGraph::add_part(const PartLibraryBundle &bundle,
+                                           const LibraryPartRef &selected) {
+    admit_library(bundle);
+    const auto &part = bundle.resolve(selected);
+    const auto id = ArtifactId{ArtifactKind::PartDefinition, selected};
+    const auto key = artifact_key(id);
+    if (const auto existing = part_artifacts_.find(key); existing != part_artifacts_.end()) {
+        return existing->second;
+    }
+    const auto component =
+        std::ranges::find(bundle.library().components(), part.implemented_component(),
+                          &ComponentDefinition::content_identity);
+    require(component != bundle.library().components().end(),
+            "selected part component definition is missing", ErrorCode::UnknownEntity);
+    auto dependencies = std::vector<ArtifactRef>{add_component(bundle, *component)};
+    for (const auto &asset : part_asset_references(part)) {
+        if (asset.kind() == PartAssetKind::Footprint) {
+            const auto owner = attachment_ref(bundle, asset, LibraryAttachmentKind::Footprint);
+            const auto asset_id = ArtifactId{ArtifactKind::FootprintDefinition, owner};
+            const auto asset_key_value = artifact_key(asset_id);
+            auto reference = attachment_artifacts_.find(asset_key_value);
+            if (reference == attachment_artifacts_.end()) {
+                const auto bytes = bundle.asset(asset);
+                require(bytes.has_value(), "selected footprint bytes are missing",
+                        ErrorCode::UnknownEntity);
+                const auto &added =
+                    add_artifact(asset_id, std::string{*bytes}, {}, bundle.library_digest());
+                reference = attachment_artifacts_.emplace(asset_key_value, ref_for(added)).first;
+            }
+            dependencies.push_back(reference->second);
+        } else if (asset.kind() == PartAssetKind::Schematic) {
+            const auto owner = attachment_ref(bundle, asset, LibraryAttachmentKind::Symbol);
+            const auto asset_id = ArtifactId{ArtifactKind::SymbolDefinition, owner};
+            const auto asset_key_value = artifact_key(asset_id);
+            auto reference = attachment_artifacts_.find(asset_key_value);
+            if (reference == attachment_artifacts_.end()) {
+                const auto bytes = bundle.asset(asset);
+                require(bytes.has_value(), "selected symbol bytes are missing",
+                        ErrorCode::UnknownEntity);
+                const auto &added =
+                    add_artifact(asset_id, std::string{*bytes}, {}, bundle.library_digest());
+                reference = attachment_artifacts_.emplace(asset_key_value, ref_for(added)).first;
+            }
+            dependencies.push_back(reference->second);
+        } else if (asset.kind() == PartAssetKind::Model3D &&
+                   asset.key().starts_with("model:glb/")) {
+            const auto owner = library_asset_ref(bundle, asset, LibraryAssetKind::Glb);
+            const auto asset_id = ArtifactId{ArtifactKind::GlbAsset, owner};
+            const auto asset_key_value = artifact_key(asset_id);
+            if (!consumed_glb_assets_.contains(asset_key_value)) {
+                continue;
+            }
+            auto reference = glb_artifacts_.find(asset_key_value);
+            if (reference == glb_artifacts_.end()) {
+                const auto bytes = bundle.asset(asset);
+                require(bytes.has_value(), "consumed GLB bytes are missing",
+                        ErrorCode::UnknownEntity);
+                require(sha256_content_hash(*bytes) == asset.digest(),
+                        "consumed GLB digest conflicts with library bytes");
+                const auto &added =
+                    add_artifact(asset_id, std::string{*bytes}, {}, bundle.library_digest());
+                reference = glb_artifacts_.emplace(asset_key_value, ref_for(added)).first;
+            }
+            dependencies.push_back(reference->second);
+        }
+    }
+    const auto bytes = bundle.part_document(selected.part_key());
+    require(bytes.has_value(), "selected part bytes are missing", ErrorCode::UnknownEntity);
+    const auto &added =
+        add_artifact(id, std::string{*bytes}, std::move(dependencies), bundle.library_digest());
+    const auto reference = ref_for(added);
+    part_artifacts_.emplace(key, reference);
+    selected_refs_.emplace(key, reference);
+    return reference;
+}
+
+const DraftArtifact &ProjectArtifactGraph::require_target(const ArtifactRef &target) const {
+    const auto match = artifacts_.find(artifact_key(target.artifact()));
+    require(match != artifacts_.end() &&
+                sha256_content_hash(match->second.bytes) == target.content_digest(),
+            "export target is unresolved, foreign, or stale", ErrorCode::UnknownEntity);
+    return match->second;
+}
+
+const BoardInput &
+ProjectArtifactGraph::board_for_compiled(const ArtifactRef &target,
+                                         std::span<const BoardInput> boards) const {
+    const auto &artifact = require_target(target);
+    require(artifact.id.kind() == ArtifactKind::CompiledBoard,
+            "export requires a CompiledBoard target", ErrorCode::InvalidArgument);
+    const auto &identity = std::get<CompiledBoardIdentity>(artifact.id.owner());
+    const auto match = std::ranges::find_if(
+        boards, [&](const auto &candidate) { return candidate.compiled->identity() == identity; });
+    require(match != boards.end(), "export CompiledBoard owner is unavailable",
+            ErrorCode::UnknownEntity);
+    return *match;
+}
+
+} // namespace
 
 ProjectBundleV2Builder::ProjectBundleV2Builder(ProjectIdentity project, ProjectRunSummary run,
                                                LogicalInputName entrypoint,
@@ -1214,181 +1550,13 @@ ProjectBundleV2Builder &ProjectBundleV2Builder::select_exports(ExportSelection s
     return *this;
 }
 
-ProjectBundleV2 ProjectBundleV2Builder::build() const {
-    require(!storage_->logicals.empty(), "a complete bundle requires at least one logical model",
-            ErrorCode::InvalidState);
-    require(storage_->run.ok == (storage_->run.status != ProjectStatus::Failed),
-            "run ok flag disagrees with its closed status");
-    auto parse_report = [](std::string_view bytes, std::string_view name) {
-        try {
-            return Json::parse(bytes.begin(), bytes.end());
-        } catch (const std::exception &error) {
-            reject(std::string{name} + " report is not valid JSON: " + error.what(),
-                   ErrorCode::InvalidArgument);
-        }
-    };
-    const auto diagnostics_report = parse_report(storage_->diagnostics.bytes, "diagnostics");
-    require(
-        diagnostics_report.is_object() && diagnostics_report.size() == 6U &&
-            diagnostics_report.contains("status") && diagnostics_report.contains("summary") &&
-            diagnostics_report.contains("diagnostics") && diagnostics_report.contains("expected") &&
-            diagnostics_report.contains("unexpected") &&
-            diagnostics_report.contains("missing_expected"),
-        "diagnostics report does not match its closed project codec", ErrorCode::InvalidArgument);
-    require(diagnostics_report.at("status").is_string() &&
-                diagnostics_report.at("status").get<std::string>() ==
-                    status_name(storage_->run.status),
-            "run status disagrees with the diagnostics report");
-    const auto tests_report = parse_report(storage_->tests.bytes, "project-tests");
-    require(
-        tests_report.is_object() && tests_report.size() == 2U && tests_report.contains("summary") &&
-            tests_report.contains("tests") && tests_report.at("summary").is_object() &&
-            tests_report.at("summary").contains("failed") &&
-            tests_report.at("summary").at("failed").is_number_unsigned(),
-        "project-tests report does not match its closed project codec", ErrorCode::InvalidArgument);
-    const auto failed_tests = tests_report.at("summary").at("failed").get<std::uint64_t>();
-    require(failed_tests == 0U || storage_->run.status == ProjectStatus::Failed,
-            "run status disagrees with failed project tests");
+namespace {
 
-    auto input_records = std::vector<std::tuple<AuthoringInputKind, std::string, ContentHash>>{};
-    input_records.reserve(storage_->inputs.size());
-    for (const auto &input : storage_->inputs) {
-        input_records.emplace_back(input.kind(), input.name().value(),
-                                   sha256_content_hash(input.bytes()));
-    }
-    std::ranges::sort(input_records, [](const auto &lhs, const auto &rhs) {
-        return std::tuple{authoring_kind_name(std::get<0>(lhs)), std::get<1>(lhs),
-                          std::get<2>(lhs).value()} <
-               std::tuple{authoring_kind_name(std::get<0>(rhs)), std::get<1>(rhs),
-                          std::get<2>(rhs).value()};
-    });
-    require(std::ranges::adjacent_find(input_records,
-                                       [](const auto &lhs, const auto &rhs) {
-                                           return std::get<0>(lhs) == std::get<0>(rhs) &&
-                                                  std::get<1>(lhs) == std::get<1>(rhs);
-                                       }) == input_records.end(),
-            "authoring inputs contain a duplicate kind/name pair", ErrorCode::DuplicateName);
-    const auto entrypoint_count = std::ranges::count_if(input_records, [&](const auto &record) {
-        return std::get<0>(record) == AuthoringInputKind::ProjectSource &&
-               std::get<1>(record) == storage_->entrypoint.value();
-    });
-    require(entrypoint_count == 1, "entrypoint must name exactly one ProjectSource input record",
-            ErrorCode::InvalidArgument);
-    auto authoring_array = Json::array();
-    for (const auto &[kind, name, digest] : input_records) {
-        authoring_array.push_back(Json{{"kind", authoring_kind_name(kind)},
-                                       {"name", name},
-                                       {"content_digest", digest.value()}});
-    }
-    const auto authoring_core =
-        Json{{"entrypoint", storage_->entrypoint.value()}, {"records", authoring_array}};
-    const auto authoring_digest = sha256_content_hash(canonical(authoring_core));
-
-    auto logical_by_design = std::map<std::string, const LogicalInput *>{};
-    for (const auto &logical : storage_->logicals) {
-        const auto [unused, inserted] = logical_by_design.emplace(logical.design.value(), &logical);
-        static_cast<void>(unused);
-        require(inserted, "logical DesignKey is duplicated", ErrorCode::DuplicateName);
-    }
-
-    auto artifacts = std::map<std::string, DraftArtifact>{};
-    auto add_artifact = [&](ArtifactId id, std::string bytes, std::vector<ArtifactRef> dependencies,
-                            ContentHash producer_build_value,
-                            bool required_default = true) -> const DraftArtifact & {
-        normalize_dependencies(dependencies);
-        auto artifact = DraftArtifact{std::move(id), std::move(bytes), std::move(dependencies),
-                                      std::move(producer_build_value), required_default};
-        const auto key = artifact_key(artifact.id);
-        const auto [position, inserted] = artifacts.emplace(key, std::move(artifact));
-        require(inserted, "artifact identity is duplicated", ErrorCode::DuplicateName);
-        return position->second;
-    };
-
-    auto library_rows = std::map<std::string, const PartLibraryBundle *>{};
-    auto selected_refs = std::map<std::string, ArtifactRef>{};
-    auto component_artifacts = std::map<std::string, ArtifactRef>{};
-    auto part_artifacts = std::map<std::string, ArtifactRef>{};
-    auto attachment_artifacts = std::map<std::string, ArtifactRef>{};
-    auto glb_artifacts = std::map<std::string, ArtifactRef>{};
-
-    auto admit_library = [&](const PartLibraryBundle &bundle) {
-        const auto key = bundle.identity().namespace_name() + '\n' + bundle.identity().version() +
-                         '\n' + bundle.library_digest().value();
-        const auto same_release = std::ranges::find_if(library_rows, [&](const auto &candidate) {
-            const auto &admitted = *candidate.second;
-            return admitted.identity().namespace_name() == bundle.identity().namespace_name() &&
-                   admitted.identity().version() == bundle.identity().version();
-        });
-        require(same_release == library_rows.end() ||
-                    same_release->second->library_digest() == bundle.library_digest(),
-                "one library release has conflicting exact digests");
-        library_rows.emplace(key, &bundle);
-    };
-
-    auto add_component = [&](const PartLibraryBundle &bundle,
-                             const ComponentDefinition &component) -> ArtifactRef {
-        admit_library(bundle);
-        const auto owner = component_ref(bundle, component);
-        const auto id = ArtifactId{ArtifactKind::ComponentDefinition, owner};
-        const auto key = artifact_key(id);
-        if (const auto existing = component_artifacts.find(key);
-            existing != component_artifacts.end()) {
-            return existing->second;
-        }
-        const auto bytes = bundle.component_document(component.contract().key());
-        require(bytes.has_value(), "reachable component definition bytes are missing",
-                ErrorCode::UnknownEntity);
-        require(sha256_content_hash(*bytes) != sha256_content_hash(""),
-                "component definition bytes are empty", ErrorCode::InvalidState);
-        auto symbol_dependencies = std::vector<ArtifactRef>{};
-        for (const auto &symbol : component.schematic_symbols()) {
-            if (symbol.variant() != "default") {
-                continue;
-            }
-            const auto component_entry = std::ranges::find(
-                bundle.entries(), "component:" + component.contract().key().value(),
-                &PartLibraryBundleEntry::id);
-            require(component_entry != bundle.entries().end(),
-                    "component definition entry is absent from the selected closure",
-                    ErrorCode::UnknownEntity);
-            const auto symbol_key = "symbol:" + symbol.name() + "@" + symbol.variant();
-            const auto symbol_entry =
-                std::ranges::find_if(bundle.entries(), [&](const auto &candidate) {
-                    return candidate.role() == PartLibraryBundleEntryRole::Symbol &&
-                           candidate.source_key() == std::optional{symbol_key} &&
-                           std::ranges::find(component_entry->dependencies(), candidate.id()) !=
-                               component_entry->dependencies().end();
-                });
-            require(symbol_entry != bundle.entries().end(),
-                    "component default symbol is absent from the selected closure",
-                    ErrorCode::UnknownEntity);
-            const auto reference =
-                PartAssetReference{PartAssetKind::Schematic, symbol_key, symbol_entry->digest()};
-            const auto symbol_owner =
-                attachment_ref(bundle, reference, LibraryAttachmentKind::Symbol);
-            const auto symbol_id = ArtifactId{ArtifactKind::SymbolDefinition, symbol_owner};
-            const auto symbol_artifact_key = artifact_key(symbol_id);
-            auto symbol_ref = attachment_artifacts.find(symbol_artifact_key);
-            if (symbol_ref == attachment_artifacts.end()) {
-                const auto symbol_bytes = bundle.asset(reference);
-                require(symbol_bytes.has_value(), "component default symbol bytes are missing",
-                        ErrorCode::UnknownEntity);
-                const auto &added = add_artifact(symbol_id, std::string{*symbol_bytes}, {},
-                                                 bundle.library_digest());
-                symbol_ref =
-                    attachment_artifacts.emplace(symbol_artifact_key, ref_for(added)).first;
-            }
-            symbol_dependencies.push_back(symbol_ref->second);
-        }
-        const auto &added = add_artifact(id, std::string{*bytes}, std::move(symbol_dependencies),
-                                         bundle.library_digest());
-        const auto reference = ref_for(added);
-        component_artifacts.emplace(key, reference);
-        return reference;
-    };
-
-    auto consumed_glb_assets = std::set<std::string>{};
-    for (const auto &board : storage_->boards) {
+void ProjectArtifactGraph::accumulate_authoritative_artifacts(
+    const ValidatedProjectBuild &validated, std::span<const LogicalInput> logicals,
+    std::span<const SchematicInput> schematics, std::span<const BoardInput> boards,
+    const ProjectReport &diagnostics, const ProjectReport &tests) {
+    for (const auto &board : boards) {
         if (!board.compiled->capabilities().has(BoardAssetCapability::Models3D)) {
             require(board.scene->models().empty(),
                     "BoardScene references GLBs without models3d capability");
@@ -1409,88 +1577,12 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
             const auto id =
                 ArtifactId{ArtifactKind::GlbAsset,
                            library_asset_ref(*board.bundle, *model, LibraryAssetKind::Glb)};
-            consumed_glb_assets.insert(artifact_key(id));
+            consumed_glb_assets_.insert(artifact_key(id));
         }
     }
 
-    auto add_part = [&](const PartLibraryBundle &bundle,
-                        const LibraryPartRef &selected) -> ArtifactRef {
-        admit_library(bundle);
-        const auto &part = bundle.resolve(selected);
-        const auto id = ArtifactId{ArtifactKind::PartDefinition, selected};
-        const auto key = artifact_key(id);
-        if (const auto existing = part_artifacts.find(key); existing != part_artifacts.end()) {
-            return existing->second;
-        }
-        const auto component =
-            std::ranges::find(bundle.library().components(), part.implemented_component(),
-                              &ComponentDefinition::content_identity);
-        require(component != bundle.library().components().end(),
-                "selected part component definition is missing", ErrorCode::UnknownEntity);
-        auto dependencies = std::vector<ArtifactRef>{add_component(bundle, *component)};
-        for (const auto &asset : part_asset_references(part)) {
-            if (asset.kind() == PartAssetKind::Footprint) {
-                const auto owner = attachment_ref(bundle, asset, LibraryAttachmentKind::Footprint);
-                const auto asset_id = ArtifactId{ArtifactKind::FootprintDefinition, owner};
-                const auto asset_key = artifact_key(asset_id);
-                auto reference = attachment_artifacts.find(asset_key);
-                if (reference == attachment_artifacts.end()) {
-                    const auto bytes = bundle.asset(asset);
-                    require(bytes.has_value(), "selected footprint bytes are missing",
-                            ErrorCode::UnknownEntity);
-                    const auto &added =
-                        add_artifact(asset_id, std::string{*bytes}, {}, bundle.library_digest());
-                    reference = attachment_artifacts.emplace(asset_key, ref_for(added)).first;
-                }
-                dependencies.push_back(reference->second);
-            } else if (asset.kind() == PartAssetKind::Schematic) {
-                const auto owner = attachment_ref(bundle, asset, LibraryAttachmentKind::Symbol);
-                const auto asset_id = ArtifactId{ArtifactKind::SymbolDefinition, owner};
-                const auto asset_key = artifact_key(asset_id);
-                auto reference = attachment_artifacts.find(asset_key);
-                if (reference == attachment_artifacts.end()) {
-                    const auto bytes = bundle.asset(asset);
-                    require(bytes.has_value(), "selected symbol bytes are missing",
-                            ErrorCode::UnknownEntity);
-                    const auto &added =
-                        add_artifact(asset_id, std::string{*bytes}, {}, bundle.library_digest());
-                    reference = attachment_artifacts.emplace(asset_key, ref_for(added)).first;
-                }
-                dependencies.push_back(reference->second);
-            } else if (asset.kind() == PartAssetKind::Model3D &&
-                       asset.key().starts_with("model:glb/")) {
-                const auto owner = library_asset_ref(bundle, asset, LibraryAssetKind::Glb);
-                const auto asset_id = ArtifactId{ArtifactKind::GlbAsset, owner};
-                const auto asset_key = artifact_key(asset_id);
-                if (!consumed_glb_assets.contains(asset_key)) {
-                    continue;
-                }
-                auto reference = glb_artifacts.find(asset_key);
-                if (reference == glb_artifacts.end()) {
-                    const auto bytes = bundle.asset(asset);
-                    require(bytes.has_value(), "consumed GLB bytes are missing",
-                            ErrorCode::UnknownEntity);
-                    require(sha256_content_hash(*bytes) == asset.digest(),
-                            "consumed GLB digest conflicts with library bytes");
-                    const auto &added =
-                        add_artifact(asset_id, std::string{*bytes}, {}, bundle.library_digest());
-                    reference = glb_artifacts.emplace(asset_key, ref_for(added)).first;
-                }
-                dependencies.push_back(reference->second);
-            }
-        }
-        const auto bytes = bundle.part_document(selected.part_key());
-        require(bytes.has_value(), "selected part bytes are missing", ErrorCode::UnknownEntity);
-        const auto &added =
-            add_artifact(id, std::string{*bytes}, std::move(dependencies), bundle.library_digest());
-        const auto reference = ref_for(added);
-        part_artifacts.emplace(key, reference);
-        selected_refs.emplace(key, reference);
-        return reference;
-    };
-
     auto logical_refs = std::map<std::string, ArtifactRef>{};
-    for (const auto &logical : storage_->logicals) {
+    for (const auto &logical : logicals) {
         auto dependencies = std::vector<ArtifactRef>{};
         for (const auto &component : logical.circuit->all<ComponentId>()) {
             const auto &definition = logical.circuit->get(component.definition());
@@ -1515,9 +1607,9 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
         logical_refs.emplace(logical.design.value(), ref_for(added));
     }
 
-    for (const auto &schematic : storage_->schematics) {
-        const auto logical = logical_by_design.find(schematic.design.value());
-        require(logical != logical_by_design.end(), "Schematic has no logical owner",
+    for (const auto &schematic : schematics) {
+        const auto logical = validated.logical_by_design.find(schematic.design.value());
+        require(logical != validated.logical_by_design.end(), "Schematic has no logical owner",
                 ErrorCode::UnknownEntity);
         require(&schematic.schematic->circuit() == logical->second->circuit,
                 "Schematic crosses its declared logical owner");
@@ -1529,9 +1621,9 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
         static_cast<void>(added);
     }
 
-    for (const auto &board : storage_->boards) {
-        const auto logical = logical_by_design.find(board.design.value());
-        require(logical != logical_by_design.end(), "Board has no logical owner",
+    for (const auto &board : boards) {
+        const auto logical = validated.logical_by_design.find(board.design.value());
+        require(logical != validated.logical_by_design.end(), "Board has no logical owner",
                 ErrorCode::UnknownEntity);
         require(&board.board->circuit() == logical->second->circuit,
                 "Board crosses its declared logical owner");
@@ -1582,16 +1674,16 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
             const auto footprint_id = ArtifactId{
                 ArtifactKind::FootprintDefinition,
                 attachment_ref(*board.bundle, footprint, LibraryAttachmentKind::Footprint)};
-            compiled_dependencies.push_back(attachment_artifacts.at(artifact_key(footprint_id)));
+            compiled_dependencies.push_back(attachment_artifacts_.at(artifact_key(footprint_id)));
             if (board.compiled->capabilities().has(BoardAssetCapability::Models3D)) {
                 const auto model = model_reference(part);
                 if (model.has_value() && model->key().starts_with("model:glb/")) {
                     const auto glb_id =
                         ArtifactId{ArtifactKind::GlbAsset,
                                    library_asset_ref(*board.bundle, *model, LibraryAssetKind::Glb)};
-                    const auto glb = glb_artifacts.find(artifact_key(glb_id));
-                    require(glb != glb_artifacts.end(), "CompiledBoard GLB closure is not vendored",
-                            ErrorCode::UnknownEntity);
+                    const auto glb = glb_artifacts_.find(artifact_key(glb_id));
+                    require(glb != glb_artifacts_.end(),
+                            "CompiledBoard GLB closure is not vendored", ErrorCode::UnknownEntity);
                     compiled_dependencies.push_back(glb->second);
                     board_glbs.push_back(glb->second);
                 }
@@ -1627,7 +1719,7 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
     }
 
     auto evaluated_dependencies = std::vector<ArtifactRef>{};
-    for (const auto &[unused, artifact] : artifacts) {
+    for (const auto &[unused, artifact] : artifacts_) {
         static_cast<void>(unused);
         const auto reference = ref_for(artifact);
         if (artifact.id.kind() == ArtifactKind::LogicalModel ||
@@ -1640,34 +1732,27 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
 
     const auto diagnostics_id = ArtifactId{ArtifactKind::Diagnostics,
                                            ProjectSingletonIdentity{ProjectSingletonKey::Primary}};
-    const auto &diagnostics = add_artifact(diagnostics_id, storage_->diagnostics.bytes,
-                                           evaluated_dependencies, sha256_content_hash(""));
+    const auto &diagnostics_artifact = add_artifact(
+        diagnostics_id, diagnostics.bytes, evaluated_dependencies, sha256_content_hash(""));
+    static_cast<void>(diagnostics_artifact);
     const auto tests_id = ArtifactId{ArtifactKind::ProjectTests,
                                      ProjectSingletonIdentity{ProjectSingletonKey::Primary}};
-    add_artifact(tests_id, storage_->tests.bytes, evaluated_dependencies, sha256_content_hash(""));
+    const auto &tests_artifact =
+        add_artifact(tests_id, tests.bytes, evaluated_dependencies, sha256_content_hash(""));
+    static_cast<void>(tests_artifact);
+}
 
+} // namespace
+
+namespace {
+
+void ProjectArtifactGraph::materialize_selected_exports(const ValidatedProjectBuild &validated,
+                                                        std::span<const SchematicInput> schematics,
+                                                        std::span<const BoardInput> boards,
+                                                        const ExportSelection &exports) {
     auto export_records = std::vector<std::pair<ContentHash, Json>>{};
     auto seen_export_requests = std::set<std::string>{};
-    auto require_target = [&](const ArtifactRef &target) -> const DraftArtifact & {
-        const auto match = artifacts.find(artifact_key(target.artifact()));
-        require(match != artifacts.end() &&
-                    sha256_content_hash(match->second.bytes) == target.content_digest(),
-                "export target is unresolved, foreign, or stale", ErrorCode::UnknownEntity);
-        return match->second;
-    };
-    auto board_for_compiled = [&](const ArtifactRef &target) -> const BoardInput & {
-        const auto &artifact = require_target(target);
-        require(artifact.id.kind() == ArtifactKind::CompiledBoard,
-                "export requires a CompiledBoard target", ErrorCode::InvalidArgument);
-        const auto &identity = std::get<CompiledBoardIdentity>(artifact.id.owner());
-        const auto match = std::ranges::find_if(storage_->boards, [&](const auto &candidate) {
-            return candidate.compiled->identity() == identity;
-        });
-        require(match != storage_->boards.end(), "export CompiledBoard owner is unavailable",
-                ErrorCode::UnknownEntity);
-        return *match;
-    };
-    for (const auto &request : storage_->exports) {
+    for (const auto &request : exports) {
         const auto request_json = export_request_json(request);
         const auto request_digest = sha256_content_hash(canonical(request_json));
         require(seen_export_requests.insert(request_digest.value()).second,
@@ -1689,11 +1774,10 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
             require(artifact.id.kind() == ArtifactKind::SchematicModel,
                     "Schematic SVG target is not a Schematic", ErrorCode::InvalidArgument);
             const auto &owner = std::get<SchematicArtifactIdentity>(artifact.id.owner());
-            const auto match =
-                std::ranges::find_if(storage_->schematics, [&](const auto &candidate) {
-                    return candidate.design == owner.design && candidate.key == owner.schematic;
-                });
-            require(match != storage_->schematics.end(), "Schematic SVG owner is unavailable",
+            const auto match = std::ranges::find_if(schematics, [&](const auto &candidate) {
+                return candidate.design == owner.design && candidate.key == owner.schematic;
+            });
+            require(match != schematics.end(), "Schematic SVG owner is unavailable",
                     ErrorCode::UnknownEntity);
             bytes = write_schematic_svg(*match->schematic);
             dependencies.push_back(target);
@@ -1706,7 +1790,7 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
                     "Board SVG request has an incompatible target or parameters",
                     ErrorCode::InvalidArgument);
             const auto &target = std::get<ModelExportTarget>(request.target).model;
-            const auto &board = board_for_compiled(target);
+            const auto &board = board_for_compiled(target, boards);
             bytes = write_pcb_placement_svg(board.compiled->board(), board.compiled->footprints());
             dependencies.push_back(target);
             output_kind = ArtifactKind::BoardSvg;
@@ -1718,7 +1802,7 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
                     "Board layer request has an incompatible target or parameters",
                     ErrorCode::InvalidArgument);
             const auto &target = std::get<BoardLayerExportTarget>(request.target);
-            const auto &board = board_for_compiled(target.compiled_board);
+            const auto &board = board_for_compiled(target.compiled_board, boards);
             auto layer = std::optional<BoardLayerId>{};
             for (std::size_t index = 0; index < board.compiled->board().all<BoardLayerId>().size();
                  ++index) {
@@ -1748,8 +1832,8 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
             require(artifact.id.kind() == ArtifactKind::LogicalModel,
                     "BOM target is not a logical model", ErrorCode::InvalidArgument);
             const auto &owner = std::get<LogicalArtifactIdentity>(artifact.id.owner());
-            bytes =
-                write_bom_json(project_bom(*logical_by_design.at(owner.design.value())->circuit));
+            bytes = write_bom_json(
+                project_bom(*validated.logical_by_design.at(owner.design.value())->circuit));
             dependencies.push_back(target);
             output_kind = ArtifactKind::Bom;
             break;
@@ -1760,7 +1844,7 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
                     "CPL request has an incompatible target or parameters",
                     ErrorCode::InvalidArgument);
             const auto &target = std::get<ModelExportTarget>(request.target).model;
-            const auto &board = board_for_compiled(target);
+            const auto &board = board_for_compiled(target, boards);
             bytes = write_cpl_json(project_cpl(*board.compiled).cpl());
             dependencies.push_back(target);
             output_kind = ArtifactKind::Cpl;
@@ -1779,13 +1863,13 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
                     ErrorCode::InvalidArgument);
             const auto &selected = std::get<LibraryPartRef>(part_artifact.id.owner());
             const auto bundle_match =
-                std::ranges::find_if(library_rows, [&](const auto &candidate) {
+                std::ranges::find_if(library_rows_, [&](const auto &candidate) {
                     return candidate.second->identity().namespace_name() ==
                                target.asset.library_namespace &&
                            candidate.second->identity().version() == target.asset.library_version &&
                            candidate.second->library_digest() == target.asset.library_bundle_digest;
                 });
-            require(bundle_match != library_rows.end(), "STEP asset library origin is not locked",
+            require(bundle_match != library_rows_.end(), "STEP asset library origin is not locked",
                     ErrorCode::UnknownEntity);
             const auto &bundle = *bundle_match->second;
             const auto &part = bundle.resolve(selected);
@@ -1812,38 +1896,39 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
         }
         const auto export_id =
             ArtifactId{output_kind, ExportArtifactIdentity{request_digest, std::move(output_key)}};
-        add_artifact(export_id, std::move(bytes), std::move(dependencies),
-                     std::move(producer_build_value), false);
+        static_cast<void>(add_artifact(export_id, std::move(bytes), std::move(dependencies),
+                                       std::move(producer_build_value), false));
         export_records.emplace_back(request_digest, request_json);
     }
     std::ranges::sort(export_records, {}, [](const auto &record) { return record.first.value(); });
-    auto export_selection_json = Json::array();
     for (const auto &[unused, record] : export_records) {
         static_cast<void>(unused);
-        export_selection_json.push_back(record);
+        export_selection_.push_back(record);
     }
+}
 
+DependencyLock ProjectArtifactGraph::dependency_lock() const {
     auto locked_libraries = std::vector<LockedLibrary>{};
-    for (const auto &[unused, bundle] : library_rows) {
+    for (const auto &[unused, bundle] : library_rows_) {
         static_cast<void>(unused);
         locked_libraries.push_back(LockedLibrary{bundle->identity().namespace_name(),
                                                  bundle->identity().version(),
                                                  bundle->library_digest()});
     }
     auto locked_parts = std::vector<LockedPartSelection>{};
-    for (const auto &[unused, selected] : selected_refs) {
+    for (const auto &[unused, selected] : selected_refs_) {
         static_cast<void>(unused);
         locked_parts.push_back(
             LockedPartSelection{std::get<LibraryPartRef>(selected.artifact().owner()), selected});
     }
-    const auto dependency_lock =
-        DependencyLock{std::move(locked_libraries), std::move(locked_parts)};
-    const auto dependency_lock_value = dependency_lock_json(dependency_lock);
+    return DependencyLock{std::move(locked_libraries), std::move(locked_parts)};
+}
 
-    for (const auto &[artifact_key_value, artifact] : artifacts) {
+void ProjectArtifactGraph::validate() {
+    for (const auto &[artifact_key_value, artifact] : artifacts_) {
         for (const auto &dependency : artifact.dependencies) {
-            const auto target = artifacts.find(artifact_key(dependency.artifact()));
-            require(target != artifacts.end() &&
+            const auto target = artifacts_.find(artifact_key(dependency.artifact()));
+            require(target != artifacts_.end() &&
                         sha256_content_hash(target->second.bytes) == dependency.content_digest(),
                     "artifact graph contains a missing or stale direct dependency",
                     ErrorCode::UnknownEntity);
@@ -1861,15 +1946,25 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
             return;
         }
         visit_state[key] = 1U;
-        for (const auto &dependency : artifacts.at(key).dependencies) {
+        for (const auto &dependency : artifacts_.at(key).dependencies) {
             visit(artifact_key(dependency.artifact()));
         }
         visit_state[key] = 2U;
     };
-    for (const auto &[key, unused] : artifacts) {
+    for (const auto &[key, unused] : artifacts_) {
         static_cast<void>(unused);
         visit(key);
     }
+}
+
+[[nodiscard]] ProjectBundleV2 encode_project_bundle(const ProjectIdentity &project,
+                                                    const ProjectRunSummary &run,
+                                                    const LogicalInputName &entrypoint,
+                                                    const ValidatedProjectBuild &validated,
+                                                    const ProjectArtifactGraph &graph) {
+    const auto dependency_lock = graph.dependency_lock();
+    const auto dependency_lock_value = dependency_lock_json(dependency_lock);
+    const auto &artifacts = graph.artifacts();
 
     auto required_identity_artifacts = Json::array();
     for (const auto &[unused, artifact] : artifacts) {
@@ -1894,18 +1989,17 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
                  {"producer_version", producer_version}});
     }
     const auto project_json =
-        Json{{"name", storage_->project.name},
-             {"version", storage_->project.version.has_value() ? Json(*storage_->project.version)
-                                                               : Json(nullptr)},
-             {"description", storage_->project.description.has_value()
-                                 ? Json(*storage_->project.description)
-                                 : Json(nullptr)}};
-    const auto build_identity = Json{{"format", format_name},
-                                     {"schema_version", 2},
-                                     {"project", project_json},
-                                     {"authoring_inputs_digest", authoring_digest.value()},
-                                     {"dependency_lock", dependency_lock_value},
-                                     {"artifacts", std::move(required_identity_artifacts)}};
+        Json{{"name", project.name},
+             {"version", project.version.has_value() ? Json(*project.version) : Json(nullptr)},
+             {"description",
+              project.description.has_value() ? Json(*project.description) : Json(nullptr)}};
+    const auto build_identity =
+        Json{{"format", format_name},
+             {"schema_version", 2},
+             {"project", project_json},
+             {"authoring_inputs_digest", validated.authoring_digest.value()},
+             {"dependency_lock", dependency_lock_value},
+             {"artifacts", std::move(required_identity_artifacts)}};
     const auto build_id = BuildId{sha256_content_hash(canonical(build_identity))};
 
     auto result = std::make_unique<ProjectBundleV2::Storage>();
@@ -1929,7 +2023,7 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
                       [](const auto &descriptor) { return artifact_key(descriptor.id()); });
 
     auto stage_array = Json::array();
-    for (const auto &stage : storage_->run.stages) {
+    for (const auto &stage : run.stages) {
         stage_array.push_back(stage);
     }
     auto descriptor_array = Json::array();
@@ -1961,16 +2055,16 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
         Json{{"format", format_name},
              {"schema_version", 2},
              {"project", project_json},
-             {"run", Json{{"ok", storage_->run.ok},
-                          {"status", status_name(storage_->run.status)},
-                          {"profile", storage_->run.profile},
+             {"run", Json{{"ok", run.ok},
+                          {"status", status_name(run.status)},
+                          {"profile", run.profile},
                           {"stages", std::move(stage_array)}}},
-             {"authoring_inputs", Json{{"entrypoint", storage_->entrypoint.value()},
-                                       {"records", authoring_array},
-                                       {"digest", authoring_digest.value()}}},
+             {"authoring_inputs", Json{{"entrypoint", entrypoint.value()},
+                                       {"records", validated.authoring_records},
+                                       {"digest", validated.authoring_digest.value()}}},
              {"build_id", build_id.content_hash().value()},
              {"dependency_lock", dependency_lock_value},
-             {"export_selection", export_selection_json},
+             {"export_selection", graph.export_selection()},
              {"artifacts", std::move(descriptor_array)}};
     const auto bundle_digest = sha256_content_hash(canonical(manifest_core));
     auto manifest = manifest_core;
@@ -2003,9 +2097,24 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
         require(folded_paths.insert(std::move(folded)).second,
                 "publication paths collide under ASCII case folding");
     }
-
-    static_cast<void>(diagnostics);
     return ProjectBundleV2{std::move(result)};
+}
+
+} // namespace
+
+ProjectBundleV2 ProjectBundleV2Builder::build() const {
+    const auto validated =
+        validate_project_build(storage_->run, storage_->entrypoint, storage_->inputs,
+                               storage_->diagnostics, storage_->tests, storage_->logicals);
+    auto graph = ProjectArtifactGraph{};
+    graph.accumulate_authoritative_artifacts(validated, storage_->logicals, storage_->schematics,
+                                             storage_->boards, storage_->diagnostics,
+                                             storage_->tests);
+    graph.materialize_selected_exports(validated, storage_->schematics, storage_->boards,
+                                       storage_->exports);
+    graph.validate();
+    return encode_project_bundle(storage_->project, storage_->run, storage_->entrypoint, validated,
+                                 graph);
 }
 
 } // namespace volt::io

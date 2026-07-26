@@ -187,6 +187,33 @@ def test_library_part_build_and_instantiation_use_one_native_exact_route():
     assert tuple(result.diagnostics) == tuple(custom_result.diagnostics)
 
 
+def test_rejected_authored_definition_after_external_selection_is_atomic():
+    library = volt.Library("test.atomic", version="1")
+    part = _led_part(library)
+    design = volt.Design("atomic definition admission")
+    design.instantiate(part, ref="D1")
+    canonical = design.to_json()
+
+    with pytest.raises(
+        volt.InvalidStateError,
+        match="^A Design cannot add authored definitions to an external exact library closure$",
+    ):
+        design.R("1k", ref="R1")
+    assert design.to_json() == canonical
+
+    with pytest.raises(
+        volt.InvalidStateError,
+        match="^A Design cannot add authored definitions to an external exact library closure$",
+    ):
+        design.define_component(
+            "Probe",
+            pins=(volt.PinSpec("P", 1),),
+            source=("test.atomic", "probe", "1"),
+            schematic_symbol=_symbol("test:probe", (("P", 1),)),
+        )
+    assert design.to_json() == canonical
+
+
 def test_standard_and_custom_supply_helpers_have_byte_and_diagnostic_parity():
     outcomes = []
     for custom in (False, True):
