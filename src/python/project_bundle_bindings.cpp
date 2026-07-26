@@ -36,7 +36,7 @@ class ProjectBundleBoardArtifacts final {
 
 constexpr auto project_bundle_board_capsule = "volt.ProjectBundleBoardArtifacts.v1";
 
-[[nodiscard]] const ProjectBundleBoardArtifacts &exact_board_artifacts(const py::handle &value) {
+[[nodiscard]] const ProjectBundleBoardArtifacts *exact_board_artifacts(const py::handle &value) {
     if (!py::isinstance<py::capsule>(value)) {
         throw py::type_error{"ProjectBundle Board input must be typed native artifacts"};
     }
@@ -45,7 +45,11 @@ constexpr auto project_bundle_board_capsule = "volt.ProjectBundleBoardArtifacts.
         std::string_view{capsule.name()} != project_bundle_board_capsule) {
         throw py::type_error{"ProjectBundle Board input has a foreign native artifact type"};
     }
-    return *capsule.get_pointer<ProjectBundleBoardArtifacts>();
+    const auto *result = capsule.get_pointer<ProjectBundleBoardArtifacts>();
+    if (result == nullptr) {
+        throw py::type_error{"ProjectBundle Board input has no native artifact value"};
+    }
+    return result;
 }
 
 [[nodiscard]] volt::io::ProjectStatus project_status(const std::string &value) {
@@ -125,25 +129,31 @@ void bind_project_bundle(py::module_ &module) {
 
             for (const auto item : logicals) {
                 const auto row = exact_tuple(item, 2, "ProjectBundle logical input");
-                const auto &circuit = row[1].cast<const PyCircuit &>();
+                const auto *circuit = row[1].cast<const PyCircuit *>();
+                if (circuit == nullptr) {
+                    throw py::type_error{"ProjectBundle logical input has no native Circuit"};
+                }
                 builder.add_logical(volt::io::DesignKey{row[0].cast<std::string>()},
-                                    circuit.logical_circuit(), circuit.selected_part_bundle());
+                                    circuit->logical_circuit(), circuit->selected_part_bundle());
             }
             for (const auto item : schematics) {
                 const auto row = exact_tuple(item, 3, "ProjectBundle schematic input");
-                const auto &schematic = row[2].cast<const PySchematicDocument &>();
+                const auto *schematic = row[2].cast<const PySchematicDocument *>();
+                if (schematic == nullptr) {
+                    throw py::type_error{"ProjectBundle schematic input has no native Schematic"};
+                }
                 builder.add_schematic(volt::io::DesignKey{row[0].cast<std::string>()},
                                       volt::io::SchematicKey{row[1].cast<std::string>()},
-                                      schematic.native_schematic());
+                                      schematic->native_schematic());
             }
 
             for (const auto item : boards) {
                 const auto row = exact_tuple(item, 2, "ProjectBundle Board input");
-                const auto &artifacts = exact_board_artifacts(row[1]);
-                const auto &board = artifacts.board();
+                const auto *artifacts = exact_board_artifacts(row[1]);
+                const auto &board = artifacts->board();
                 builder.add_board(volt::io::DesignKey{row[0].cast<std::string>()},
-                                  board.authoring_board(), artifacts.compiled(), artifacts.scene(),
-                                  board.selected_part_bundle());
+                                  board.authoring_board(), artifacts->compiled(),
+                                  artifacts->scene(), board.selected_part_bundle());
             }
 
             auto bundle = builder.build();

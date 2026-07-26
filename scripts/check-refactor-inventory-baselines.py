@@ -827,8 +827,8 @@ def run_self_tests() -> int:
     )
 
     writer_owned_compilation = binding_source.replace(
-        "                const auto &board = artifacts.board();\n",
-        "                const auto &board = artifacts.board();\n"
+        "                const auto &board = artifacts->board();\n",
+        "                const auto &board = artifacts->board();\n"
         "                static_cast<void>(board.compile_for_delivery(false));\n",
         1,
     )
