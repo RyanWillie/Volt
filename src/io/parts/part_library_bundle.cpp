@@ -790,7 +790,8 @@ PartLibraryBundle PartLibraryBundle::build_with_component_roots(
         require_bundle(document != component_documents.end(),
                        "PartLibraryBundle component document is missing", ErrorCode::UnknownEntity);
         auto dependencies = std::vector<std::string>{};
-        if (std::ranges::contains(component_root_keys, component.contract().key())) {
+        if (std::ranges::find(component_root_keys, component.contract().key()) !=
+            component_root_keys.end()) {
             auto expected_symbol_keys = std::vector<std::string>{};
             for (const auto &symbol : component.schematic_symbols()) {
                 if (symbol.variant() == "default") {
