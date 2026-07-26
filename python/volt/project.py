@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import inspect
 import re
 import shutil
 from collections.abc import Mapping
@@ -10,8 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable
 
-from ._project_model_lookup import model_output_name, one_or_named, one_or_named_projection
-from ._project_models3d import collect_project_part_models_3d, copy_part_model_3d_asset
+from . import _volt
+from ._project_model_lookup import one_or_named, one_or_named_projection
 from .design import Design
 from .diagnostics import DiagnosticEntity, DiagnosticMeasurement, DiagnosticOverlay
 from .library import Library
@@ -675,279 +676,48 @@ class ProjectResult:
         """Write a deterministic project result bundle, optionally with viewer-profile checks."""
         if profile not in {"default", "viewer"}:
             raise ValueError("ProjectResult.write profile must be 'default' or 'viewer'")
-        root = Path(path)
-        _prepare_bundle_root(root)
-
-        used_paths: set[str] = set()
-        artifacts: list[dict[str, object]] = []
-        board_documents: list[tuple[Board, str]] = []
-        ordered_boards = iter(self.boards)
-        for model in self._models:
-            if isinstance(model, Board):
-                model = next(ordered_boards)
-            if isinstance(model, Design):
-                design_text = model.to_json()
-                relative = _unique_path(
-                    Path("logical") / f"{_safe_slug(model.name)}.volt.json",
-                    used_paths,
+        entrypoint, authoring_inputs = _project_authoring_inputs(self.project)
+        bundle_policy = _bundle_policy_snapshot(self, extra_diagnostics=())
+        _volt._write_project_bundle_v2(
+            str(Path(path)),
+            self.project.name,
+            self.project.version,
+            self.project.description,
+            bundle_policy.ok,
+            bundle_policy.status,
+            profile,
+            [stage.name for stage in self._stages],
+            entrypoint,
+            authoring_inputs,
+            [(design.name, design._circuit) for design in self.designs],
+            [
+                (
+                    schematic._design.name,
+                    schematic.name,
+                    schematic._design._schematic_document,
                 )
-                _write_text(root / relative, design_text)
-                artifacts.append(
-                    _artifact_record(
-                        "logical",
-                        model.name,
-                        relative,
-                        "application/vnd.volt.logical+json",
-                        group={"design": model.name},
-                    )
+                for schematic in self.schematics
+            ],
+            [
+                (
+                    board._design.name,
+                    _volt._prepare_project_bundle_board(
+                        board._native,
+                        profile == "viewer",
+                    ),
                 )
-                bom_json_path, bom_csv_path = _bom_artifact_paths(model, self.designs)
-                relative_bom_json = _unique_path(bom_json_path, used_paths)
-                relative_bom_csv = _unique_path(bom_csv_path, used_paths)
-                _write_json(root / relative_bom_json, model.bom())
-                _write_text(root / relative_bom_csv, model.bom_csv())
-                artifacts.append(
-                    _artifact_record(
-                        "bom",
-                        model.name,
-                        relative_bom_json,
-                        "application/vnd.volt.bom+json",
-                        group={"design": model.name},
-                    )
+                for board in self.boards
+            ],
+            _canonical_report_bytes(
+                _diagnostics_payload(
+                    self,
+                    diagnostics=bundle_policy.diagnostics,
+                    status=bundle_policy.status,
                 )
-                artifacts.append(
-                    _artifact_record(
-                        "bom_csv",
-                        model.name,
-                        relative_bom_csv,
-                        "text/csv",
-                        group={"design": model.name},
-                    )
-                )
-                if model._has_sourcing_snapshot():
-                    relative_sourcing = _unique_path(
-                        _bom_sourcing_artifact_path(model, self.designs),
-                        used_paths,
-                    )
-                    _write_text(root / relative_sourcing, model._bom_sourcing_snapshot_json())
-                    artifacts.append(
-                        _artifact_record(
-                            "bom_sourcing_snapshot",
-                            model.name,
-                            relative_sourcing,
-                            "application/vnd.volt.bom-sourcing-snapshot+json",
-                            group={"design": model.name},
-                        )
-                    )
-            elif isinstance(model, Schematic):
-                output_name = model_output_name(model, self.schematics)
-                relative_json = _unique_path(
-                    Path("schematic") / f"{_safe_slug(output_name)}.volt.schematic.json",
-                    used_paths,
-                )
-                relative_svg = _unique_path(
-                    Path("schematic") / f"{_safe_slug(output_name)}.svg",
-                    used_paths,
-                )
-                _write_text(root / relative_json, model.to_json())
-                _write_text(root / relative_svg, model.to_svg())
-                relative_body_svg = _unique_path(
-                    Path("schematic") / f"{_safe_slug(output_name)}.body.svg",
-                    used_paths,
-                )
-                _write_text(root / relative_body_svg, model.to_body_svg())
-                group = {"design": model._design.name, "schematic": model.name}
-                artifacts.append(
-                    _artifact_record(
-                        "schematic",
-                        output_name,
-                        relative_json,
-                        "application/vnd.volt.schematic+json",
-                        group=group,
-                    )
-                )
-                artifacts.append(
-                    _artifact_record(
-                        "schematic_svg",
-                        output_name,
-                        relative_svg,
-                        "image/svg+xml",
-                        group=group,
-                    )
-                )
-                artifacts.append(
-                    _artifact_record(
-                        "schematic_body_svg",
-                        output_name,
-                        relative_body_svg,
-                        "image/svg+xml",
-                        group=group,
-                    )
-                )
-                artifacts.extend(
-                    self._write_schematic_page_artifacts(
-                        root=root,
-                        model=model,
-                        output_name=output_name,
-                        used_paths=used_paths,
-                        group=group,
-                    )
-                )
-            elif isinstance(model, Board):
-                output_name = model_output_name(model, self.boards)
-                board_text = model.to_json()
-                relative_json = _unique_path(
-                    Path("pcb") / f"{_safe_slug(output_name)}.volt.pcb.json",
-                    used_paths,
-                )
-                relative_svg = _unique_path(
-                    Path("pcb") / f"{_safe_slug(output_name)}.svg",
-                    used_paths,
-                )
-                _write_text(root / relative_json, board_text)
-                _write_text(root / relative_svg, model.to_svg())
-                kicad_export = None
-                relative_kicad = None
-                if model.has_capability_profile:
-                    kicad_export = model.to_kicad_pcb()
-                    relative_kicad = _unique_path(
-                        Path("pcb") / f"{_safe_slug(output_name)}.kicad_pcb",
-                        used_paths,
-                    )
-                    _write_text(root / relative_kicad, kicad_export.text)
-                cpl_json_path, cpl_csv_path = _cpl_artifact_paths(output_name)
-                relative_cpl_json = _unique_path(cpl_json_path, used_paths)
-                relative_cpl_csv = _unique_path(cpl_csv_path, used_paths)
-                _write_text(root / relative_cpl_json, model.cpl_json())
-                _write_text(root / relative_cpl_csv, model.cpl_csv())
-                group = {"design": model._design.name, "board": model.name}
-                artifacts.append(
-                    _artifact_record(
-                        "pcb",
-                        output_name,
-                        relative_json,
-                        "application/vnd.volt.pcb+json",
-                        group=group,
-                    )
-                )
-                artifacts.append(
-                    _artifact_record(
-                        "pcb_svg",
-                        output_name,
-                        relative_svg,
-                        "image/svg+xml",
-                        group=group,
-                    )
-                )
-                if kicad_export is not None and relative_kicad is not None:
-                    artifacts.append(
-                        _artifact_record(
-                            "kicad_pcb",
-                            output_name,
-                            relative_kicad,
-                            "application/x-kicad-pcb",
-                            group=group,
-                            source={
-                                "board": kicad_export.source.board,
-                                "compiled_board_provenance_digest": (
-                                    kicad_export.source.provenance_digest
-                                ),
-                            },
-                        )
-                    )
-                artifacts.append(
-                    _artifact_record(
-                        "cpl",
-                        output_name,
-                        relative_cpl_json,
-                        "application/vnd.volt.cpl+json",
-                        group=group,
-                    )
-                )
-                artifacts.append(
-                    _artifact_record(
-                        "cpl_csv",
-                        output_name,
-                        relative_cpl_csv,
-                        "text/csv",
-                        group=group,
-                    )
-                )
-                board_documents.append((model, output_name))
-
-        model_artifacts, model_diagnostics = self._write_part_model_3d_artifacts(
-            root=root,
-            boards=board_documents,
-            used_paths=used_paths,
-            profile=profile,
-        )
-        artifacts.extend(model_artifacts)
-
-        bundle_policy = _bundle_policy_snapshot(self, extra_diagnostics=model_diagnostics)
-        diagnostics_path = _unique_path(Path("diagnostics") / "diagnostics.json", used_paths)
-        tests_path = _unique_path(Path("diagnostics") / "tests.json", used_paths)
-        _write_json(
-            root / diagnostics_path,
-            _diagnostics_payload(
-                self,
-                diagnostics=bundle_policy.diagnostics,
-                status=bundle_policy.status,
             ),
+            _canonical_report_bytes(_tests_payload(bundle_policy.tests)),
         )
-        _write_json(root / tests_path, _tests_payload(bundle_policy.tests))
-        artifacts.append(
-            _artifact_record(
-                "diagnostics",
-                "Project diagnostics",
-                diagnostics_path,
-                "application/json",
-            )
-        )
-        artifacts.append(
-            _artifact_record(
-                "project_tests",
-                "Project tests",
-                tests_path,
-                "application/json",
-            )
-        )
-
-        _write_json(
-            root / "manifest.volt.json",
-            {
-                "format": "volt.project_result",
-                "schema_version": 1,
-                "project": {
-                    "name": self.project.name,
-                    "version": self.project.version,
-                    "description": self.project.description,
-                },
-                "ok": bundle_policy.ok,
-                "profile": profile,
-                "status": bundle_policy.status,
-                "stages": [
-                    {
-                        "name": stage.name,
-                        "model_count": stage.model_count,
-                        "tests": [
-                            _test_result_payload(test)
-                            for test in stage.tests
-                        ],
-                    }
-                    for stage in self._stages
-                ],
-                "artifacts": artifacts,
-                "diagnostics": {
-                    "path": diagnostics_path.as_posix(),
-                    "summary": _diagnostic_summary(bundle_policy.diagnostics),
-                    "status": bundle_policy.status,
-                },
-                "tests": {
-                    "path": tests_path.as_posix(),
-                    "summary": _test_summary(bundle_policy.tests),
-                },
-            },
-        )
+        return
 
     def write_manufacturing_package(
         self,
@@ -1056,155 +826,8 @@ class ProjectResult:
             diagnostics_json=diagnostics_json,
         )
 
-    def _write_schematic_page_artifacts(
-        self,
-        *,
-        root: Path,
-        model: Schematic,
-        output_name: str,
-        used_paths: set[str],
-        group: dict[str, str],
-    ) -> list[dict[str, object]]:
-        records: list[dict[str, object]] = []
-        used_page_names: set[str] = set()
-        for page in model.to_svg_pages():
-            stem = _safe_slug(str(page["name"]))
-            filename = f"{stem}.svg"
-            if filename in used_page_names:
-                filename = f"{stem}-sheet-{page['sheet']}.svg"
-            used_page_names.add(filename)
-            relative = _unique_path(
-                Path("schematic") / f"{_safe_slug(output_name)}.pages" / filename,
-                used_paths,
-            )
-            _write_text(root / relative, str(page["svg"]))
-            records.append(
-                _artifact_record(
-                    "schematic_page_svg",
-                    f"{output_name}:{page['name']}",
-                    relative,
-                    "image/svg+xml",
-                    group=group,
-                )
-            )
-        return records
-
     def _test_results(self) -> tuple[ProjectTestResult, ...]:
         return tuple(test for stage in self._stages for test in stage.tests)
-
-    def _write_part_model_3d_artifacts(
-        self,
-        *,
-        root: Path,
-        boards: list[tuple[Board, str]],
-        used_paths: set[str],
-        profile: str,
-    ) -> tuple[list[dict[str, object]], tuple[ProjectDiagnostic, ...]]:
-        artifacts: list[dict[str, object]] = []
-        bundle = collect_project_part_models_3d(boards, profile=profile)
-        asset_paths: dict[str, str] = {}
-
-        for asset in bundle.assets:
-            relative_asset = _unique_path(
-                Path("assets") / "models" / f"{asset.sha256}{asset.suffix}",
-                used_paths,
-            )
-            copy_part_model_3d_asset(asset, root / relative_asset)
-            asset_paths[asset.id] = relative_asset.as_posix()
-
-        if bundle.assets or bundle.models:
-            registry_path = _unique_path(Path("assets") / "part_models_3d.json", used_paths)
-            _write_json(
-                root / registry_path,
-                {
-                    "format": "volt.part_models_3d_registry",
-                    "version": 1,
-                    "assets": [
-                        {
-                            "id": asset.id,
-                            "format": asset.format,
-                            "path": asset_paths[asset.id],
-                            "sha256": asset.sha256,
-                        }
-                        for asset in bundle.assets
-                    ],
-                    "models": [
-                        {
-                            "id": model.id,
-                            "asset": model.asset,
-                            "file_name": model.file_name,
-                            "translation_mm": list(model.translation_mm),
-                            "rotation_deg": model.rotation_deg,
-                        }
-                        for model in bundle.models
-                    ],
-                },
-            )
-            artifacts.append(
-                _artifact_record(
-                    "part_models_3d",
-                    "Project part models",
-                    registry_path,
-                    "application/json",
-                )
-            )
-            for asset in bundle.assets:
-                artifacts.append(
-                    _artifact_record(
-                        "part_model_asset",
-                        asset.id,
-                        Path(asset_paths[asset.id]),
-                        "application/octet-stream",
-                        sha256=asset.sha256,
-                    )
-                )
-        for board_record in bundle.boards:
-            group = {"design": board_record.board._design.name, "board": board_record.board.name}
-            relative = _unique_path(
-                Path("pcb") / f"{_safe_slug(board_record.output_name)}.volt.models3d.json",
-                used_paths,
-            )
-            _write_json(
-                root / relative,
-                {
-                    "format": "volt.part_models_3d",
-                    "version": 1,
-                    "board": {
-                        "design": board_record.board._design.name,
-                        "name": board_record.board.name,
-                    },
-                    "placements": [
-                        {
-                            "placement": f"component_placement:{placement.placement}",
-                            "component": f"component:{placement.component}",
-                            "reference": placement.reference,
-                            "model": placement.model,
-                            "transform_matrix": placement.transform_matrix,
-                        }
-                        for placement in board_record.placements
-                    ],
-                },
-            )
-            artifacts.append(
-                _artifact_record(
-                    "pcb_models_3d",
-                    board_record.output_name,
-                    relative,
-                    "application/json",
-                    group=group,
-                )
-            )
-
-        return artifacts, tuple(
-            _part_model_3d_diagnostic(
-                board=item.board,
-                profile=profile,
-                reference=item.reference,
-                message=item.message,
-            )
-            for item in bundle.missing
-        )
-
 
 def _is_known_model(value: object) -> bool:
     return isinstance(value, (Design, Schematic, Board))
@@ -1459,24 +1082,6 @@ def _safe_slug(name: str) -> str:
     return cleaned or "model"
 
 
-def _bom_artifact_paths(model: Design, designs: tuple[Design, ...]) -> tuple[Path, Path]:
-    if len(designs) == 1:
-        return Path("bom") / "bom.json", Path("bom") / "bom.csv"
-    slug = _safe_slug(model.name)
-    return Path("bom") / f"{slug}.bom.json", Path("bom") / f"{slug}.bom.csv"
-
-
-def _bom_sourcing_artifact_path(model: Design, designs: tuple[Design, ...]) -> Path:
-    if len(designs) == 1:
-        return Path("bom") / "sourcing.json"
-    return Path("bom") / f"{_safe_slug(model.name)}.sourcing.json"
-
-
-def _cpl_artifact_paths(output_name: str) -> tuple[Path, Path]:
-    slug = _safe_slug(output_name)
-    return Path("pcb") / f"{slug}.cpl.json", Path("pcb") / f"{slug}.cpl.csv"
-
-
 def _pcb_svg_layer_filename_token(layer_name: str) -> str:
     cleaned = _PCB_SVG_LAYER_TOKEN_CHARS.sub("_", layer_name.strip()).strip("_")
     return cleaned or "layer"
@@ -1493,19 +1098,63 @@ def _pcb_svg_layer_filename_tokens(layer_names: list[str]) -> list[str]:
     return tokens
 
 
-def _unique_path(relative: Path, used_paths: set[str]) -> Path:
-    candidate = relative
-    counter = 2
-    while candidate.as_posix() in used_paths:
-        candidate = relative.with_name(f"{relative.stem}-{counter}{relative.suffix}")
-        counter += 1
-    used_paths.add(candidate.as_posix())
-    return candidate
-
-
 def _write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
+
+
+def _canonical_report_bytes(payload: dict[str, object]) -> str:
+    return json.dumps(
+        payload,
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+        separators=(",", ": "),
+    ) + "\n"
+
+
+def _project_authoring_inputs(project: Project) -> tuple[str, list[tuple[str, str, bytes]]]:
+    functions = [
+        function
+        for stage in project._stage_order
+        for function in (
+            stage._function,
+            *(test.function for test in stage.tests),
+        )
+        if function is not None
+    ]
+    if not functions:
+        raise RuntimeError("ProjectBundle source provenance has no configured entrypoint")
+
+    records: dict[str, bytes] = {}
+    entrypoint: str | None = None
+    for function in functions:
+        source_name = inspect.getsourcefile(function)
+        if source_name is None:
+            raise RuntimeError(
+                "ProjectBundle source provenance cannot name a registered project function"
+            )
+        source = Path(source_name).resolve()
+        module_name = function.__module__.strip(".")
+        if not module_name:
+            raise RuntimeError(
+                "ProjectBundle source provenance cannot name a registered project module"
+            )
+        logical_name = module_name.replace(".", "/") + source.suffix
+        source_bytes = source.read_bytes()
+        if logical_name in records and records[logical_name] != source_bytes:
+            raise RuntimeError(
+                f"ProjectBundle source provenance name is ambiguous: {logical_name}"
+            )
+        records[logical_name] = source_bytes
+        if entrypoint is None:
+            entrypoint = logical_name
+
+    assert entrypoint is not None
+    return entrypoint, [
+        ("project_source", name, records[name])
+        for name in sorted(records, key=lambda value: value.encode("utf-8"))
+    ]
 
 
 def _bundle_policy_snapshot(
@@ -1563,83 +1212,8 @@ def _expected_diagnostics_ok(
     return not unexpected and not missing
 
 
-def _part_model_3d_diagnostic(
-    *,
-    board: Board,
-    profile: str,
-    reference: str,
-    message: str,
-) -> ProjectDiagnostic:
-    return ProjectDiagnostic(
-        stage="bundle",
-        source=f"pcb:{board.name}",
-        report=f"project.bundle:{profile}",
-        severity="error",
-        code="PROJECT_PART_MODEL_3D_MISSING",
-        message=f"{reference}: {message}",
-        entities=(),
-        category="viewer",
-        design=board._design.name,
-        board=board.name,
-    )
-
-
-def _prepare_bundle_root(root: Path) -> None:
-    if root.exists() and not root.is_dir():
-        raise NotADirectoryError(root)
-    root.mkdir(parents=True, exist_ok=True)
-    if any(root.iterdir()) and not _is_project_result_bundle(root):
-        raise FileExistsError(
-            f"Refusing to overwrite {root}: not an existing Volt project-result bundle"
-        )
-    for directory in ("logical", "schematic", "pcb", "bom", "diagnostics", "assets"):
-        shutil.rmtree(root / directory, ignore_errors=True)
-    manifest = root / "manifest.volt.json"
-    if manifest.exists():
-        manifest.unlink()
-
-
-def _is_project_result_bundle(root: Path) -> bool:
-    manifest = root / "manifest.volt.json"
-    if not manifest.exists():
-        return False
-    try:
-        payload = json.loads(manifest.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return False
-    return (
-        payload.get("format") == "volt.project_result"
-        and payload.get("schema_version") == 1
-    )
-
-
 def _write_json(path: Path, payload: object) -> None:
     _write_text(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
-
-
-def _artifact_record(
-    kind: str,
-    name: str,
-    path: Path,
-    media_type: str,
-    *,
-    group: dict[str, str] | None = None,
-    sha256: str | None = None,
-    source: dict[str, str] | None = None,
-) -> dict[str, object]:
-    record: dict[str, object] = {
-        "kind": kind,
-        "name": name,
-        "path": path.as_posix(),
-        "media_type": media_type,
-    }
-    if group is not None:
-        record["group"] = group
-    if sha256 is not None:
-        record["sha256"] = sha256
-    if source is not None:
-        record["source"] = source
-    return record
 
 
 def _diagnostics_payload(

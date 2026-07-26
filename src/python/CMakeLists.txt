@@ -71,10 +71,12 @@ pybind11_add_module(
     py_board.cpp
     py_circuit.cpp
     py_circuit_logical.cpp
+    py_circuit_part_closure.cpp
     py_circuit_modules.cpp
     py_circuit_reports.cpp
     py_part_library.cpp
     py_schematic.cpp
+    project_bundle_bindings.cpp
     py_fabrication.cpp
     py_kicad.cpp
     schematic_bindings.cpp

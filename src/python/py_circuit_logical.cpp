@@ -3,7 +3,9 @@
 #include "binding_diagnostic_conversions.hpp"
 #include "binding_part_definition_conversions.hpp"
 #include "binding_pcb_conversions.hpp"
+#include "binding_schematic_conversions.hpp"
 #include "py_circuit_logical_helpers.hpp"
+#include "py_circuit_part_closure.hpp"
 #include "py_part_library.hpp"
 
 #include <map>
@@ -19,54 +21,13 @@
 #include <volt/io/bom/bom_writer.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
 #include <volt/io/parts/part_library_bundle.hpp>
+#include <volt/io/schematic/schematic_writer.hpp>
 
 namespace volt::python {
 namespace {
 
 constexpr auto authored_library_namespace = "volt.python.design";
 constexpr auto authored_library_version = "1";
-
-[[nodiscard]] volt::ComponentContractSpec contract_spec(const volt::ComponentContract &contract) {
-    return volt::ComponentContractSpec{contract.key(),
-                                       contract.pin_keys(),
-                                       contract.framed_pins(),
-                                       contract.relations(),
-                                       contract.supply_domains(),
-                                       contract.feature_schemas(),
-                                       contract.feature_bindings()};
-}
-
-[[nodiscard]] volt::ComponentSpec component_spec(const volt::Circuit &circuit,
-                                                 volt::ComponentDefId definition_id) {
-    const auto &definition = circuit.get(definition_id);
-    auto pins = std::vector<volt::PinSpec>{};
-    pins.reserve(definition.pins().size());
-    for (const auto pin_id : definition.pins()) {
-        const auto &pin = circuit.get(pin_id);
-        auto attributes = std::vector<volt::ElectricalAttributeAssignment>{};
-        attributes.reserve(pin.electrical_attributes().size());
-        for (const auto &[name, value] : pin.electrical_attributes().entries()) {
-            attributes.push_back(volt::ElectricalAttributeAssignment{
-                volt::ElectricalAttributeSpec{name, volt::ElectricalAttributeOwner::PinSpec,
-                                              volt::ElectricalAttributeKind::Constraint,
-                                              value.dimension()},
-                value});
-        }
-        pins.push_back(volt::PinSpec{pin.name(), pin.number(), pin.connection_requirement(),
-                                     pin.terminal_kind(), pin.direction(), pin.signal_domain(),
-                                     pin.drive_kind(), pin.polarity(), std::move(attributes)});
-    }
-    return volt::ComponentSpec{
-        .name = definition.name(),
-        .pins = std::move(pins),
-        .properties = definition.properties(),
-        .source = definition.source(),
-        .schematic_symbols = definition.schematic_symbols(),
-        .contract = definition.contract().explicitly_authored()
-                        ? std::optional{contract_spec(definition.contract())}
-                        : std::nullopt,
-    };
-}
 
 [[nodiscard]] volt::ComponentContractSpec
 python_standard_contract(const volt::ContentHash &standard_digest, std::size_t pin_count) {
@@ -81,14 +42,14 @@ python_standard_contract(const volt::ContentHash &standard_digest, std::size_t p
     };
 }
 
-[[nodiscard]] std::size_t define_python_component(volt::Circuit &circuit,
-                                                  const volt::authoring::ComponentSpec &source) {
+[[nodiscard]] volt::ComponentSpec
+python_component_spec(const volt::authoring::ComponentSpec &source) {
     auto temporary = volt::Circuit{};
     const auto temporary_id = volt::authoring::define_component(temporary, source);
     auto spec = component_spec(temporary, temporary_id);
     spec.contract =
         python_standard_contract(temporary.get(temporary_id).content_identity(), spec.pins.size());
-    return circuit.define_component(std::move(spec)).index();
+    return spec;
 }
 
 [[nodiscard]] std::optional<volt::PartFootprintPolygon>
@@ -178,60 +139,72 @@ class AuthoredAssetResolver final : public volt::PartAssetResolver {
 
 } // namespace
 
+std::size_t PyCircuit::define_builtin_component(const volt::authoring::ComponentSpec &source) {
+    auto spec = python_component_spec(source);
+    auto symbols = std::vector<PyCircuitPartClosure::AuthoredSymbolInput>{};
+    for (const auto &reference : spec.schematic_symbols) {
+        const auto symbol = built_in_symbol(reference.name());
+        if (!symbol.has_value()) {
+            throw volt::KernelRangeError{
+                volt::ErrorCode::UnknownEntity,
+                "Built-in component symbol has no authoritative native definition"};
+        }
+        symbols.emplace_back(reference, volt::io::write_symbol_definition(*symbol));
+    }
+    return selected_part_bundle_->commit_authored_definition(circuit_, std::move(spec), symbols)
+        .index();
+}
+
 std::size_t PyCircuit::define_resistor() {
-    return define_python_component(circuit_, volt::authoring::resistor());
+    return define_builtin_component(volt::authoring::resistor());
 }
 
 std::size_t PyCircuit::define_capacitor() {
-    return define_python_component(circuit_, volt::authoring::capacitor());
+    return define_builtin_component(volt::authoring::capacitor());
 }
 
 std::size_t PyCircuit::define_polarized_capacitor() {
-    return define_python_component(circuit_, volt::authoring::polarized_capacitor());
+    return define_builtin_component(volt::authoring::polarized_capacitor());
 }
 
 std::size_t PyCircuit::define_inductor() {
-    return define_python_component(circuit_, volt::authoring::inductor());
+    return define_builtin_component(volt::authoring::inductor());
 }
 
-std::size_t PyCircuit::define_diode() {
-    return define_python_component(circuit_, volt::authoring::diode());
-}
+std::size_t PyCircuit::define_diode() { return define_builtin_component(volt::authoring::diode()); }
 
-std::size_t PyCircuit::define_led() {
-    return define_python_component(circuit_, volt::authoring::led());
-}
+std::size_t PyCircuit::define_led() { return define_builtin_component(volt::authoring::led()); }
 
 std::size_t PyCircuit::define_switch_spst() {
-    return define_python_component(circuit_, volt::authoring::switch_spst());
+    return define_builtin_component(volt::authoring::switch_spst());
 }
 
 std::size_t PyCircuit::define_crystal_2pin() {
-    return define_python_component(circuit_, volt::authoring::crystal_2pin());
+    return define_builtin_component(volt::authoring::crystal_2pin());
 }
 
 std::size_t PyCircuit::define_test_point() {
-    return define_python_component(circuit_, volt::authoring::test_point());
+    return define_builtin_component(volt::authoring::test_point());
 }
 
 std::size_t PyCircuit::define_connector_1x01() {
-    return define_python_component(circuit_, volt::authoring::connector_1x01());
+    return define_builtin_component(volt::authoring::connector_1x01());
 }
 
 std::size_t PyCircuit::define_connector_1x02() {
-    return define_python_component(circuit_, volt::authoring::connector_1x02());
+    return define_builtin_component(volt::authoring::connector_1x02());
 }
 
 std::size_t PyCircuit::define_connector_1x03() {
-    return define_python_component(circuit_, volt::authoring::connector_1x03());
+    return define_builtin_component(volt::authoring::connector_1x03());
 }
 
 std::size_t PyCircuit::define_regulator_3pin() {
-    return define_python_component(circuit_, volt::authoring::regulator_3pin());
+    return define_builtin_component(volt::authoring::regulator_3pin());
 }
 
 std::size_t PyCircuit::define_op_amp_5pin() {
-    return define_python_component(circuit_, volt::authoring::op_amp_5pin());
+    return define_builtin_component(volt::authoring::op_amp_5pin());
 }
 
 std::size_t PyCircuit::define_component(const std::string &name, const py::list &pins,
@@ -263,21 +236,29 @@ std::size_t PyCircuit::define_component(const std::string &name, const py::list 
                 : std::optional<volt::ComponentContractSpec>{component_contract_spec_from_dict(
                       py::cast<py::dict>(contract))},
     };
+    auto symbol_assets = std::vector<std::pair<volt::SchematicSymbolReference, std::string>>{};
+    symbol_assets.reserve(static_cast<std::size_t>(py::len(schematic_symbols)));
+    for (const auto item : schematic_symbols) {
+        const auto payload = py::cast<py::dict>(item);
+        auto symbol = symbol_definition_from_dict(payload);
+        const auto variant = optional_string_field(payload, "variant", "default");
+        symbol_assets.emplace_back(volt::SchematicSymbolReference{symbol.name(), variant},
+                                   volt::io::write_symbol_definition(symbol));
+    }
     if (!spec.contract.has_value()) {
         auto standard = volt::Circuit{};
         const auto standard_id = standard.define_component(spec);
         spec.contract = python_standard_contract(standard.get(standard_id).content_identity(),
                                                  spec.pins.size());
     }
-    auto temporary = volt::Circuit{};
-    const auto prospective = temporary.define_component(spec);
-    const auto digest = temporary.get(prospective).content_identity();
-    for (std::size_t index = 0; index < circuit_.all<volt::ComponentDefId>().size(); ++index) {
-        if (circuit_.get(volt::ComponentDefId{index}).content_identity() == digest) {
-            return index;
-        }
-    }
-    return circuit_.define_component(std::move(spec)).index();
+    return selected_part_bundle_
+        ->commit_authored_definition(circuit_, std::move(spec), symbol_assets)
+        .index();
+}
+
+std::optional<std::string>
+PyCircuit::retained_symbol_asset(const volt::SchematicSymbolReference &reference) const {
+    return selected_part_bundle_->symbol(reference);
 }
 
 std::size_t PyCircuit::define_library_part(const PyPartLibrary &library,
@@ -311,7 +292,7 @@ void PyCircuit::select_library_part(std::size_t component, const PyPartLibrary &
     }
     prospective.update(component_id(component), volt::SelectLibraryPart{*owner, reference});
     circuit_ = std::move(prospective);
-    selected_part_bundle_ = owner;
+    selected_part_bundle_->replace_bundle(owner);
 }
 
 py::list PyCircuit::validate_selected_part_erc(const PyPartLibrary &library) const {
@@ -459,8 +440,8 @@ void PyCircuit::select_authored_part(std::size_t component, const std::string &m
                                      py::object approved_alternate_mpns) {
     for (std::size_t index = 0; index < circuit_.all<volt::ComponentId>().size(); ++index) {
         if (circuit_.get(volt::ComponentId{index}).selected_library_part_ref().has_value() &&
-            (selected_part_bundle_->identity().namespace_name() != authored_library_namespace ||
-             selected_part_bundle_->identity().version() != authored_library_version)) {
+            (selected_part_bundle().identity().namespace_name() != authored_library_namespace ||
+             selected_part_bundle().identity().version() != authored_library_version)) {
             throw volt::KernelLogicError{
                 volt::ErrorCode::InvalidState,
                 "A Design cannot mix an external exact library closure with authored parts"};
@@ -547,6 +528,22 @@ void PyCircuit::select_authored_part(std::size_t component, const std::string &m
 
     auto model_reference = std::optional<volt::PartModel3DReference>{};
     auto assets = std::vector<AuthoredPartAsset>{};
+    auto schematic_assets = std::vector<volt::PartSchematicAssetReference>{};
+    schematic_assets.reserve(definition.schematic_symbols().size());
+    for (const auto &reference : definition.schematic_symbols()) {
+        const auto bytes = retained_symbol_asset(reference);
+        if (!bytes.has_value()) {
+            throw volt::KernelRangeError{
+                volt::ErrorCode::UnknownEntity,
+                "Selected authored part has no authoritative bytes for its component symbol",
+                volt::EntityRef::component(component_handle)};
+        }
+        schematic_assets.emplace_back(reference.name(), reference.variant(),
+                                      volt::sha256_content_hash(*bytes));
+        assets.push_back(AuthoredPartAsset{volt::PartAssetKind::Schematic,
+                                           "symbol:" + reference.name() + "@" + reference.variant(),
+                                           *bytes});
+    }
     assets.push_back(AuthoredPartAsset{
         volt::PartAssetKind::Footprint,
         "footprint:" + footprint.ref().library() + "/" + footprint.ref().name(), footprint_bytes});
@@ -575,7 +572,7 @@ void PyCircuit::select_authored_part(std::size_t component, const std::string &m
             std::move(pin_terminal_mappings),
             {},
             volt::PartProvenance{},
-            {},
+            std::move(schematic_assets),
             volt::OrderablePart{
                 volt::ManufacturerPart{manufacturer, part_number}, volt::PackageRef{package},
                 volt::HashedFootprintReference{footprint.ref(),
@@ -597,10 +594,10 @@ void PyCircuit::select_authored_part(std::size_t component, const std::string &m
             continue;
         }
         const auto &existing_part =
-            selected_part_bundle_->resolve(*existing.selected_library_part_ref());
+            selected_part_bundle().resolve(*existing.selected_library_part_ref());
         auto existing_assets = std::vector<AuthoredPartAsset>{};
         for (const auto &reference : volt::part_asset_references(existing_part)) {
-            const auto bytes = selected_part_bundle_->asset(reference);
+            const auto bytes = selected_part_bundle().asset(reference);
             if (!bytes.has_value()) {
                 throw volt::KernelRangeError{
                     volt::ErrorCode::UnknownEntity,
@@ -620,17 +617,43 @@ void PyCircuit::select_authored_part(std::size_t component, const std::string &m
         authored_library_namespace, authored_library_version, volt::PartLibrarySchemaVersion::V1}};
     auto resolver = AuthoredAssetResolver{};
     auto component_digests = std::map<std::string, volt::ContentHash>{};
+    auto component_roots = std::vector<volt::ComponentKey>{};
+    auto component_attachments = std::vector<volt::io::PartLibraryBundleComponentAttachment>{};
+    for (std::size_t index = 0; index < circuit_.all<volt::ComponentDefId>().size(); ++index) {
+        const auto definition_id = volt::ComponentDefId{index};
+        const auto &candidate = circuit_.get(definition_id);
+        builder.add_component(component_spec(circuit_, definition_id));
+        component_digests.emplace(candidate.contract().key().value(), candidate.content_identity());
+        if (!candidate.source().has_value()) {
+            continue;
+        }
+        component_roots.push_back(candidate.contract().key());
+        for (const auto &symbol : candidate.schematic_symbols()) {
+            if (symbol.variant() != "default") {
+                continue;
+            }
+            const auto bytes = retained_symbol_asset(symbol);
+            if (!bytes.has_value()) {
+                throw volt::KernelRangeError{
+                    volt::ErrorCode::UnknownEntity,
+                    "External component definition has no authoritative default symbol bytes"};
+            }
+            const auto symbol_key = "symbol:" + symbol.name() + "@" + symbol.variant();
+            resolver.add(volt::PartAssetKind::Schematic, symbol_key, *bytes);
+            component_attachments.emplace_back(
+                candidate.contract().key(),
+                volt::PartAssetReference{volt::PartAssetKind::Schematic, symbol_key,
+                                         volt::sha256_content_hash(*bytes)});
+        }
+    }
     auto selected = std::vector<volt::PartKey>{};
     for (const auto &[unused_component, candidate] : prospective_drafts) {
         auto component_check = volt::Circuit{};
         const auto definition_check = component_check.define_component(candidate.component);
         const auto &lowered = component_check.get(definition_check);
         const auto component_key = lowered.contract().key().value();
-        const auto [existing, inserted] =
-            component_digests.emplace(component_key, lowered.content_identity());
-        if (inserted) {
-            builder.add_component(candidate.component);
-        } else if (existing->second != lowered.content_identity()) {
+        const auto existing = component_digests.find(component_key);
+        if (existing == component_digests.end() || existing->second != lowered.content_identity()) {
             throw volt::KernelLogicError{
                 volt::ErrorCode::CrossReferenceViolation,
                 "Authored component key resolves to conflicting component content"};
@@ -642,7 +665,8 @@ void PyCircuit::select_authored_part(std::size_t component, const std::string &m
         }
     }
     auto bundle = std::make_shared<const volt::io::PartLibraryBundle>(
-        volt::io::PartLibraryBundle::build(builder, selected, resolver));
+        volt::io::PartLibraryBundle::build_with_component_roots(
+            builder, selected, component_roots, resolver, {}, component_attachments));
 
     auto prospective_circuit = circuit_;
     for (const auto &[selected_component, candidate] : prospective_drafts) {
@@ -651,7 +675,7 @@ void PyCircuit::select_authored_part(std::size_t component, const std::string &m
                                    volt::SelectLibraryPart{*bundle, reference});
     }
     circuit_ = std::move(prospective_circuit);
-    selected_part_bundle_ = std::move(bundle);
+    selected_part_bundle_->replace_bundle(std::move(bundle));
 }
 
 void PyCircuit::set_component_quantity(std::size_t component, const std::string &name,

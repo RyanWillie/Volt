@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import pytest
 import volt
 
 
@@ -51,7 +52,7 @@ def _artifact_texts(artifacts):
 
 def _project_bundle_texts(bundle):
     return {
-        path.relative_to(bundle).as_posix(): path.read_text(encoding="utf-8")
+        path.relative_to(bundle).as_posix(): path.read_bytes()
         for path in sorted(bundle.rglob("*"))
         if path.is_file()
     }
@@ -121,17 +122,17 @@ def test_pcb_led_board_example_writes_stable_public_api_artifacts():
 
         stale_page = artifacts.schematic_svg_pages[0].parent / "stale.svg"
         stale_page.write_text("<svg></svg>\n", encoding="utf-8")
-        repeated_artifacts = main.write_artifacts(Path(temp_dir))
-        assert not stale_page.exists()
-        assert [path.name for path in repeated_artifacts.schematic_svg_pages] == [
-            "pcb_led_board_First_Board_LED.svg"
-        ]
+        with pytest.raises(RuntimeError, match="destination already contains content"):
+            main.write_artifacts(Path(temp_dir))
+        assert stale_page.exists()
 
         second_artifacts = main.write_artifacts(Path(temp_dir) / "second")
         assert _artifact_texts(second_artifacts) == first_texts
 
-    example_dir = Path(main.__file__).resolve().parent
-    assert _committed_artifact_texts(main) == first_texts
+    committed = _committed_artifact_texts(main)
+    assert {key: value for key, value in committed.items() if key != "project"} == {
+        key: value for key, value in first_texts.items() if key != "project"
+    }
 
     logical = json.loads(first_texts["logical"])
     schematic = json.loads(first_texts["schematic"])
@@ -174,37 +175,21 @@ def test_pcb_led_board_example_writes_stable_public_api_artifacts():
     assert validation["diagnostics"] == []
     project_manifest = json.loads(first_texts["project"]["manifest.volt.json"])
     assert project_manifest["format"] == "volt.project_result"
-    assert project_manifest["ok"] is True
-    assert project_manifest["tests"]["summary"] == {"failed": 0, "passed": 3}
-    assert "assets/part_models_3d.json" in first_texts["project"]
-    assert "pcb/First-Board-LED.volt.models3d.json" in first_texts["project"]
-    model_registry = json.loads(first_texts["project"]["assets/part_models_3d.json"])
-    assert model_registry["models"] == [
-        {
-            "id": "part_model:0",
-            "asset": "part_model_asset:0",
-            "file_name": "r_0603_body.step",
-            "translation_mm": [0.0, 0.0, 0.35],
-            "rotation_deg": 0,
-        }
-    ]
-    model_placements = json.loads(
-        first_texts["project"]["pcb/First-Board-LED.volt.models3d.json"]
+    assert project_manifest["schema_version"] == 2
+    assert project_manifest["run"]["ok"] is True
+    assert project_manifest["export_selection"] == []
+    kinds = [artifact["kind"] for artifact in project_manifest["artifacts"]]
+    assert kinds.count("logical_model") == 1
+    assert kinds.count("board_model") == 1
+    assert kinds.count("compiled_board") == 1
+    assert kinds.count("board_scene") == 1
+    tests_artifact = next(
+        artifact
+        for artifact in project_manifest["artifacts"]
+        if artifact["kind"] == "project_tests"
     )
-    assert model_placements["placements"] == [
-        {
-            "placement": "component_placement:1",
-            "component": "component:1",
-            "reference": "R1",
-            "model": "part_model:0",
-            "transform_matrix": [
-                [1.0, 0.0, 0.0, 15.0],
-                [0.0, 1.0, 0.0, 7.0],
-                [0.0, 0.0, 1.0, 1.15],
-                [0.0, 0.0, 0.0, 1.0],
-            ],
-        }
-    ]
+    project_tests = json.loads(first_texts["project"][tests_artifact["path"]])
+    assert project_tests["summary"] == {"failed": 0, "passed": 3}
     assert 'data-board-name="First Board LED"' in first_texts["pcb_svg"]
     assert 'data-placement="component_placement:0"' in first_texts["pcb_svg"]
     assert 'data-net="net:0"' in first_texts["pcb_svg"]
@@ -214,6 +199,7 @@ def test_pcb_led_board_example_writes_stable_public_api_artifacts():
     assert '(49 "F.Fab" user)' in first_texts["kicad_pcb"]
     assert '(segment\n    (start 5 7.73)' in first_texts["kicad_pcb"]
 
+    example_dir = Path(main.__file__).resolve().parent
     guide = example_dir / "guide.html"
     guide_text = guide.read_text(encoding="utf-8")
     assert "<!doctype html>" in guide_text

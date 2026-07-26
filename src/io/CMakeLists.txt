@@ -63,6 +63,7 @@ add_library(
     project_bundle.cpp
     project_bundle_source.cpp
     project_bundle_v1.cpp
+    project_bundle_v2_writer.cpp
     schematic/detail_schematic_svg_common.cpp
     schematic/detail_schematic_svg_elements.cpp
     schematic/detail_schematic_svg_layers.cpp

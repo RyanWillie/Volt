@@ -255,7 +255,8 @@ void append_sized(std::string &out, std::string_view value) {
 [[nodiscard]] Json manifest_core(const PartLibrary &library,
                                  const ContentHash &bundle_library_digest,
                                  std::span<const PartLibraryBundleEntry> entries,
-                                 std::span<const std::string> selected_roots) {
+                                 std::span<const std::string> selected_roots,
+                                 PartLibraryBundleSchemaVersion schema_version) {
     auto entry_documents = Json::array();
     for (const auto &entry : entries) {
         entry_documents.push_back(entry_json(entry));
@@ -274,7 +275,7 @@ void append_sized(std::string &out, std::string_view value) {
         {"producer",
          {{"name", producer_name},
           {"version", static_cast<std::uint32_t>(PartLibraryBundleProducerVersion::V1)}}},
-        {"schema_version", static_cast<std::uint32_t>(PartLibraryBundleSchemaVersion::V1)},
+        {"schema_version", static_cast<std::uint32_t>(schema_version)},
         {"selected_roots", selected_roots},
     };
 }
@@ -611,6 +612,13 @@ PartLibraryBundleAttachment::PartLibraryBundleAttachment(PartKey part, PartAsset
                    "PartLibraryBundle explicit attachment role is not optional attachment data");
 }
 
+PartLibraryBundleComponentAttachment::PartLibraryBundleComponentAttachment(
+    ComponentKey component, PartAssetReference reference)
+    : component_{std::move(component)}, reference_{std::move(reference)} {
+    require_bundle(reference_.kind() == PartAssetKind::Schematic,
+                   "PartLibraryBundle component attachments must be symbol definitions");
+}
+
 PartLibraryBundleEntry::PartLibraryBundleEntry(std::string id, PartLibraryBundleEntryRole role,
                                                std::string path, ContentHash digest,
                                                std::optional<ContentHash> semantic_identity,
@@ -641,6 +649,14 @@ PartLibraryBundle
 PartLibraryBundle::build(const PartLibraryBuilder &builder, std::span<const PartKey> selected_parts,
                          const PartAssetResolver &asset_resolver,
                          std::span<const PartLibraryBundleAttachment> attachments) {
+    return build_with_component_roots(builder, selected_parts, {}, asset_resolver, attachments);
+}
+
+PartLibraryBundle PartLibraryBundle::build_with_component_roots(
+    const PartLibraryBuilder &builder, std::span<const PartKey> selected_parts,
+    std::span<const ComponentKey> selected_component_roots, const PartAssetResolver &asset_resolver,
+    std::span<const PartLibraryBundleAttachment> attachments,
+    std::span<const PartLibraryBundleComponentAttachment> component_attachments) {
     auto selected_keys = std::vector<PartKey>{selected_parts.begin(), selected_parts.end()};
     std::ranges::sort(selected_keys);
     require_bundle(std::ranges::adjacent_find(selected_keys) == selected_keys.end(),
@@ -674,7 +690,31 @@ PartLibraryBundle::build(const PartLibraryBuilder &builder, std::span<const Part
         component_documents.emplace(digest, write_logical_circuit(owner));
     }
 
+    auto component_root_keys =
+        std::vector<ComponentKey>{selected_component_roots.begin(), selected_component_roots.end()};
+    std::ranges::sort(component_root_keys);
+    require_bundle(std::ranges::adjacent_find(component_root_keys) == component_root_keys.end(),
+                   "PartLibraryBundle selected component keys contain duplicates",
+                   ErrorCode::DuplicateName);
+    for (const auto &attachment : component_attachments) {
+        require_bundle(std::ranges::binary_search(component_root_keys, attachment.component()),
+                       "PartLibraryBundle component attachment has no selected component root",
+                       ErrorCode::UnknownEntity);
+    }
+
     auto selected_components = std::vector<ComponentDefinition>{};
+    for (const auto &key : component_root_keys) {
+        const auto component =
+            std::ranges::find(builder.components(), key,
+                              [](const auto &candidate) { return candidate.contract().key(); });
+        require_bundle(component != builder.components().end(),
+                       "PartLibraryBundle selected component key does not exist",
+                       ErrorCode::UnknownEntity);
+        require_bundle(component_specs.contains(component->content_identity().value()),
+                       "PartLibraryBundle selected component has no complete ComponentSpec",
+                       ErrorCode::InvalidState);
+        selected_components.push_back(*component);
+    }
     for (const auto &part : selected_definitions) {
         const auto existing = std::ranges::find(selected_components, part.implemented_component(),
                                                 &ComponentDefinition::content_identity);
@@ -694,6 +734,12 @@ PartLibraryBundle::build(const PartLibraryBuilder &builder, std::span<const Part
     std::ranges::sort(selected_components, {}, [](const ComponentDefinition &component) {
         return component.contract().key();
     });
+    selected_components.erase(std::ranges::unique(selected_components, {},
+                                                  [](const ComponentDefinition &component) {
+                                                      return component.content_identity();
+                                                  })
+                                  .begin(),
+                              selected_components.end());
 
     auto closure_builder = PartLibraryBuilder{builder.identity()};
     for (const auto &component : selected_components) {
@@ -713,20 +759,6 @@ PartLibraryBundle::build(const PartLibraryBuilder &builder, std::span<const Part
                        ErrorCode::DuplicateName);
         entries.push_back(std::move(entry));
     };
-
-    for (const auto &component : selected_components) {
-        const auto document = component_documents.find(component.content_identity().value());
-        require_bundle(document != component_documents.end(),
-                       "PartLibraryBundle component document is missing", ErrorCode::UnknownEntity);
-        add_entry(PartLibraryBundleEntry{component_id(component),
-                                         PartLibraryBundleEntryRole::ComponentDefinition,
-                                         component_path(component.content_identity()),
-                                         sha256_content_hash(document->second),
-                                         component.content_identity(),
-                                         std::nullopt,
-                                         {}},
-                  document->second);
-    }
 
     struct ResolvedAsset {
         PartAssetReference reference;
@@ -752,6 +784,52 @@ PartLibraryBundle::build(const PartLibraryBuilder &builder, std::span<const Part
         resolved_assets.emplace(id, ResolvedAsset{reference, *bytes});
         return id;
     };
+
+    for (const auto &component : selected_components) {
+        const auto document = component_documents.find(component.content_identity().value());
+        require_bundle(document != component_documents.end(),
+                       "PartLibraryBundle component document is missing", ErrorCode::UnknownEntity);
+        auto dependencies = std::vector<std::string>{};
+        if (std::ranges::find(component_root_keys, component.contract().key()) !=
+            component_root_keys.end()) {
+            auto expected_symbol_keys = std::vector<std::string>{};
+            for (const auto &symbol : component.schematic_symbols()) {
+                if (symbol.variant() == "default") {
+                    expected_symbol_keys.push_back("symbol:" + symbol.name() + "@" +
+                                                   symbol.variant());
+                }
+            }
+            std::ranges::sort(expected_symbol_keys);
+            for (const auto &attachment : component_attachments) {
+                if (attachment.component() == component.contract().key()) {
+                    require_bundle(
+                        std::ranges::binary_search(expected_symbol_keys,
+                                                   attachment.reference().key()),
+                        "PartLibraryBundle component has an extraneous symbol attachment",
+                        ErrorCode::CrossReferenceViolation);
+                    dependencies.push_back(resolve_asset(attachment.reference()));
+                }
+            }
+            std::ranges::sort(dependencies);
+            require_bundle(std::ranges::adjacent_find(dependencies) == dependencies.end(),
+                           "PartLibraryBundle component dependency edge is duplicated",
+                           ErrorCode::DuplicateName);
+            auto attached_symbol_keys = std::vector<std::string>{};
+            for (const auto &dependency : dependencies) {
+                attached_symbol_keys.push_back(resolved_assets.at(dependency).reference.key());
+            }
+            std::ranges::sort(attached_symbol_keys);
+            require_bundle(attached_symbol_keys == expected_symbol_keys,
+                           "PartLibraryBundle component default-symbol closure is incomplete",
+                           ErrorCode::CrossReferenceViolation);
+        }
+        add_entry(
+            PartLibraryBundleEntry{
+                component_id(component), PartLibraryBundleEntryRole::ComponentDefinition,
+                component_path(component.content_identity()), sha256_content_hash(document->second),
+                component.content_identity(), std::nullopt, std::move(dependencies)},
+            document->second);
+    }
 
     auto part_dependencies = std::map<std::string, std::vector<std::string>>{};
     for (const auto &part : selected_definitions) {
@@ -812,6 +890,15 @@ PartLibraryBundle::build(const PartLibraryBuilder &builder, std::span<const Part
     std::ranges::sort(entries, {}, &PartLibraryBundleEntry::path);
     const auto reference_digest = builder.reference_digest();
     auto selected_roots = std::vector<std::string>{};
+    for (const auto &key : component_root_keys) {
+        const auto component =
+            std::ranges::find(selected_components, key,
+                              [](const auto &candidate) { return candidate.contract().key(); });
+        require_bundle(component != selected_components.end(),
+                       "PartLibraryBundle component root is absent from the closure",
+                       ErrorCode::UnknownEntity);
+        selected_roots.push_back(component_id(*component));
+    }
     for (const auto &part : selected_definitions) {
         const auto part_entry_id = part_id(part);
         const auto key = PartKey{part.identity().name()};
@@ -833,7 +920,9 @@ PartLibraryBundle::build(const PartLibraryBuilder &builder, std::span<const Part
 
     std::ranges::sort(entries, {}, &PartLibraryBundleEntry::path);
     std::ranges::sort(selected_roots);
-    auto core = manifest_core(library, reference_digest, entries, selected_roots);
+    const auto schema_version = component_root_keys.empty() ? PartLibraryBundleSchemaVersion::V1
+                                                            : PartLibraryBundleSchemaVersion::V2;
+    auto core = manifest_core(library, reference_digest, entries, selected_roots, schema_version);
     auto manifest = core;
     manifest["content_digest"] = content_digest(core, entries, payloads).value();
     auto bytes = encode_archive(manifest, entries, payloads);
@@ -851,9 +940,13 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
         require_bundle(required_string(decoded.manifest, "format") ==
                            part_library_bundle_format_name(),
                        "PartLibraryBundle manifest format is unsupported");
-        require_bundle(required_u32(decoded.manifest, "schema_version") ==
-                           static_cast<std::uint32_t>(PartLibraryBundleSchemaVersion::V1),
+        const auto bundle_schema_version = required_u32(decoded.manifest, "schema_version");
+        require_bundle(bundle_schema_version ==
+                               static_cast<std::uint32_t>(PartLibraryBundleSchemaVersion::V1) ||
+                           bundle_schema_version ==
+                               static_cast<std::uint32_t>(PartLibraryBundleSchemaVersion::V2),
                        "PartLibraryBundle manifest schema is unsupported");
+        const auto selected_roots = required_string_array(decoded.manifest, "selected_roots");
         const auto &producer = decoded.manifest.at("producer");
         require_object_fields(producer, {"name", "version"}, "producer");
         require_bundle(required_string(producer, "name") == producer_name,
@@ -869,6 +962,16 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
             payloads_by_id.emplace(entry.id(), decoded.payloads_by_path.at(entry.path()));
             entries_by_id.emplace(entry.id(), &entry);
         }
+        const auto has_component_root = std::ranges::any_of(selected_roots, [&](const auto &root) {
+            const auto entry = entries_by_id.find(root);
+            return entry != entries_by_id.end() &&
+                   entry->second->role() == PartLibraryBundleEntryRole::ComponentDefinition;
+        });
+        require_bundle(has_component_root ==
+                           (bundle_schema_version ==
+                            static_cast<std::uint32_t>(PartLibraryBundleSchemaVersion::V2)),
+                       "PartLibraryBundle component roots do not match its schema version",
+                       ErrorCode::CrossReferenceViolation);
 
         auto core = decoded.manifest;
         core.erase("content_digest");
@@ -906,6 +1009,28 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
                                *entry.semantic_identity() == component.content_identity(),
                            "PartLibraryBundle component semantic identity does not match its bytes",
                            ErrorCode::CrossReferenceViolation);
+            auto expected_symbol_keys = std::vector<std::string>{};
+            if (std::ranges::binary_search(selected_roots, entry.id())) {
+                for (const auto &symbol : component.schematic_symbols()) {
+                    if (symbol.variant() == "default") {
+                        expected_symbol_keys.push_back("symbol:" + symbol.name() + "@" +
+                                                       symbol.variant());
+                    }
+                }
+            }
+            std::ranges::sort(expected_symbol_keys);
+            auto actual_symbol_keys = std::vector<std::string>{};
+            for (const auto &dependency : entry.dependencies()) {
+                const auto &symbol = entry_by_id(entries_by_id, dependency);
+                require_bundle(symbol.role() == PartLibraryBundleEntryRole::Symbol,
+                               "PartLibraryBundle component dependency is not a symbol");
+                actual_symbol_keys.push_back(*symbol.source_key());
+            }
+            std::ranges::sort(actual_symbol_keys);
+            require_bundle(
+                actual_symbol_keys == expected_symbol_keys,
+                "PartLibraryBundle component default-symbol closure is incomplete or extraneous",
+                ErrorCode::CrossReferenceViolation);
             components_by_id.emplace(entry.id(), component);
             builder.add_component(component);
         }
@@ -1034,8 +1159,23 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
             reference_ids.push_back(entry.id());
         }
         std::ranges::sort(reference_ids);
-        const auto selected_roots = required_string_array(decoded.manifest, "selected_roots");
-        require_bundle(reference_ids == selected_roots,
+        auto expected_roots = reference_ids;
+        for (const auto &root : selected_roots) {
+            const auto entry = entries_by_id.find(root);
+            require_bundle(entry != entries_by_id.end(),
+                           "PartLibraryBundle selected root is missing", ErrorCode::UnknownEntity);
+            if (entry->second->role() == PartLibraryBundleEntryRole::ComponentDefinition) {
+                expected_roots.push_back(root);
+            } else {
+                require_bundle(entry->second->role() ==
+                                   PartLibraryBundleEntryRole::LibraryPartReference,
+                               "PartLibraryBundle selected root has an unsupported role",
+                               ErrorCode::CrossReferenceViolation);
+            }
+        }
+        std::ranges::sort(expected_roots);
+        expected_roots.erase(std::ranges::unique(expected_roots).begin(), expected_roots.end());
+        require_bundle(expected_roots == selected_roots,
                        "PartLibraryBundle selected roots do not match its exact references",
                        ErrorCode::CrossReferenceViolation);
 
@@ -1109,6 +1249,31 @@ PartLibraryBundle::asset(const PartAssetReference &reference) const & noexcept {
         return std::nullopt;
     }
     return std::string_view{payload->second};
+}
+
+std::optional<std::string_view>
+PartLibraryBundle::component_document(const ComponentKey &key) const & noexcept {
+    const auto id = "component:" + key.value();
+    const auto entry = std::ranges::find(entries_, id, &PartLibraryBundleEntry::id);
+    if (entry == entries_.end() ||
+        entry->role() != PartLibraryBundleEntryRole::ComponentDefinition) {
+        return std::nullopt;
+    }
+    const auto payload = payloads_by_id_.find(id);
+    return payload == payloads_by_id_.end() ? std::optional<std::string_view>{}
+                                            : std::optional<std::string_view>{payload->second};
+}
+
+std::optional<std::string_view>
+PartLibraryBundle::part_document(const PartKey &key) const & noexcept {
+    const auto id = "part:" + key.value();
+    const auto entry = std::ranges::find(entries_, id, &PartLibraryBundleEntry::id);
+    if (entry == entries_.end() || entry->role() != PartLibraryBundleEntryRole::PartDefinition) {
+        return std::nullopt;
+    }
+    const auto payload = payloads_by_id_.find(id);
+    return payload == payloads_by_id_.end() ? std::optional<std::string_view>{}
+                                            : std::optional<std::string_view>{payload->second};
 }
 
 } // namespace volt::io

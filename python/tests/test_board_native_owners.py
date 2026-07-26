@@ -193,9 +193,9 @@ def test_named_board_project_persistence_is_ordered_and_composite_selectable(tmp
         (tmp_path / "result.volt" / "manifest.volt.json").read_text(encoding="utf-8")
     )
     board_groups = [
-        artifact["group"]
+        artifact["id"]["owner"]["value"]
         for artifact in manifest["artifacts"]
-        if artifact["kind"] == "pcb"
+        if artifact["kind"] == "board_model"
     ]
     assert board_groups == [
         {"design": "product", "board": "Compact"},

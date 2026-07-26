@@ -73,12 +73,15 @@ def test_board_assembly_diagnostics_are_explicit():
     assert all(diagnostic.category == "assembly" for diagnostic in report)
 
 
-def test_project_bundle_emits_cpl_with_bom_and_board_exports(tmp_path):
+def test_project_bundle_default_graph_does_not_implicitly_export_assembly_files(tmp_path):
     project = volt.Project("assembly-demo")
 
     @project.design
     def design():
-        return _assembly_ready_design()
+        result = _assembly_ready_design()
+        unplaced = result.R("10k", ref="R3").dnp(False)
+        _select_resistor(unplaced, part_number="RC0603FR-0710KL")
+        return result
 
     @project.board
     def board(context):
@@ -91,27 +94,10 @@ def test_project_bundle_emits_cpl_with_bom_and_board_exports(tmp_path):
     bundle = tmp_path / "bundle"
     project.run().write(bundle)
 
-    cpl_json = json.loads((bundle / "pcb" / "Main.cpl.json").read_text(encoding="utf-8"))
-    cpl_csv = (bundle / "pcb" / "Main.cpl.csv").read_text(encoding="utf-8")
     manifest = json.loads((bundle / "manifest.volt.json").read_text(encoding="utf-8"))
 
-    assert cpl_json["rows"][0]["designator"] == "R1"
-    assert cpl_csv.startswith("Designator,Mid X,Mid Y,Layer,Rotation\n")
-    assert (bundle / "bom" / "bom.json").exists()
-    assert (bundle / "pcb" / "Main.kicad_pcb").exists()
-    assert {
-        (artifact["kind"], artifact["path"])
-        for artifact in manifest["artifacts"]
-        if artifact["kind"] in {"bom", "bom_csv", "cpl", "cpl_csv", "kicad_pcb"}
-    } == {
-        ("bom", "bom/bom.json"),
-        ("bom_csv", "bom/bom.csv"),
-        ("cpl", "pcb/Main.cpl.json"),
-        ("cpl_csv", "pcb/Main.cpl.csv"),
-        ("kicad_pcb", "pcb/Main.kicad_pcb"),
-    }
-    kicad_record = next(
-        artifact for artifact in manifest["artifacts"] if artifact["kind"] == "kicad_pcb"
-    )
-    assert kicad_record["source"]["board"] == "Main"
-    assert kicad_record["source"]["compiled_board_provenance_digest"].startswith("sha256:")
+    assert manifest["export_selection"] == []
+    assert len(manifest["dependency_lock"]["selected_parts"]) == 3
+    kinds = {artifact["kind"] for artifact in manifest["artifacts"]}
+    assert {"bom", "cpl", "kicad_pcb"}.isdisjoint(kinds)
+    assert {"board_model", "compiled_board", "board_scene"} <= kinds

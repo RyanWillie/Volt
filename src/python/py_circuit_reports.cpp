@@ -14,7 +14,7 @@ volt::Circuit PyCircuit::materialized_physical_circuit() const {
     auto logical = materialized_circuit();
     const auto board = volt::Board{logical, volt::BoardName{"Python reports"}};
     const auto resolution = volt::io::resolve_board(
-        board, *selected_part_bundle_, volt::BoardResolutionCapabilities{std::nullopt});
+        board, selected_part_bundle(), volt::BoardResolutionCapabilities{std::nullopt});
     return resolution.board().circuit();
 }
 

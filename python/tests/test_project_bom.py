@@ -93,7 +93,7 @@ def test_bom_readiness_diagnostics_reference_offending_instances():
     ]
 
 
-def test_project_bundle_emits_bom_json_and_csv(tmp_path):
+def test_project_bundle_default_graph_does_not_implicitly_export_bom(tmp_path):
     project = volt.Project("bom-demo")
 
     @project.design
@@ -113,35 +113,11 @@ def test_project_bundle_emits_bom_json_and_csv(tmp_path):
     bundle = tmp_path / "bundle"
     project.run().write(bundle)
 
-    bom_json = json.loads((bundle / "bom" / "bom.json").read_text(encoding="utf-8"))
-    bom_csv = (bundle / "bom" / "bom.csv").read_text(encoding="utf-8")
-    sourcing_json = json.loads((bundle / "bom" / "sourcing.json").read_text(encoding="utf-8"))
     manifest = json.loads((bundle / "manifest.volt.json").read_text(encoding="utf-8"))
 
-    assert bom_json["lines"][0]["mpn"] == "RC0603FR-07330RL"
-    assert "RC0603FR-07330RLA" in bom_csv
-    assert sourcing_json == {
-        "format": "volt.bom_sourcing_snapshot",
-        "version": 1,
-        "entries": [
-            {
-                "mpn": "RC0603FR-07330RL",
-                "sourcing": {
-                    "sku": "311-330HRCT-ND",
-                    "supplier": "Digi-Key",
-                },
-            }
-        ],
-    }
-    assert {
-        (artifact["kind"], artifact["path"])
-        for artifact in manifest["artifacts"]
-        if artifact["kind"].startswith("bom")
-    } == {
-        ("bom", "bom/bom.json"),
-        ("bom_csv", "bom/bom.csv"),
-        ("bom_sourcing_snapshot", "bom/sourcing.json"),
-    }
+    assert manifest["export_selection"] == []
+    assert "bom" not in {artifact["kind"] for artifact in manifest["artifacts"]}
+    assert project.run().design().bom()["lines"][0]["mpn"] == "RC0603FR-07330RL"
 
 
 def test_project_bundle_reports_bom_readiness_failures(tmp_path):
@@ -164,10 +140,17 @@ def test_project_bundle_reports_bom_readiness_failures(tmp_path):
     project.run().write(bundle)
 
     manifest = json.loads((bundle / "manifest.volt.json").read_text(encoding="utf-8"))
-    diagnostics = json.loads((bundle / "diagnostics" / "diagnostics.json").read_text(encoding="utf-8"))
+    diagnostics_artifact = next(
+        artifact
+        for artifact in manifest["artifacts"]
+        if artifact["kind"] == "diagnostics"
+    )
+    diagnostics = json.loads(
+        (bundle / diagnostics_artifact["path"]).read_text(encoding="utf-8")
+    )
 
-    assert manifest["ok"] is False
-    assert manifest["status"] == "failed"
+    assert manifest["run"]["ok"] is False
+    assert manifest["run"]["status"] == "failed"
     assert [item["report"] for item in diagnostics["diagnostics"]] == [
         "logical.bom_ready",
         "logical.bom_ready",

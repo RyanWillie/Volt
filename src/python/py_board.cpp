@@ -64,7 +64,7 @@ volt::BoardResolution PyBoard::resolve(std::vector<volt::BoardAssetCapability> a
         volt::BoardResolutionCapabilities{board_.capability_profile(), std::move(additional)});
 }
 
-volt::CompiledBoard PyBoard::compile_for_delivery() const {
+volt::CompiledBoard PyBoard::compile_for_delivery(bool models3d) const {
     if (!board_.capability_profile().has_value()) {
         throw volt::KernelLogicError{
             volt::ErrorCode::InvalidState,
@@ -72,12 +72,18 @@ volt::CompiledBoard PyBoard::compile_for_delivery() const {
     }
     auto result = volt::io::compile_board(
         circuit_->logical_circuit(), board_, circuit_->selected_part_bundle(),
-        volt::CompiledBoardCapabilities{*board_.capability_profile()});
+        volt::CompiledBoardCapabilities{*board_.capability_profile(),
+                                        models3d ? std::vector{volt::BoardAssetCapability::Models3D}
+                                                 : std::vector<volt::BoardAssetCapability>{}});
     if (!result.has_artifact()) {
         const auto &failure = *result.failure();
         throw volt::KernelLogicError{failure.code(), failure.message(), failure.entity()};
     }
     return std::move(result).take_artifact();
+}
+
+const volt::io::PartLibraryBundle &PyBoard::selected_part_bundle() const noexcept {
+    return circuit_->selected_part_bundle();
 }
 
 std::string PyBoard::name() const { return board_.name().value(); }

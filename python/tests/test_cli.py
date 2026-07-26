@@ -626,9 +626,14 @@ def main():
     assert captured.err == ""
     assert str(output) in captured.out
     manifest = json.loads((output / "manifest.volt.json").read_text(encoding="utf-8"))
-    assert manifest["status"] == "clean"
-    assert manifest["profile"] == "default"
-    assert output.joinpath("logical", "status-led.volt.json").is_file()
+    assert manifest["run"]["status"] == "clean"
+    assert manifest["run"]["profile"] == "default"
+    logical = next(
+        artifact
+        for artifact in manifest["artifacts"]
+        if artifact["kind"] == "logical_model"
+    )
+    assert output.joinpath(logical["path"]).is_file()
 
 
 def test_build_json_gates_failed_project_without_writing(tmp_path, capsys):

@@ -79,76 +79,45 @@ def test_project_result_writes_part_model_assets_and_placement_transforms(tmp_pa
         return pcb
 
     output = tmp_path / "model-bundle.volt"
-    project.run().write(output)
+    project.run().write(output, profile="viewer")
 
     manifest = json.loads((output / "manifest.volt.json").read_text(encoding="utf-8"))
-    assert [artifact["path"] for artifact in manifest["artifacts"]] == [
-        "logical/model-bundle.volt.json",
-        "bom/bom.json",
-        "bom/bom.csv",
-        "pcb/Main.volt.pcb.json",
-        "pcb/Main.svg",
-        "pcb/Main.kicad_pcb",
-        "pcb/Main.cpl.json",
-        "pcb/Main.cpl.csv",
-        "assets/part_models_3d.json",
-        f"assets/models/{asset_hash}.glb",
-        "pcb/Main.volt.models3d.json",
-        "diagnostics/diagnostics.json",
-        "diagnostics/tests.json",
+    glb = next(
+        artifact for artifact in manifest["artifacts"] if artifact["kind"] == "glb_asset"
+    )
+    scene = next(
+        artifact for artifact in manifest["artifacts"] if artifact["kind"] == "board_scene"
+    )
+    compiled = next(
+        artifact
+        for artifact in manifest["artifacts"]
+        if artifact["kind"] == "compiled_board"
+    )
+    assert (output / glb["path"]).read_bytes() == asset_bytes
+    assert glb["content_digest"] == f"sha256:{asset_hash}"
+    assert glb["id"] in [
+        dependency["artifact"] for dependency in compiled["depends_on"]
     ]
-
-    registry = json.loads((output / "assets" / "part_models_3d.json").read_text(encoding="utf-8"))
-    assert registry["assets"] == [
-        {
-            "id": "part_model_asset:0",
-            "format": "glb",
-            "path": f"assets/models/{asset_hash}.glb",
-            "sha256": asset_hash,
-        }
+    assert {
+        dependency["artifact"]["kind"] for dependency in scene["depends_on"]
+    } == {"compiled_board", "glb_asset"}
+    assert [
+        dependency["artifact"]
+        for dependency in scene["depends_on"]
+        if dependency["artifact"]["kind"] == "glb_asset"
+    ] == [glb["id"]]
+    scene_payload = json.loads((output / scene["path"]).read_text(encoding="utf-8"))
+    assert scene_payload["models"] == [{"digest": f"sha256:{asset_hash}"}]
+    assert [placement["reference"] for placement in scene_payload["placements"]] == [
+        "J1",
+        "R1",
+        "R2",
     ]
-    assert registry["models"] == [
-        {
-            "id": "part_model:0",
-            "asset": "part_model_asset:0",
-            "file_name": "resistor-body.glb",
-            "rotation_deg": 30.0,
-            "translation_mm": [1.0, 2.0, 0.3],
-        }
-    ]
-    assert (output / "assets" / "models" / f"{asset_hash}.glb").read_bytes() == asset_bytes
-
-    placements = json.loads((output / "pcb" / "Main.volt.models3d.json").read_text(encoding="utf-8"))
-    assert [placement["model"] for placement in placements["placements"]] == [
-        "part_model:0",
-        "part_model:0",
-    ]
-    assert placements["placements"] == [
-        {
-            "placement": "component_placement:1",
-            "component": "component:1",
-            "reference": "R1",
-            "model": "part_model:0",
-            "transform_matrix": [
-                [-0.5, -0.8660254037844387, 0.0, 8.0],
-                [0.8660254037844387, -0.5, 0.0, 6.0],
-                [0.0, 0.0, 1.0, 1.1],
-                [0.0, 0.0, 0.0, 1.0],
-            ],
-        },
-        {
-            "placement": "component_placement:2",
-            "component": "component:2",
-            "reference": "R2",
-            "model": "part_model:0",
-            "transform_matrix": [
-                [0.8660254037844386, -0.5, 0.0, 21.0],
-                [-0.5, -0.8660254037844386, 0.0, 3.0],
-                [0.0, 0.0, -1.0, -1.1],
-                [0.0, 0.0, 0.0, 1.0],
-            ],
-        },
-    ]
+    assert [
+        placement["model_digest"]
+        for placement in scene_payload["placements"]
+        if placement["model_digest"] is not None
+    ] == [f"sha256:{asset_hash}", f"sha256:{asset_hash}"]
 
 
 def test_project_result_keeps_distinct_model_assets_with_same_hash(tmp_path):
@@ -200,27 +169,15 @@ def test_project_result_keeps_distinct_model_assets_with_same_hash(tmp_path):
         return pcb
 
     output = tmp_path / "model-metadata-collision.volt"
-    project.run().write(output)
+    project.run().write(output, profile="viewer")
 
-    registry = json.loads((output / "assets" / "part_models_3d.json").read_text(encoding="utf-8"))
-    assert registry["assets"] == [
-        {
-            "id": "part_model_asset:0",
-            "format": "glb",
-            "path": f"assets/models/{asset_hash}.glb",
-            "sha256": asset_hash,
-        },
-        {
-            "id": "part_model_asset:1",
-            "format": "step",
-            "path": f"assets/models/{asset_hash}.step",
-            "sha256": asset_hash,
-        },
+    manifest = json.loads((output / "manifest.volt.json").read_text(encoding="utf-8"))
+    glbs = [
+        artifact for artifact in manifest["artifacts"] if artifact["kind"] == "glb_asset"
     ]
-    assert [model["asset"] for model in registry["models"]] == [
-        "part_model_asset:0",
-        "part_model_asset:1",
-    ]
+    assert len(glbs) == 1
+    assert glbs[0]["content_digest"] == f"sha256:{asset_hash}"
+    assert "step_asset" not in {artifact["kind"] for artifact in manifest["artifacts"]}
 
 
 def test_missing_part_model_asset_is_rejected_at_exact_part_admission(tmp_path):
@@ -314,10 +271,19 @@ def test_project_result_default_profile_keeps_absent_part_models_optional(tmp_pa
     output = tmp_path / "default-profile.volt"
     project.run().write(output)
 
-    diagnostics = json.loads((output / "diagnostics" / "diagnostics.json").read_text(encoding="utf-8"))
+    manifest = json.loads((output / "manifest.volt.json").read_text(encoding="utf-8"))
+    diagnostics_path = next(
+        artifact["path"]
+        for artifact in manifest["artifacts"]
+        if artifact["kind"] == "diagnostics"
+    )
+    diagnostics = json.loads((output / diagnostics_path).read_text(encoding="utf-8"))
     assert diagnostics["summary"]["errors"] == 0
     assert [
         diagnostic["code"]
         for diagnostic in diagnostics["diagnostics"]
         if diagnostic["code"] == "PROJECT_PART_MODEL_3D_MISSING"
     ] == []
+    assert "glb_asset" not in {
+        artifact["kind"] for artifact in manifest["artifacts"]
+    }

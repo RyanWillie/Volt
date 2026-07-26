@@ -5,12 +5,13 @@ import re
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import pytest
 import volt
 
 
 def _project_bundle_texts(bundle):
     return {
-        path.relative_to(bundle).as_posix(): path.read_text(encoding="utf-8")
+        path.relative_to(bundle).as_posix(): path.read_bytes()
         for path in sorted(bundle.rglob("*"))
         if path.is_file()
     }
@@ -91,11 +92,9 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
 
         stale_page = artifacts.schematic_svg_pages[0].parent / "stale.svg"
         stale_page.write_text("<svg></svg>\n", encoding="utf-8")
-        repeated_artifacts = _write_timer_artifacts(main, Path(temp_dir))
-        assert not stale_page.exists()
-        assert [path.name for path in repeated_artifacts.schematic_svg_pages] == [
-            "timer_555_led_blinker_555_LED_Blinker.svg"
-        ]
+        with pytest.raises(RuntimeError, match="destination already contains content"):
+            _write_timer_artifacts(main, Path(temp_dir))
+        assert stale_page.exists()
 
         second_artifacts = _write_timer_artifacts(main, Path(temp_dir) / "second")
         assert second_artifacts.logical_json.read_text(encoding="utf-8") == first_texts["logical"]
@@ -134,7 +133,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     example_dir = Path(main.__file__).resolve().parent
     artifact_dir = example_dir / "artifacts"
     pages_dir = artifact_dir / "timer_555_led_blinker.pages"
-    assert {
+    committed = {
         "logical": (artifact_dir / "timer_555_led_blinker.volt.json").read_text(
             encoding="utf-8"
         ),
@@ -165,7 +164,10 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         ),
         "project": _project_bundle_texts(artifact_dir / "timer_555_led_blinker.volt"),
         "pages": tuple(path.read_text(encoding="utf-8") for path in sorted(pages_dir.glob("*.svg"))),
-    } == first_texts
+    }
+    assert {key: value for key, value in committed.items() if key != "project"} == {
+        key: value for key, value in first_texts.items() if key != "project"
+    }
 
     assert logical["format"] == "volt.logical_circuit"
     assert [component["reference"] for component in logical["components"]] == [
@@ -202,8 +204,17 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
 
     project_manifest = json.loads(first_texts["project"]["manifest.volt.json"])
     assert project_manifest["format"] == "volt.project_result"
-    assert project_manifest["ok"] is True
-    assert project_manifest["tests"]["summary"] == {"failed": 0, "passed": 3}
+    assert project_manifest["schema_version"] == 2
+    assert project_manifest["run"]["ok"] is True
+    tests_artifact = next(
+        artifact
+        for artifact in project_manifest["artifacts"]
+        if artifact["kind"] == "project_tests"
+    )
+    assert json.loads(first_texts["project"][tests_artifact["path"]])["summary"] == {
+        "failed": 0,
+        "passed": 3,
+    }
 
     assert schematic["format"] == "volt.schematic"
     assert [sheet["name"] for sheet in schematic["sheets"]] == ["555 LED Blinker"]

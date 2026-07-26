@@ -1,6 +1,7 @@
 #include "binding_diagnostic_conversions.hpp"
 #include "board_bindings.hpp"
 #include "circuit_bindings.hpp"
+#include "project_bundle_bindings.hpp"
 #include "schematic_bindings.hpp"
 
 #include <volt/core/errors.hpp>
@@ -149,4 +150,5 @@ PYBIND11_MODULE(_volt, module) {
     volt::python::bind_circuit(module);
     volt::python::bind_schematic(module);
     volt::python::bind_board(module);
+    volt::python::bind_project_bundle(module);
 }

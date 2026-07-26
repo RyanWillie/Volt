@@ -1182,6 +1182,10 @@ std::string write_compiled_board(const CompiledBoard &compiled) {
     return std::string{compiled.bytes()};
 }
 
+ContentHash compiled_board_logical_dependency_digest(const Circuit &circuit) {
+    return sha256_content_hash(build_logical_snapshot(circuit).bytes);
+}
+
 namespace {
 
 template <typename Publisher>

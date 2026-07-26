@@ -231,7 +231,7 @@ def _write_manufacturing_package(
     output.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=output.parent))
     try:
-        result.write(staging)
+        result.write(staging / "project.volt")
         _write_manufacturing_contents(
             result,
             board=board,
@@ -296,6 +296,13 @@ def _write_manufacturing_contents(
     }
     _write_json(manufacturing_root / "native-fabrication.json", native_report)
 
+    assembly_root = manufacturing_root / "assembly"
+    design = result.design(board_record["design"])
+    _write_json(assembly_root / "bom.json", design.bom())
+    _write_text(assembly_root / "bom.csv", design.bom_csv())
+    _write_text(assembly_root / "cpl.json", board.cpl_json())
+    _write_text(assembly_root / "cpl.csv", board.cpl_csv())
+
     inspection_path = Path("manufacturing") / "inspection.html"
     _write_text(
         output / inspection_path,
@@ -309,6 +316,30 @@ def _write_manufacturing_contents(
     artifacts = _manufacturing_artifact_records(output, board_record)
     artifacts.extend(
         [
+            {
+                "kind": "bom",
+                "name": "Bill of materials",
+                "path": "manufacturing/assembly/bom.json",
+                "media_type": "application/json",
+            },
+            {
+                "kind": "bom_csv",
+                "name": "Bill of materials CSV",
+                "path": "manufacturing/assembly/bom.csv",
+                "media_type": "text/csv",
+            },
+            {
+                "kind": "cpl",
+                "name": "Component placement list",
+                "path": "manufacturing/assembly/cpl.json",
+                "media_type": "application/json",
+            },
+            {
+                "kind": "cpl_csv",
+                "name": "Component placement list CSV",
+                "path": "manufacturing/assembly/cpl.csv",
+                "media_type": "text/csv",
+            },
             {
                 "kind": "profile",
                 "name": "Manufacturing profile metadata",
@@ -347,7 +378,11 @@ def _write_manufacturing_contents(
         "profile": profile_payload,
         "exporter": native_payload["exporter"],
         "diagnostics": {
-            "path": "diagnostics/diagnostics.json",
+            "path": next(
+                artifact["path"]
+                for artifact in artifacts
+                if artifact["kind"] == "diagnostics"
+            ),
             "status": result.status,
             "summary": _diagnostics_payload(result)["summary"],
         },
@@ -468,30 +503,28 @@ def _manufacturing_artifact_records(
     output: Path,
     board_record: dict[str, str],
 ) -> list[dict[str, object]]:
+    del board_record
+    project_root = output / "project.volt"
     project_manifest = json.loads(
-        (output / "manifest.volt.json").read_text(encoding="utf-8")
+        (project_root / "manifest.volt.json").read_text(encoding="utf-8")
     )
     records: list[dict[str, object]] = [
         {
             "kind": "project_manifest",
             "name": "Volt project result manifest",
-            "path": "manifest.volt.json",
+            "path": "project.volt/manifest.volt.json",
             "media_type": "application/json",
         }
     ]
     for artifact in project_manifest["artifacts"]:
         kind = artifact["kind"]
-        group = artifact.get("group", {})
-        if kind in {"bom", "bom_csv"} and group.get("design") == board_record["design"]:
-            records.append(artifact)
-        elif (
-            kind in {"cpl", "cpl_csv"}
-            and group.get("design") == board_record["design"]
-            and group.get("board") == board_record["name"]
-        ):
-            records.append(artifact)
-        elif kind == "diagnostics":
-            records.append(artifact)
+        if kind == "diagnostics":
+            records.append(
+                {
+                    **artifact,
+                    "path": f"project.volt/{artifact['path']}",
+                }
+            )
     return records
 
 

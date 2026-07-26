@@ -19,6 +19,14 @@
 
 namespace volt::io {
 
+/** Return the canonical standalone symbol-definition format name. */
+[[nodiscard]] inline constexpr std::string_view symbol_definition_format_name() noexcept {
+    return "volt.symbol-definition";
+}
+
+/** Return the canonical standalone symbol-definition schema version. */
+[[nodiscard]] inline constexpr int symbol_definition_format_version() noexcept { return 1; }
+
 namespace detail {
 
 [[nodiscard]] inline std::string symbol_def_id(SymbolDefId id) { return encode_local_id(id); }
@@ -96,5 +104,11 @@ void write_schematic(std::ostream &out, const SchematicDocument &document);
 
 /** Return a deterministic JSON representation of a schematic document. */
 [[nodiscard]] std::string write_schematic(const SchematicDocument &document);
+
+/** Write one deterministic standalone native symbol definition. */
+void write_symbol_definition(std::ostream &out, const SymbolDefinition &symbol);
+
+/** Return one deterministic standalone native symbol definition. */
+[[nodiscard]] std::string write_symbol_definition(const SymbolDefinition &symbol);
 
 } // namespace volt::io

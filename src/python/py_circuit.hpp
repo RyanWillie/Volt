@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <utility>
 #include <variant>
@@ -18,9 +19,14 @@ namespace volt::io {
 class PartLibraryBundle;
 }
 
+namespace volt::authoring {
+struct ComponentSpec;
+}
+
 namespace volt::python {
 
 class PyPartLibrary;
+class PyCircuitPartClosure;
 
 using PyConnectivityEndpoint = std::variant<std::size_t, std::pair<std::size_t, std::size_t>>;
 
@@ -257,8 +263,14 @@ class PyCircuit {
     [[nodiscard]] std::vector<volt::PinDefId>
     module_component_pins_by_name(std::size_t component, const std::string &name) const;
 
+    [[nodiscard]] std::size_t
+    define_builtin_component(const volt::authoring::ComponentSpec &source);
+
+    [[nodiscard]] std::optional<std::string>
+    retained_symbol_asset(const volt::SchematicSymbolReference &reference) const;
+
     volt::Circuit circuit_;
-    std::shared_ptr<const volt::io::PartLibraryBundle> selected_part_bundle_;
+    std::shared_ptr<PyCircuitPartClosure> selected_part_bundle_;
     std::vector<ModuleDraft> module_drafts_;
     std::size_t next_template_net_handle_ = 0;
     std::size_t next_port_handle_ = 0;
