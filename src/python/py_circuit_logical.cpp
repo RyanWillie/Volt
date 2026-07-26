@@ -361,10 +361,24 @@ void PyCircuit::rebuild_authored_definition_bundle(
     for (const auto &[reference, bytes] : additional_symbols) {
         selected_part_bundle_->retain_symbol(reference, bytes);
     }
-    for (const auto &component : circuit_.all<volt::ComponentId>()) {
-        if (component.selected_library_part_ref().has_value()) {
-            return;
+    const auto &previous_bundle = selected_part_bundle();
+    auto selected_components = std::map<std::size_t, volt::PartKey>{};
+    auto selected_parts = std::map<volt::PartKey, const volt::PartDefinition *>{};
+    for (std::size_t index = 0; index < circuit_.all<volt::ComponentId>().size(); ++index) {
+        const auto &component = circuit_.get(volt::ComponentId{index});
+        if (!component.selected_library_part_ref().has_value()) {
+            continue;
         }
+        if (previous_bundle.identity().namespace_name() != authored_library_namespace ||
+            previous_bundle.identity().version() != authored_library_version) {
+            throw volt::KernelLogicError{
+                volt::ErrorCode::InvalidState,
+                "A Design cannot add authored definitions to an external exact library closure"};
+        }
+        const auto &reference = *component.selected_library_part_ref();
+        const auto &part = previous_bundle.resolve(reference);
+        selected_components.emplace(index, reference.part_key());
+        selected_parts.try_emplace(reference.part_key(), &part);
     }
     auto builder = volt::PartLibraryBuilder{volt::PartLibraryIdentity{
         authored_library_namespace, authored_library_version, volt::PartLibrarySchemaVersion::V1}};
@@ -410,9 +424,31 @@ void PyCircuit::rebuild_authored_definition_bundle(
                                                               volt::sha256_content_hash(*bytes)});
         }
     }
-    selected_part_bundle_->replace_bundle(std::make_shared<const volt::io::PartLibraryBundle>(
-        volt::io::PartLibraryBundle::build_with_component_roots(builder, {}, roots, resolver, {},
-                                                                attachments)));
+    auto selected = std::vector<volt::PartKey>{};
+    selected.reserve(selected_parts.size());
+    for (const auto &[key, part] : selected_parts) {
+        builder.add_part(*part);
+        selected.push_back(key);
+        for (const auto &reference : volt::part_asset_references(*part)) {
+            const auto bytes = previous_bundle.asset(reference);
+            if (!bytes.has_value()) {
+                throw volt::KernelRangeError{
+                    volt::ErrorCode::UnknownEntity,
+                    "Selected authored part asset is absent from its retained exact closure"};
+            }
+            resolver.add(reference.kind(), reference.key(), std::string{*bytes});
+        }
+    }
+    auto bundle = std::make_shared<const volt::io::PartLibraryBundle>(
+        volt::io::PartLibraryBundle::build_with_component_roots(builder, selected, roots, resolver,
+                                                                {}, attachments));
+    auto prospective = circuit_;
+    for (const auto &[component, key] : selected_components) {
+        prospective.update(volt::ComponentId{component},
+                           volt::SelectLibraryPart{*bundle, bundle->require(key)});
+    }
+    circuit_ = std::move(prospective);
+    selected_part_bundle_->replace_bundle(std::move(bundle));
 }
 
 std::size_t PyCircuit::define_library_part(const PyPartLibrary &library,

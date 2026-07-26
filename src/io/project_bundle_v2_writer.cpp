@@ -795,7 +795,7 @@ void little_u16(std::string &out, std::uint16_t value) {
 
 void write_file(const std::filesystem::path &path, std::string_view bytes) {
     std::filesystem::create_directories(path.parent_path());
-    auto out = std::ofstream{path, std::ios::binary | std::ios::noreplace};
+    auto out = std::ofstream{path, std::ios::binary | std::ios::trunc};
     require(out.is_open(), "could not create staging file", ErrorCode::InvalidState);
     out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
     require(out.good(), "could not write complete staging file", ErrorCode::InvalidState);
@@ -1109,17 +1109,16 @@ void ProjectBundleV2::write(const std::filesystem::path &destination,
     }
 
     auto stage = staging_path(destination);
-    while (std::filesystem::exists(stage)) {
+    while (!std::filesystem::create_directory(stage)) {
         stage = staging_path(destination);
     }
     try {
         if (representation == ProjectBundleV2Representation::Directory) {
-            std::filesystem::create_directory(stage);
             for (const auto &[path, bytes] : storage_->files) {
                 write_file(stage / std::filesystem::path{path}, bytes);
             }
         } else if (representation == ProjectBundleV2Representation::Zip) {
-            write_file(stage, archive_bytes());
+            write_file(stage / "bundle.zip", archive_bytes());
         } else {
             reject("output representation is unsupported", ErrorCode::InvalidArgument);
         }
@@ -1128,9 +1127,9 @@ void ProjectBundleV2::write(const std::filesystem::path &destination,
                     ErrorCode::InvalidState);
         }
         if (representation == ProjectBundleV2Representation::Zip) {
-            std::filesystem::create_hard_link(stage, destination);
+            std::filesystem::create_hard_link(stage / "bundle.zip", destination);
             auto ignored = std::error_code{};
-            std::filesystem::remove(stage, ignored);
+            std::filesystem::remove_all(stage, ignored);
         } else {
             std::filesystem::rename(stage, destination);
         }
@@ -1357,7 +1356,8 @@ ProjectBundleV2 ProjectBundleV2Builder::build() const {
                 std::ranges::find_if(bundle.entries(), [&](const auto &candidate) {
                     return candidate.role() == PartLibraryBundleEntryRole::Symbol &&
                            candidate.source_key() == std::optional{symbol_key} &&
-                           std::ranges::contains(component_entry->dependencies(), candidate.id());
+                           std::ranges::find(component_entry->dependencies(), candidate.id()) !=
+                               component_entry->dependencies().end();
                 });
             require(symbol_entry != bundle.entries().end(),
                     "component default symbol is absent from the selected closure",

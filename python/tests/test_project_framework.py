@@ -6,6 +6,7 @@ import volt
 from project_framework_helpers import (
     _board_ready_design,
     _minimal_design,
+    _passive_0603,
     _stage_board,
     _stage_schematic,
 )
@@ -769,6 +770,32 @@ def test_project_result_write_emits_deterministic_bundle_across_working_roots(
         "warnings": 0,
     }
     assert reports["project_tests"]["summary"] == {"failed": 0, "passed": 0}
+
+
+def test_project_result_write_retains_components_defined_after_selected_parts(tmp_path):
+    project = volt.Project("authoring-order")
+
+    @project.design
+    def design():
+        result = volt.Design("authoring-order")
+        result.R("330", ref="R1").select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-07330RL",
+            package="0603",
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+            pin_pads={1: "1", 2: "2"},
+        )
+        result.LED(ref="D1").dnp(True)
+        return result
+
+    output = tmp_path / "bundle.volt"
+    project.run().write(output)
+    manifest = json.loads((output / "manifest.volt.json").read_text(encoding="utf-8"))
+
+    assert len(manifest["dependency_lock"]["selected_parts"]) == 1
+    assert [artifact["kind"] for artifact in manifest["artifacts"]].count(
+        "component_definition"
+    ) == 2
 
 
 def test_project_result_write_preserves_expected_diagnostic_status(tmp_path):
