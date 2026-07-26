@@ -441,9 +441,15 @@ TEST_CASE("ProjectBundle v2 publication is atomic immutable and representation s
     const auto real_parent = temporary.path() / "real-parent";
     const auto linked_parent = temporary.path() / "linked-parent";
     std::filesystem::create_directory(real_parent);
-    std::filesystem::create_directory_symlink(real_parent, linked_parent);
-    CHECK_THROWS_AS(bundle.write(linked_parent / "linked.volt"), volt::KernelError);
-    CHECK_FALSE(std::filesystem::exists(real_parent / "linked.volt"));
+    auto symlink_error = std::error_code{};
+    std::filesystem::create_directory_symlink(real_parent, linked_parent, symlink_error);
+    if (symlink_error) {
+        CHECK((symlink_error == std::errc::function_not_supported ||
+               symlink_error == std::errc::operation_not_supported));
+    } else {
+        CHECK_THROWS_AS(bundle.write(linked_parent / "linked.volt"), volt::KernelError);
+        CHECK_FALSE(std::filesystem::exists(real_parent / "linked.volt"));
+    }
 }
 
 TEST_CASE("ProjectBundle v2 strong identities reject unsafe or cross-kind values") {
