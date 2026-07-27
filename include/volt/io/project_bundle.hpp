@@ -10,6 +10,8 @@
 #include <variant>
 #include <vector>
 
+#include <volt/io/project_bundle_v2_writer.hpp>
+
 namespace volt::io {
 
 namespace detail {
@@ -260,21 +262,223 @@ class LegacyProjectBundleV1View final {
     std::shared_ptr<const detail::ProjectBundleStorage> storage_;
 };
 
-/**
- * Reserved typed v2 view selected by the public version-dispatch API.
- *
- * Q1 recognizes schema v2 but does not construct this view; full graph verification belongs to
- * Q3. The type fixes the dispatch seam without adding a permissive or partial v2 loader.
- */
+/** Immutable lease over one fully verified v2 artifact and its captured payload bytes. */
+class ProjectBundleV2ArtifactView final {
+  public:
+    /// @cond
+    ProjectBundleV2ArtifactView(std::shared_ptr<const detail::ProjectBundleStorage> storage,
+                                std::size_t index);
+    /// @endcond
+
+    /** Return the complete typed descriptor verified by the native opener. */
+    [[nodiscard]] const ArtifactDescriptor &descriptor() const &;
+    [[nodiscard]] const ArtifactDescriptor &descriptor() const && = delete;
+
+    /** Return the canonical JSON spelling of the exact typed ArtifactId. */
+    [[nodiscard]] std::string id_json() const;
+
+    /** Return a JSON copy of the exact verified manifest record. */
+    [[nodiscard]] std::string manifest_record_json() const;
+
+    /** Return an owning copy of the exact immutable payload bytes. */
+    [[nodiscard]] std::string bytes() const;
+
+  private:
+    std::shared_ptr<const detail::ProjectBundleStorage> storage_;
+    std::size_t index_;
+};
+
+/** Immutable lease over one reopened authoritative logical Circuit. */
+class LoadedLogicalModelView final {
+  public:
+    /// @cond
+    LoadedLogicalModelView(std::shared_ptr<const detail::ProjectBundleStorage> storage,
+                           std::size_t index);
+    /// @endcond
+
+    /** Return the exact logical design owner. */
+    [[nodiscard]] const DesignKey &design() const &;
+    [[nodiscard]] const DesignKey &design() const && = delete;
+    /** Return the verified artifact carrying this logical model. */
+    [[nodiscard]] ProjectBundleV2ArtifactView artifact() const;
+    /** Return the immutable reopened Circuit. */
+    [[nodiscard]] const Circuit &model() const &;
+    [[nodiscard]] const Circuit &model() const && = delete;
+
+  private:
+    std::shared_ptr<const detail::ProjectBundleStorage> storage_;
+    std::size_t index_;
+};
+
+/** Immutable lease over one reopened Schematic and its retained logical owner. */
+class LoadedSchematicView final {
+  public:
+    /// @cond
+    LoadedSchematicView(std::shared_ptr<const detail::ProjectBundleStorage> storage,
+                        std::size_t index);
+    /// @endcond
+
+    /** Return the exact logical design owner. */
+    [[nodiscard]] const DesignKey &design() const &;
+    [[nodiscard]] const DesignKey &design() const && = delete;
+    /** Return the project-local Schematic identity. */
+    [[nodiscard]] const SchematicKey &schematic() const &;
+    [[nodiscard]] const SchematicKey &schematic() const && = delete;
+    /** Return the verified artifact carrying this Schematic. */
+    [[nodiscard]] ProjectBundleV2ArtifactView artifact() const;
+    /** Return the retained logical Circuit owner. */
+    [[nodiscard]] LoadedLogicalModelView circuit() const;
+    /** Return the immutable reopened Schematic. */
+    [[nodiscard]] const Schematic &model() const &;
+    [[nodiscard]] const Schematic &model() const && = delete;
+
+  private:
+    std::shared_ptr<const detail::ProjectBundleStorage> storage_;
+    std::size_t index_;
+};
+
+/** Immutable lease over one reopened named authoring Board and its logical owner. */
+class LoadedBoardView final {
+  public:
+    /// @cond
+    LoadedBoardView(std::shared_ptr<const detail::ProjectBundleStorage> storage, std::size_t index);
+    /// @endcond
+
+    /** Return the exact logical design owner. */
+    [[nodiscard]] const DesignKey &design() const &;
+    [[nodiscard]] const DesignKey &design() const && = delete;
+    /** Return the independent named Board identity. */
+    [[nodiscard]] const BoardName &board() const &;
+    [[nodiscard]] const BoardName &board() const && = delete;
+    /** Return the verified artifact carrying this authoring Board. */
+    [[nodiscard]] ProjectBundleV2ArtifactView artifact() const;
+    /** Return the retained logical Circuit owner. */
+    [[nodiscard]] LoadedLogicalModelView circuit() const;
+    /** Return the immutable reopened authoring Board. */
+    [[nodiscard]] const Board &model() const &;
+    [[nodiscard]] const Board &model() const && = delete;
+
+  private:
+    std::shared_ptr<const detail::ProjectBundleStorage> storage_;
+    std::size_t index_;
+};
+
+/** Immutable lease over one independently owned historical CompiledBoard. */
+class LoadedCompiledBoardView final {
+  public:
+    /// @cond
+    LoadedCompiledBoardView(std::shared_ptr<const detail::ProjectBundleStorage> storage,
+                            std::size_t index);
+    /// @endcond
+
+    /** Return the exact immutable compilation identity. */
+    [[nodiscard]] const CompiledBoardIdentity &identity() const &;
+    [[nodiscard]] const CompiledBoardIdentity &identity() const && = delete;
+    /** Return the verified artifact carrying this CompiledBoard. */
+    [[nodiscard]] ProjectBundleV2ArtifactView artifact() const;
+    /** Return the independently owned immutable historical CompiledBoard. */
+    [[nodiscard]] const CompiledBoard &model() const &;
+    [[nodiscard]] const CompiledBoard &model() const && = delete;
+
+  private:
+    std::shared_ptr<const detail::ProjectBundleStorage> storage_;
+    std::size_t index_;
+};
+
+/** Immutable lease over one exact CompiledBoard-derived BoardScene. */
+class LoadedBoardSceneView final {
+  public:
+    /// @cond
+    LoadedBoardSceneView(std::shared_ptr<const detail::ProjectBundleStorage> storage,
+                         std::size_t index);
+    /// @endcond
+
+    /** Return the verified artifact carrying this BoardScene. */
+    [[nodiscard]] ProjectBundleV2ArtifactView artifact() const;
+    /** Return the exact retained CompiledBoard owner. */
+    [[nodiscard]] LoadedCompiledBoardView compiled_board() const;
+    /** Return the immutable reopened BoardScene. */
+    [[nodiscard]] const BoardScene &model() const &;
+    [[nodiscard]] const BoardScene &model() const && = delete;
+
+  private:
+    std::shared_ptr<const detail::ProjectBundleStorage> storage_;
+    std::size_t index_;
+};
+
+/** Narrow immutable typed project model loaded from one completely verified v2 graph. */
+class LoadedProject final {
+  public:
+    /// @cond
+    explicit LoadedProject(std::shared_ptr<const detail::ProjectBundleStorage> storage);
+    /// @endcond
+
+    /** Enumerate logical Circuits in deterministic typed-identity order. */
+    [[nodiscard]] std::vector<LoadedLogicalModelView> circuits() const;
+    /** Enumerate Schematics in deterministic typed-identity order. */
+    [[nodiscard]] std::vector<LoadedSchematicView> schematics() const;
+    /** Enumerate independent named authoring Boards in deterministic identity order. */
+    [[nodiscard]] std::vector<LoadedBoardView> boards() const;
+    /** Enumerate independently owned CompiledBoards in deterministic identity order. */
+    [[nodiscard]] std::vector<LoadedCompiledBoardView> compiled_boards() const;
+    /** Enumerate BoardScenes in deterministic CompiledBoard-owner order. */
+    [[nodiscard]] std::vector<LoadedBoardSceneView> board_scenes() const;
+    /** Return the singleton verified diagnostics report. */
+    [[nodiscard]] ProjectBundleV2ArtifactView diagnostics() const;
+    /** Return the singleton verified project-test report. */
+    [[nodiscard]] ProjectBundleV2ArtifactView tests() const;
+    /** Enumerate selected export outputs in canonical request identity order. */
+    [[nodiscard]] std::vector<ProjectBundleV2ArtifactView> selected_exports() const;
+
+  private:
+    std::shared_ptr<const detail::ProjectBundleStorage> storage_;
+};
+
+/** Fully verified immutable typed v2 graph over ProjectBundle-owned storage. */
 class ProjectBundleGraphV2View final {
   public:
-    /** Q1 cannot construct a verified v2 view before Q3 graph verification exists. */
-    ProjectBundleGraphV2View() = delete;
+    /// @cond
+    explicit ProjectBundleGraphV2View(std::shared_ptr<const detail::ProjectBundleStorage> storage);
+
+    /// @endcond
 
     /** Return the verified v2 trust state. */
     [[nodiscard]] BundleIntegrityStatus integrity_status() const noexcept {
         return BundleIntegrityStatus::VerifiedV2;
     }
+
+    /** Return the verified human project name. */
+    [[nodiscard]] std::string project_name() const;
+    /** Return the optional verified human project version. */
+    [[nodiscard]] std::optional<std::string> project_version() const;
+    /** Return the optional verified human project description. */
+    [[nodiscard]] std::optional<std::string> project_description() const;
+    /** Return an owning copy of the exact canonical manifest bytes. */
+    [[nodiscard]] std::string manifest_bytes() const;
+    /** Return the recomputed required-default build identity. */
+    [[nodiscard]] const BuildId &build_id() const &;
+    [[nodiscard]] const BuildId &build_id() const && = delete;
+    /** Return the recomputed complete bundle digest. */
+    [[nodiscard]] const ContentHash &bundle_digest() const &;
+    [[nodiscard]] const ContentHash &bundle_digest() const && = delete;
+    /** Return the recomputed authoring-input evidence digest. */
+    [[nodiscard]] const ContentHash &authoring_inputs_digest() const &;
+    [[nodiscard]] const ContentHash &authoring_inputs_digest() const && = delete;
+    /** Return the exact verified offline dependency lock. */
+    [[nodiscard]] const DependencyLock &dependency_lock() const &;
+    [[nodiscard]] const DependencyLock &dependency_lock() const && = delete;
+    /** Return the exact verified opt-in export requests. */
+    [[nodiscard]] const ExportSelection &export_selection() const &;
+    [[nodiscard]] const ExportSelection &export_selection() const && = delete;
+    /** Enumerate all verified artifacts in deterministic typed-identity order. */
+    [[nodiscard]] std::vector<ProjectBundleV2ArtifactView> artifacts() const;
+    /** Look up one exact typed artifact identity. */
+    [[nodiscard]] std::optional<ProjectBundleV2ArtifactView> artifact(const ArtifactId &id) const;
+    /** Return the fully decoded immutable project view. */
+    [[nodiscard]] LoadedProject loaded_project() const;
+
+  private:
+    std::shared_ptr<const detail::ProjectBundleStorage> storage_;
 };
 
 /** Explicit version-discriminated read-only ProjectBundle contents. */
@@ -283,7 +487,8 @@ using ProjectBundleContentsView = std::variant<LegacyProjectBundleV1View, Projec
 /** Move-only owner of one fully captured, validated, and decoded ProjectBundle. */
 class ProjectBundle final {
   public:
-    /** Open a v1 directory or ZIP archive without executing source or publishing partial state. */
+    /** Open a v1/v2 directory or ZIP archive without executing source or publishing partial state.
+     */
     [[nodiscard]] static ProjectBundle open(const std::filesystem::path &path);
 
     /** Owning bundles cannot be copied. */

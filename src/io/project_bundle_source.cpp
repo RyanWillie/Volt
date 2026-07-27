@@ -120,6 +120,38 @@ constexpr auto max_bundle_total_size = std::uint64_t{1024U * 1024U * 1024U};
     return result;
 }
 
+[[nodiscard]] std::vector<std::string> inventory_directory(const std::filesystem::path &root) {
+    auto result = std::vector<std::string>{};
+    auto error = std::error_code{};
+    auto iterator = std::filesystem::recursive_directory_iterator{
+        root, std::filesystem::directory_options::none, error};
+    if (error) {
+        fail(ProjectBundleOpenErrorCode::UnsafePath,
+             "ProjectBundle directory cannot be enumerated safely");
+    }
+    const auto end = std::filesystem::recursive_directory_iterator{};
+    for (; iterator != end; iterator.increment(error)) {
+        if (error) {
+            fail(ProjectBundleOpenErrorCode::UnsafePath,
+                 "ProjectBundle directory changed or cannot be enumerated safely");
+        }
+        const auto status = iterator->symlink_status(error);
+        if (error || std::filesystem::is_symlink(status) ||
+            (!std::filesystem::is_directory(status) && !std::filesystem::is_regular_file(status))) {
+            fail(ProjectBundleOpenErrorCode::UnsafePath,
+                 "ProjectBundle directory contains a symlink-like or unsupported entry");
+        }
+        if (!std::filesystem::is_regular_file(status)) {
+            continue;
+        }
+        const auto relative = iterator->path().lexically_relative(root).generic_string();
+        static_cast<void>(legacy_path_segments(relative));
+        result.push_back(relative);
+    }
+    std::ranges::sort(result);
+    return result;
+}
+
 #ifndef _WIN32
 
 class FileDescriptor final {
@@ -191,7 +223,8 @@ class FileDescriptor final {
 class DirectorySource final : public BundleSource {
   public:
     explicit DirectorySource(const std::filesystem::path &root)
-        : root_{::open(root.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)} {
+        : root_path_{root},
+          root_{::open(root.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)} {
         if (root_.get() < 0) {
             fail(ProjectBundleOpenErrorCode::UnsupportedStorage,
                  "ProjectBundle directory root is missing, unsafe, or not a directory");
@@ -252,7 +285,12 @@ class DirectorySource final : public BundleSource {
              "ProjectBundle entry path did not identify a file");
     }
 
+    [[nodiscard]] std::vector<std::string> paths() const override {
+        return inventory_directory(root_path_);
+    }
+
   private:
+    std::filesystem::path root_path_;
     FileDescriptor root_;
     mutable std::uint64_t captured_size_{};
 };
@@ -489,6 +527,10 @@ class DirectorySource final : public BundleSource {
         }
         fail(ProjectBundleOpenErrorCode::MissingEntry,
              "ProjectBundle entry path did not identify a file");
+    }
+
+    [[nodiscard]] std::vector<std::string> paths() const override {
+        return inventory_directory(root_path_);
     }
 
   private:
@@ -825,6 +867,16 @@ class ZipSource final : public BundleSource {
                  "ProjectBundle ZIP is missing declared entry: " + std::string{path});
         }
         return CapturedEntry{match->second, std::nullopt};
+    }
+
+    [[nodiscard]] std::vector<std::string> paths() const override {
+        auto result = std::vector<std::string>{};
+        result.reserve(entries_.size());
+        for (const auto &[path, unused] : entries_) {
+            static_cast<void>(unused);
+            result.push_back(path);
+        }
+        return result;
     }
 
   private:

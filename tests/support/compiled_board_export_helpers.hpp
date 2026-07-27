@@ -38,6 +38,7 @@ struct ExportFixturePart {
     PhysicalPart physical;
     FootprintDefinition footprint;
     PartKey key;
+    std::optional<std::string> model_bytes = std::nullopt;
 };
 
 struct ExportFixtureLibrary {
@@ -80,6 +81,21 @@ make_export_fixture_library(std::vector<ExportFixturePart> parts) {
                                "footprint:" + input.physical.footprint().library() + "/" +
                                    input.physical.footprint().name(),
                                sha256_content_hash(footprint_bytes)};
+        auto model_reference = std::optional<PartModel3DReference>{};
+        auto model_asset = std::optional<PartAssetReference>{};
+        if (input.physical.model_3d().has_value()) {
+            if (!input.model_bytes.has_value()) {
+                throw KernelArgumentError{
+                    ErrorCode::InvalidArgument,
+                    "Export fixture part with a 3D model must provide its exact bytes"};
+            }
+            const auto &model = *input.physical.model_3d();
+            model_asset.emplace(PartAssetKind::Model3D,
+                                "model:" + model.format() + "/" + model.file_name(),
+                                sha256_content_hash(*input.model_bytes));
+            model_reference.emplace(model.format(), model.file_name(), model_asset->digest(),
+                                    model.translation_mm(), model.rotation_deg());
+        }
 
         auto pin_terminal_mappings = std::vector<PinPackageTerminalMapping>{};
         auto terminal_pad_mappings = std::vector<PackageTerminalPadMapping>{};
@@ -109,13 +125,16 @@ make_export_fixture_library(std::vector<ExportFixturePart> parts) {
                 {},
                 PartProvenance{},
                 {},
-                OrderablePart{input.physical.manufacturer_part(), input.physical.package(),
-                              HashedFootprintReference{input.physical.footprint(),
-                                                       footprint_reference.digest()},
-                              export_fixture_part_pads(input.footprint),
-                              std::move(terminal_pad_mappings),
-                              input.physical.approved_alternate_mpns()}});
+                OrderablePart{
+                    input.physical.manufacturer_part(), input.physical.package(),
+                    HashedFootprintReference{input.physical.footprint(),
+                                             footprint_reference.digest()},
+                    export_fixture_part_pads(input.footprint), std::move(terminal_pad_mappings),
+                    input.physical.approved_alternate_mpns(), std::move(model_reference)}});
         resolver.add(footprint_reference, footprint_bytes);
+        if (model_asset.has_value()) {
+            resolver.add(*model_asset, *input.model_bytes);
+        }
         keys.push_back(input.key);
     }
 
@@ -134,11 +153,13 @@ make_export_fixture_library(std::vector<ExportFixturePart> parts) {
                                   {}};
 }
 
-[[nodiscard]] inline CompiledBoard compile_export_fixture(const Circuit &circuit, Board board,
-                                                          const io::PartLibraryBundle &bundle) {
+[[nodiscard]] inline CompiledBoard
+compile_export_fixture(const Circuit &circuit, Board board, const io::PartLibraryBundle &bundle,
+                       std::vector<BoardAssetCapability> additional_capabilities = {}) {
     board.set_capability_profile(export_fixture_profile());
-    auto result = io::compile_board(circuit, board, bundle,
-                                    CompiledBoardCapabilities{export_fixture_profile()});
+    auto result = io::compile_board(
+        circuit, board, bundle,
+        CompiledBoardCapabilities{export_fixture_profile(), std::move(additional_capabilities)});
     if (!result.has_artifact()) {
         throw KernelLogicError{ErrorCode::InvalidState,
                                result.failure().has_value()

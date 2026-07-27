@@ -25,11 +25,14 @@
 #include <volt/io/bom/bom_writer.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
+#include <volt/io/pcb/board_scene.hpp>
 #include <volt/io/pcb/compiled_board.hpp>
 #include <volt/io/pcb/pcb_svg_writer.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/io/schematic/schematic_svg_writer.hpp>
 #include <volt/io/schematic/schematic_writer.hpp>
+
+#include "project_bundle_v2_contract.hpp"
 
 namespace volt::io {
 namespace {
@@ -545,64 +548,6 @@ struct BoardInput {
     const BoardScene *scene;
     const PartLibraryBundle *bundle;
 };
-
-[[nodiscard]] Json point_json(BoardPoint point) {
-    return Json{{"x_mm", point.x_mm()}, {"y_mm", point.y_mm()}};
-}
-
-[[nodiscard]] std::string board_scene_bytes(const BoardScene &scene) {
-    auto models = Json::array();
-    for (const auto &model : scene.models()) {
-        models.push_back(Json{{"digest", model.reference().digest().value()}});
-    }
-    auto placements = Json::array();
-    for (const auto &placement : scene.placements()) {
-        auto transform = Json::array();
-        for (const auto value : placement.transform()) {
-            transform.push_back(value);
-        }
-        placements.push_back(Json{{"placement", placement.placement().index()},
-                                  {"component", placement.component().index()},
-                                  {"reference", placement.reference()},
-                                  {"position", point_json(placement.position())},
-                                  {"rotation_deg", placement.rotation().degrees()},
-                                  {"side", placement.side() == BoardSide::Top ? "top" : "bottom"},
-                                  {"transform", std::move(transform)},
-                                  {"model_digest", placement.model().has_value()
-                                                       ? Json(placement.model()->digest().value())
-                                                       : Json(nullptr)}});
-    }
-    const auto &geometry = scene.geometry();
-    auto outline = Json{nullptr};
-    if (geometry.outline.has_value()) {
-        outline = Json::array();
-        for (const auto point : *geometry.outline) {
-            outline.push_back(point_json(point));
-        }
-    }
-    auto stackup = Json::array();
-    for (const auto &layer : geometry.stackup) {
-        stackup.push_back(Json{{"layer", layer.layer.index()},
-                               {"order", layer.order},
-                               {"name", layer.name},
-                               {"z_mm", layer.z_mm},
-                               {"thickness_mm", layer.thickness_mm},
-                               {"enabled", layer.enabled}});
-    }
-    return canonical(Json{
-        {"format", "volt.board-scene"},
-        {"schema_version", 1},
-        {"source", compiled_identity_json(scene.source())},
-        {"geometry",
-         Json{{"units", "mm"},
-              {"thickness_mm",
-               geometry.thickness_mm.has_value() ? Json(*geometry.thickness_mm) : Json(nullptr)},
-              {"outline", std::move(outline)},
-              {"stackup", std::move(stackup)}}},
-        {"placements", std::move(placements)},
-        {"models", std::move(models)},
-    });
-}
 
 [[nodiscard]] PartAssetReference footprint_reference(const PartDefinition &part) {
     const auto &footprint = part.orderable_part().footprint();
@@ -1713,7 +1658,7 @@ void ProjectArtifactGraph::accumulate_authoritative_artifacts(
         const auto scene_id = ArtifactId{ArtifactKind::BoardScene,
                                          BoardSceneArtifactIdentity{board.compiled->identity()}};
         const auto &scene_artifact =
-            add_artifact(scene_id, board_scene_bytes(*board.scene), std::move(scene_dependencies),
+            add_artifact(scene_id, write_board_scene(*board.scene), std::move(scene_dependencies),
                          sha256_content_hash(""));
         static_cast<void>(scene_artifact);
     }
@@ -2101,6 +2046,39 @@ void ProjectArtifactGraph::validate() {
 }
 
 } // namespace
+
+namespace detail {
+
+std::string project_bundle_v2_artifact_id_json(const ArtifactId &id) {
+    return canonical(artifact_id_json(id));
+}
+
+std::string project_bundle_v2_artifact_ref_json(const ArtifactRef &reference) {
+    return canonical(artifact_ref_json(reference));
+}
+
+std::string project_bundle_v2_artifact_key(const ArtifactId &id) { return artifact_key(id); }
+
+std::string project_bundle_v2_artifact_path(const ArtifactId &id) { return artifact_path(id); }
+
+bool project_bundle_v2_safe_path(std::string_view path) { return safe_bundle_path(path); }
+
+ArtifactRole project_bundle_v2_role_for_kind(ArtifactKind kind) { return role_for_kind(kind); }
+
+ProjectBundleV2SchemaInfo project_bundle_v2_schema_for_kind(ArtifactKind kind) {
+    const auto schema = schema_for_kind(kind);
+    return {schema.format, schema.version, schema.media_type};
+}
+
+std::string project_bundle_v2_producer_for_kind(ArtifactKind kind) {
+    return library_producer_name(kind);
+}
+
+std::string project_bundle_v2_export_request_json(const ExportRequest &request) {
+    return canonical(export_request_json(request));
+}
+
+} // namespace detail
 
 ProjectBundleV2 ProjectBundleV2Builder::build() const {
     const auto validated =

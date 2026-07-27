@@ -7,6 +7,7 @@
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/io/schematic/schematic_reader.hpp>
 #include <volt/io/schematic/schematic_writer.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
@@ -63,6 +64,16 @@ volt::Schematic make_schematic_with_net_projection(const volt::Circuit &circuit,
 }
 
 } // namespace
+
+TEST_CASE("Standalone symbol definition owner codec round trips canonical bytes") {
+    const auto symbol = make_symbol();
+    const auto bytes = volt::io::write_symbol_definition(symbol);
+    const auto reopened = volt::io::read_symbol_definition_text(bytes);
+
+    CHECK(reopened == symbol);
+    CHECK(volt::io::write_symbol_definition(reopened) == bytes);
+    CHECK_THROWS_AS(volt::io::read_symbol_definition_text("{}"), volt::KernelError);
+}
 
 TEST_CASE("Schematic writer emits structured projection JSON") {
     volt::Circuit circuit;

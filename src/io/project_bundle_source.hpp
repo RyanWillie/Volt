@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <volt/io/project_bundle.hpp>
 
@@ -31,6 +32,7 @@ class BundleSource {
     virtual ~BundleSource() = default;
     [[nodiscard]] virtual ProjectBundleStorageKind kind() const noexcept = 0;
     [[nodiscard]] virtual CapturedEntry read(std::string_view path) const = 0;
+    [[nodiscard]] virtual std::vector<std::string> paths() const = 0;
 };
 
 void validate_legacy_project_bundle_path(std::string_view path);
