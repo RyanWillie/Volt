@@ -397,6 +397,17 @@ TEST_CASE("ProjectBundle v2 open fails closed for digest path lock and exact edg
         check_open_error(root, volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
     }
 
+    SECTION("missing expected diagnostic derived as not ok") {
+        const auto root = temporary.path() / "missing-expected-status.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        replace_artifact_payload(
+            root, manifest, "diagnostics",
+            R"({"status":"clean","summary":{"errors":0,"warnings":0,"infos":0},"diagnostics":[],"expected":[{"code":"EXPECTED","severity":"warning","stage":"design","source":"test","report":"logical.default","design":"main","board":null,"rule":null,"matched":false,"expect_diagnostic_kwargs":{"code":"EXPECTED","severity":"warning","stage":"design","source":"test","report":"logical.default","design":"main"}}],"unexpected":[],"missing_expected":[{"code":"EXPECTED","severity":"warning","stage":"design","source":"test","report":"logical.default","design":"main","board":null,"rule":null,"matched":false,"expect_diagnostic_kwargs":{"code":"EXPECTED","severity":"warning","stage":"design","source":"test","report":"logical.default","design":"main"}}]})");
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::OwnershipViolation);
+    }
+
     SECTION("undeclared empty directory") {
         const auto root = temporary.path() / "empty-directory.volt";
         original.write(root);

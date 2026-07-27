@@ -328,7 +328,7 @@ ProjectReportsFacts read_project_reports(std::string_view diagnostics, std::stri
                                                                             : "failed";
     require_report(diagnostic_facts.status == status_text,
                    "diagnostics status does not equal the decoded report outcome");
-    return ProjectReportsFacts{status, status != ProjectStatus::Failed};
+    return ProjectReportsFacts{status, diagnostic_facts.policy_ok && test_facts.failed == 0U};
 }
 
 } // namespace volt::io::detail
