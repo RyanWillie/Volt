@@ -71,6 +71,7 @@ add_executable(
     io/project_bundle_v2_open_test.cpp
     io/project_bundle_v2_tamper_test.cpp
     io/project_bundle_v2_writer_test.cpp
+    io/project_bundle_v2_writer_reader_parity_test.cpp
     io/schematic/schematic_reader_test.cpp
     io/schematic/schematic_round_trip_test.cpp
     io/schematic/schematic_schema_test.cpp

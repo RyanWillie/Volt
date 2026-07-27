@@ -443,32 +443,31 @@ void verify_owner_graph(ProjectBundleStorage &storage, const LibraryDecoded &dec
             const auto circuit = circuit_for_design(storage, owner.design);
             auto expected = std::set<std::string>{};
             for (auto component_index = std::size_t{0};
-                 component_index < storage.v2_circuits[circuit].model->all<ComponentDefId>().size();
-                 ++component_index) {
-                const auto component_id = ComponentDefId{component_index};
-                const auto &component = storage.v2_circuits[circuit].model->get(component_id);
-                if (!component.source().has_value()) {
-                    continue;
-                }
-                const auto match =
-                    std::ranges::find_if(storage.v2_artifacts, [&](const auto &candidate) {
-                        if (candidate.descriptor.kind() != ArtifactKind::ComponentDefinition) {
-                            return false;
-                        }
-                        const auto &candidate_owner =
-                            std::get<LibraryComponentRef>(candidate.descriptor.id().owner());
-                        return candidate_owner.component_key == component.contract().key() &&
-                               candidate_owner.component_digest == component.content_identity();
-                    });
-                require(match != storage.v2_artifacts.end(),
-                        ProjectBundleOpenErrorCode::OwnershipViolation,
-                        "logical model imported component is not vendored");
-                expected.insert(detail::project_bundle_v2_artifact_key(match->descriptor.id()));
-            }
-            for (auto component_index = std::size_t{0};
                  component_index < storage.v2_circuits[circuit].model->all<ComponentId>().size();
                  ++component_index) {
                 const auto component = ComponentId{component_index};
+                const auto &definition =
+                    storage.v2_circuits[circuit].model->get(component).definition();
+                const auto &component_definition =
+                    storage.v2_circuits[circuit].model->get(definition);
+                if (component_definition.source().has_value()) {
+                    const auto match =
+                        std::ranges::find_if(storage.v2_artifacts, [&](const auto &candidate) {
+                            if (candidate.descriptor.kind() != ArtifactKind::ComponentDefinition) {
+                                return false;
+                            }
+                            const auto &candidate_owner =
+                                std::get<LibraryComponentRef>(candidate.descriptor.id().owner());
+                            return candidate_owner.component_key ==
+                                       component_definition.contract().key() &&
+                                   candidate_owner.component_digest ==
+                                       component_definition.content_identity();
+                        });
+                    require(match != storage.v2_artifacts.end(),
+                            ProjectBundleOpenErrorCode::OwnershipViolation,
+                            "logical model imported component is not vendored");
+                    expected.insert(detail::project_bundle_v2_artifact_key(match->descriptor.id()));
+                }
                 const auto &selected = queries::selected_library_part_ref(
                     *storage.v2_circuits[circuit].model, component);
                 if (!selected.has_value()) {
