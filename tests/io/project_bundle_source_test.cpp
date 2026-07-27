@@ -11,6 +11,10 @@
 
 #include "../../src/io/project_bundle_source.hpp"
 
+#ifndef _WIN32
+#include <sys/stat.h>
+#endif
+
 namespace {
 
 class TempDirectory final {
@@ -117,6 +121,17 @@ TEST_CASE("Directory bundle inventory remains pinned after its pathname is repla
 
     CHECK(source->paths() == std::vector<std::string>{"original.txt"});
     CHECK(source->read("original.txt").bytes == "original");
+}
+
+TEST_CASE("Directory bundle inventory rejects a FIFO without blocking") {
+    const auto temporary = TempDirectory{};
+    const auto root = temporary.path() / "bundle.volt";
+    std::filesystem::create_directory(root);
+    REQUIRE(::mkfifo((root / "pipe").c_str(), 0600) == 0);
+    const auto source = volt::io::detail::open_project_bundle_source(root);
+
+    CHECK_THROWS_AS(source->read("pipe"), volt::io::ProjectBundleOpenError);
+    CHECK_THROWS_AS(source->paths(), volt::io::ProjectBundleOpenError);
 }
 #endif
 

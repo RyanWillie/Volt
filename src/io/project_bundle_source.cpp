@@ -235,8 +235,8 @@ void inventory_directory(int directory, std::string_view prefix, std::vector<std
         const auto relative =
             prefix.empty() ? std::string{name} : std::string{prefix} + "/" + std::string{name};
         static_cast<void>(legacy_path_segments(relative));
-        auto child = FileDescriptor{
-            ::openat(directory, std::string{name}.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW)};
+        auto child = FileDescriptor{::openat(directory, std::string{name}.c_str(),
+                                             O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK)};
         if (child.get() < 0) {
             fail(ProjectBundleOpenErrorCode::UnsafePath,
                  "ProjectBundle directory changed or contains an unsafe entry");
@@ -329,7 +329,8 @@ class DirectorySource final : public BundleSource {
         }
         for (auto index = std::size_t{0}; index < segments.size(); ++index) {
             const auto final = index + 1U == segments.size();
-            const auto flags = O_RDONLY | O_CLOEXEC | O_NOFOLLOW | (final ? 0 : O_DIRECTORY);
+            const auto flags =
+                O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK | (final ? 0 : O_DIRECTORY);
             auto next = FileDescriptor{::openat(current.get(), segments[index].c_str(), flags)};
             if (next.get() < 0) {
                 fail(errno == ELOOP ? ProjectBundleOpenErrorCode::UnsafePath
