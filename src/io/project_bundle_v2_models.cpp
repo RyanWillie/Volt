@@ -112,7 +112,7 @@ void decode_library_artifacts(ProjectBundleStorage &storage, LibraryDecoded &dec
             }
         } else if (artifact.descriptor.kind() == ArtifactKind::FootprintDefinition) {
             try {
-                const auto footprint = read_footprint_asset(artifact.bytes);
+                auto footprint = read_footprint_asset(artifact.bytes);
                 require(write_footprint_asset(footprint) == artifact.bytes,
                         ProjectBundleOpenErrorCode::ModelDecodeFailure,
                         "footprint definition is not owner-canonical");
@@ -124,6 +124,9 @@ void decode_library_artifacts(ProjectBundleStorage &storage, LibraryDecoded &dec
                             owner.content_digest == artifact.descriptor.content_digest(),
                         ProjectBundleOpenErrorCode::OwnershipViolation,
                         "footprint payload identity disagrees with its owner");
+                decoded.footprints.emplace(
+                    detail::project_bundle_v2_artifact_key(artifact.descriptor.id()),
+                    std::move(footprint));
             } catch (const ProjectBundleOpenError &) {
                 throw;
             } catch (const std::exception &error) {
@@ -465,8 +468,15 @@ void verify_owner_graph(ProjectBundleStorage &storage, const LibraryDecoded &dec
                             asset_owner.library_namespace == owner.library_namespace() &&
                             asset_owner.library_version == owner.library_version() &&
                             asset_owner.library_bundle_digest == owner.library_digest()) {
-                            expected.insert(
-                                detail::project_bundle_v2_artifact_key(candidate.descriptor.id()));
+                            const auto candidate_key =
+                                detail::project_bundle_v2_artifact_key(candidate.descriptor.id());
+                            const auto footprint = decoded.footprints.find(candidate_key);
+                            require(footprint != decoded.footprints.end() &&
+                                        footprint->second.ref() ==
+                                            part.orderable_part().footprint().footprint(),
+                                    ProjectBundleOpenErrorCode::OwnershipViolation,
+                                    "footprint payload reference disagrees with its selected part");
+                            expected.insert(candidate_key);
                         }
                     } else if (asset.kind() == PartAssetKind::Model3D &&
                                asset.key().starts_with("model:glb/") &&

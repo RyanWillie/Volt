@@ -11,6 +11,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <volt/pcb/footprints/footprints.hpp>
+
 #include "project_bundle_source.hpp"
 #include "project_bundle_storage.hpp"
 
@@ -38,6 +40,7 @@ struct ParsedManifest {
 struct LibraryDecoded {
     std::map<std::string, std::unique_ptr<Circuit>> component_documents;
     std::map<std::string, std::unique_ptr<PartDefinition>> parts;
+    std::map<std::string, FootprintDefinition> footprints;
 };
 
 [[noreturn]] void fail(ProjectBundleOpenErrorCode code, std::string message);

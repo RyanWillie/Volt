@@ -121,7 +121,9 @@ struct BoardFixture {
     volt::BoardScene scene;
 };
 
-[[nodiscard]] inline BoardFixture board_fixture(double width = 30.0) {
+[[nodiscard]] inline BoardFixture
+board_fixture(double width = 30.0,
+              volt::FootprintRef footprint_ref = volt::FootprintRef{"test.project", "R1"}) {
     auto circuit = std::make_unique<volt::Circuit>();
     const auto spec = volt::ComponentSpec{
         .name = "Project resistor",
@@ -137,7 +139,7 @@ struct BoardFixture {
     const auto component = circuit->instantiate_component(
         definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
     const auto footprint = volt::FootprintDefinition{
-        volt::FootprintRef{"test.project", "R1"},
+        std::move(footprint_ref),
         std::vector{volt::FootprintPad::surface_mount(
             "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.0, 0.0},
             volt::FootprintSize{1.0, 1.0}, volt::FootprintLayerSet::front_smd())}};
