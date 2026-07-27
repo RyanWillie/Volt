@@ -386,6 +386,24 @@ TEST_CASE("ProjectBundle v2 open fails closed for digest path lock and exact edg
         check_open_error(root, volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
     }
 
+    SECTION("diagnostics status derived from decoded evidence") {
+        const auto root = temporary.path() / "diagnostics-derived-status.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        replace_artifact_payload(
+            root, manifest, "diagnostics",
+            R"({"status":"clean","summary":{"errors":0,"warnings":1,"infos":0},"diagnostics":[{"stage":"design","source":"test","report":"logical.default","severity":"warning","category":"general","code":"WARN","message":"warning","entities":[],"overlays":[],"measurement":null,"design":"main","board":null,"rule":null,"expect_diagnostic_kwargs":{"code":"WARN","severity":"warning","stage":"design","source":"test","report":"logical.default","design":"main"}}],"expected":[],"unexpected":[{"stage":"design","source":"test","report":"logical.default","severity":"warning","category":"general","code":"WARN","message":"warning","entities":[],"overlays":[],"measurement":null,"design":"main","board":null,"rule":null,"expect_diagnostic_kwargs":{"code":"WARN","severity":"warning","stage":"design","source":"test","report":"logical.default","design":"main"}}],"missing_expected":[]})");
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
+    }
+
+    SECTION("undeclared empty directory") {
+        const auto root = temporary.path() / "empty-directory.volt";
+        original.write(root);
+        std::filesystem::create_directories(root / "undeclared" / "empty");
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::MalformedArchive);
+    }
+
     SECTION("missing direct edge") {
         const auto root = temporary.path() / "missing-edge.volt";
         original.write(root);

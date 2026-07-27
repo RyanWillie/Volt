@@ -143,11 +143,12 @@ constexpr auto max_bundle_total_size = std::uint64_t{1024U * 1024U * 1024U};
             fail(ProjectBundleOpenErrorCode::UnsafePath,
                  "ProjectBundle directory contains a symlink-like or unsupported entry");
         }
-        if (!std::filesystem::is_regular_file(status)) {
-            continue;
-        }
         const auto relative = iterator->path().lexically_relative(root).generic_string();
         static_cast<void>(legacy_path_segments(relative));
+        if (std::filesystem::is_directory(status)) {
+            result.push_back(relative + "/");
+            continue;
+        }
         result.push_back(relative);
     }
     std::ranges::sort(result);
@@ -248,6 +249,7 @@ void inventory_directory(int directory, std::string_view prefix, std::vector<std
                  "ProjectBundle directory entry cannot be inspected safely");
         }
         if (S_ISDIR(status.st_mode)) {
+            result.push_back(relative + "/");
             inventory_directory(child.get(), relative, result);
         } else if (S_ISREG(status.st_mode)) {
             result.push_back(relative);
@@ -901,6 +903,7 @@ struct ZipDirectoryRecord {
                 fail(ProjectBundleOpenErrorCode::MalformedArchive,
                      "ProjectBundle ZIP directory entry contains payload bytes");
             }
+            result.emplace(record.path, std::string{});
             continue;
         }
         total_size += record.uncompressed_size;

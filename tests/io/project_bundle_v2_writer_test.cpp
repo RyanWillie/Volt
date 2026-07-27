@@ -54,6 +54,10 @@ class LogicalFixture final {
         return result;
     }
 
+    [[nodiscard]] const volt::Circuit &circuit() const noexcept { return circuit_; }
+
+    [[nodiscard]] const volt::io::PartLibraryBundle &bundle() const noexcept { return bundle_; }
+
   private:
     EmptyAssetResolver resolver_;
     volt::Circuit circuit_;
@@ -122,6 +126,22 @@ TEST_CASE("ProjectBundle v2 writer is deterministic and identity sensitive") {
     CHECK(changed.build_id() != first.build_id());
     CHECK(changed.bundle_digest() != first.bundle_digest());
     CHECK(std::string{first.manifest_bytes()} == historical_manifest);
+}
+
+TEST_CASE("ProjectBundle v2 writer derives run status from decoded reports") {
+    const auto fixture = LogicalFixture{};
+    auto builder = volt::io::ProjectBundleV2Builder{
+        volt::io::ProjectIdentity{"fixture", std::nullopt, std::nullopt},
+        volt::io::ProjectRunSummary{true, volt::io::ProjectStatus::Clean, "default", {"design"}},
+        volt::io::LogicalInputName{"project.py"},
+        {volt::io::AuthoringInput{volt::io::AuthoringInputKind::ProjectSource,
+                                  volt::io::LogicalInputName{"project.py"}, "project source"}},
+        volt::io::ProjectReport{
+            R"({"status":"clean","summary":{"errors":0,"warnings":1,"infos":0},"diagnostics":[{"stage":"design","source":"test","report":"logical.default","severity":"warning","category":"general","code":"WARN","message":"warning","entities":[],"overlays":[],"measurement":null,"design":"main","board":null,"rule":null,"expect_diagnostic_kwargs":{"code":"WARN","severity":"warning","stage":"design","source":"test","report":"logical.default","design":"main"}}],"expected":[],"unexpected":[{"stage":"design","source":"test","report":"logical.default","severity":"warning","category":"general","code":"WARN","message":"warning","entities":[],"overlays":[],"measurement":null,"design":"main","board":null,"rule":null,"expect_diagnostic_kwargs":{"code":"WARN","severity":"warning","stage":"design","source":"test","report":"logical.default","design":"main"}}],"missing_expected":[]})"},
+        volt::io::ProjectReport{R"({"summary":{"passed":0,"failed":0},"tests":[]})"}};
+    builder.add_logical(volt::io::DesignKey{"main"}, fixture.circuit(), fixture.bundle());
+
+    CHECK_THROWS_AS(builder.build(), volt::KernelError);
 }
 
 TEST_CASE("ProjectBundle v2 export selection is explicit typed and exact") {

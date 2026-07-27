@@ -12,6 +12,7 @@
 #include <nlohmann/json.hpp>
 
 #include <volt/core/errors.hpp>
+#include <volt/io/project_bundle_v2_writer.hpp>
 
 namespace volt::io::detail {
 namespace {
@@ -280,7 +281,9 @@ ProjectDiagnosticsReportFacts read_project_diagnostics_report(std::string_view b
     require_report(missing == expected_missing,
                    "diagnostics missing-expected list is inconsistent");
 
-    return ProjectDiagnosticsReportFacts{status, errors, warnings, infos};
+    const auto count = errors + warnings + infos;
+    const auto policy_ok = expected.empty() ? errors == 0U : unexpected.empty() && missing.empty();
+    return ProjectDiagnosticsReportFacts{status, errors, warnings, infos, count, policy_ok};
 }
 
 ProjectTestsReportFacts read_project_tests_report(std::string_view bytes) {
@@ -311,6 +314,21 @@ ProjectTestsReportFacts read_project_tests_report(std::string_view bytes) {
     require_report(passed == recorded_passed && failed == recorded_failed,
                    "project tests summary does not equal the decoded tests");
     return ProjectTestsReportFacts{passed, failed};
+}
+
+ProjectReportsFacts read_project_reports(std::string_view diagnostics, std::string_view tests) {
+    const auto diagnostic_facts = read_project_diagnostics_report(diagnostics);
+    const auto test_facts = read_project_tests_report(tests);
+    const auto status =
+        diagnostic_facts.count == 0U && test_facts.failed == 0U ? ProjectStatus::Clean
+        : diagnostic_facts.policy_ok && test_facts.failed == 0U ? ProjectStatus::ExpectedDiagnostics
+                                                                : ProjectStatus::Failed;
+    const auto status_text = status == ProjectStatus::Clean                 ? "clean"
+                             : status == ProjectStatus::ExpectedDiagnostics ? "expected-diagnostics"
+                                                                            : "failed";
+    require_report(diagnostic_facts.status == status_text,
+                   "diagnostics status does not equal the decoded report outcome");
+    return ProjectReportsFacts{status, status != ProjectStatus::Failed};
 }
 
 } // namespace volt::io::detail

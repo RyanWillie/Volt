@@ -116,9 +116,23 @@ void verify_descriptors_and_capture(const BundleSource &source, const ParsedMani
             std::move(captured.bytes)});
     }
     const auto actual_paths = source.paths();
-    require(std::set<std::string>{actual_paths.begin(), actual_paths.end()} == expected_paths,
-            ProjectBundleOpenErrorCode::MalformedArchive,
+    auto actual_files = std::set<std::string>{};
+    auto actual_directories = std::set<std::string>{};
+    for (const auto &path : actual_paths) {
+        if (path.ends_with('/')) {
+            actual_directories.insert(path);
+        } else {
+            actual_files.insert(path);
+        }
+    }
+    require(actual_files == expected_paths, ProjectBundleOpenErrorCode::MalformedArchive,
             "bundle contains missing or forbidden extra files");
+    for (const auto &directory : actual_directories) {
+        require(std::ranges::any_of(expected_paths,
+                                    [&](const auto &path) { return path.starts_with(directory); }),
+                ProjectBundleOpenErrorCode::MalformedArchive,
+                "bundle contains a forbidden empty directory");
+    }
 }
 
 [[nodiscard]] std::map<std::string, std::size_t>
@@ -261,23 +275,13 @@ void verify_dependency_lock(const ProjectBundleStorage &storage, const Dependenc
             "dependency lock selected parts do not equal the vendored part closure");
 }
 
-void verify_report(std::string_view bytes, ArtifactKind kind, const ProjectRunSummary &run) {
+void verify_reports(std::string_view diagnostics, std::string_view tests,
+                    const ProjectRunSummary &run) {
     try {
-        if (kind == ArtifactKind::Diagnostics) {
-            const auto report = detail::read_project_diagnostics_report(bytes);
-            const auto expected_status = run.status == ProjectStatus::Clean ? "clean"
-                                         : run.status == ProjectStatus::ExpectedDiagnostics
-                                             ? "expected-diagnostics"
-                                             : "failed";
-            require(report.status == expected_status,
-                    ProjectBundleOpenErrorCode::OwnershipViolation,
-                    "diagnostics status disagrees with the run");
-        } else {
-            const auto report = detail::read_project_tests_report(bytes);
-            require(report.failed == 0U || run.status == ProjectStatus::Failed,
-                    ProjectBundleOpenErrorCode::OwnershipViolation,
-                    "project tests disagree with the run status");
-        }
+        const auto reports = detail::read_project_reports(diagnostics, tests);
+        require(reports.status == run.status && reports.ok == run.ok,
+                ProjectBundleOpenErrorCode::OwnershipViolation,
+                "decoded project report outcome disagrees with the run");
     } catch (const ProjectBundleOpenError &) {
         throw;
     } catch (const std::exception &error) {

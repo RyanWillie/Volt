@@ -1092,12 +1092,9 @@ validate_project_build(const ProjectRunSummary &run, const LogicalInputName &ent
             ErrorCode::InvalidState);
     require(run.ok == (run.status != ProjectStatus::Failed),
             "run ok flag disagrees with its closed status");
-    const auto diagnostics_report = detail::read_project_diagnostics_report(diagnostics.bytes);
-    require(diagnostics_report.status == status_name(run.status),
-            "run status disagrees with the diagnostics report");
-    const auto tests_report = detail::read_project_tests_report(tests.bytes);
-    require(tests_report.failed == 0U || run.status == ProjectStatus::Failed,
-            "run status disagrees with failed project tests");
+    const auto reports = detail::read_project_reports(diagnostics.bytes, tests.bytes);
+    require(reports.status == run.status && reports.ok == run.ok,
+            "run status disagrees with the decoded project reports");
 
     auto input_records = std::vector<std::tuple<AuthoringInputKind, std::string, ContentHash>>{};
     input_records.reserve(inputs.size());
