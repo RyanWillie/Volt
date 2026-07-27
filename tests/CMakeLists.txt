@@ -63,6 +63,8 @@ add_executable(
     io/pcb/pcb_svg_writer_test.cpp
     io/pcb/compiled_board_test.cpp
     io/project_bundle_test.cpp
+    io/project_bundle_v2_open_test.cpp
+    io/project_bundle_v2_tamper_test.cpp
     io/project_bundle_v2_writer_test.cpp
     io/schematic/schematic_reader_test.cpp
     io/schematic/schematic_round_trip_test.cpp
