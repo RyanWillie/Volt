@@ -21,6 +21,7 @@
 #include <volt/io/pcb/compiled_board_consumers.hpp>
 #include <volt/io/project_bundle.hpp>
 #include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/io/schematic/schematic_writer.hpp>
 
 #include "support/compiled_board_export_helpers.hpp"
 
@@ -35,6 +36,22 @@ class EmptyAssetResolver final : public volt::PartAssetResolver {
     resolve(const volt::PartAssetReference &) const override {
         return std::nullopt;
     }
+};
+
+class MemoryAssetResolver final : public volt::PartAssetResolver {
+  public:
+    void add(const volt::PartAssetReference &reference, std::string bytes) {
+        assets_.insert_or_assign(reference.key(), std::move(bytes));
+    }
+
+    [[nodiscard]] std::optional<std::string>
+    resolve(const volt::PartAssetReference &reference) const override {
+        const auto match = assets_.find(reference.key());
+        return match == assets_.end() ? std::nullopt : std::optional{match->second};
+    }
+
+  private:
+    std::map<std::string, std::string> assets_;
 };
 
 class TempDirectory final {
@@ -225,6 +242,71 @@ struct BoardFixture {
     volt::CompiledBoard compiled;
     volt::BoardScene scene;
 };
+
+struct SymbolVariantFixture {
+    volt::Circuit circuit;
+    volt::io::PartLibraryBundle bundle;
+};
+
+[[nodiscard]] SymbolVariantFixture symbol_variant_fixture() {
+    auto circuit = volt::Circuit{};
+    const auto spec = volt::ComponentSpec{
+        .name = "Variant resistor",
+        .pins = {volt::PinSpec{.name = "A", .number = "1"}},
+        .source = volt::DefinitionSource{"test.variant", "resistor", "1"},
+        .schematic_symbols = {volt::SchematicSymbolReference{"VariantSymbol", "vertical"}},
+        .contract =
+            volt::ComponentContractSpec{
+                .key = volt::ComponentKey{"test.variant/resistor@1"},
+                .pin_keys = {volt::PinKey{"A"}},
+            },
+    };
+    const auto definition = circuit.define_component(spec);
+    const auto component = circuit.instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
+
+    const auto symbol_bytes =
+        volt::io::write_symbol_definition(volt::SymbolDefinition{"VariantSymbol"});
+    const auto symbol_reference =
+        volt::PartAssetReference{volt::PartAssetKind::Schematic, "symbol:VariantSymbol@vertical",
+                                 volt::sha256_content_hash(symbol_bytes)};
+    const auto footprint = volt::FootprintDefinition{
+        volt::FootprintRef{"test.variant", "R1"},
+        std::vector{volt::FootprintPad::surface_mount(
+            "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.0, 0.0},
+            volt::FootprintSize{1.0, 1.0}, volt::FootprintLayerSet::front_smd())}};
+    const auto footprint_bytes = volt::io::write_footprint_asset(footprint);
+    const auto footprint_reference =
+        volt::PartAssetReference{volt::PartAssetKind::Footprint, "footprint:test.variant/R1",
+                                 volt::sha256_content_hash(footprint_bytes)};
+
+    auto library_builder = volt::PartLibraryBuilder{
+        volt::PartLibraryIdentity{"test.variant", "1", volt::PartLibrarySchemaVersion::V1}};
+    library_builder.add_component(spec).add_part(volt::PartDefinition{
+        circuit.get(definition),
+        volt::PartIdentity{"test.variant", "resistor", "1"},
+        volt::ElectricalRecordSet{1},
+        {volt::PinPackageTerminalMapping{volt::PinKey{"A"}, {volt::PackageTerminalKey{"1"}}}},
+        {},
+        volt::PartProvenance{},
+        {volt::PartSchematicAssetReference{"VariantSymbol", "vertical", symbol_reference.digest()}},
+        volt::OrderablePart{
+            volt::ManufacturerPart{"Volt", "VARIANT-R1"},
+            volt::PackageRef{"0603"},
+            volt::HashedFootprintReference{footprint.ref(), footprint_reference.digest()},
+            {volt::PartFootprintPad{"1", 0.0, 0.0, 1.0, 1.0}},
+            {volt::PackageTerminalPadMapping{volt::PackageTerminalKey{"1"},
+                                             {volt::FootprintPadKey{"1"}}}},
+        }});
+    auto resolver = MemoryAssetResolver{};
+    resolver.add(symbol_reference, symbol_bytes);
+    resolver.add(footprint_reference, footprint_bytes);
+    const auto key = volt::PartKey{"resistor"};
+    const auto keys = std::vector{key};
+    auto bundle = volt::io::PartLibraryBundle::build(library_builder, keys, resolver);
+    circuit.update(component, volt::SelectLibraryPart{bundle, bundle.require(key)});
+    return SymbolVariantFixture{std::move(circuit), std::move(bundle)};
+}
 
 [[nodiscard]] std::string minimal_glb() {
     return std::string{'g', 'l', 'T', 'F', '\x02', '\0', '\0', '\0', '\x0c', '\0', '\0', '\0'};
@@ -493,6 +575,25 @@ TEST_CASE("ProjectBundle v2 derives one exact complete Board graph and rejects s
     stale_logical.add_board(volt::io::DesignKey{"main"}, fixture.board, fixture.compiled,
                             fixture.scene, fixture.bundle);
     CHECK_THROWS_AS(stale_logical.build(), volt::KernelError);
+}
+
+TEST_CASE("ProjectBundle v2 reopens a selected part with a non-default symbol variant") {
+    const auto fixture = symbol_variant_fixture();
+    auto builder = project_builder();
+    builder.add_logical(volt::io::DesignKey{"main"}, fixture.circuit, fixture.bundle);
+    const auto bundle = builder.build();
+    const auto temporary = TempDirectory{};
+    const auto path = temporary.path() / "symbol-variant.volt";
+    bundle.write(path);
+
+    const auto manifest = OrderedJson::parse(bundle.manifest_bytes());
+    const auto symbol = std::ranges::find(manifest.at("artifacts"), "symbol_definition",
+                                          [](const auto &artifact) { return artifact.at("kind"); });
+    REQUIRE(symbol != manifest.at("artifacts").end());
+    CHECK(symbol->at("id").at("owner").at("value").at("key") == "symbol:VariantSymbol@vertical");
+
+    const auto reopened = volt::io::ProjectBundle::open(path);
+    CHECK(reopened.require_v2().loaded_project().circuits().size() == 1U);
 }
 
 TEST_CASE("ProjectBundle v2 reopens independent multiple named Board alternatives") {

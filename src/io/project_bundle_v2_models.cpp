@@ -91,8 +91,10 @@ void decode_library_artifacts(ProjectBundleStorage &storage, LibraryDecoded &dec
                 const auto symbol = read_symbol_definition_text(artifact.bytes);
                 const auto &owner =
                     std::get<LibraryAttachmentRef>(artifact.descriptor.id().owner());
+                const auto owner_prefix = "symbol:" + symbol.name() + "@";
                 require(write_symbol_definition(symbol) == artifact.bytes &&
-                            owner.key == "symbol:" + symbol.name() + "@default" &&
+                            owner.key.starts_with(owner_prefix) &&
+                            owner.key.size() > owner_prefix.size() &&
                             owner.content_digest == artifact.descriptor.content_digest(),
                         ProjectBundleOpenErrorCode::OwnershipViolation,
                         "symbol payload identity or canonical bytes disagree with its owner");
