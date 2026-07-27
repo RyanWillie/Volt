@@ -141,9 +141,12 @@ int main() {
         volt::io::ProjectReport{R"({"summary":{"passed":0,"failed":0},"tests":[]})"}};
     bundle_builder.add_logical(volt::io::DesignKey{"link"}, circuit, library);
     const auto project_bundle = bundle_builder.build();
-    const auto write_scene = &volt::io::write_board_scene;
-    const auto read_scene = &volt::io::read_board_scene;
-    const auto read_symbol_text = &volt::io::read_symbol_definition_text;
+    auto *volatile write_scene = &volt::io::write_board_scene;
+    auto *volatile read_scene = &volt::io::read_board_scene;
+    auto *volatile read_symbol_text = &volt::io::read_symbol_definition_text;
+    static_cast<void>(write_scene);
+    static_cast<void>(read_scene);
+    static_cast<void>(read_symbol_text);
     return static_cast<int>(ProjectBundleSchemaVersion::V1) == 1 &&
                    BundleIntegrityStatus::LegacyUnverified != BundleIntegrityStatus::VerifiedV2 &&
                    error.code() == ProjectBundleOpenErrorCode::MissingBundle &&
@@ -159,8 +162,7 @@ int main() {
                        R"({"format":"volt.project_result","schema_version":2,)") &&
                    volt::io::artifact_kind_name(volt::io::ArtifactKind::LogicalModel) ==
                        "logical_model" &&
-                   volt::io::symbol_definition_format_name() == "volt.symbol-definition" &&
-                   write_scene != nullptr && read_scene != nullptr && read_symbol_text != nullptr
+                   volt::io::symbol_definition_format_name() == "volt.symbol-definition"
                ? 0
                : 1;
 }
