@@ -118,9 +118,12 @@ void decode_library_artifacts(ProjectBundleStorage &storage, LibraryDecoded &dec
                         "footprint definition is not owner-canonical");
                 const auto &owner =
                     std::get<LibraryAttachmentRef>(artifact.descriptor.id().owner());
-                require(owner.content_digest == artifact.descriptor.content_digest(),
+                const auto expected_key =
+                    "footprint:" + footprint.ref().library() + "/" + footprint.ref().name();
+                require(owner.key == expected_key &&
+                            owner.content_digest == artifact.descriptor.content_digest(),
                         ProjectBundleOpenErrorCode::OwnershipViolation,
-                        "footprint content identity disagrees with its owner");
+                        "footprint payload identity disagrees with its owner");
             } catch (const ProjectBundleOpenError &) {
                 throw;
             } catch (const std::exception &error) {
