@@ -94,7 +94,7 @@ void decode_library_artifacts(ProjectBundleStorage &storage, LibraryDecoded &dec
     for (const auto &artifact : storage.v2_artifacts) {
         if (artifact.descriptor.kind() == ArtifactKind::SymbolDefinition) {
             try {
-                const auto symbol = read_symbol_definition_text(artifact.bytes);
+                auto symbol = read_symbol_definition_text(artifact.bytes);
                 const auto &owner =
                     std::get<LibraryAttachmentRef>(artifact.descriptor.id().owner());
                 const auto owner_prefix = "symbol:" + symbol.name() + "@";
@@ -104,6 +104,9 @@ void decode_library_artifacts(ProjectBundleStorage &storage, LibraryDecoded &dec
                             owner.content_digest == artifact.descriptor.content_digest(),
                         ProjectBundleOpenErrorCode::OwnershipViolation,
                         "symbol payload identity or canonical bytes disagree with its owner");
+                decoded.symbols.emplace(
+                    detail::project_bundle_v2_artifact_key(artifact.descriptor.id()),
+                    std::move(symbol));
             } catch (const ProjectBundleOpenError &) {
                 throw;
             } catch (const std::exception &error) {
@@ -456,8 +459,21 @@ void verify_owner_graph(ProjectBundleStorage &storage, const LibraryDecoded &dec
                             asset_owner.library_namespace == owner.library_namespace() &&
                             asset_owner.library_version == owner.library_version() &&
                             asset_owner.library_bundle_digest == owner.library_digest()) {
-                            expected.insert(
-                                detail::project_bundle_v2_artifact_key(candidate.descriptor.id()));
+                            const auto candidate_key =
+                                detail::project_bundle_v2_artifact_key(candidate.descriptor.id());
+                            const auto symbol = decoded.symbols.find(candidate_key);
+                            const auto typed_reference =
+                                std::ranges::find_if(part.schematic_assets(), [&](const auto &ref) {
+                                    return "symbol:" + ref.name() + "@" + ref.variant() ==
+                                               asset.key() &&
+                                           ref.hash() == asset.digest();
+                                });
+                            require(symbol != decoded.symbols.end() &&
+                                        typed_reference != part.schematic_assets().end() &&
+                                        symbol->second.name() == typed_reference->name(),
+                                    ProjectBundleOpenErrorCode::OwnershipViolation,
+                                    "symbol payload name disagrees with its selected part");
+                            expected.insert(candidate_key);
                         }
                     } else if (asset.kind() == PartAssetKind::Footprint &&
                                candidate.descriptor.kind() == ArtifactKind::FootprintDefinition) {
