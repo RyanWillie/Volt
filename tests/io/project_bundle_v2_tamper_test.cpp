@@ -342,6 +342,50 @@ TEST_CASE("ProjectBundle v2 open fails closed for digest path lock and exact edg
         CHECK_THROWS_AS(volt::io::ProjectBundle::open(root), volt::io::ProjectBundleOpenError);
     }
 
+    SECTION("project tests nested codec") {
+        const auto root = temporary.path() / "project-tests-codec.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        replace_artifact_payload(
+            root, manifest, "project_tests",
+            R"({"summary":{"failed":0,"passed":999,"extra":true},"tests":"not-an-array"})");
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
+    }
+
+    SECTION("project tests summary") {
+        const auto root = temporary.path() / "project-tests-summary.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        replace_artifact_payload(
+            root, manifest, "project_tests",
+            R"({"summary":{"failed":0,"passed":0},"tests":[{"stage":"design","name":"truth","ok":true,"message":""}]})");
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
+    }
+
+    SECTION("diagnostics nested codec") {
+        const auto root = temporary.path() / "diagnostics-codec.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        replace_artifact_payload(
+            root, manifest, "diagnostics",
+            R"({"status":"clean","summary":{"errors":1,"warnings":0,"infos":0},"diagnostics":[{"severity":"error"}],"expected":[],"unexpected":[],"missing_expected":[]})");
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
+    }
+
+    SECTION("diagnostics summary") {
+        const auto root = temporary.path() / "diagnostics-summary.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        replace_artifact_payload(
+            root, manifest, "diagnostics",
+            R"({"status":"clean","summary":{"errors":1,"warnings":0,"infos":0},"diagnostics":[],"expected":[],"unexpected":[],"missing_expected":[]})");
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
+    }
+
     SECTION("missing direct edge") {
         const auto root = temporary.path() / "missing-edge.volt";
         original.write(root);

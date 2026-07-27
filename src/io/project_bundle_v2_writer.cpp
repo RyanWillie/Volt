@@ -33,6 +33,7 @@
 #include <volt/io/schematic/schematic_writer.hpp>
 
 #include "project_bundle_v2_contract.hpp"
+#include "project_bundle_v2_reports.hpp"
 
 namespace volt::io {
 namespace {
@@ -1041,17 +1042,11 @@ void ProjectBundleV2::write(const std::filesystem::path &destination,
     require(!std::filesystem::is_symlink(std::filesystem::symlink_status(parent)),
             "destination parent must not be a symbolic link", ErrorCode::InvalidArgument);
 
-    auto existing_empty_directory = false;
     const auto destination_status = std::filesystem::symlink_status(destination);
     require(!std::filesystem::is_symlink(destination_status),
             "destination must not be a symbolic link", ErrorCode::InvalidArgument);
-    if (std::filesystem::exists(destination_status)) {
-        existing_empty_directory =
-            std::filesystem::is_directory(destination) && std::filesystem::is_empty(destination);
-        require(existing_empty_directory &&
-                    representation == ProjectBundleV2Representation::Directory,
-                "destination already contains content", ErrorCode::InvalidState);
-    }
+    require(!std::filesystem::exists(destination_status), "destination already exists",
+            ErrorCode::InvalidState);
 
     auto stage = staging_path(destination);
     while (!std::filesystem::create_directory(stage)) {
@@ -1066,10 +1061,6 @@ void ProjectBundleV2::write(const std::filesystem::path &destination,
             write_file(stage / "bundle.zip", archive_bytes());
         } else {
             reject("output representation is unsupported", ErrorCode::InvalidArgument);
-        }
-        if (existing_empty_directory) {
-            require(std::filesystem::remove(destination), "could not replace the empty destination",
-                    ErrorCode::InvalidState);
         }
         if (representation == ProjectBundleV2Representation::Zip) {
             std::filesystem::create_hard_link(stage / "bundle.zip", destination);
@@ -1093,15 +1084,6 @@ struct ValidatedProjectBuild {
     std::map<std::string, const LogicalInput *> logical_by_design;
 };
 
-[[nodiscard]] Json parse_project_report(std::string_view bytes, std::string_view name) {
-    try {
-        return Json::parse(bytes.begin(), bytes.end());
-    } catch (const std::exception &error) {
-        reject(std::string{name} + " report is not valid JSON: " + error.what(),
-               ErrorCode::InvalidArgument);
-    }
-}
-
 [[nodiscard]] ValidatedProjectBuild
 validate_project_build(const ProjectRunSummary &run, const LogicalInputName &entrypoint,
                        std::span<const AuthoringInput> inputs, const ProjectReport &diagnostics,
@@ -1110,26 +1092,11 @@ validate_project_build(const ProjectRunSummary &run, const LogicalInputName &ent
             ErrorCode::InvalidState);
     require(run.ok == (run.status != ProjectStatus::Failed),
             "run ok flag disagrees with its closed status");
-    const auto diagnostics_report = parse_project_report(diagnostics.bytes, "diagnostics");
-    require(
-        diagnostics_report.is_object() && diagnostics_report.size() == 6U &&
-            diagnostics_report.contains("status") && diagnostics_report.contains("summary") &&
-            diagnostics_report.contains("diagnostics") && diagnostics_report.contains("expected") &&
-            diagnostics_report.contains("unexpected") &&
-            diagnostics_report.contains("missing_expected"),
-        "diagnostics report does not match its closed project codec", ErrorCode::InvalidArgument);
-    require(diagnostics_report.at("status").is_string() &&
-                diagnostics_report.at("status").get<std::string>() == status_name(run.status),
+    const auto diagnostics_report = detail::read_project_diagnostics_report(diagnostics.bytes);
+    require(diagnostics_report.status == status_name(run.status),
             "run status disagrees with the diagnostics report");
-    const auto tests_report = parse_project_report(tests.bytes, "project-tests");
-    require(
-        tests_report.is_object() && tests_report.size() == 2U && tests_report.contains("summary") &&
-            tests_report.contains("tests") && tests_report.at("summary").is_object() &&
-            tests_report.at("summary").contains("failed") &&
-            tests_report.at("summary").at("failed").is_number_unsigned(),
-        "project-tests report does not match its closed project codec", ErrorCode::InvalidArgument);
-    const auto failed_tests = tests_report.at("summary").at("failed").get<std::uint64_t>();
-    require(failed_tests == 0U || run.status == ProjectStatus::Failed,
+    const auto tests_report = detail::read_project_tests_report(tests.bytes);
+    require(tests_report.failed == 0U || run.status == ProjectStatus::Failed,
             "run status disagrees with failed project tests");
 
     auto input_records = std::vector<std::tuple<AuthoringInputKind, std::string, ContentHash>>{};

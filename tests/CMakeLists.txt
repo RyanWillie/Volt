@@ -63,6 +63,7 @@ add_executable(
     io/pcb/pcb_svg_writer_test.cpp
     io/pcb/compiled_board_test.cpp
     io/project_bundle_test.cpp
+    io/project_bundle_source_test.cpp
     io/project_bundle_v2_board_export_rejection_test.cpp
     io/project_bundle_v2_board_export_tamper_test.cpp
     io/project_bundle_v2_board_export_test.cpp

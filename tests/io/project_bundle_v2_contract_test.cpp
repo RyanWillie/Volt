@@ -144,8 +144,8 @@ TEST_CASE("ProjectBundle v2 publication is atomic immutable and representation s
 
     const auto empty = temporary.path() / "empty.volt";
     std::filesystem::create_directory(empty);
-    bundle.write(empty);
-    CHECK(snapshot(empty) == original);
+    CHECK_THROWS_AS(bundle.write(empty), volt::KernelError);
+    CHECK(snapshot(empty).empty());
 
     const auto real_parent = temporary.path() / "real-parent";
     const auto linked_parent = temporary.path() / "linked-parent";

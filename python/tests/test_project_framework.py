@@ -1033,7 +1033,7 @@ def test_project_result_write_never_rewrites_historical_bundle(tmp_path):
         if path.is_file()
     }
 
-    with pytest.raises(RuntimeError, match="destination already contains content"):
+    with pytest.raises(RuntimeError, match="destination already exists"):
         design_only.run().write(output)
 
     after = {
@@ -1044,7 +1044,7 @@ def test_project_result_write_never_rewrites_historical_bundle(tmp_path):
     assert after == before
 
 
-def test_project_result_write_allows_empty_existing_output_root(tmp_path):
+def test_project_result_write_refuses_empty_existing_output_root(tmp_path):
     project = volt.Project("status-led")
 
     @project.design
@@ -1054,9 +1054,10 @@ def test_project_result_write_allows_empty_existing_output_root(tmp_path):
     output = tmp_path / "status-led.volt"
     output.mkdir()
 
-    project.run().write(output)
+    with pytest.raises(RuntimeError, match="destination already exists"):
+        project.run().write(output)
 
-    assert (output / "manifest.volt.json").exists()
+    assert list(output.iterdir()) == []
 
 
 def test_project_result_write_refuses_non_bundle_output_root(tmp_path):
@@ -1070,7 +1071,7 @@ def test_project_result_write_refuses_non_bundle_output_root(tmp_path):
     (output / "logical").mkdir(parents=True)
     (output / "logical" / "notes.txt").write_text("do not delete\n", encoding="utf-8")
 
-    with pytest.raises(RuntimeError, match="destination already contains content"):
+    with pytest.raises(RuntimeError, match="destination already exists"):
         project.run().write(output)
 
     assert (output / "logical" / "notes.txt").read_text(encoding="utf-8") == "do not delete\n"

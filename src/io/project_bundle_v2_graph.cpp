@@ -20,6 +20,7 @@
 #include <volt/circuit/connectivity/queries.hpp>
 
 #include "project_bundle_v2_contract.hpp"
+#include "project_bundle_v2_reports.hpp"
 
 namespace volt::io::v2_open {
 
@@ -261,32 +262,27 @@ void verify_dependency_lock(const ProjectBundleStorage &storage, const Dependenc
 }
 
 void verify_report(std::string_view bytes, ArtifactKind kind, const ProjectRunSummary &run) {
-    const auto report =
-        parse_json(bytes, kind == ArtifactKind::Diagnostics ? "diagnostics" : "project tests",
-                   ProjectBundleOpenErrorCode::ModelDecodeFailure);
-    if (kind == ArtifactKind::Diagnostics) {
-        require_key_set(
-            report,
-            {"status", "summary", "diagnostics", "expected", "unexpected", "missing_expected"},
-            "diagnostics report");
-        const auto expected_status = run.status == ProjectStatus::Clean ? "clean"
-                                     : run.status == ProjectStatus::ExpectedDiagnostics
-                                         ? "expected-diagnostics"
-                                         : "failed";
-        require(string_field(report, "status", "diagnostics report") == expected_status,
-                ProjectBundleOpenErrorCode::OwnershipViolation,
-                "diagnostics status disagrees with the run");
-    } else {
-        require_key_set(report, {"summary", "tests"}, "project tests");
-        const auto &summary = field(report, "summary", "project tests");
-        require(summary.is_object() && summary.contains("failed") &&
-                    summary.at("failed").is_number_unsigned(),
-                ProjectBundleOpenErrorCode::ModelDecodeFailure,
-                "project tests summary does not carry failed count");
-        require(summary.at("failed").get<std::uint64_t>() == 0U ||
-                    run.status == ProjectStatus::Failed,
-                ProjectBundleOpenErrorCode::OwnershipViolation,
-                "project tests disagree with the run status");
+    try {
+        if (kind == ArtifactKind::Diagnostics) {
+            const auto report = detail::read_project_diagnostics_report(bytes);
+            const auto expected_status = run.status == ProjectStatus::Clean ? "clean"
+                                         : run.status == ProjectStatus::ExpectedDiagnostics
+                                             ? "expected-diagnostics"
+                                             : "failed";
+            require(report.status == expected_status,
+                    ProjectBundleOpenErrorCode::OwnershipViolation,
+                    "diagnostics status disagrees with the run");
+        } else {
+            const auto report = detail::read_project_tests_report(bytes);
+            require(report.failed == 0U || run.status == ProjectStatus::Failed,
+                    ProjectBundleOpenErrorCode::OwnershipViolation,
+                    "project tests disagree with the run status");
+        }
+    } catch (const ProjectBundleOpenError &) {
+        throw;
+    } catch (const std::exception &error) {
+        fail(ProjectBundleOpenErrorCode::ModelDecodeFailure,
+             "project report decode failed: " + std::string{error.what()});
     }
 }
 
