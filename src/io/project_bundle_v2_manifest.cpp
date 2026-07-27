@@ -696,15 +696,16 @@ void require_export_shape(const ExportRequest &request) {
     require(field(run, "stages", "run").is_array(), ProjectBundleOpenErrorCode::MalformedManifest,
             "run.stages must be an array");
     auto stages = std::vector<std::string>{};
+    auto stage_names = std::set<std::string>{};
     for (const auto &stage : field(run, "stages", "run")) {
         require(stage.is_string() && !stage.get_ref<const std::string &>().empty(),
                 ProjectBundleOpenErrorCode::MalformedManifest,
                 "run stage must be a non-empty string");
-        stages.push_back(stage.get<std::string>());
+        auto value = stage.get<std::string>();
+        require(stage_names.insert(value).second, ProjectBundleOpenErrorCode::DuplicateIdentity,
+                "run stages contain a duplicate");
+        stages.push_back(std::move(value));
     }
-    require(std::ranges::adjacent_find(stages) == stages.end(),
-            ProjectBundleOpenErrorCode::DuplicateIdentity,
-            "run stages contain an adjacent duplicate");
     auto run_value = ProjectRunSummary{field(run, "ok", "run").get<bool>(),
                                        project_status(string_field(run, "status", "run")),
                                        string_field(run, "profile", "run"), std::move(stages)};
@@ -720,6 +721,7 @@ void require_export_shape(const ExportRequest &request) {
     require(records.is_array(), ProjectBundleOpenErrorCode::MalformedManifest,
             "authoring input records must be an array");
     auto previous_record = std::optional<std::tuple<std::string, std::string, std::string>>{};
+    auto input_names = std::set<std::pair<std::string, std::string>>{};
     auto entrypoint_count = std::size_t{0};
     for (const auto &record : records) {
         require_keys(record, {"kind", "name", "content_digest"}, "authoring input");
@@ -733,6 +735,9 @@ void require_export_shape(const ExportRequest &request) {
                 ProjectBundleOpenErrorCode::DuplicateIdentity,
                 "authoring input records are duplicated or not canonically ordered");
         previous_record = key;
+        require(input_names.emplace(kind, name.value()).second,
+                ProjectBundleOpenErrorCode::DuplicateIdentity,
+                "authoring input records contain a duplicate kind/name pair");
         if (kind == "project_source" && name.value() == entrypoint.value()) {
             ++entrypoint_count;
         }

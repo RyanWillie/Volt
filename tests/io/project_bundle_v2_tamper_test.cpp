@@ -165,6 +165,16 @@ void replace_artifact_payload(const std::filesystem::path &root, OrderedJson &ma
            ".json";
 }
 
+void check_open_error(const std::filesystem::path &path,
+                      volt::io::ProjectBundleOpenErrorCode expected) {
+    try {
+        static_cast<void>(volt::io::ProjectBundle::open(path));
+        FAIL("ProjectBundle open unexpectedly succeeded");
+    } catch (const volt::io::ProjectBundleOpenError &error) {
+        CHECK(error.code() == expected);
+    }
+}
+
 class LogicalFixture final {
   public:
     LogicalFixture()
@@ -342,6 +352,54 @@ TEST_CASE("ProjectBundle v2 open fails closed for digest path lock and exact edg
         diagnostics->at("depends_on").clear();
         reseal_manifest(root, manifest);
         CHECK_THROWS_AS(volt::io::ProjectBundle::open(root), volt::io::ProjectBundleOpenError);
+    }
+
+    SECTION("non-adjacent duplicate run stage") {
+        const auto root = temporary.path() / "duplicate-stage.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        manifest["run"]["stages"] = {"design", "board", "design"};
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::DuplicateIdentity);
+    }
+
+    SECTION("duplicate authoring kind and name with a different digest") {
+        const auto root = temporary.path() / "duplicate-input.volt";
+        const auto with_input =
+            fixture
+                .builder("project source",
+                         {volt::io::AuthoringInput{volt::io::AuthoringInputKind::DeclaredInput,
+                                                   volt::io::LogicalInputName{"inputs/config.json"},
+                                                   "first"}})
+                .build();
+        with_input.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        auto duplicate = manifest.at("authoring_inputs").at("records").at(0);
+        duplicate["content_digest"] = volt::sha256_content_hash("second").value();
+        manifest["authoring_inputs"]["records"].push_back(std::move(duplicate));
+        auto &records = manifest["authoring_inputs"]["records"];
+        auto ordered_records = std::vector<OrderedJson>{};
+        for (const auto &record : records) {
+            ordered_records.push_back(record);
+        }
+        std::ranges::sort(ordered_records, [](const auto &left, const auto &right) {
+            return std::tuple{left.at("kind").template get<std::string>(),
+                              left.at("name").template get<std::string>(),
+                              left.at("content_digest").template get<std::string>()} <
+                   std::tuple{right.at("kind").template get<std::string>(),
+                              right.at("name").template get<std::string>(),
+                              right.at("content_digest").template get<std::string>()};
+        });
+        records = OrderedJson::array();
+        for (auto &record : ordered_records) {
+            records.push_back(std::move(record));
+        }
+        const auto authoring_core = OrderedJson{
+            {"entrypoint", manifest.at("authoring_inputs").at("entrypoint")}, {"records", records}};
+        manifest["authoring_inputs"]["digest"] =
+            volt::sha256_content_hash(authoring_core.dump()).value();
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::DuplicateIdentity);
     }
 
     SECTION("forbidden extra and source sentinels") {

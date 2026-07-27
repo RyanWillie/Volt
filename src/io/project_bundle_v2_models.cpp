@@ -14,8 +14,11 @@
 #include <variant>
 #include <vector>
 
+#include <volt/circuit/bom/bom.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/content_hash.hpp>
+#include <volt/io/assembly/cpl_writer.hpp>
+#include <volt/io/bom/bom_writer.hpp>
 #include <volt/io/logical/logical_circuit_reader.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
@@ -24,10 +27,13 @@
 #include <volt/io/pcb/board_scene.hpp>
 #include <volt/io/pcb/compiled_board.hpp>
 #include <volt/io/pcb/pcb_reader.hpp>
+#include <volt/io/pcb/pcb_svg_writer.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/io/schematic/schematic_reader.hpp>
+#include <volt/io/schematic/schematic_svg_writer.hpp>
 #include <volt/io/schematic/schematic_writer.hpp>
 #include <volt/library/part_library.hpp>
+#include <volt/pcb/compiled/board_consumers.hpp>
 
 #include "project_bundle_v2_contract.hpp"
 
@@ -316,6 +322,45 @@ void require_exact_dependencies(const ArtifactDescriptor &artifact,
             std::string{label} + " direct dependency set is missing or extraneous");
 }
 
+[[nodiscard]] bool is_library_artifact(ArtifactKind kind) {
+    return kind == ArtifactKind::ComponentDefinition || kind == ArtifactKind::PartDefinition ||
+           kind == ArtifactKind::SymbolDefinition || kind == ArtifactKind::FootprintDefinition ||
+           kind == ArtifactKind::GlbAsset;
+}
+
+void verify_library_reachability(const ProjectBundleStorage &storage,
+                                 const std::map<std::string, std::size_t> &index) {
+    auto reachable = std::set<std::string>{};
+    auto pending = std::vector<std::size_t>{};
+    for (auto artifact = std::size_t{0}; artifact < storage.v2_artifacts.size(); ++artifact) {
+        if (storage.v2_artifacts[artifact].descriptor.kind() == ArtifactKind::LogicalModel) {
+            pending.push_back(artifact);
+        }
+    }
+    while (!pending.empty()) {
+        const auto artifact = pending.back();
+        pending.pop_back();
+        for (const auto &dependency : storage.v2_artifacts[artifact].descriptor.dependencies()) {
+            const auto key = detail::project_bundle_v2_artifact_key(dependency.artifact());
+            if (!reachable.insert(key).second) {
+                continue;
+            }
+            const auto match = index.find(key);
+            require(match != index.end(), ProjectBundleOpenErrorCode::MissingEntry,
+                    "reachable library dependency is absent from the graph");
+            pending.push_back(match->second);
+        }
+    }
+    for (const auto &artifact : storage.v2_artifacts) {
+        if (is_library_artifact(artifact.descriptor.kind())) {
+            require(reachable.contains(
+                        detail::project_bundle_v2_artifact_key(artifact.descriptor.id())),
+                    ProjectBundleOpenErrorCode::OwnershipViolation,
+                    "vendored library artifact is outside the logical dependency closure");
+        }
+    }
+}
+
 void verify_owner_graph(ProjectBundleStorage &storage, const LibraryDecoded &decoded,
                         const std::map<std::string, std::size_t> &index) {
     const auto evaluated =
@@ -451,22 +496,26 @@ void verify_owner_graph(ProjectBundleStorage &storage, const LibraryDecoded &dec
                 const auto &component_definition =
                     storage.v2_circuits[circuit].model->get(definition);
                 if (component_definition.source().has_value()) {
-                    const auto match =
-                        std::ranges::find_if(storage.v2_artifacts, [&](const auto &candidate) {
-                            if (candidate.descriptor.kind() != ArtifactKind::ComponentDefinition) {
-                                return false;
-                            }
-                            const auto &candidate_owner =
-                                std::get<LibraryComponentRef>(candidate.descriptor.id().owner());
-                            return candidate_owner.component_key ==
-                                       component_definition.contract().key() &&
-                                   candidate_owner.component_digest ==
-                                       component_definition.content_identity();
-                        });
-                    require(match != storage.v2_artifacts.end(),
-                            ProjectBundleOpenErrorCode::OwnershipViolation,
+                    auto match = std::optional<std::string>{};
+                    for (const auto &dependency : descriptor_value.dependencies()) {
+                        if (dependency.artifact().kind() != ArtifactKind::ComponentDefinition) {
+                            continue;
+                        }
+                        const auto &candidate_owner =
+                            std::get<LibraryComponentRef>(dependency.artifact().owner());
+                        if (candidate_owner.component_key !=
+                                component_definition.contract().key() ||
+                            candidate_owner.component_digest !=
+                                component_definition.content_identity()) {
+                            continue;
+                        }
+                        require(!match.has_value(), ProjectBundleOpenErrorCode::OwnershipViolation,
+                                "logical model has ambiguous imported component dependencies");
+                        match = detail::project_bundle_v2_artifact_key(dependency.artifact());
+                    }
+                    require(match.has_value(), ProjectBundleOpenErrorCode::OwnershipViolation,
                             "logical model imported component is not vendored");
-                    expected.insert(detail::project_bundle_v2_artifact_key(match->descriptor.id()));
+                    expected.insert(*match);
                 }
                 const auto &selected = queries::selected_library_part_ref(
                     *storage.v2_circuits[circuit].model, component);
@@ -483,6 +532,8 @@ void verify_owner_graph(ProjectBundleStorage &storage, const LibraryDecoded &dec
             break;
         }
     }
+
+    verify_library_reachability(storage, index);
 
     for (const auto &board : storage.v2_boards) {
         const auto board_key = detail::project_bundle_v2_artifact_key(
@@ -665,13 +716,37 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
             sha256_content_hash(detail::project_bundle_v2_export_request_json(request));
         auto output_kind = ArtifactKind::SchematicSvg;
         auto output_key = ExportOutputKey{PrimaryExportOutputKey::Primary};
+        auto expected_bytes = std::optional<std::string>{};
         switch (request.kind) {
-        case ExportKind::SchematicSvg:
+        case ExportKind::SchematicSvg: {
+            const auto &target = std::get<ModelExportTarget>(request.target);
             output_kind = ArtifactKind::SchematicSvg;
+            const auto schematic =
+                std::ranges::find_if(storage.v2_schematics, [&](const auto &candidate) {
+                    return storage.v2_artifacts[candidate.artifact].descriptor.id() ==
+                           target.model.artifact();
+                });
+            require(schematic != storage.v2_schematics.end(),
+                    ProjectBundleOpenErrorCode::OwnershipViolation,
+                    "Schematic SVG target is not a loaded Schematic");
+            expected_bytes = write_schematic_svg(*schematic->model);
             break;
-        case ExportKind::BoardSvg:
+        }
+        case ExportKind::BoardSvg: {
+            const auto &target = std::get<ModelExportTarget>(request.target);
             output_kind = ArtifactKind::BoardSvg;
+            const auto compiled =
+                std::ranges::find_if(storage.v2_compiled_boards, [&](const auto &candidate) {
+                    return storage.v2_artifacts[candidate.artifact].descriptor.id() ==
+                           target.model.artifact();
+                });
+            require(compiled != storage.v2_compiled_boards.end(),
+                    ProjectBundleOpenErrorCode::OwnershipViolation,
+                    "Board SVG target is not a loaded CompiledBoard");
+            expected_bytes =
+                write_pcb_placement_svg(compiled->model->board(), compiled->model->footprints());
             break;
+        }
         case ExportKind::BoardLayerImage: {
             const auto &target = std::get<BoardLayerExportTarget>(request.target);
             output_kind = ArtifactKind::BoardLayerImage;
@@ -684,24 +759,51 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
             require(compiled != storage.v2_compiled_boards.end(),
                     ProjectBundleOpenErrorCode::OwnershipViolation,
                     "Board layer export target is not a loaded CompiledBoard");
-            auto layer_found = false;
+            auto layer = std::optional<BoardLayerId>{};
             for (auto index = std::size_t{0};
                  index < compiled->model->board().all<BoardLayerId>().size(); ++index) {
                 if (compiled->model->board().get(BoardLayerId{index}).name() ==
                     target.layer.value()) {
-                    layer_found = true;
+                    require(!layer.has_value(), ProjectBundleOpenErrorCode::OwnershipViolation,
+                            "Board layer export target is ambiguous");
+                    layer = BoardLayerId{index};
                 }
             }
-            require(layer_found, ProjectBundleOpenErrorCode::OwnershipViolation,
+            require(layer.has_value(), ProjectBundleOpenErrorCode::OwnershipViolation,
                     "Board layer export target is absent from its CompiledBoard");
+            expected_bytes =
+                write_pcb_placement_svg(compiled->model->board(), compiled->model->footprints(),
+                                        PcbPlacementSvgOptions{.layer_filter = layer});
             break;
         }
-        case ExportKind::Bom:
+        case ExportKind::Bom: {
+            const auto &target = std::get<ModelExportTarget>(request.target);
             output_kind = ArtifactKind::Bom;
+            const auto circuit =
+                std::ranges::find_if(storage.v2_circuits, [&](const auto &candidate) {
+                    return storage.v2_artifacts[candidate.artifact].descriptor.id() ==
+                           target.model.artifact();
+                });
+            require(circuit != storage.v2_circuits.end(),
+                    ProjectBundleOpenErrorCode::OwnershipViolation,
+                    "BOM target is not a loaded logical Circuit");
+            expected_bytes = write_bom_json(project_bom(*circuit->model));
             break;
-        case ExportKind::Cpl:
+        }
+        case ExportKind::Cpl: {
+            const auto &target = std::get<ModelExportTarget>(request.target);
             output_kind = ArtifactKind::Cpl;
+            const auto compiled =
+                std::ranges::find_if(storage.v2_compiled_boards, [&](const auto &candidate) {
+                    return storage.v2_artifacts[candidate.artifact].descriptor.id() ==
+                           target.model.artifact();
+                });
+            require(compiled != storage.v2_compiled_boards.end(),
+                    ProjectBundleOpenErrorCode::OwnershipViolation,
+                    "CPL target is not a loaded CompiledBoard");
+            expected_bytes = write_cpl_json(project_cpl(*compiled->model).cpl());
             break;
+        }
         case ExportKind::Step: {
             const auto &target = std::get<LibraryAssetExportTarget>(request.target);
             output_kind = ArtifactKind::StepAsset;
@@ -743,6 +845,10 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
         });
         require(match != storage.v2_artifacts.end(), ProjectBundleOpenErrorCode::OwnershipViolation,
                 "selected export has no exact output artifact");
+        if (expected_bytes.has_value()) {
+            require(match->bytes == *expected_bytes, ProjectBundleOpenErrorCode::ModelDecodeFailure,
+                    "selected export payload disagrees with its exact reopened target");
+        }
         if (request.kind == ExportKind::Step) {
             const auto &target = std::get<LibraryAssetExportTarget>(request.target);
             require(match->descriptor.content_digest() == target.asset.content_digest,

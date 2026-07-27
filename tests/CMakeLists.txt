@@ -68,6 +68,9 @@ add_executable(
     io/project_bundle_v2_board_export_test.cpp
     io/project_bundle_v2_board_writer_test.cpp
     io/project_bundle_v2_contract_test.cpp
+    io/project_bundle_v2_cpl_export_test.cpp
+    io/project_bundle_v2_export_payload_test.cpp
+    io/project_bundle_v2_library_reachability_test.cpp
     io/project_bundle_v2_open_test.cpp
     io/project_bundle_v2_tamper_test.cpp
     io/project_bundle_v2_writer_test.cpp
