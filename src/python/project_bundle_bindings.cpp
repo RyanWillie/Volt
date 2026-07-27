@@ -91,6 +91,16 @@ constexpr auto project_bundle_board_capsule = "volt.ProjectBundleBoardArtifacts.
     return result;
 }
 
+[[nodiscard]] py::dict library_part_ref_dict(const volt::LibraryPartRef &reference) {
+    auto result = py::dict{};
+    result["library_namespace"] = reference.library_namespace();
+    result["library_version"] = reference.library_version();
+    result["part_key"] = reference.part_key().value();
+    result["library_bundle_digest"] = reference.library_digest().value();
+    result["part_digest"] = reference.part_digest().value();
+    return result;
+}
+
 [[nodiscard]] py::dict dependency_lock_dict(const volt::io::DependencyLock &lock) {
     auto result = py::dict{};
     auto libraries = py::list{};
@@ -104,12 +114,19 @@ constexpr auto project_bundle_board_capsule = "volt.ProjectBundleBoardArtifacts.
     auto selected_parts = py::list{};
     for (const auto &selection : lock.selected_parts()) {
         auto row = py::dict{};
-        row["library"] = selection.selected_part.library_namespace();
-        row["version"] = selection.selected_part.library_version();
-        row["part_key"] = selection.selected_part.part_key().value();
-        row["library_bundle_digest"] = selection.selected_part.library_digest().value();
-        row["part_digest"] = selection.selected_part.part_digest().value();
-        row["vendored_content_digest"] = selection.vendored_part.content_digest().value();
+        row["selected_part"] = library_part_ref_dict(selection.selected_part);
+        auto owner = py::dict{};
+        owner["type"] = "library_part_ref";
+        owner["value"] = library_part_ref_dict(
+            std::get<volt::LibraryPartRef>(selection.vendored_part.artifact().owner()));
+        auto artifact = py::dict{};
+        artifact["kind"] =
+            std::string{volt::io::artifact_kind_name(selection.vendored_part.artifact().kind())};
+        artifact["owner"] = std::move(owner);
+        auto vendored = py::dict{};
+        vendored["artifact"] = std::move(artifact);
+        vendored["content_digest"] = selection.vendored_part.content_digest().value();
+        row["vendored_part"] = std::move(vendored);
         selected_parts.append(std::move(row));
     }
     result["libraries"] = std::move(libraries);

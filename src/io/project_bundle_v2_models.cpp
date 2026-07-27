@@ -143,6 +143,9 @@ void decode_library_artifacts(ProjectBundleStorage &storage, LibraryDecoded &dec
             auto part = std::make_unique<PartDefinition>(
                 read_part_definition_text(artifact.bytes, component));
             require(write_part_definition(*part) == artifact.bytes &&
+                        part->identity().namespace_name() == owner.library_namespace() &&
+                        part->identity().version() == owner.library_version() &&
+                        part->identity().name() == owner.part_key().value() &&
                         part->content_identity() == owner.part_digest() &&
                         part->implemented_component() == component.content_identity(),
                     ProjectBundleOpenErrorCode::OwnershipViolation,

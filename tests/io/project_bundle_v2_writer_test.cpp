@@ -140,6 +140,33 @@ void replace_artifact_payload(const std::filesystem::path &root, OrderedJson &ma
     }
 }
 
+[[nodiscard]] std::size_t replace_string_field(OrderedJson &value, std::string_view field,
+                                               std::string_view from, std::string_view to) {
+    auto replacements = std::size_t{0};
+    if (value.is_object()) {
+        if (const auto match = value.find(field);
+            match != value.end() && match->is_string() && match->get<std::string>() == from) {
+            *match = to;
+            ++replacements;
+        }
+        for (auto &[unused, child] : value.items()) {
+            static_cast<void>(unused);
+            replacements += replace_string_field(child, field, from, to);
+        }
+    } else if (value.is_array()) {
+        for (auto &child : value) {
+            replacements += replace_string_field(child, field, from, to);
+        }
+    }
+    return replacements;
+}
+
+[[nodiscard]] std::string part_artifact_path(const OrderedJson &id) {
+    const auto digest = volt::sha256_content_hash(id.dump()).value();
+    return "artifacts/part_definition/" + digest.substr(std::string_view{"sha256:"}.size(), 20U) +
+           ".json";
+}
+
 [[nodiscard]] std::map<std::string, std::string> snapshot(const std::filesystem::path &root) {
     auto result = std::map<std::string, std::string>{};
     for (const auto &entry : std::filesystem::recursive_directory_iterator{root}) {
@@ -843,6 +870,74 @@ TEST_CASE("ProjectBundle v2 open fails closed for digest path lock and exact edg
                                              "').write_text('executed')\n");
         CHECK_THROWS_AS(volt::io::ProjectBundle::open(root), volt::io::ProjectBundleOpenError);
         CHECK_FALSE(std::filesystem::exists(sentinel));
+    }
+}
+
+TEST_CASE("ProjectBundle v2 binds dependency lock and part owners to decoded logical meaning") {
+    const auto fixture = board_fixture();
+    auto builder = project_builder();
+    builder.add_logical(volt::io::DesignKey{"main"}, *fixture.circuit, fixture.bundle);
+    const auto original = builder.build();
+    const auto temporary = TempDirectory{};
+
+    SECTION("unreferenced vendored selected part") {
+        const auto root = temporary.path() / "orphan-part.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        const auto logical =
+            std::ranges::find(manifest.at("artifacts"), "logical_model",
+                              [](const auto &artifact) { return artifact.at("kind"); });
+        REQUIRE(logical != manifest.at("artifacts").end());
+        auto logical_payload =
+            OrderedJson::parse(read_bytes(root / logical->at("path").get<std::string>()));
+        auto removed = false;
+        for (auto &component : logical_payload.at("components")) {
+            removed = component.erase("selected_library_part") != 0U || removed;
+        }
+        REQUIRE(removed);
+        replace_artifact_payload(root, manifest, "logical_model", logical_payload.dump());
+
+        const auto updated_logical =
+            std::ranges::find(manifest.at("artifacts"), "logical_model",
+                              [](const auto &artifact) { return artifact.at("kind"); });
+        auto retained_dependencies = OrderedJson::array();
+        for (const auto &dependency : updated_logical->at("depends_on")) {
+            if (dependency.at("artifact").at("kind") != "part_definition") {
+                retained_dependencies.push_back(dependency);
+            }
+        }
+        updated_logical->at("depends_on") = std::move(retained_dependencies);
+        reseal_manifest(root, manifest);
+        CHECK_THROWS_AS(volt::io::ProjectBundle::open(root), volt::io::ProjectBundleOpenError);
+    }
+
+    SECTION("part ArtifactId owner disagrees with canonical payload identity") {
+        const auto root = temporary.path() / "part-owner.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        const auto logical =
+            std::ranges::find(manifest.at("artifacts"), "logical_model",
+                              [](const auto &artifact) { return artifact.at("kind"); });
+        REQUIRE(logical != manifest.at("artifacts").end());
+        auto logical_payload =
+            OrderedJson::parse(read_bytes(root / logical->at("path").get<std::string>()));
+        REQUIRE(replace_string_field(logical_payload, "part_key", "resistor", "relabeled") == 1U);
+        replace_artifact_payload(root, manifest, "logical_model", logical_payload.dump());
+
+        const auto part =
+            std::ranges::find(manifest.at("artifacts"), "part_definition",
+                              [](const auto &artifact) { return artifact.at("kind"); });
+        REQUIRE(part != manifest.at("artifacts").end());
+        const auto old_path = part->at("path").get<std::string>();
+        REQUIRE(replace_string_field(manifest, "part_key", "resistor", "relabeled") > 1U);
+        const auto updated_part =
+            std::ranges::find(manifest.at("artifacts"), "part_definition",
+                              [](const auto &artifact) { return artifact.at("kind"); });
+        const auto new_path = part_artifact_path(updated_part->at("id"));
+        std::filesystem::rename(root / old_path, root / new_path);
+        updated_part->at("path") = new_path;
+        reseal_manifest(root, manifest);
+        CHECK_THROWS_AS(volt::io::ProjectBundle::open(root), volt::io::ProjectBundleOpenError);
     }
 }
 

@@ -17,6 +17,8 @@
 #include <variant>
 #include <vector>
 
+#include <volt/circuit/connectivity/queries.hpp>
+
 #include "project_bundle_v2_contract.hpp"
 
 namespace volt::io::v2_open {
@@ -233,13 +235,28 @@ void verify_dependency_lock(const ProjectBundleStorage &storage, const Dependenc
                 "dependency lock selected part is missing or stale");
         vendored_parts.insert(key);
     }
+    auto selected_parts = std::set<std::string>{};
+    for (const auto &logical : storage.v2_circuits) {
+        for (auto component_index = std::size_t{0};
+             component_index < logical.model->all<ComponentId>().size(); ++component_index) {
+            const auto component = ComponentId{component_index};
+            const auto &selected = queries::selected_library_part_ref(*logical.model, component);
+            if (selected.has_value()) {
+                selected_parts.insert(detail::project_bundle_v2_artifact_key(
+                    ArtifactId{ArtifactKind::PartDefinition, *selected}));
+            }
+        }
+    }
+    require(vendored_parts == selected_parts, ProjectBundleOpenErrorCode::OwnershipViolation,
+            "dependency lock selected parts do not equal the logical selection closure");
+
     auto actual_parts = std::set<std::string>{};
     for (const auto &artifact : storage.v2_artifacts) {
         if (artifact.descriptor.kind() == ArtifactKind::PartDefinition) {
             actual_parts.insert(detail::project_bundle_v2_artifact_key(artifact.descriptor.id()));
         }
     }
-    require(vendored_parts == actual_parts, ProjectBundleOpenErrorCode::OwnershipViolation,
+    require(selected_parts == actual_parts, ProjectBundleOpenErrorCode::OwnershipViolation,
             "dependency lock selected parts do not equal the vendored part closure");
 }
 

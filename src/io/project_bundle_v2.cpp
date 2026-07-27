@@ -32,11 +32,11 @@ open_verified(const detail::BundleSource &source, detail::CapturedEntry manifest
     verify_descriptors_and_capture(source, manifest, *storage, manifest_identity);
     const auto index = artifact_index(*storage);
     verify_graph_references_and_dag(*storage, index);
-    verify_dependency_lock(*storage, manifest.lock, index);
 
     auto library = LibraryDecoded{};
     decode_library_artifacts(*storage, library);
     decode_project_models(*storage);
+    verify_dependency_lock(*storage, manifest.lock, index);
     decode_compiled_and_scenes(*storage);
     verify_owner_graph(*storage, library, index);
 
