@@ -122,8 +122,10 @@ void reseal_manifest(const std::filesystem::path &root, OrderedJson &manifest) {
 
 void replace_artifact_payload(const std::filesystem::path &root, OrderedJson &manifest,
                               std::string_view kind, std::string_view bytes) {
-    const auto artifact = std::ranges::find(
-        manifest.at("artifacts"), kind, [](const auto &candidate) { return candidate.at("kind"); });
+    const auto artifact =
+        std::ranges::find_if(manifest.at("artifacts"), [&](const auto &candidate) {
+            return candidate.at("kind").template get<std::string>() == std::string{kind};
+        });
     REQUIRE(artifact != manifest.at("artifacts").end());
     const auto id = artifact->at("id");
     const auto digest = volt::sha256_content_hash(bytes).value();
