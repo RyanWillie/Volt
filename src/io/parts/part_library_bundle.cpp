@@ -20,6 +20,7 @@
 #include <volt/core/errors.hpp>
 #include <volt/io/logical/logical_circuit_reader.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
+#include <volt/io/parts/footprint_asset.hpp>
 #include <volt/io/parts/part_definition_reader.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
 
@@ -201,6 +202,21 @@ void require_canonical_relative_path(std::string_view path) {
     return "assets/" + role_name(role_for_asset(reference.kind())) + "/" +
            hash_suffix(sha256_content_hash(reference.key())) + "-" +
            hash_suffix(reference.digest()) + ".bin";
+}
+
+void require_asset_payload_matches_reference(const PartAssetReference &reference,
+                                             std::string_view bytes) {
+    if (reference.kind() != PartAssetKind::Footprint) {
+        return;
+    }
+    const auto footprint = read_footprint_asset(bytes);
+    require_bundle(write_footprint_asset(footprint) == bytes,
+                   "PartLibraryBundle footprint asset bytes are not canonical");
+    const auto expected_key =
+        "footprint:" + footprint.ref().library() + "/" + footprint.ref().name();
+    require_bundle(reference.key() == expected_key,
+                   "PartLibraryBundle footprint asset identity does not match its payload",
+                   ErrorCode::CrossReferenceViolation);
 }
 
 void append_u64(std::string &out, std::uint64_t value) {
@@ -781,6 +797,7 @@ PartLibraryBundle PartLibraryBundle::build_with_component_roots(
         require_bundle(sha256_content_hash(*bytes) == reference.digest(),
                        "PartLibraryBundle selected asset digest does not match its bytes",
                        ErrorCode::CrossReferenceViolation);
+        require_asset_payload_matches_reference(reference, *bytes);
         resolved_assets.emplace(id, ResolvedAsset{reference, *bytes});
         return id;
     };
@@ -1117,9 +1134,10 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
             if (!is_asset_role(entry.role())) {
                 continue;
             }
-            resolver.add(PartAssetReference{asset_kind_for_role(entry.role()), *entry.source_key(),
-                                            entry.digest()},
-                         payloads_by_id.at(entry.id()));
+            const auto reference = PartAssetReference{asset_kind_for_role(entry.role()),
+                                                      *entry.source_key(), entry.digest()};
+            require_asset_payload_matches_reference(reference, payloads_by_id.at(entry.id()));
+            resolver.add(reference, payloads_by_id.at(entry.id()));
         }
         auto library = builder.build(resolver);
         require_bundle(library.digest() ==

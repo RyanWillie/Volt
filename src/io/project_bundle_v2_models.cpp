@@ -732,6 +732,10 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
             require(schematic != storage.v2_schematics.end(),
                     ProjectBundleOpenErrorCode::OwnershipViolation,
                     "Schematic SVG target is not a loaded Schematic");
+            require(storage.v2_artifacts[schematic->artifact].descriptor.content_digest() ==
+                        target.model.content_digest(),
+                    ProjectBundleOpenErrorCode::DigestMismatch,
+                    "Schematic SVG target digest does not match its loaded Schematic");
             expected_bytes = write_schematic_svg(*schematic->model);
             break;
         }
@@ -746,6 +750,10 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
             require(compiled != storage.v2_compiled_boards.end(),
                     ProjectBundleOpenErrorCode::OwnershipViolation,
                     "Board SVG target is not a loaded CompiledBoard");
+            require(storage.v2_artifacts[compiled->artifact].descriptor.content_digest() ==
+                        target.model.content_digest(),
+                    ProjectBundleOpenErrorCode::DigestMismatch,
+                    "Board SVG target digest does not match its loaded CompiledBoard");
             expected_bytes =
                 write_pcb_placement_svg(compiled->model->board(), compiled->model->footprints());
             break;
@@ -762,6 +770,10 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
             require(compiled != storage.v2_compiled_boards.end(),
                     ProjectBundleOpenErrorCode::OwnershipViolation,
                     "Board layer export target is not a loaded CompiledBoard");
+            require(storage.v2_artifacts[compiled->artifact].descriptor.content_digest() ==
+                        target.compiled_board.content_digest(),
+                    ProjectBundleOpenErrorCode::DigestMismatch,
+                    "Board layer export target digest does not match its loaded CompiledBoard");
             auto layer = std::optional<BoardLayerId>{};
             for (auto index = std::size_t{0};
                  index < compiled->model->board().all<BoardLayerId>().size(); ++index) {
@@ -790,6 +802,10 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
             require(circuit != storage.v2_circuits.end(),
                     ProjectBundleOpenErrorCode::OwnershipViolation,
                     "BOM target is not a loaded logical Circuit");
+            require(storage.v2_artifacts[circuit->artifact].descriptor.content_digest() ==
+                        target.model.content_digest(),
+                    ProjectBundleOpenErrorCode::DigestMismatch,
+                    "BOM target digest does not match its loaded logical Circuit");
             expected_bytes = write_bom_json(project_bom(*circuit->model));
             break;
         }
@@ -804,6 +820,10 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
             require(compiled != storage.v2_compiled_boards.end(),
                     ProjectBundleOpenErrorCode::OwnershipViolation,
                     "CPL target is not a loaded CompiledBoard");
+            require(storage.v2_artifacts[compiled->artifact].descriptor.content_digest() ==
+                        target.model.content_digest(),
+                    ProjectBundleOpenErrorCode::DigestMismatch,
+                    "CPL target digest does not match its loaded CompiledBoard");
             expected_bytes = write_cpl_json(project_cpl(*compiled->model).cpl());
             break;
         }
@@ -818,6 +838,10 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
             require(selected_part != storage.v2_artifacts.end(),
                     ProjectBundleOpenErrorCode::OwnershipViolation,
                     "STEP export selected part is absent");
+            require(selected_part->descriptor.content_digest() ==
+                        target.selected_part.content_digest(),
+                    ProjectBundleOpenErrorCode::DigestMismatch,
+                    "STEP export selected-part digest does not match its loaded definition");
             const auto part = library.parts.find(
                 detail::project_bundle_v2_artifact_key(selected_part->descriptor.id()));
             require(part != library.parts.end(), ProjectBundleOpenErrorCode::OwnershipViolation,

@@ -241,18 +241,9 @@ TEST_CASE("Named Board resolutions remain independent over one selected closure"
 
 TEST_CASE("Board resolution rejects bad assets and wrong closures atomically") {
     auto fixture = resolution_fixture("{}");
-    const auto bad_asset_bundle = volt::io::PartLibraryBundle::build(
-        fixture.builder, std::vector{fixture.key}, fixture.resolver);
-    auto selected = selected_circuit(fixture.spec, bad_asset_bundle, fixture.key);
-    auto board = volt::Board{selected.circuit, volt::BoardName{"Main"}};
-
-    CHECK_THROWS_AS(
-        volt::io::resolve_board(board, bad_asset_bundle,
-                                volt::BoardResolutionCapabilities{board.capability_profile()}),
-        volt::KernelArgumentError);
-    CHECK(board.all<volt::FootprintDefId>().size() == 0U);
-    CHECK_FALSE(
-        volt::queries::selected_physical_part(selected.circuit, selected.component).has_value());
+    CHECK_THROWS_AS(volt::io::PartLibraryBundle::build(fixture.builder, std::vector{fixture.key},
+                                                       fixture.resolver),
+                    volt::KernelArgumentError);
 
     auto complete_fixture = resolution_fixture();
     const auto complete = volt::io::PartLibraryBundle::build(

@@ -14,6 +14,7 @@
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/core/errors.hpp>
+#include <volt/io/parts/footprint_asset.hpp>
 #include <volt/io/parts/part_library_bundle.hpp>
 
 namespace {
@@ -43,9 +44,20 @@ struct ComponentFixture {
     return ComponentFixture{std::move(spec), circuit.get(definition)};
 }
 
-[[nodiscard]] volt::PartDefinition part(const volt::ComponentDefinition &component, std::string key,
-                                        std::string manufacturer, bool with_evidence = false) {
+[[nodiscard]] std::string footprint_bytes(const volt::FootprintRef &reference) {
+    return volt::io::write_footprint_asset(volt::FootprintDefinition{
+        reference, std::vector{volt::FootprintPad::surface_mount(
+                       "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.0, 0.0},
+                       volt::FootprintSize{1.0, 1.0}, volt::FootprintLayerSet::front_smd())}});
+}
+
+[[nodiscard]] volt::PartDefinition
+part(const volt::ComponentDefinition &component, std::string key, std::string manufacturer,
+     bool with_evidence = false, std::optional<volt::FootprintRef> payload_ref = std::nullopt) {
     const auto digest = volt::sha256_content_hash(exact_asset_bytes);
+    const auto footprint_ref = volt::FootprintRef{"TestFootprints", key};
+    const auto footprint_digest =
+        volt::sha256_content_hash(footprint_bytes(payload_ref.value_or(footprint_ref)));
     auto records = volt::ElectricalRecordSet{2};
     if (with_evidence) {
         records = records.with_record(volt::voltage_record(
@@ -69,7 +81,7 @@ struct ComponentFixture {
         volt::OrderablePart{
             volt::ManufacturerPart{std::move(manufacturer), "MPN-" + key},
             volt::PackageRef{"0603"},
-            volt::HashedFootprintReference{volt::FootprintRef{"TestFootprints", key}, digest},
+            volt::HashedFootprintReference{footprint_ref, footprint_digest},
             {
                 volt::PartFootprintPad{"1", -0.5, 0.0, 0.5, 0.5},
                 volt::PartFootprintPad{"2", 0.5, 0.0, 0.5, 0.5},
@@ -98,7 +110,12 @@ class MemoryAssetResolver final : public volt::PartAssetResolver {
 
     void add(const volt::PartDefinition &definition) {
         for (const auto &reference : volt::part_asset_references(definition)) {
-            add(reference, std::string{exact_asset_bytes});
+            if (reference.kind() == volt::PartAssetKind::Footprint) {
+                add(reference,
+                    footprint_bytes(definition.orderable_part().footprint().footprint()));
+            } else {
+                add(reference, std::string{exact_asset_bytes});
+            }
         }
     }
 
@@ -337,7 +354,7 @@ TEST_CASE("Selected PartLibraryBundle builds byte-identically and reopens fully 
     CHECK(std::string{first.bytes()} == std::string{second.bytes()});
     CHECK(first.digest() == second.digest());
     CHECK(first.digest().value() ==
-          "sha256:a1e7ea48eefa0f8950843e908e944db23347e54ffe31fb6699c47a832b48a5aa");
+          "sha256:935b17cc0e14c58660bf503eba7b5bbfd1bcfabfa38e8a73f38b1825eece856e");
     CHECK(std::ranges::is_sorted(first.entries(), {}, &volt::io::PartLibraryBundleEntry::path));
     CHECK(first.library().components().size() == 2U);
     CHECK(first.library().parts().size() == 2U);
@@ -365,7 +382,12 @@ TEST_CASE("Selected PartLibraryBundle builds byte-identically and reopens fully 
 
     for (const auto &asset : volt::part_asset_references(first_fixture.selected_part)) {
         REQUIRE(reopened.asset(asset).has_value());
-        CHECK(std::string{*reopened.asset(asset)} == std::string{exact_asset_bytes});
+        const auto expected =
+            asset.kind() == volt::PartAssetKind::Footprint
+                ? footprint_bytes(
+                      first_fixture.selected_part.orderable_part().footprint().footprint())
+                : std::string{exact_asset_bytes};
+        CHECK(std::string{*reopened.asset(asset)} == expected);
     }
     for (const auto &attachment : first_fixture.attachments) {
         REQUIRE(reopened.asset(attachment.reference()).has_value());
@@ -522,6 +544,29 @@ TEST_CASE("PartLibraryBundle build is all-or-nothing over selected assets") {
                 incomplete_builder, selected, fixture.resolver, fixture.attachments));
         },
         volt::ErrorCode::InvalidState);
+}
+
+TEST_CASE("PartLibraryBundle rejects a footprint payload with a different canonical identity") {
+    auto component_fixture = component();
+    const auto payload_ref = volt::FootprintRef{"ContradictoryFootprints", "Wrong"};
+    const auto selected_part =
+        part(component_fixture.definition, "vendor/A-LED", "Vendor A", false, payload_ref);
+    auto builder = volt::PartLibraryBuilder{
+        volt::PartLibraryIdentity{"test.parts", "2026.1", volt::PartLibrarySchemaVersion::V1}};
+    builder.add_component(component_fixture.spec).add_part(selected_part);
+    auto resolver = MemoryAssetResolver{};
+    for (const auto &reference : volt::part_asset_references(selected_part)) {
+        resolver.add(reference, reference.kind() == volt::PartAssetKind::Footprint
+                                    ? footprint_bytes(payload_ref)
+                                    : std::string{exact_asset_bytes});
+    }
+
+    check_kernel_error(
+        [&] {
+            static_cast<void>(volt::io::PartLibraryBundle::build(
+                builder, std::vector{volt::PartKey{"vendor/A-LED"}}, resolver));
+        },
+        volt::ErrorCode::CrossReferenceViolation);
 }
 
 TEST_CASE("Existing PartLibraryBundle bytes are immutable after later catalogue changes") {
