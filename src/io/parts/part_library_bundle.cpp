@@ -205,7 +205,8 @@ void require_canonical_relative_path(std::string_view path) {
 }
 
 void require_asset_payload_matches_reference(const PartAssetReference &reference,
-                                             std::string_view bytes) {
+                                             std::string_view bytes,
+                                             const FootprintRef *expected_ref = nullptr) {
     if (reference.kind() != PartAssetKind::Footprint) {
         return;
     }
@@ -216,6 +217,9 @@ void require_asset_payload_matches_reference(const PartAssetReference &reference
         "footprint:" + footprint.ref().library() + "/" + footprint.ref().name();
     require_bundle(reference.key() == expected_key,
                    "PartLibraryBundle footprint asset identity does not match its payload",
+                   ErrorCode::CrossReferenceViolation);
+    require_bundle(expected_ref == nullptr || footprint.ref() == *expected_ref,
+                   "PartLibraryBundle footprint payload does not match the selected part",
                    ErrorCode::CrossReferenceViolation);
 }
 
@@ -782,13 +786,16 @@ PartLibraryBundle PartLibraryBundle::build_with_component_roots(
     };
 
     auto resolved_assets = std::map<std::string, ResolvedAsset>{};
-    auto resolve_asset = [&](const PartAssetReference &reference) {
+    auto resolve_asset = [&](const PartAssetReference &reference,
+                             const FootprintRef *expected_ref = nullptr) {
         const auto id = asset_id(reference);
         const auto existing = resolved_assets.find(id);
         if (existing != resolved_assets.end()) {
             require_bundle(existing->second.reference.digest() == reference.digest(),
                            "PartLibraryBundle asset role and key resolve to conflicting digests",
                            ErrorCode::CrossReferenceViolation);
+            require_asset_payload_matches_reference(reference, existing->second.bytes,
+                                                    expected_ref);
             return id;
         }
         const auto bytes = asset_resolver.resolve(reference);
@@ -797,7 +804,7 @@ PartLibraryBundle PartLibraryBundle::build_with_component_roots(
         require_bundle(sha256_content_hash(*bytes) == reference.digest(),
                        "PartLibraryBundle selected asset digest does not match its bytes",
                        ErrorCode::CrossReferenceViolation);
-        require_asset_payload_matches_reference(reference, *bytes);
+        require_asset_payload_matches_reference(reference, *bytes, expected_ref);
         resolved_assets.emplace(id, ResolvedAsset{reference, *bytes});
         return id;
     };
@@ -854,7 +861,12 @@ PartLibraryBundle PartLibraryBundle::build_with_component_roots(
             component_id(*std::ranges::find(selected_components, part.implemented_component(),
                                             &ComponentDefinition::content_identity))};
         for (const auto &reference : part_asset_references(part)) {
-            dependencies.push_back(resolve_asset(reference));
+            if (reference.kind() == PartAssetKind::Footprint) {
+                dependencies.push_back(
+                    resolve_asset(reference, &part.orderable_part().footprint().footprint()));
+            } else {
+                dependencies.push_back(resolve_asset(reference));
+            }
         }
         for (const auto &attachment : attachments) {
             if (attachment.part() == PartKey{part.identity().name()}) {
@@ -1094,6 +1106,11 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
                                    asset_entry.digest() == reference.digest(),
                                "PartLibraryBundle recorded asset does not match the exact part",
                                ErrorCode::CrossReferenceViolation);
+                require_asset_payload_matches_reference(
+                    reference, payloads_by_id.at(asset_entry.id()),
+                    reference.kind() == PartAssetKind::Footprint
+                        ? &part.orderable_part().footprint().footprint()
+                        : nullptr);
                 expected_dependencies.push_back(id);
             }
             for (const auto &dependency : entry.dependencies()) {

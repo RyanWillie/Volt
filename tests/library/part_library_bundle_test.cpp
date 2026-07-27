@@ -548,7 +548,7 @@ TEST_CASE("PartLibraryBundle build is all-or-nothing over selected assets") {
 
 TEST_CASE("PartLibraryBundle rejects a footprint payload with a different canonical identity") {
     auto component_fixture = component();
-    const auto payload_ref = volt::FootprintRef{"ContradictoryFootprints", "Wrong"};
+    const auto payload_ref = volt::FootprintRef{"TestFootprints/vendor", "A-LED"};
     const auto selected_part =
         part(component_fixture.definition, "vendor/A-LED", "Vendor A", false, payload_ref);
     auto builder = volt::PartLibraryBuilder{
