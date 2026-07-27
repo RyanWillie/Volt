@@ -770,7 +770,7 @@ void require_export_shape(const ExportRequest &request) {
     return ParsedManifest{std::move(root),
                           std::move(project_value),
                           std::move(run_value),
-                          std::move(authoring_digest),
+                          authoring_digest,
                           build_id,
                           bundle_digest,
                           lock,
