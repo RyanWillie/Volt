@@ -4,8 +4,10 @@
 #include "py_circuit.hpp"
 #include "py_schematic.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <set>
 #include <string>
 #include <string_view>
@@ -86,6 +88,209 @@ constexpr auto project_bundle_board_capsule = "volt.ProjectBundleBoardArtifacts.
         throw py::value_error{std::string{context} + " has the wrong field count"};
     }
     return result;
+}
+
+[[nodiscard]] py::dict exact_dict(const py::handle &value, const char *context) {
+    if (!py::isinstance<py::dict>(value)) {
+        throw py::type_error{std::string{context} + " must be an object"};
+    }
+    return py::reinterpret_borrow<py::dict>(value);
+}
+
+[[nodiscard]] std::string required_string(const py::dict &value, const char *field,
+                                          const char *context) {
+    if (!value.contains(field) || !py::isinstance<py::str>(value[field])) {
+        throw py::type_error{std::string{context} + " must define string field " + field};
+    }
+    auto result = value[field].cast<std::string>();
+    if (result.empty()) {
+        throw py::value_error{std::string{context} + " field " + field + " must not be empty"};
+    }
+    return result;
+}
+
+[[nodiscard]] std::optional<std::string>
+optional_string_field(const py::dict &value, const char *field, const char *context) {
+    if (!value.contains(field) || value[field].is_none()) {
+        return std::nullopt;
+    }
+    if (!py::isinstance<py::str>(value[field])) {
+        throw py::type_error{std::string{context} + " field " + field + " must be a string"};
+    }
+    auto result = value[field].cast<std::string>();
+    if (result.empty()) {
+        throw py::value_error{std::string{context} + " field " + field + " must not be empty"};
+    }
+    return result;
+}
+
+[[nodiscard]] volt::io::ArtifactRef artifact_ref(const volt::io::ArtifactDescriptor &descriptor) {
+    return volt::io::ArtifactRef{descriptor.id(), descriptor.content_digest()};
+}
+
+[[nodiscard]] const volt::io::ArtifactDescriptor &
+named_model(const volt::io::ProjectBundleV2 &bundle, volt::io::ArtifactKind kind,
+            const std::string &design, const std::string &name) {
+    const auto match = std::ranges::find_if(bundle.artifacts(), [&](const auto &descriptor) {
+        if (descriptor.kind() != kind) {
+            return false;
+        }
+        if (kind == volt::io::ArtifactKind::LogicalModel) {
+            const auto *owner =
+                std::get_if<volt::io::LogicalArtifactIdentity>(&descriptor.id().owner());
+            return owner != nullptr && owner->design.value() == design;
+        }
+        if (kind == volt::io::ArtifactKind::SchematicModel) {
+            const auto *owner =
+                std::get_if<volt::io::SchematicArtifactIdentity>(&descriptor.id().owner());
+            return owner != nullptr && owner->design.value() == design &&
+                   owner->schematic.value() == name;
+        }
+        const auto *owner = std::get_if<volt::io::BoardArtifactIdentity>(&descriptor.id().owner());
+        return owner != nullptr && owner->design.value() == design && owner->board.value() == name;
+    });
+    if (match == bundle.artifacts().end()) {
+        throw py::value_error{"selected export target does not identify a bundled model"};
+    }
+    return *match;
+}
+
+[[nodiscard]] const volt::io::ArtifactDescriptor &
+compiled_board(const volt::io::ProjectBundleV2 &bundle, const std::string &design,
+               const std::string &board) {
+    const auto board_reference =
+        artifact_ref(named_model(bundle, volt::io::ArtifactKind::BoardModel, design, board));
+    const auto match = std::ranges::find_if(bundle.artifacts(), [&](const auto &descriptor) {
+        return descriptor.kind() == volt::io::ArtifactKind::CompiledBoard &&
+               std::ranges::find(descriptor.dependencies(), board_reference) !=
+                   descriptor.dependencies().end();
+    });
+    if (match == bundle.artifacts().end()) {
+        throw py::value_error{"selected Board has no exact CompiledBoard"};
+    }
+    return *match;
+}
+
+struct StepExportCandidate {
+    std::string selector;
+    volt::io::ArtifactRef selected_part;
+    volt::io::LibraryAssetRef asset;
+};
+
+[[nodiscard]] std::vector<StepExportCandidate>
+step_export_candidates(const volt::io::ProjectBundleV2 &baseline,
+                       std::span<const PyCircuit *const> circuits) {
+    auto result = std::vector<StepExportCandidate>{};
+    for (const auto &selection : baseline.dependency_lock().selected_parts()) {
+        const auto &reference = selection.selected_part;
+        const auto match = std::ranges::find_if(circuits, [&](const auto *circuit) {
+            const auto &bundle = circuit->selected_part_bundle();
+            return bundle.identity().namespace_name() == reference.library_namespace() &&
+                   bundle.identity().version() == reference.library_version() &&
+                   bundle.library_digest() == reference.library_digest();
+        });
+        if (match == circuits.end()) {
+            throw py::value_error{"selected STEP part has no exact retained library closure"};
+        }
+        const auto &part = (*match)->selected_part_bundle().resolve(reference);
+        const auto &model = part.orderable_part().model_3d();
+        if (!model.has_value() || model->format() != "step") {
+            continue;
+        }
+        result.push_back(StepExportCandidate{
+            reference.library_namespace() + "@" + reference.library_version() + ":" +
+                reference.part_key().value(),
+            selection.vendored_part,
+            volt::io::LibraryAssetRef{reference.library_namespace(), reference.library_version(),
+                                      volt::io::LibraryAssetKind::Step, reference.library_digest(),
+                                      model->hash()}});
+    }
+    return result;
+}
+
+[[nodiscard]] volt::io::ExportRequest
+step_export_request(const py::dict &row, const volt::io::ProjectBundleV2 &baseline,
+                    std::span<const PyCircuit *const> circuits) {
+    const auto candidates = step_export_candidates(baseline, circuits);
+    const auto selector = optional_string_field(row, "part", "ProjectBundle selected STEP export");
+    const auto match = selector.has_value()      ? std::ranges::find(candidates, *selector,
+                                                                     &StepExportCandidate::selector)
+                       : candidates.size() == 1U ? candidates.begin()
+                                                 : candidates.end();
+    if (match == candidates.end()) {
+        auto message =
+            std::string{selector.has_value()
+                            ? "No exact selected STEP part " + *selector + ". Candidates: "
+                            : "STEP export requires --part with an exact selector. Candidates: "};
+        if (candidates.empty()) {
+            message += "<none>";
+        } else {
+            for (auto index = std::size_t{0}; index < candidates.size(); ++index) {
+                if (index != 0U) {
+                    message += ", ";
+                }
+                message += candidates[index].selector;
+            }
+        }
+        throw py::value_error{message};
+    }
+    return {volt::io::ExportKind::Step,
+            volt::io::LibraryAssetExportTarget{match->selected_part, match->asset},
+            volt::io::ExportRequestSchema{}, volt::io::StepParameters{}};
+}
+
+[[nodiscard]] volt::io::ExportRequest export_request(const py::handle &value,
+                                                     const volt::io::ProjectBundleV2 &baseline,
+                                                     std::span<const PyCircuit *const> circuits) {
+    const auto row = exact_dict(value, "ProjectBundle selected export");
+    const auto kind = required_string(row, "kind", "ProjectBundle selected export");
+    if (kind == "step") {
+        return step_export_request(row, baseline, circuits);
+    }
+    const auto design = required_string(row, "design", "ProjectBundle selected export");
+    if (kind == "bom") {
+        const auto target =
+            artifact_ref(named_model(baseline, volt::io::ArtifactKind::LogicalModel, design, ""));
+        return {volt::io::ExportKind::Bom, volt::io::ModelExportTarget{target},
+                volt::io::ExportRequestSchema{}, volt::io::BomParameters{}};
+    }
+
+    const auto name = required_string(row, "name", "ProjectBundle selected export");
+    if (kind == "schematic_svg") {
+        const auto target = artifact_ref(
+            named_model(baseline, volt::io::ArtifactKind::SchematicModel, design, name));
+        return {volt::io::ExportKind::SchematicSvg, volt::io::ModelExportTarget{target},
+                volt::io::ExportRequestSchema{}, volt::io::SchematicSvgParameters{}};
+    }
+
+    const auto target = artifact_ref(compiled_board(baseline, design, name));
+    if (kind == "board_svg") {
+        return {volt::io::ExportKind::BoardSvg, volt::io::ModelExportTarget{target},
+                volt::io::ExportRequestSchema{}, volt::io::BoardSvgParameters{}};
+    }
+    if (kind == "board_layer_image") {
+        const auto layer = required_string(row, "layer", "ProjectBundle selected export");
+        return {volt::io::ExportKind::BoardLayerImage,
+                volt::io::BoardLayerExportTarget{target, volt::io::BoardLayerKey{layer}},
+                volt::io::ExportRequestSchema{}, volt::io::BoardLayerImageParameters{}};
+    }
+    if (kind == "kicad_pcb") {
+        return {volt::io::ExportKind::KicadPcb, volt::io::ModelExportTarget{target},
+                volt::io::ExportRequestSchema{}, volt::io::KicadPcbParameters{}};
+    }
+    if (kind == "cpl") {
+        return {volt::io::ExportKind::Cpl, volt::io::ModelExportTarget{target},
+                volt::io::ExportRequestSchema{}, volt::io::CplParameters{}};
+    }
+    if (kind == "fabrication") {
+        return {volt::io::ExportKind::Fabrication, volt::io::ModelExportTarget{target},
+                volt::io::ExportRequestSchema{}, volt::io::FabricationParameters{}};
+    }
+    if (kind == "whole_board_glb") {
+        return {volt::io::ExportKind::WholeBoardGlb, volt::io::ModelExportTarget{target},
+                volt::io::ExportRequestSchema{}, volt::io::WholeBoardGlbParameters{}};
+    }
+    throw py::value_error{"ProjectBundle selected export kind is unsupported"};
 }
 
 [[nodiscard]] py::dict compiled_identity_dict(const volt::CompiledBoardIdentity &identity) {
@@ -356,7 +561,7 @@ void bind_project_bundle(py::module_ &module) {
            const std::vector<std::string> &stages, const std::string &entrypoint,
            const py::list &authoring_inputs, const py::list &logicals, const py::list &schematics,
            const py::list &boards, const std::string &diagnostics_bytes,
-           const std::string &tests_bytes) {
+           const std::string &tests_bytes, const py::list &selected_exports) {
             auto inputs = std::vector<volt::io::AuthoringInput>{};
             inputs.reserve(static_cast<std::size_t>(py::len(authoring_inputs)));
             for (const auto item : authoring_inputs) {
@@ -382,12 +587,15 @@ void bind_project_bundle(py::module_ &module) {
                 volt::io::ProjectReport{diagnostics_bytes},
                 volt::io::ProjectReport{tests_bytes}};
 
+            auto circuits = std::vector<const PyCircuit *>{};
+            circuits.reserve(static_cast<std::size_t>(py::len(logicals)));
             for (const auto item : logicals) {
                 const auto row = exact_tuple(item, 2, "ProjectBundle logical input");
                 const auto *circuit = row[1].cast<const PyCircuit *>();
                 if (circuit == nullptr) {
                     throw py::type_error{"ProjectBundle logical input has no native Circuit"};
                 }
+                circuits.push_back(circuit);
                 builder.add_logical(volt::io::DesignKey{row[0].cast<std::string>()},
                                     circuit->logical_circuit(), circuit->selected_part_bundle());
             }
@@ -412,6 +620,15 @@ void bind_project_bundle(py::module_ &module) {
             }
 
             auto bundle = builder.build();
+            if (py::len(selected_exports) != 0) {
+                auto requests = volt::io::ExportSelection{};
+                requests.reserve(static_cast<std::size_t>(py::len(selected_exports)));
+                for (const auto item : selected_exports) {
+                    requests.push_back(export_request(item, bundle, circuits));
+                }
+                builder.select_exports(std::move(requests));
+                bundle = builder.build();
+            }
             bundle.write(destination);
             auto result = py::dict{};
             result["build_id"] = bundle.build_id().content_hash().value();
@@ -423,7 +640,7 @@ void bind_project_bundle(py::module_ &module) {
         py::arg("project_description"), py::arg("ok"), py::arg("status"), py::arg("profile"),
         py::arg("stages"), py::arg("entrypoint"), py::arg("authoring_inputs"), py::arg("logicals"),
         py::arg("schematics"), py::arg("boards"), py::arg("diagnostics_bytes"),
-        py::arg("tests_bytes"));
+        py::arg("tests_bytes"), py::arg("selected_exports"));
 }
 
 } // namespace volt::python

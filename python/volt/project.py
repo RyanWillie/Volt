@@ -675,6 +675,20 @@ class ProjectResult:
 
     def write(self, path: str | Path, *, profile: str = "default") -> None:
         """Write a deterministic project result bundle, optionally with viewer-profile checks."""
+        self._write_selected_bundle(
+            path,
+            profile=profile,
+            selected_exports=[],
+        )
+
+    def _write_selected_bundle(
+        self,
+        path: str | Path,
+        *,
+        profile: str,
+        selected_exports: list[dict[str, str]],
+    ) -> dict[str, object]:
+        """Write one native graph publication with the selected export closure."""
         if profile not in {"default", "viewer"}:
             raise ValueError("ProjectResult.write profile must be 'default' or 'viewer'")
         entrypoint, authoring_inputs = _project_authoring_inputs(self.project)
@@ -686,7 +700,7 @@ class ProjectResult:
             extra_diagnostics=(),
             logical_inputs=logical_inputs,
         )
-        _volt._write_project_bundle_v2(
+        return _volt._write_project_bundle_v2(
             str(Path(path)),
             self.project.name,
             self.project.version,
@@ -725,8 +739,8 @@ class ProjectResult:
                 )
             ),
             _canonical_report_bytes(_tests_payload(bundle_policy.tests)),
+            selected_exports,
         )
-        return
 
     def write_manufacturing_package(
         self,

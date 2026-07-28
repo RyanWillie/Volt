@@ -7,6 +7,8 @@ import importlib
 import importlib.machinery
 import json
 import os
+import shutil
+import subprocess
 import sys
 import tomllib
 from collections.abc import Iterable, Mapping, Sequence
@@ -22,12 +24,12 @@ from ..library import Library
 from ..library_result import LibraryResult
 from ..pcb import Board
 from ..project import (
-    ManufacturingPackageError,
     Project,
     ProjectDiagnostics,
     ProjectResult,
     _diagnostics_payload,
 )
+from ..project_bundle import ProjectBundle
 from ..schematic import Schematic
 
 
@@ -39,14 +41,22 @@ DIAGNOSTIC_STAGES = ("library", "design", "schematic", "board")
 BUILD_PROFILES = ("default", "viewer")
 INIT_PROFILES = ("jlcpcb", "oshpark", "pcbway", "generic")
 _SEVERITY_ORDER = {"error": 0, "warning": 1, "info": 2}
+_CLI_RESULT_FORMAT = "volt.cli-result"
 
 
 class CliError(Exception):
     """User-facing CLI failure with a deterministic process exit code."""
 
-    def __init__(self, message: str, *, exit_code: int = EXIT_COMMAND_FAILED):
+    def __init__(
+        self,
+        message: str,
+        *,
+        exit_code: int = EXIT_COMMAND_FAILED,
+        code: str = "command-failed",
+    ):
         super().__init__(message)
         self.exit_code = exit_code
+        self.code = code
 
 
 @dataclass(frozen=True)
@@ -130,11 +140,54 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         result = handler(args)
     except CliError as error:
-        print(f"volt: error: {error}", file=sys.stderr)
+        if getattr(args, "emit_json", False):
+            print(
+                json.dumps(
+                    _error_envelope(args.command, error),
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+            )
+        else:
+            print(f"volt: error: {error}", file=sys.stderr)
         return error.exit_code
     if isinstance(result, int):
         return result
     return EXIT_SUCCESS
+
+
+def _result_envelope(command: str, payload: Mapping[str, object]) -> dict[str, object]:
+    return {
+        "format": _CLI_RESULT_FORMAT,
+        "schema_version": 1,
+        "command": command,
+        **payload,
+    }
+
+
+def _error_envelope(command: str, error: CliError) -> dict[str, object]:
+    return _result_envelope(
+        command,
+        {
+            "ok": False,
+            "status": "error",
+            "error": {
+                "type": type(error).__name__,
+                "code": error.code,
+                "message": str(error),
+            },
+        },
+    )
+
+
+def _print_json_result(command: str, payload: Mapping[str, object]) -> None:
+    print(
+        json.dumps(
+            _result_envelope(command, payload),
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+    )
 
 
 def discover_project(
@@ -252,16 +305,16 @@ def _build_parser() -> argparse.ArgumentParser:
 
     run_parser = subparsers.add_parser(
         "run",
-        help="load and run the configured project entrypoint",
-        description="Load and run the configured project entrypoint.",
+        help="legacy alias for isolated project-source execution",
+        description="Legacy alias that executes the configured entrypoint once in isolation.",
     )
     _add_project_argument(run_parser)
     run_parser.set_defaults(handler=_handle_run)
 
     model_parser = subparsers.add_parser(
         "model",
-        help="emit an in-memory project model stream",
-        description="Load and run the configured project entrypoint, then emit model JSON.",
+        help="legacy alias for source-backed model output",
+        description="Legacy alias that executes project source once in isolation.",
     )
     _add_project_argument(model_parser)
     model_parser.add_argument(
@@ -283,8 +336,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     diagnostics_parser = subparsers.add_parser(
         "diagnostics",
-        help="report project diagnostics",
-        description="Load and run the configured project entrypoint, then report diagnostics.",
+        help="legacy alias for source-backed diagnostics",
+        description="Legacy alias for `volt check` diagnostic output.",
     )
     _add_project_argument(diagnostics_parser)
     diagnostics_parser.add_argument(
@@ -312,10 +365,27 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     diagnostics_parser.set_defaults(handler=_handle_diagnostics)
 
+    check_parser = subparsers.add_parser(
+        "check",
+        help="execute project source once and check diagnostics and tests",
+        description="Execute configured project source exactly once in an isolated process.",
+    )
+    _add_project_argument(check_parser)
+    check_parser.add_argument(
+        "--json",
+        dest="emit_json",
+        action="store_true",
+        help="Emit the versioned Volt CLI result envelope.",
+    )
+    check_parser.set_defaults(handler=_handle_check)
+
     build_parser = subparsers.add_parser(
         "build",
-        help="run a project and write build artifacts",
-        description="Run the configured project and write project-result artifacts.",
+        help="execute project source once and write a verified ProjectBundle",
+        description=(
+            "Execute configured project source exactly once in an isolated process, "
+            "then write and reopen one verified ProjectBundle."
+        ),
     )
     _add_project_argument(build_parser)
     build_parser.add_argument(
@@ -332,7 +402,42 @@ def _build_parser() -> argparse.ArgumentParser:
     build_parser.add_argument(
         "--flat",
         action="store_true",
-        help="Write legacy flat artifacts instead of the project-result bundle.",
+        help="Retired legacy option; reports the typed selected-export migration.",
+    )
+    build_parser.add_argument(
+        "--export",
+        dest="export_kinds",
+        action="append",
+        choices=(
+            "bom",
+            "schematic-svg",
+            "board-svg",
+            "board-layer-image",
+            "kicad-pcb",
+            "cpl",
+            "fabrication",
+            "step",
+            "whole-board-glb",
+        ),
+        default=[],
+        help="Select one typed export for inclusion in the bundle; may be repeated.",
+    )
+    build_parser.add_argument("--design", help="Exact logical design selector for BOM export.")
+    build_parser.add_argument(
+        "--schematic",
+        help="Exact Schematic selector for Schematic SVG export.",
+    )
+    build_parser.add_argument(
+        "--board",
+        help="Exact design:Board selector required when multiple Boards exist.",
+    )
+    build_parser.add_argument(
+        "--layer",
+        help="Exact Board layer name for board-layer-image export.",
+    )
+    build_parser.add_argument(
+        "--part",
+        help="Exact namespace@version:part-key selector for STEP export.",
     )
     build_parser.add_argument(
         "--json",
@@ -344,19 +449,37 @@ def _build_parser() -> argparse.ArgumentParser:
 
     export_parser = subparsers.add_parser(
         "export",
-        help="export project handoff packages",
-        description="Export project handoff packages.",
+        help="copy typed selected exports from a verified ProjectBundle",
+        description=(
+            "Open a verified ProjectBundle and copy only its typed selected-export artifacts."
+        ),
     )
+    export_parser.add_argument("--bundle", type=Path, help="Verified v2 ProjectBundle.")
+    export_parser.add_argument("--output", type=Path, help="New empty output directory.")
+    export_parser.add_argument(
+        "--kind",
+        dest="export_filter",
+        action="append",
+        default=[],
+        help="Copy only this selected artifact kind; may be repeated.",
+    )
+    export_parser.add_argument(
+        "--json",
+        dest="emit_json",
+        action="store_true",
+        help="Emit the versioned Volt CLI result envelope.",
+    )
+    export_parser.set_defaults(handler=_handle_export)
     export_subparsers = export_parser.add_subparsers(
         dest="export_command",
         metavar="export-command",
     )
     manufacturing_parser = export_subparsers.add_parser(
         "manufacturing",
-        help="write a deterministic native manufacturing package",
+        help="retired source-backed manufacturing alias",
         description=(
-            "Run the configured project and write a deterministic board-house "
-            "manufacturing package from Volt-native fabrication outputs."
+            "Retired source-backed alias. Use a typed fabrication selection during "
+            "build, then `volt export --bundle ...`."
         ),
     )
     _add_project_argument(manufacturing_parser)
@@ -384,8 +507,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     info_parser = subparsers.add_parser(
         "info",
-        help="report project metadata and run summary",
-        description="Run the configured project and report metadata without gating.",
+        help="legacy alias for source-backed project information",
+        description="Legacy alias that executes project source once in isolation.",
     )
     _add_project_argument(info_parser)
     info_parser.add_argument(
@@ -395,6 +518,39 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Emit a stable project info summary as JSON.",
     )
     info_parser.set_defaults(handler=_handle_info)
+
+    inspect_parser = subparsers.add_parser(
+        "inspect",
+        help="inspect a verified ProjectBundle without executing source",
+        description="Open and inspect one Q3-verified v2 ProjectBundle.",
+    )
+    inspect_parser.add_argument("--bundle", required=True, type=Path)
+    inspect_parser.add_argument(
+        "--board",
+        help="Exact design:Board selector required when multiple Boards exist.",
+    )
+    inspect_parser.add_argument(
+        "--json",
+        dest="emit_json",
+        action="store_true",
+        help="Emit the versioned Volt CLI result envelope.",
+    )
+    inspect_parser.set_defaults(handler=_handle_inspect)
+
+    diff_parser = subparsers.add_parser(
+        "diff",
+        help="compare two verified ProjectBundles without executing source",
+        description="Compare exact typed artifact identities and digests from two verified bundles.",
+    )
+    diff_parser.add_argument("before", type=Path)
+    diff_parser.add_argument("after", type=Path)
+    diff_parser.add_argument(
+        "--json",
+        dest="emit_json",
+        action="store_true",
+        help="Emit the versioned Volt CLI result envelope.",
+    )
+    diff_parser.set_defaults(handler=_handle_diff)
 
     init_parser = subparsers.add_parser(
         "init",
@@ -480,26 +636,25 @@ def _add_project_argument(parser: argparse.ArgumentParser) -> None:
 
 def _handle_run(args: argparse.Namespace) -> None:
     config = discover_project(project=args.project)
-    run_entrypoint(config)
+    _run_project_worker(config, "run")
 
 
 def _handle_model(args: argparse.Namespace) -> None:
     if not args.emit_json:
         raise CliError("volt model currently requires --json.")
     config = discover_project(project=args.project)
-    project_stdout = StringIO()
-    try:
-        with redirect_stdout(project_stdout):
-            result = _project_result_from_entrypoint(config)
-    except Exception:
-        _forward_project_stdout(project_stdout)
-        raise
-    _forward_project_stdout(project_stdout)
-    payload = _model_json_payload(
-        result,
-        design_selector=args.design,
-        schematic_selector=args.schematic,
-        board_selector=args.board,
+    worker_args = []
+    for option, value in (
+        ("--design", args.design),
+        ("--schematic", args.schematic),
+        ("--board", args.board),
+    ):
+        if value is not None:
+            worker_args.extend((option, value))
+    payload, _exit_code = _run_project_worker(
+        config,
+        "model",
+        arguments=worker_args,
     )
     print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
 
@@ -508,153 +663,425 @@ def _handle_diagnostics(args: argparse.Namespace) -> int | None:
     stage = _validated_diagnostic_stage(args.stage)
     severities = _validated_diagnostic_severities(args.severities)
     config = discover_project(project=args.project)
-    project_stdout = StringIO()
-    try:
-        with redirect_stdout(project_stdout):
-            result = _project_result_from_entrypoint(config)
-    except Exception:
-        _forward_project_stdout(project_stdout)
-        raise
-    _forward_project_stdout(project_stdout)
-
-    diagnostics = _filtered_diagnostics(
-        result,
-        stage=stage,
-        severities=severities,
+    worker_args = ["--severities-json", json.dumps(severities)]
+    if stage is not None:
+        worker_args.extend(("--stage", stage))
+    if args.check:
+        worker_args.append("--gate")
+    payload, exit_code = _run_project_worker(
+        config,
+        "diagnostics",
+        arguments=worker_args,
     )
     if args.emit_json:
-        payload = _diagnostics_payload(result, diagnostics=diagnostics)
         print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
     else:
-        _print_diagnostics_report(result, diagnostics)
-    if args.check and not result.ok:
-        return EXIT_CHECK_FAILED
-    return None
+        _print_diagnostics_payload(payload)
+    return exit_code
+
+
+def _handle_check(args: argparse.Namespace) -> int:
+    config = discover_project(project=args.project)
+    payload, exit_code = _run_project_worker(config, "check")
+    if args.emit_json:
+        _print_json_result("check", payload)
+    else:
+        diagnostics = cast(Mapping[str, object], payload["diagnostics"])
+        tests = cast(Mapping[str, object], payload["tests"])
+        summary = cast(Mapping[str, int], diagnostics["summary"])
+        test_summary = cast(Mapping[str, int], tests["summary"])
+        print(
+            f"Check: {payload['status']} "
+            f"({_diagnostic_summary_text(summary)}; "
+            f"{test_summary['failed']} failed tests)"
+        )
+        _print_failed_test_payloads(tests)
+    return exit_code
 
 
 def _handle_build(args: argparse.Namespace) -> int | None:
-    config = discover_project(project=args.project)
-    result = _project_result_with_forwarded_stdout(config)
-    output = _build_output_path(config, args.output)
-    mode = "flat" if args.flat else "bundle"
-
-    if not result.ok:
-        if args.emit_json:
-            print(
-                json.dumps(
-                    _build_payload(
-                        result,
-                        output=output,
-                        mode=mode,
-                        profile=args.profile,
-                        written=False,
-                    ),
-                    separators=(",", ":"),
-                    sort_keys=True,
-                )
-            )
-        else:
-            payload = _diagnostics_payload(result)
-            summary = _diagnostic_summary_text(payload["summary"])
-            print(
-                f"Build refused: {payload['status']} ({summary})",
-                file=sys.stderr,
-            )
-        return EXIT_CHECK_FAILED
-
     if args.flat:
-        result.write_artifacts(output)
-    else:
-        result.write(output, profile=args.profile)
-
-    if args.emit_json:
-        print(
-            json.dumps(
-                _build_payload(
-                    result,
-                    output=output,
-                    mode=mode,
-                    profile=args.profile,
-                    written=True,
-                ),
-                separators=(",", ":"),
-                sort_keys=True,
-            )
+        raise CliError(
+            "`volt build --flat` is retired. Select typed exports with "
+            "`volt build --export ...`, then copy them with `volt export --bundle ...`.",
+            code="flat-build-retired",
         )
+    config = discover_project(project=args.project)
+    output = _build_output_path(config, args.output)
+    export_requests = [
+        {
+            "kind": kind.replace("-", "_"),
+            "design": args.design,
+            "schematic": args.schematic,
+            "board": args.board,
+            "layer": args.layer,
+            "part": args.part,
+        }
+        for kind in args.export_kinds
+    ]
+    payload, exit_code = _run_project_worker(
+        config,
+        "build",
+        arguments=(
+            "--output",
+            str(output),
+            "--profile",
+            args.profile,
+            "--exports-json",
+            json.dumps(export_requests, separators=(",", ":"), sort_keys=True),
+        ),
+    )
+    if args.emit_json:
+        _print_json_result("build", payload)
     else:
-        print(f"Build: {result.status} -> {output}")
-    return None
+        print(f"Build: {payload['status']} -> {output}")
+    return exit_code
 
 
 def _handle_export_manufacturing(args: argparse.Namespace) -> int | None:
-    config = discover_project(project=args.project)
-    result = _project_result_with_forwarded_stdout(config)
-    output = _manufacturing_output_path(config, args.output)
-    try:
-        package = result.write_manufacturing_package(
-            output,
-            board=args.board,
-            manufacturing_profile=_manufacturing_profile_payload(config),
-            archive=args.archive,
-        )
-    except LookupError as error:
-        raise CliError(str(error)) from error
-    except ManufacturingPackageError as error:
-        if error.board is None:
-            raise CliError(str(error)) from error
-        payload = _manufacturing_export_payload(
-            config,
-            result,
-            output=output,
-            board=error.board,
-            written=False,
-            status=error.status,
-            native_fabrication=error.native_fabrication,
-        )
-        if args.emit_json:
-            print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
-        elif error.status == "native-fabrication-loss":
-            print(
-                "Manufacturing export refused: native fabrication export reported "
-                "fab-critical loss.",
-                file=sys.stderr,
-            )
-        elif error.status.startswith("missing-"):
-            print(f"Manufacturing export refused: {error}", file=sys.stderr)
-        else:
-            diagnostics = error.diagnostics or _diagnostics_payload(result)
-            print(
-                f"Manufacturing export refused: {diagnostics['status']} "
-                f"({_diagnostic_summary_text(diagnostics['summary'])})",
-                file=sys.stderr,
-            )
-        return EXIT_CHECK_FAILED
-
-    payload = _manufacturing_export_payload(
-        config,
-        result,
-        output=output,
-        board=package.board,
-        written=True,
-        status=result.status,
-        native_fabrication=package.native_fabrication,
-        archive=None if package.archive is None else str(package.archive),
+    raise CliError(
+        "`volt export manufacturing --project` is retired because delivery must not "
+        "execute project source. Select `fabrication` during `volt build`, then use "
+        "`volt export --bundle ...`.",
+        code="source-backed-export-retired",
     )
-    if args.emit_json:
-        print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
-    else:
-        print(f"Manufacturing export: {result.status} -> {output}")
-    return None
 
 
 def _handle_info(args: argparse.Namespace) -> None:
     config = discover_project(project=args.project)
-    result = _project_result_with_forwarded_stdout(config)
-    payload = _info_payload(config, result)
+    payload, _exit_code = _run_project_worker(config, "info")
     if args.emit_json:
         print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
         return
     _print_info_report(payload)
+
+
+def _open_verified_bundle(path: str | Path):
+    bundle_path = Path(path).expanduser().resolve()
+    if not bundle_path.exists():
+        raise CliError(
+            f"ProjectBundle not found: {bundle_path}",
+            code="bundle-not-found",
+        )
+    try:
+        bundle = ProjectBundle.open(bundle_path)
+        graph = bundle.v2
+    except Exception as error:
+        raise CliError(
+            f"Failed to open verified ProjectBundle {bundle_path}: {error}",
+            code="invalid-project-bundle",
+        ) from error
+    return bundle_path, bundle, graph
+
+
+def _artifact_payload(artifact) -> dict[str, object]:
+    record = json.loads(artifact.manifest_record_json)
+    return {
+        "id": json.loads(artifact.id_json),
+        "kind": artifact.kind,
+        "role": artifact.role,
+        "path": artifact.path,
+        "content_digest": artifact.content_digest,
+        "schema": record["schema"],
+        "media_type": record["media_type"],
+        "depends_on": record["depends_on"],
+        "producer": record["producer"],
+    }
+
+
+def _selected_board_views(loaded, selector: str | None):
+    boards = tuple(loaded.boards)
+    if selector is None:
+        return boards
+    candidates = tuple(f"{board.design}:{board.name}" for board in boards)
+    if len(boards) > 1 and ":" not in selector:
+        raise CliError(
+            "Multiple named Boards require an exact design:Board selector. Candidates: "
+            + ", ".join(candidates),
+            code="exact-board-selector-required",
+        )
+    matches = tuple(
+        board
+        for board, candidate in zip(boards, candidates, strict=True)
+        if selector in (candidate, board.name) and (len(boards) == 1 or selector == candidate)
+    )
+    if len(matches) != 1:
+        raise CliError(
+            f"No exact Board selector {selector!r}. Candidates: "
+            + (", ".join(candidates) if candidates else "<none>"),
+            code="invalid-board-selector",
+        )
+    return matches
+
+
+def _compiled_board_key(compiled) -> tuple[str, str]:
+    record = json.loads(compiled.artifact.manifest_record_json)
+    dependencies = record["depends_on"]
+    boards = [
+        dependency["artifact"]["owner"]["value"]
+        for dependency in dependencies
+        if dependency["artifact"]["kind"] == "board_model"
+    ]
+    if len(boards) != 1:
+        raise CliError(
+            "Verified CompiledBoard does not have exactly one Board dependency.",
+            code="invalid-project-bundle",
+        )
+    return str(boards[0]["design"]), str(boards[0]["board"])
+
+
+def _inspection_payload(path: Path, graph, *, board_selector: str | None) -> dict[str, object]:
+    manifest = json.loads(graph.manifest_bytes)
+    loaded = graph.loaded_project
+    boards = _selected_board_views(loaded, board_selector)
+    selected_board_keys = {(board.design, board.name) for board in boards}
+    compiled_boards = tuple(
+        compiled
+        for compiled in loaded.compiled_boards
+        if board_selector is None or _compiled_board_key(compiled) in selected_board_keys
+    )
+    selected_compiled_identities = {
+        (compiled.identity["board"], compiled.identity["provenance_digest"])
+        for compiled in compiled_boards
+    }
+    scenes = tuple(
+        scene
+        for scene in loaded.board_scenes
+        if board_selector is None
+        or (
+            scene.compiled_board.identity["board"],
+            scene.compiled_board.identity["provenance_digest"],
+        )
+        in selected_compiled_identities
+    )
+    parts = tuple(
+        artifact for artifact in graph.artifacts if artifact.kind == "part_definition"
+    )
+    return {
+        "ok": bool(manifest["run"]["ok"]),
+        "status": manifest["run"]["status"],
+        "bundle": str(path),
+        "integrity": "verified-v2",
+        "project": {
+            "name": graph.project_name,
+            "version": graph.project_version,
+            "description": graph.project_description,
+        },
+        "run": manifest["run"],
+        "build_id": graph.build_id,
+        "bundle_digest": graph.bundle_digest,
+        "authoring_inputs_digest": graph.authoring_inputs_digest,
+        "dependency_lock": graph.dependency_lock,
+        "logical": [
+            {
+                "design": circuit.design,
+                "component_count": circuit.component_count,
+                "net_count": circuit.net_count,
+                "artifact": _artifact_payload(circuit.artifact),
+                "model": json.loads(circuit.artifact.bytes),
+            }
+            for circuit in loaded.circuits
+        ],
+        "schematics": [
+            {
+                "design": schematic.design,
+                "name": schematic.name,
+                "artifact": _artifact_payload(schematic.artifact),
+                "model": json.loads(schematic.artifact.bytes),
+            }
+            for schematic in loaded.schematics
+        ],
+        "boards": [
+            {
+                "design": board.design,
+                "name": board.name,
+                "artifact": _artifact_payload(board.artifact),
+                "model": json.loads(board.artifact.bytes),
+            }
+            for board in boards
+        ],
+        "compiled_boards": [
+            {
+                "identity": compiled.identity,
+                "artifact": _artifact_payload(compiled.artifact),
+            }
+            for compiled in compiled_boards
+        ],
+        "diagnostics": json.loads(loaded.diagnostics.bytes),
+        "tests": json.loads(loaded.tests.bytes),
+        "parts": [
+            {
+                "artifact": _artifact_payload(part),
+                "definition": json.loads(part.bytes),
+            }
+            for part in parts
+        ],
+        "scenes": [
+            {
+                "compiled_board": scene.compiled_board.identity,
+                "model_digests": scene.model_digests,
+                "artifact": _artifact_payload(scene.artifact),
+                "model": json.loads(scene.artifact.bytes),
+            }
+            for scene in scenes
+        ],
+        "selected_exports": [
+            _artifact_payload(artifact) for artifact in loaded.selected_exports
+        ],
+        "artifacts": [_artifact_payload(artifact) for artifact in graph.artifacts],
+    }
+
+
+def _handle_inspect(args: argparse.Namespace) -> None:
+    path, _bundle, graph = _open_verified_bundle(args.bundle)
+    payload = _inspection_payload(path, graph, board_selector=args.board)
+    if args.emit_json:
+        _print_json_result("inspect", payload)
+        return
+    print(f"Project: {payload['project']['name']}")
+    print(f"Status: {payload['status']}")
+    print(f"Bundle: {payload['bundle_digest']}")
+    print(
+        "Models: "
+        f"{len(payload['logical'])} logical, "
+        f"{len(payload['schematics'])} schematics, "
+        f"{len(payload['boards'])} Boards, "
+        f"{len(payload['compiled_boards'])} CompiledBoards"
+    )
+    print(
+        f"Artifacts: {len(payload['artifacts'])} "
+        f"({len(payload['selected_exports'])} selected exports)"
+    )
+
+
+def _handle_diff(args: argparse.Namespace) -> int:
+    before_path, _before_bundle, before = _open_verified_bundle(args.before)
+    after_path, _after_bundle, after = _open_verified_bundle(args.after)
+    before_artifacts = {
+        artifact.id_json: artifact for artifact in before.artifacts
+    }
+    after_artifacts = {
+        artifact.id_json: artifact for artifact in after.artifacts
+    }
+    added_keys = sorted(after_artifacts.keys() - before_artifacts.keys())
+    removed_keys = sorted(before_artifacts.keys() - after_artifacts.keys())
+    changed_keys = sorted(
+        key
+        for key in before_artifacts.keys() & after_artifacts.keys()
+        if before_artifacts[key].content_digest != after_artifacts[key].content_digest
+    )
+    same = not added_keys and not removed_keys and not changed_keys
+    payload = {
+        "ok": same,
+        "status": "identical" if same else "different",
+        "before": {
+            "path": str(before_path),
+            "build_id": before.build_id,
+            "bundle_digest": before.bundle_digest,
+        },
+        "after": {
+            "path": str(after_path),
+            "build_id": after.build_id,
+            "bundle_digest": after.bundle_digest,
+        },
+        "added": [_artifact_payload(after_artifacts[key]) for key in added_keys],
+        "removed": [_artifact_payload(before_artifacts[key]) for key in removed_keys],
+        "changed": [
+            {
+                "id": json.loads(key),
+                "before": before_artifacts[key].content_digest,
+                "after": after_artifacts[key].content_digest,
+            }
+            for key in changed_keys
+        ],
+    }
+    if args.emit_json:
+        _print_json_result("diff", payload)
+    else:
+        print(f"Diff: {payload['status']}")
+        print(
+            f"Artifacts: +{len(added_keys)} -{len(removed_keys)} "
+            f"~{len(changed_keys)}"
+        )
+    return EXIT_SUCCESS if same else EXIT_CHECK_FAILED
+
+
+def _handle_export(args: argparse.Namespace) -> None:
+    if args.bundle is None or args.output is None:
+        raise CliError(
+            "`volt export` requires --bundle and --output.",
+            code="missing-export-path",
+        )
+    bundle_path, _bundle, graph = _open_verified_bundle(args.bundle)
+    output = args.output.expanduser().resolve()
+    selected = tuple(graph.loaded_project.selected_exports)
+    filters = {
+        value.strip().lower().replace("-", "_")
+        for value in args.export_filter
+        if value.strip()
+    }
+    if filters:
+        selected = tuple(artifact for artifact in selected if artifact.kind in filters)
+        if not selected:
+            raise CliError(
+                "No selected export matches --kind. Available kinds: "
+                + (
+                    ", ".join(
+                        artifact.kind
+                        for artifact in graph.loaded_project.selected_exports
+                    )
+                    or "<none>"
+                ),
+                code="selected-export-not-found",
+            )
+    if output.exists():
+        raise CliError(
+            f"Export destination already exists: {output}",
+            code="export-destination-exists",
+        )
+    stage = output.with_name(f".{output.name}.volt-stage")
+    if stage.exists():
+        raise CliError(
+            f"Export staging destination already exists: {stage}",
+            code="export-stage-exists",
+        )
+    published = False
+    try:
+        stage.mkdir(parents=True)
+        copied = []
+        for artifact in selected:
+            relative = Path(artifact.path)
+            destination = stage / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(artifact.bytes)
+            copied.append(
+                {
+                    **_artifact_payload(artifact),
+                    "output": str(output / relative),
+                }
+            )
+        os.replace(stage, output)
+        published = True
+    except OSError as error:
+        raise CliError(
+            f"Failed to publish selected exports to {output}: {error}",
+            code="export-publication-failed",
+        ) from error
+    finally:
+        if not published:
+            shutil.rmtree(stage, ignore_errors=True)
+    payload = {
+        "ok": True,
+        "status": "exported",
+        "bundle": str(bundle_path),
+        "bundle_digest": graph.bundle_digest,
+        "output": str(output),
+        "artifacts": copied,
+    }
+    if args.emit_json:
+        _print_json_result("export", payload)
+    else:
+        print(f"Export: {len(copied)} artifacts -> {output}")
 
 
 def _handle_init(args: argparse.Namespace) -> None:
@@ -992,6 +1419,92 @@ def _forward_project_stdout(stream: StringIO) -> None:
         print(text, file=sys.stderr, end="")
 
 
+def _run_project_worker(
+    config: ProjectConfig,
+    action: str,
+    *,
+    arguments: Sequence[str] = (),
+) -> tuple[dict[str, object], int]:
+    command = [
+        sys.executable,
+        "-m",
+        "volt.cli._project_worker",
+        action,
+        "--config",
+        str(config.config_path),
+        *arguments,
+    ]
+    environment = os.environ.copy()
+    project_root = config.root.resolve()
+    environment["PYTHONPATH"] = os.pathsep.join(
+        str(path)
+        for entry in sys.path
+        if entry and (path := Path(entry).resolve()) != project_root
+    )
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=Path(__file__).resolve().parent,
+            env=environment,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as error:
+        raise CliError(
+            f"Failed to start isolated project worker: {error}",
+            code="worker-start-failed",
+        ) from error
+    if completed.stderr:
+        print(completed.stderr, file=sys.stderr, end="")
+    try:
+        response = json.loads(completed.stdout)
+    except json.JSONDecodeError as error:
+        raise CliError(
+            "Isolated project worker returned an invalid response.",
+            code="worker-protocol-error",
+        ) from error
+    if (
+        not isinstance(response, dict)
+        or response.get("format") != "volt.project-worker-response"
+        or response.get("schema_version") != 1
+    ):
+        raise CliError(
+            "Isolated project worker returned an unsupported response.",
+            code="worker-protocol-error",
+        )
+    exit_code = response.get("exit_code")
+    if not isinstance(exit_code, int):
+        raise CliError(
+            "Isolated project worker omitted its exit status.",
+            code="worker-protocol-error",
+        )
+    if not response.get("ok"):
+        error = response.get("error")
+        if not isinstance(error, dict):
+            raise CliError(
+                "Isolated project worker failed without a typed error.",
+                code="worker-protocol-error",
+            )
+        raise CliError(
+            str(error.get("message", "Project worker failed.")),
+            exit_code=exit_code,
+            code=str(error.get("code", "project-execution-failed")),
+        )
+    payload = response.get("result")
+    if not isinstance(payload, dict):
+        raise CliError(
+            "Isolated project worker omitted its result.",
+            code="worker-protocol-error",
+        )
+    if completed.returncode != exit_code:
+        raise CliError(
+            "Isolated project worker exit status disagrees with its response.",
+            code="worker-protocol-error",
+        )
+    return payload, exit_code
+
+
 def _project_result_with_forwarded_stdout(config: ProjectConfig) -> ProjectResult:
     project_stdout = StringIO()
     try:
@@ -1083,66 +1596,6 @@ def _build_output_path(config: ProjectConfig, output: Path | None) -> Path:
     if path.is_absolute():
         return path
     return Path.cwd() / path
-
-
-def _manufacturing_output_path(config: ProjectConfig, output: Path | None) -> Path:
-    if output is None:
-        return config.paths.get("artifacts", config.root / "build") / "manufacturing"
-    path = output.expanduser()
-    if path.is_absolute():
-        return path
-    return Path.cwd() / path
-
-
-def _build_payload(
-    result: ProjectResult,
-    *,
-    output: Path,
-    mode: str,
-    profile: str,
-    written: bool,
-) -> dict[str, object]:
-    return {
-        "ok": result.ok,
-        "status": result.status,
-        "output": str(output),
-        "mode": mode,
-        "profile": profile,
-        "written": written,
-        "diagnostics": _diagnostics_payload(result),
-        "tests": _tests_summary(_project_tests(result)),
-    }
-
-
-def _manufacturing_export_payload(
-    config: ProjectConfig,
-    result: ProjectResult,
-    *,
-    output: Path,
-    board: dict[str, str],
-    written: bool,
-    status: str,
-    native_fabrication: dict[str, object] | None = None,
-    archive: str | None = None,
-) -> dict[str, object]:
-    payload: dict[str, object] = {
-        "ok": status == result.status and result.ok,
-        "status": status,
-        "output": str(output),
-        "board": board,
-        "written": written,
-        "diagnostics": _diagnostics_payload(result),
-        "tests": _tests_summary(_project_tests(result)),
-        "manufacturing_profile": _manufacturing_profile_payload(config),
-    }
-    if native_fabrication is not None:
-        payload["native_fabrication"] = {
-            "coverage": native_fabrication["coverage"],
-            "warnings": native_fabrication["warnings"],
-        }
-    if archive is not None:
-        payload["archive"] = archive
-    return payload
 
 
 def _info_payload(config: ProjectConfig, result: ProjectResult) -> dict[str, object]:
@@ -1368,6 +1821,60 @@ def _print_diagnostics_report(
                 f"    {severity} {diagnostic.code} "
                 f"[{diagnostic.stage}] {diagnostic.message}"
             )
+
+
+def _print_diagnostics_payload(payload: Mapping[str, object]) -> None:
+    summary = cast(Mapping[str, int], payload["summary"])
+    print(f"Diagnostics: {payload['status']} ({_diagnostic_summary_text(summary)})")
+    diagnostics = cast(Sequence[Mapping[str, object]], payload["diagnostics"])
+    if not diagnostics:
+        print("No diagnostics.")
+    else:
+        grouped: dict[tuple[str, str], list[Mapping[str, object]]] = {}
+        for diagnostic in diagnostics:
+            key = (str(diagnostic["report"]), str(diagnostic["source"]))
+            grouped.setdefault(key, []).append(diagnostic)
+        styled = _style_stdout()
+        for report, source in sorted(grouped):
+            print(report)
+            print(f"  {source}")
+            for diagnostic in sorted(
+                grouped[(report, source)],
+                key=lambda item: (
+                    str(item["stage"]),
+                    _SEVERITY_ORDER.get(
+                        str(item["severity"]),
+                        len(_SEVERITY_ORDER),
+                    ),
+                    str(item["code"]),
+                    str(item["message"]),
+                ),
+            ):
+                severity = _format_severity(str(diagnostic["severity"]), styled=styled)
+                print(
+                    f"    {severity} {diagnostic['code']} "
+                    f"[{diagnostic['stage']}] {diagnostic['message']}"
+                )
+    tests = payload.get("tests")
+    if isinstance(tests, Mapping):
+        _print_failed_test_payloads(tests)
+
+
+def _print_failed_test_payloads(payload: Mapping[str, object]) -> None:
+    tests = cast(Sequence[Mapping[str, object]], payload["tests"])
+    failed = tuple(test for test in tests if not bool(test["ok"]))
+    if not failed:
+        return
+    print("Failed tests:")
+    for test in sorted(
+        failed,
+        key=lambda item: (
+            str(item["stage"]),
+            str(item["name"]),
+            str(item["message"]),
+        ),
+    ):
+        print(f"  {test['stage']}.{test['name']}: {test['message']}")
 
 
 def _diagnostic_summary_text(summary: Mapping[str, int]) -> str:
@@ -1677,6 +2184,15 @@ def _evict_project_entrypoint_modules(module_name: str, root: Path) -> None:
     top_level_module = module_name.partition(".")[0]
     if not _root_provides_module(root, top_level_module):
         return
+
+    cached_module = sys.modules.get(top_level_module)
+    cached_path = getattr(cached_module, "__file__", None)
+    if cached_path is not None and not Path(cached_path).resolve().is_relative_to(root):
+        raise CliError(
+            f"Project entrypoint module {top_level_module!r} conflicts with "
+            f"already-loaded module outside the project root: {cached_path}",
+            code="project-entrypoint-module-conflict",
+        )
 
     package_prefix = f"{top_level_module}."
     for cached_name in list(sys.modules):

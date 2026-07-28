@@ -300,14 +300,72 @@ rewriting historical output. Project Board artifacts use deterministic project-d
 BoardName byte ordering. Use composite selectors such as `product:Compact` whenever more
 than one Board makes an omitted or bare BoardName selector ambiguous.
 
+### Verified Project CLI workflow
+
+The canonical command path is source-explicit:
+
+```sh
+volt init controller
+cd controller
+volt check --json
+volt build --output build/controller.volt --export board-svg --json
+volt inspect --bundle build/controller.volt --json
+volt diff build/controller.volt build/controller.volt --json
+volt export --bundle build/controller.volt --output dist/controller --json
+```
+
+`check` and `build` each execute the declared `volt.toml` entrypoint exactly once in an
+isolated subprocess. `build` writes and reopens one verified v2 ProjectBundle. A project
+with failed diagnostics or product tests returns exit 1, but its structurally valid bundle
+is still persisted with the exact diagnostics and test evidence. The result reports
+structural validity, target readiness, and overall test/diagnostic outcome separately.
+
+`inspect`, `diff`, and `export --bundle` never import project source. They reopen the
+immutable bundle through the native Q3 reader and operate only on its verified typed
+views. Inspection includes logical models, Schematics, every named Board, CompiledBoards,
+diagnostics, tests, selected parts, BoardScenes, selected exports, dependency locks, and
+artifact metadata. `diff` compares typed artifact identity and content digest; exit 0 means
+identical, exit 1 means different, and exit 2 is a command or integrity failure.
+
+Builds select exports explicitly and the empty selection emits no extras:
+
+```sh
+volt build --output build/controller.volt \
+  --export schematic-svg --schematic controller:Main \
+  --export board-svg --board controller:Control
+
+volt build --output build/controller-step.volt \
+  --export step --part vendor.parts@1.0:MCU-123
+```
+
+Board-backed selections require `design:Board` when more than one named Board exists.
+Schematic and STEP selections likewise use the exact candidates reported by a typed
+failure. Supported selections lower to the closed native export-request vocabulary:
+`schematic-svg`, `board-svg`, `board-layer-image`, `bom`, `cpl`, `step`, `kicad-pcb`,
+`fabrication`, and `whole-board-glb`. If the current native producer does not implement a
+selected kind, build returns a typed `selected-export-failed` error; the CLI never falls
+back to a Python exporter. `volt export` copies only selected-export artifacts already in
+the verified bundle and refuses an existing destination.
+
+Commands with `--json` use `volt.cli-result` schema version 1 for both success and error
+responses. Exit status is stable: 0 for success, 1 for a completed check/build/diff whose
+result does not pass its gate, and 2 for command, selector, source, publication, or bundle
+integrity failure. Human output is deterministic and concise.
+
+The old source-backed `volt export manufacturing --project ...` and flat
+`volt build --flat` paths are retired with migration errors. Select the required typed
+outputs during `volt build`, then publish them from the verified bundle with
+`volt export --bundle ...`.
+
 `result.write_manufacturing_package(path, board=None, manufacturing_profile=None,
 archive=False)` writes the full deterministic manufacturing handoff package for one
-project board. It uses the same package writer as `volt export manufacturing`: native
-Gerber/Excellon files, BOM, CPL, diagnostics, profile metadata, native fabrication
-coverage, manifest, inspection HTML, and optional deterministic zip archive. If the
-project result is not ok or native fabrication reports fab-critical loss, the method
-raises `volt.ManufacturingPackageError` and does not write an orderable-looking package.
-Missing or ambiguous board selectors raise `LookupError`.
+project board. This direct Python API remains available for compatibility, but the
+source-backed CLI alias is retired in favor of the verified workflow above. The method
+writes native Gerber/Excellon files, BOM, CPL, diagnostics, profile metadata, native
+fabrication coverage, manifest, inspection HTML, and optional deterministic zip archive.
+If the project result is not ok or native fabrication reports fab-critical loss, the
+method raises `volt.ManufacturingPackageError` and does not write an orderable-looking
+package. Missing or ambiguous board selectors raise `LookupError`.
 
 ```python
 result = project.run()
