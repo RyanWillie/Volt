@@ -42,7 +42,7 @@ open_verified(const detail::BundleSource &source, detail::CapturedEntry manifest
 
     storage->v2_diagnostics = unique_artifact(*storage, ArtifactKind::Diagnostics);
     storage->v2_tests = unique_artifact(*storage, ArtifactKind::ProjectTests);
-    verify_reports(storage->v2_artifacts[storage->v2_diagnostics].bytes,
+    verify_reports(*storage, storage->v2_artifacts[storage->v2_diagnostics].bytes,
                    storage->v2_artifacts[storage->v2_tests].bytes, manifest.run);
     verify_exports(*storage, library, manifest.exports);
     return storage;

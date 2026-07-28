@@ -3,11 +3,13 @@
 #include <cmath>
 #include <cstdint>
 #include <initializer_list>
+#include <iterator>
 #include <ranges>
 #include <set>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -30,8 +32,24 @@ void require_report(bool condition, std::string message) {
 }
 
 [[nodiscard]] Json parse_report(std::string_view bytes, std::string_view name) {
+    auto object_keys = std::vector<std::set<std::string>>{};
+    const auto callback = [&](int, Json::parse_event_t event, Json &parsed) {
+        if (event == Json::parse_event_t::object_start) {
+            object_keys.emplace_back();
+        } else if (event == Json::parse_event_t::key) {
+            if (object_keys.empty() ||
+                !object_keys.back().insert(parsed.get<std::string>()).second) {
+                reject_report(std::string{name} + " report contains a duplicate JSON object key");
+            }
+        } else if (event == Json::parse_event_t::object_end) {
+            object_keys.pop_back();
+        }
+        return true;
+    };
     try {
-        return Json::parse(bytes.begin(), bytes.end());
+        return Json::parse(bytes.begin(), bytes.end(), callback);
+    } catch (const KernelArgumentError &) {
+        throw;
     } catch (const std::exception &error) {
         reject_report(std::string{name} + " report is not valid JSON: " + error.what());
     }
@@ -88,25 +106,36 @@ void require_nullable_string(const Json &object, std::string_view name, std::str
     return value.get<std::uint64_t>();
 }
 
-void require_entity(const Json &entity, std::string_view context) {
+[[nodiscard]] ProjectDiagnosticReferenceFacts require_entity(const Json &entity,
+                                                             std::string_view context) {
     require_exact_keys(entity, {"kind", "index"}, context);
-    static_cast<void>(string_field(entity, "kind", context));
-    static_cast<void>(unsigned_field(entity, "index", context));
+    return ProjectDiagnosticReferenceFacts{string_field(entity, "kind", context),
+                                           unsigned_field(entity, "index", context)};
 }
 
-void require_entity_list(const Json &value, std::string_view context) {
+[[nodiscard]] std::vector<ProjectDiagnosticReferenceFacts>
+require_entity_list(const Json &value, std::string_view context) {
     require_report(value.is_array(), std::string{context} + " must be an array");
+    auto result = std::vector<ProjectDiagnosticReferenceFacts>{};
+    result.reserve(value.size());
     for (const auto &entity : value) {
-        require_entity(entity, context);
+        result.push_back(require_entity(entity, context));
     }
+    return result;
 }
 
-void require_overlay(const Json &overlay) {
+[[nodiscard]] std::vector<ProjectDiagnosticReferenceFacts> require_overlay(const Json &overlay) {
     constexpr auto context = std::string_view{"diagnostic overlay"};
     require_exact_keys(overlay, {"kind", "points", "entities", "layers"}, context);
-    static_cast<void>(string_field(overlay, "kind", context));
+    const auto &kind = string_field(overlay, "kind", context);
     const auto &points = field(overlay, "points", context);
     require_report(points.is_array(), "diagnostic overlay points must be an array");
+    const auto valid_point_count = (kind == "bounding_box" || kind == "segment")
+                                       ? points.size() == 2U
+                                   : kind == "point"   ? points.size() == 1U
+                                   : kind == "polygon" ? points.size() >= 3U
+                                                       : false;
+    require_report(valid_point_count, "diagnostic overlay kind or point count is invalid");
     for (const auto &point : points) {
         require_report(point.is_array() && point.size() == 2U,
                        "diagnostic overlay point must be a coordinate pair");
@@ -115,8 +144,16 @@ void require_overlay(const Json &overlay) {
                            "diagnostic overlay coordinates must be finite numbers");
         }
     }
-    require_entity_list(field(overlay, "entities", context), "diagnostic overlay entities");
-    require_entity_list(field(overlay, "layers", context), "diagnostic overlay layers");
+    auto result =
+        require_entity_list(field(overlay, "entities", context), "diagnostic overlay entities");
+    auto layers =
+        require_entity_list(field(overlay, "layers", context), "diagnostic overlay layers");
+    require_report(
+        std::ranges::all_of(layers, [](const auto &layer) { return layer.kind == "board_layer"; }),
+        "diagnostic overlay layers must be board_layer references");
+    result.insert(result.end(), std::make_move_iterator(layers.begin()),
+                  std::make_move_iterator(layers.end()));
+    return result;
 }
 
 void require_measurement(const Json &measurement) {
@@ -143,7 +180,7 @@ void require_measurement(const Json &measurement) {
     return result;
 }
 
-void require_diagnostic(const Json &diagnostic) {
+[[nodiscard]] ProjectDiagnosticFacts require_diagnostic(const Json &diagnostic) {
     constexpr auto context = std::string_view{"project diagnostic"};
     require_exact_keys(diagnostic,
                        {"stage", "source", "report", "severity", "category", "code", "message",
@@ -159,11 +196,14 @@ void require_diagnostic(const Json &diagnostic) {
     static_cast<void>(string_field(diagnostic, "category", context));
     static_cast<void>(string_field(diagnostic, "code", context));
     static_cast<void>(string_field(diagnostic, "message", context, true));
-    require_entity_list(field(diagnostic, "entities", context), "project diagnostic entities");
+    auto references =
+        require_entity_list(field(diagnostic, "entities", context), "project diagnostic entities");
     const auto &overlays = field(diagnostic, "overlays", context);
     require_report(overlays.is_array(), "project diagnostic overlays must be an array");
     for (const auto &overlay : overlays) {
-        require_overlay(overlay);
+        auto overlay_references = require_overlay(overlay);
+        references.insert(references.end(), std::make_move_iterator(overlay_references.begin()),
+                          std::make_move_iterator(overlay_references.end()));
     }
     require_measurement(field(diagnostic, "measurement", context));
     require_nullable_string(diagnostic, "design", context);
@@ -172,6 +212,13 @@ void require_diagnostic(const Json &diagnostic) {
     require_report(field(diagnostic, "expect_diagnostic_kwargs", context) ==
                        expected_kwargs(diagnostic),
                    "project diagnostic expectation metadata is inconsistent");
+    const auto nullable_value = [&](std::string_view name) -> std::optional<std::string> {
+        const auto &value = field(diagnostic, name, context);
+        return value.is_null() ? std::nullopt : std::optional{value.get_ref<const std::string &>()};
+    };
+    return ProjectDiagnosticFacts{
+        string_field(diagnostic, "source", context), string_field(diagnostic, "report", context),
+        nullable_value("design"), nullable_value("board"), std::move(references)};
 }
 
 void require_expected_diagnostic(const Json &expected) {
@@ -225,8 +272,10 @@ ProjectDiagnosticsReportFacts read_project_diagnostics_report(std::string_view b
     auto errors = std::uint64_t{0};
     auto warnings = std::uint64_t{0};
     auto infos = std::uint64_t{0};
+    auto diagnostic_facts = std::vector<ProjectDiagnosticFacts>{};
+    diagnostic_facts.reserve(diagnostics.size());
     for (const auto &diagnostic : diagnostics) {
-        require_diagnostic(diagnostic);
+        diagnostic_facts.push_back(require_diagnostic(diagnostic));
         const auto &severity = diagnostic.at("severity").get_ref<const std::string &>();
         if (severity == "error") {
             ++errors;
@@ -262,7 +311,7 @@ ProjectDiagnosticsReportFacts read_project_diagnostics_report(std::string_view b
     const auto &unexpected = field(report, "unexpected", "diagnostics report");
     require_report(unexpected.is_array(), "diagnostics unexpected list must be an array");
     for (const auto &diagnostic : unexpected) {
-        require_diagnostic(diagnostic);
+        static_cast<void>(require_diagnostic(diagnostic));
     }
     require_report(unexpected == expected_unexpected,
                    "diagnostics unexpected list is inconsistent");
@@ -283,7 +332,8 @@ ProjectDiagnosticsReportFacts read_project_diagnostics_report(std::string_view b
 
     const auto count = errors + warnings + infos;
     const auto policy_ok = expected.empty() ? errors == 0U : unexpected.empty() && missing.empty();
-    return ProjectDiagnosticsReportFacts{status, errors, warnings, infos, count, policy_ok};
+    return ProjectDiagnosticsReportFacts{
+        status, errors, warnings, infos, count, policy_ok, std::move(diagnostic_facts)};
 }
 
 ProjectTestsReportFacts read_project_tests_report(std::string_view bytes) {
@@ -328,7 +378,8 @@ ProjectReportsFacts read_project_reports(std::string_view diagnostics, std::stri
                                                                             : "failed";
     require_report(diagnostic_facts.status == status_text,
                    "diagnostics status does not equal the decoded report outcome");
-    return ProjectReportsFacts{status, diagnostic_facts.policy_ok && test_facts.failed == 0U};
+    return ProjectReportsFacts{status, diagnostic_facts.policy_ok && test_facts.failed == 0U,
+                               std::move(diagnostic_facts.diagnostics)};
 }
 
 } // namespace volt::io::detail

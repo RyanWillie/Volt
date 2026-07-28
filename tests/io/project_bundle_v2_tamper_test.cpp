@@ -138,6 +138,36 @@ void replace_artifact_payload(const std::filesystem::path &root, OrderedJson &ma
     }
 }
 
+[[nodiscard]] OrderedJson warning_diagnostic(std::string design, OrderedJson entities) {
+    const auto source = "logical:" + design;
+    const auto expectation =
+        OrderedJson{{"code", "WARN"},   {"severity", "warning"},       {"stage", "design"},
+                    {"source", source}, {"report", "logical.default"}, {"design", design}};
+    return OrderedJson{{"stage", "design"},
+                       {"source", source},
+                       {"report", "logical.default"},
+                       {"severity", "warning"},
+                       {"category", "general"},
+                       {"code", "WARN"},
+                       {"message", "warning"},
+                       {"entities", std::move(entities)},
+                       {"overlays", OrderedJson::array()},
+                       {"measurement", nullptr},
+                       {"design", std::move(design)},
+                       {"board", nullptr},
+                       {"rule", nullptr},
+                       {"expect_diagnostic_kwargs", expectation}};
+}
+
+[[nodiscard]] OrderedJson warning_report(OrderedJson diagnostic) {
+    return OrderedJson{{"status", "expected-diagnostics"},
+                       {"summary", {{"errors", 0}, {"warnings", 1}, {"infos", 0}}},
+                       {"diagnostics", OrderedJson::array({diagnostic})},
+                       {"expected", OrderedJson::array()},
+                       {"unexpected", OrderedJson::array({std::move(diagnostic)})},
+                       {"missing_expected", OrderedJson::array()}};
+}
+
 [[nodiscard]] std::size_t replace_string_field(OrderedJson &value, std::string_view field,
                                                std::string_view from, std::string_view to) {
     auto replacements = std::size_t{0};
@@ -353,6 +383,16 @@ TEST_CASE("ProjectBundle v2 open fails closed for digest path lock and exact edg
         check_open_error(root, volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
     }
 
+    SECTION("project tests duplicate JSON object key") {
+        const auto root = temporary.path() / "project-tests-duplicate-key.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        replace_artifact_payload(root, manifest, "project_tests",
+                                 R"({"summary":{"failed":0,"passed":0,"passed":0},"tests":[]})");
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
+    }
+
     SECTION("project tests summary") {
         const auto root = temporary.path() / "project-tests-summary.volt";
         original.write(root);
@@ -371,6 +411,17 @@ TEST_CASE("ProjectBundle v2 open fails closed for digest path lock and exact edg
         replace_artifact_payload(
             root, manifest, "diagnostics",
             R"({"status":"clean","summary":{"errors":1,"warnings":0,"infos":0},"diagnostics":[{"severity":"error"}],"expected":[],"unexpected":[],"missing_expected":[]})");
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
+    }
+
+    SECTION("diagnostics duplicate JSON object key") {
+        const auto root = temporary.path() / "diagnostics-duplicate-key.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        replace_artifact_payload(
+            root, manifest, "diagnostics",
+            R"({"status":"clean","status":"clean","summary":{"errors":0,"warnings":0,"infos":0},"diagnostics":[],"expected":[],"unexpected":[],"missing_expected":[]})");
         reseal_manifest(root, manifest);
         check_open_error(root, volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
     }
@@ -404,6 +455,29 @@ TEST_CASE("ProjectBundle v2 open fails closed for digest path lock and exact edg
         replace_artifact_payload(
             root, manifest, "diagnostics",
             R"({"status":"clean","summary":{"errors":0,"warnings":0,"infos":0},"diagnostics":[],"expected":[{"code":"EXPECTED","severity":"warning","stage":"design","source":"test","report":"logical.default","design":"main","board":null,"rule":null,"matched":false,"expect_diagnostic_kwargs":{"code":"EXPECTED","severity":"warning","stage":"design","source":"test","report":"logical.default","design":"main"}}],"unexpected":[],"missing_expected":[{"code":"EXPECTED","severity":"warning","stage":"design","source":"test","report":"logical.default","design":"main","board":null,"rule":null,"matched":false,"expect_diagnostic_kwargs":{"code":"EXPECTED","severity":"warning","stage":"design","source":"test","report":"logical.default","design":"main"}}]})");
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::OwnershipViolation);
+    }
+
+    SECTION("diagnostic references a missing logical entity") {
+        const auto root = temporary.path() / "diagnostic-missing-entity.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        const auto report = warning_report(warning_diagnostic(
+            "main", OrderedJson::array({{{"kind", "component"}, {"index", 999}}})));
+        replace_artifact_payload(root, manifest, "diagnostics", report.dump());
+        manifest["run"]["status"] = "expected-diagnostics";
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::OwnershipViolation);
+    }
+
+    SECTION("diagnostic names a foreign logical design") {
+        const auto root = temporary.path() / "diagnostic-foreign-design.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        const auto report = warning_report(warning_diagnostic("foreign", OrderedJson::array()));
+        replace_artifact_payload(root, manifest, "diagnostics", report.dump());
+        manifest["run"]["status"] = "expected-diagnostics";
         reseal_manifest(root, manifest);
         check_open_error(root, volt::io::ProjectBundleOpenErrorCode::OwnershipViolation);
     }

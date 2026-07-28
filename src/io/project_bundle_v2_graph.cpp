@@ -275,13 +275,224 @@ void verify_dependency_lock(const ProjectBundleStorage &storage, const Dependenc
             "dependency lock selected parts do not equal the vendored part closure");
 }
 
-void verify_reports(std::string_view diagnostics, std::string_view tests,
-                    const ProjectRunSummary &run) {
+template <typename Id, typename Model>
+[[nodiscard]] bool diagnostic_index_exists(const Model &model, std::uint64_t index) {
+    return index < model.template all<Id>().size();
+}
+
+struct DiagnosticModelContext {
+    const Circuit *circuit = nullptr;
+    const Schematic *schematic = nullptr;
+    const Board *board = nullptr;
+};
+
+[[nodiscard]] DiagnosticModelContext
+diagnostic_model_context(const ProjectBundleStorage &storage,
+                         const detail::ProjectDiagnosticFacts &diagnostic) {
+    auto result = DiagnosticModelContext{};
+    if (diagnostic.design.has_value()) {
+        const auto circuit =
+            std::ranges::find(storage.v2_circuits, *diagnostic.design,
+                              [](const auto &candidate) { return candidate.design.value(); });
+        require(circuit != storage.v2_circuits.end(),
+                ProjectBundleOpenErrorCode::OwnershipViolation,
+                "project diagnostic names a missing logical design");
+        result.circuit = circuit->model.get();
+    }
+    if (diagnostic.board.has_value()) {
+        require(diagnostic.design.has_value(), ProjectBundleOpenErrorCode::OwnershipViolation,
+                "project diagnostic names a Board without a logical design");
+        const auto board = std::ranges::find_if(storage.v2_boards, [&](const auto &candidate) {
+            return candidate.design.value() == *diagnostic.design &&
+                   candidate.board.value() == *diagnostic.board;
+        });
+        require(board != storage.v2_boards.end(), ProjectBundleOpenErrorCode::OwnershipViolation,
+                "project diagnostic names a missing Board");
+        result.board = board->model.get();
+    }
+    if (diagnostic.source.starts_with("logical:")) {
+        require(diagnostic.design.has_value() &&
+                    diagnostic.source.substr(std::string_view{"logical:"}.size()) ==
+                        *diagnostic.design,
+                ProjectBundleOpenErrorCode::OwnershipViolation,
+                "project diagnostic logical source disagrees with its design");
+    } else if (diagnostic.source.starts_with("schematic:")) {
+        require(diagnostic.design.has_value(), ProjectBundleOpenErrorCode::OwnershipViolation,
+                "project diagnostic Schematic source has no logical design");
+        const auto name = diagnostic.source.substr(std::string_view{"schematic:"}.size());
+        const auto schematic =
+            std::ranges::find_if(storage.v2_schematics, [&](const auto &candidate) {
+                return candidate.design.value() == *diagnostic.design &&
+                       candidate.schematic.value() == name;
+            });
+        require(schematic != storage.v2_schematics.end(),
+                ProjectBundleOpenErrorCode::OwnershipViolation,
+                "project diagnostic names a missing Schematic");
+        result.schematic = schematic->model.get();
+    } else if (diagnostic.source.starts_with("pcb:")) {
+        require(diagnostic.board.has_value() &&
+                    diagnostic.source.substr(std::string_view{"pcb:"}.size()) == *diagnostic.board,
+                ProjectBundleOpenErrorCode::OwnershipViolation,
+                "project diagnostic PCB source disagrees with its Board");
+    }
+    return result;
+}
+
+void verify_part_definition_reference(const ProjectBundleStorage &storage,
+                                      const detail::ProjectDiagnosticFacts &diagnostic,
+                                      std::uint64_t index) {
+    require(index == 0U && diagnostic.report.starts_with("library:"),
+            ProjectBundleOpenErrorCode::OwnershipViolation,
+            "project diagnostic part reference has no exact library context");
+    const auto library = diagnostic.report.substr(std::string_view{"library:"}.size());
+    require(
+        std::ranges::any_of(storage.v2_artifacts,
+                            [&](const auto &artifact) {
+                                return artifact.descriptor.kind() == ArtifactKind::PartDefinition &&
+                                       std::get<LibraryPartRef>(artifact.descriptor.id().owner())
+                                               .library_namespace() == library;
+                            }),
+        ProjectBundleOpenErrorCode::OwnershipViolation,
+        "project diagnostic references an absent vendored PartDefinition");
+}
+
+void verify_diagnostic_reference(const ProjectBundleStorage &storage,
+                                 const detail::ProjectDiagnosticFacts &diagnostic,
+                                 const DiagnosticModelContext &context,
+                                 const detail::ProjectDiagnosticReferenceFacts &reference) {
+    const auto &kind = reference.kind;
+    const auto index = reference.index;
+    auto valid = false;
+    if (kind == "component_definition") {
+        valid = context.circuit != nullptr &&
+                diagnostic_index_exists<ComponentDefId>(*context.circuit, index);
+    } else if (kind == "component") {
+        valid = context.circuit != nullptr &&
+                diagnostic_index_exists<ComponentId>(*context.circuit, index);
+    } else if (kind == "pin_definition") {
+        valid = context.circuit != nullptr &&
+                diagnostic_index_exists<PinDefId>(*context.circuit, index);
+    } else if (kind == "pin") {
+        valid =
+            context.circuit != nullptr && diagnostic_index_exists<PinId>(*context.circuit, index);
+    } else if (kind == "net") {
+        valid =
+            context.circuit != nullptr && diagnostic_index_exists<NetId>(*context.circuit, index);
+    } else if (kind == "net_class") {
+        valid = context.circuit != nullptr &&
+                diagnostic_index_exists<NetClassId>(*context.circuit, index);
+    } else if (kind == "module_definition") {
+        valid = context.circuit != nullptr &&
+                diagnostic_index_exists<ModuleDefId>(*context.circuit, index);
+    } else if (kind == "template_net_definition") {
+        valid = context.circuit != nullptr &&
+                diagnostic_index_exists<TemplateNetDefId>(*context.circuit, index);
+    } else if (kind == "module_component") {
+        valid = context.circuit != nullptr &&
+                diagnostic_index_exists<ModuleComponentId>(*context.circuit, index);
+    } else if (kind == "module_instance") {
+        valid = context.circuit != nullptr &&
+                diagnostic_index_exists<ModuleInstanceId>(*context.circuit, index);
+    } else if (kind == "port_definition") {
+        valid = context.circuit != nullptr &&
+                diagnostic_index_exists<PortDefId>(*context.circuit, index);
+    } else if (kind == "symbol_definition") {
+        valid = context.schematic != nullptr &&
+                diagnostic_index_exists<SymbolDefId>(*context.schematic, index);
+    } else if (kind == "sheet") {
+        valid = context.schematic != nullptr &&
+                diagnostic_index_exists<SheetId>(*context.schematic, index);
+    } else if (kind == "symbol_instance") {
+        valid = context.schematic != nullptr &&
+                diagnostic_index_exists<SymbolInstanceId>(*context.schematic, index);
+    } else if (kind == "wire_run") {
+        valid = context.schematic != nullptr &&
+                diagnostic_index_exists<WireRunId>(*context.schematic, index);
+    } else if (kind == "net_label") {
+        valid = context.schematic != nullptr &&
+                diagnostic_index_exists<NetLabelId>(*context.schematic, index);
+    } else if (kind == "junction") {
+        valid = context.schematic != nullptr &&
+                diagnostic_index_exists<JunctionId>(*context.schematic, index);
+    } else if (kind == "power_port") {
+        valid = context.schematic != nullptr &&
+                diagnostic_index_exists<PowerPortId>(*context.schematic, index);
+    } else if (kind == "no_connect_marker") {
+        valid = context.schematic != nullptr &&
+                diagnostic_index_exists<NoConnectMarkerId>(*context.schematic, index);
+    } else if (kind == "sheet_port") {
+        valid = context.schematic != nullptr &&
+                diagnostic_index_exists<SheetPortId>(*context.schematic, index);
+    } else if (kind == "symbol_field") {
+        valid = context.schematic != nullptr &&
+                diagnostic_index_exists<SymbolFieldId>(*context.schematic, index);
+    } else if (kind == "board") {
+        valid = context.board != nullptr && index == 0U;
+    } else if (kind == "board_layer") {
+        valid = context.board != nullptr &&
+                diagnostic_index_exists<BoardLayerId>(*context.board, index);
+    } else if (kind == "board_feature") {
+        valid = context.board != nullptr &&
+                diagnostic_index_exists<BoardFeatureId>(*context.board, index);
+    } else if (kind == "board_track") {
+        valid = context.board != nullptr &&
+                diagnostic_index_exists<BoardTrackId>(*context.board, index);
+    } else if (kind == "board_via") {
+        valid =
+            context.board != nullptr && diagnostic_index_exists<BoardViaId>(*context.board, index);
+    } else if (kind == "board_zone") {
+        valid =
+            context.board != nullptr && diagnostic_index_exists<BoardZoneId>(*context.board, index);
+    } else if (kind == "board_keepout") {
+        valid = context.board != nullptr &&
+                diagnostic_index_exists<BoardKeepoutId>(*context.board, index);
+    } else if (kind == "board_room") {
+        valid =
+            context.board != nullptr && diagnostic_index_exists<BoardRoomId>(*context.board, index);
+    } else if (kind == "board_text") {
+        valid =
+            context.board != nullptr && diagnostic_index_exists<BoardTextId>(*context.board, index);
+    } else if (kind == "footprint_def") {
+        valid = context.board != nullptr &&
+                diagnostic_index_exists<FootprintDefId>(*context.board, index);
+    } else if (kind == "footprint_pad") {
+        valid =
+            context.board != nullptr &&
+            std::ranges::any_of(context.board->all<FootprintDefId>(), [&](const auto &footprint) {
+                return index < footprint.pad_count();
+            });
+    } else if (kind == "component_placement") {
+        valid = context.board != nullptr &&
+                diagnostic_index_exists<ComponentPlacementId>(*context.board, index);
+    } else if (kind == "part_definition") {
+        verify_part_definition_reference(storage, diagnostic, index);
+        return;
+    } else {
+        require(false, ProjectBundleOpenErrorCode::OwnershipViolation,
+                "project diagnostic uses an unknown entity kind");
+    }
+    require(valid, ProjectBundleOpenErrorCode::OwnershipViolation,
+            "project diagnostic references an entity outside its exact model context");
+}
+
+void verify_diagnostic_references(const ProjectBundleStorage &storage,
+                                  const detail::ProjectReportsFacts &reports) {
+    for (const auto &diagnostic : reports.diagnostics) {
+        const auto context = diagnostic_model_context(storage, diagnostic);
+        for (const auto &reference : diagnostic.references) {
+            verify_diagnostic_reference(storage, diagnostic, context, reference);
+        }
+    }
+}
+
+void verify_reports(const ProjectBundleStorage &storage, std::string_view diagnostics,
+                    std::string_view tests, const ProjectRunSummary &run) {
     try {
         const auto reports = detail::read_project_reports(diagnostics, tests);
         require(reports.status == run.status && reports.ok == run.ok,
                 ProjectBundleOpenErrorCode::OwnershipViolation,
                 "decoded project report outcome disagrees with the run");
+        verify_diagnostic_references(storage, reports);
     } catch (const ProjectBundleOpenError &) {
         throw;
     } catch (const std::exception &error) {
