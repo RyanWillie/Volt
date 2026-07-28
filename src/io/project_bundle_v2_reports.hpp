@@ -45,6 +45,7 @@ struct ProjectDiagnosticsReportFacts {
     std::uint64_t count;
     bool policy_ok;
     std::vector<ProjectDiagnosticFacts> diagnostics;
+    std::vector<ProjectDiagnosticFacts> expectations;
 };
 
 struct ProjectTestsReportFacts {
@@ -56,6 +57,7 @@ struct ProjectReportsFacts {
     ProjectStatus status;
     bool ok;
     std::vector<ProjectDiagnosticFacts> diagnostics;
+    std::vector<ProjectDiagnosticFacts> expectations;
 };
 
 struct ProjectReportLogicalContext {

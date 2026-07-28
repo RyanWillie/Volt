@@ -190,6 +190,29 @@ void replace_artifact_payload(const std::filesystem::path &root, OrderedJson &ma
                        {"missing_expected", OrderedJson::array()}};
 }
 
+[[nodiscard]] OrderedJson missing_expectation_report(std::string design) {
+    const auto source = "logical:" + design;
+    const auto expectation =
+        OrderedJson{{"code", "WARN"},
+                    {"severity", nullptr},
+                    {"stage", nullptr},
+                    {"source", source},
+                    {"report", nullptr},
+                    {"design", design},
+                    {"board", nullptr},
+                    {"rule", nullptr},
+                    {"matched", false},
+                    {"expect_diagnostic_kwargs",
+                     OrderedJson{{"code", "WARN"}, {"source", source}, {"design", design}}}};
+    const auto diagnostic = warning_diagnostic("main", OrderedJson::array());
+    return OrderedJson{{"status", "failed"},
+                       {"summary", {{"errors", 0}, {"warnings", 1}, {"infos", 0}}},
+                       {"diagnostics", OrderedJson::array({diagnostic})},
+                       {"expected", OrderedJson::array({expectation})},
+                       {"unexpected", OrderedJson::array({diagnostic})},
+                       {"missing_expected", OrderedJson::array({expectation})}};
+}
+
 [[nodiscard]] std::string library_report_subject(std::string_view library_namespace,
                                                  std::string_view library_version,
                                                  const volt::ContentHash &library_digest) {
@@ -724,6 +747,21 @@ TEST_CASE("ProjectBundle v2 binds footprint pad references to their paired place
                                                {{"kind", "footprint_pad"}, {"index", 1}}})));
     replace_artifact_payload(root, manifest, "diagnostics", report.dump());
     manifest["run"]["status"] = "expected-diagnostics";
+    reseal_manifest(root, manifest);
+    check_open_error(root, volt::io::ProjectBundleOpenErrorCode::OwnershipViolation);
+}
+
+TEST_CASE("ProjectBundle v2 rejects unmatched expectation references") {
+    const auto fixture = LogicalFixture{};
+    const auto original = fixture.builder().build();
+    const auto temporary = TempDirectory{};
+    const auto root = temporary.path() / "foreign-expectation.volt";
+    original.write(root);
+    auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+    replace_artifact_payload(root, manifest, "diagnostics",
+                             missing_expectation_report("foreign").dump());
+    manifest["run"]["ok"] = false;
+    manifest["run"]["status"] = "failed";
     reseal_manifest(root, manifest);
     check_open_error(root, volt::io::ProjectBundleOpenErrorCode::OwnershipViolation);
 }

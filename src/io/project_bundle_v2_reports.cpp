@@ -222,7 +222,7 @@ void require_measurement(const Json &measurement) {
         nullable_value("design"), nullable_value("board"), std::move(reference_groups)};
 }
 
-void require_expected_diagnostic(const Json &expected) {
+[[nodiscard]] ProjectDiagnosticFacts require_expected_diagnostic(const Json &expected) {
     constexpr auto context = std::string_view{"expected diagnostic"};
     require_exact_keys(expected,
                        {"code", "severity", "stage", "source", "report", "design", "board", "rule",
@@ -237,6 +237,15 @@ void require_expected_diagnostic(const Json &expected) {
     require_report(field(expected, "expect_diagnostic_kwargs", context) ==
                        expected_kwargs(expected),
                    "expected diagnostic metadata is inconsistent");
+    const auto nullable_value = [&](std::string_view name) -> std::optional<std::string> {
+        const auto &value = field(expected, name, context);
+        return value.is_null() ? std::nullopt : std::optional{value.get_ref<const std::string &>()};
+    };
+    return ProjectDiagnosticFacts{nullable_value("source").value_or(""),
+                                  nullable_value("report").value_or(""),
+                                  nullable_value("design"),
+                                  nullable_value("board"),
+                                  {}};
 }
 
 [[nodiscard]] bool expected_matches(const Json &expected, const Json &diagnostic) {
@@ -292,8 +301,10 @@ ProjectDiagnosticsReportFacts read_project_diagnostics_report(std::string_view b
 
     const auto &expected = field(report, "expected", "diagnostics report");
     require_report(expected.is_array(), "diagnostics expected list must be an array");
+    auto expectation_facts = std::vector<ProjectDiagnosticFacts>{};
+    expectation_facts.reserve(expected.size());
     for (const auto &entry : expected) {
-        require_expected_diagnostic(entry);
+        expectation_facts.push_back(require_expected_diagnostic(entry));
         const auto matched = std::ranges::any_of(diagnostics, [&](const auto &diagnostic) {
             return expected_matches(entry, diagnostic);
         });
@@ -326,15 +337,21 @@ ProjectDiagnosticsReportFacts read_project_diagnostics_report(std::string_view b
     const auto &missing = field(report, "missing_expected", "diagnostics report");
     require_report(missing.is_array(), "diagnostics missing-expected list must be an array");
     for (const auto &entry : missing) {
-        require_expected_diagnostic(entry);
+        static_cast<void>(require_expected_diagnostic(entry));
     }
     require_report(missing == expected_missing,
                    "diagnostics missing-expected list is inconsistent");
 
     const auto count = errors + warnings + infos;
     const auto policy_ok = expected.empty() ? errors == 0U : unexpected.empty() && missing.empty();
-    return ProjectDiagnosticsReportFacts{
-        status, errors, warnings, infos, count, policy_ok, std::move(diagnostic_facts)};
+    return ProjectDiagnosticsReportFacts{status,
+                                         errors,
+                                         warnings,
+                                         infos,
+                                         count,
+                                         policy_ok,
+                                         std::move(diagnostic_facts),
+                                         std::move(expectation_facts)};
 }
 
 ProjectTestsReportFacts read_project_tests_report(std::string_view bytes) {
@@ -380,7 +397,8 @@ ProjectReportsFacts read_project_reports(std::string_view diagnostics, std::stri
     require_report(diagnostic_facts.status == status_text,
                    "diagnostics status does not equal the decoded report outcome");
     return ProjectReportsFacts{status, diagnostic_facts.policy_ok && test_facts.failed == 0U,
-                               std::move(diagnostic_facts.diagnostics)};
+                               std::move(diagnostic_facts.diagnostics),
+                               std::move(diagnostic_facts.expectations)};
 }
 
 std::string project_library_report_subject(std::string_view library_namespace,
@@ -471,6 +489,74 @@ part_definition_reference_error(const ProjectReportReferenceContext &models,
                    selected.reference.part_key().value() == part;
         })) {
         return "project diagnostic references an absent selected PartDefinition";
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<std::string>
+diagnostic_subject_error(const ProjectReportReferenceContext &models,
+                         const ProjectDiagnosticFacts &diagnostic) {
+    const auto exact_library = diagnostic.report.starts_with("library:");
+    const auto exact_part = diagnostic.source.starts_with("part:");
+    if (exact_library && !std::ranges::any_of(models.selected_parts, [&](const auto &selected) {
+            return project_library_report_subject(selected.reference) == diagnostic.report;
+        })) {
+        return "project diagnostic references an absent selected library release";
+    }
+    if (exact_part) {
+        const auto part = diagnostic.source.substr(std::string_view{"part:"}.size());
+        if (!std::ranges::any_of(models.selected_parts, [&](const auto &selected) {
+                return selected.reference.part_key().value() == part &&
+                       (!exact_library ||
+                        project_library_report_subject(selected.reference) == diagnostic.report);
+            })) {
+            return "project diagnostic references an absent selected PartDefinition";
+        }
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<std::string>
+expectation_model_error(const ProjectReportReferenceContext &models,
+                        const ProjectDiagnosticFacts &expectation) {
+    if (expectation.design.has_value() &&
+        std::ranges::none_of(models.logicals, [&](const auto &candidate) {
+            return candidate.design == *expectation.design;
+        })) {
+        return "project diagnostic names a missing logical design";
+    }
+    if (expectation.board.has_value() &&
+        std::ranges::none_of(models.boards, [&](const auto &candidate) {
+            return candidate.board == *expectation.board &&
+                   (!expectation.design.has_value() || candidate.design == *expectation.design);
+        })) {
+        return "project diagnostic names a missing Board";
+    }
+    if (expectation.source.starts_with("logical:")) {
+        const auto design = expectation.source.substr(std::string_view{"logical:"}.size());
+        if ((expectation.design.has_value() && design != *expectation.design) ||
+            std::ranges::none_of(models.logicals, [&](const auto &candidate) {
+                return candidate.design == design;
+            })) {
+            return "project diagnostic logical source disagrees with its design";
+        }
+    } else if (expectation.source.starts_with("schematic:")) {
+        const auto schematic = expectation.source.substr(std::string_view{"schematic:"}.size());
+        if (std::ranges::none_of(models.schematics, [&](const auto &candidate) {
+                return candidate.schematic == schematic &&
+                       (!expectation.design.has_value() || candidate.design == *expectation.design);
+            })) {
+            return "project diagnostic names a missing Schematic";
+        }
+    } else if (expectation.source.starts_with("pcb:")) {
+        const auto board = expectation.source.substr(std::string_view{"pcb:"}.size());
+        if ((expectation.board.has_value() && board != *expectation.board) ||
+            std::ranges::none_of(models.boards, [&](const auto &candidate) {
+                return candidate.board == board &&
+                       (!expectation.design.has_value() || candidate.design == *expectation.design);
+            })) {
+            return "project diagnostic PCB source disagrees with its Board";
+        }
     }
     return std::nullopt;
 }
@@ -620,7 +706,11 @@ footprint_pad_reference_error(const ProjectReportReferenceContext &models, const
 std::optional<std::string>
 project_report_reference_error(const ProjectReportsFacts &reports,
                                const ProjectReportReferenceContext &models) {
-    for (const auto &diagnostic : reports.diagnostics) {
+    const auto diagnostic_error =
+        [&](const ProjectDiagnosticFacts &diagnostic) -> std::optional<std::string> {
+        if (auto error = diagnostic_subject_error(models, diagnostic); error.has_value()) {
+            return error;
+        }
         auto context = DiagnosticModelContext{};
         if (auto error = diagnostic_model_context(models, diagnostic, context); error.has_value()) {
             return error;
@@ -650,6 +740,20 @@ project_report_reference_error(const ProjectReportsFacts &reports,
                     return error;
                 }
             }
+        }
+        return std::nullopt;
+    };
+    for (const auto &diagnostic : reports.diagnostics) {
+        if (auto error = diagnostic_error(diagnostic); error.has_value()) {
+            return error;
+        }
+    }
+    for (const auto &expectation : reports.expectations) {
+        if (auto error = diagnostic_subject_error(models, expectation); error.has_value()) {
+            return error;
+        }
+        if (auto error = expectation_model_error(models, expectation); error.has_value()) {
+            return error;
         }
     }
     return std::nullopt;

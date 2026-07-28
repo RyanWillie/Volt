@@ -290,8 +290,26 @@ project_report_reference_context(const ProjectBundleStorage &storage,
                 const auto part = library.parts.find(detail::project_bundle_v2_artifact_key(id));
                 require(part != library.parts.end(), ProjectBundleOpenErrorCode::OwnershipViolation,
                         "project diagnostic selected-part context is absent");
-                result.selected_parts.push_back(
-                    {*selected, part->second->orderable_part().footprint_pads().size()});
+                const auto part_artifact =
+                    std::ranges::find_if(storage.v2_artifacts, [&](const auto &artifact) {
+                        return artifact.descriptor.id() == id;
+                    });
+                require(part_artifact != storage.v2_artifacts.end(),
+                        ProjectBundleOpenErrorCode::OwnershipViolation,
+                        "project diagnostic selected-part artifact is absent");
+                const auto footprint_dependency = std::ranges::find_if(
+                    part_artifact->descriptor.dependencies(), [](const auto &dependency) {
+                        return dependency.artifact().kind() == ArtifactKind::FootprintDefinition;
+                    });
+                require(footprint_dependency != part_artifact->descriptor.dependencies().end(),
+                        ProjectBundleOpenErrorCode::OwnershipViolation,
+                        "project diagnostic selected footprint dependency is absent");
+                const auto footprint = library.footprints.find(
+                    detail::project_bundle_v2_artifact_key(footprint_dependency->artifact()));
+                require(footprint != library.footprints.end(),
+                        ProjectBundleOpenErrorCode::OwnershipViolation,
+                        "project diagnostic selected footprint payload is absent");
+                result.selected_parts.push_back({*selected, footprint->second.pad_count()});
             }
         }
     }

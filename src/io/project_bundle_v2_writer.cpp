@@ -1098,8 +1098,15 @@ project_report_reference_context(std::span<const LogicalInput> logicals,
                 queries::selected_library_part_ref(*logical.circuit, ComponentId{index});
             if (selected.has_value()) {
                 const auto &part = logical.bundle->resolve(*selected);
-                result.selected_parts.push_back(
-                    {*selected, part.orderable_part().footprint_pads().size()});
+                const auto reference = footprint_reference(part);
+                const auto bytes = logical.bundle->asset(reference);
+                require(bytes.has_value(),
+                        "project diagnostic selected footprint bytes are missing",
+                        ErrorCode::UnknownEntity);
+                const auto footprint = read_footprint_asset(*bytes);
+                require(footprint.ref() == part.orderable_part().footprint().footprint(),
+                        "project diagnostic selected footprint payload disagrees with its part");
+                result.selected_parts.push_back({*selected, footprint.pad_count()});
             }
         }
     }
