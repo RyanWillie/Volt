@@ -24,7 +24,7 @@ namespace {
 using Json = nlohmann::json;
 
 [[noreturn]] void reject_report(std::string message) {
-    throw KernelArgumentError{ErrorCode::InvalidArgument, std::move(message)};
+    throw KernelArgumentError{ErrorCode::InvalidArgument, message};
 }
 
 void require_report(bool condition, std::string message) {
@@ -385,7 +385,7 @@ ProjectTestsReportFacts read_project_tests_report(std::string_view bytes) {
 }
 
 ProjectReportsFacts read_project_reports(std::string_view diagnostics, std::string_view tests) {
-    const auto diagnostic_facts = read_project_diagnostics_report(diagnostics);
+    auto diagnostic_facts = read_project_diagnostics_report(diagnostics);
     const auto test_facts = read_project_tests_report(tests);
     const auto status =
         diagnostic_facts.count == 0U && test_facts.failed == 0U ? ProjectStatus::Clean
