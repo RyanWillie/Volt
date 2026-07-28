@@ -1015,12 +1015,17 @@ def _collect_library_diagnostics(libraries: tuple[Library, ...] | list[Library])
     diagnostics: list[ProjectDiagnostic] = []
     for library in libraries:
         result = library.build()
+        report = _volt._project_bundle_library_report_subject(
+            library.namespace,
+            library.version,
+            result.digest,
+        )
         for diagnostic in result.diagnostics:
             diagnostics.append(
                 ProjectDiagnostic(
                     stage="library",
                     source=diagnostic.source,
-                    report=f"library:{library.namespace}",
+                    report=report,
                     severity=diagnostic.severity,
                     code=diagnostic.code,
                     message=diagnostic.message,

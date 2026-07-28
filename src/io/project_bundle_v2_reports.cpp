@@ -13,8 +13,10 @@
 
 #include <nlohmann/json.hpp>
 
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 namespace volt::io::detail {
 namespace {
@@ -379,6 +381,278 @@ ProjectReportsFacts read_project_reports(std::string_view diagnostics, std::stri
                    "diagnostics status does not equal the decoded report outcome");
     return ProjectReportsFacts{status, diagnostic_facts.policy_ok && test_facts.failed == 0U,
                                std::move(diagnostic_facts.diagnostics)};
+}
+
+std::string project_library_report_subject(std::string_view library_namespace,
+                                           std::string_view library_version,
+                                           const ContentHash &library_digest) {
+    return "library:" + Json{{"namespace", library_namespace},
+                             {"version", library_version},
+                             {"library_bundle_digest", library_digest.value()}}
+                            .dump();
+}
+
+std::string project_library_report_subject(const LibraryPartRef &reference) {
+    return project_library_report_subject(reference.library_namespace(),
+                                          reference.library_version(), reference.library_digest());
+}
+
+namespace {
+
+template <typename Id, typename Model>
+[[nodiscard]] bool report_index_exists(const Model &model, std::uint64_t index) {
+    return index < model.template all<Id>().size();
+}
+
+struct DiagnosticModelContext {
+    const Circuit *circuit = nullptr;
+    const Schematic *schematic = nullptr;
+    const Board *board = nullptr;
+};
+
+[[nodiscard]] std::optional<std::string>
+diagnostic_model_context(const ProjectReportReferenceContext &models,
+                         const ProjectDiagnosticFacts &diagnostic, DiagnosticModelContext &result) {
+    if (diagnostic.design.has_value()) {
+        const auto circuit =
+            std::ranges::find(models.logicals, *diagnostic.design,
+                              [](const auto &candidate) { return candidate.design; });
+        if (circuit == models.logicals.end()) {
+            return "project diagnostic names a missing logical design";
+        }
+        result.circuit = circuit->model;
+    }
+    if (diagnostic.board.has_value()) {
+        if (!diagnostic.design.has_value()) {
+            return "project diagnostic names a Board without a logical design";
+        }
+        const auto board = std::ranges::find_if(models.boards, [&](const auto &candidate) {
+            return candidate.design == *diagnostic.design && candidate.board == *diagnostic.board;
+        });
+        if (board == models.boards.end()) {
+            return "project diagnostic names a missing Board";
+        }
+        result.board = board->model;
+    }
+    if (diagnostic.source.starts_with("logical:")) {
+        if (!diagnostic.design.has_value() ||
+            diagnostic.source.substr(std::string_view{"logical:"}.size()) != *diagnostic.design) {
+            return "project diagnostic logical source disagrees with its design";
+        }
+    } else if (diagnostic.source.starts_with("schematic:")) {
+        if (!diagnostic.design.has_value()) {
+            return "project diagnostic Schematic source has no logical design";
+        }
+        const auto name = diagnostic.source.substr(std::string_view{"schematic:"}.size());
+        const auto schematic = std::ranges::find_if(models.schematics, [&](const auto &candidate) {
+            return candidate.design == *diagnostic.design && candidate.schematic == name;
+        });
+        if (schematic == models.schematics.end()) {
+            return "project diagnostic names a missing Schematic";
+        }
+        result.schematic = schematic->model;
+    } else if (diagnostic.source.starts_with("pcb:") &&
+               (!diagnostic.board.has_value() ||
+                diagnostic.source.substr(std::string_view{"pcb:"}.size()) != *diagnostic.board)) {
+        return "project diagnostic PCB source disagrees with its Board";
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<std::string>
+part_definition_reference_error(const ProjectReportReferenceContext &models,
+                                const ProjectDiagnosticFacts &diagnostic, std::uint64_t index) {
+    if (index != 0U || !diagnostic.source.starts_with("part:")) {
+        return "project diagnostic part reference has no exact library context";
+    }
+    const auto part = diagnostic.source.substr(std::string_view{"part:"}.size());
+    if (!std::ranges::any_of(models.selected_parts, [&](const auto &selected) {
+            return diagnostic.report == project_library_report_subject(selected.reference) &&
+                   selected.reference.part_key().value() == part;
+        })) {
+        return "project diagnostic references an absent selected PartDefinition";
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<std::string>
+footprint_pad_reference_error(const ProjectReportReferenceContext &models, const Board &board,
+                              std::uint64_t placement_index, std::uint64_t pad_index) {
+    if (!report_index_exists<ComponentPlacementId>(board, placement_index)) {
+        return "project diagnostic footprint pad names a missing component placement";
+    }
+    const auto &placement = board.get(ComponentPlacementId{placement_index});
+    const auto &selected_physical =
+        queries::selected_physical_part(board.circuit(), placement.component());
+    if (selected_physical.has_value()) {
+        const auto footprint =
+            queries::footprint_definition_id(board, selected_physical->footprint());
+        if (!footprint.has_value() || pad_index >= board.get(*footprint).pad_count()) {
+            return "project diagnostic footprint pad is outside its paired placement";
+        }
+        return std::nullopt;
+    }
+    const auto &selected_library =
+        queries::selected_library_part_ref(board.circuit(), placement.component());
+    if (!selected_library.has_value()) {
+        return "project diagnostic footprint pad placement has no exact selected footprint";
+    }
+    const auto selected =
+        std::ranges::find(models.selected_parts, *selected_library,
+                          [](const auto &candidate) { return candidate.reference; });
+    if (selected == models.selected_parts.end()) {
+        return "project diagnostic footprint pad placement has no exact selected footprint";
+    }
+    if (pad_index >= selected->footprint_pad_count) {
+        return "project diagnostic footprint pad is outside its paired placement";
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<std::string> diagnostic_reference_error(
+    const ProjectReportReferenceContext &models, const ProjectDiagnosticFacts &diagnostic,
+    const DiagnosticModelContext &context, const ProjectDiagnosticReferenceFacts &reference) {
+    const auto &kind = reference.kind;
+    const auto index = reference.index;
+    auto valid = false;
+    if (kind == "component_definition") {
+        valid = context.circuit != nullptr &&
+                report_index_exists<ComponentDefId>(*context.circuit, index);
+    } else if (kind == "component") {
+        valid =
+            context.circuit != nullptr && report_index_exists<ComponentId>(*context.circuit, index);
+    } else if (kind == "pin_definition") {
+        valid =
+            context.circuit != nullptr && report_index_exists<PinDefId>(*context.circuit, index);
+    } else if (kind == "pin") {
+        valid = context.circuit != nullptr && report_index_exists<PinId>(*context.circuit, index);
+    } else if (kind == "net") {
+        valid = context.circuit != nullptr && report_index_exists<NetId>(*context.circuit, index);
+    } else if (kind == "net_class") {
+        valid =
+            context.circuit != nullptr && report_index_exists<NetClassId>(*context.circuit, index);
+    } else if (kind == "module_definition") {
+        valid =
+            context.circuit != nullptr && report_index_exists<ModuleDefId>(*context.circuit, index);
+    } else if (kind == "template_net_definition") {
+        valid = context.circuit != nullptr &&
+                report_index_exists<TemplateNetDefId>(*context.circuit, index);
+    } else if (kind == "module_component") {
+        valid = context.circuit != nullptr &&
+                report_index_exists<ModuleComponentId>(*context.circuit, index);
+    } else if (kind == "module_instance") {
+        valid = context.circuit != nullptr &&
+                report_index_exists<ModuleInstanceId>(*context.circuit, index);
+    } else if (kind == "port_definition") {
+        valid =
+            context.circuit != nullptr && report_index_exists<PortDefId>(*context.circuit, index);
+    } else if (kind == "symbol_definition") {
+        valid = context.schematic != nullptr &&
+                report_index_exists<SymbolDefId>(*context.schematic, index);
+    } else if (kind == "sheet") {
+        valid =
+            context.schematic != nullptr && report_index_exists<SheetId>(*context.schematic, index);
+    } else if (kind == "symbol_instance") {
+        valid = context.schematic != nullptr &&
+                report_index_exists<SymbolInstanceId>(*context.schematic, index);
+    } else if (kind == "wire_run") {
+        valid = context.schematic != nullptr &&
+                report_index_exists<WireRunId>(*context.schematic, index);
+    } else if (kind == "net_label") {
+        valid = context.schematic != nullptr &&
+                report_index_exists<NetLabelId>(*context.schematic, index);
+    } else if (kind == "junction") {
+        valid = context.schematic != nullptr &&
+                report_index_exists<JunctionId>(*context.schematic, index);
+    } else if (kind == "power_port") {
+        valid = context.schematic != nullptr &&
+                report_index_exists<PowerPortId>(*context.schematic, index);
+    } else if (kind == "no_connect_marker") {
+        valid = context.schematic != nullptr &&
+                report_index_exists<NoConnectMarkerId>(*context.schematic, index);
+    } else if (kind == "sheet_port") {
+        valid = context.schematic != nullptr &&
+                report_index_exists<SheetPortId>(*context.schematic, index);
+    } else if (kind == "symbol_field") {
+        valid = context.schematic != nullptr &&
+                report_index_exists<SymbolFieldId>(*context.schematic, index);
+    } else if (kind == "board") {
+        valid = context.board != nullptr && index == 0U;
+    } else if (kind == "board_layer") {
+        valid =
+            context.board != nullptr && report_index_exists<BoardLayerId>(*context.board, index);
+    } else if (kind == "board_feature") {
+        valid =
+            context.board != nullptr && report_index_exists<BoardFeatureId>(*context.board, index);
+    } else if (kind == "board_track") {
+        valid =
+            context.board != nullptr && report_index_exists<BoardTrackId>(*context.board, index);
+    } else if (kind == "board_via") {
+        valid = context.board != nullptr && report_index_exists<BoardViaId>(*context.board, index);
+    } else if (kind == "board_zone") {
+        valid = context.board != nullptr && report_index_exists<BoardZoneId>(*context.board, index);
+    } else if (kind == "board_keepout") {
+        valid =
+            context.board != nullptr && report_index_exists<BoardKeepoutId>(*context.board, index);
+    } else if (kind == "board_room") {
+        valid = context.board != nullptr && report_index_exists<BoardRoomId>(*context.board, index);
+    } else if (kind == "board_text") {
+        valid = context.board != nullptr && report_index_exists<BoardTextId>(*context.board, index);
+    } else if (kind == "footprint_def") {
+        valid =
+            context.board != nullptr && report_index_exists<FootprintDefId>(*context.board, index);
+    } else if (kind == "component_placement") {
+        valid = context.board != nullptr &&
+                report_index_exists<ComponentPlacementId>(*context.board, index);
+    } else if (kind == "part_definition") {
+        return part_definition_reference_error(models, diagnostic, index);
+    } else {
+        return "project diagnostic uses an unknown entity kind";
+    }
+    if (!valid) {
+        return "project diagnostic references an entity outside its exact model context";
+    }
+    return std::nullopt;
+}
+
+} // namespace
+
+std::optional<std::string>
+project_report_reference_error(const ProjectReportsFacts &reports,
+                               const ProjectReportReferenceContext &models) {
+    for (const auto &diagnostic : reports.diagnostics) {
+        auto context = DiagnosticModelContext{};
+        if (auto error = diagnostic_model_context(models, diagnostic, context); error.has_value()) {
+            return error;
+        }
+        for (const auto &group : diagnostic.reference_groups) {
+            auto placement = std::optional<std::uint64_t>{};
+            for (const auto &reference : group) {
+                if (reference.kind == "component_placement") {
+                    if (auto error =
+                            diagnostic_reference_error(models, diagnostic, context, reference);
+                        error.has_value()) {
+                        return error;
+                    }
+                    placement = reference.index;
+                } else if (reference.kind == "footprint_pad") {
+                    if (context.board == nullptr || !placement.has_value()) {
+                        return "project diagnostic footprint pad has no paired component placement";
+                    }
+                    if (auto error = footprint_pad_reference_error(models, *context.board,
+                                                                   *placement, reference.index);
+                        error.has_value()) {
+                        return error;
+                    }
+                } else if (auto error =
+                               diagnostic_reference_error(models, diagnostic, context, reference);
+                           error.has_value()) {
+                    return error;
+                }
+            }
+        }
+    }
+    return std::nullopt;
 }
 
 } // namespace volt::io::detail

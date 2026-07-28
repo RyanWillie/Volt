@@ -73,8 +73,9 @@ void verify_graph_references_and_dag(const detail::ProjectBundleStorage &storage
                                           ArtifactKind kind);
 void verify_dependency_lock(const detail::ProjectBundleStorage &storage, const DependencyLock &lock,
                             const ArtifactIndex &index);
-void verify_reports(const detail::ProjectBundleStorage &storage, std::string_view diagnostics,
-                    std::string_view tests, const ProjectRunSummary &run);
+void verify_reports(const detail::ProjectBundleStorage &storage, const LibraryDecoded &library,
+                    std::string_view diagnostics, std::string_view tests,
+                    const ProjectRunSummary &run);
 
 void decode_library_artifacts(detail::ProjectBundleStorage &storage, LibraryDecoded &decoded);
 void decode_project_models(detail::ProjectBundleStorage &storage);

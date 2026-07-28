@@ -25,6 +25,7 @@
 
 namespace {
 
+using Json = nlohmann::json;
 using OrderedJson = nlohmann::ordered_json;
 
 class EmptyAssetResolver final : public volt::PartAssetResolver {
@@ -186,6 +187,20 @@ void replace_artifact_payload(const std::filesystem::path &root, OrderedJson &ma
                        {"expected", OrderedJson::array()},
                        {"unexpected", OrderedJson::array({std::move(diagnostic)})},
                        {"missing_expected", OrderedJson::array()}};
+}
+
+[[nodiscard]] std::string library_report_subject(std::string_view library_namespace,
+                                                 std::string_view library_version,
+                                                 const volt::ContentHash &library_digest) {
+    return "library:" + Json{{"namespace", library_namespace},
+                             {"version", library_version},
+                             {"library_bundle_digest", library_digest.value()}}
+                            .dump();
+}
+
+[[nodiscard]] std::string library_report_subject(const volt::io::PartLibraryBundle &bundle) {
+    return library_report_subject(bundle.identity().namespace_name(), bundle.identity().version(),
+                                  bundle.library_digest());
 }
 
 [[nodiscard]] std::size_t replace_string_field(OrderedJson &value, std::string_view field,
@@ -423,6 +438,19 @@ struct BoardFixture {
                                   volt::io::LogicalInputName{"project.py"}, "project source"}},
         volt::io::ProjectReport{
             R"({"status":"clean","summary":{"errors":0,"warnings":0,"infos":0},"diagnostics":[],"expected":[],"unexpected":[],"missing_expected":[]})"},
+        volt::io::ProjectReport{R"({"summary":{"passed":0,"failed":0},"tests":[]})"}};
+}
+
+[[nodiscard]] volt::io::ProjectBundleV2Builder
+project_builder_with_diagnostics(std::string diagnostics) {
+    return volt::io::ProjectBundleV2Builder{
+        volt::io::ProjectIdentity{"board-fixture", std::nullopt, std::nullopt},
+        volt::io::ProjectRunSummary{
+            true, volt::io::ProjectStatus::ExpectedDiagnostics, "default", {"design", "board"}},
+        volt::io::LogicalInputName{"project.py"},
+        {volt::io::AuthoringInput{volt::io::AuthoringInputKind::ProjectSource,
+                                  volt::io::LogicalInputName{"project.py"}, "project source"}},
+        volt::io::ProjectReport{std::move(diagnostics)},
         volt::io::ProjectReport{R"({"summary":{"passed":0,"failed":0},"tests":[]})"}};
 }
 
@@ -734,8 +762,8 @@ TEST_CASE("ProjectBundle v2 binds dependency lock and part owners to decoded log
         original.write(root);
         auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
         const auto report = warning_report(warning_diagnostic(
-            "library", "part:resistor", "library:test.export", std::nullopt, std::nullopt,
-            OrderedJson::array({{{"kind", "part_definition"}, {"index", 0}}})));
+            "library", "part:resistor", library_report_subject(fixture.bundle), std::nullopt,
+            std::nullopt, OrderedJson::array({{{"kind", "part_definition"}, {"index", 0}}})));
         replace_artifact_payload(root, manifest, "diagnostics", report.dump());
         manifest["run"]["status"] = "expected-diagnostics";
         reseal_manifest(root, manifest);
@@ -747,8 +775,24 @@ TEST_CASE("ProjectBundle v2 binds dependency lock and part owners to decoded log
         original.write(root);
         auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
         const auto report = warning_report(warning_diagnostic(
-            "library", "part:foreign", "library:test.export", std::nullopt, std::nullopt,
-            OrderedJson::array({{{"kind", "part_definition"}, {"index", 0}}})));
+            "library", "part:foreign", library_report_subject(fixture.bundle), std::nullopt,
+            std::nullopt, OrderedJson::array({{{"kind", "part_definition"}, {"index", 0}}})));
+        replace_artifact_payload(root, manifest, "diagnostics", report.dump());
+        manifest["run"]["status"] = "expected-diagnostics";
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::OwnershipViolation);
+    }
+
+    SECTION("diagnostic part reference names another library release") {
+        const auto root = temporary.path() / "diagnostic-foreign-release.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        const auto report = warning_report(
+            warning_diagnostic("library", "part:resistor",
+                               library_report_subject(fixture.bundle.identity().namespace_name(),
+                                                      "foreign", fixture.bundle.library_digest()),
+                               std::nullopt, std::nullopt,
+                               OrderedJson::array({{{"kind", "part_definition"}, {"index", 0}}})));
         replace_artifact_payload(root, manifest, "diagnostics", report.dump());
         manifest["run"]["status"] = "expected-diagnostics";
         reseal_manifest(root, manifest);
@@ -776,6 +820,41 @@ TEST_CASE("ProjectBundle v2 binds footprint pad references to their paired place
     manifest["run"]["status"] = "expected-diagnostics";
     reseal_manifest(root, manifest);
     check_open_error(root, volt::io::ProjectBundleOpenErrorCode::OwnershipViolation);
+}
+
+TEST_CASE("ProjectBundle v2 writer rejects report references that cannot reopen") {
+    SECTION("missing logical entity") {
+        const auto fixture = LogicalFixture{};
+        const auto report = warning_report(warning_diagnostic(
+            "main", OrderedJson::array({{{"kind", "component"}, {"index", 999}}})));
+        auto builder = project_builder_with_diagnostics(report.dump());
+        builder.add_logical(volt::io::DesignKey{"main"}, fixture.circuit(), fixture.bundle());
+        CHECK_THROWS_AS(builder.build(), volt::KernelError);
+    }
+
+    SECTION("foreign exact part") {
+        const auto fixture = board_fixture();
+        const auto report = warning_report(warning_diagnostic(
+            "library", "part:foreign", library_report_subject(fixture.bundle), std::nullopt,
+            std::nullopt, OrderedJson::array({{{"kind", "part_definition"}, {"index", 0}}})));
+        auto builder = project_builder_with_diagnostics(report.dump());
+        builder.add_logical(volt::io::DesignKey{"main"}, *fixture.circuit, fixture.bundle);
+        CHECK_THROWS_AS(builder.build(), volt::KernelError);
+    }
+
+    SECTION("footprint pad from another placement") {
+        const auto fixture = mixed_footprint_board_fixture();
+        const auto report = warning_report(
+            warning_diagnostic("board", "pcb:Main", "pcb.board", std::optional<std::string>{"main"},
+                               std::optional<std::string>{"Main"},
+                               OrderedJson::array({{{"kind", "component_placement"}, {"index", 0}},
+                                                   {{"kind", "footprint_pad"}, {"index", 1}}})));
+        auto builder = project_builder_with_diagnostics(report.dump());
+        builder.add_logical(volt::io::DesignKey{"main"}, *fixture.circuit, fixture.bundle);
+        builder.add_board(volt::io::DesignKey{"main"}, fixture.board, fixture.compiled,
+                          fixture.scene, fixture.bundle);
+        CHECK_THROWS_AS(builder.build(), volt::KernelError);
+    }
 }
 
 TEST_CASE("ProjectBundle v2 rejects extraneous direct edges and cycles after valid resealing") {

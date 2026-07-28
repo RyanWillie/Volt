@@ -18,6 +18,8 @@
 #include <volt/io/project_bundle.hpp>
 #include <volt/io/project_bundle_v2_writer.hpp>
 
+#include "../io/project_bundle_v2_reports.hpp"
+
 namespace volt::python {
 namespace {
 
@@ -295,6 +297,15 @@ void bind_project_bundle(py::module_ &module) {
         py::arg("board"), py::arg("models3d"));
 
     module.def(
+        "_project_bundle_library_report_subject",
+        [](const std::string &library_namespace, const std::string &library_version,
+           const std::string &library_digest) {
+            return volt::io::detail::project_library_report_subject(
+                library_namespace, library_version, volt::ContentHash{library_digest});
+        },
+        py::arg("library_namespace"), py::arg("library_version"), py::arg("library_digest"));
+
+    module.def(
         "_project_bundle_subject_mask",
         [](const py::list &logicals, const py::list &subjects) {
             auto selected = std::set<std::pair<std::string, std::string>>{};
@@ -310,8 +321,9 @@ void bind_project_bundle(py::module_ &module) {
                     const auto &reference =
                         volt::queries::selected_library_part_ref(logical, volt::ComponentId{index});
                     if (reference.has_value()) {
-                        selected.emplace(reference->library_namespace(),
-                                         reference->part_key().value());
+                        selected.emplace(
+                            volt::io::detail::project_library_report_subject(*reference),
+                            reference->part_key().value());
                     }
                 }
             }
@@ -330,8 +342,7 @@ void bind_project_bundle(py::module_ &module) {
                     result.append(true);
                     continue;
                 }
-                result.append(selected.contains(
-                    {report.substr(library_prefix.size()), source.substr(part_prefix.size())}));
+                result.append(selected.contains({report, source.substr(part_prefix.size())}));
             }
             return result;
         },

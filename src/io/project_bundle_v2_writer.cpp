@@ -20,6 +20,7 @@
 #include <zlib.h>
 
 #include <volt/circuit/bom/bom.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/io/assembly/cpl_writer.hpp>
 #include <volt/io/bom/bom_writer.hpp>
@@ -1084,10 +1085,40 @@ struct ValidatedProjectBuild {
     std::map<std::string, const LogicalInput *> logical_by_design;
 };
 
+[[nodiscard]] detail::ProjectReportReferenceContext
+project_report_reference_context(std::span<const LogicalInput> logicals,
+                                 std::span<const SchematicInput> schematics,
+                                 std::span<const BoardInput> boards) {
+    auto result = detail::ProjectReportReferenceContext{};
+    for (const auto &logical : logicals) {
+        result.logicals.push_back({logical.design.value(), logical.circuit});
+        for (auto index = std::size_t{0}; index < logical.circuit->all<ComponentId>().size();
+             ++index) {
+            const auto &selected =
+                queries::selected_library_part_ref(*logical.circuit, ComponentId{index});
+            if (selected.has_value()) {
+                const auto &part = logical.bundle->resolve(*selected);
+                result.selected_parts.push_back(
+                    {*selected, part.orderable_part().footprint_pads().size()});
+            }
+        }
+    }
+    for (const auto &schematic : schematics) {
+        result.schematics.push_back(
+            {schematic.design.value(), schematic.key.value(), schematic.schematic});
+    }
+    for (const auto &board : boards) {
+        result.boards.push_back({board.design.value(), board.board->name().value(), board.board});
+    }
+    return result;
+}
+
 [[nodiscard]] ValidatedProjectBuild
 validate_project_build(const ProjectRunSummary &run, const LogicalInputName &entrypoint,
                        std::span<const AuthoringInput> inputs, const ProjectReport &diagnostics,
-                       const ProjectReport &tests, std::span<const LogicalInput> logicals) {
+                       const ProjectReport &tests, std::span<const LogicalInput> logicals,
+                       std::span<const SchematicInput> schematics,
+                       std::span<const BoardInput> boards) {
     require(!logicals.empty(), "a complete bundle requires at least one logical model",
             ErrorCode::InvalidState);
     require(run.ok == (run.status != ProjectStatus::Failed),
@@ -1095,6 +1126,9 @@ validate_project_build(const ProjectRunSummary &run, const LogicalInputName &ent
     const auto reports = detail::read_project_reports(diagnostics.bytes, tests.bytes);
     require(reports.status == run.status && reports.ok == run.ok,
             "run status disagrees with the decoded project reports");
+    const auto reference_error = detail::project_report_reference_error(
+        reports, project_report_reference_context(logicals, schematics, boards));
+    require(!reference_error.has_value(), reference_error.value_or(""));
 
     auto input_records = std::vector<std::tuple<AuthoringInputKind, std::string, ContentHash>>{};
     input_records.reserve(inputs.size());
@@ -2045,9 +2079,9 @@ std::string project_bundle_v2_export_request_json(const ExportRequest &request) 
 } // namespace detail
 
 ProjectBundleV2 ProjectBundleV2Builder::build() const {
-    const auto validated =
-        validate_project_build(storage_->run, storage_->entrypoint, storage_->inputs,
-                               storage_->diagnostics, storage_->tests, storage_->logicals);
+    const auto validated = validate_project_build(
+        storage_->run, storage_->entrypoint, storage_->inputs, storage_->diagnostics,
+        storage_->tests, storage_->logicals, storage_->schematics, storage_->boards);
     auto graph = ProjectArtifactGraph{};
     graph.accumulate_authoritative_artifacts(validated, storage_->logicals, storage_->schematics,
                                              storage_->boards, storage_->diagnostics,
