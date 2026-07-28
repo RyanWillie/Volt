@@ -136,6 +136,9 @@ target_include_directories(
 target_compile_definitions(
     volt_core_tests PRIVATE VOLT_TEST_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/tests/fixtures"
 )
+if(MINGW)
+    target_compile_options(volt_core_tests PRIVATE -Wa,-mbig-obj)
+endif()
 volt_apply_project_warnings(volt_core_tests PRIVATE)
 volt_apply_sanitizers(volt_core_tests)
 volt_apply_coverage(volt_core_tests)
