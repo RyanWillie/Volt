@@ -168,6 +168,8 @@ board_fixture(double width = 30.0,
                         std::move(compiled), std::move(scene)};
 }
 
+[[nodiscard]] BoardFixture mixed_footprint_board_fixture();
+
 [[nodiscard]] inline volt::io::ProjectBundleV2Builder project_builder() {
     return volt::io::ProjectBundleV2Builder{
         volt::io::ProjectIdentity{"board-fixture", std::nullopt, std::nullopt},

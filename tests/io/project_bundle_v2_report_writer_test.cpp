@@ -102,8 +102,8 @@ TEST_CASE("ProjectBundle v2 writer rejects report references that cannot reopen"
         CHECK_THROWS_AS(builder.build(), volt::KernelError);
     }
 
-    SECTION("footprint pad outside its paired selected part") {
-        auto fixture = board_fixture();
+    SECTION("footprint pad from another placement") {
+        auto fixture = mixed_footprint_board_fixture();
         const auto report = warning_report(
             warning_diagnostic("board", "pcb:Main", "pcb.board", std::optional<std::string>{"main"},
                                std::optional<std::string>{"Main"},
