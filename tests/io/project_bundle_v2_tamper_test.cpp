@@ -441,19 +441,6 @@ struct BoardFixture {
         volt::io::ProjectReport{R"({"summary":{"passed":0,"failed":0},"tests":[]})"}};
 }
 
-[[nodiscard]] volt::io::ProjectBundleV2Builder
-project_builder_with_diagnostics(std::string diagnostics) {
-    return volt::io::ProjectBundleV2Builder{
-        volt::io::ProjectIdentity{"board-fixture", std::nullopt, std::nullopt},
-        volt::io::ProjectRunSummary{
-            true, volt::io::ProjectStatus::ExpectedDiagnostics, "default", {"design", "board"}},
-        volt::io::LogicalInputName{"project.py"},
-        {volt::io::AuthoringInput{volt::io::AuthoringInputKind::ProjectSource,
-                                  volt::io::LogicalInputName{"project.py"}, "project source"}},
-        volt::io::ProjectReport{std::move(diagnostics)},
-        volt::io::ProjectReport{R"({"summary":{"passed":0,"failed":0},"tests":[]})"}};
-}
-
 } // namespace
 
 TEST_CASE("ProjectBundle v2 open fails closed for digest path lock and exact edge tampering") {
@@ -820,41 +807,6 @@ TEST_CASE("ProjectBundle v2 binds footprint pad references to their paired place
     manifest["run"]["status"] = "expected-diagnostics";
     reseal_manifest(root, manifest);
     check_open_error(root, volt::io::ProjectBundleOpenErrorCode::OwnershipViolation);
-}
-
-TEST_CASE("ProjectBundle v2 writer rejects report references that cannot reopen") {
-    SECTION("missing logical entity") {
-        const auto fixture = LogicalFixture{};
-        const auto report = warning_report(warning_diagnostic(
-            "main", OrderedJson::array({{{"kind", "component"}, {"index", 999}}})));
-        auto builder = project_builder_with_diagnostics(report.dump());
-        builder.add_logical(volt::io::DesignKey{"main"}, fixture.circuit(), fixture.bundle());
-        CHECK_THROWS_AS(builder.build(), volt::KernelError);
-    }
-
-    SECTION("foreign exact part") {
-        const auto fixture = board_fixture();
-        const auto report = warning_report(warning_diagnostic(
-            "library", "part:foreign", library_report_subject(fixture.bundle), std::nullopt,
-            std::nullopt, OrderedJson::array({{{"kind", "part_definition"}, {"index", 0}}})));
-        auto builder = project_builder_with_diagnostics(report.dump());
-        builder.add_logical(volt::io::DesignKey{"main"}, *fixture.circuit, fixture.bundle);
-        CHECK_THROWS_AS(builder.build(), volt::KernelError);
-    }
-
-    SECTION("footprint pad from another placement") {
-        const auto fixture = mixed_footprint_board_fixture();
-        const auto report = warning_report(
-            warning_diagnostic("board", "pcb:Main", "pcb.board", std::optional<std::string>{"main"},
-                               std::optional<std::string>{"Main"},
-                               OrderedJson::array({{{"kind", "component_placement"}, {"index", 0}},
-                                                   {{"kind", "footprint_pad"}, {"index", 1}}})));
-        auto builder = project_builder_with_diagnostics(report.dump());
-        builder.add_logical(volt::io::DesignKey{"main"}, *fixture.circuit, fixture.bundle);
-        builder.add_board(volt::io::DesignKey{"main"}, fixture.board, fixture.compiled,
-                          fixture.scene, fixture.bundle);
-        CHECK_THROWS_AS(builder.build(), volt::KernelError);
-    }
 }
 
 TEST_CASE("ProjectBundle v2 rejects extraneous direct edges and cycles after valid resealing") {

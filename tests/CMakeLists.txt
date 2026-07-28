@@ -74,6 +74,7 @@ add_executable(
     io/project_bundle_v2_export_target_digest_test.cpp
     io/project_bundle_v2_library_reachability_test.cpp
     io/project_bundle_v2_open_test.cpp
+    io/project_bundle_v2_report_writer_test.cpp
     io/project_bundle_v2_tamper_test.cpp
     io/project_bundle_v2_writer_test.cpp
     io/project_bundle_v2_writer_reader_parity_test.cpp
