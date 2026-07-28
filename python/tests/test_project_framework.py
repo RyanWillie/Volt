@@ -1264,6 +1264,53 @@ def test_project_diagnostics_include_registered_library_identity():
     assert diagnostic.code == "LIBRARY_PART_MISSING_PINS"
 
 
+def test_project_bundle_scopes_library_diagnostics_to_selected_parts(tmp_path):
+    library = volt.Library("volt.test.parts")
+    library.add(
+        volt.Part(
+            name="Unused",
+            pins=(volt.PinSpec("A", 1), volt.PinSpec("B", 2)),
+            footprint=volt.FootprintDefinition(
+                ("volt.test.parts", "Overlap"),
+                pads=(
+                    volt.FootprintPad.surface_mount(
+                        "1", at=(0.0, 0.0), size=(1.0, 1.0)
+                    ),
+                    volt.FootprintPad.surface_mount(
+                        "2", at=(0.0, 0.0), size=(1.0, 1.0)
+                    ),
+                ),
+            ),
+            pads={"A": "1", "B": "2"},
+            manufacturer="Volt",
+            mpn="UNUSED",
+            package="test",
+        )
+    )
+    project = volt.Project("selected-library-scope")
+    project.use_library(library)
+
+    @project.design
+    def design():
+        return volt.Design("main")
+
+    result = project.run_through(project.design)
+    assert [
+        diagnostic.code
+        for diagnostic in result.diagnostics
+        if diagnostic.stage == "library"
+    ] == ["PART_PAD_OVERLAP"]
+
+    path = tmp_path / "selected-library-scope.volt"
+    result.write(path)
+    bundle = volt.ProjectBundle.open(path)
+    report = json.loads(bundle.v2.loaded_project.diagnostics.bytes)
+
+    assert report["status"] == "clean"
+    assert report["diagnostics"] == []
+    assert report["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
+
+
 def test_two_board_project_fixture_writes_deterministic_bundle(tmp_path):
     project = volt.Project("control-panel")
 

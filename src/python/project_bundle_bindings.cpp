@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -13,6 +14,7 @@
 
 #include <pybind11/stl/filesystem.h>
 
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/io/project_bundle.hpp>
 #include <volt/io/project_bundle_v2_writer.hpp>
 
@@ -291,6 +293,49 @@ void bind_project_bundle(py::module_ &module) {
                 [](void *pointer) { delete static_cast<ProjectBundleBoardArtifacts *>(pointer); }};
         },
         py::arg("board"), py::arg("models3d"));
+
+    module.def(
+        "_project_bundle_subject_mask",
+        [](const py::list &logicals, const py::list &subjects) {
+            auto selected = std::set<std::pair<std::string, std::string>>{};
+            for (const auto item : logicals) {
+                const auto row = exact_tuple(item, 2, "ProjectBundle logical input");
+                const auto *circuit = row[1].cast<const PyCircuit *>();
+                if (circuit == nullptr) {
+                    throw py::type_error{"ProjectBundle logical input has no native Circuit"};
+                }
+                const auto &logical = circuit->logical_circuit();
+                for (auto index = std::size_t{0}; index < logical.all<volt::ComponentId>().size();
+                     ++index) {
+                    const auto &reference =
+                        volt::queries::selected_library_part_ref(logical, volt::ComponentId{index});
+                    if (reference.has_value()) {
+                        selected.emplace(reference->library_namespace(),
+                                         reference->part_key().value());
+                    }
+                }
+            }
+            auto result = py::list{};
+            for (const auto item : subjects) {
+                const auto row = exact_tuple(item, 2, "ProjectBundle report subject");
+                if (row[0].is_none() || row[1].is_none()) {
+                    result.append(true);
+                    continue;
+                }
+                const auto report = row[0].cast<std::string>();
+                const auto source = row[1].cast<std::string>();
+                constexpr auto library_prefix = std::string_view{"library:"};
+                constexpr auto part_prefix = std::string_view{"part:"};
+                if (!report.starts_with(library_prefix) || !source.starts_with(part_prefix)) {
+                    result.append(true);
+                    continue;
+                }
+                result.append(selected.contains(
+                    {report.substr(library_prefix.size()), source.substr(part_prefix.size())}));
+            }
+            return result;
+        },
+        py::arg("logicals"), py::arg("subjects"));
 
     module.def(
         "_write_project_bundle_v2",

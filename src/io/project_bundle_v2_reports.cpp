@@ -196,14 +196,13 @@ void require_measurement(const Json &measurement) {
     static_cast<void>(string_field(diagnostic, "category", context));
     static_cast<void>(string_field(diagnostic, "code", context));
     static_cast<void>(string_field(diagnostic, "message", context, true));
-    auto references =
-        require_entity_list(field(diagnostic, "entities", context), "project diagnostic entities");
+    auto reference_groups = std::vector<std::vector<ProjectDiagnosticReferenceFacts>>{};
+    reference_groups.push_back(
+        require_entity_list(field(diagnostic, "entities", context), "project diagnostic entities"));
     const auto &overlays = field(diagnostic, "overlays", context);
     require_report(overlays.is_array(), "project diagnostic overlays must be an array");
     for (const auto &overlay : overlays) {
-        auto overlay_references = require_overlay(overlay);
-        references.insert(references.end(), std::make_move_iterator(overlay_references.begin()),
-                          std::make_move_iterator(overlay_references.end()));
+        reference_groups.push_back(require_overlay(overlay));
     }
     require_measurement(field(diagnostic, "measurement", context));
     require_nullable_string(diagnostic, "design", context);
@@ -218,7 +217,7 @@ void require_measurement(const Json &measurement) {
     };
     return ProjectDiagnosticFacts{
         string_field(diagnostic, "source", context), string_field(diagnostic, "report", context),
-        nullable_value("design"), nullable_value("board"), std::move(references)};
+        nullable_value("design"), nullable_value("board"), std::move(reference_groups)};
 }
 
 void require_expected_diagnostic(const Json &expected) {

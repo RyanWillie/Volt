@@ -22,7 +22,7 @@ struct ProjectDiagnosticFacts {
     std::string report;
     std::optional<std::string> design;
     std::optional<std::string> board;
-    std::vector<ProjectDiagnosticReferenceFacts> references;
+    std::vector<std::vector<ProjectDiagnosticReferenceFacts>> reference_groups;
 };
 
 struct ProjectDiagnosticsReportFacts {

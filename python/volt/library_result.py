@@ -125,7 +125,9 @@ class LibraryResult:
                 )
                 continue
             native = self._snapshot.part_result(part.source_name)
-            part_diagnostics = _kernel_part_diagnostics(f"part:{part.name}", native["diagnostics"])
+            part_diagnostics = _kernel_part_diagnostics(
+                f"part:{part.source_name}", native["diagnostics"]
+            )
             diagnostics.extend(part_diagnostics)
             part_results.append(
                 LibraryPartResult(

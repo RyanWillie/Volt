@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/pcb/queries/board_queries.hpp>
 
 #include "project_bundle_v2_contract.hpp"
 #include "project_bundle_v2_reports.hpp"
@@ -341,19 +342,38 @@ diagnostic_model_context(const ProjectBundleStorage &storage,
 void verify_part_definition_reference(const ProjectBundleStorage &storage,
                                       const detail::ProjectDiagnosticFacts &diagnostic,
                                       std::uint64_t index) {
-    require(index == 0U && diagnostic.report.starts_with("library:"),
+    require(index == 0U && diagnostic.report.starts_with("library:") &&
+                diagnostic.source.starts_with("part:"),
             ProjectBundleOpenErrorCode::OwnershipViolation,
             "project diagnostic part reference has no exact library context");
     const auto library = diagnostic.report.substr(std::string_view{"library:"}.size());
-    require(
-        std::ranges::any_of(storage.v2_artifacts,
-                            [&](const auto &artifact) {
-                                return artifact.descriptor.kind() == ArtifactKind::PartDefinition &&
-                                       std::get<LibraryPartRef>(artifact.descriptor.id().owner())
-                                               .library_namespace() == library;
-                            }),
-        ProjectBundleOpenErrorCode::OwnershipViolation,
-        "project diagnostic references an absent vendored PartDefinition");
+    const auto part = diagnostic.source.substr(std::string_view{"part:"}.size());
+    require(std::ranges::any_of(
+                storage.v2_artifacts,
+                [&](const auto &artifact) {
+                    if (artifact.descriptor.kind() != ArtifactKind::PartDefinition) {
+                        return false;
+                    }
+                    const auto &owner = std::get<LibraryPartRef>(artifact.descriptor.id().owner());
+                    return owner.library_namespace() == library && owner.part_key().value() == part;
+                }),
+            ProjectBundleOpenErrorCode::OwnershipViolation,
+            "project diagnostic references an absent vendored PartDefinition");
+}
+
+void verify_footprint_pad_reference(const Board &board, std::uint64_t placement_index,
+                                    std::uint64_t pad_index) {
+    require(diagnostic_index_exists<ComponentPlacementId>(board, placement_index),
+            ProjectBundleOpenErrorCode::OwnershipViolation,
+            "project diagnostic footprint pad names a missing component placement");
+    const auto &placement = board.get(ComponentPlacementId{placement_index});
+    const auto &selected = queries::selected_physical_part(board.circuit(), placement.component());
+    require(selected.has_value(), ProjectBundleOpenErrorCode::OwnershipViolation,
+            "project diagnostic footprint pad placement has no selected physical part");
+    const auto footprint = queries::footprint_definition_id(board, selected->footprint());
+    require(footprint.has_value() && pad_index < board.get(*footprint).pad_count(),
+            ProjectBundleOpenErrorCode::OwnershipViolation,
+            "project diagnostic footprint pad is outside its paired placement");
 }
 
 void verify_diagnostic_reference(const ProjectBundleStorage &storage,
@@ -455,12 +475,6 @@ void verify_diagnostic_reference(const ProjectBundleStorage &storage,
     } else if (kind == "footprint_def") {
         valid = context.board != nullptr &&
                 diagnostic_index_exists<FootprintDefId>(*context.board, index);
-    } else if (kind == "footprint_pad") {
-        valid =
-            context.board != nullptr &&
-            std::ranges::any_of(context.board->all<FootprintDefId>(), [&](const auto &footprint) {
-                return index < footprint.pad_count();
-            });
     } else if (kind == "component_placement") {
         valid = context.board != nullptr &&
                 diagnostic_index_exists<ComponentPlacementId>(*context.board, index);
@@ -479,8 +493,21 @@ void verify_diagnostic_references(const ProjectBundleStorage &storage,
                                   const detail::ProjectReportsFacts &reports) {
     for (const auto &diagnostic : reports.diagnostics) {
         const auto context = diagnostic_model_context(storage, diagnostic);
-        for (const auto &reference : diagnostic.references) {
-            verify_diagnostic_reference(storage, diagnostic, context, reference);
+        for (const auto &group : diagnostic.reference_groups) {
+            auto placement = std::optional<std::uint64_t>{};
+            for (const auto &reference : group) {
+                if (reference.kind == "component_placement") {
+                    verify_diagnostic_reference(storage, diagnostic, context, reference);
+                    placement = reference.index;
+                } else if (reference.kind == "footprint_pad") {
+                    require(context.board != nullptr && placement.has_value(),
+                            ProjectBundleOpenErrorCode::OwnershipViolation,
+                            "project diagnostic footprint pad has no paired component placement");
+                    verify_footprint_pad_reference(*context.board, *placement, reference.index);
+                } else {
+                    verify_diagnostic_reference(storage, diagnostic, context, reference);
+                }
+            }
         }
     }
 }
