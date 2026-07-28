@@ -125,7 +125,9 @@ class LibraryResult:
                 )
                 continue
             native = self._snapshot.part_result(part.source_name)
-            part_diagnostics = _kernel_part_diagnostics(f"part:{part.name}", native["diagnostics"])
+            part_diagnostics = _kernel_part_diagnostics(
+                f"part:{part.source_name}", native["diagnostics"]
+            )
             diagnostics.extend(part_diagnostics)
             part_results.append(
                 LibraryPartResult(
@@ -203,7 +205,7 @@ class _PartValidationFacts:
 
 def _validate_part(part: Part) -> tuple[_PartValidationFacts, tuple[LibraryDiagnostic, ...]]:
     diagnostics: list[LibraryDiagnostic] = []
-    source = f"part:{part.name}"
+    source = f"part:{part.source_name}"
 
     has_logical_pins = bool(part.pins)
     if not has_logical_pins:

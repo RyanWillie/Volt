@@ -63,7 +63,22 @@ add_executable(
     io/pcb/pcb_svg_writer_test.cpp
     io/pcb/compiled_board_test.cpp
     io/project_bundle_test.cpp
+    io/project_bundle_source_test.cpp
+    io/project_bundle_v2_board_export_rejection_test.cpp
+    io/project_bundle_v2_board_export_tamper_test.cpp
+    io/project_bundle_v2_board_export_test.cpp
+    io/project_bundle_v2_board_writer_test.cpp
+    io/project_bundle_v2_contract_test.cpp
+    io/project_bundle_v2_cpl_export_test.cpp
+    io/project_bundle_v2_export_payload_test.cpp
+    io/project_bundle_v2_export_target_digest_test.cpp
+    io/project_bundle_v2_library_reachability_test.cpp
+    io/project_bundle_v2_open_test.cpp
+    io/project_bundle_v2_report_writer_test.cpp
+    io/project_bundle_v2_tamper_test.cpp
     io/project_bundle_v2_writer_test.cpp
+    io/project_bundle_v2_writer_reader_parity_test.cpp
+    io/support/project_bundle_v2_board_test_support.cpp
     io/schematic/schematic_reader_test.cpp
     io/schematic/schematic_round_trip_test.cpp
     io/schematic/schematic_schema_test.cpp
@@ -121,6 +136,9 @@ target_include_directories(
 target_compile_definitions(
     volt_core_tests PRIVATE VOLT_TEST_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/tests/fixtures"
 )
+if(MINGW)
+    target_compile_options(volt_core_tests PRIVATE -Wa,-mbig-obj)
+endif()
 volt_apply_project_warnings(volt_core_tests PRIVATE)
 volt_apply_sanitizers(volt_core_tests)
 volt_apply_coverage(volt_core_tests)

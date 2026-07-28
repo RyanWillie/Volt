@@ -194,6 +194,7 @@ class _BundlePolicySnapshot:
     """Diagnostic policy snapshot for one profile-specific project-result bundle."""
 
     diagnostics: "ProjectDiagnostics"
+    expectations: tuple[ExpectedDiagnostic, ...]
     tests: tuple[ProjectTestResult, ...]
     ok: bool
     status: str
@@ -677,7 +678,14 @@ class ProjectResult:
         if profile not in {"default", "viewer"}:
             raise ValueError("ProjectResult.write profile must be 'default' or 'viewer'")
         entrypoint, authoring_inputs = _project_authoring_inputs(self.project)
-        bundle_policy = _bundle_policy_snapshot(self, extra_diagnostics=())
+        logical_inputs = [
+            (design.name, design._circuit) for design in self.designs
+        ]
+        bundle_policy = _bundle_policy_snapshot(
+            self,
+            extra_diagnostics=(),
+            logical_inputs=logical_inputs,
+        )
         _volt._write_project_bundle_v2(
             str(Path(path)),
             self.project.name,
@@ -689,7 +697,7 @@ class ProjectResult:
             [stage.name for stage in self._stages],
             entrypoint,
             authoring_inputs,
-            [(design.name, design._circuit) for design in self.designs],
+            logical_inputs,
             [
                 (
                     schematic._design.name,
@@ -712,6 +720,7 @@ class ProjectResult:
                 _diagnostics_payload(
                     self,
                     diagnostics=bundle_policy.diagnostics,
+                    expectations=bundle_policy.expectations,
                     status=bundle_policy.status,
                 )
             ),
@@ -1006,12 +1015,17 @@ def _collect_library_diagnostics(libraries: tuple[Library, ...] | list[Library])
     diagnostics: list[ProjectDiagnostic] = []
     for library in libraries:
         result = library.build()
+        report = _volt._project_bundle_library_report_subject(
+            library.namespace,
+            library.version,
+            result.digest,
+        )
         for diagnostic in result.diagnostics:
             diagnostics.append(
                 ProjectDiagnostic(
                     stage="library",
                     source=diagnostic.source,
-                    report=f"library:{library.namespace}",
+                    report=report,
                     severity=diagnostic.severity,
                     code=diagnostic.code,
                     message=diagnostic.message,
@@ -1161,42 +1175,67 @@ def _bundle_policy_snapshot(
     result: ProjectResult,
     *,
     extra_diagnostics: tuple[ProjectDiagnostic, ...],
+    logical_inputs: list[tuple[str, object]],
 ) -> _BundlePolicySnapshot:
-    diagnostics = (
+    all_diagnostics = (
         result.diagnostics
         if not extra_diagnostics
         else ProjectDiagnostics((*result.diagnostics, *extra_diagnostics))
     )
+    diagnostics = ProjectDiagnostics(
+        _project_bundle_scope_report_subjects(
+            tuple(all_diagnostics),
+            logical_inputs,
+        )
+    )
+    expectations = _project_bundle_scope_report_subjects(
+        tuple(result.project._expected_diagnostics),
+        logical_inputs,
+    )
     tests = result._test_results()
     return _BundlePolicySnapshot(
         diagnostics=diagnostics,
+        expectations=expectations,
         tests=tests,
-        ok=_bundle_ok(result, diagnostics, tests),
-        status=_bundle_status(result, diagnostics, tests),
+        ok=_bundle_ok(expectations, diagnostics, tests),
+        status=_bundle_status(expectations, diagnostics, tests),
+    )
+
+
+def _project_bundle_scope_report_subjects(values, logical_inputs):
+    values = tuple(values)
+    included = _volt._project_bundle_subject_mask(
+        logical_inputs,
+        [(value.report, value.source) for value in values],
+    )
+    return tuple(
+        value
+        for value, keep in zip(values, included, strict=True)
+        if keep
     )
 
 
 def _bundle_ok(
-    result: ProjectResult,
+    expectations: tuple[ExpectedDiagnostic, ...],
     diagnostics: ProjectDiagnostics,
     tests: tuple[ProjectTestResult, ...],
 ) -> bool:
-    if result.project._expected_diagnostics:
+    if expectations:
         return _expected_diagnostics_ok(
-            result.project._expected_diagnostics,
+            expectations,
             diagnostics,
         ) and not _test_summary(tests)["failed"]
     return not diagnostics.has_errors and not _test_summary(tests)["failed"]
 
 
 def _bundle_status(
-    result: ProjectResult,
+    expectations: tuple[ExpectedDiagnostic, ...],
     diagnostics: ProjectDiagnostics,
     tests: tuple[ProjectTestResult, ...],
 ) -> str:
     if len(diagnostics) == 0 and not _test_summary(tests)["failed"]:
         return "clean"
-    if _bundle_ok(result, diagnostics, tests):
+    if _bundle_ok(expectations, diagnostics, tests):
         return "expected-diagnostics"
     return "failed"
 
@@ -1220,12 +1259,18 @@ def _diagnostics_payload(
     result: ProjectResult,
     *,
     diagnostics: ProjectDiagnostics | None = None,
+    expectations: tuple[ExpectedDiagnostic, ...] | None = None,
     status: str | None = None,
 ) -> dict:
     diagnostics = result.diagnostics if diagnostics is None else diagnostics
+    expectations = (
+        tuple(result.project._expected_diagnostics)
+        if expectations is None
+        else expectations
+    )
     status = result.status if status is None else status
     expected, unexpected, missing = _diagnostic_policy_snapshot(
-        result.project._expected_diagnostics,
+        expectations,
         diagnostics,
     )
     return {

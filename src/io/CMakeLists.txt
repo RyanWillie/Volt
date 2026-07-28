@@ -50,6 +50,7 @@ add_library(
     pcb/board_resolution_detail.cpp
     pcb/compiled_board.cpp
     pcb/compiled_board_consumers.cpp
+    pcb/board_scene.cpp
     pcb/pcb_feature_io.cpp
     pcb/pcb_feature_svg.cpp
     pcb/pcb_reader.cpp
@@ -63,6 +64,11 @@ add_library(
     project_bundle.cpp
     project_bundle_source.cpp
     project_bundle_v1.cpp
+    project_bundle_v2.cpp
+    project_bundle_v2_graph.cpp
+    project_bundle_v2_manifest.cpp
+    project_bundle_v2_models.cpp
+    project_bundle_v2_reports.cpp
     project_bundle_v2_writer.cpp
     schematic/detail_schematic_svg_common.cpp
     schematic/detail_schematic_svg_elements.cpp

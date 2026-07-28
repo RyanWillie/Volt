@@ -454,8 +454,9 @@ def collect_inventory() -> dict[str, object]:
     return {
         "schema_version": 2,
         "purpose": (
-            "Compact review evidence for issue #328. A baseline delta requires review; "
-            "the checked-in evidence does not approve the change."
+            "Compact review evidence for issue #328, extended by issue #240 for native verified "
+            "ProjectBundle read views. A baseline delta requires review; the checked-in evidence "
+            "does not approve the change."
         ),
         "inventories": {
             "public_contracts": {

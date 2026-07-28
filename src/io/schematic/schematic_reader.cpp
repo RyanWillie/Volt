@@ -20,6 +20,7 @@
 #include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/schematic/schematic_schema.hpp>
+#include <volt/io/schematic/schematic_writer.hpp>
 #include <volt/schematic/queries.hpp>
 #include <volt/schematic/schematic_document.hpp>
 
@@ -34,6 +35,9 @@ class SchematicReader {
 
     /** Load and structurally validate the document into a schematic projection. */
     [[nodiscard]] Schematic read();
+
+    /** Decode the standalone owner-canonical symbol-definition shape. */
+    [[nodiscard]] static SymbolDefinition read_symbol_definition(const nlohmann::json &document);
 
   private:
     static void require(bool condition, const std::string &message);
@@ -251,6 +255,26 @@ class SchematicReader {
     require_sheet_symbol_field_lists_match();
 
     return std::move(schematic_);
+}
+
+SymbolDefinition SchematicReader::read_symbol_definition(const nlohmann::json &document) {
+    require(document.is_object(), "Symbol definition document must be an object");
+    require(string_field(document, "format") == symbol_definition_format_name(),
+            "Unsupported symbol definition format");
+    const auto &version = field(document, "schema_version");
+    require(version.is_number_integer() && version.get<int>() == symbol_definition_format_version(),
+            "Unsupported symbol definition schema version");
+    auto symbol = SymbolDefinition{string_field(document, "name")};
+    for (const auto &pin_object : array_field(document, "pins")) {
+        symbol.add_pin(SymbolPin{string_field(pin_object, "name"),
+                                 string_field(pin_object, "number"),
+                                 point(field(pin_object, "anchor")),
+                                 orientation(string_field(pin_object, "orientation"))});
+    }
+    for (const auto &primitive_object : array_field(document, "primitives")) {
+        symbol.add_primitive(primitive(primitive_object));
+    }
+    return symbol;
 }
 
 void SchematicReader::require(bool condition, const std::string &message) {
@@ -955,6 +979,17 @@ namespace volt::io {
 [[nodiscard]] SchematicDocument read_schematic_document(std::istream &input,
                                                         const Circuit &circuit) {
     return SchematicDocument{read_schematic(input, circuit)};
+}
+
+[[nodiscard]] SymbolDefinition read_symbol_definition_text(std::string_view text) {
+    return detail::SchematicReader::read_symbol_definition(
+        nlohmann::json::parse(text.begin(), text.end()));
+}
+
+[[nodiscard]] SymbolDefinition read_symbol_definition(std::istream &input) {
+    auto buffer = std::ostringstream{};
+    buffer << input.rdbuf();
+    return read_symbol_definition_text(buffer.str());
 }
 
 } // namespace volt::io

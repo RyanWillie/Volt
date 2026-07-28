@@ -532,6 +532,56 @@
           "python_type": "Circuit"
         },
         {
+          "cpp_type": "volt::io::ArtifactId",
+          "path": "src/python/project_bundle_bindings.cpp",
+          "python_type": "ArtifactId"
+        },
+        {
+          "cpp_type": "volt::io::ProjectBundleV2ArtifactView",
+          "path": "src/python/project_bundle_bindings.cpp",
+          "python_type": "ProjectBundleArtifact"
+        },
+        {
+          "cpp_type": "volt::io::LoadedLogicalModelView",
+          "path": "src/python/project_bundle_bindings.cpp",
+          "python_type": "LoadedCircuit"
+        },
+        {
+          "cpp_type": "volt::io::LoadedSchematicView",
+          "path": "src/python/project_bundle_bindings.cpp",
+          "python_type": "LoadedSchematic"
+        },
+        {
+          "cpp_type": "volt::io::LoadedBoardView",
+          "path": "src/python/project_bundle_bindings.cpp",
+          "python_type": "LoadedBoard"
+        },
+        {
+          "cpp_type": "volt::io::LoadedCompiledBoardView",
+          "path": "src/python/project_bundle_bindings.cpp",
+          "python_type": "LoadedCompiledBoard"
+        },
+        {
+          "cpp_type": "volt::io::LoadedBoardSceneView",
+          "path": "src/python/project_bundle_bindings.cpp",
+          "python_type": "LoadedBoardScene"
+        },
+        {
+          "cpp_type": "volt::io::LoadedProject",
+          "path": "src/python/project_bundle_bindings.cpp",
+          "python_type": "LoadedProject"
+        },
+        {
+          "cpp_type": "volt::io::ProjectBundleGraphV2View",
+          "path": "src/python/project_bundle_bindings.cpp",
+          "python_type": "ProjectBundleGraphV2View"
+        },
+        {
+          "cpp_type": "volt::io::ProjectBundle",
+          "path": "src/python/project_bundle_bindings.cpp",
+          "python_type": "ProjectBundle"
+        },
+        {
           "cpp_type": "PySchematicDocument",
           "path": "src/python/schematic_bindings.cpp",
           "python_type": "SchematicDocument"
@@ -612,6 +662,7 @@
       },
       "python_exports": [
         "ASSEMBLY_DIAGNOSTIC_CODES",
+        "ArtifactId",
         "BOM_DIAGNOSTIC_CODES",
         "Board",
         "BoardAnchor",
@@ -621,6 +672,7 @@
         "BoardRoute",
         "BoardTwoPadComponent",
         "BuildContext",
+        "BundleIntegrityStatus",
         "CanonicalRecordRequirement",
         "CapabilityProfile",
         "Circle",
@@ -705,6 +757,9 @@
         "PortInfo",
         "Project",
         "ProjectArtifactPaths",
+        "ProjectBundle",
+        "ProjectBundleSchemaVersion",
+        "ProjectBundleStorageKind",
         "ProjectDiagnostic",
         "ProjectDiagnostics",
         "ProjectResource",
@@ -742,6 +797,6 @@
       ]
     }
   },
-  "purpose": "Compact review evidence for issue #328. A baseline delta requires review; the checked-in evidence does not approve the change.",
+  "purpose": "Compact review evidence for issue #328, extended by issue #240 for native verified ProjectBundle read views. A baseline delta requires review; the checked-in evidence does not approve the change.",
   "schema_version": 2
 }

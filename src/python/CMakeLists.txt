@@ -39,6 +39,7 @@ set(
     part.py
     pcb.py
     project.py
+    project_bundle.py
     project_checks.py
     schematic.py
 )

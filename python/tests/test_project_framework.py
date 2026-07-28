@@ -1033,7 +1033,7 @@ def test_project_result_write_never_rewrites_historical_bundle(tmp_path):
         if path.is_file()
     }
 
-    with pytest.raises(RuntimeError, match="destination already contains content"):
+    with pytest.raises(RuntimeError, match="destination already exists"):
         design_only.run().write(output)
 
     after = {
@@ -1044,7 +1044,7 @@ def test_project_result_write_never_rewrites_historical_bundle(tmp_path):
     assert after == before
 
 
-def test_project_result_write_allows_empty_existing_output_root(tmp_path):
+def test_project_result_write_refuses_empty_existing_output_root(tmp_path):
     project = volt.Project("status-led")
 
     @project.design
@@ -1054,9 +1054,10 @@ def test_project_result_write_allows_empty_existing_output_root(tmp_path):
     output = tmp_path / "status-led.volt"
     output.mkdir()
 
-    project.run().write(output)
+    with pytest.raises(RuntimeError, match="destination already exists"):
+        project.run().write(output)
 
-    assert (output / "manifest.volt.json").exists()
+    assert list(output.iterdir()) == []
 
 
 def test_project_result_write_refuses_non_bundle_output_root(tmp_path):
@@ -1070,7 +1071,7 @@ def test_project_result_write_refuses_non_bundle_output_root(tmp_path):
     (output / "logical").mkdir(parents=True)
     (output / "logical" / "notes.txt").write_text("do not delete\n", encoding="utf-8")
 
-    with pytest.raises(RuntimeError, match="destination already contains content"):
+    with pytest.raises(RuntimeError, match="destination already exists"):
         project.run().write(output)
 
     assert (output / "logical" / "notes.txt").read_text(encoding="utf-8") == "do not delete\n"
@@ -1259,8 +1260,131 @@ def test_project_diagnostics_include_registered_library_identity():
 
     diagnostic = result.diagnostics.errors(stage="library")[0]
     assert diagnostic.source == "part:Empty"
-    assert diagnostic.report == "library:volt.test.parts"
+    assert json.loads(diagnostic.report.removeprefix("library:")) == {
+        "library_bundle_digest": library.build().digest,
+        "namespace": "volt.test.parts",
+        "version": "1.0.0",
+    }
     assert diagnostic.code == "LIBRARY_PART_MISSING_PINS"
+
+
+def test_project_bundle_scopes_library_diagnostics_to_selected_parts(tmp_path):
+    library = volt.Library("volt.test.parts")
+    library.add(
+        volt.Part(
+            name="Unused",
+            pins=(volt.PinSpec("A", 1), volt.PinSpec("B", 2)),
+            footprint=volt.FootprintDefinition(
+                ("volt.test.parts", "Overlap"),
+                pads=(
+                    volt.FootprintPad.surface_mount(
+                        "1", at=(0.0, 0.0), size=(1.0, 1.0)
+                    ),
+                    volt.FootprintPad.surface_mount(
+                        "2", at=(0.0, 0.0), size=(1.0, 1.0)
+                    ),
+                ),
+            ),
+            pads={"A": "1", "B": "2"},
+            manufacturer="Volt",
+            mpn="UNUSED",
+            package="test",
+        )
+    )
+    project = volt.Project("selected-library-scope")
+    project.use_library(library)
+
+    @project.design
+    def design():
+        return volt.Design("main")
+
+    result = project.run_through(project.design)
+    assert [
+        diagnostic.code
+        for diagnostic in result.diagnostics
+        if diagnostic.stage == "library"
+    ] == ["PART_PAD_OVERLAP"]
+
+    path = tmp_path / "selected-library-scope.volt"
+    result.write(path)
+    bundle = volt.ProjectBundle.open(path)
+    report = json.loads(bundle.v2.loaded_project.diagnostics.bytes)
+
+    assert report["status"] == "clean"
+    assert report["diagnostics"] == []
+    assert report["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
+
+
+def test_project_bundle_scopes_library_diagnostics_by_exact_release_and_part_key(
+    tmp_path,
+):
+    def exact_part(name, source_name, footprint_name):
+        return volt.Part(
+            name=name,
+            source_name=source_name,
+            pins=(volt.PinSpec("A", 1),),
+            footprint=volt.FootprintDefinition(
+                ("volt.test.release", footprint_name),
+                pads=(
+                    volt.FootprintPad.surface_mount(
+                        "1", at=(0.0, 0.0), size=(1.0, 1.0)
+                    ),
+                ),
+            ),
+            pads={"A": "1"},
+            manufacturer="Volt",
+            mpn=name.upper(),
+            package="test",
+        )
+
+    first_release = volt.Library("volt.test.release", version="1")
+    first = first_release.add(exact_part("Selected", "B", "First"))
+    unused_release = volt.Library("volt.test.release", version="2")
+    unused_release.add(volt.Part(name="B", source_name="unused-key", pins=()))
+    third_release = volt.Library("volt.test.release", version="3")
+    third = third_release.add(exact_part("Other", "C", "Third"))
+
+    project = volt.Project("exact-library-report-scope")
+    project.use_library(first_release)
+    project.use_library(unused_release)
+    project.use_library(third_release)
+
+    @project.design
+    def design():
+        first_design = volt.Design("first")
+        first_design.instantiate(first, ref="U1")
+        third_design = volt.Design("third")
+        third_design.instantiate(third, ref="U1")
+        return (first_design, third_design)
+
+    result = project.run_through(project.design)
+    unused = [
+        diagnostic
+        for diagnostic in result.diagnostics
+        if diagnostic.code == "LIBRARY_PART_MISSING_PINS"
+    ]
+    assert len(unused) == 1
+    assert unused[0].source == "part:unused-key"
+    assert json.loads(unused[0].report.removeprefix("library:"))["version"] == "2"
+
+    path = tmp_path / "exact-library-report-scope.volt"
+    result.write(path)
+    bundle = volt.ProjectBundle.open(path)
+    report = json.loads(bundle.v2.loaded_project.diagnostics.bytes)
+
+    assert all(
+        diagnostic["source"] != "part:unused-key"
+        for diagnostic in report["diagnostics"]
+    )
+    library_errors = result.diagnostics.errors(stage="library")
+    assert {diagnostic.source for diagnostic in library_errors} == {"part:unused-key"}
+    assert report["summary"]["errors"] == (
+        len(result.diagnostics.errors()) - len(library_errors)
+    )
+    assert {
+        (row["library"], row["version"])
+        for row in bundle.v2.dependency_lock["libraries"]
+    } == {("volt.test.release", "1"), ("volt.test.release", "3")}
 
 
 def test_two_board_project_fixture_writes_deterministic_bundle(tmp_path):

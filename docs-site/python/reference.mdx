@@ -45,6 +45,11 @@ dictionary matching the kernel diagnostic entity reference.
 | `volt.Project` | Staged workflow entry point for design, schematic, PCB, diagnostics, tests, and bundle writing. |
 | `volt.ProjectStage` | Stage handle used as a build decorator and result lookup key. |
 | `volt.ProjectResult` | Output of one project run with collected models, diagnostics, tests, and artifact writing. |
+| `volt.ProjectBundle` | Move-only native owner for offline opening and complete verification of a v1 or v2 project bundle. |
+| `volt.ProjectBundleSchemaVersion` | Explicit v1/v2 manifest dispatch result. |
+| `volt.ProjectBundleStorageKind` | Opened directory or ZIP representation. |
+| `volt.BundleIntegrityStatus` | Truthful legacy-unverified or fully-verified-v2 trust state. |
+| `volt.ArtifactId` | Exact typed identity used for native-backed v2 artifact lookup. |
 | `volt.ProjectArtifactPaths` | Paths written by project-owned example and viewer artifact export. |
 | `volt.ManufacturingPackageResult` | Summary returned by `ProjectResult.write_manufacturing_package` after writing a deterministic manufacturing handoff package. |
 | `volt.ManufacturingPackageError` | Refusal raised when a manufacturing package would be unsafe or ambiguous to write. |

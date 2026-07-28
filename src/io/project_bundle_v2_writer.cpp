@@ -20,16 +20,21 @@
 #include <zlib.h>
 
 #include <volt/circuit/bom/bom.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/io/assembly/cpl_writer.hpp>
 #include <volt/io/bom/bom_writer.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
+#include <volt/io/pcb/board_scene.hpp>
 #include <volt/io/pcb/compiled_board.hpp>
 #include <volt/io/pcb/pcb_svg_writer.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/io/schematic/schematic_svg_writer.hpp>
 #include <volt/io/schematic/schematic_writer.hpp>
+
+#include "project_bundle_v2_contract.hpp"
+#include "project_bundle_v2_reports.hpp"
 
 namespace volt::io {
 namespace {
@@ -546,64 +551,6 @@ struct BoardInput {
     const PartLibraryBundle *bundle;
 };
 
-[[nodiscard]] Json point_json(BoardPoint point) {
-    return Json{{"x_mm", point.x_mm()}, {"y_mm", point.y_mm()}};
-}
-
-[[nodiscard]] std::string board_scene_bytes(const BoardScene &scene) {
-    auto models = Json::array();
-    for (const auto &model : scene.models()) {
-        models.push_back(Json{{"digest", model.reference().digest().value()}});
-    }
-    auto placements = Json::array();
-    for (const auto &placement : scene.placements()) {
-        auto transform = Json::array();
-        for (const auto value : placement.transform()) {
-            transform.push_back(value);
-        }
-        placements.push_back(Json{{"placement", placement.placement().index()},
-                                  {"component", placement.component().index()},
-                                  {"reference", placement.reference()},
-                                  {"position", point_json(placement.position())},
-                                  {"rotation_deg", placement.rotation().degrees()},
-                                  {"side", placement.side() == BoardSide::Top ? "top" : "bottom"},
-                                  {"transform", std::move(transform)},
-                                  {"model_digest", placement.model().has_value()
-                                                       ? Json(placement.model()->digest().value())
-                                                       : Json(nullptr)}});
-    }
-    const auto &geometry = scene.geometry();
-    auto outline = Json{nullptr};
-    if (geometry.outline.has_value()) {
-        outline = Json::array();
-        for (const auto point : *geometry.outline) {
-            outline.push_back(point_json(point));
-        }
-    }
-    auto stackup = Json::array();
-    for (const auto &layer : geometry.stackup) {
-        stackup.push_back(Json{{"layer", layer.layer.index()},
-                               {"order", layer.order},
-                               {"name", layer.name},
-                               {"z_mm", layer.z_mm},
-                               {"thickness_mm", layer.thickness_mm},
-                               {"enabled", layer.enabled}});
-    }
-    return canonical(Json{
-        {"format", "volt.board-scene"},
-        {"schema_version", 1},
-        {"source", compiled_identity_json(scene.source())},
-        {"geometry",
-         Json{{"units", "mm"},
-              {"thickness_mm",
-               geometry.thickness_mm.has_value() ? Json(*geometry.thickness_mm) : Json(nullptr)},
-              {"outline", std::move(outline)},
-              {"stackup", std::move(stackup)}}},
-        {"placements", std::move(placements)},
-        {"models", std::move(models)},
-    });
-}
-
 [[nodiscard]] PartAssetReference footprint_reference(const PartDefinition &part) {
     const auto &footprint = part.orderable_part().footprint();
     return PartAssetReference{PartAssetKind::Footprint,
@@ -1096,17 +1043,11 @@ void ProjectBundleV2::write(const std::filesystem::path &destination,
     require(!std::filesystem::is_symlink(std::filesystem::symlink_status(parent)),
             "destination parent must not be a symbolic link", ErrorCode::InvalidArgument);
 
-    auto existing_empty_directory = false;
     const auto destination_status = std::filesystem::symlink_status(destination);
     require(!std::filesystem::is_symlink(destination_status),
             "destination must not be a symbolic link", ErrorCode::InvalidArgument);
-    if (std::filesystem::exists(destination_status)) {
-        existing_empty_directory =
-            std::filesystem::is_directory(destination) && std::filesystem::is_empty(destination);
-        require(existing_empty_directory &&
-                    representation == ProjectBundleV2Representation::Directory,
-                "destination already contains content", ErrorCode::InvalidState);
-    }
+    require(!std::filesystem::exists(destination_status), "destination already exists",
+            ErrorCode::InvalidState);
 
     auto stage = staging_path(destination);
     while (!std::filesystem::create_directory(stage)) {
@@ -1121,10 +1062,6 @@ void ProjectBundleV2::write(const std::filesystem::path &destination,
             write_file(stage / "bundle.zip", archive_bytes());
         } else {
             reject("output representation is unsupported", ErrorCode::InvalidArgument);
-        }
-        if (existing_empty_directory) {
-            require(std::filesystem::remove(destination), "could not replace the empty destination",
-                    ErrorCode::InvalidState);
         }
         if (representation == ProjectBundleV2Representation::Zip) {
             std::filesystem::create_hard_link(stage / "bundle.zip", destination);
@@ -1148,44 +1085,57 @@ struct ValidatedProjectBuild {
     std::map<std::string, const LogicalInput *> logical_by_design;
 };
 
-[[nodiscard]] Json parse_project_report(std::string_view bytes, std::string_view name) {
-    try {
-        return Json::parse(bytes.begin(), bytes.end());
-    } catch (const std::exception &error) {
-        reject(std::string{name} + " report is not valid JSON: " + error.what(),
-               ErrorCode::InvalidArgument);
+[[nodiscard]] detail::ProjectReportReferenceContext
+project_report_reference_context(std::span<const LogicalInput> logicals,
+                                 std::span<const SchematicInput> schematics,
+                                 std::span<const BoardInput> boards) {
+    auto result = detail::ProjectReportReferenceContext{};
+    for (const auto &logical : logicals) {
+        result.logicals.push_back({logical.design.value(), logical.circuit});
+        for (auto index = std::size_t{0}; index < logical.circuit->all<ComponentId>().size();
+             ++index) {
+            const auto &selected =
+                queries::selected_library_part_ref(*logical.circuit, ComponentId{index});
+            if (selected.has_value()) {
+                const auto &part = logical.bundle->resolve(*selected);
+                const auto reference = footprint_reference(part);
+                const auto bytes = logical.bundle->asset(reference);
+                require(bytes.has_value(),
+                        "project diagnostic selected footprint bytes are missing",
+                        ErrorCode::UnknownEntity);
+                const auto footprint = read_footprint_asset(*bytes);
+                require(footprint.ref() == part.orderable_part().footprint().footprint(),
+                        "project diagnostic selected footprint payload disagrees with its part");
+                result.selected_parts.push_back({*selected, footprint.pad_count()});
+            }
+        }
     }
+    for (const auto &schematic : schematics) {
+        result.schematics.push_back(
+            {schematic.design.value(), schematic.key.value(), schematic.schematic});
+    }
+    for (const auto &board : boards) {
+        result.boards.push_back({board.design.value(), board.board->name().value(), board.board});
+    }
+    return result;
 }
 
 [[nodiscard]] ValidatedProjectBuild
 validate_project_build(const ProjectRunSummary &run, const LogicalInputName &entrypoint,
                        std::span<const AuthoringInput> inputs, const ProjectReport &diagnostics,
-                       const ProjectReport &tests, std::span<const LogicalInput> logicals) {
+                       const ProjectReport &tests, std::span<const LogicalInput> logicals,
+                       std::span<const SchematicInput> schematics,
+                       std::span<const BoardInput> boards) {
     require(!logicals.empty(), "a complete bundle requires at least one logical model",
             ErrorCode::InvalidState);
     require(run.ok == (run.status != ProjectStatus::Failed),
             "run ok flag disagrees with its closed status");
-    const auto diagnostics_report = parse_project_report(diagnostics.bytes, "diagnostics");
-    require(
-        diagnostics_report.is_object() && diagnostics_report.size() == 6U &&
-            diagnostics_report.contains("status") && diagnostics_report.contains("summary") &&
-            diagnostics_report.contains("diagnostics") && diagnostics_report.contains("expected") &&
-            diagnostics_report.contains("unexpected") &&
-            diagnostics_report.contains("missing_expected"),
-        "diagnostics report does not match its closed project codec", ErrorCode::InvalidArgument);
-    require(diagnostics_report.at("status").is_string() &&
-                diagnostics_report.at("status").get<std::string>() == status_name(run.status),
-            "run status disagrees with the diagnostics report");
-    const auto tests_report = parse_project_report(tests.bytes, "project-tests");
-    require(
-        tests_report.is_object() && tests_report.size() == 2U && tests_report.contains("summary") &&
-            tests_report.contains("tests") && tests_report.at("summary").is_object() &&
-            tests_report.at("summary").contains("failed") &&
-            tests_report.at("summary").at("failed").is_number_unsigned(),
-        "project-tests report does not match its closed project codec", ErrorCode::InvalidArgument);
-    const auto failed_tests = tests_report.at("summary").at("failed").get<std::uint64_t>();
-    require(failed_tests == 0U || run.status == ProjectStatus::Failed,
-            "run status disagrees with failed project tests");
+    const auto reports = detail::read_project_reports(diagnostics.bytes, tests.bytes);
+    require(reports.status == run.status && reports.ok == run.ok,
+            "run status disagrees with the decoded project reports");
+    const auto reference_error = detail::project_report_reference_error(
+        reports, project_report_reference_context(logicals, schematics, boards));
+    require(!reference_error.has_value(), reference_error.value_or(""));
 
     auto input_records = std::vector<std::tuple<AuthoringInputKind, std::string, ContentHash>>{};
     input_records.reserve(inputs.size());
@@ -1713,7 +1663,7 @@ void ProjectArtifactGraph::accumulate_authoritative_artifacts(
         const auto scene_id = ArtifactId{ArtifactKind::BoardScene,
                                          BoardSceneArtifactIdentity{board.compiled->identity()}};
         const auto &scene_artifact =
-            add_artifact(scene_id, board_scene_bytes(*board.scene), std::move(scene_dependencies),
+            add_artifact(scene_id, write_board_scene(*board.scene), std::move(scene_dependencies),
                          sha256_content_hash(""));
         static_cast<void>(scene_artifact);
     }
@@ -2102,10 +2052,43 @@ void ProjectArtifactGraph::validate() {
 
 } // namespace
 
+namespace detail {
+
+std::string project_bundle_v2_artifact_id_json(const ArtifactId &id) {
+    return canonical(artifact_id_json(id));
+}
+
+std::string project_bundle_v2_artifact_ref_json(const ArtifactRef &reference) {
+    return canonical(artifact_ref_json(reference));
+}
+
+std::string project_bundle_v2_artifact_key(const ArtifactId &id) { return artifact_key(id); }
+
+std::string project_bundle_v2_artifact_path(const ArtifactId &id) { return artifact_path(id); }
+
+bool project_bundle_v2_safe_path(std::string_view path) { return safe_bundle_path(path); }
+
+ArtifactRole project_bundle_v2_role_for_kind(ArtifactKind kind) { return role_for_kind(kind); }
+
+ProjectBundleV2SchemaInfo project_bundle_v2_schema_for_kind(ArtifactKind kind) {
+    const auto schema = schema_for_kind(kind);
+    return {schema.format, schema.version, schema.media_type};
+}
+
+std::string project_bundle_v2_producer_for_kind(ArtifactKind kind) {
+    return library_producer_name(kind);
+}
+
+std::string project_bundle_v2_export_request_json(const ExportRequest &request) {
+    return canonical(export_request_json(request));
+}
+
+} // namespace detail
+
 ProjectBundleV2 ProjectBundleV2Builder::build() const {
-    const auto validated =
-        validate_project_build(storage_->run, storage_->entrypoint, storage_->inputs,
-                               storage_->diagnostics, storage_->tests, storage_->logicals);
+    const auto validated = validate_project_build(
+        storage_->run, storage_->entrypoint, storage_->inputs, storage_->diagnostics,
+        storage_->tests, storage_->logicals, storage_->schematics, storage_->boards);
     auto graph = ProjectArtifactGraph{};
     graph.accumulate_authoritative_artifacts(validated, storage_->logicals, storage_->schematics,
                                              storage_->boards, storage_->diagnostics,

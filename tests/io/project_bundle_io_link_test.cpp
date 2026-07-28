@@ -1,9 +1,14 @@
+#include <concepts>
 #include <optional>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 #include <volt/io/parts/part_library_bundle.hpp>
+#include <volt/io/pcb/board_scene.hpp>
 #include <volt/io/project_bundle.hpp>
 #include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/io/schematic/schematic_reader.hpp>
 #include <volt/io/schematic/schematic_writer.hpp>
 
 static_assert(!std::is_copy_constructible_v<volt::io::ProjectBundle>);
@@ -11,6 +16,88 @@ static_assert(std::is_move_constructible_v<volt::io::ProjectBundle>);
 static_assert(!std::is_default_constructible_v<volt::io::ProjectBundleGraphV2View>);
 static_assert(!std::is_copy_constructible_v<volt::io::ProjectBundleV2>);
 static_assert(std::is_move_constructible_v<volt::io::ProjectBundleV2>);
+static_assert(std::same_as<
+              decltype(std::declval<const volt::io::ProjectBundleV2ArtifactView &>().descriptor()),
+              const volt::io::ArtifactDescriptor &>);
+static_assert(
+    std::same_as<decltype(std::declval<const volt::io::ProjectBundleV2ArtifactView &>().id_json()),
+                 std::string>);
+static_assert(std::same_as<decltype(std::declval<const volt::io::ProjectBundleV2ArtifactView &>()
+                                        .manifest_record_json()),
+                           std::string>);
+static_assert(
+    std::same_as<decltype(std::declval<const volt::io::ProjectBundleV2ArtifactView &>().bytes()),
+                 std::string>);
+static_assert(
+    std::same_as<decltype(std::declval<const volt::io::LoadedLogicalModelView &>().design()),
+                 const volt::io::DesignKey &>);
+static_assert(
+    std::same_as<decltype(std::declval<const volt::io::LoadedLogicalModelView &>().artifact()),
+                 volt::io::ProjectBundleV2ArtifactView>);
+static_assert(
+    std::same_as<decltype(std::declval<const volt::io::LoadedLogicalModelView &>().model()),
+                 const volt::Circuit &>);
+static_assert(
+    std::same_as<decltype(std::declval<const volt::io::LoadedSchematicView &>().circuit()),
+                 volt::io::LoadedLogicalModelView>);
+static_assert(std::same_as<decltype(std::declval<const volt::io::LoadedSchematicView &>().model()),
+                           const volt::Schematic &>);
+static_assert(std::same_as<decltype(std::declval<const volt::io::LoadedBoardView &>().circuit()),
+                           volt::io::LoadedLogicalModelView>);
+static_assert(std::same_as<decltype(std::declval<const volt::io::LoadedBoardView &>().model()),
+                           const volt::Board &>);
+static_assert(
+    std::same_as<decltype(std::declval<const volt::io::LoadedCompiledBoardView &>().identity()),
+                 const volt::CompiledBoardIdentity &>);
+static_assert(
+    std::same_as<decltype(std::declval<const volt::io::LoadedCompiledBoardView &>().model()),
+                 const volt::CompiledBoard &>);
+static_assert(
+    std::same_as<decltype(std::declval<const volt::io::LoadedBoardSceneView &>().compiled_board()),
+                 volt::io::LoadedCompiledBoardView>);
+static_assert(std::same_as<decltype(std::declval<const volt::io::LoadedBoardSceneView &>().model()),
+                           const volt::BoardScene &>);
+static_assert(std::same_as<decltype(std::declval<const volt::io::LoadedProject &>().circuits()),
+                           std::vector<volt::io::LoadedLogicalModelView>>);
+static_assert(std::same_as<decltype(std::declval<const volt::io::LoadedProject &>().schematics()),
+                           std::vector<volt::io::LoadedSchematicView>>);
+static_assert(std::same_as<decltype(std::declval<const volt::io::LoadedProject &>().boards()),
+                           std::vector<volt::io::LoadedBoardView>>);
+static_assert(
+    std::same_as<decltype(std::declval<const volt::io::LoadedProject &>().compiled_boards()),
+                 std::vector<volt::io::LoadedCompiledBoardView>>);
+static_assert(std::same_as<decltype(std::declval<const volt::io::LoadedProject &>().board_scenes()),
+                           std::vector<volt::io::LoadedBoardSceneView>>);
+static_assert(
+    std::same_as<decltype(std::declval<const volt::io::LoadedProject &>().selected_exports()),
+                 std::vector<volt::io::ProjectBundleV2ArtifactView>>);
+static_assert(
+    std::same_as<decltype(std::declval<const volt::io::ProjectBundleGraphV2View &>().artifacts()),
+                 std::vector<volt::io::ProjectBundleV2ArtifactView>>);
+static_assert(std::same_as<
+              decltype(std::declval<const volt::io::ProjectBundleGraphV2View &>().loaded_project()),
+              volt::io::LoadedProject>);
+static_assert(std::same_as<
+              decltype(std::declval<const volt::io::ProjectBundleGraphV2View &>().project_name()),
+              std::string>);
+static_assert(std::same_as<decltype(std::declval<const volt::io::ProjectBundleGraphV2View &>()
+                                        .project_version()),
+                           std::optional<std::string>>);
+static_assert(
+    std::same_as<decltype(std::declval<const volt::io::ProjectBundleGraphV2View &>().build_id()),
+                 const volt::io::BuildId &>);
+static_assert(std::same_as<
+              decltype(std::declval<const volt::io::ProjectBundleGraphV2View &>().bundle_digest()),
+              const volt::ContentHash &>);
+static_assert(std::same_as<decltype(std::declval<const volt::io::ProjectBundleGraphV2View &>()
+                                        .dependency_lock()),
+                           const volt::io::DependencyLock &>);
+static_assert(std::same_as<decltype(std::declval<const volt::io::ProjectBundleGraphV2View &>()
+                                        .export_selection()),
+                           const volt::io::ExportSelection &>);
+static_assert(std::same_as<decltype(std::declval<const volt::io::ProjectBundleGraphV2View &>()
+                                        .artifact(std::declval<const volt::io::ArtifactId &>())),
+                           std::optional<volt::io::ProjectBundleV2ArtifactView>>);
 
 namespace {
 
@@ -54,6 +141,12 @@ int main() {
         volt::io::ProjectReport{R"({"summary":{"passed":0,"failed":0},"tests":[]})"}};
     bundle_builder.add_logical(volt::io::DesignKey{"link"}, circuit, library);
     const auto project_bundle = bundle_builder.build();
+    auto *volatile write_scene = &volt::io::write_board_scene;
+    auto *volatile read_scene = &volt::io::read_board_scene;
+    auto *volatile read_symbol_text = &volt::io::read_symbol_definition_text;
+    static_cast<void>(write_scene);
+    static_cast<void>(read_scene);
+    static_cast<void>(read_symbol_text);
     return static_cast<int>(ProjectBundleSchemaVersion::V1) == 1 &&
                    BundleIntegrityStatus::LegacyUnverified != BundleIntegrityStatus::VerifiedV2 &&
                    error.code() == ProjectBundleOpenErrorCode::MissingBundle &&

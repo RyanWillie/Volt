@@ -404,13 +404,13 @@ TEST_CASE("ProjectBundle open is offline data-only and ignores undeclared source
     CHECK(regular_file_snapshot(root) == before);
 }
 
-TEST_CASE("ProjectBundle explicitly recognizes but does not partially open v2 or unknown schemas") {
+TEST_CASE("ProjectBundle fail-closed dispatch rejects incomplete v2 and unknown schemas") {
     {
         auto temporary = TempDirectory{};
         const auto root = copy_fixture(temporary);
         write_bytes(root / "manifest.volt.json",
                     R"({"format":"volt.project_result","schema_version":2,"v2_only":true})");
-        CHECK(open_error(root) == volt::io::ProjectBundleOpenErrorCode::UnsupportedSchema);
+        CHECK(open_error(root) == volt::io::ProjectBundleOpenErrorCode::MalformedManifest);
     }
     for (const auto schema : {3U}) {
         auto temporary = TempDirectory{};

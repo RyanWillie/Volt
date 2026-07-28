@@ -123,6 +123,13 @@ from .project import (
     ProjectTestResult,
     StageResult,
 )
+from .project_bundle import (
+    ArtifactId,
+    BundleIntegrityStatus,
+    ProjectBundle,
+    ProjectBundleSchemaVersion,
+    ProjectBundleStorageKind,
+)
 from ._pcb_layout import (
     BoardAnchor,
     BoardFanout,
@@ -244,6 +251,11 @@ __all__ = [
     "PortBindingInfo",
     "PortInfo",
     "Project",
+    "ProjectBundle",
+    "ArtifactId",
+    "ProjectBundleSchemaVersion",
+    "ProjectBundleStorageKind",
+    "BundleIntegrityStatus",
     "ProjectArtifactPaths",
     "ProjectDiagnostic",
     "ProjectDiagnostics",

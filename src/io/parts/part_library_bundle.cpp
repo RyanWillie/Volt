@@ -20,6 +20,7 @@
 #include <volt/core/errors.hpp>
 #include <volt/io/logical/logical_circuit_reader.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
+#include <volt/io/parts/footprint_asset.hpp>
 #include <volt/io/parts/part_definition_reader.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
 
@@ -201,6 +202,25 @@ void require_canonical_relative_path(std::string_view path) {
     return "assets/" + role_name(role_for_asset(reference.kind())) + "/" +
            hash_suffix(sha256_content_hash(reference.key())) + "-" +
            hash_suffix(reference.digest()) + ".bin";
+}
+
+void require_asset_payload_matches_reference(const PartAssetReference &reference,
+                                             std::string_view bytes,
+                                             const FootprintRef *expected_ref = nullptr) {
+    if (reference.kind() != PartAssetKind::Footprint) {
+        return;
+    }
+    const auto footprint = read_footprint_asset(bytes);
+    require_bundle(write_footprint_asset(footprint) == bytes,
+                   "PartLibraryBundle footprint asset bytes are not canonical");
+    const auto expected_key =
+        "footprint:" + footprint.ref().library() + "/" + footprint.ref().name();
+    require_bundle(reference.key() == expected_key,
+                   "PartLibraryBundle footprint asset identity does not match its payload",
+                   ErrorCode::CrossReferenceViolation);
+    require_bundle(expected_ref == nullptr || footprint.ref() == *expected_ref,
+                   "PartLibraryBundle footprint payload does not match the selected part",
+                   ErrorCode::CrossReferenceViolation);
 }
 
 void append_u64(std::string &out, std::uint64_t value) {
@@ -766,13 +786,16 @@ PartLibraryBundle PartLibraryBundle::build_with_component_roots(
     };
 
     auto resolved_assets = std::map<std::string, ResolvedAsset>{};
-    auto resolve_asset = [&](const PartAssetReference &reference) {
+    auto resolve_asset = [&](const PartAssetReference &reference,
+                             const FootprintRef *expected_ref = nullptr) {
         const auto id = asset_id(reference);
         const auto existing = resolved_assets.find(id);
         if (existing != resolved_assets.end()) {
             require_bundle(existing->second.reference.digest() == reference.digest(),
                            "PartLibraryBundle asset role and key resolve to conflicting digests",
                            ErrorCode::CrossReferenceViolation);
+            require_asset_payload_matches_reference(reference, existing->second.bytes,
+                                                    expected_ref);
             return id;
         }
         const auto bytes = asset_resolver.resolve(reference);
@@ -781,6 +804,7 @@ PartLibraryBundle PartLibraryBundle::build_with_component_roots(
         require_bundle(sha256_content_hash(*bytes) == reference.digest(),
                        "PartLibraryBundle selected asset digest does not match its bytes",
                        ErrorCode::CrossReferenceViolation);
+        require_asset_payload_matches_reference(reference, *bytes, expected_ref);
         resolved_assets.emplace(id, ResolvedAsset{reference, *bytes});
         return id;
     };
@@ -837,7 +861,12 @@ PartLibraryBundle PartLibraryBundle::build_with_component_roots(
             component_id(*std::ranges::find(selected_components, part.implemented_component(),
                                             &ComponentDefinition::content_identity))};
         for (const auto &reference : part_asset_references(part)) {
-            dependencies.push_back(resolve_asset(reference));
+            if (reference.kind() == PartAssetKind::Footprint) {
+                dependencies.push_back(
+                    resolve_asset(reference, &part.orderable_part().footprint().footprint()));
+            } else {
+                dependencies.push_back(resolve_asset(reference));
+            }
         }
         for (const auto &attachment : attachments) {
             if (attachment.part() == PartKey{part.identity().name()}) {
@@ -1077,6 +1106,11 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
                                    asset_entry.digest() == reference.digest(),
                                "PartLibraryBundle recorded asset does not match the exact part",
                                ErrorCode::CrossReferenceViolation);
+                require_asset_payload_matches_reference(
+                    reference, payloads_by_id.at(asset_entry.id()),
+                    reference.kind() == PartAssetKind::Footprint
+                        ? &part.orderable_part().footprint().footprint()
+                        : nullptr);
                 expected_dependencies.push_back(id);
             }
             for (const auto &dependency : entry.dependencies()) {
@@ -1117,9 +1151,10 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
             if (!is_asset_role(entry.role())) {
                 continue;
             }
-            resolver.add(PartAssetReference{asset_kind_for_role(entry.role()), *entry.source_key(),
-                                            entry.digest()},
-                         payloads_by_id.at(entry.id()));
+            const auto reference = PartAssetReference{asset_kind_for_role(entry.role()),
+                                                      *entry.source_key(), entry.digest()};
+            require_asset_payload_matches_reference(reference, payloads_by_id.at(entry.id()));
+            resolver.add(reference, payloads_by_id.at(entry.id()));
         }
         auto library = builder.build(resolver);
         require_bundle(library.digest() ==

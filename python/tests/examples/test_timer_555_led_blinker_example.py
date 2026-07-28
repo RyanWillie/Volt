@@ -92,7 +92,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
 
         stale_page = artifacts.schematic_svg_pages[0].parent / "stale.svg"
         stale_page.write_text("<svg></svg>\n", encoding="utf-8")
-        with pytest.raises(RuntimeError, match="destination already contains content"):
+        with pytest.raises(RuntimeError, match="destination already exists"):
             _write_timer_artifacts(main, Path(temp_dir))
         assert stale_page.exists()
 
