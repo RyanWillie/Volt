@@ -2,7 +2,6 @@ import importlib
 import json
 import os
 import sys
-import zipfile
 from pathlib import Path
 
 import pytest
@@ -310,10 +309,16 @@ profile = "profiles/generic.volt.json"
     _write_manufacturing_entrypoint(root, lossy=lossy, board_profile=board_profile)
 
 
-def test_export_manufacturing_writes_deterministic_native_package(tmp_path, capsys):
+def test_export_manufacturing_reports_verified_bundle_migration_without_writing(
+    tmp_path, capsys
+):
     root = tmp_path / "board"
     output = tmp_path / "manufacturing-package"
     _write_manufacturing_project(root)
+    root.joinpath("project_entry.py").write_text(
+        "raise RuntimeError('retired command executed project source')\n",
+        encoding="utf-8",
+    )
 
     assert (
         main(
@@ -328,134 +333,25 @@ def test_export_manufacturing_writes_deterministic_native_package(tmp_path, caps
                 str(root),
             ]
         )
-        == 0
+        == 2
     )
 
     payload = _read_stdout_json(capsys)
-    archive = output.with_suffix(".zip")
-    assert payload["status"] == "clean"
-    assert payload["written"] is True
-    assert payload["output"] == str(output)
-    assert payload["archive"] == str(archive)
-    assert {
-        key: payload["board"][key] for key in ("design", "name", "output_name")
-    } == {
-        "design": "status-led",
-        "name": "Control",
-        "output_name": "Control",
-    }
-    assert payload["board"]["compiled_board_provenance_digest"].startswith("sha256:")
-
-    manifest_path = output / "manufacturing" / "manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    assert manifest["format"] == "volt.manufacturing_package"
-    assert manifest["schema_version"] == 1
-    assert manifest["project"] == {
-        "name": "status-led",
-        "version": None,
-        "description": None,
-    }
-    assert manifest["command"] == {
-        "name": "volt export manufacturing",
-        "board": None,
-        "archive": True,
-    }
-    assert manifest["profile"]["config"] == {
-        "path": "profiles/generic.volt.json",
-        "resolved_path": str(root / "profiles" / "generic.volt.json"),
-    }
-    assert manifest["profile"]["board"]["name"] == "Generic 2-layer manufacturing test profile"
-    assert manifest["diagnostics"]["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
-    assert manifest["native_fabrication"]["coverage"] == {
-        "classification": "complete",
-        "fab_critical_loss": False,
-    }
-    assert manifest["native_fabrication"]["source"] == {
-        "board": "Control",
-        "provenance_digest": payload["board"]["compiled_board_provenance_digest"],
-    }
-    assert manifest["native_fabrication"]["warnings"] == []
-    assert [item["filename"] for item in manifest["native_fabrication"]["files"]] == [
-        "Control.GTL",
-        "Control.GBL",
-        "Control.GTS",
-        "Control.GBS",
-        "Control.GTO",
-        "Control.GTP",
-        "Control.GKO",
-        "Control-PTH.TXT",
-        "Control-NPTH.TXT",
-    ]
-
-    artifact_paths = {item["kind"]: item["path"] for item in manifest["artifacts"]}
-    for kind in ("project_manifest", "bom", "bom_csv", "cpl", "cpl_csv", "diagnostics"):
-        assert output.joinpath(artifact_paths[kind]).is_file()
-
-    native_paths = {
-        item["filename"]: output.joinpath(item["path"])
-        for item in manifest["native_fabrication"]["files"]
-    }
-    assert "%TF.FileFunction,Copper,L1,Top*%" in native_paths["Control.GTL"].read_text(
-        encoding="utf-8"
-    )
-    assert "%TF.FileFunction,Soldermask,Top*%" in native_paths["Control.GTS"].read_text(
-        encoding="utf-8"
-    )
-    assert "%TF.FileFunction,Paste,Top*%" in native_paths["Control.GTP"].read_text(
-        encoding="utf-8"
-    )
-    assert "%TF.FileFunction,Legend,Top*%" in native_paths["Control.GTO"].read_text(
-        encoding="utf-8"
-    )
-    assert "%TF.FileFunction,Profile,NP*%" in native_paths["Control.GKO"].read_text(
-        encoding="utf-8"
-    )
-    assert ";TYPE=PLATED" in native_paths["Control-PTH.TXT"].read_text(encoding="utf-8")
-    assert ";TYPE=NON_PLATED" in native_paths["Control-NPTH.TXT"].read_text(encoding="utf-8")
-
-    inspection = output / "manufacturing" / "inspection.html"
-    inspection_text = inspection.read_text(encoding="utf-8")
-    assert "Native fabrication inspection" in inspection_text
-    assert "Control.GTL" in inspection_text
-    assert "Control-PTH.TXT" in inspection_text
-
-    with zipfile.ZipFile(archive) as package:
-        assert "manufacturing/manifest.json" in package.namelist()
-        assert "manufacturing/fabrication/gerber/Control.GTL" in package.namelist()
-        assert "manufacturing/fabrication/drill/Control-PTH.TXT" in package.namelist()
-
-    first = _directory_bytes(output)
-    first_archive = archive.read_bytes()
-    output.joinpath("stale-order-file.txt").write_text("stale", encoding="utf-8")
-    output.joinpath("manufacturing", "old-gerber.gbr").write_text("stale", encoding="utf-8")
-
-    assert (
-        main(
-            [
-                "export",
-                "manufacturing",
-                "--json",
-                "--archive",
-                "--output",
-                str(output),
-                "--project",
-                str(root),
-            ]
-        )
-        == 0
-    )
-    _read_stdout_json(capsys)
-    assert _directory_bytes(output) == first
-    assert archive.read_bytes() == first_archive
-    with zipfile.ZipFile(archive) as package:
-        assert "stale-order-file.txt" not in package.namelist()
-        assert "manufacturing/old-gerber.gbr" not in package.namelist()
+    assert payload["format"] == "volt.cli-result"
+    assert payload["schema_version"] == 1
+    assert payload["command"] == "export"
+    assert payload["error"]["code"] == "source-backed-export-retired"
+    assert "Select `fabrication` during `volt build`" in payload["error"]["message"]
+    assert "`volt export --bundle ...`" in payload["error"]["message"]
+    assert not output.exists()
+    assert not output.with_suffix(".zip").exists()
 
 
-def test_project_result_writes_same_manufacturing_package_as_cli(tmp_path, capsys):
+def test_project_result_manufacturing_package_remains_available_after_cli_retirement(
+    tmp_path,
+):
     root = tmp_path / "board"
     direct_output = tmp_path / "direct-package"
-    cli_output = tmp_path / "cli-package"
     _write_manufacturing_project(root)
 
     result = _run_project_direct(root)
@@ -474,28 +370,6 @@ def test_project_result_writes_same_manufacturing_package_as_cli(tmp_path, capsy
         "output_name": "Control",
     }
     assert written.board["compiled_board_provenance_digest"].startswith("sha256:")
-
-    assert (
-        main(
-            [
-                "export",
-                "manufacturing",
-                "--json",
-                "--archive",
-                "--output",
-                str(cli_output),
-                "--project",
-                str(root),
-            ]
-        )
-        == 0
-    )
-    _read_stdout_json(capsys)
-
-    assert _directory_bytes(direct_output) == _directory_bytes(cli_output)
-    assert direct_output.with_suffix(".zip").read_bytes() == cli_output.with_suffix(
-        ".zip"
-    ).read_bytes()
 
 
 def test_project_result_manufacturing_package_rerun_is_deterministic(tmp_path):
@@ -657,134 +531,4 @@ def main():
 
     with pytest.raises(LookupError, match="No board named 'missing'"):
         result.write_manufacturing_package(output, board="missing")
-    assert not output.exists()
-
-
-def test_export_manufacturing_refuses_fab_critical_native_loss_without_writing(
-    tmp_path, capsys
-):
-    root = tmp_path / "board"
-    output = tmp_path / "manufacturing-package"
-    _write_manufacturing_project(root, lossy=True)
-
-    assert (
-        main(
-            [
-                "export",
-                "manufacturing",
-                "--json",
-                "--output",
-                str(output),
-                "--project",
-                str(root),
-            ]
-        )
-        == 1
-    )
-
-    payload = _read_stdout_json(capsys)
-    assert payload["status"] == "native-fabrication-loss"
-    assert payload["written"] is False
-    assert payload["native_fabrication"]["coverage"] == {
-        "classification": "fab-critical-loss",
-        "fab_critical_loss": True,
-    }
-    assert [warning["construct"] for warning in payload["native_fabrication"]["warnings"]] == [
-        "board.feature.hole.finished_diameter"
-    ]
-    assert not output.exists()
-
-
-def test_export_manufacturing_refuses_missing_profile_without_writing(tmp_path, capsys):
-    root = tmp_path / "board"
-    output = tmp_path / "manufacturing-package"
-    _write_manufacturing_project(root, config_profile=False)
-
-    assert (
-        main(
-            [
-                "export",
-                "manufacturing",
-                "--json",
-                "--output",
-                str(output),
-                "--project",
-                str(root),
-            ]
-        )
-        == 1
-    )
-
-    payload = _read_stdout_json(capsys)
-    assert payload["status"] == "missing-manufacturing-profile"
-    assert payload["written"] is False
-    assert not output.exists()
-
-
-def test_export_manufacturing_reports_board_selector_errors_without_writing(
-    tmp_path, capsys
-):
-    root = tmp_path / "board"
-    output = tmp_path / "manufacturing-package"
-    _write_project(root)
-    _write_entrypoint(
-        root,
-        """import volt
-
-def main():
-    project = volt.Project("control-panel")
-
-    @project.design
-    def design():
-        return (volt.Design("main-controller"), volt.Design("front-panel"))
-
-    @project.board
-    def board(context):
-        boards = []
-        for design in context.designs:
-            board = design.add_board("Main")
-            board.set_rectangular_outline(origin=(0, 0), size=(20, 10))
-            boards.append(board)
-        return tuple(boards)
-
-    return project.run()
-""",
-    )
-
-    assert (
-        main(
-            [
-                "export",
-                "manufacturing",
-                "--output",
-                str(output),
-                "--project",
-                str(root),
-            ]
-        )
-        == 2
-    )
-    ambiguous = capsys.readouterr()
-    assert ambiguous.out == ""
-    assert "Project result has multiple boards; pass --board" in ambiguous.err
-    assert not output.exists()
-
-    assert (
-        main(
-            [
-                "export",
-                "manufacturing",
-                "--output",
-                str(output),
-                "--board",
-                "missing",
-                "--project",
-                str(root),
-            ]
-        )
-        == 2
-    )
-    missing = capsys.readouterr()
-    assert missing.out == ""
-    assert "No board named 'missing'" in missing.err
     assert not output.exists()

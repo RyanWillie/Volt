@@ -540,10 +540,12 @@ def test_diagnostics_json_reuses_bundle_schema_and_filters(tmp_path, capsys):
         "missing_expected",
         "status",
         "summary",
+        "tests",
         "unexpected",
     }
     assert payload["status"] == "failed"
     assert payload["summary"] == {"errors": 0, "infos": 0, "warnings": 1}
+    assert payload["tests"] == {"summary": {"failed": 0, "passed": 0}, "tests": []}
     assert [item["code"] for item in payload["diagnostics"]] == ["SINGLE_PIN_NET"]
     diagnostic = payload["diagnostics"][0]
     assert {
@@ -636,7 +638,7 @@ def main():
     assert output.joinpath(logical["path"]).is_file()
 
 
-def test_build_json_gates_failed_project_without_writing(tmp_path, capsys):
+def test_build_json_persists_failed_project_evidence(tmp_path, capsys):
     root = tmp_path / "board"
     output = tmp_path / "bundle"
     _write_project(root)
@@ -648,15 +650,20 @@ def test_build_json_gates_failed_project_without_writing(tmp_path, capsys):
     )
 
     payload = _read_stdout_json(capsys)
+    assert payload["format"] == "volt.cli-result"
+    assert payload["schema_version"] == 1
+    assert payload["command"] == "build"
     assert payload["status"] == "failed"
     assert payload["ok"] is False
-    assert payload["written"] is False
+    assert payload["structurally_valid"] is True
+    assert payload["target_ready"] is False
+    assert payload["written"] is True
     assert payload["output"] == str(output)
     assert payload["diagnostics"]["summary"]["errors"] > 0
-    assert not output.exists()
+    assert output.joinpath("manifest.volt.json").is_file()
 
 
-def test_build_flat_uses_existing_flat_artifact_writer(tmp_path, capsys):
+def test_build_flat_reports_selected_export_migration(tmp_path, capsys):
     root = tmp_path / "board"
     output = tmp_path / "flat"
     _write_project(root)
@@ -677,13 +684,14 @@ def main():
 
     assert (
         main(["build", "--flat", "--output", str(output), "--project", str(root)])
-        == 0
+        == 2
     )
 
-    capsys.readouterr()
-    assert output.joinpath("status-led.volt.json").is_file()
-    assert output.joinpath("status-led.validation.json").is_file()
-    assert not output.joinpath("manifest.volt.json").exists()
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "`volt build --flat` is retired" in captured.err
+    assert "`volt build --export ...`" in captured.err
+    assert not output.exists()
 
 
 def test_info_json_reports_project_metadata_without_gating(tmp_path, capsys):
@@ -916,16 +924,23 @@ def main():
 
     assert main(["model", "--json", "--project", str(root), "--schematic", "Main"]) == 2
     ambiguous = capsys.readouterr()
-    assert ambiguous.out == ""
-    assert "Ambiguous schematic selector 'Main'" in ambiguous.err
-    assert "main-controller:Main" in ambiguous.err
-    assert "front-panel:Main" in ambiguous.err
+    assert ambiguous.err == ""
+    ambiguous_payload = json.loads(ambiguous.out)
+    assert ambiguous_payload["format"] == "volt.cli-result"
+    assert ambiguous_payload["command"] == "model"
+    assert ambiguous_payload["error"]["code"] == "command-failed"
+    assert "Ambiguous schematic selector 'Main'" in ambiguous_payload["error"]["message"]
+    assert "main-controller:Main" in ambiguous_payload["error"]["message"]
+    assert "front-panel:Main" in ambiguous_payload["error"]["message"]
 
     assert main(["model", "--json", "--project", str(root), "--board", "missing"]) == 2
     missing = capsys.readouterr()
-    assert missing.out == ""
-    assert "No board named 'missing'" in missing.err
-    assert "Candidates: <none>" in missing.err
+    assert missing.err == ""
+    missing_payload = json.loads(missing.out)
+    assert missing_payload["format"] == "volt.cli-result"
+    assert missing_payload["command"] == "model"
+    assert "No board named 'missing'" in missing_payload["error"]["message"]
+    assert "Candidates: <none>" in missing_payload["error"]["message"]
 
 
 def test_library_commands_build_reopen_inspect_and_extract_deterministically(tmp_path, capsys):
