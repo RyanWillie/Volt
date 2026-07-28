@@ -108,6 +108,11 @@ def _one(items: tuple[object, ...], selector: str | None, kind: str):
 def _board(result, selector: str | None):
     boards = result.boards
     candidates = tuple(f"{board._design.name}:{board.name}" for board in boards)
+    if not boards:
+        raise CliError(
+            "Project has no Boards. Candidates: <none>",
+            code="invalid-board-selector",
+        )
     if len(boards) == 1:
         board = boards[0]
         if selector in (None, board.name, candidates[0]):

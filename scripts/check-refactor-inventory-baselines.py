@@ -266,8 +266,68 @@ def current_project_writer_ownership(project_source: str) -> dict[str, object]:
         None,
     )
     require(write_method is not None, "ProjectResult.write must remain the current write entrypoint")
+    selected_write_method = next(
+        (
+            node
+            for node in project_result.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "_write_selected_bundle"
+        ),
+        None,
+    )
+    require(
+        selected_write_method is not None,
+        "ProjectResult must retain one private selected-export publication helper",
+    )
 
-    calls = [node for node in ast.walk(write_method) if isinstance(node, ast.Call)]
+    write_calls = [
+        node for node in ast.walk(write_method) if isinstance(node, ast.Call)
+    ]
+    write_call_names = [
+        qualified_python_name(call.func) for call in write_calls
+    ]
+    require(
+        write_call_names == ["self._write_selected_bundle"],
+        "ProjectResult.write must be a thin delegation to the selected-export helper",
+    )
+    delegation = write_calls[0]
+    require(
+        any(
+            isinstance(statement, ast.Expr) and statement.value is delegation
+            for statement in write_method.body
+        ),
+        "ProjectResult.write must invoke the selected-export helper directly",
+    )
+    require(
+        len(delegation.args) == 1
+        and isinstance(delegation.args[0], ast.Name)
+        and delegation.args[0].id == "path",
+        "ProjectResult.write must forward its requested destination unchanged",
+    )
+    profile_keywords = [
+        keyword for keyword in delegation.keywords if keyword.arg == "profile"
+    ]
+    require(
+        len(profile_keywords) == 1
+        and isinstance(profile_keywords[0].value, ast.Name)
+        and profile_keywords[0].value.id == "profile",
+        "ProjectResult.write must forward its requested profile unchanged",
+    )
+    selected_exports_keywords = [
+        keyword
+        for keyword in delegation.keywords
+        if keyword.arg == "selected_exports"
+    ]
+    require(
+        len(selected_exports_keywords) == 1
+        and isinstance(selected_exports_keywords[0].value, ast.List)
+        and not selected_exports_keywords[0].value.elts,
+        "ProjectResult.write must request an empty selected-export closure",
+    )
+
+    calls = [
+        node for node in ast.walk(selected_write_method) if isinstance(node, ast.Call)
+    ]
     call_names = [qualified_python_name(call.func) for call in calls]
     native_calls = [
         call
@@ -276,15 +336,25 @@ def current_project_writer_ownership(project_source: str) -> dict[str, object]:
     ]
     require(
         len(native_calls) == 1,
-        "ProjectResult.write must call the native typed v2 writer exactly once",
+        "ProjectResult selected-export helper must call the native typed v2 writer exactly once",
     )
     native_call = native_calls[0]
     require(
         any(
-            isinstance(statement, ast.Expr) and statement.value is native_call
-            for statement in write_method.body
+            isinstance(statement, ast.Return) and statement.value is native_call
+            for statement in selected_write_method.body
         ),
-        "ProjectResult.write must invoke the native typed v2 writer directly",
+        "ProjectResult selected-export helper must return the native typed v2 writer directly",
+    )
+    all_native_calls = [
+        node
+        for node in ast.walk(project_result)
+        if isinstance(node, ast.Call)
+        and qualified_python_name(node.func) == "_volt._write_project_bundle_v2"
+    ]
+    require(
+        len(all_native_calls) == 1,
+        "ProjectResult must have exactly one native typed v2 publication call",
     )
     board_preparation_calls = [
         call
@@ -293,7 +363,8 @@ def current_project_writer_ownership(project_source: str) -> dict[str, object]:
     ]
     require(
         len(board_preparation_calls) == 1,
-        "ProjectResult.write must prepare complete native Board artifacts exactly once",
+        "ProjectResult selected-export helper must prepare complete native Board artifacts "
+        "exactly once",
     )
     require(
         board_preparation_calls[0] in set(ast.walk(native_call)),
@@ -317,18 +388,25 @@ def current_project_writer_ownership(project_source: str) -> dict[str, object]:
     )
     require(
         not unexpected_calls,
-        "ProjectResult.write may only prepare typed native inputs before publication; "
+        "ProjectResult selected-export helper may only prepare typed native inputs before "
+        "publication; "
         f"unexpected calls: {unexpected_calls}",
     )
 
     native_nodes = set(ast.walk(native_call))
     path_uses = [
-        node for node in ast.walk(write_method) if isinstance(node, ast.Name) and node.id == "path"
+        node
+        for node in ast.walk(selected_write_method)
+        if isinstance(node, ast.Name) and node.id == "path"
     ]
-    require(path_uses, "ProjectResult.write must consume its requested destination")
+    require(
+        path_uses,
+        "ProjectResult selected-export helper must consume its requested destination",
+    )
     require(
         all(node in native_nodes for node in path_uses),
-        "ProjectResult.write may pass its destination only to the native typed v2 writer",
+        "ProjectResult selected-export helper may pass its destination only to the native "
+        "typed v2 writer",
     )
 
     legacy_definitions = [
@@ -642,8 +720,9 @@ def run_self_tests() -> int:
     )
 
     restored_flat_writer = project_source.replace(
-        "        _volt._write_project_bundle_v2(",
-        "        self.write_artifacts(path)\n        _volt._write_project_bundle_v2(",
+        "        return _volt._write_project_bundle_v2(",
+        "        self.write_artifacts(path)\n"
+        "        return _volt._write_project_bundle_v2(",
         1,
     )
     require_writer_ownership_rejection(
@@ -652,8 +731,9 @@ def run_self_tests() -> int:
     )
 
     restored_artifact_record = project_source.replace(
-        "        _volt._write_project_bundle_v2(",
-        '        _artifact_record("logical")\n        _volt._write_project_bundle_v2(',
+        "        return _volt._write_project_bundle_v2(",
+        '        _artifact_record("logical")\n'
+        "        return _volt._write_project_bundle_v2(",
         1,
     )
     require_writer_ownership_rejection(
@@ -669,6 +749,16 @@ def run_self_tests() -> int:
     require_writer_ownership_rejection(
         bypassed_board_preparation,
         "the ownership gate must reject bypassing complete native Board preparation",
+    )
+
+    bypassed_delegation = project_source.replace(
+        "        self._write_selected_bundle(",
+        "        self.write_artifacts(",
+        1,
+    )
+    require_writer_ownership_rejection(
+        bypassed_delegation,
+        "the ownership gate must reject bypassing the one shared native publication helper",
     )
     return 0
 

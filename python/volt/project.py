@@ -675,59 +675,11 @@ class ProjectResult:
 
     def write(self, path: str | Path, *, profile: str = "default") -> None:
         """Write a deterministic project result bundle, optionally with viewer-profile checks."""
-        if profile not in {"default", "viewer"}:
-            raise ValueError("ProjectResult.write profile must be 'default' or 'viewer'")
-        entrypoint, authoring_inputs = _project_authoring_inputs(self.project)
-        logical_inputs = [
-            (design.name, design._circuit) for design in self.designs
-        ]
-        bundle_policy = _bundle_policy_snapshot(
-            self,
-            extra_diagnostics=(),
-            logical_inputs=logical_inputs,
+        self._write_selected_bundle(
+            path,
+            profile=profile,
+            selected_exports=[],
         )
-        _volt._write_project_bundle_v2(
-            str(Path(path)),
-            self.project.name,
-            self.project.version,
-            self.project.description,
-            bundle_policy.ok,
-            bundle_policy.status,
-            profile,
-            [stage.name for stage in self._stages],
-            entrypoint,
-            authoring_inputs,
-            logical_inputs,
-            [
-                (
-                    schematic._design.name,
-                    schematic.name,
-                    schematic._design._schematic_document,
-                )
-                for schematic in self.schematics
-            ],
-            [
-                (
-                    board._design.name,
-                    _volt._prepare_project_bundle_board(
-                        board._native,
-                        profile == "viewer",
-                    ),
-                )
-                for board in self.boards
-            ],
-            _canonical_report_bytes(
-                _diagnostics_payload(
-                    self,
-                    diagnostics=bundle_policy.diagnostics,
-                    expectations=bundle_policy.expectations,
-                    status=bundle_policy.status,
-                )
-            ),
-            _canonical_report_bytes(_tests_payload(bundle_policy.tests)),
-            [],
-        )
-        return
 
     def _write_selected_bundle(
         self,
@@ -736,7 +688,7 @@ class ProjectResult:
         profile: str,
         selected_exports: list[dict[str, str]],
     ) -> dict[str, object]:
-        """Lower private CLI selections into the same native graph publication."""
+        """Write one native graph publication with the selected export closure."""
         if profile not in {"default", "viewer"}:
             raise ValueError("ProjectResult.write profile must be 'default' or 'viewer'")
         entrypoint, authoring_inputs = _project_authoring_inputs(self.project)

@@ -4,6 +4,12 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from volt.cli import CliError, _handle_export
+from volt.cli._project_worker import _board
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "project_cli"
@@ -62,6 +68,7 @@ def test_verified_single_board_workflow_executes_source_only_for_check_and_build
         environment=environment,
     )
     assert checked.returncode == 0
+    assert len(checked.stdout.splitlines()) == 1
     check = _json(checked)
     assert check["format"] == "volt.cli-result"
     assert check["schema_version"] == 1
@@ -337,6 +344,38 @@ def test_project_local_volt_module_cannot_shadow_the_isolated_worker(tmp_path):
     assert _json(completed)["ok"] is True
 
 
+def test_entrypoint_cannot_replace_an_already_loaded_package(tmp_path):
+    project = _copy_fixture(tmp_path, "single_board")
+    project.joinpath("volt.toml").write_text(
+        '[project]\nentrypoint = "volt:main"\n',
+        encoding="utf-8",
+    )
+    project.joinpath("volt.py").write_text(
+        "def main():\n    raise AssertionError('must not run')\n",
+        encoding="utf-8",
+    )
+
+    completed = _run(
+        tmp_path,
+        "check",
+        "--project",
+        str(project),
+        "--json",
+    )
+
+    assert completed.returncode == 2
+    error = _json(completed)["error"]
+    assert error["code"] == "project-entrypoint-module-conflict"
+    assert "already-loaded module outside the project root" in error["message"]
+
+
+def test_zero_board_selection_reports_that_the_project_has_no_boards():
+    with pytest.raises(CliError, match="Project has no Boards") as caught:
+        _board(SimpleNamespace(boards=()), None)
+
+    assert caught.value.code == "invalid-board-selector"
+
+
 def test_multiple_named_boards_require_exact_export_and_inspection_selectors(
     tmp_path,
 ):
@@ -585,4 +624,44 @@ def test_typed_selected_export_and_bundle_failures_use_machine_error_envelope(
         "--json",
     )
     assert missing.returncode == 2
-    assert _json(missing)["error"]["code"] == "invalid-project-bundle"
+    assert _json(missing)["error"]["code"] == "bundle-not-found"
+
+
+def test_export_cleans_staging_after_a_non_oserror_copy_failure(
+    tmp_path,
+    monkeypatch,
+):
+    project = _copy_fixture(tmp_path, "single_board")
+    bundle = tmp_path / "selected.volt"
+    built = _run(
+        project,
+        "build",
+        "--project",
+        str(project),
+        "--output",
+        str(bundle),
+        "--export",
+        "board-svg",
+        "--json",
+    )
+    assert built.returncode == 0
+
+    output = tmp_path / "selected-exports"
+    stage = tmp_path / ".selected-exports.volt-stage"
+
+    def fail_copy(_path, _data):
+        raise RuntimeError("injected non-OSError copy failure")
+
+    monkeypatch.setattr(Path, "write_bytes", fail_copy)
+    with pytest.raises(RuntimeError, match="injected non-OSError copy failure"):
+        _handle_export(
+            SimpleNamespace(
+                bundle=bundle,
+                output=output,
+                export_filter=(),
+                emit_json=False,
+            )
+        )
+
+    assert not stage.exists()
+    assert not output.exists()

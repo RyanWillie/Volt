@@ -758,6 +758,11 @@ def _handle_info(args: argparse.Namespace) -> None:
 
 def _open_verified_bundle(path: str | Path):
     bundle_path = Path(path).expanduser().resolve()
+    if not bundle_path.exists():
+        raise CliError(
+            f"ProjectBundle not found: {bundle_path}",
+            code="bundle-not-found",
+        )
     try:
         bundle = ProjectBundle.open(bundle_path)
         graph = bundle.v2
@@ -1040,6 +1045,7 @@ def _handle_export(args: argparse.Namespace) -> None:
             f"Export staging destination already exists: {stage}",
             code="export-stage-exists",
         )
+    published = False
     try:
         stage.mkdir(parents=True)
         copied = []
@@ -1055,12 +1061,15 @@ def _handle_export(args: argparse.Namespace) -> None:
                 }
             )
         os.replace(stage, output)
+        published = True
     except OSError as error:
-        shutil.rmtree(stage, ignore_errors=True)
         raise CliError(
             f"Failed to publish selected exports to {output}: {error}",
             code="export-publication-failed",
         ) from error
+    finally:
+        if not published:
+            shutil.rmtree(stage, ignore_errors=True)
     payload = {
         "ok": True,
         "status": "exported",
@@ -2175,6 +2184,15 @@ def _evict_project_entrypoint_modules(module_name: str, root: Path) -> None:
     top_level_module = module_name.partition(".")[0]
     if not _root_provides_module(root, top_level_module):
         return
+
+    cached_module = sys.modules.get(top_level_module)
+    cached_path = getattr(cached_module, "__file__", None)
+    if cached_path is not None and not Path(cached_path).resolve().is_relative_to(root):
+        raise CliError(
+            f"Project entrypoint module {top_level_module!r} conflicts with "
+            f"already-loaded module outside the project root: {cached_path}",
+            code="project-entrypoint-module-conflict",
+        )
 
     package_prefix = f"{top_level_module}."
     for cached_name in list(sys.modules):
