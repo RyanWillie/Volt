@@ -2,12 +2,14 @@
 
 #include "binding_part_definition_conversions.hpp"
 #include "binding_pcb_conversions.hpp"
+#include "binding_schematic_conversions.hpp"
 #include "py_circuit.hpp"
 #include "py_part_library.hpp"
 
 #include <volt/core/content_hash.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/io/capabilities/board_capability_profile.hpp>
+#include <volt/io/schematic/schematic_writer.hpp>
 
 #include <array>
 #include <cstddef>
@@ -59,6 +61,9 @@ void bind_circuit(pybind11::module_ &module) {
     module.def("content_hash", [](const py::bytes &bytes) {
         const auto data = static_cast<std::string>(bytes);
         return volt::sha256_content_hash(data).value();
+    });
+    module.def("_write_symbol_definition_asset", [](const py::dict &payload) {
+        return py::bytes{volt::io::write_symbol_definition(symbol_definition_from_dict(payload))};
     });
     module.def("standard_feature_schema", &standard_feature_schema_to_dict, py::arg("name"));
     py::class_<PyPartLibrary>(module, "PartLibrarySnapshot")

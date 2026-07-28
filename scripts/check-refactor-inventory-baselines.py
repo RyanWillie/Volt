@@ -40,10 +40,10 @@ SEMANTIC_GOLDEN_PATHS = (
     "tests/fixtures/mcu.electrical.volt.json",
     "tests/fixtures/led.electrical.volt.json",
     "tests/fixtures/led.component-contract.volt.json",
-    "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/manifest.volt.json",
-    "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/logical/stm32_usb_buck.volt.json",
-    "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/schematic/STM32-USB-Buck.volt.schematic.json",
-    "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/pcb/STM32-USB-Buck-PCB.volt.pcb.json",
+    "tests/fixtures/led_circuit.volt.json",
+    "tests/fixtures/hierarchy_module.volt.json",
+    "tests/fixtures/typed_electrical_attributes.volt.json",
+    "tests/fixtures/single_pin_net.volt.json",
 )
 
 BYTE_GOLDEN_PATHS = (
@@ -61,11 +61,11 @@ BYTE_GOLDEN_PATHS = (
     "tests/fixtures/native_fabrication_control.GTS",
     "tests/fixtures/native_fabrication_control-NPTH.TXT",
     "tests/fixtures/native_fabrication_control-PTH.TXT",
-    "examples/stm32_usb_buck/artifacts/stm32_usb_buck.cpl.csv",
-    "examples/stm32_usb_buck/artifacts/stm32_usb_buck.cpl.json",
-    "examples/stm32_usb_buck/artifacts/stm32_usb_buck.kicad_pcb",
-    "examples/stm32_usb_buck/artifacts/stm32_usb_buck.pcb.svg",
-    "examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt/pcb/STM32-USB-Buck-PCB.volt.pcb.json",
+    "tests/fixtures/kicad_flat_resistor.kicad_pcb",
+    "tests/fixtures/kicad_flat_resistor.kicad_sch",
+    "tests/fixtures/pcb_placement_preview.svg",
+    "tests/fixtures/semantic_parity.volt.json",
+    "tests/fixtures/led_circuit.volt.json",
 )
 
 EVIDENCE_LF_PATHS = tuple(
@@ -434,27 +434,19 @@ def current_project_writer_ownership(project_source: str) -> dict[str, object]:
     }
 
 
-def manifest_payloads() -> dict[str, dict[str, object]]:
-    return {
-        relative(path): json.loads(read(path))
-        for path in sorted((ROOT / "examples").glob("*/artifacts/**/*.volt.json"))
-        if path.name == "manifest.volt.json"
-    }
-
-
-def manifest_artifact_kinds(payloads: dict[str, dict[str, object]]) -> list[str]:
+def native_project_artifact_kinds() -> list[str]:
+    source = read(ROOT / "src" / "io" / "project_bundle_v2_manifest.cpp")
     return sorted(
-        {
-            artifact["kind"]
-            for payload in payloads.values()
-            for artifact in payload.get("artifacts", [])
-            if isinstance(artifact, dict) and isinstance(artifact.get("kind"), str)
-        }
+        set(
+            re.findall(
+                r'std::pair\{"([a-z0-9_]+)",\s*ArtifactKind::[A-Za-z0-9_]+\}',
+                source,
+            )
+        )
     )
 
 
 def canonical_artifact_inventory() -> dict[str, object]:
-    payloads = manifest_payloads()
     return {
         "current_writer_ownership": current_project_writer_ownership(
             read(ROOT / "python" / "volt" / "project.py"),
@@ -462,10 +454,7 @@ def canonical_artifact_inventory() -> dict[str, object]:
         "project_artifact_path_fields": dataclass_fields(
             ROOT / "python" / "volt" / "project.py", "ProjectArtifactPaths"
         ),
-        "manifest_artifact_kinds": manifest_artifact_kinds(payloads),
-        "manifest_fields": {
-            path: sorted(payload) for path, payload in sorted(payloads.items())
-        },
+        "native_project_artifact_kinds": native_project_artifact_kinds(),
     }
 
 
@@ -479,6 +468,260 @@ def offline_fixtures() -> list[str]:
         or path.name.startswith("native_fabrication_control")
         or path.name.startswith("kicad_flat_resistor")
     )
+
+
+def tracked_paths() -> list[str]:
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "-z"],
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode:
+        raise AssertionError(
+            f"git ls-files failed: {result.stderr.decode('utf-8', errors='replace')}"
+        )
+    return sorted(
+        field.decode("utf-8")
+        for field in result.stdout.split(b"\0")
+        if field
+    )
+
+
+def example_reference_lines(paths: list[str]) -> list[str]:
+    references: list[str] = []
+    excluded = {
+        relative(BASELINE_PATH),
+        "scripts/check-refactor-inventory-baselines.py",
+    }
+    pattern = re.compile(r"""(?<![A-Za-z0-9_])examples(?=/|\.|["'`])""")
+    for path in paths:
+        if path.startswith("examples/") or path in excluded:
+            continue
+        try:
+            lines = read(ROOT / path).splitlines()
+        except (UnicodeDecodeError, OSError):
+            continue
+        references.extend(
+            f"{path}:{line_number}"
+            for line_number, line in enumerate(lines, start=1)
+            if pattern.search(line)
+        )
+    return references
+
+
+def benchmark_reference_lines(paths: list[str]) -> list[str]:
+    references: list[str] = []
+    excluded = {
+        relative(BASELINE_PATH),
+        "python/volt/libraries/stm32_usb_buck.py",
+        "scripts/check-refactor-inventory-baselines.py",
+    }
+    pattern = re.compile(r"\bstm32_usb_buck\b")
+    for path in paths:
+        if path.startswith("examples/") or path in excluded:
+            continue
+        try:
+            lines = read(ROOT / path).splitlines()
+        except (UnicodeDecodeError, OSError):
+            continue
+        references.extend(
+            f"{path}:{line_number}"
+            for line_number, line in enumerate(lines, start=1)
+            if pattern.search(line)
+        )
+    return references
+
+
+def is_documentation_reference(reference: str) -> bool:
+    path = reference.rsplit(":", 1)[0]
+    return path.startswith(
+        ("docs/", "docs-site/", "README", "CONTRIBUTING", "ROADMAP")
+    ) or (
+        Path(path).suffix in {".html", ".md", ".mdx", ".rst"}
+    )
+
+
+def stm32_benchmark_declarations() -> dict[str, object]:
+    path = ROOT / "python" / "volt" / "libraries" / "stm32_usb_buck.py"
+    tree = ast.parse(read(path), filename=relative(path))
+    part_routes: list[str] = []
+    component_routes: list[str] = []
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        if not isinstance(node.targets[0], ast.Name) or not isinstance(node.value, ast.Call):
+            continue
+        function = node.value.func
+        if (
+            not isinstance(function, ast.Attribute)
+            or not isinstance(function.value, ast.Name)
+            or function.value.id != "LIB"
+        ):
+            continue
+        if function.attr == "part":
+            part_routes.append(node.targets[0].id)
+        elif function.attr == "component":
+            component_routes.append(node.targets[0].id)
+    return {
+        "module": relative(path),
+        "namespace": "volt.benchmarks.stm32_usb_buck",
+        "legacy_component_declarations": sorted(component_routes),
+        "native_part_declarations": sorted(part_routes),
+    }
+
+
+def m2_deletion_inventory(paths: list[str]) -> dict[str, object]:
+    legacy_files = [path for path in paths if path.startswith("examples/")]
+    example_references = example_reference_lines(paths)
+    benchmark_references = benchmark_reference_lines(paths)
+
+    return {
+        "legacy_example_roots": sorted(
+            {"/".join(path.split("/")[:2]) for path in legacy_files}
+        ),
+        "legacy_example_files": legacy_files,
+        "example_test_callers": [
+            path for path in paths if path.startswith("python/tests/examples/")
+        ],
+        "example_documentation_references": [
+            reference
+            for reference in example_references
+            if is_documentation_reference(reference)
+        ],
+        "example_other_tracked_references": [
+            reference
+            for reference in example_references
+            if not is_documentation_reference(reference)
+        ],
+        "stm32_benchmark": {
+            **stm32_benchmark_declarations(),
+            "documentation_references": [
+                reference
+                for reference in benchmark_references
+                if is_documentation_reference(reference)
+            ],
+            "test_and_caller_files": sorted(
+                {
+                    reference.rsplit(":", 1)[0]
+                    for reference in benchmark_references
+                    if not is_documentation_reference(reference)
+                    and reference.startswith(("python/", "scripts/", "src/"))
+                }
+            ),
+            "other_tracked_references": [
+                reference
+                for reference in benchmark_references
+                if not is_documentation_reference(reference)
+                and not reference.startswith(("python/", "scripts/", "src/"))
+            ],
+        },
+    }
+
+
+def bound_component_definition_routes() -> list[str]:
+    source = read(ROOT / "src" / "python" / "circuit_bindings.cpp")
+    return sorted(
+        route
+        for route in re.findall(r'\.def\("(define_[A-Za-z0-9_]+)"', source)
+        if route != "define_module"
+    )
+
+
+def python_component_definition_routes() -> list[str]:
+    source = read(ROOT / "python" / "volt" / "design.py")
+    return sorted(
+        route
+        for route in set(re.findall(r"self\._circuit\.(define_[A-Za-z0-9_]+)", source))
+        if route != "define_module"
+    )
+
+
+def production_migration_inventory() -> dict[str, object]:
+    paths = tracked_paths()
+    acceptance_paths = {
+        "python/tests/fixtures/project_cli/multiple_boards/project_entry.py",
+        "python/tests/fixtures/project_cli/single_board/project_entry.py",
+        "python/tests/test_cli.py",
+        "python/tests/test_cli_project_workflow.py",
+        "python/tests/test_issue_319_architecture_fixture.py",
+        "tests/io/project_bundle_test.cpp",
+        "tests/support/architecture_led_fixture.hpp",
+    }
+    return {
+        "production_callers": {
+            "native_component_definition_routes": bound_component_definition_routes(),
+            "python_component_definition_routes": python_component_definition_routes(),
+            "tracked_non_example_project_entrypoints": [
+                "python/tests/fixtures/project_cli/multiple_boards/project_entry.py",
+                "python/tests/fixtures/project_cli/single_board/project_entry.py",
+            ],
+            "supported_python_authoring_owners": [
+                "python/volt/design.py: typed component and exact Part lowering",
+                "python/volt/library.py: exact PartLibraryBundle selection",
+                "python/volt/project.py: Project orchestration and one native v2 publication",
+                "python/volt/project_bundle.py: verified v1 and v2 reopen",
+                "python/volt/cli/__init__.py: canonical CLI orchestration",
+            ],
+        },
+        "architecture_fixtures": {
+            "led": [
+                "tests/support/architecture_led_fixture.hpp",
+                "tests/circuit/led_circuit_test.cpp",
+                "tests/io/logical/logical_circuit_writer_test.cpp",
+            ],
+            "source_regulator_esp32": [
+                "python/tests/test_issue_319_architecture_fixture.py"
+            ],
+            "board_and_named_alternatives": [
+                "python/tests/fixtures/project_cli/multiple_boards/project_entry.py",
+                "python/tests/test_cli_project_workflow.py",
+            ],
+            "part_library_bundle_and_offline_reopen": [
+                "python/tests/test_issue_319_architecture_fixture.py"
+            ],
+            "immutable_compiled_board": [
+                "python/tests/test_issue_319_architecture_fixture.py"
+            ],
+            "project_bundle_v1": ["tests/io/project_bundle_test.cpp"],
+            "project_bundle_v2": [
+                "python/tests/test_issue_319_architecture_fixture.py",
+                "python/tests/test_cli_project_workflow.py",
+            ],
+            "canonical_q4_cli": [
+                "python/tests/fixtures/project_cli/single_board/project_entry.py",
+                "python/tests/fixtures/project_cli/multiple_boards/project_entry.py",
+                "python/tests/test_cli_project_workflow.py",
+            ],
+            "vault_board_scene": [
+                "python/tests/test_issue_319_architecture_fixture.py"
+            ],
+            "typed_selected_exports_and_manufacturing": [
+                "python/tests/test_cli_project_workflow.py",
+                "python/tests/test_issue_319_architecture_fixture.py",
+            ],
+        },
+        "no_hidden_fallback_evidence": {
+            "stm32_benchmark_excluded_from_production_acceptance": all(
+                "stm32_usb_buck" not in read(ROOT / path)
+                for path in acceptance_paths
+            ),
+            "canonical_cli_has_no_post_instantiation_selection": all(
+                ".select_part(" not in read(ROOT / path)
+                for path in (
+                    "python/tests/fixtures/project_cli/multiple_boards/project_entry.py",
+                    "python/tests/fixtures/project_cli/single_board/project_entry.py",
+                )
+            ),
+            "cpp_acceptance_has_no_example_include": (
+                "${PROJECT_SOURCE_DIR}/examples"
+                not in read(ROOT / "tests" / "CMakeLists.txt")
+            ),
+            "project_bundle_v1_fixture_has_no_example_input": (
+                "examples/" not in read(ROOT / "tests" / "io" / "project_bundle_test.cpp")
+            ),
+        },
+        "m2_deletion_targets": m2_deletion_inventory(paths),
+    }
 
 
 def semantic_shape(payload: object) -> dict[str, object]:
@@ -530,11 +773,12 @@ def golden_inventory() -> dict[str, object]:
 
 def collect_inventory() -> dict[str, object]:
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "purpose": (
             "Compact review evidence for issue #328, extended by issue #240 for native verified "
-            "ProjectBundle read views. A baseline delta requires review; the checked-in evidence "
-            "does not approve the change."
+            "ProjectBundle read views and issue #319 for production-consumer migration plus the "
+            "explicit M2 example deletion inventory. A baseline delta requires review; the "
+            "checked-in evidence does not approve the change."
         ),
         "inventories": {
             "public_contracts": {
@@ -576,6 +820,7 @@ def collect_inventory() -> dict[str, object]:
                 "hidden_footprint_injections": hidden_footprint_injections(),
             },
             "offline_fixtures": offline_fixtures(),
+            "production_migration": production_migration_inventory(),
         },
         "goldens": golden_inventory(),
     }
@@ -656,8 +901,15 @@ def run_self_tests() -> int:
     )
     require(
         set(inventory["inventories"])
-        == {"public_contracts", "canonical_artifacts", "ownership", "offline_fixtures"},
-        "the inventory must contain only durable contract, artifact, ownership, and fixture evidence",
+        == {
+            "public_contracts",
+            "canonical_artifacts",
+            "ownership",
+            "offline_fixtures",
+            "production_migration",
+        },
+        "the inventory must contain durable contract, artifact, ownership, fixture, and "
+        "production-migration evidence",
     )
     serialized_inventory = json.dumps(inventory, sort_keys=True)
     require(
@@ -665,6 +917,89 @@ def run_self_tests() -> int:
         and "future_slice" not in serialized_inventory
         and "approved_references" not in serialized_inventory,
         "caller counts and future-slice approval metadata must not survive",
+    )
+    production = inventory["inventories"]["production_migration"]
+    expected_routes = {
+        "define_capacitor",
+        "define_component",
+        "define_connector_1x01",
+        "define_connector_1x02",
+        "define_connector_1x03",
+        "define_crystal_2pin",
+        "define_diode",
+        "define_inductor",
+        "define_led",
+        "define_library_part",
+        "define_op_amp_5pin",
+        "define_polarized_capacitor",
+        "define_regulator_3pin",
+        "define_resistor",
+        "define_switch_spst",
+        "define_test_point",
+    }
+    require(
+        set(production["production_callers"]["native_component_definition_routes"])
+        == expected_routes
+        and set(production["production_callers"]["python_component_definition_routes"])
+        == expected_routes,
+        "every supported Python component and exact Part route must reach the native boundary",
+    )
+    require(
+        all(production["no_hidden_fallback_evidence"].values()),
+        "production acceptance fixtures must not depend on legacy selection or examples",
+    )
+    m2_targets = production["m2_deletion_targets"]
+    require(
+        m2_targets["legacy_example_files"]
+        == [path for path in tracked_paths() if path.startswith("examples/")],
+        "the M2 deletion inventory must name every tracked legacy example file",
+    )
+    require(
+        m2_targets["example_test_callers"],
+        "the M2 deletion inventory must retain every example-only Python test caller",
+    )
+    require(
+        {
+            "scripts/check-format.py:9",
+            "scripts/check-circuit-architecture-boundary.py:17",
+            "scripts/check-circuit-architecture-boundary.py:23",
+        }.issubset(set(m2_targets["example_other_tracked_references"])),
+        "the M2 deletion inventory must include standalone quoted example-directory references",
+    )
+    benchmark = m2_targets["stm32_benchmark"]
+    require(
+        benchmark["module"] == "python/volt/libraries/stm32_usb_buck.py"
+        and benchmark["namespace"] == "volt.benchmarks.stm32_usb_buck"
+        and len(benchmark["legacy_component_declarations"]) == 17
+        and not benchmark["native_part_declarations"],
+        "the complete 17-entry STM32 benchmark must remain unchanged and owned by M2",
+    )
+    require(
+        benchmark["test_and_caller_files"],
+        "the M2 inventory must name every tracked STM32 benchmark test and caller",
+    )
+    require(
+        ".gitattributes:19" in benchmark["other_tracked_references"],
+        "the M2 inventory must retain the STM32 benchmark artifact policy reference",
+    )
+    require(
+        "stm32_usb_buck"
+        not in json.dumps(
+            {
+                "production_callers": production["production_callers"],
+                "architecture_fixtures": production["architecture_fixtures"],
+            },
+            sort_keys=True,
+        ),
+        "STM32 benchmark data must not be classified as M1 production acceptance",
+    )
+    require(
+        not any(
+            item["path"].startswith("examples/")
+            for group in inventory["goldens"].values()
+            for item in group
+        ),
+        "Gate F1 goldens must not use legacy examples as acceptance inputs",
     )
     require(
         parse_check_attr_eol(b"one\0eol\0lf\0two\0eol\0unspecified\0")

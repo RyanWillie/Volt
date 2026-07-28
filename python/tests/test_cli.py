@@ -1022,31 +1022,25 @@ def test_library_commands_build_reopen_inspect_and_extract_deterministically(tmp
     ).read_bytes()
 
 
-def test_library_commands_run_standard_library_end_to_end(tmp_path, capsys):
-    source = tmp_path / "standard-library"
+def test_library_commands_run_purpose_built_library_end_to_end(tmp_path, capsys):
+    source = tmp_path / "architecture-fixture-library"
     bundle = tmp_path / "standard.voltlib"
-    source.mkdir()
-    source.joinpath("volt.toml").write_text(
-        """[library]
-entrypoint = "volt.libraries.stm32_usb_buck:LIB"
-""",
-        encoding="utf-8",
-    )
+    _write_library(source)
 
     assert main(["library", "check", str(source), "--json"]) == 0
     check = _read_stdout_json(capsys)
     assert check["ok"] is True
-    assert check["parts"] == []
+    assert [part["name"] for part in check["parts"]] == ["R-1K"]
 
     assert main(["library", "build", str(source), "--output", str(bundle)]) == 0
     capsys.readouterr()
     assert main(["library", "test", str(bundle), "--json"]) == 0
     tested = _read_stdout_json(capsys)
-    assert tested["parts"] == check["parts"]
+    assert tested["parts"] == [part["name"] for part in check["parts"]]
 
     assert main(["library", "inspect", str(bundle), "--json"]) == 0
     inspection = _read_stdout_json(capsys)
-    assert inspection["library"]["namespace"] == "volt.benchmarks.stm32_usb_buck"
+    assert inspection["library"]["namespace"] == "test.cli.library"
 
 
 def test_library_commands_report_missing_assets_and_corrupt_bundles(tmp_path, capsys):

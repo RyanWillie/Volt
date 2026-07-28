@@ -142,11 +142,11 @@
 </head>
 <body>
   <header>
-    <div class="eyebrow">Issue #328 | architecture evidence</div>
+    <div class="eyebrow">Issues #328 and #319 | architecture evidence</div>
     <h1>Evidence, not approval.</h1>
     <p class="deck">Volt keeps compact review evidence for public contracts, canonical artifacts, ownership and compatibility. Objective architecture checks reject forbidden states. Neither surface can approve a change merely because its checked-in data was edited.</p>
     <dl class="meta">
-      <div><dt>Evidence schema</dt><dd>2</dd></div>
+      <div><dt>Evidence schema</dt><dd>3</dd></div>
       <div><dt>Inventory</dt><dd>tests/architecture/refactor_inventory_baseline.json</dd></div>
       <div><dt>Evidence checker</dt><dd>scripts/check-refactor-inventory-baselines.py</dd></div>
       <div><dt>Invariant checker</dt><dd>scripts/check-circuit-architecture-boundary.py</dd></div>
@@ -161,14 +161,56 @@
         <div class="metric"><dt>C++ API evidence</dt><dd>7</dd><p>Content-addressed snapshots for Circuit, Schematic, Board, BoardRouter, BoardSpatialIndex and two retained domain owners.</p></div>
         <div class="metric"><dt>Python exports</dt><dd>113</dd><p><code>python/volt/__init__.py</code> remains the public export contract.</p></div>
         <div class="metric"><dt>Footprint injections</dt><dd>0</dd><p>All 13 former Python binding callers now consume one explicit native <code>BoardResolution</code>.</p></div>
-        <div class="metric"><dt>Artifacts</dt><dd>18 / 17</dd><p>Project record kinds and checked-in manifest artifact kinds.</p></div>
+        <div class="metric"><dt>Artifacts</dt><dd>18 / 21</dd><p>Project record paths and the complete native v2 artifact-kind catalogue.</p></div>
         <div class="metric"><dt>Offline fixtures</dt><dd>17</dd><p>Exact part, electrical, capability, fabrication and KiCad fixtures.</p></div>
         <div class="metric"><dt>Goldens</dt><dd>10 / 19</dd><p>Semantic JSON summaries and byte-level SHA-256 fixtures.</p></div>
       </dl>
 
       <div class="panel">
         <h3>Review delta, not a permission slip</h3>
-        <p>The evidence baseline lives in <code>tests/architecture/refactor_inventory_baseline.json</code>. The checker compares public snapshot hashes, Python contracts, canonical artifact shapes, ownership evidence, exact offline fixtures, semantic summaries and raw byte hashes. Drift fails so a reviewer sees the change. Updating the evidence records the reviewed delta; it does not make the change architecturally valid.</p>
+        <p>The evidence baseline lives in <code>tests/architecture/refactor_inventory_baseline.json</code>. The checker compares public snapshot hashes, Python contracts, native artifact kinds, ownership evidence, exact offline fixtures, production-migration coverage, semantic summaries and raw byte hashes. Drift fails so a reviewer sees the change. Updating the evidence records the reviewed delta; it does not make the change architecturally valid.</p>
+      </div>
+    </section>
+
+    <section>
+      <span class="kicker">Issue #319 | M1 production cutover</span>
+      <h2>Dogfood the accepted path</h2>
+      <p>M1 migrates production callers and proves the native architecture without deleting the retained legacy route. User-facing examples and the installable <code>volt.benchmarks.stm32_usb_buck</code> support module are neither production inputs nor parity oracles. Purpose-built fixtures own acceptance; the baseline records the complete legacy surface and every tracked reference for M2 deletion.</p>
+      <div class="grid">
+        <div class="panel">
+          <h3>Acceptance and ownership</h3>
+          <ul>
+            <li><code>python/volt/design.py</code>, <code>library.py</code>, <code>project.py</code> and the CLI remain lowering and orchestration owners; C++ bindings, codecs and ProjectBundle remain the sole semantic owners.</li>
+            <li><code>tests/support</code>, <code>tests/io/project_bundle_test.cpp</code>, <code>python/tests/fixtures/project_cli</code> and <code>python/tests/test_issue_319_architecture_fixture.py</code> own non-user-facing evidence.</li>
+            <li>The checker owns exact caller, fixture, no-fallback and M2-deletion inventories; this page explains the reviewed boundary once.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Cutover gates</h3>
+          <ul>
+            <li>All 16 supported component-definition routes agree across Python lowering and the native binding.</li>
+            <li>The two canonical non-example project entrypoints use exact Parts, one Board plus two named alternatives, and no post-instantiation selection.</li>
+            <li>Library CLI acceptance builds and reopens a fully specified purpose-built Part instead of importing benchmark or example data.</li>
+            <li>C++ acceptance no longer includes the example tree, ProjectBundle v1 is generated from a native test fixture, and all Gate F1 goldens live under <code>tests/fixtures</code>.</li>
+          </ul>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Required surface</th><th>Purpose-built evidence</th><th>Compared truth</th></tr></thead>
+        <tbody>
+          <tr><td>LED</td><td><code>architecture_led_fixture.hpp</code> plus Circuit and logical-writer tests</td><td>Native semantics and canonical logical bytes</td></tr>
+          <tr><td>Source → regulator → ESP32</td><td><code>test_issue_319_architecture_fixture.py</code></td><td>Exact selected closure, diagnostics and deterministic v2 bytes</td></tr>
+          <tr><td>Board + Compact + Extended</td><td><code>project_cli/multiple_boards</code></td><td>Exact selectors, CLI JSON, stdout and exit behavior</td></tr>
+          <tr><td>PartLibraryBundle</td><td><code>test_issue_319_architecture_fixture.py</code></td><td>Independent builds, canonical bytes and offline reopen</td></tr>
+          <tr><td>CompiledBoard + BoardScene/Vault</td><td><code>test_issue_319_architecture_fixture.py</code></td><td>Immutable identity, verified graph and artifact-owned reopen</td></tr>
+          <tr><td>ProjectBundle v1 + v2</td><td><code>project_bundle_test.cpp</code> and the Python architecture fixture</td><td>Native v1 read, verified v2 graph and structural failure behavior</td></tr>
+          <tr><td>Q4 CLI + typed exports</td><td><code>project_cli/single_board</code> and <code>test_cli_project_workflow.py</code></td><td>Canonical CLI workflow and typed selected export</td></tr>
+          <tr><td>Manufacturing</td><td><code>test_issue_319_architecture_fixture.py</code></td><td>Directory bytes, archive bytes and CompiledBoard provenance</td></tr>
+        </tbody>
+      </table>
+      <div class="panel warning">
+        <h3>M2 deletion inventory</h3>
+        <p>The baseline names all 151 tracked files under <code>examples/</code>, all five example-only Python test callers, every documentation reference and every other tracked reference. It separately records <code>python/volt/libraries/stm32_usb_buck.py</code>, its 17 unchanged legacy declarations, and every benchmark test, caller and documentation reference. M1 does not edit, migrate or delete any of them; M2 removes them, and M3 later authors replacements from scratch.</p>
       </div>
     </section>
 
@@ -277,7 +319,7 @@
           <ul>
             <li>Public API snapshot files show the declaration-level delta; their hashes bind the inventory to that exact content.</li>
             <li>Python exports and exception metadata preserve public binding contracts without counting private binding implementation.</li>
-            <li>Artifact kinds, manifest fields and exact fixtures preserve canonical and offline compatibility.</li>
+            <li>The native artifact-kind catalogue and exact fixtures preserve canonical and offline compatibility without treating example output as an oracle.</li>
             <li>Goldens freeze normalized JSON shape plus raw byte length and SHA-256.</li>
           </ul>
         </div>
@@ -320,13 +362,13 @@
         <li><code>docs/design/volt-post-circuit-architecture-review.html</code>.</li>
         <li><code>docs/design/volt-part-library-architecture-review.html</code>.</li>
         <li>Public API evidence in <code>tests/architecture/*_public_api.txt</code> and objective checks in <code>scripts/check-circuit-architecture-boundary.py</code>.</li>
-        <li>Current public Python exports, canonical artifact manifests, ownership boundaries, exact offline fixtures and semantic/byte goldens referenced by the evidence JSON.</li>
+        <li>Current public Python exports, native artifact kinds, ownership boundaries, exact offline fixtures, production-migration matrices and semantic/byte goldens referenced by the evidence JSON.</li>
       </ul>
     </section>
   </main>
 
   <footer>
-    Architecture evidence map. Issue #328 separates compact review evidence from objective invariants; product behavior and downstream architecture slices remain out of scope.
+    Architecture evidence map. Issue #328 separates compact review evidence from objective invariants; issue #319 records the production cutover and M2 deletion boundary.
   </footer>
 </body>
 </html>

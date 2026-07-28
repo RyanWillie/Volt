@@ -8,10 +8,10 @@
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
-#include "led_circuit.hpp"
+#include <support/architecture_led_fixture.hpp>
 
-TEST_CASE("LED example builds a valid logical circuit") {
-    const auto circuit = volt::examples::build_led_circuit();
+TEST_CASE("Purpose-built LED fixture builds a valid logical circuit") {
+    const auto circuit = volt::test::build_architecture_led_fixture();
 
     CHECK(circuit.all<volt::ComponentId>().size() == 3);
     CHECK(circuit.all<volt::PinId>().size() == 6);
