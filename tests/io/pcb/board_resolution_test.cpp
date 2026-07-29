@@ -254,6 +254,22 @@ TEST_CASE("Named Board resolutions remain independent over one selected closure"
           volt::BoardPoint{9.0, 8.0});
 }
 
+TEST_CASE("Board spatial indexes retain no borrowed physical resolution storage") {
+    auto fixture = resolution_fixture();
+    const auto bundle = volt::io::PartLibraryBundle::build(
+        fixture.builder, std::vector{fixture.key}, fixture.resolver);
+    auto selected = selected_circuit(fixture.spec, bundle, fixture.key);
+    auto board = volt::Board{selected.circuit, volt::BoardName{"Main"}};
+    auto index = std::optional<volt::BoardSpatialIndex>{};
+    {
+        const auto resolution =
+            volt::io::resolve_board(board, bundle, volt::BoardResolutionCapabilities{std::nullopt});
+        index.emplace(resolution.view());
+    }
+
+    CHECK_NOTHROW(index->copper_clearance_candidates());
+}
+
 TEST_CASE("Resolved Board views expose only verified owners and reject retained stale selections") {
     auto first_fixture = resolution_fixture();
     const auto first_bundle = volt::io::PartLibraryBundle::build(

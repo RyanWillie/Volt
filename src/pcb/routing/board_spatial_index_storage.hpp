@@ -24,7 +24,7 @@ struct BoardSpatialIndexCell {
 
 struct BoardSpatialIndexState {
     const Board *board = nullptr;
-    std::optional<ResolvedBoardView> resolved;
+    std::optional<std::vector<std::optional<LibraryPartRef>>> selected_part_snapshot;
     std::vector<BoardCopperShape> shapes;
     std::vector<BoardSpatialIndexBox> boxes;
     std::vector<BoardSpatialIndexCell> cells;

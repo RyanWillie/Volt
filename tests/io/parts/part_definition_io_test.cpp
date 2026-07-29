@@ -158,6 +158,17 @@ TEST_CASE("Part definition v5 reader requires current provenance and schematic a
     check_current_part_is_rejected(std::move(unknown_field), component);
 }
 
+TEST_CASE("Part definition v5 reader rejects duplicate object keys before schema validation") {
+    const auto component = regulator_component();
+    auto document = volt::io::write_part_definition(current_part(component));
+    const auto current_version = document.find("\"version\": 5");
+    REQUIRE(current_version != std::string::npos);
+    document.insert(current_version, "\"version\": 4,\n  ");
+
+    CHECK_THROWS_AS(volt::io::read_part_definition_text(document, component),
+                    volt::KernelLogicError);
+}
+
 TEST_CASE("Part definition v5 reader rejects incomplete dangling and duplicate ownership") {
     const auto component = regulator_component();
     const auto document =

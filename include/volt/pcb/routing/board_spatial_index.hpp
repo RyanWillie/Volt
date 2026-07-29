@@ -181,6 +181,8 @@ class BoardSpatialIndex {
 
     void ensure_conservative_bound_current() const;
 
+    void ensure_selected_parts_current() const;
+
     void ensure_geometry_current() const;
 
     void validate_shape(const detail::BoardCopperShape &shape) const;

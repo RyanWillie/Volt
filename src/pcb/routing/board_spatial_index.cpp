@@ -63,6 +63,16 @@ shape_outline_actual_clearance(const detail::BoardCopperShape &shape, const Boar
     return distance;
 }
 
+[[nodiscard]] std::vector<std::optional<LibraryPartRef>>
+selected_part_snapshot(const Circuit &circuit) {
+    auto result = std::vector<std::optional<LibraryPartRef>>{};
+    result.reserve(circuit.all<ComponentId>().size());
+    for (const auto &component : circuit.all<ComponentId>()) {
+        result.push_back(component.selected_library_part_ref());
+    }
+    return result;
+}
+
 } // namespace
 
 BoardSpatialIndex::BoardSpatialIndex(const BoardSpatialIndex &other)
@@ -205,7 +215,7 @@ BoardSpatialIndex::BoardSpatialIndex(const Board &board)
 BoardSpatialIndex::BoardSpatialIndex(const ResolvedBoardView &resolved)
     : BoardSpatialIndex{resolved.board(),
                         detail::collect_copper_shapes(resolved, queries::resolve_pads(resolved))} {
-    mutable_state().resolved = resolved;
+    mutable_state().selected_part_snapshot = selected_part_snapshot(state().board->circuit());
 }
 
 BoardSpatialIndex::BoardSpatialIndex(const Board &board,
@@ -240,13 +250,20 @@ void BoardSpatialIndex::ensure_conservative_bound_current() const {
 }
 
 void BoardSpatialIndex::ensure_geometry_current() const {
-    if (state().resolved.has_value()) {
-        static_cast<void>(state().resolved->board());
-    }
+    ensure_selected_parts_current();
     if (!state().geometry_snapshot.value().is_current()) {
         throw KernelLogicError{
             ErrorCode::InvalidState,
             "Board spatial index is stale; board geometry changed outside the index"};
+    }
+}
+
+void BoardSpatialIndex::ensure_selected_parts_current() const {
+    if (state().selected_part_snapshot.has_value() &&
+        selected_part_snapshot(state().board->circuit()) !=
+            state().selected_part_snapshot.value()) {
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Board spatial index is stale; selected library references changed"};
     }
 }
 
@@ -332,9 +349,7 @@ void BoardSpatialIndex::index_shape(std::size_t shape_index) {
 }
 
 void BoardSpatialIndex::insert(BoardSpatialQueryShape shape) {
-    if (state().resolved.has_value()) {
-        static_cast<void>(state().resolved->board());
-    }
+    ensure_selected_parts_current();
     auto copper_shape = to_copper_shape(std::move(shape));
     if (state().geometry_snapshot.value().is_current()) {
         append_shape(std::move(copper_shape));

@@ -6,6 +6,7 @@
 #include <initializer_list>
 #include <istream>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -317,8 +318,23 @@ PartDefinition read_v5_document(const Json &document, const ComponentDefinition 
 }
 
 Json parse_document(std::string_view text) {
+    auto object_keys = std::vector<std::set<std::string>>{};
+    const auto callback = [&](int, Json::parse_event_t event, Json &parsed) {
+        if (event == Json::parse_event_t::object_start) {
+            object_keys.emplace_back();
+        } else if (event == Json::parse_event_t::key) {
+            if (object_keys.empty() ||
+                !object_keys.back().insert(parsed.get<std::string>()).second) {
+                throw KernelLogicError{ErrorCode::InvalidArgument,
+                                       "Part definition contains a duplicate JSON object key"};
+            }
+        } else if (event == Json::parse_event_t::object_end) {
+            object_keys.pop_back();
+        }
+        return true;
+    };
     try {
-        return Json::parse(text.begin(), text.end());
+        return Json::parse(text.begin(), text.end(), callback);
     } catch (const Json::exception &error) {
         throw KernelLogicError{ErrorCode::InvalidArgument, error.what()};
     }
