@@ -8,6 +8,7 @@
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/core/properties.hpp>
+#include <volt/library/part_library.hpp>
 
 namespace volt {
 
@@ -166,10 +167,11 @@ class Bom {
     std::vector<BomLine> lines_;
 };
 
-/** Project a circuit into a deterministic BOM without sourcing metadata. */
-[[nodiscard]] Bom project_bom(const Circuit &circuit);
+/** Project a circuit through one explicit exact-part resolver without sourcing metadata. */
+[[nodiscard]] Bom project_bom(const Circuit &circuit, const ExactPartResolver &resolver);
 
-/** Project a circuit into a deterministic BOM and merge sourcing by MPN. */
-[[nodiscard]] Bom project_bom(const Circuit &circuit, const BomSourcingSnapshot &sourcing);
+/** Project a circuit through one explicit exact-part resolver and merge sourcing by MPN. */
+[[nodiscard]] Bom project_bom(const Circuit &circuit, const ExactPartResolver &resolver,
+                              const BomSourcingSnapshot &sourcing);
 
 } // namespace volt

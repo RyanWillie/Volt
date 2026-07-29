@@ -294,7 +294,6 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
               "PIN_GROUND_ON_NON_GROUND_NET",
               "PIN_POWER_ON_GROUND_NET",
               "POWER_INPUT_WITHOUT_SOURCE",
-              "SELECTED_PART_VOLTAGE_RATING_EXCEEDED",
               "PIN_VOLTAGE_RANGE_VIOLATION",
               "NET_CLASS_VOLTAGE_EXCEEDED",
               "MULTIPLE_OUTPUTS_ON_NET",

@@ -56,8 +56,6 @@ inline constexpr auto UnboundRequiredPort = std::string_view{"UNBOUND_REQUIRED_P
 inline constexpr auto PinGroundOnNonGroundNet = std::string_view{"PIN_GROUND_ON_NON_GROUND_NET"};
 inline constexpr auto PinPowerOnGroundNet = std::string_view{"PIN_POWER_ON_GROUND_NET"};
 inline constexpr auto PowerInputWithoutSource = std::string_view{"POWER_INPUT_WITHOUT_SOURCE"};
-inline constexpr auto SelectedPartVoltageRatingExceeded =
-    std::string_view{"SELECTED_PART_VOLTAGE_RATING_EXCEEDED"};
 inline constexpr auto PinVoltageRangeViolation = std::string_view{"PIN_VOLTAGE_RANGE_VIOLATION"};
 inline constexpr auto NetClassVoltageExceeded = std::string_view{"NET_CLASS_VOLTAGE_EXCEEDED"};
 inline constexpr auto MultipleOutputsOnNet = std::string_view{"MULTIPLE_OUTPUTS_ON_NET"};
@@ -193,7 +191,6 @@ inline constexpr auto Erc =
                erc_diagnostic_codes::PinGroundOnNonGroundNet,
                erc_diagnostic_codes::PinPowerOnGroundNet,
                erc_diagnostic_codes::PowerInputWithoutSource,
-               erc_diagnostic_codes::SelectedPartVoltageRatingExceeded,
                erc_diagnostic_codes::PinVoltageRangeViolation,
                erc_diagnostic_codes::NetClassVoltageExceeded,
                erc_diagnostic_codes::MultipleOutputsOnNet,

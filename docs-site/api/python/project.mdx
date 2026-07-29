@@ -118,29 +118,6 @@ Source: `python/volt/project.py`
 | `run(self) -> 'ProjectResult'` | Run the registered project stages and return one result. |
 | `run_through(self, stage: ProjectStage) -> 'ProjectResult'` | Run stages through the given stage handle. |
 
-## `volt.ProjectArtifactPaths`
-
-Flat artifact paths written for example and viewer consumers.
-
-Source: `python/volt/project.py`
-
-### Fields
-
-| Field |
-| --- |
-| `logical_json: Path \| None` |
-| `schematic_json: Path \| None` |
-| `schematic_svg: Path \| None` |
-| `schematic_body_svg: Path \| None` |
-| `schematic_svg_pages: tuple[Path, ...]` |
-| `pcb_json: Path \| None` |
-| `pcb_svg: Path \| None` |
-| `pcb_layer_svgs: tuple[Path, ...]` |
-| `kicad_pcb: Path \| None` |
-| `cpl_json: Path \| None` |
-| `cpl_csv: Path \| None` |
-| `diagnostics_json: Path \| None` |
-
 ## `volt.ProjectDiagnostic`
 
 Diagnostic emitted during one project run with project source metadata.
@@ -239,7 +216,6 @@ Source: `python/volt/project.py`
 | `test_failures(self) -> tuple[ProjectTestResult, ...]` | Return failed project tests in stage execution order. |
 | `write(self, path: str \| Path, *, profile: str = 'default') -> None` | Write a deterministic project result bundle, optionally with viewer-profile checks. |
 | `write_manufacturing_package(self, path: str \| Path, *, board: str \| None = None, manufacturing_profile: Mapping[str, str] \| None = None, archive: bool = False) -> ManufacturingPackageResult` | Write the full deterministic manufacturing package for one board. |
-| `write_artifacts(self, path: str \| Path, *, slug: str \| None = None, pcb_svg_options: dict[str, object] \| None = None) -> ProjectArtifactPaths` | Write standard flat example/viewer artifacts and return their paths. |
 
 ## `volt.ProjectStage`
 

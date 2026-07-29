@@ -17,11 +17,38 @@
     { "id": "component_def:2", "name": "LED", "source": { "namespace": "volt.optos", "name": "led_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.optos:led", "variant": "default" }], "pins": ["pin_def:4", "pin_def:5"], "properties": {} }
   ],
   "components": [
-    { "id": "component:0", "definition": "component_def:0", "reference": "J1", "properties": {}, "selected_library_part": { "library_namespace": "test.export", "library_version": "1", "part_key": "header", "library_digest": "sha256:c1b6e2a2e6f1ee9cd7dd9c92fce65a066973812b068b941a47dab228720fbf87", "part_digest": "sha256:39559ab85f1debd85b1f33766b59a450c714b93b0e7b2af8a8f1d11486f25a38" } },
+    { "id": "component:0", "definition": "component_def:0", "reference": "J1", "properties": {}, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Generic", "part_number": "HDR-1x02-2.54mm" },
+      "package": "2.54mm-1x02",
+      "footprint": { "library": "connectors", "name": "PinHeader_1x02_P2.54mm_Vertical" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:0", "pad": "1" },
+        { "pin": "pin_def:1", "pad": "2" }
+      ],
+      "properties": {}
+    } },
     { "id": "component:1", "definition": "component_def:1", "reference": "R1", "properties": {
         "value": { "type": "string", "value": "330 ohm" }
-      }, "selected_library_part": { "library_namespace": "test.export", "library_version": "1", "part_key": "resistor", "library_digest": "sha256:c1b6e2a2e6f1ee9cd7dd9c92fce65a066973812b068b941a47dab228720fbf87", "part_digest": "sha256:3042d59f89dec9e9a5db85b1f2de9ed965ca557fafd6515fbcdc2b80df6d4df3" } },
-    { "id": "component:2", "definition": "component_def:2", "reference": "D1", "properties": {}, "selected_library_part": { "library_namespace": "test.export", "library_version": "1", "part_key": "led", "library_digest": "sha256:c1b6e2a2e6f1ee9cd7dd9c92fce65a066973812b068b941a47dab228720fbf87", "part_digest": "sha256:92d741f75c350f9a84101455268a7349fc0496d41ae9d3c408d31c257b57ea72" } }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-07330RL" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "R_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:2", "pad": "1" },
+        { "pin": "pin_def:3", "pad": "2" }
+      ],
+      "properties": {}
+    } },
+    { "id": "component:2", "definition": "component_def:2", "reference": "D1", "properties": {}, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Lite-On", "part_number": "LTST-C190KRKT" },
+      "package": "0603",
+      "footprint": { "library": "leds", "name": "LED_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:5", "pad": "1" },
+        { "pin": "pin_def:4", "pad": "2" }
+      ],
+      "properties": {}
+    } }
   ],
   "pins": [
     { "id": "pin:0", "component": "component:0", "definition": "pin_def:0" },

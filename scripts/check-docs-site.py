@@ -25,11 +25,6 @@ REQUIRED_PAGES = {
     "python/pcb-authoring",
     "python/diagnostics",
     "python/reference",
-    "examples/index",
-    "examples/led",
-    "examples/timer-555",
-    "examples/pcb-led-board",
-    "examples/stm32-usb-buck",
     "architecture/kernel-principles",
     "api/python/index",
     "api/python/project",
@@ -49,13 +44,6 @@ REQUIRED_WORKFLOW_SNIPPETS = {
     "python/diagnostics": ("DiagnosticReport", "has_errors", "diagnostic.code"),
 }
 
-REQUIRED_SOURCE_REFERENCES = {
-    "examples/led": "examples/schematic_sugar/compact_led.py",
-    "examples/timer-555": "examples/timer_555_led_blinker/main.py",
-    "examples/pcb-led-board": "examples/pcb_led_board/main.py",
-    "examples/stm32-usb-buck": "examples/stm32_usb_buck/",
-}
-
 INTERNAL_HREF_PATTERN = re.compile(r'href=["\']/([^"\'?#]+)')
 MARKDOWN_LINK_PATTERN = re.compile(r'\[[^\]]+\]\((/[^)#?]+)')
 API_REFERENCE_EXPORT_PATTERN = re.compile(r"`volt\.([A-Za-z][A-Za-z0-9_]*)`")
@@ -68,10 +56,6 @@ FORBIDDEN_SNIPPETS = {
         "add_zone(\n    gnd,",
         "clearance=",
         "add_text(\"Volt\", x=",
-    ),
-    "examples/stm32-usb-buck": (
-        "board-style organization",
-        "board = build_board()",
     ),
 }
 
@@ -206,14 +190,6 @@ def main() -> int:
         present = [snippet for snippet in snippets if snippet in text]
         if present:
             fail(f"{page}.mdx contains stale or invalid snippets: {', '.join(present)}")
-
-    for page, source in REQUIRED_SOURCE_REFERENCES.items():
-        text = page_text(page)
-        if source not in text:
-            fail(f"{page}.mdx does not mention source path {source}")
-        source_path = ROOT / source
-        if not source_path.exists():
-            fail(f"{page}.mdx mentions missing source path {source}")
 
     for page in sorted(navigation_pages):
         text = page_text(page)

@@ -104,8 +104,6 @@ Key builder methods:
 - `.dot()`, `.idot()` — add junction dots at the end or start terminal
 - `.start`, `.end`, `.center` — pin anchors after materialization
 
-Full builder reference: `references/two-terminal-builder.md`.
-
 ### Placing Multi-Pin Symbols
 
 Use `drawing.place()` for ICs, connectors, and any component that is not strictly
@@ -189,8 +187,6 @@ Use `move(dx=, dy=)` to shift the cursor by a relative offset. Use
 `drawing.stack(count=N, direction="Down", pitch=20)` returns N evenly spaced anchors from
 the current cursor position, useful for placing rows of connectors or caps.
 
-Full session reference: `references/drawing-session.md`.
-
 ## Fallback: Low-Level Placement API
 
 When the drawing session does not cover a case (for example, arbitrary IC placement with
@@ -258,16 +254,7 @@ wires — only your eyes on the drawing will.
 
 ## References
 
-- `references/drawing-session.md` — drawing session toolbox (`two_terminal`, `place`,
-  `connect`, `wire`, `power_stub`, `ground_stub`, `local_label`, `signal_tag`, `junction`,
-  `hold`, `push`/`pop`, `move`, `move_from`, `stack`, `frame`, `node`, `ortho_lines`).
-- `references/two-terminal-builder.md` — `SchematicTwoTerminalElement` full chain.
 - `references/low-level-api.md` — fallback `sch.place()`/`sch.wire()` and
   `design.schematic()` argument table.
-- `references/walkthrough-555-schematic.md` — annotated read of
-  `examples/timer_555_led_blinker/schematic.py`.
 - `docs/python-api.md` section "Schematic Placement".
 - `docs/design/schemdraw-style-schematic-authoring.html`.
-- `examples/timer_555_led_blinker/schematic.py`.
-- `examples/schematic_sugar/timer_555_led_blinker.py`.
-- `examples/schematic_sugar/compact_led.py`.

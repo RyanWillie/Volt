@@ -38,6 +38,76 @@
 #include "project_bundle_v2_contract.hpp"
 
 namespace volt::io::v2_open {
+namespace {
+
+class DecodedPartResolver final : public ExactPartResolver {
+  public:
+    DecodedPartResolver(const Circuit &circuit, const LibraryDecoded &library)
+        : identity_{selected_reference(circuit).has_value()
+                        ? selected_reference(circuit)->library_namespace()
+                        : "volt.project_bundle.empty",
+                    selected_reference(circuit).has_value()
+                        ? selected_reference(circuit)->library_version()
+                        : "0",
+                    PartLibrarySchemaVersion::V1},
+          digest_{selected_reference(circuit).has_value()
+                      ? selected_reference(circuit)->library_digest()
+                      : sha256_content_hash("volt.project_bundle.empty")},
+          library_{&library} {
+        for (std::size_t index = 0; index < circuit.all<ComponentId>().size(); ++index) {
+            const auto &reference = queries::selected_library_part_ref(circuit, ComponentId{index});
+            if (!reference.has_value()) {
+                continue;
+            }
+            require(reference->library_namespace() == identity_.namespace_name() &&
+                        reference->library_version() == identity_.version() &&
+                        reference->library_digest() == digest_,
+                    ProjectBundleOpenErrorCode::OwnershipViolation,
+                    "logical Circuit selects parts from more than one exact closure");
+        }
+    }
+
+    [[nodiscard]] const PartLibraryIdentity &identity() const & noexcept override {
+        return identity_;
+    }
+
+    [[nodiscard]] const ContentHash &reference_digest() const & noexcept override {
+        return digest_;
+    }
+
+    [[nodiscard]] const PartDefinition &resolve(const LibraryPartRef &reference) const & override {
+        require(reference.library_namespace() == identity_.namespace_name() &&
+                    reference.library_version() == identity_.version() &&
+                    reference.library_digest() == digest_,
+                ProjectBundleOpenErrorCode::OwnershipViolation,
+                "BOM exact reference belongs to a different vendored closure");
+        const auto id = ArtifactId{ArtifactKind::PartDefinition, reference};
+        const auto match = library_->parts.find(detail::project_bundle_v2_artifact_key(id));
+        require(match != library_->parts.end(), ProjectBundleOpenErrorCode::OwnershipViolation,
+                "BOM exact reference has no vendored part definition");
+        require(match->second->content_identity() == reference.part_digest(),
+                ProjectBundleOpenErrorCode::DigestMismatch,
+                "BOM exact reference digest differs from its vendored part");
+        return *match->second;
+    }
+
+  private:
+    [[nodiscard]] static std::optional<LibraryPartRef> selected_reference(const Circuit &circuit) {
+        for (std::size_t index = 0; index < circuit.all<ComponentId>().size(); ++index) {
+            const auto &reference = queries::selected_library_part_ref(circuit, ComponentId{index});
+            if (reference.has_value()) {
+                return reference;
+            }
+        }
+        return std::nullopt;
+    }
+
+    PartLibraryIdentity identity_;
+    ContentHash digest_;
+    const LibraryDecoded *library_;
+};
+
+} // namespace
 
 [[nodiscard]] const ComponentDefinition &component_for_part(const ArtifactDescriptor &part,
                                                             const LibraryDecoded &decoded) {
@@ -832,7 +902,8 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
                         target.model.content_digest(),
                     ProjectBundleOpenErrorCode::DigestMismatch,
                     "BOM target digest does not match its loaded logical Circuit");
-            expected_bytes = write_bom_json(project_bom(*circuit->model));
+            const auto resolver = DecodedPartResolver{*circuit->model, library};
+            expected_bytes = write_bom_json(project_bom(*circuit->model, resolver));
             break;
         }
         case ExportKind::Cpl: {

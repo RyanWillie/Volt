@@ -13,7 +13,6 @@ set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "Do not update downloaded de
 
 option(VOLT_BUILD_TESTS "Build Volt tests" ON)
 option(VOLT_BUILD_DOCS "Add the Doxygen documentation target" ON)
-option(VOLT_BUILD_EXAMPLES "Build Volt examples" ON)
 option(VOLT_BUILD_PYTHON "Build Volt Python bindings" OFF)
 option(VOLT_BUILD_BENCHMARKS "Build Volt benchmark executables" OFF)
 
@@ -73,10 +72,6 @@ if(VOLT_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
-if(VOLT_BUILD_EXAMPLES)
-    add_subdirectory(examples)
-endif()
-
 if(VOLT_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
 endif()
@@ -98,7 +93,6 @@ if(VOLT_ENABLE_COVERAGE)
         volt_io_compiled_board_link_contract
         volt_io_project_bundle_link_contract
         volt_kicad_compiled_board_link_contract
-        volt_led_circuit_example
         volt_kernel_benchmarks
     )
         if(TARGET ${target})

@@ -1782,8 +1782,8 @@ void ProjectArtifactGraph::materialize_selected_exports(const ValidatedProjectBu
             require(artifact.id.kind() == ArtifactKind::LogicalModel,
                     "BOM target is not a logical model", ErrorCode::InvalidArgument);
             const auto &owner = std::get<LogicalArtifactIdentity>(artifact.id.owner());
-            bytes = write_bom_json(
-                project_bom(*validated.logical_by_design.at(owner.design.value())->circuit));
+            const auto *logical = validated.logical_by_design.at(owner.design.value());
+            bytes = write_bom_json(project_bom(*logical->circuit, *logical->bundle));
             dependencies.push_back(target);
             output_kind = ArtifactKind::Bom;
             break;

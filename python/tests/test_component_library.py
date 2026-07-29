@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 import volt
-from volt.libraries import stm32_usb_buck
 
 from helpers import (
     _common_catalog_components,
@@ -23,53 +22,6 @@ def test_library_public_symbol_classes_stay_on_public_import_surface():
         library._default_two_terminal_symbol_spec("resistor"),
         library.SchematicSymbolSpec,
     )
-
-
-def test_library_component_instantiates_kernel_owned_definition_once():
-    design = volt.Design("library")
-    library = volt.Library("volt.test")
-    sensor = library.component(
-        "Sensor",
-        pins=[
-            volt.PinSpec("VDD", 1, role="power", terminal="power", direction="input"),
-            volt.PinSpec("OUT", 2, role="output", terminal="signal", direction="output"),
-            volt.PinSpec("GND", 3, role="ground", terminal="ground", direction="passive"),
-        ],
-        properties={"category": "sensor"},
-        physical_part=volt.PhysicalPartSpec.same_numbered(
-            manufacturer="Example",
-            part_number="SENSOR-3",
-            package="SOT-23-3",
-            footprint=_sot23_footprint(),
-        ),
-    )
-
-    u1 = design.instantiate(sensor, ref="U1")
-    u2 = design.instantiate(sensor, ref="U2")
-
-    circuit = json.loads(design.to_json())
-
-    assert len(circuit["component_definitions"]) == 1
-    definition = circuit["component_definitions"][0]
-    assert definition["name"] == "Sensor"
-    assert definition["source"] == {
-        "namespace": "volt.test",
-        "name": "Sensor",
-        "version": "1.0.0",
-    }
-    assert definition["properties"]["category"] == {"type": "string", "value": "sensor"}
-    assert [component["reference"] for component in circuit["components"]] == ["U1", "U2"]
-    assert u1["OUT"].index == 1
-    assert u2["OUT"].index == 4
-    selection = circuit["components"][0]["selected_library_part"]
-    assert selection["library_namespace"] == "volt.python.design"
-    assert selection["part_key"] == "component-0"
-    assert "role" not in circuit["pin_definitions"][0]
-    assert circuit["pin_definitions"][0]["terminal_kind"] == "Power"
-    assert circuit["pin_definitions"][0]["direction"] == "Input"
-    assert circuit["pin_definitions"][1]["terminal_kind"] == "Signal"
-    assert circuit["pin_definitions"][1]["direction"] == "Output"
-    assert circuit["pin_definitions"][2]["terminal_kind"] == "Ground"
 
 
 def test_pin_spec_role_preset_rejects_contradictory_explicit_semantics():
@@ -240,31 +192,6 @@ def test_library_part_build_reports_pin_role_contradictions():
     with pytest.raises(volt.InvalidArgumentError, match="contradicts explicit terminal"):
         library.build()
 
-def test_library_component_schematic_symbol_default_is_definition_owned():
-    design = volt.Design("library-symbol")
-    library = volt.Library("volt.test")
-    symbol = _two_pin_test_symbol("volt.test:Sensor")
-    sensor = library.component(
-        "Sensor",
-        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
-        schematic_symbol=symbol,
-    )
-
-    u1 = design.instantiate(sensor, ref="U1")
-    schematic = design.schematic("Main")
-    schematic.place(u1, at=(10, 20))
-
-    circuit = json.loads(design.to_json())
-    projection = json.loads(schematic.to_json())
-
-    assert circuit["component_definitions"][0]["schematic_symbols"] == [
-        {"name": "volt.test:Sensor", "variant": "default"}
-    ]
-    assert u1.schematic_symbol == symbol
-    assert projection["symbol_definitions"][0]["name"] == "volt.test:Sensor"
-    assert projection["symbol_instances"][0]["symbol_definition"] == "symbol_def:0"
-
-
 def test_schematic_symbol_text_metadata_is_kernel_owned():
     symbol = volt.SchematicSymbolSpec(
         "volt.test:Styled",
@@ -295,58 +222,6 @@ def test_schematic_symbol_text_metadata_is_kernel_owned():
     assert primitive["horizontal_alignment"] == "Start"
     assert primitive["vertical_alignment"] == "Middle"
     assert primitive["font_size"] == 3.25
-
-def test_module_instance_component_resolves_library_symbol_default():
-    design = volt.Design("module-library-symbol")
-    library = volt.Library("volt.test")
-    symbol = _two_pin_test_symbol("volt.test:Sensor")
-    sensor = library.component(
-        "Sensor",
-        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
-        schematic_symbol=symbol,
-    )
-
-    module = design.define_module("SensorBlock")
-    module.instantiate(sensor, ref="U1")
-
-    block = design.instantiate(module, ref="BLOCK_A")
-    u1 = block.component("U1")
-    schematic = design.schematic("Main")
-    schematic.place(u1, at=(10, 20))
-
-    projection = json.loads(schematic.to_json())
-
-    assert u1.schematic_symbol == symbol
-    assert projection["symbol_definitions"][0]["name"] == "volt.test:Sensor"
-    assert projection["symbol_instances"][0]["component"] == "component:0"
-
-def test_schematic_placement_can_select_symbol_variant_from_component_default():
-    design = volt.Design("library-symbol-variant")
-    library = volt.Library("volt.test")
-    horizontal = _two_pin_test_symbol("volt.test:Sensor")
-    vertical = _two_pin_test_symbol(
-        "volt.test:SensorVertical", variant="vertical", label="VERT"
-    )
-    sensor = library.component(
-        "Sensor",
-        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
-        schematic_symbol=(horizontal, vertical),
-    )
-
-    u1 = design.instantiate(sensor, ref="U1")
-    schematic = design.schematic("Main")
-    schematic.place(u1, at=(10, 20), variant="vertical")
-
-    circuit = json.loads(design.to_json())
-    projection = json.loads(schematic.to_json())
-
-    assert circuit["component_definitions"][0]["schematic_symbols"] == [
-        {"name": "volt.test:Sensor", "variant": "default"},
-        {"name": "volt.test:SensorVertical", "variant": "vertical"},
-    ]
-    assert u1.schematic_symbol_variant("vertical") == vertical
-    assert projection["symbol_definitions"][1]["name"] == "volt.test:SensorVertical"
-    assert projection["symbol_instances"][0]["symbol_definition"] == "symbol_def:1"
 
 def test_common_catalog_components_have_namespaced_default_symbol_refs():
     design = volt.Design("common-default-symbols")
@@ -427,28 +302,6 @@ def test_legacy_common_symbol_names_still_place_and_resolve():
     assert tuple(anchor.name for anchor in placed[3].pin_anchors()) == ("+", "-")
     assert tuple(anchor.number for anchor in placed[3].pin_anchors()) == ("1", "2")
 
-def test_schematic_placement_rejects_unknown_component_symbol_variant():
-    design = volt.Design("library-symbol-missing-variant")
-    library = volt.Library("volt.test")
-    sensor = library.component(
-        "Sensor",
-        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
-        schematic_symbol=_two_pin_test_symbol("volt.test:Sensor"),
-    )
-
-    u1 = design.instantiate(sensor, ref="U1")
-    schematic = design.schematic("Main")
-
-    try:
-        schematic.place(u1, at=(10, 20), variant="vertical")
-    except ValueError as error:
-        message = str(error)
-        assert "No schematic symbol variant 'vertical'" in message
-        assert "U1" in message
-        assert "sheet 'Main'" in message
-    else:
-        raise AssertionError("missing schematic symbol variants should be rejected")
-
 def test_schematic_placement_missing_default_symbol_reports_author_context():
     design = volt.Design("library-symbol-missing-default")
     sensor = design.define_component(
@@ -473,28 +326,6 @@ def test_schematic_placement_missing_default_symbol_reports_author_context():
 
     assert schematic.to_json() == before
 
-def test_schematic_symbol_name_conflicts_reject_different_definitions():
-    design = volt.Design("library-symbol-conflict")
-    library = volt.Library("volt.test")
-    first = library.component(
-        "SensorA",
-        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
-        schematic_symbol=_two_pin_test_symbol("volt.test:Sensor", label="A"),
-    )
-    second = library.component(
-        "SensorB",
-        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
-        schematic_symbol=_two_pin_test_symbol("volt.test:Sensor", label="B"),
-    )
-
-    design.instantiate(first, ref="U1")
-    try:
-        design.instantiate(second, ref="U2")
-    except ValueError as error:
-        assert "already exists with a different definition" in str(error)
-    else:
-        raise AssertionError("conflicting schematic symbol definitions should be rejected")
-
 def test_default_catalog_symbol_name_conflicts_reject_different_definitions():
     design = volt.Design("default-catalog-symbol-conflict")
     r1 = design.R("10k", ref="R1")
@@ -509,127 +340,6 @@ def test_default_catalog_symbol_name_conflicts_reject_different_definitions():
         assert "already exists with a different definition" in str(error)
     else:
         raise AssertionError("default catalog symbol name conflicts should be rejected")
-
-def test_schematic_placement_rejects_symbol_with_unknown_component_pin():
-    design = volt.Design("bad-symbol")
-    library = volt.Library("volt.test")
-    bad_symbol = volt.SchematicSymbolSpec(
-        "volt.test:Sensor",
-        pins=(volt.SchematicSymbolSpec.pin("BOGUS", 99, (0, 0), "Left"),),
-        primitives=(volt.SchematicSymbolSpec.line((0, 0), (10, 0)),),
-    )
-    sensor = library.component(
-        "Sensor",
-        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
-        schematic_symbol=bad_symbol,
-    )
-
-    u1 = design.instantiate(sensor, ref="U1")
-    schematic = design.schematic("Main")
-
-    try:
-        schematic.place(u1, at=(10, 20))
-    except RuntimeError as error:
-        assert "symbol pin does not match component pin" in str(error)
-    else:
-        raise AssertionError("incompatible schematic symbol should be rejected")
-
-def test_stm32_usb_buck_library_exposes_native_components():
-    design = volt.Design("stm32-library")
-
-    mcu = design.instantiate(stm32_usb_buck.STM32F405RGTx, ref="U1")
-    usb = design.instantiate(stm32_usb_buck.USB_B_MICRO, ref="J1")
-    protection = design.instantiate(stm32_usb_buck.USBLC6_4SC6, ref="U2")
-    regulator = design.instantiate(stm32_usb_buck.AP1117_15, ref="U3")
-
-    circuit = json.loads(design.to_json())
-    definitions = {definition["name"]: definition for definition in circuit["component_definitions"]}
-
-    assert definitions["STM32F405RGTx"]["source"]["namespace"] == (
-        "volt.benchmarks.stm32_usb_buck"
-    )
-    assert len(definitions["STM32F405RGTx"]["pins"]) == 64
-    assert mcu["PA12"].index == 44
-    assert usb["D+"].index == 66
-    assert protection["VBUS"].index == 74
-    assert regulator["VO"].index == 77
-
-    selected_parts = {
-        component["reference"]: component["selected_library_part"]
-        for component in circuit["components"]
-    }
-    assert all(
-        selection["library_namespace"] == "volt.python.design"
-        and selection["part_key"].startswith("component-")
-        for selection in selected_parts.values()
-    )
-
-
-def test_stm32_usb_buck_library_selected_parts_resolve_builtin_footprints():
-    board_ready_components = (
-        stm32_usb_buck.STM32F405RGTx,
-        stm32_usb_buck.USB_B_MICRO,
-        stm32_usb_buck.USBLC6_4SC6,
-        stm32_usb_buck.AP1117_15,
-        stm32_usb_buck.FERRITE_BEAD,
-        stm32_usb_buck.JTAG_SWD_10,
-        stm32_usb_buck.CONNECTOR_1X04,
-        stm32_usb_buck.DIODE,
-        stm32_usb_buck.ZENER_DIODE,
-        stm32_usb_buck.RESISTOR,
-        stm32_usb_buck.CAPACITOR,
-        stm32_usb_buck.INDUCTOR,
-    )
-    for component in board_ready_components:
-        assert isinstance(component.physical_part.footprint, volt.Footprint), component.name
-
-    design = volt.Design("stm32-library-pcb")
-    components = {
-        "J1": design.instantiate(stm32_usb_buck.USB_B_MICRO, ref="J1"),
-        "U2": design.instantiate(stm32_usb_buck.USBLC6_4SC6, ref="U2"),
-        "U3": design.instantiate(stm32_usb_buck.AP1117_15, ref="U3"),
-        "R1": design.instantiate(stm32_usb_buck.RESISTOR, ref="R1"),
-        "C1": design.instantiate(stm32_usb_buck.CAPACITOR, ref="C1"),
-        "L1": design.instantiate(stm32_usb_buck.INDUCTOR, ref="L1"),
-        "D1": design.instantiate(stm32_usb_buck.DIODE, ref="D1"),
-    }
-    board = design.add_board("First-board library parts")
-
-    for index, component in enumerate(components.values()):
-        board.place(component, at=(index * 8.0, 0.0))
-
-    resolutions = board.resolve_pads()
-    assert all(resolution.status != "invalid" for resolution in resolutions)
-    by_reference = {
-        reference: [
-            resolution
-            for resolution in resolutions
-            if resolution.component == component.index
-        ]
-        for reference, component in components.items()
-    }
-
-    assert [resolution.pad_label for resolution in by_reference["J1"]] == [
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-        "M1",
-        "M2",
-    ]
-    assert [resolution.status for resolution in by_reference["J1"][-2:]] == [
-        "non_electrical",
-        "non_electrical",
-    ]
-    assert [resolution.pad_label for resolution in by_reference["U3"]] == ["1", "2", "3", "4"]
-    assert by_reference["U3"][3].pad == 3
-    assert by_reference["U3"][1].pin == by_reference["U3"][3].pin
-    assert [resolution.pad_label for resolution in by_reference["R1"]] == ["1", "2"]
-    assert [resolution.pad_label for resolution in by_reference["C1"]] == ["1", "2"]
-    assert [resolution.pad_label for resolution in by_reference["L1"]] == ["1", "2"]
-    assert [resolution.pad_label for resolution in by_reference["D1"]] == ["1", "2"]
 
 def test_repeated_pin_labels_require_explicit_single_pin_addressing():
     design = volt.Design("repeated-pins")
@@ -715,23 +425,6 @@ def test_repeated_pin_group_connects_all_matching_package_pins():
     assert nets["VDD"]["pins"] == ["pin:0", "pin:1"]
     assert nets["GND"]["pins"] == ["pin:2", "pin:3"]
 
-def test_stm32_repeated_supply_groups_connect_without_bespoke_code():
-    design = volt.Design("stm32-repeated-supplies")
-    mcu = design.instantiate(stm32_usb_buck.STM32F405RGTx, ref="U1")
-
-    vdd = design.net("VDD", kind="power", voltage=3.3)
-    gnd = design.net("GND", kind="ground")
-    vdd += mcu.pins("VDD")
-    gnd += mcu.pins("VSS")
-
-    circuit = json.loads(design.to_json())
-    nets = {net["name"]: net for net in circuit["nets"]}
-
-    assert [pin.index for pin in mcu.pins("VDD")] == [18, 31, 47, 63]
-    assert [pin.index for pin in mcu.pins("VSS")] == [17, 62]
-    assert nets["VDD"]["pins"] == ["pin:18", "pin:31", "pin:47", "pin:63"]
-    assert nets["GND"]["pins"] == ["pin:17", "pin:62"]
-
 def test_pin_spec_electrical_semantics_are_kernel_owned():
     design = volt.Design("pin-semantics")
 
@@ -781,66 +474,6 @@ def test_pin_spec_electrical_semantics_are_kernel_owned():
     assert pin_definitions["VCC"]["terminal_kind"] == "Power"
     assert pin_definitions["VCC"]["electrical_attributes"]["voltage_range"]["minimum"] == 4.5
     assert pin_definitions["GND"]["terminal_kind"] == "Ground"
-
-def test_component_selected_part_serializes():
-    design = volt.Design("selected-part")
-    r1 = design.R(resistance=330, tolerance=0.01, ref="R1")
-
-    r1.select_part(
-        manufacturer="Yageo",
-        part_number="RC0603FR-07330RL",
-        package="0603",
-        footprint=_resistor_0603_footprint(),
-        pin_pads={
-            1: "1",
-            2: "2",
-        },
-        voltage_rating=75,
-    )
-
-    circuit = json.loads(design.to_json())
-    resistor = next(
-        component for component in circuit["components"] if component["reference"] == "R1"
-    )
-    selection = resistor["selected_library_part"]
-    assert selection["library_namespace"] == "volt.python.design"
-    assert selection["library_version"] == "1"
-    assert selection["part_key"] == "component-0"
-    assert selection["library_digest"].startswith("sha256:")
-    assert selection["part_digest"].startswith("sha256:")
-
-
-def test_component_selected_part_model_3d_serializes(tmp_path):
-    design = volt.Design("selected-part-model-3d")
-    r1 = design.R(resistance=330, ref="R1")
-    asset_path = Path(tmp_path) / "resistor-body.glb"
-    asset_path.write_bytes(b"placeholder-glb")
-
-    r1.select_part(
-        manufacturer="Yageo",
-        part_number="RC0603FR-07330RL",
-        package="0603",
-        footprint=_resistor_0603_footprint(),
-        pin_pads={
-            1: "1",
-            2: "2",
-        },
-        model_3d=volt.PartModel3D(
-            asset_path,
-            offset=(0.5, -0.25, 0.8),
-            rotation=15,
-        ),
-    )
-
-    circuit = json.loads(design.to_json())
-    resistor = next(
-        component for component in circuit["components"] if component["reference"] == "R1"
-    )
-
-    selection = resistor["selected_library_part"]
-    assert selection["library_namespace"] == "volt.python.design"
-    assert selection["part_key"] == "component-0"
-
 
 def _resistor_0603_footprint():
     return volt.Footprint(
@@ -1004,7 +637,7 @@ def test_library_parts_family_overrides_are_isolated_snapshots():
     hundred_k = r0603.part(
         "100K",
         value="100 kohm",
-        part_number="RC0603FR-07100KL",
+        mpn="RC0603FR-07100KL",
         manufacturer="KOA",
         package="0603",
         pads={1: "1", 2: "2"},
@@ -1098,37 +731,6 @@ def test_library_build_validates_board_ready_part():
     assert part_result.has_footprint
     assert part_result.pad_mapping_complete
     assert library["R_0603_10K"] is part
-
-
-def test_part_orderable_same_numbered_preserves_artifact_pin_pad_mappings():
-    library = volt.Library("volt.test.passives")
-    library.add(
-        volt.Part(
-            name="SameNumbered",
-            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
-            symbol=_two_pin_test_symbol("volt.test:SameNumbered"),
-            orderable_part=volt.OrderablePart.same_numbered(
-                manufacturer="Yageo",
-                part_number="RC0603FR-0710KL",
-                package="0603",
-                footprint=_resistor_0603_footprint(),
-            ),
-            prefix="R",
-        )
-    )
-
-    result = library.build()
-    part_result = result.part("SameNumbered")
-    artifact = part_result.artifact
-
-    assert result.ok
-    assert part_result.board_ready
-    assert part_result.pad_mapping_complete
-    assert artifact is not None
-    assert json.loads(artifact.bytes)["orderable_part"]["terminal_pad_mappings"] == [
-        {"terminal": "1", "pads": ["1"]},
-        {"terminal": "2", "pads": ["2"]},
-    ]
 
 
 def test_part_instantiation_requires_library_identity():
@@ -1570,25 +1172,6 @@ def test_part_ref_only_missing_geometry_is_not_an_exact_instantiation_route():
     assert design.components() == ()
 
 
-def test_component_select_part_accepts_public_footprint_object():
-    design = volt.Design("selected-part-footprint-object")
-    r1 = design.R(ref="R1")
-    footprint = _resistor_0603_footprint()
-
-    r1.select_part(
-        manufacturer="Yageo",
-        part_number="RC0603FR-07330RL",
-        package="0603",
-        footprint=footprint,
-        pin_pads={1: "1", 2: "2"},
-    )
-
-    circuit = json.loads(design.to_json())
-    selection = circuit["components"][0]["selected_library_part"]
-    assert selection["library_namespace"] == "volt.python.design"
-    assert selection["part_key"] == "component-0"
-
-
 def test_footprint_rejects_empty_public_identity():
     try:
         volt.Footprint(library="", name="R_0603_1608Metric", pads=())
@@ -1605,178 +1188,6 @@ def test_footprint_rejects_empty_public_identity():
         raise AssertionError("empty footprint name should be rejected")
 
 
-def test_physical_part_specs_accept_and_reuse_public_footprint_object():
-    footprint = _resistor_0603_footprint()
-    library = volt.Library("volt.test")
-    resistor = library.component(
-        "Resistor",
-        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
-        physical_part=volt.PhysicalPartSpec(
-            manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
-            package="0603",
-            footprint=footprint,
-            pin_pads={1: "1", 2: "2"},
-        ),
-    )
-    jumper = library.component(
-        "Jumper",
-        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
-        physical_part=volt.PhysicalPartSpec.same_numbered(
-            manufacturer="Keystone",
-            part_number="5015",
-            package="0603",
-            footprint=footprint,
-        ),
-    )
-    design = volt.Design("library-footprint-object")
-
-    design.instantiate(resistor, ref="R1")
-    design.instantiate(jumper, ref="JP1")
-    circuit = json.loads(design.to_json())
-
-    assert resistor.physical_part.footprint is footprint
-    assert jumper.physical_part.footprint is footprint
-    assert [
-        component["selected_library_part"]["part_key"]
-        for component in circuit["components"]
-    ] == ["component-0", "component-1"]
-
-
-def test_custom_component_selected_part_accepts_named_pin_mappings():
-    design = volt.Design("selected-custom")
-    opamp = design.define_component(
-        "OpAmp",
-        pins=[
-            volt.PinSpec("OUT", 1, role="output"),
-            volt.PinSpec("IN-", 2, role="input"),
-            volt.PinSpec("IN+", 3, role="input"),
-            volt.PinSpec("V-", 4, role="power"),
-            volt.PinSpec("V+", 8, role="power"),
-        ],
-    )
-    u1 = design.instantiate(opamp, ref="U1")
-
-    u1.select_part(
-        manufacturer="Texas Instruments",
-        part_number="TLV9002IDR",
-        package="SOIC-8",
-        footprint=_soic8_footprint(),
-        pin_pads={
-            "OUT": "1",
-            "IN-": "2",
-            "IN+": "3",
-            "V-": "4",
-            "V+": "8",
-        },
-    )
-
-    circuit = json.loads(design.to_json())
-    selection = circuit["components"][0]["selected_library_part"]
-    assert selection["library_namespace"] == "volt.python.design"
-    assert selection["part_key"] == "component-0"
-
-
-def test_selected_part_mapping_errors_are_rejected():
-    design = volt.Design("bad-part")
-    r1 = design.R(ref="R1")
-
-    with pytest.raises(
-        volt.CrossReferenceError, match="Every selected component PinKey must map"
-    ):
-        r1.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
-            package="0603",
-            footprint=_resistor_0603_footprint(),
-            pin_pads={1: "1"},
-        )
-
-    assert "selected_library_part" not in json.loads(design.to_json())["components"][0]
-
-    try:
-        r1.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
-            package="0603",
-            footprint=_resistor_0603_footprint(),
-            pin_pads={1: "1", 2: "1"},
-        )
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("duplicate pad mapping should be rejected")
-
-    try:
-        r1.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
-            package="0603",
-            footprint=_resistor_0603_footprint(),
-            pin_pads={1: ("1", "1"), 2: "2"},
-        )
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("duplicate pad labels in a tied-pad mapping should be rejected")
-
-    try:
-        r1.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
-            package="0603",
-            footprint=_resistor_0603_footprint(),
-            pin_pads={1: "1", "BOGUS": "2"},
-        )
-    except IndexError:
-        pass
-    else:
-        raise AssertionError("unknown pin mapping should be rejected")
-
-
-def test_selected_part_mapping_accepts_tied_physical_pads():
-    design = volt.Design("tied-pads")
-    regulator = design.instantiate(stm32_usb_buck.AP1117_15, ref="U1")
-
-    circuit = json.loads(design.to_json())
-    selection = circuit["components"][0]["selected_library_part"]
-    assert selection["library_namespace"] == "volt.python.design"
-    assert regulator["VO"].index == 1
-
-
-def test_invalid_selected_part_rating_does_not_select_part():
-    design = volt.Design("bad-rating")
-
-    try:
-        design.C(ref="C1", voltage_rating=float("inf"))
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("non-finite capacitor voltage rating should be rejected")
-
-    capacitor = json.loads(design.to_json())["components"][0]
-    assert capacitor["reference"] == "C1"
-    assert "selected_library_part" not in capacitor
-
-    r1 = design.R(ref="R1")
-
-    try:
-        r1.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
-            package="0603",
-            footprint=_resistor_0603_footprint(),
-            pin_pads={1: "1", 2: "2"},
-            voltage_rating=float("inf"),
-        )
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("non-finite selected-part rating should be rejected")
-
-    circuit = json.loads(design.to_json())
-    assert "selected_library_part" not in circuit["components"][0]
-
 def test_pcb_readiness_requires_selected_physical_parts():
     design = volt.Design("pcb-readiness")
     r1 = design.R("10k", ref="R1")
@@ -1788,36 +1199,3 @@ def test_pcb_readiness_requires_selected_physical_parts():
 
     assert "PHYSICAL_PART_REQUIRED" not in {diagnostic.code for diagnostic in logical_report}
     assert "PHYSICAL_PART_REQUIRED" in {diagnostic.code for diagnostic in pcb_report}
-
-def test_stm32_usb_buck_native_symbols_place_and_render():
-    design = volt.Design("stm32-native-symbols")
-    mcu = design.instantiate(stm32_usb_buck.STM32F405RGTx, ref="U1")
-    resistor = design.instantiate(stm32_usb_buck.RESISTOR, ref="R1")
-
-    schematic = design.schematic("Main")
-    with schematic.drawing() as drawing:
-        drawing.place(mcu, at=(60, 60)).label_ref()
-        drawing.place(resistor, at=(160, 60)).label_ref()
-
-    projection = json.loads(schematic.to_json())
-
-    assert [symbol["name"] for symbol in projection["symbol_definitions"]] == [
-        "volt.benchmarks.stm32_usb_buck:STM32F405RGTx",
-        "volt.benchmarks.stm32_usb_buck:Resistor",
-    ]
-    stm32_symbol = projection["symbol_definitions"][0]
-    resistor_symbol = projection["symbol_definitions"][1]
-    assert len(stm32_symbol["pins"]) == 64
-    assert any(pin["name"] == "PA11" and pin["number"] == "44" for pin in stm32_symbol["pins"])
-    assert any(primitive["type"] == "rectangle" for primitive in stm32_symbol["primitives"])
-    assert len(resistor_symbol["pins"]) == 2
-    assert projection["sheets"][0]["symbol_instances"] == [
-        "symbol_instance:0",
-        "symbol_instance:1",
-    ]
-
-    svg = schematic.to_svg()
-    assert 'data-component="component:0"' in svg
-    assert 'data-component="component:1"' in svg
-    assert ">U1</text>" in svg
-    assert ">R1</text>" in svg

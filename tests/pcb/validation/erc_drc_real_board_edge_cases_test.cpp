@@ -171,13 +171,8 @@ TEST_CASE("Real-board PCB readiness catches selected-part and pad-mapping edge c
         auto fixture = make_real_board_fixture(false);
         const auto layout = make_real_board_layout(fixture);
 
-        const auto readiness = volt::validate_for_pcb(fixture.circuit);
         const auto board = volt::validate_board(layout.board, library);
 
-        check_diagnostic_summaries(
-            readiness,
-            {ExpectedDiagnostic{"PHYSICAL_PART_REQUIRED", volt::Severity::Error,
-                                volt::DiagnosticCategory{volt::diagnostic_categories::General}}});
         check_diagnostic_summaries(
             board,
             {ExpectedDiagnostic{"PCB_COMPONENT_MISSING_SELECTED_PART", volt::Severity::Error,

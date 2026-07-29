@@ -7,7 +7,9 @@ Read this before applying any official Volt skill in this folder.
 - Invalid kernel state should be impossible; bad circuit design should be diagnosable.
 - EDA and manufacturing meaning belongs in the C++ kernel, canonical model, and native exporters.
 - Python is an ergonomic authoring and orchestration surface. It must lower meaningful operations into kernel-owned state and must not own hidden EDA semantics.
-- The logical circuit owns component definitions, component instances, pins, nets, pin-to-net membership, typed attributes, selected parts, and logical design intent.
+- PartLibraryBundle owns reusable exact part definitions and assets. The logical circuit owns
+  component instances, pins, nets, pin-to-net membership, typed attributes, exact selected
+  PartRefs, and logical design intent.
 - Schematics visualize existing logical connectivity. They may arrange, label, annotate, and validate presentation; they must not create, merge, split, or reinterpret nets.
 - PCBs physically implement existing logical connectivity. They may place footprints, route copper, define physical board data, and validate implementation; they must not define the netlist.
 - Structural integrity failures belong at mutation/read boundaries. Examples: dangling IDs, duplicate references, invalid selected-part pin-pad mappings, and one pin connected to multiple nets.
@@ -40,13 +42,13 @@ The logical circuit owns connectivity. Schematic and PCB skills project or imple
 
 ## Validation Posture
 
-- Prefer project-level validation and focused artifact inspection over broad full-suite runs when only authoring docs or example guidance changes.
-- When changing examples or generated artifacts, verify deterministic logical JSON, schematic JSON/SVG, PCB JSON/SVG, diagnostics, BOM/CPL, and manufacturing outputs as relevant.
+- Prefer project-level validation and focused artifact inspection over broad full-suite runs when only authoring guidance changes.
+- Verify deterministic logical JSON, schematic JSON/SVG, PCB JSON/SVG, diagnostics, BOM/CPL, and manufacturing outputs as relevant.
 - Treat a clean validation report as necessary but not sufficient for visual surfaces. Inspect rendered schematic and PCB SVGs before calling the result polished.
 
 ## Viewing Rendered Output
 
-"Inspect the SVG" means *look at the rendered drawing as an image* and judge it — diagnostics cannot tell you a schematic reads poorly or a board looks cramped. Generate the SVG (`schematic.to_svg()` / `board.to_svg()`, or the `*.svg` / `*.pcb.svg` files from `ProjectResult.write_artifacts(...)`), then view it:
+"Inspect the SVG" means *look at the rendered drawing as an image* and judge it — diagnostics cannot tell you a schematic reads poorly or a board looks cramped. Generate the SVG with `schematic.to_svg()` or `board.to_svg()`, then view it:
 
 - Most coding agents can view an SVG file directly — open it as you would any image and assess it against the skill's quality rubric.
 - If your tooling only renders raster images, rasterize first and view the PNG: `cairosvg sheet.svg -o sheet.png --output-width 1400` (install with `pip install cairosvg`; `qlmanage -t -s 1400 sheet.svg -o .` works on macOS).

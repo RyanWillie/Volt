@@ -74,6 +74,74 @@ def _header_1x02():
     )
 
 
+def _fixture_symbol(name, pins):
+    return volt.SchematicSymbolSpec.block(
+        f"volt.tests.project:{name}",
+        pins=tuple(
+            volt.SchematicSymbolSpec.block_pin(
+                pin.name,
+                pin.number,
+                side="left" if index % 2 == 0 else "right",
+            )
+            for index, pin in enumerate(pins)
+        ),
+        center_label=name,
+    )
+
+
+def _native_fixture_parts():
+    library = volt.Library("volt.tests.project", version="1.0.0")
+
+    def add(name, pins, *, footprint, pads, manufacturer, mpn, package, prefix, value=None):
+        pins = tuple(pins)
+        return library.part(
+            name,
+            pins=pins,
+            symbol=_fixture_symbol(name, pins),
+            footprint=footprint,
+            pads=pads,
+            manufacturer=manufacturer,
+            mpn=mpn,
+            package=package,
+            prefix=prefix,
+            value=value,
+        )
+
+    return {
+        "header": add(
+            "Header-1x02",
+            (volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+            footprint=_header_1x02(),
+            pads={1: "1", 2: "2"},
+            manufacturer="Generic",
+            mpn="HDR-1x02",
+            package="2.54mm-1x02",
+            prefix="J",
+        ),
+        "resistor": add(
+            "Resistor-330R",
+            (volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+            pads={1: "1", 2: "2"},
+            manufacturer="Yageo",
+            mpn="RC0603FR-07330RL",
+            package="0603",
+            prefix="R",
+            value="330",
+        ),
+        "led": add(
+            "Status-LED",
+            (volt.PinSpec("A", 1), volt.PinSpec("K", 2)),
+            footprint=_passive_0603(("leds", "LED_0603_1608Metric")),
+            pads={"A": "1", "K": "2"},
+            manufacturer="Lite-On",
+            mpn="LTST-C190KRKT",
+            package="0603",
+            prefix="D",
+        ),
+    }
+
+
 def _minimal_design(name="status-led"):
     design = volt.Design(name)
     vcc = design.net("VCC", kind="power")
@@ -91,35 +159,22 @@ def _minimal_design(name="status-led"):
 
 
 def _board_ready_design(name="status-led"):
-    design = _minimal_design(name)
-    design.component("J1").select_part(
-        manufacturer="Generic",
-        part_number="HDR-1x02",
-        package="2.54mm-1x02",
-        footprint=_header_1x02(),
-        pin_pads={1: "1", 2: "2"},
-    )
-    design.component("R1").select_part(
-        manufacturer="Yageo",
-        part_number="RC0603FR-07330RL",
-        package="0603",
-        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-        pin_pads={1: "1", 2: "2"},
-    )
-    design.component("D1").select_part(
-        manufacturer="Lite-On",
-        part_number="LTST-C190KRKT",
-        package="0603",
-        footprint=_passive_0603(("leds", "LED_0603_1608Metric")),
-        pin_pads={"A": "1", "K": "2"},
-    )
-    for reference in ("J1", "R1", "D1"):
-        design.component(reference).dnp(False)
+    parts = _native_fixture_parts()
+    design = volt.Design(name)
+    vcc = design.net("VCC", kind="power")
+    led_a = design.net("LED_A")
+    gnd = design.net("GND", kind="ground")
+    j1 = design.instantiate(parts["header"], ref="J1").dnp(False)
+    r1 = design.instantiate(parts["resistor"], ref="R1").dnp(False)
+    d1 = design.instantiate(parts["led"], ref="D1").dnp(False)
+    vcc += j1[1], r1[1]
+    led_a += r1[2], d1["A"]
+    gnd += d1["K"], j1[2]
     return design
 
 
 def _stage_schematic(design):
-    sheet = design.schematic("Main", size=(220, 150), margins=(8, 8, 8, 8))
+    sheet = design.schematic("Main", size=(420, 240), margins=(8, 8, 8, 8))
     nets = {net.name: net for net in design.nets()}
     vcc = nets["VCC"]
     led_a = nets["LED_A"]
@@ -128,33 +183,32 @@ def _stage_schematic(design):
     with sheet.drawing(unit=20) as drawing:
         header = drawing.place(
             design.component("J1"),
-            at=(45, 60),
+            at=(330, 100),
             orient="Right",
         ).label_ref(loc="left")
         resistor = (
             drawing.two_terminal(design.component("R1"))
-            .at(header[1].right(35))
-            .right()
-            .label_ref(loc="top", offset=6)
-            .label_value(loc="bottom", offset=10)
+            .at(header[1].left(60))
+            .left()
+            .label_ref(loc="top", offset=15)
+            .label_value(loc="bottom", offset=15)
         )
         led = (
             drawing.two_terminal(design.component("D1"))
-            .at(resistor.end.right(18))
-            .right()
-            .reverse()
-            .label_ref(loc="top", offset=8)
+            .at(resistor.end.left(100))
+            .left()
+            .label_ref(loc="top", offset=15)
         )
-        supply = drawing.power("VCC", net=vcc, at=header[1].up(18))
-        header_ground = drawing.ground("GND", net=gnd, at=header[2].down(18))
-        led_ground = drawing.ground("GND", net=gnd, at=led.end.down(24))
+        supply = drawing.power("VCC", net=vcc, at=header[1].up(50))
+        header_ground = drawing.ground("GND", net=gnd, at=header[2].down(50))
+        led_ground = drawing.ground("GND", net=gnd, at=led.end.down(50))
 
         drawing.connect(supply.pin, header[1], net=vcc, shape="-")
         drawing.connect(header[1], resistor.start, net=vcc, shape="-").dot()
         drawing.connect(resistor.end, led.start, net=led_a, shape="-")
         drawing.connect(header[2], header_ground.pin, net=gnd, shape="-")
         drawing.connect(led.end, led_ground.pin, net=gnd, shape="-")
-        drawing.net_label(led_a, at=resistor.end.up(12))
+        drawing.net_label(led_a, at=resistor.end.up(30))
 
     return sheet
 

@@ -1,6 +1,6 @@
 ---
 title: Logical Authoring
-description: Create components, nets, hierarchy, selected parts, and logical JSON from Python.
+description: Create components, nets, hierarchy, exact PartRefs, and logical JSON from Python.
 ---
 
 Logical authoring is the source of truth for connectivity. Start here before creating schematic or PCB projections.
@@ -66,14 +66,19 @@ u1 = design.instantiate(opamp, ref="U1")
 
 `PinSpec` lowers into kernel-owned pin definitions. The Python object is not the circuit model.
 
-## Selected physical parts
+## Exact library Parts
 
-Attach physical implementation data to a component instance before PCB validation.
+Declare PCB and manufacturing identity in a versioned library, then instantiate the exact
+Part. Physical identity is not attached through a later mutable route.
 
 ```python
-r1.select_part(
+library = volt.Library("acme.passives", version="1.0.0")
+resistor = library.part(
+    "RC0603FR-07330RL",
+    pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+    symbol=resistor_symbol,
     manufacturer="Yageo",
-    part_number="RC0603FR-07330RL",
+    mpn="RC0603FR-07330RL",
     package="0603",
     footprint=volt.Footprint(
         ("passives", "R_0603_1608Metric"),
@@ -82,12 +87,16 @@ r1.select_part(
             volt.FootprintPad.surface_mount("2", at=(0.75, 0.0), size=(0.80, 0.95)),
         ),
     ),
-    pin_pads={1: "1", 2: "2"},
-    power_rating=0.1,
+    pads={1: "1", 2: "2"},
+    prefix="R",
 )
+
+r1 = design.instantiate(resistor, ref="R1")
 ```
 
-Selected parts own package, footprint identity, logical-pin-to-pad mapping, metadata, and selected-part electrical ratings. Board-ready real parts should carry first-class footprint geometry, while invalid mappings are rejected at mutation time.
+The native PartLibraryBundle owns package, footprint, logical-pin-to-pad mapping, assets,
+and exact identity. The logical circuit stores only its selected `LibraryPartRef`. Invalid
+mappings are rejected before the Part can enter the immutable library closure.
 
 ## Modules
 

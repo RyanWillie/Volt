@@ -8,7 +8,7 @@ description: Author or review canonical Volt logical circuits. Use when creating
 Use this skill to build canonical Volt logical circuits — nets, component instances, connectivity, typed electrical intent, a `volt.Project` workflow, and project tests. First read `../shared-volt-architecture.md`.
 
 Cross-links:
-- **Upstream** — `volt-component-authoring` (define component shapes, PinSpec, footprints, symbols, select_part)
+- **Upstream** — `volt-component-authoring` (define exact Parts, PinSpec, footprints, symbols)
 - **Downstream** — `volt-schematic-authoring` (visualize existing connectivity), `volt-pcb-authoring` (implement connectivity on a board)
 
 ---
@@ -36,16 +36,19 @@ nets = {
 }
 ```
 
-`design.net(name, *, kind="signal", voltage=None)` — `kind` is one of `"signal"`, `"power"`, `"ground"`. `voltage` is a float in volts and lowers into a kernel-owned typed electrical attribute. Both are optional; omit them for ordinary signal nets. See `references/connectivity.md` for the full net API.
+`design.net(name, *, kind="signal", voltage=None)` — `kind` is one of `"signal"`,
+`"power"`, `"ground"`. `voltage` is a float in volts and lowers into a kernel-owned typed
+electrical attribute. Both are optional; omit them for ordinary signal nets.
 
 ### Step 3 — Instantiate components
 
-Use catalog helpers for standard passives and generic parts, or `design.instantiate(definition, ...)` for custom-defined types (see `volt-component-authoring`):
+Use catalog helpers for logical-only exploration, or instantiate an exact `Part` from a
+versioned `Library` when PCB, BOM, or manufacturing identity is required:
 
 ```python
 parts = {
-    "J1": design.instantiate(supply_definition, ref="J1"),
-    "U1": design.instantiate(timer_definition, ref="U1", properties={"value": "NE555"}),
+    "J1": design.instantiate(header_part, ref="J1"),
+    "U1": design.instantiate(timer_part, ref="U1"),
     "RA": design.R("100 kOhm", ref="R1"),
     "RB": design.R("47 kOhm",  ref="R2"),
     "CT": design.C("1 uF",     ref="C1"),
@@ -54,7 +57,10 @@ parts = {
 }
 ```
 
-Catalog helpers (`R`, `C`, `CP`, `L`, `LED`, `diode`, `connector_1x02`, etc.) define a reusable kernel definition lazily and return a `Component` handle. Instantiation is implicit.
+Catalog helpers (`R`, `C`, `CP`, `L`, `LED`, `diode`, `connector_1x02`, etc.) define a
+reusable kernel definition lazily and return a `Component` handle. Instantiation is
+implicit. They do not invent manufacturing identity; use exact library Parts for
+board-ready work.
 
 ### Step 4 — Connect pins with `+=`
 
@@ -75,7 +81,8 @@ nets["LED_A"] += parts["RLED"][2], parts["DLED"]["A"]
 nets["GND"]   += parts["J1"][2], timer["GND"], parts["DLED"]["K"]
 ```
 
-Pin access: `component[number]` for numeric pins, `component["NAME"]` for named pins. Both forms return the same kernel pin handle. See `references/connectivity.md` for all `+=` forms.
+Pin access: `component[number]` for numeric pins, `component["NAME"]` for named pins. Both
+forms return the same kernel pin handle.
 
 ### Step 5 — Encode typed electrical intent
 
@@ -113,7 +120,9 @@ def build_project() -> volt.Project:
     return project
 ```
 
-The `@project.design` function returns the `Design` model plus any `ProjectResource` values. Later stages receive a `volt.BuildContext` and call `context.design()` / `context.resource("nets", dict)` to access them. See `references/project-framework.md` for the full API.
+The `@project.design` function returns the `Design` model plus any `ProjectResource`
+values. Later stages receive a `volt.BuildContext` and call `context.design()` /
+`context.resource("nets", dict)` to access them.
 
 ### Step 7 — Add project tests
 
@@ -134,8 +143,6 @@ def board_places_design_parts(check) -> None:
     check.places("J1", "U1", "R1", "R2", "C1", "C2", "C3", "R3", "D1")
 ```
 
-See `references/project-tests.md` for all check methods and multi-model patterns.
-
 ### Step 8 — Run, check, write artifacts
 
 ```python
@@ -144,10 +151,10 @@ if not result.ok:
     raise RuntimeError("validation failed")
 
 result.write(output_path / "project.volt")
-result.write_artifacts(output_path, slug="timer_555_led_blinker")
 ```
 
-`result.ok` is `False` when default diagnostics have errors or any registered project test fails. `result.write(path)` writes a deterministic directory bundle. `result.write_artifacts(path, slug=...)` writes flat viewer/example files.
+`result.ok` is `False` when default diagnostics have errors or any registered project test
+fails. `result.write(path)` writes the deterministic, versioned ProjectBundle.
 
 ---
 
@@ -156,7 +163,8 @@ result.write_artifacts(output_path, slug="timer_555_led_blinker")
 | Situation | What happens |
 |---|---|
 | Duplicate component reference, duplicate net name, pin already on a net, invalid selected-part pin-pad mapping | **Exception** at the mutation call site |
-| Unconnected required pin, single-pin net, incompatible drivers, voltage rating below net voltage | **Diagnostic** from `design.validate()` or collected by the Project run |
+| Unconnected required pin, single-pin net, incompatible drivers | **Diagnostic** from `design.validate()` or collected by the Project run |
+| Exact selected-part electrical record violation | **Diagnostic** from the Project run's native selected-part validation |
 | PCB-readiness gaps (no selected part, no footprint) | **Diagnostic** from `design.validate_for_pcb()` |
 
 Diagnostics are not raised. Inspect `result.diagnostics` and `diagnostics/diagnostics.json`. Use `project.expect_diagnostic(code=...)` only when the finding is intentional and documented.
@@ -175,11 +183,5 @@ Diagnostics are not raised. Inspect `result.diagnostics` and `diagnostics/diagno
 
 ## References
 
-- `references/connectivity.md` — `design.net(...)`, `+=` forms, pin access, net classes
-- `references/project-framework.md` — `volt.Project`, stages, `ProjectResource`, `BuildContext`, `run`, `run_through`, `result.ok/write/write_artifacts`
-- `references/project-tests.md` — `@project.*.test`, `check.net/connects/no_connection/places/has_outline`, multi-model forms
-- `references/walkthrough-555-main.md` — narrated read of `examples/timer_555_led_blinker/main.py`
 - `docs/python-api.md` §"Current Logical Authoring", §"Project Framework", §"Error And Diagnostic Mapping"
 - `docs/logical-circuit-format.md`
-- `examples/timer_555_led_blinker/` — primary worked example (components, main, project_tests)
-- `examples/stm32_usb_buck/` — multi-file project example with `expect_diagnostic`, `context.resource`, and typed BuildContext

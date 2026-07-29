@@ -128,11 +128,6 @@ void bind_circuit(pybind11::module_ &module) {
         .def("net_class_info", &PyCircuit::net_class_info, py::arg("net_class"))
         .def("net_refs", &PyCircuit::net_refs)
         .def("component_refs", &PyCircuit::component_refs)
-        .def("select_authored_part", &PyCircuit::select_authored_part, py::arg("component"),
-             py::arg("manufacturer"), py::arg("part_number"), py::arg("package"),
-             py::arg("footprint"), py::arg("pin_pads"), py::arg("voltage_rating") = py::none(),
-             py::arg("model_3d") = py::none(), py::arg("model_3d_bytes") = py::none(),
-             py::arg("approved_alternate_mpns") = py::tuple{})
         .def("set_component_quantity", &PyCircuit::set_component_quantity, py::arg("component"),
              py::arg("name"), py::arg("dimension"), py::arg("value"))
         .def("set_component_percent_tolerance", &PyCircuit::set_component_percent_tolerance,

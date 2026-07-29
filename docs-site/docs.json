@@ -59,21 +59,6 @@
             ]
           }
         ]
-      },
-      {
-        "tab": "Examples",
-        "groups": [
-          {
-            "group": "Walkthroughs",
-            "pages": [
-              "examples/index",
-              "examples/led",
-              "examples/timer-555",
-              "examples/pcb-led-board",
-              "examples/stm32-usb-buck"
-            ]
-          }
-        ]
       }
     ]
   },

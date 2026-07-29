@@ -559,7 +559,7 @@ TEST_CASE("Exact selection satisfies missing-selection readiness without becomin
     fixture.circuit.update(led, volt::SetAssemblyIntent{.dnp = false});
 
     const auto pcb_missing = volt::validate_for_pcb(fixture.circuit);
-    const auto bom_missing = volt::validate_bom_readiness(fixture.circuit);
+    const auto bom_missing = volt::validate_bom_readiness(fixture.circuit, fixture.library);
     CHECK(has_diagnostic(pcb_missing, "PHYSICAL_PART_REQUIRED"));
     CHECK(has_diagnostic(bom_missing, "BOM_COMPONENT_MISSING_SELECTED_PART"));
 
@@ -571,7 +571,7 @@ TEST_CASE("Exact selection satisfies missing-selection readiness without becomin
 
     static_cast<void>(select(fixture.circuit, led, fixture.library, "led"));
     const auto pcb_selected = volt::validate_for_pcb(fixture.circuit);
-    const auto bom_selected = volt::validate_bom_readiness(fixture.circuit);
+    const auto bom_selected = volt::validate_bom_readiness(fixture.circuit, fixture.library);
     CHECK_FALSE(has_diagnostic(pcb_selected, "PHYSICAL_PART_REQUIRED"));
     CHECK_FALSE(has_diagnostic(bom_selected, "BOM_COMPONENT_MISSING_SELECTED_PART"));
 

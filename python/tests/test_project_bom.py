@@ -4,32 +4,35 @@ import volt
 from project_framework_helpers import _passive_0603
 
 
-def _select_resistor(component, *, part_number, alternates=(), selection_override=False):
-    component.select_part(
-        manufacturer="Yageo",
-        part_number=part_number,
-        package="0603",
-        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-        pin_pads={1: "1", 2: "2"},
-        approved_alternate_mpns=alternates,
-        selection_override=selection_override,
+def _resistor_parts(*specs):
+    library = volt.Library("volt.tests.bom", version="1.0.0")
+    return tuple(
+        library.part(
+            name,
+            pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+            value=value,
+            manufacturer="Yageo",
+            mpn=mpn,
+            package="0603",
+            prefix="R",
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+            pads={1: "1", 2: "2"},
+            approved_alternate_mpns=alternates,
+        )
+        for name, value, mpn, alternates in specs
     )
-    return component
 
 
 def test_design_bom_projects_dnp_overrides_alternates_and_sourcing():
-    design = volt.Design("bom-demo")
-    r1 = design.R("330", ref="R1").dnp(False)
-    r2 = design.R("330", ref="R2").dnp(False)
-    r3 = design.R("1k", ref="R3").dnp(True)
-    _select_resistor(r1, part_number="RC0603FR-07330RL", alternates=("RC0603FR-07330RLA",))
-    _select_resistor(
-        r2,
-        part_number="RC0603FR-07330RL",
-        alternates=("RC0603FR-07330RLA",),
-        selection_override=True,
+    r330_a, r330_b, r1k = _resistor_parts(
+        ("R-330-A", "330", "RC0603FR-07330RL", ("RC0603FR-07330RLA",)),
+        ("R-330-B", "330", "RC0603FR-07330RL", ("RC0603FR-07330RLA",)),
+        ("R-1K", "1k", "RC0603FR-071KL", ("RC0603FR-071KLA",)),
     )
-    _select_resistor(r3, part_number="RC0603FR-071KL", alternates=("RC0603FR-071KLA",))
+    design = volt.Design("bom-demo")
+    design.instantiate(r330_a, ref="R1").dnp(False)
+    design.instantiate(r330_b, ref="R2").dnp(False).selection_override()
+    design.instantiate(r1k, ref="R3").dnp(True)
     design.set_sourcing_snapshot(
         {
             "RC0603FR-07330RL": {
@@ -67,16 +70,14 @@ def test_design_bom_projects_dnp_overrides_alternates_and_sourcing():
 
 
 def test_bom_readiness_diagnostics_reference_offending_instances():
-    design = volt.Design("bom-readiness")
-    missing_part = design.R("330", ref="R1").dnp(False)
-    implicit_dnp = design.R("330", ref="R2")
-    bad_alternate = design.R("1k", ref="R3").dnp(False)
-    _select_resistor(implicit_dnp, part_number="RC0603FR-07330RL")
-    _select_resistor(
-        bad_alternate,
-        part_number="RC0603FR-071KL",
-        alternates=("RC0603FR-071KL",),
+    implicit_part, bad_part = _resistor_parts(
+        ("R-330", "330", "RC0603FR-07330RL", ()),
+        ("R-1K-Bad", "1k", "RC0603FR-071KL", ("RC0603FR-071KL",)),
     )
+    design = volt.Design("bom-readiness")
+    design.R("330", ref="R1").dnp(False)
+    design.instantiate(implicit_part, ref="R2")
+    design.instantiate(bad_part, ref="R3").dnp(False)
 
     report = design.validate_bom_readiness()
 
@@ -98,13 +99,11 @@ def test_project_bundle_default_graph_does_not_implicitly_export_bom(tmp_path):
 
     @project.design
     def design():
-        result = volt.Design("bom-demo")
-        r1 = result.R("330", ref="R1").dnp(False)
-        _select_resistor(
-            r1,
-            part_number="RC0603FR-07330RL",
-            alternates=("RC0603FR-07330RLA",),
+        (part,) = _resistor_parts(
+            ("R-330", "330", "RC0603FR-07330RL", ("RC0603FR-07330RLA",)),
         )
+        result = volt.Design("bom-demo")
+        result.instantiate(part, ref="R1").dnp(False)
         result.set_sourcing_snapshot(
             {"RC0603FR-07330RL": {"supplier": "Digi-Key", "sku": "311-330HRCT-ND"}}
         )

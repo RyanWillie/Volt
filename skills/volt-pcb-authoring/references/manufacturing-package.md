@@ -6,7 +6,11 @@
 
 ## Overview
 
-`result.write_manufacturing_package(...)` writes a complete, deterministic manufacturing handoff for one project board. It is the Python entry point to the same logic that `volt export manufacturing` invokes. The output is a directory containing native Gerber/Excellon fabrication files, BOM, CPL, diagnostics, manufacturer profile metadata, a coverage report, a full manifest, and a browsable inspection HTML page. An optional deterministic zip archive can be produced alongside.
+`result.write_manufacturing_package(...)` is the single supported entry point for a complete,
+deterministic manufacturing handoff for one project board. The output is a directory containing
+native Gerber/Excellon fabrication files, BOM, CPL, diagnostics, manufacturer profile metadata, a
+coverage report, a full manifest, and a browsable inspection HTML page. An optional deterministic
+zip archive can be produced alongside.
 
 ---
 
@@ -159,21 +163,12 @@ except LookupError as error:
 
 ## Prerequisite: Capability Profile
 
-The board must have a capability profile attached (via `board.set_capability_profile(profile)`) before calling `write_manufacturing_package`. See `references/board-structure.md` for `CapabilityProfile` construction.
+The board must have a capability profile attached (via
+`board.set_capability_profile(profile)`) before calling `write_manufacturing_package`. See section
+2.7 of the parent skill for `CapabilityProfile` construction.
 
----
-
-## CLI Equivalent
-
-```bash
-volt export manufacturing \
-    --board Main \
-    --profile profiles/jlcpcb.volt.json \
-    --archive \
-    dist/my-board-manufacturing
-```
-
-The CLI and Python API use the same `write_project_manufacturing_package` function from `python/volt/manufacturing.py`. The `--board` flag corresponds to the `board=` keyword argument; `--profile` resolves to the `manufacturing_profile` dict's `"resolved_path"` field.
+The public ProjectResult method delegates once to `write_project_manufacturing_package` in
+`python/volt/manufacturing.py`. There is no parallel source-backed CLI entry point.
 
 ---
 

@@ -78,7 +78,6 @@ def check_coverage() -> None:
         "src/adapters/kicad/CMakeLists.txt",
         "src/python/CMakeLists.txt",
         "tests/CMakeLists.txt",
-        "examples/CMakeLists.txt",
         "benchmarks/CMakeLists.txt",
     ):
         require("volt_apply_coverage" in read(path), f"{path} must apply coverage to compiled targets")
@@ -113,7 +112,6 @@ def check_static_analysis() -> None:
         "src/io/CMakeLists.txt",
         "src/adapters/kicad/CMakeLists.txt",
         "src/python/CMakeLists.txt",
-        "examples/CMakeLists.txt",
         "benchmarks/CMakeLists.txt",
     ):
         require("volt_apply_clang_tidy" in read(path), f"{path} must apply clang-tidy to compiled targets")
@@ -253,7 +251,7 @@ def check_python_package_build() -> None:
         'VOLT_BUILD_PYTHON = "ON"' in pyproject,
         "Python wheel build must enable the C++ extension",
     )
-    for option in ("VOLT_BUILD_TESTS", "VOLT_BUILD_DOCS", "VOLT_BUILD_EXAMPLES", "VOLT_BUILD_BENCHMARKS"):
+    for option in ("VOLT_BUILD_TESTS", "VOLT_BUILD_DOCS", "VOLT_BUILD_BENCHMARKS"):
         require(
             f'{option} = "OFF"' in pyproject,
             f"Python wheel build must disable {option}",

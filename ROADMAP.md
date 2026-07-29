@@ -130,7 +130,8 @@ serialized and inspected.
 ### Part Libraries And BOM
 
 Goal: make parts declarative, trustworthy, and reusable across designs, with the kernel
-owning part meaning (see [part-library-design.md](docs/part-library-design.md)).
+owning part meaning (see the
+[part-semantics and identity ADR](docs/design/adr-part-semantics-and-identity.md)).
 
 Planned work:
 

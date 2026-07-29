@@ -6,10 +6,6 @@ from dataclasses import dataclass
 from typing import Iterable, Iterator
 
 from . import _volt
-from ._footprint import Footprint
-from .library import PartModel3D
-from ._utils import _number
-from .library import LibraryComponent, PinPadValue
 
 
 @dataclass(frozen=True)
@@ -129,16 +125,12 @@ class ModuleDefinition:
 
     def instantiate(
         self,
-        definition: ComponentDefinition | LibraryComponent,
+        definition: ComponentDefinition,
         *,
         ref: str,
         properties: dict | None = None,
     ) -> ModuleComponent:
         """Instantiate a component template inside this module definition."""
-        if isinstance(definition, LibraryComponent):
-            if definition.physical_part is not None:
-                raise ValueError("Module library components do not support selected physical parts")
-            definition = self._design._define_library_component(definition)
         if not isinstance(definition, ComponentDefinition):
             raise TypeError("Module instantiate expects a ComponentDefinition handle")
         if definition._design is not self._design:
@@ -536,56 +528,14 @@ class Component:
     def _pin_refs(self):
         return self._design._circuit.pin_refs(self._index)
 
-    def select_part(
-        self,
-        *,
-        manufacturer: str,
-        part_number: str,
-        package: str,
-        footprint: Footprint,
-        pin_pads: dict[int | str, PinPadValue],
-        properties: dict | None = None,
-        voltage_rating: float | None = None,
-        power_rating: float | None = None,
-        model_3d: PartModel3D | None = None,
-        approved_alternate_mpns: Iterable[str] = (),
-        selection_override: bool = False,
-    ) -> Component:
-        """Select one exact P6-backed physical part with explicit footprint geometry."""
-        if not isinstance(pin_pads, dict):
-            raise TypeError("pin_pads must be a dict")
-        if not isinstance(footprint, Footprint):
-            raise TypeError("select_part footprint must be a complete Footprint")
-        if properties:
-            raise NotImplementedError(
-                "Physical properties are not part of the canonical exact-part contract"
-            )
-        if power_rating is not None:
-            raise NotImplementedError(
-                "Power is not canonical exact-part data in this slice; use a later typed Power record"
-            )
-        model_payload = None if model_3d is None else model_3d._selected_part_payload()
-        model_bytes = None if model_3d is None else model_3d.source_path.read_bytes()
-        self._design._circuit.select_authored_part(
-            self._index,
-            manufacturer,
-            part_number,
-            package,
-            footprint._to_dict(),
-            pin_pads,
-            None if voltage_rating is None else _number(voltage_rating),
-            model_payload,
-            model_bytes,
-            tuple(str(mpn) for mpn in approved_alternate_mpns),
-        )
-        self._design._circuit.set_component_selection_override(
-            self._index, bool(selection_override)
-        )
-        return self
-
     def dnp(self, value: bool = True) -> Component:
         """Set explicit do-not-populate assembly intent for this component."""
         self._design._circuit.set_component_dnp(self._index, bool(value))
+        return self
+
+    def selection_override(self, value: bool = True) -> Component:
+        """Set explicit selected-part override intent for this component."""
+        self._design._circuit.set_component_selection_override(self._index, bool(value))
         return self
 
     def __repr__(self) -> str:

@@ -371,7 +371,7 @@ TEST_CASE("ProjectBundle reopens an existing v1 directory truthfully and without
     CHECK(volt::sha256_content_hash(
               read_bytes(fixture_root() / "logical/architecture-fixture.volt.json"))
               .value() ==
-          "sha256:8c5431708418331132814d29ba6b712108256c860e91aa6cca5f1c6957a4a1a5");
+          "sha256:da2e097e29c855fabdfb5544fcd6438399f58d641b1dd96aba26dc3a797ab56c");
     CHECK(
         volt::sha256_content_hash(read_bytes(fixture_root() / "schematic/Main.volt.schematic.json"))
             .value() == "sha256:6c0f6ea3080c1dd2ac6ee53506d26314c81de3fbc0e788f442c3505edba4fe95");

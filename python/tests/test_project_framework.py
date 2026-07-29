@@ -6,6 +6,7 @@ import volt
 from project_framework_helpers import (
     _board_ready_design,
     _minimal_design,
+    _native_fixture_parts,
     _passive_0603,
     _stage_board,
     _stage_schematic,
@@ -352,12 +353,19 @@ def test_project_diagnostic_exposes_copyable_expectation_kwargs(tmp_path):
         diagnostic.expect_diagnostic_kwargs
     )
 
-    artifacts = result.write_artifacts(tmp_path)
-    payload = json.loads(artifacts.diagnostics_json.read_text(encoding="utf-8"))
-    flat_diagnostic = next(
+    bundle = tmp_path / "bundle.volt"
+    result.write(bundle)
+    manifest = json.loads((bundle / "manifest.volt.json").read_text(encoding="utf-8"))
+    diagnostics_path = next(
+        artifact["path"]
+        for artifact in manifest["artifacts"]
+        if artifact["kind"] == "diagnostics"
+    )
+    payload = json.loads((bundle / diagnostics_path).read_text(encoding="utf-8"))
+    persisted_diagnostic = next(
         item for item in payload["diagnostics"] if item["code"] == "SINGLE_PIN_NET"
     )
-    assert flat_diagnostic["expect_diagnostic_kwargs"] == (
+    assert persisted_diagnostic["expect_diagnostic_kwargs"] == (
         diagnostic.expect_diagnostic_kwargs
     )
 
@@ -772,27 +780,22 @@ def test_project_result_write_emits_deterministic_bundle_across_working_roots(
     assert reports["project_tests"]["summary"] == {"failed": 0, "passed": 0}
 
 
-def test_project_result_write_retains_components_defined_after_selected_parts(tmp_path):
+def test_project_result_write_retains_components_defined_after_native_parts(tmp_path):
     project = volt.Project("authoring-order")
 
     @project.design
     def design():
         result = volt.Design("authoring-order")
-        result.R("330", ref="R1").select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
-            package="0603",
-            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-            pin_pads={1: "1", 2: "2"},
-        )
-        result.LED(ref="D1").dnp(True)
+        parts = _native_fixture_parts()
+        result.instantiate(parts["resistor"], ref="R1")
+        result.instantiate(parts["led"], ref="D1").dnp(True)
         return result
 
     output = tmp_path / "bundle.volt"
     project.run().write(output)
     manifest = json.loads((output / "manifest.volt.json").read_text(encoding="utf-8"))
 
-    assert len(manifest["dependency_lock"]["selected_parts"]) == 1
+    assert len(manifest["dependency_lock"]["selected_parts"]) == 2
     assert [artifact["kind"] for artifact in manifest["artifacts"]].count(
         "component_definition"
     ) == 2
@@ -829,44 +832,7 @@ def test_project_result_write_preserves_expected_diagnostic_status(tmp_path):
     ) == 1
 
 
-def test_project_result_write_flat_artifacts_emits_legacy_example_outputs(tmp_path):
-    project = volt.Project("status-led")
-
-    @project.design
-    def design():
-        return _board_ready_design()
-
-    @project.schematic
-    def schematic(context):
-        return _stage_schematic(context.design())
-
-    @project.board
-    def board(context):
-        return _stage_board(context.design())
-
-    artifacts = project.run().write_artifacts(tmp_path, slug="status_led")
-
-    assert artifacts.logical_json == tmp_path / "status_led.volt.json"
-    assert artifacts.schematic_json == tmp_path / "status_led.volt.schematic.json"
-    assert artifacts.schematic_svg == tmp_path / "status_led.svg"
-    assert artifacts.schematic_body_svg == tmp_path / "status_led.body.svg"
-    assert artifacts.schematic_svg_pages == (tmp_path / "status_led.pages" / "status_led_Main.svg",)
-    assert artifacts.pcb_json == tmp_path / "status_led.volt.pcb.json"
-    assert artifacts.pcb_svg == tmp_path / "status_led.pcb.svg"
-    assert artifacts.kicad_pcb == tmp_path / "status_led.kicad_pcb"
-    assert artifacts.cpl_json == tmp_path / "status_led.cpl.json"
-    assert artifacts.cpl_csv == tmp_path / "status_led.cpl.csv"
-    assert artifacts.diagnostics_json == tmp_path / "status_led.validation.json"
-    assert artifacts.schematic_svg.read_text(encoding="utf-8").startswith("<svg")
-    assert artifacts.kicad_pcb.read_text(encoding="utf-8").startswith("(kicad_pcb\n")
-    assert artifacts.cpl_json.read_text(encoding="utf-8").startswith("{\n")
-    assert artifacts.cpl_csv.read_text(encoding="utf-8").startswith("Designator,Mid X")
-    diagnostics = json.loads(artifacts.diagnostics_json.read_text(encoding="utf-8"))
-    assert diagnostics["status"] == "clean"
-    assert diagnostics["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
-
-
-def test_project_result_writers_omit_kicad_for_unprofiled_board(tmp_path):
+def test_project_result_write_rejects_unprofiled_board(tmp_path):
     project = volt.Project("status-led")
 
     @project.design
@@ -892,116 +858,6 @@ def test_project_result_writers_omit_kicad_for_unprofiled_board(tmp_path):
     ):
         result.write(bundle)
     assert not bundle.exists()
-
-    flat_root = tmp_path / "flat"
-    artifacts = result.write_artifacts(flat_root, slug="status_led")
-    assert artifacts.pcb_json == flat_root / "status_led.volt.pcb.json"
-    assert artifacts.kicad_pcb is None
-    assert not (flat_root / "status_led.kicad_pcb").exists()
-
-
-def test_project_result_write_flat_artifacts_can_omit_pcb_diagnostic_overlays(tmp_path):
-    project = volt.Project("off-board-text")
-
-    @project.design
-    def design():
-        return _board_ready_design("off-board-text")
-
-    @project.board
-    def board(context):
-        pcb = _stage_board(context.design())
-        silk = pcb.add_layer("F.SilkS", role="silkscreen", side="top")
-        pcb.add_text("LONG", at=(18, 1), layer=silk, size=2.0)
-        return pcb
-
-    artifacts = project.run().write_artifacts(
-        tmp_path,
-        slug="off_board_text",
-        pcb_svg_options={"diagnostic_overlays": False},
-    )
-
-    pcb_json = json.loads(artifacts.pcb_json.read_text(encoding="utf-8"))
-    pcb_svg = artifacts.pcb_svg.read_text(encoding="utf-8")
-
-    assert "viewer" not in pcb_json
-    assert "data-diagnostic-code=" not in pcb_svg
-    assert "diagnostic-overlay" not in pcb_svg
-
-
-def test_project_result_write_flat_artifacts_can_emit_layer_svgs(tmp_path):
-    project = volt.Project("status-led")
-
-    @project.design
-    def design():
-        return _board_ready_design()
-
-    @project.board
-    def board(context):
-        pcb = _stage_board(context.design())
-        front = pcb.add_layer("F.Cu", role="copper", side="top")
-        back = pcb.add_layer("B.Cu", role="copper", side="bottom")
-        silk = pcb.add_layer("F.SilkS", role="silkscreen", side="top")
-        pcb.set_layer_stack((front, back), thickness=1.6)
-        nets = {net.name: net for net in context.design().nets()}
-        pcb.add_track(nets["VCC"], layer=front, points=((2, 2), (8, 2)), width=0.25)
-        pcb.add_track(nets["GND"], layer=back, points=((2, 8), (8, 8)), width=0.25)
-        pcb.add_text("REV A", at=(5, 5), layer=silk)
-        return pcb
-
-    artifacts = project.run().write_artifacts(
-        tmp_path,
-        slug="status_led",
-        pcb_svg_options={"separate_layers": True, "ratsnest_edges": False},
-    )
-
-    assert artifacts.pcb_svg == tmp_path / "status_led.pcb.svg"
-    assert artifacts.pcb_layer_svgs == (
-        tmp_path / "status_led.pcb.F_Cu.svg",
-        tmp_path / "status_led.pcb.B_Cu.svg",
-        tmp_path / "status_led.pcb.F_SilkS.svg",
-    )
-    assert artifacts.pcb_svg.read_text(encoding="utf-8").count("class=\"pcb-layer") == 3
-    front_svg = artifacts.pcb_layer_svgs[0].read_text(encoding="utf-8")
-    back_svg = artifacts.pcb_layer_svgs[1].read_text(encoding="utf-8")
-    silk_svg = artifacts.pcb_layer_svgs[2].read_text(encoding="utf-8")
-    assert 'id="pcb-layer-F_Cu"' in front_svg
-    assert 'data-track="board_track:0"' in front_svg
-    assert 'data-track="board_track:1"' not in front_svg
-    assert 'id="pcb-layer-B_Cu"' in back_svg
-    assert 'data-track="board_track:1"' in back_svg
-    assert 'data-track="board_track:0"' not in back_svg
-    assert 'id="pcb-layer-F_SilkS"' in silk_svg
-    assert 'data-text="board_text:0"' in silk_svg
-    assert "data-pad-projection=" not in silk_svg
-    assert "data-ratsnest-edge=" not in front_svg
-
-
-def test_project_result_write_artifacts_disambiguates_layer_svg_filenames(tmp_path):
-    project = volt.Project("status-led")
-
-    @project.design
-    def design():
-        return _board_ready_design()
-
-    @project.board
-    def board(context):
-        pcb = _stage_board(context.design())
-        pcb.add_layer("F.Cu", role="copper", side="top")
-        pcb.add_layer("F Cu", role="copper", side="top")
-        return pcb
-
-    artifacts = project.run().write_artifacts(
-        tmp_path,
-        slug="status_led",
-        pcb_svg_options={"separate_layers": True, "ratsnest_edges": False},
-    )
-
-    assert artifacts.pcb_layer_svgs == (
-        tmp_path / "status_led.pcb.F_Cu.svg",
-        tmp_path / "status_led.pcb.F_Cu_2.svg",
-    )
-    assert 'id="pcb-layer-F_Cu"' in artifacts.pcb_layer_svgs[0].read_text(encoding="utf-8")
-    assert 'id="pcb-layer-F_Cu_2"' in artifacts.pcb_layer_svgs[1].read_text(encoding="utf-8")
 
 
 def test_project_result_write_never_rewrites_historical_bundle(tmp_path):

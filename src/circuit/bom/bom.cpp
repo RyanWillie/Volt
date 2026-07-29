@@ -2,6 +2,7 @@
 
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
+#include <volt/library/part_library.hpp>
 
 #include <algorithm>
 #include <tuple>
@@ -100,11 +101,12 @@ BomLine::BomLine(std::string manufacturer, std::string mpn, std::string package,
 Bom::Bom(std::vector<BomComponent> components, std::vector<BomLine> lines)
     : components_{std::move(components)}, lines_{std::move(lines)} {}
 
-[[nodiscard]] Bom project_bom(const Circuit &circuit) {
-    return project_bom(circuit, BomSourcingSnapshot{});
+[[nodiscard]] Bom project_bom(const Circuit &circuit, const ExactPartResolver &resolver) {
+    return project_bom(circuit, resolver, BomSourcingSnapshot{});
 }
 
-[[nodiscard]] Bom project_bom(const Circuit &circuit, const BomSourcingSnapshot &sourcing) {
+[[nodiscard]] Bom project_bom(const Circuit &circuit, const ExactPartResolver &resolver,
+                              const BomSourcingSnapshot &sourcing) {
     auto components = std::vector<BomComponent>{};
     components.reserve(circuit.all<volt::ComponentId>().size());
 
@@ -117,13 +119,14 @@ Bom::Bom(std::vector<BomComponent> components, std::vector<BomLine> lines)
         const auto selection_override =
             volt::queries::is_component_selection_override(circuit, component_id);
         auto selected = std::optional<BomSelectedPart>{};
-        const auto &selected_part = volt::queries::selected_physical_part(circuit, component_id);
-        if (selected_part.has_value()) {
+        const auto &selected_ref = volt::queries::selected_library_part_ref(circuit, component_id);
+        if (selected_ref.has_value()) {
+            const auto &selected_part = resolver.resolve(*selected_ref).orderable_part();
             selected = BomSelectedPart{
-                selected_part->manufacturer_part().manufacturer(),
-                selected_part->manufacturer_part().part_number(),
-                selected_part->package().value(),
-                selected_part->approved_alternate_mpns(),
+                selected_part.manufacturer_part().manufacturer(),
+                selected_part.manufacturer_part().part_number(),
+                selected_part.package().value(),
+                selected_part.approved_alternate_mpns(),
             };
         }
 

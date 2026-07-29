@@ -371,7 +371,7 @@ TEST_CASE("Schematic SVG writer fits title-block values deterministically") {
         volt::SheetMetadata{
             "Main",
             volt::SheetSize{100.0, 80.0},
-            std::vector{volt::TitleBlockField{"File", "examples/timer_555_led_blinker/main.py"}},
+            std::vector{volt::TitleBlockField{"File", "projects/timer_555_led_blinker/main.py"}},
             volt::SheetOrientation::Landscape,
             volt::SheetFrame{true, volt::SheetMargins{10.0, 10.0, 10.0, 10.0}},
         },
@@ -380,9 +380,9 @@ TEST_CASE("Schematic SVG writer fits title-block values deterministically") {
     const auto svg = volt::io::write_schematic_svg(schematic);
 
     CHECK(svg.find("<text class=\"title-block-value\" x=\"24\" y=\"10.2\" "
-                   "data-full-text=\"examples/timer_555_led_blinker/main.py\" "
+                   "data-full-text=\"projects/timer_555_led_blinker/main.py\" "
                    "textLength=\"54\" lengthAdjust=\"spacingAndGlyphs\">"
-                   "examples/timer_555_led_blinker/main.py</text>") != std::string::npos);
+                   "projects/timer_555_led_blinker/main.py</text>") != std::string::npos);
 }
 
 TEST_CASE("Schematic SVG writer abbreviates severe title-block overflow deterministically") {

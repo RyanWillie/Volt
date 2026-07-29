@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture M2 deletion parity — issue #321</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f1ea;
+      --card: #fffdf8;
+      --ink: #1d2622;
+      --muted: #617068;
+      --line: #d8d4ca;
+      --green: #176b4d;
+      --blue: #285d8f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: min(1120px, calc(100% - 32px)); margin: 36px auto 64px; }
+    header, section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px;
+      margin: 0 0 18px;
+    }
+    h1, h2 { margin: 0 0 10px; line-height: 1.18; }
+    h1 { font-size: clamp(2rem, 4vw, 3.2rem); }
+    h2 { font-size: 1.25rem; }
+    p { margin: 8px 0; }
+    .eyebrow { color: var(--green); font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+    .lede { max-width: 78ch; color: var(--muted); font-size: 1.08rem; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 18px; }
+    .metric { border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+    .metric strong { display: block; color: var(--green); font-size: 1.5rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: .82rem; letter-spacing: .05em; text-transform: uppercase; }
+    td:nth-child(2), td:nth-child(3), td:nth-child(4) { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    code { color: var(--blue); }
+    ul { margin: 10px 0 0; padding-left: 22px; }
+    .boundary { border-left: 4px solid var(--blue); padding-left: 16px; }
+    .ok { color: var(--green); font-weight: 700; }
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+      section { overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Issue #321 · Gate F1 M2</div>
+    <h1>One current owner, resolver, and publication path</h1>
+    <p class="lede">Measured against authorized baseline
+      <code>9ec94564136eb14f1cc0f06276d5caec2c03c793</code>. The deletion removes the
+      superseded Python lowering and publication surface, the legacy example estate, its benchmark
+      catalogue, and stale supporting material. Native exact-part ownership and verified
+      ProjectBundle publication remain the only current path.</p>
+    <div class="grid">
+      <div class="metric"><strong>−2,474</strong>production source lines</div>
+      <div class="metric"><strong>−4</strong>Python public exports</div>
+      <div class="metric"><strong>0</strong>retired current-route references</div>
+    </div>
+  </header>
+
+  <section>
+    <h2>Before / after</h2>
+    <table>
+      <thead><tr><th>Measured surface</th><th>Before</th><th>After</th><th>Delta</th></tr></thead>
+      <tbody>
+        <tr><td>Production C++, headers, and Python</td><td>91,949 lines</td><td>89,475 lines</td><td>−2,474</td></tr>
+        <tr><td>Production source files</td><td>324</td><td>322</td><td>−2</td></tr>
+        <tr><td>Python package exports</td><td>133</td><td>129</td><td>−4</td></tr>
+        <tr><td>Retired route references in production source</td><td>78</td><td>0</td><td>−78</td></tr>
+        <tr><td>Retired route references in source/docs/skills</td><td>498</td><td>0</td><td>−498</td></tr>
+        <tr><td>Source-backed CLI aliases and rejected options</td><td>6</td><td>0</td><td>−6</td></tr>
+        <tr><td>Legacy example estate</td><td>151 files</td><td>0</td><td>−151</td></tr>
+        <tr><td>Legacy example text</td><td>89,140 lines</td><td>0</td><td>−89,140</td></tr>
+        <tr><td>Legacy example tracked bytes</td><td>4,622,119</td><td>0</td><td>−4,622,119</td></tr>
+        <tr><td>Example-only tests</td><td>5 files / 2,043 lines</td><td>0</td><td>−5 / −2,043</td></tr>
+        <tr><td>All native and Python test source</td><td>157 files / 52,821 lines</td><td>152 files / 49,056 lines</td><td>−5 / −3,765</td></tr>
+        <tr><td>All docs and skill sources</td><td>98 files / 33,663 lines</td><td>66 files / 22,207 lines</td><td>−32 / −11,456</td></tr>
+        <tr><td>Stale docs and skill references deleted</td><td>33 files / 11,420 lines</td><td>0</td><td>−33 / −11,420</td></tr>
+        <tr><td>Native public root snapshots</td><td>199 declarations</td><td>199</td><td>unchanged</td></tr>
+      </tbody>
+    </table>
+    <p>Counts are physical lines and tracked bytes from the exact baseline tree and this tree.
+      Production covers <code>include</code>, <code>src</code>, and <code>python/volt</code>.
+      The route count uses the checked anti-regrowth vocabulary over current source,
+      documentation, and skills.</p>
+  </section>
+
+  <section>
+    <h2>Surviving current graph</h2>
+    <ul>
+      <li><code>Circuit</code> owns logical components, exact <code>LibraryPartRef</code> selections, nets, and intent.</li>
+      <li><code>PartLibraryBundle</code> owns immutable definitions, physical records, and content-addressed assets.</li>
+      <li><code>BoardResolution</code> resolves one explicit bundle closure; <code>CompiledBoard</code> owns the immutable consumed result.</li>
+      <li>Schematic, PCB, BOM, CPL, KiCad, fabrication, CLI, Vault, and reopen paths consume that graph.</li>
+      <li><code>ProjectResult.write</code> invokes the native ProjectBundle v2 writer; there is no second current artifact writer.</li>
+      <li>The supported CLI executes source only through <code>check</code> and <code>build</code>; <code>inspect</code>, <code>diff</code>, and <code>export</code> consume verified bundles.</li>
+    </ul>
+  </section>
+
+  <section class="boundary">
+    <h2>Retained supported boundaries</h2>
+    <p>The logical v1 reader/converter still accepts the former inline physical record and
+      canonically round-trips it during the documented v1 window. The named
+      <code>legacy_led_circuit_v1.volt.json</code> fixture isolates that proof. Restoration and
+      resolved-board materialization may construct the internal physical view, but Python
+      authoring and ProjectBundle v2 publication cannot use it as an alternate owner.</p>
+    <p>ProjectBundle v1 reopen remains <code>LegacyUnverified</code> and read-only. ProjectBundle
+      v2 reopen verifies the exact selected closure and artifact graph. No ambient lookup,
+      fallback resolver, cache authority, compatibility facade, or dual writer is retained.</p>
+    <p><code>ProjectResult.write_manufacturing_package</code> remains the single supported writer
+      for its native fabrication-package format. It consumes the exact current project result and
+      <code>CompiledBoard</code> handoff; it is not a ProjectBundle writer, owner, resolver, or
+      source-backed CLI alias.</p>
+  </section>
+
+  <section>
+    <h2>Anti-regrowth contract</h2>
+    <p class="ok">Zero forbidden paths and zero retired-route references.</p>
+    <p>The inventory checker now records the zero state and its self-test injects every retired
+      category to prove detection. It adds no waiver, allowlist, suppression, ignored path,
+      frozen caller count, or parity-document exclusion.</p>
+  </section>
+</main>
+</body>
+</html>

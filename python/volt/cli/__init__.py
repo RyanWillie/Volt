@@ -11,36 +11,28 @@ import shutil
 import subprocess
 import sys
 import tomllib
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import contextmanager, redirect_stdout
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
 from typing import Any, Callable, cast
 
-from .._project_model_lookup import model_output_name
-from ..design import Design
 from ..library import Library
 from ..library_result import LibraryResult
-from ..pcb import Board
 from ..project import (
     Project,
-    ProjectDiagnostics,
     ProjectResult,
     _diagnostics_payload,
 )
 from ..project_bundle import ProjectBundle
-from ..schematic import Schematic
 
 
 EXIT_SUCCESS = 0
 EXIT_CHECK_FAILED = 1
 EXIT_COMMAND_FAILED = 2
-DIAGNOSTIC_SEVERITIES = ("error", "warning", "info")
-DIAGNOSTIC_STAGES = ("library", "design", "schematic", "board")
 BUILD_PROFILES = ("default", "viewer")
 INIT_PROFILES = ("jlcpcb", "oshpark", "pcbway", "generic")
-_SEVERITY_ORDER = {"error": 0, "warning": 1, "info": 2}
 _CLI_RESULT_FORMAT = "volt.cli-result"
 
 
@@ -303,68 +295,6 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="volt")
     subparsers = parser.add_subparsers(dest="command", metavar="command")
 
-    run_parser = subparsers.add_parser(
-        "run",
-        help="legacy alias for isolated project-source execution",
-        description="Legacy alias that executes the configured entrypoint once in isolation.",
-    )
-    _add_project_argument(run_parser)
-    run_parser.set_defaults(handler=_handle_run)
-
-    model_parser = subparsers.add_parser(
-        "model",
-        help="legacy alias for source-backed model output",
-        description="Legacy alias that executes project source once in isolation.",
-    )
-    _add_project_argument(model_parser)
-    model_parser.add_argument(
-        "--json",
-        dest="emit_json",
-        action="store_true",
-        help="Emit the project model stream as JSON.",
-    )
-    model_parser.add_argument("--design", help="Filter to one logical design by name.")
-    model_parser.add_argument(
-        "--schematic",
-        help="Filter to one schematic by name or design:schematic output name.",
-    )
-    model_parser.add_argument(
-        "--board",
-        help="Filter to one PCB by name or design:board output name.",
-    )
-    model_parser.set_defaults(handler=_handle_model)
-
-    diagnostics_parser = subparsers.add_parser(
-        "diagnostics",
-        help="legacy alias for source-backed diagnostics",
-        description="Legacy alias for `volt check` diagnostic output.",
-    )
-    _add_project_argument(diagnostics_parser)
-    diagnostics_parser.add_argument(
-        "--json",
-        dest="emit_json",
-        action="store_true",
-        help="Emit diagnostics using the project bundle diagnostics.json schema.",
-    )
-    diagnostics_parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Exit 1 when the project result is not ok.",
-    )
-    diagnostics_parser.add_argument(
-        "--stage",
-        help="Filter diagnostics to one project stage.",
-    )
-    diagnostics_parser.add_argument(
-        "--severity",
-        dest="severities",
-        action="append",
-        default=None,
-        metavar="LEVEL",
-        help="Filter diagnostics to a severity; may be repeated.",
-    )
-    diagnostics_parser.set_defaults(handler=_handle_diagnostics)
-
     check_parser = subparsers.add_parser(
         "check",
         help="execute project source once and check diagnostics and tests",
@@ -398,11 +328,6 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=BUILD_PROFILES,
         default="default",
         help="ProjectResult.write bundle profile.",
-    )
-    build_parser.add_argument(
-        "--flat",
-        action="store_true",
-        help="Retired legacy option; reports the typed selected-export migration.",
     )
     build_parser.add_argument(
         "--export",
@@ -470,54 +395,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Emit the versioned Volt CLI result envelope.",
     )
     export_parser.set_defaults(handler=_handle_export)
-    export_subparsers = export_parser.add_subparsers(
-        dest="export_command",
-        metavar="export-command",
-    )
-    manufacturing_parser = export_subparsers.add_parser(
-        "manufacturing",
-        help="retired source-backed manufacturing alias",
-        description=(
-            "Retired source-backed alias. Use a typed fabrication selection during "
-            "build, then `volt export --bundle ...`."
-        ),
-    )
-    _add_project_argument(manufacturing_parser)
-    manufacturing_parser.add_argument(
-        "--output",
-        type=Path,
-        help="Output directory. Defaults to [paths].artifacts/manufacturing or ./build/manufacturing.",
-    )
-    manufacturing_parser.add_argument(
-        "--board",
-        help="Select one PCB by board name or design:board output name.",
-    )
-    manufacturing_parser.add_argument(
-        "--archive",
-        action="store_true",
-        help="Also write a deterministic zip archive next to the output directory.",
-    )
-    manufacturing_parser.add_argument(
-        "--json",
-        dest="emit_json",
-        action="store_true",
-        help="Emit a stable manufacturing export summary as JSON.",
-    )
-    manufacturing_parser.set_defaults(handler=_handle_export_manufacturing)
-
-    info_parser = subparsers.add_parser(
-        "info",
-        help="legacy alias for source-backed project information",
-        description="Legacy alias that executes project source once in isolation.",
-    )
-    _add_project_argument(info_parser)
-    info_parser.add_argument(
-        "--json",
-        dest="emit_json",
-        action="store_true",
-        help="Emit a stable project info summary as JSON.",
-    )
-    info_parser.set_defaults(handler=_handle_info)
 
     inspect_parser = subparsers.add_parser(
         "inspect",
@@ -634,52 +511,6 @@ def _add_project_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _handle_run(args: argparse.Namespace) -> None:
-    config = discover_project(project=args.project)
-    _run_project_worker(config, "run")
-
-
-def _handle_model(args: argparse.Namespace) -> None:
-    if not args.emit_json:
-        raise CliError("volt model currently requires --json.")
-    config = discover_project(project=args.project)
-    worker_args = []
-    for option, value in (
-        ("--design", args.design),
-        ("--schematic", args.schematic),
-        ("--board", args.board),
-    ):
-        if value is not None:
-            worker_args.extend((option, value))
-    payload, _exit_code = _run_project_worker(
-        config,
-        "model",
-        arguments=worker_args,
-    )
-    print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
-
-
-def _handle_diagnostics(args: argparse.Namespace) -> int | None:
-    stage = _validated_diagnostic_stage(args.stage)
-    severities = _validated_diagnostic_severities(args.severities)
-    config = discover_project(project=args.project)
-    worker_args = ["--severities-json", json.dumps(severities)]
-    if stage is not None:
-        worker_args.extend(("--stage", stage))
-    if args.check:
-        worker_args.append("--gate")
-    payload, exit_code = _run_project_worker(
-        config,
-        "diagnostics",
-        arguments=worker_args,
-    )
-    if args.emit_json:
-        print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
-    else:
-        _print_diagnostics_payload(payload)
-    return exit_code
-
-
 def _handle_check(args: argparse.Namespace) -> int:
     config = discover_project(project=args.project)
     payload, exit_code = _run_project_worker(config, "check")
@@ -700,12 +531,6 @@ def _handle_check(args: argparse.Namespace) -> int:
 
 
 def _handle_build(args: argparse.Namespace) -> int | None:
-    if args.flat:
-        raise CliError(
-            "`volt build --flat` is retired. Select typed exports with "
-            "`volt build --export ...`, then copy them with `volt export --bundle ...`.",
-            code="flat-build-retired",
-        )
     config = discover_project(project=args.project)
     output = _build_output_path(config, args.output)
     export_requests = [
@@ -736,24 +561,6 @@ def _handle_build(args: argparse.Namespace) -> int | None:
     else:
         print(f"Build: {payload['status']} -> {output}")
     return exit_code
-
-
-def _handle_export_manufacturing(args: argparse.Namespace) -> int | None:
-    raise CliError(
-        "`volt export manufacturing --project` is retired because delivery must not "
-        "execute project source. Select `fabrication` during `volt build`, then use "
-        "`volt export --bundle ...`.",
-        code="source-backed-export-retired",
-    )
-
-
-def _handle_info(args: argparse.Namespace) -> None:
-    config = discover_project(project=args.project)
-    payload, _exit_code = _run_project_worker(config, "info")
-    if args.emit_json:
-        print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
-        return
-    _print_info_report(payload)
 
 
 def _open_verified_bundle(path: str | Path):
@@ -1537,58 +1344,6 @@ def _project_result_from_entrypoint(config: ProjectConfig) -> ProjectResult:
     )
 
 
-def _model_json_payload(
-    result: ProjectResult,
-    *,
-    design_selector: str | None,
-    schematic_selector: str | None,
-    board_selector: str | None,
-) -> dict[str, object]:
-    all_designs = result.designs
-    all_schematics = result.schematics
-    all_boards = result.boards
-
-    designs = all_designs
-    schematics = all_schematics
-    boards = all_boards
-
-    if design_selector is not None:
-        design = _select_design(designs, design_selector)
-        designs = (design,)
-        schematics = tuple(model for model in schematics if model._design is design)
-        boards = tuple(model for model in boards if model._design is design)
-    if schematic_selector is not None:
-        schematics = (
-            _select_projection(
-                schematics,
-                all_schematics,
-                schematic_selector,
-                "schematic",
-            ),
-        )
-    if board_selector is not None:
-        boards = (
-            _select_projection(
-                boards,
-                all_boards,
-                board_selector,
-                "board",
-            ),
-        )
-
-    return {
-        "status": result.status,
-        "diagnostics": _diagnostics_payload(result),
-        "models": {
-            "designs": [_design_payload(model) for model in designs],
-            "schematics": [
-                _schematic_payload(model, all_schematics) for model in schematics
-            ],
-            "boards": [_board_payload(model, all_boards) for model in boards],
-        },
-    }
-
-
 def _build_output_path(config: ProjectConfig, output: Path | None) -> Path:
     if output is None:
         return config.paths.get("artifacts", config.root / "build")
@@ -1596,268 +1351,6 @@ def _build_output_path(config: ProjectConfig, output: Path | None) -> Path:
     if path.is_absolute():
         return path
     return Path.cwd() / path
-
-
-def _info_payload(config: ProjectConfig, result: ProjectResult) -> dict[str, object]:
-    diagnostics = _diagnostics_payload(result)
-    return {
-        "project": {
-            "name": result.project.name,
-            "version": result.project.version,
-            "description": result.project.description,
-        },
-        "status": result.status,
-        "ok": result.ok,
-        "config": {
-            "root": str(config.root),
-            "path": str(config.config_path),
-            "entrypoint": config.entrypoint,
-        },
-        "manufacturing_profile": _manufacturing_profile_payload(config),
-        "stages": [
-            {
-                "name": stage.name,
-                "model_count": stage.model_count,
-                "tests": _tests_summary(stage.tests),
-            }
-            for stage in result.stages
-        ],
-        "models": {
-            "designs": len(result.designs),
-            "schematics": len(result.schematics),
-            "boards": len(result.boards),
-        },
-        "diagnostics": {
-            "status": diagnostics["status"],
-            "summary": diagnostics["summary"],
-        },
-        "tests": _tests_summary(_project_tests(result)),
-    }
-
-
-def _print_info_report(payload: Mapping[str, object]) -> None:
-    project = payload["project"]
-    diagnostics = payload["diagnostics"]
-    models = payload["models"]
-    tests = payload["tests"]
-    profile = payload["manufacturing_profile"]
-    assert isinstance(project, Mapping)
-    assert isinstance(diagnostics, Mapping)
-    assert isinstance(models, Mapping)
-    assert isinstance(tests, Mapping)
-    print(f"Project: {project['name']}")
-    print(f"Status: {payload['status']}")
-    print(
-        "Models: "
-        f"{models['designs']} designs, "
-        f"{models['schematics']} schematics, "
-        f"{models['boards']} boards"
-    )
-    print(f"Diagnostics: {_diagnostic_summary_text(diagnostics['summary'])}")
-    print(f"Tests: {tests['total']} total, {tests['failed']} failed")
-    if isinstance(profile, Mapping):
-        print(f"Manufacturing profile: {profile['path']}")
-    else:
-        print("Manufacturing profile: <none>")
-
-
-def _project_tests(result: ProjectResult) -> tuple[object, ...]:
-    return tuple(test for stage in result.stages for test in stage.tests)
-
-
-def _tests_summary(tests: Iterable[object]) -> dict[str, int]:
-    items = tuple(tests)
-    return {
-        "total": len(items),
-        "failed": sum(1 for item in items if not getattr(item, "ok", False)),
-    }
-
-
-def _manufacturing_profile_payload(
-    config: ProjectConfig,
-) -> dict[str, str] | None:
-    if config.manufacturing_profile_path is None or config.manufacturing_profile is None:
-        return None
-    return {
-        "path": config.manufacturing_profile_path,
-        "resolved_path": str(config.manufacturing_profile),
-    }
-
-
-def _select_design(designs: tuple[Design, ...], selector: str) -> Design:
-    matches = tuple(model for model in designs if model.name == selector)
-    if len(matches) == 1:
-        return matches[0]
-    candidates = _format_candidates(model.name for model in designs)
-    if len(matches) > 1:
-        raise CliError(
-            f"Ambiguous design selector {selector!r}. Candidates: {candidates}"
-        )
-    raise CliError(f"No design named {selector!r}. Candidates: {candidates}")
-
-
-def _select_projection(
-    models: tuple[Schematic, ...] | tuple[Board, ...],
-    all_models: tuple[Schematic, ...] | tuple[Board, ...],
-    selector: str,
-    kind: str,
-) -> Schematic | Board:
-    output_matches = tuple(
-        model for model in models if model_output_name(model, all_models) == selector
-    )
-    if len(output_matches) == 1:
-        return output_matches[0]
-
-    name_matches = tuple(model for model in models if model.name == selector)
-    if len(name_matches) == 1:
-        return name_matches[0]
-
-    candidates = _format_candidates(
-        model_output_name(model, all_models) for model in models
-    )
-    if len(output_matches) > 1 or len(name_matches) > 1:
-        raise CliError(
-            f"Ambiguous {kind} selector {selector!r}. Candidates: {candidates}"
-        )
-    raise CliError(f"No {kind} named {selector!r}. Candidates: {candidates}")
-
-
-def _design_payload(model: Design) -> dict[str, object]:
-    return {"name": model.name, "model": json.loads(model.to_json())}
-
-
-def _schematic_payload(
-    model: Schematic,
-    all_schematics: tuple[Schematic, ...],
-) -> dict[str, object]:
-    return {
-        "name": model_output_name(model, all_schematics),
-        "design": model._design.name,
-        "schematic": model.name,
-        "model": json.loads(model.to_json()),
-    }
-
-
-def _board_payload(
-    model: Board,
-    all_boards: tuple[Board, ...],
-) -> dict[str, object]:
-    return {
-        "name": model_output_name(model, all_boards),
-        "design": model._design.name,
-        "board": model.name,
-        "model": json.loads(model.to_json()),
-    }
-
-
-def _validated_diagnostic_stage(stage: str | None) -> str | None:
-    if stage is None:
-        return None
-    normalized = stage.strip().lower()
-    if normalized in DIAGNOSTIC_STAGES:
-        return normalized
-    expected = ", ".join(DIAGNOSTIC_STAGES)
-    raise CliError(
-        f"Invalid diagnostic stage {stage!r}. Expected one of: {expected}."
-    )
-
-
-def _validated_diagnostic_severities(
-    severities: Sequence[str] | None,
-) -> tuple[str, ...]:
-    if severities is None:
-        return ()
-    normalized: list[str] = []
-    for severity in severities:
-        value = severity.strip().lower()
-        if value not in DIAGNOSTIC_SEVERITIES:
-            expected = ", ".join(DIAGNOSTIC_SEVERITIES)
-            raise CliError(
-                f"Invalid diagnostic severity {severity!r}. Expected one of: {expected}."
-            )
-        if value not in normalized:
-            normalized.append(value)
-    return tuple(normalized)
-
-
-def _filtered_diagnostics(
-    result: ProjectResult,
-    *,
-    stage: str | None,
-    severities: tuple[str, ...],
-) -> ProjectDiagnostics:
-    diagnostics = tuple(result.diagnostics)
-    if stage is not None:
-        diagnostics = tuple(
-            diagnostic for diagnostic in diagnostics if diagnostic.stage == stage
-        )
-    if severities:
-        diagnostics = tuple(
-            diagnostic
-            for diagnostic in diagnostics
-            if diagnostic.severity in severities
-        )
-    return ProjectDiagnostics(diagnostics)
-
-
-def _print_diagnostics_report(
-    result: ProjectResult,
-    diagnostics: ProjectDiagnostics,
-) -> None:
-    payload = _diagnostics_payload(result, diagnostics=diagnostics)
-    summary = _diagnostic_summary_text(payload["summary"])
-    print(f"Diagnostics: {payload['status']} ({summary})")
-    grouped = _group_diagnostics(diagnostics)
-    if not grouped:
-        print("No diagnostics.")
-        return
-    styled = _style_stdout()
-    for report, source in sorted(grouped):
-        print(report)
-        print(f"  {source}")
-        for diagnostic in sorted(grouped[(report, source)], key=_diagnostic_sort_key):
-            severity = _format_severity(diagnostic.severity, styled=styled)
-            print(
-                f"    {severity} {diagnostic.code} "
-                f"[{diagnostic.stage}] {diagnostic.message}"
-            )
-
-
-def _print_diagnostics_payload(payload: Mapping[str, object]) -> None:
-    summary = cast(Mapping[str, int], payload["summary"])
-    print(f"Diagnostics: {payload['status']} ({_diagnostic_summary_text(summary)})")
-    diagnostics = cast(Sequence[Mapping[str, object]], payload["diagnostics"])
-    if not diagnostics:
-        print("No diagnostics.")
-    else:
-        grouped: dict[tuple[str, str], list[Mapping[str, object]]] = {}
-        for diagnostic in diagnostics:
-            key = (str(diagnostic["report"]), str(diagnostic["source"]))
-            grouped.setdefault(key, []).append(diagnostic)
-        styled = _style_stdout()
-        for report, source in sorted(grouped):
-            print(report)
-            print(f"  {source}")
-            for diagnostic in sorted(
-                grouped[(report, source)],
-                key=lambda item: (
-                    str(item["stage"]),
-                    _SEVERITY_ORDER.get(
-                        str(item["severity"]),
-                        len(_SEVERITY_ORDER),
-                    ),
-                    str(item["code"]),
-                    str(item["message"]),
-                ),
-            ):
-                severity = _format_severity(str(diagnostic["severity"]), styled=styled)
-                print(
-                    f"    {severity} {diagnostic['code']} "
-                    f"[{diagnostic['stage']}] {diagnostic['message']}"
-                )
-    tests = payload.get("tests")
-    if isinstance(tests, Mapping):
-        _print_failed_test_payloads(tests)
 
 
 def _print_failed_test_payloads(payload: Mapping[str, object]) -> None:
@@ -1890,45 +1383,6 @@ def _diagnostic_summary_text(summary: Mapping[str, int]) -> str:
 def _count_text(count: int, singular: str, plural: str) -> str:
     noun = singular if count == 1 else plural
     return f"{count} {noun}"
-
-
-def _group_diagnostics(diagnostics: ProjectDiagnostics):
-    grouped = {}
-    for diagnostic in diagnostics:
-        key = (diagnostic.report, diagnostic.source)
-        grouped.setdefault(key, []).append(diagnostic)
-    return grouped
-
-
-def _diagnostic_sort_key(diagnostic) -> tuple[object, ...]:
-    return (
-        diagnostic.stage,
-        _SEVERITY_ORDER.get(diagnostic.severity, len(_SEVERITY_ORDER)),
-        diagnostic.code,
-        diagnostic.message,
-    )
-
-
-def _style_stdout() -> bool:
-    return sys.stdout.isatty() and "NO_COLOR" not in os.environ
-
-
-def _format_severity(severity: str, *, styled: bool) -> str:
-    label = severity.upper()
-    if not styled:
-        return label
-    colors = {"error": "31", "warning": "33", "info": "36"}
-    glyphs = {"error": "✖", "warning": "▲", "info": "ℹ"}
-    color = colors.get(severity, "0")
-    glyph = glyphs.get(severity, "-")
-    return f"\x1b[{color}m{glyph} {label}\x1b[0m"
-
-
-def _format_candidates(candidates: Iterable[str]) -> str:
-    names = tuple(candidates)
-    if not names:
-        return "<none>"
-    return ", ".join(names)
 
 
 def _project_config_path(project: str | Path) -> Path:

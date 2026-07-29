@@ -46,7 +46,6 @@ void select_testpoint(volt::Circuit &circuit, volt::ComponentId component,
     select_part(circuit, component, mpn, volt::PackageRef{"TP"},
                 volt::FootprintRef{"regression", "TP_1MM_REAL"},
                 std::vector{volt::PinPadMapping{pin_definition, "1"}});
-    set_selected_part_voltage_rating(circuit, component, 30.0);
 }
 
 [[nodiscard]] volt::BoardCapabilityProfile make_real_board_track_limit_profile() {

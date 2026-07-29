@@ -46,7 +46,7 @@ TEST_CASE("Schematic readability reports title-block text overflow") {
         volt::SheetMetadata{
             "Main",
             volt::SheetSize{100.0, 80.0},
-            std::vector{volt::TitleBlockField{"File", "examples/timer_555_led_blinker/main.py"}},
+            std::vector{volt::TitleBlockField{"File", "projects/timer_555_led_blinker/main.py"}},
             volt::SheetOrientation::Landscape,
             volt::SheetFrame{true, volt::SheetMargins{10.0, 10.0, 10.0, 10.0}},
         },

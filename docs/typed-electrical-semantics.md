@@ -546,24 +546,22 @@ writer but remains independently usable; neither format is a package or registry
 Python provides ergonomic syntax over kernel-owned state:
 
 ```python
-r1 = d.R(resistance=330, tolerance=0.01, ref="R1")
+library = volt.Library("acme.passives", version="1.0.0")
+r_part = library.part(
+    "RC0603FR-07330RL",
+    pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+    symbol=resistor_symbol,
+    manufacturer="Yageo",
+    mpn="RC0603FR-07330RL",
+    package="0603",
+    footprint=resistor_0603,
+    pads={1: "1", 2: "2"},
+    voltage_rating=75,
+    prefix="R",
+)
+r1 = d.instantiate(r_part, ref="R1")
 c1 = d.C(capacitance=100e-9, voltage_rating=16, ref="C1")
 vdd = d.net("VDD", voltage=3.3)
-
-r1.select_part(
-    manufacturer="Yageo",
-    part_number="RC0603FR-07330RL",
-    package="0603",
-    footprint=volt.Footprint(
-        ("Resistor_SMD", "R_0603_1608Metric"),
-        pads=(
-            volt.FootprintPad.surface_mount("1", at=(-0.75, 0), size=(0.8, 0.9)),
-            volt.FootprintPad.surface_mount("2", at=(0.75, 0), size=(0.8, 0.9)),
-        ),
-    ),
-    pin_pads={1: "1", 2: "2"},
-    voltage_rating=75,
-)
 
 diagnostics = d.validate_for_pcb()
 ```

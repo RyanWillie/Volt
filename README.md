@@ -83,12 +83,6 @@ cmake --build --preset dev
 ctest --preset dev
 ```
 
-Examples are built by default. The first end-to-end logical example is an LED circuit:
-
-```sh
-./build/dev/examples/volt_led_circuit_example
-```
-
 ## Project Layout
 
 ```text
@@ -100,7 +94,6 @@ include/volt/pcb       PCB aggregate root plus geometry, layers, copper, placeme
 include/volt/io        deterministic read/write for logical, schematic, and PCB data
 include/volt/adapters  KiCad schematic and PCB export adapters
 python/volt            Python authoring bindings over kernel-owned state
-examples               small executable examples
 tests                  unit tests and golden fixtures
 docs                   architecture, format, authoring, and development notes
 docs/design            standalone design and planning artifacts (HTML exports)
@@ -120,7 +113,7 @@ cd docs-site
 mint dev
 ```
 
-Check that the public docs stay aligned with the Python API and example workflows:
+Check that the public docs stay aligned with the Python API and supported workflows:
 
 ```sh
 python3 scripts/generate-python-api-docs.py --check
