@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "support/circuit_test_helpers.hpp"
+#include "support/resolved_board_test_parts.hpp"
 
 #include <nlohmann/json.hpp>
 
@@ -18,6 +19,7 @@ namespace {
 
 struct CplCircuit {
     volt::Circuit circuit;
+    volt::test::ResolvedBoardTestParts parts;
     volt::ComponentId r1;
     volt::ComponentId r2;
     volt::ComponentId r3;
@@ -25,7 +27,8 @@ struct CplCircuit {
 };
 
 [[nodiscard]] volt::ComponentId add_resistor(volt::Circuit &circuit, const std::string &reference,
-                                             const std::string &mpn) {
+                                             const std::string &mpn,
+                                             volt::test::ResolvedBoardTestParts &parts) {
     const auto first_pin = volt::PinSpec{"A",
                                          "1",
                                          volt::ConnectionRequirement::Required,
@@ -45,11 +48,13 @@ struct CplCircuit {
     const auto pins = circuit.get(definition).pins();
     const auto component = circuit.instantiate_component(
         definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{reference}});
-    circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                  volt::ManufacturerPart{"Yageo", mpn}, volt::PackageRef{"0603"},
-                                  volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                  std::vector{volt::PinPadMapping{pins[0], "1"},
-                                              volt::PinPadMapping{pins[1], "2"}}}});
+    parts.set(component,
+              volt::PhysicalPart{
+                  volt::ManufacturerPart{"Yageo", mpn},
+                  volt::PackageRef{"0603"},
+                  volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                  std::vector{volt::PinPadMapping{pins[0], "1"}, volt::PinPadMapping{pins[1], "2"}},
+              });
     return component;
 }
 
@@ -77,15 +82,16 @@ struct CplCircuit {
 
 [[nodiscard]] CplCircuit make_cpl_circuit() {
     auto circuit = volt::Circuit{};
-    auto r1 = add_resistor(circuit, "R1", "RC0603FR-07330RL");
-    auto r2 = add_resistor(circuit, "R2", "RC0603FR-07330RL");
-    auto r3 = add_resistor(circuit, "R3", "RC0603FR-071KL");
-    auto r4 = add_resistor(circuit, "R4", "RC0603FR-07470RL");
+    auto parts = volt::test::ResolvedBoardTestParts{};
+    auto r1 = add_resistor(circuit, "R1", "RC0603FR-07330RL", parts);
+    auto r2 = add_resistor(circuit, "R2", "RC0603FR-07330RL", parts);
+    auto r3 = add_resistor(circuit, "R3", "RC0603FR-071KL", parts);
+    auto r4 = add_resistor(circuit, "R4", "RC0603FR-07470RL", parts);
     circuit.update(r1, volt::SetAssemblyIntent{.dnp = false});
     circuit.update(r2, volt::SetAssemblyIntent{.dnp = false});
     circuit.update(r3, volt::SetAssemblyIntent{.dnp = true});
     circuit.update(r4, volt::SetAssemblyIntent{.dnp = false});
-    return CplCircuit{std::move(circuit), r1, r2, r3, r4};
+    return CplCircuit{std::move(circuit), std::move(parts), r1, r2, r3, r4};
 }
 
 [[nodiscard]] std::vector<std::string> diagnostic_codes(const volt::DiagnosticReport &report) {
@@ -117,7 +123,8 @@ TEST_CASE("CPL projection writes deterministic JSON and JLCPCB CSV with placemen
     options.rotation_offsets.push_back(
         volt::CplRotationOffset{volt::FootprintRef{"passives", "R_0603_1608Metric"}, 10.0});
 
-    const auto cpl = volt::project_cpl(board, volt::builtin_footprint_library(), options);
+    const auto cpl =
+        volt::project_cpl(fixture.parts.view(board, volt::builtin_footprint_library()), options);
 
     CHECK(cpl.diagnostics().count() == 1);
     CHECK(cpl.diagnostics().diagnostics()[0].code() ==
@@ -169,9 +176,10 @@ TEST_CASE("CPL projection writes deterministic JSON and JLCPCB CSV with placemen
 
 TEST_CASE("CPL projection reports missing assembly data and skips DNP components") {
     auto circuit = volt::Circuit{};
+    auto parts = volt::test::ResolvedBoardTestParts{};
     const auto missing_selected = add_unselected_resistor(circuit, "R0");
-    const auto unplaced = add_resistor(circuit, "R1", "RC0603FR-07330RL");
-    const auto dnp = add_resistor(circuit, "R2", "RC0603FR-071KL");
+    const auto unplaced = add_resistor(circuit, "R1", "RC0603FR-07330RL", parts);
+    const auto dnp = add_resistor(circuit, "R2", "RC0603FR-071KL", parts);
     const auto unplaced_missing_selected = add_unselected_resistor(circuit, "R3");
     circuit.update(missing_selected, volt::SetAssemblyIntent{.dnp = false});
     circuit.update(unplaced, volt::SetAssemblyIntent{.dnp = false});
@@ -181,7 +189,7 @@ TEST_CASE("CPL projection reports missing assembly data and skips DNP components
     static_cast<void>(board.place_component(volt::ComponentPlacement{
         missing_selected, volt::BoardPoint{1.0, 2.0}, volt::BoardRotation::degrees(0.0)}));
 
-    const auto cpl = volt::project_cpl(board, volt::builtin_footprint_library());
+    const auto cpl = volt::project_cpl(parts.view(board, volt::builtin_footprint_library()));
 
     REQUIRE(cpl.rows().size() == 1);
     CHECK(cpl.rows()[0].reference() == "R0");
@@ -208,7 +216,8 @@ TEST_CASE("CPL projection diagnoses ambiguous rotation-offset data") {
     options.rotation_offsets.push_back(
         volt::CplRotationOffset{volt::FootprintRef{"passives", "R_0603_1608Metric"}, 90.0});
 
-    const auto cpl = volt::project_cpl(board, volt::builtin_footprint_library(), options);
+    const auto cpl =
+        volt::project_cpl(fixture.parts.view(board, volt::builtin_footprint_library()), options);
 
     REQUIRE(cpl.rows().size() == 1);
     CHECK(cpl.rows()[0].rotation_offset_deg() == 0.0);

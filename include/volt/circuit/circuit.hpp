@@ -311,9 +311,6 @@ class Circuit final {
                          ElectricalAttributeOwner owner);
     static void require_attribute_owner(const ElectricalAttributeSpec &spec,
                                         ElectricalAttributeOwner expected);
-    static void
-    require_physical_part_matches_component_definition(const std::vector<PinDefId> &component_pins,
-                                                       const PhysicalPart &physical_part);
     void restore_component_attributes(ComponentId component, ElectricalAttributeMap attributes);
     void restore_pin_definition_attributes(PinDefId pin_definition,
                                            ElectricalAttributeMap attributes);
@@ -321,11 +318,6 @@ class Circuit final {
                                  ElectricalAttributeValue value);
     void set_net_attribute(NetId net, const ElectricalAttributeSpec &spec,
                            ElectricalAttributeValue value);
-    void select_physical_part(ComponentId component, PhysicalPart physical_part,
-                              const std::vector<PinDefId> &component_pins,
-                              std::optional<LibraryPartRef> source_reference = std::nullopt);
-    void set_selected_part_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
-                                     ElectricalAttributeValue value);
     void require_pin_definition(PinDefId pin_definition) const;
 
     void require_component_definition(ComponentDefId component_definition) const;

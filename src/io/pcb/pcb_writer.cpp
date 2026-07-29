@@ -39,7 +39,9 @@ find_footprint_definition(const std::vector<FootprintDefinition> &definitions,
 }
 
 [[nodiscard]] std::vector<FootprintDefinition>
-collect_footprint_definitions(const Board &board, const FootprintLibrary &footprints) {
+collect_footprint_definitions(const ResolvedBoardView &resolved) {
+    const auto &board = resolved.board();
+    const auto &footprints = resolved.footprints();
     auto definitions = std::vector<FootprintDefinition>{};
     definitions.reserve(board.all<volt::FootprintDefId>().size());
     for (std::size_t index = 0; index < board.all<volt::FootprintDefId>().size(); ++index) {
@@ -58,17 +60,18 @@ collect_footprint_definitions(const Board &board, const FootprintLibrary &footpr
 
     for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto &placement = board.get(ComponentPlacementId{index});
-        const auto &selected_part =
-            volt::queries::selected_physical_part(board.circuit(), placement.component());
-        if (!selected_part.has_value()) {
+        const auto *selected_part = resolved.part(placement.component());
+        if (selected_part == nullptr) {
             continue;
         }
-        if (find_footprint_definition(definitions, selected_part->footprint()).has_value()) {
+        if (find_footprint_definition(definitions, selected_part->physical_part().footprint())
+                .has_value()) {
             continue;
         }
 
-        const auto resolution = resolve_footprint(selected_part.value(), footprints);
-        const auto *definition = resolution.definition();
+        const auto footprint_resolution =
+            resolve_footprint(selected_part->physical_part(), footprints);
+        const auto *definition = footprint_resolution.definition();
         if (definition != nullptr) {
             definitions.push_back(*definition);
         }
@@ -390,17 +393,18 @@ void write_rules(std::ostream &out, const Board &board) {
     out << "},\n";
 }
 
-void write_placements(std::ostream &out, const Board &board,
+void write_placements(std::ostream &out, const ResolvedBoardView &resolved,
                       const std::vector<FootprintDefinition> &definitions, bool trailing_comma) {
+    const auto &board = resolved.board();
     out << "    \"placements\": [\n";
     for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto id = ComponentPlacementId{index};
         const auto &placement = board.get(id);
-        const auto &selected_part =
-            volt::queries::selected_physical_part(board.circuit(), placement.component());
+        const auto *selected_part = resolved.part(placement.component());
         auto footprint = std::optional<FootprintDefId>{};
-        if (selected_part.has_value()) {
-            footprint = find_footprint_definition(definitions, selected_part->footprint());
+        if (selected_part != nullptr) {
+            footprint =
+                find_footprint_definition(definitions, selected_part->physical_part().footprint());
         }
 
         out << "      {\"id\": " << json_string(encode_local_id(id))
@@ -574,8 +578,9 @@ void write_board_texts(std::ostream &out, const Board &board, bool trailing_comm
 
 namespace volt::io {
 
-void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibrary &footprints) {
-    const auto definitions = detail::collect_footprint_definitions(board, footprints);
+void write_pcb_board(std::ostream &out, const ResolvedBoardView &resolved) {
+    const auto &board = resolved.board();
+    const auto definitions = detail::collect_footprint_definitions(resolved);
     out << "{\n";
     out << "  \"format\": " << detail::json_string(pcb_format_name()) << ",\n";
     out << "  \"version\": " << pcb_format_version() << ",\n";
@@ -597,7 +602,7 @@ void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibra
     detail::write_board_geometry(out, board);
     detail::write_features(out, board);
     detail::write_footprint_definitions(out, definitions);
-    detail::write_placements(out, board, definitions,
+    detail::write_placements(out, resolved, definitions,
                              board.all<volt::BoardTrackId>().size() != 0U ||
                                  board.all<volt::BoardViaId>().size() != 0U ||
                                  board.all<volt::BoardZoneId>().size() != 0U ||
@@ -640,9 +645,9 @@ void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibra
     out << "}\n";
 }
 
-[[nodiscard]] std::string write_pcb_board(const Board &board, const FootprintLibrary &footprints) {
+[[nodiscard]] std::string write_pcb_board(const ResolvedBoardView &resolved) {
     auto out = std::ostringstream{};
-    write_pcb_board(out, board, footprints);
+    write_pcb_board(out, resolved);
     return out.str();
 }
 

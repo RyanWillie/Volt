@@ -102,7 +102,7 @@ def _passive_0603(
             markings = (
                 volt.FootprintMarking.polarity(_offset_rectangle(0.55, 0.0, 0.12, 0.60)),
             )
-    return volt.FootprintDefinition(
+    return volt.Footprint(
         ref,
         pads=(
             volt.FootprintPad.surface_mount(
@@ -128,7 +128,7 @@ def _passive_0603(
 
 
 def _two_pad_footprint(ref, *, start=(0.0, 0.0), end=(1.5, 0.0)):
-    return volt.FootprintDefinition(
+    return volt.Footprint(
         ref,
         pads=(
             volt.FootprintPad.surface_mount(
@@ -148,7 +148,7 @@ def _two_pad_footprint(ref, *, start=(0.0, 0.0), end=(1.5, 0.0)):
 
 
 def _one_pad_footprint(ref):
-    return volt.FootprintDefinition(
+    return volt.Footprint(
         ref,
         pads=(
             volt.FootprintPad.surface_mount(
@@ -163,7 +163,7 @@ def _one_pad_footprint(ref):
 
 def _rect_0603(ref):
     half_span = 0.75
-    return volt.FootprintDefinition(
+    return volt.Footprint(
         ref,
         pads=(
             volt.FootprintPad.surface_mount(

@@ -6,7 +6,7 @@ TEST_CASE("Real-board ERC and DRC regression accepts a fully routed status-contr
     const auto library = real_board_library();
 
     const auto erc = volt::validate_circuit(fixture.circuit);
-    const auto board = volt::validate_board(layout.board, library);
+    const auto board = volt::validate_board(layout.view(library));
 
     CHECK(erc.empty());
     INFO("actual board diagnostic codes: " << diagnostic_code_list(board));
@@ -19,7 +19,7 @@ TEST_CASE("Real-board regression keeps ERC, PCB readiness, DRC, visual, and fab 
     const auto library = real_board_library();
 
     const auto erc = volt::validate_circuit(fixture.circuit);
-    auto board = volt::validate_board(layout.board, library);
+    auto board = volt::validate_board(layout.view(library));
 
     CHECK(erc.empty());
     check_diagnostic_summaries(
@@ -36,7 +36,7 @@ TEST_CASE("Real-board regression keeps ERC, PCB readiness, DRC, visual, and fab 
     [[maybe_unused]] const auto text = layout.board.add_text(
         volt::BoardText{"REV A", volt::BoardPoint{42.0, 1.0}, volt::BoardRotation::degrees(0.0),
                         layout.front, 2.0});
-    board = volt::validate_board(layout.board, library);
+    board = volt::validate_board(layout.view(library));
     const auto *visual =
         find_diagnostic(board, volt::pcb_visual_diagnostic_codes::LabelOutsideBoard);
     REQUIRE(visual != nullptr);
@@ -44,7 +44,7 @@ TEST_CASE("Real-board regression keeps ERC, PCB readiness, DRC, visual, and fab 
     CHECK(visual->category() == volt::DiagnosticCategory{volt::diagnostic_categories::PcbVisual});
 
     layout.board.set_capability_profile(make_manufacturing_prereq_profile());
-    board = volt::validate_board(layout.board, library);
+    board = volt::validate_board(layout.view(library));
     const auto *capability =
         find_diagnostic(board, volt::drc_diagnostic_codes::RuleBelowCapability);
     REQUIRE(capability != nullptr);
@@ -129,7 +129,7 @@ TEST_CASE("Real-board DRC regression locks broken copper and placement variants"
         const auto layout =
             make_real_board_layout(fixture, BoardOptions{.narrow_led_drive_route = true});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -150,7 +150,7 @@ TEST_CASE("Real-board DRC regression locks broken copper and placement variants"
         const auto via = layout.board.add_via(volt::BoardVia{
             fixture.vdd, volt::BoardPoint{18.0, 13.0}, layout.front, layout.back, 0.20, 0.50});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -174,7 +174,7 @@ TEST_CASE("Real-board DRC regression locks broken copper and placement variants"
             fixture.reset, layout.front,
             std::vector{volt::BoardPoint{10.0, 20.25}, volt::BoardPoint{20.0, 20.25}}, 0.30});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -197,7 +197,7 @@ TEST_CASE("Real-board DRC regression locks broken copper and placement variants"
             fixture.reset, layout.front,
             std::vector{volt::BoardPoint{43.9, 18.0}, volt::BoardPoint{46.0, 18.0}}, 0.30});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -228,7 +228,7 @@ TEST_CASE("Real-board DRC regression locks broken copper and placement variants"
         const auto via = layout.board.add_via(volt::BoardVia{
             fixture.vdd, volt::BoardPoint{18.0, 13.0}, layout.front, layout.back, 0.30, 0.70});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -258,7 +258,7 @@ TEST_CASE("Real-board DRC regression locks broken copper and placement variants"
         const auto layout =
             make_real_board_layout(fixture, BoardOptions{.overlap_led_with_resistor = true});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -293,7 +293,7 @@ TEST_CASE("Real-board DRC regression locks broken copper and placement variants"
         const auto layout =
             make_real_board_layout(fixture, BoardOptions{.omit_led_anode_route = true});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -324,7 +324,7 @@ TEST_CASE("Real-board DRC regression covers net-class and manufacturability prer
             fixture.led_drive, layout.back,
             std::vector{volt::BoardPoint{28.0, 18.0}, volt::BoardPoint{31.0, 18.0}}, 0.30});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -341,7 +341,7 @@ TEST_CASE("Real-board DRC regression covers net-class and manufacturability prer
         auto layout = make_real_board_layout(fixture);
         layout.board.set_capability_profile(make_manufacturing_prereq_profile());
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,

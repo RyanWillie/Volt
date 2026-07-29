@@ -12,7 +12,7 @@ CompiledBoardSvg render_pcb_svg(const CompiledBoard &compiled, PcbPlacementSvgOp
     return CompiledBoardSvg{
         compiled.identity(),
         options.layer_filter,
-        write_pcb_placement_svg(compiled.board(), compiled.footprints(), options),
+        write_pcb_placement_svg(compiled.view(), options),
     };
 }
 

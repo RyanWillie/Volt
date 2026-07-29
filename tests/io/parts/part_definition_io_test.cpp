@@ -67,42 +67,8 @@ regulator_component(std::string contract_key = "volt.component/ap1117@1") {
         });
 }
 
-volt::ComponentDefinition mismatched_regulator_component() {
-    auto pins = regulator_pins();
-    pins[0] = volt::PinDefinition{"GND", "9", volt::ConnectionRequirement::Required,
-                                  volt::ElectricalTerminalKind::Ground,
-                                  volt::ElectricalDirection::Passive};
-    return volt::ComponentDefinition::make(
-        "Three-pin regulator", pins, {volt::PinDefId{0}, volt::PinDefId{1}, volt::PinDefId{2}}, {},
-        volt::DefinitionSource{"volt.components", "regulator-3pin", "1.0.0"},
-        {volt::SchematicSymbolReference{"volt.power:regulator_3pin"}},
-        volt::ComponentContractSpec{
-            .key = volt::ComponentKey{"volt.component/ap1117@1"},
-            .pin_keys = {volt::PinKey{"GND"}, volt::PinKey{"VO"}, volt::PinKey{"VI"}},
-        });
-}
-
-volt::ElectricalRecordSet regulator_records() {
-    const auto input = volt::ElectricalSubject::framed_pin(volt::ElectricalPinIndex{2},
-                                                           volt::ElectricalPinIndex{0});
-    const auto output = volt::ElectricalSubject::supply_domain({volt::ElectricalPinIndex{1}},
-                                                               {volt::ElectricalPinIndex{0}});
-    return volt::ElectricalRecordSet{
-        3,
-        {volt::voltage_record(input, volt::ElectricalMeaning::AcceptedRange,
-                              volt::ElectricalValue{volt::QuantityRange::bounded(
-                                  volt::Quantity{volt::UnitDimension::Voltage, 2.5},
-                                  volt::Quantity{volt::UnitDimension::Voltage, 18.0})}),
-         volt::current_record(output, volt::ElectricalMeaning::Capability,
-                              volt::ElectricalValue{volt::ContinuousCurrent{
-                                  volt::Quantity{volt::UnitDimension::Current, 1.0}}},
-                              {}, {hash('d')})}};
-}
-
-volt::PartDefinition converted_v4_part(const volt::ComponentDefinition &component) {
-    const auto legacy =
-        volt::io::PartDefinitionV4::read_text(read_fixture("v4/ap1117.part.volt.json"));
-    return legacy.convert(component, regulator_records());
+volt::PartDefinition current_part(const volt::ComponentDefinition &component) {
+    return volt::io::read_part_definition_text(read_fixture("ap1117.part.volt.json"), component);
 }
 
 void check_current_part_is_rejected(nlohmann::json document,
@@ -124,7 +90,7 @@ bool has_diagnostic(const volt::DiagnosticReport &report, std::string_view code)
 
 TEST_CASE("Part definition v5 writer emits one exact component and two physical mapping seams") {
     const auto component = regulator_component();
-    const auto part = converted_v4_part(component);
+    const auto part = current_part(component);
     const auto bytes = volt::io::write_part_definition(part);
     const auto document = nlohmann::json::parse(bytes);
 
@@ -155,7 +121,7 @@ TEST_CASE("Golden v5 part fixture round-trips byte-identically against the suppl
 
 TEST_CASE("Part definition v5 reader rejects component and content identity mismatches") {
     const auto component = regulator_component();
-    const auto bytes = volt::io::write_part_definition(converted_v4_part(component));
+    const auto bytes = volt::io::write_part_definition(current_part(component));
     const auto document = nlohmann::json::parse(bytes);
 
     CHECK_THROWS_AS(volt::io::read_part_definition_text(bytes, regulator_component("other")),
@@ -170,10 +136,32 @@ TEST_CASE("Part definition v5 reader rejects component and content identity mism
     check_current_part_is_rejected(std::move(forged_content), component);
 }
 
+TEST_CASE("Part definition v5 reader requires current provenance and schematic asset fields") {
+    const auto component = regulator_component();
+    const auto document =
+        nlohmann::json::parse(volt::io::write_part_definition(current_part(component)));
+
+    auto missing_provenance = document;
+    missing_provenance.erase("provenance");
+    check_current_part_is_rejected(std::move(missing_provenance), component);
+
+    auto incomplete_provenance = document;
+    incomplete_provenance["provenance"].erase("authored_by");
+    check_current_part_is_rejected(std::move(incomplete_provenance), component);
+
+    auto missing_asset_variant = document;
+    missing_asset_variant["schematic_assets"][0].erase("variant");
+    check_current_part_is_rejected(std::move(missing_asset_variant), component);
+
+    auto unknown_field = document;
+    unknown_field["orderable_part"]["footprint"]["viewer_cache"] = nlohmann::json::object();
+    check_current_part_is_rejected(std::move(unknown_field), component);
+}
+
 TEST_CASE("Part definition v5 reader rejects incomplete dangling and duplicate ownership") {
     const auto component = regulator_component();
     const auto document =
-        nlohmann::json::parse(volt::io::write_part_definition(converted_v4_part(component)));
+        nlohmann::json::parse(volt::io::write_part_definition(current_part(component)));
 
     auto missing_pin = document;
     missing_pin["pin_terminal_mappings"].erase(0);
@@ -198,7 +186,7 @@ TEST_CASE("Part definition v5 reader rejects incomplete dangling and duplicate o
 
 TEST_CASE("Part definition v5 requires explicit non-electrical terminal dispositions") {
     const auto component = regulator_component();
-    const auto part = converted_v4_part(component);
+    const auto part = current_part(component);
     auto document = nlohmann::json::parse(volt::io::write_part_definition(part));
     document["orderable_part"]["footprint"]["pads"].push_back(
         {{"label", "NC"}, {"x_mm", 3.0}, {"y_mm", 0.0}, {"width_mm", 0.6}, {"height_mm", 0.6}});
@@ -241,36 +229,14 @@ TEST_CASE("Part definition v5 requires explicit non-electrical terminal disposit
     CHECK(accepted.terminal_dispositions().size() == 1U);
 }
 
-TEST_CASE("Legacy v4 reader is migration-only and converter rejects mismatched or lossy input") {
-    const auto component = regulator_component();
-    const auto fixture = read_fixture("v4/ap1117.part.volt.json");
-    const auto legacy = volt::io::PartDefinitionV4::read_text(fixture);
-    const auto part = legacy.convert(component, regulator_records());
-
-    CHECK(part.implemented_component() == component.content_identity());
-    CHECK(part.orderable_part().manufacturer_part().manufacturer() == "Diodes Incorporated");
-    CHECK(part.orderable_part().package().value() == "SOT-223-3");
-    CHECK(part.electrical_records().records().size() == 2U);
-    CHECK_THROWS_AS(volt::io::read_part_definition_text(fixture, component), std::logic_error);
-    CHECK_THROWS_AS(legacy.convert(mismatched_regulator_component(), regulator_records()),
-                    std::logic_error);
-    CHECK_THROWS_AS(legacy.convert(component, volt::ElectricalRecordSet{3}), std::logic_error);
-
-    auto missing_mapping = nlohmann::json::parse(fixture);
-    missing_mapping["orderable_part"]["pin_pad_mappings"].erase(0);
-    const auto incomplete = volt::io::PartDefinitionV4::read_text(missing_mapping.dump());
-    CHECK_THROWS_AS(incomplete.convert(component, regulator_records()), std::logic_error);
-}
-
 TEST_CASE("Loaded exact parts retain geometry lineup diagnostics") {
     const auto component = regulator_component();
-    auto fixture =
-        nlohmann::json::parse(volt::io::write_part_definition(converted_v4_part(component)));
+    auto fixture = nlohmann::json::parse(volt::io::write_part_definition(current_part(component)));
     fixture["orderable_part"]["footprint"]["pads"][0]["x_mm"] = 0.0;
     fixture["orderable_part"]["footprint"]["pads"][1]["x_mm"] = 0.5;
     const auto changed = fixture;
 
-    auto rebuilt = converted_v4_part(component);
+    auto rebuilt = current_part(component);
     auto pads = rebuilt.orderable_part().footprint_pads();
     pads[0] = volt::PartFootprintPad{"1", 0.0, 0.0, 0.6, 0.6};
     pads[1] = volt::PartFootprintPad{"2", 0.5, 0.0, 0.6, 0.6};

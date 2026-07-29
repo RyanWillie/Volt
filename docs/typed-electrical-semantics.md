@@ -98,12 +98,11 @@ The landed foundation includes:
 The important architectural result is that Python and JSON are no longer the only places
 where these facts exist. The kernel can inspect, serialize, and validate them directly.
 
-The canonical record substrate is intentionally separate from the older named electrical
+The canonical record substrate is intentionally separate from the named electrical
 attribute maps. Component contracts bind required shapes to stable subjects, and exact
 `PartDefinition` values bind the actual records and physical implementation to one
-component content identity. The current `volt.part` v5 writer persists that truth; the v4
-reader and explicit converter exist only for migration and do not reinterpret existing
-logical-circuit attributes.
+component content identity. The current `volt.part` v5 writer and reader persist that truth;
+non-current part schemas are rejected and must be regenerated.
 
 ## Quantities And Attributes
 
@@ -149,7 +148,7 @@ ComponentInstance
 
 SelectedPhysicalPart
   manufacturer-specific ratings and limits
-  examples: tolerance = +/-1%, voltage_rating = 75 V, power_rating = 0.1 W
+  examples: tolerance = +/-1%, voltage limit = 75 V, dissipation limit = 0.1 W
 
 Net
   authored net-level electrical intent
@@ -239,9 +238,9 @@ library bundles, and circuit ERC belong to later approved slices.
 
 ## Stable Component Contracts And Feature Bindings
 
-`ComponentDefinition` owns one normalized immutable `ComponentContract`. Existing simple
-component authoring lowers through the same model using the component name as its readable
-`ComponentKey` and deterministic ordered legacy `PinKey` values. This preserves repeated
+`ComponentDefinition` owns one normalized immutable `ComponentContract`. Concise component
+authoring lowers through the same model using the component name as its readable
+`ComponentKey` and deterministic ordered `PinKey` values. This preserves repeated
 display pin names without treating names or package numbers as identity. Explicit authoring
 may instead provide stable keys, named subjects, schemas, and bindings.
 

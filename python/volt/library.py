@@ -580,7 +580,7 @@ class _PartFamily:
 def _merge_part_family_payload(defaults: dict, overrides: dict) -> dict:
     result = dict(defaults)
     for key, value in overrides.items():
-        if key in {"properties", "physical_properties", "extensions"}:
+        if key == "properties":
             result[key] = _merge_part_family_mapping(result.get(key), value)
         else:
             result[key] = value

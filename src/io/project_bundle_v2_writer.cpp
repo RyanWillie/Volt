@@ -1,4 +1,4 @@
-#include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/io/project_bundle_writer.hpp>
 
 #include <algorithm>
 #include <array>
@@ -986,7 +986,7 @@ ExportRequestSchema::ExportRequestSchema(ExportRequestSchemaVersion version) : v
             "export request schema version is unsupported", ErrorCode::InvalidArgument);
 }
 
-class ProjectBundleV2::Storage {
+class ProjectBundlePublication::Storage {
   public:
     BuildId build_id{sha256_content_hash("")};
     ContentHash bundle_digest{sha256_content_hash("")};
@@ -996,32 +996,36 @@ class ProjectBundleV2::Storage {
     std::map<std::string, std::string> files;
 };
 
-ProjectBundleV2::ProjectBundleV2(std::unique_ptr<Storage> storage) : storage_{std::move(storage)} {
-    require(storage_ != nullptr, "ProjectBundleV2 storage must not be null",
+ProjectBundlePublication::ProjectBundlePublication(std::unique_ptr<Storage> storage)
+    : storage_{std::move(storage)} {
+    require(storage_ != nullptr, "ProjectBundlePublication storage must not be null",
             ErrorCode::InvalidArgument);
 }
 
-ProjectBundleV2::ProjectBundleV2(ProjectBundleV2 &&) noexcept = default;
-ProjectBundleV2 &ProjectBundleV2::operator=(ProjectBundleV2 &&) noexcept = default;
-ProjectBundleV2::~ProjectBundleV2() = default;
+ProjectBundlePublication::ProjectBundlePublication(ProjectBundlePublication &&) noexcept = default;
+ProjectBundlePublication &
+ProjectBundlePublication::operator=(ProjectBundlePublication &&) noexcept = default;
+ProjectBundlePublication::~ProjectBundlePublication() = default;
 
-const BuildId &ProjectBundleV2::build_id() const noexcept { return storage_->build_id; }
+const BuildId &ProjectBundlePublication::build_id() const noexcept { return storage_->build_id; }
 
-const ContentHash &ProjectBundleV2::bundle_digest() const noexcept {
+const ContentHash &ProjectBundlePublication::bundle_digest() const noexcept {
     return storage_->bundle_digest;
 }
 
-const DependencyLock &ProjectBundleV2::dependency_lock() const noexcept {
+const DependencyLock &ProjectBundlePublication::dependency_lock() const noexcept {
     return storage_->dependency_lock;
 }
 
-std::string_view ProjectBundleV2::manifest_bytes() const noexcept { return storage_->manifest; }
+std::string_view ProjectBundlePublication::manifest_bytes() const noexcept {
+    return storage_->manifest;
+}
 
-std::span<const ArtifactDescriptor> ProjectBundleV2::artifacts() const noexcept {
+std::span<const ArtifactDescriptor> ProjectBundlePublication::artifacts() const noexcept {
     return storage_->descriptors;
 }
 
-std::vector<std::string> ProjectBundleV2::paths() const {
+std::vector<std::string> ProjectBundlePublication::paths() const {
     auto result = std::vector<std::string>{};
     result.reserve(storage_->files.size());
     for (const auto &[path, unused] : storage_->files) {
@@ -1031,10 +1035,10 @@ std::vector<std::string> ProjectBundleV2::paths() const {
     return result;
 }
 
-std::string ProjectBundleV2::archive_bytes() const { return zip_bytes(storage_->files); }
+std::string ProjectBundlePublication::archive_bytes() const { return zip_bytes(storage_->files); }
 
-void ProjectBundleV2::write(const std::filesystem::path &destination,
-                            ProjectBundleV2Representation representation) const {
+void ProjectBundlePublication::write(const std::filesystem::path &destination,
+                                     ProjectBundleRepresentation representation) const {
     require(!destination.empty(), "destination must not be empty", ErrorCode::InvalidArgument);
     const auto parent =
         destination.parent_path().empty() ? std::filesystem::path{"."} : destination.parent_path();
@@ -1054,16 +1058,16 @@ void ProjectBundleV2::write(const std::filesystem::path &destination,
         stage = staging_path(destination);
     }
     try {
-        if (representation == ProjectBundleV2Representation::Directory) {
+        if (representation == ProjectBundleRepresentation::Directory) {
             for (const auto &[path, bytes] : storage_->files) {
                 write_file(stage / std::filesystem::path{path}, bytes);
             }
-        } else if (representation == ProjectBundleV2Representation::Zip) {
+        } else if (representation == ProjectBundleRepresentation::Zip) {
             write_file(stage / "bundle.zip", archive_bytes());
         } else {
             reject("output representation is unsupported", ErrorCode::InvalidArgument);
         }
-        if (representation == ProjectBundleV2Representation::Zip) {
+        if (representation == ProjectBundleRepresentation::Zip) {
             std::filesystem::create_hard_link(stage / "bundle.zip", destination);
             auto ignored = std::error_code{};
             std::filesystem::remove_all(stage, ignored);
@@ -1237,7 +1241,7 @@ class ProjectArtifactGraph {
 
 } // namespace
 
-class ProjectBundleV2Builder::Storage {
+class ProjectBundleBuilder::Storage {
   public:
     ProjectIdentity project;
     ProjectRunSummary run;
@@ -1447,10 +1451,10 @@ ProjectArtifactGraph::board_for_compiled(const ArtifactRef &target,
 
 } // namespace
 
-ProjectBundleV2Builder::ProjectBundleV2Builder(ProjectIdentity project, ProjectRunSummary run,
-                                               LogicalInputName entrypoint,
-                                               std::vector<AuthoringInput> inputs,
-                                               ProjectReport diagnostics, ProjectReport tests)
+ProjectBundleBuilder::ProjectBundleBuilder(ProjectIdentity project, ProjectRunSummary run,
+                                           LogicalInputName entrypoint,
+                                           std::vector<AuthoringInput> inputs,
+                                           ProjectReport diagnostics, ProjectReport tests)
     : storage_{std::make_unique<Storage>(std::move(project), std::move(run), std::move(entrypoint),
                                          std::move(inputs), std::move(diagnostics),
                                          std::move(tests))} {
@@ -1467,35 +1471,33 @@ ProjectBundleV2Builder::ProjectBundleV2Builder(ProjectIdentity project, ProjectR
     }
 }
 
-ProjectBundleV2Builder::ProjectBundleV2Builder(ProjectBundleV2Builder &&) noexcept = default;
-ProjectBundleV2Builder &
-ProjectBundleV2Builder::operator=(ProjectBundleV2Builder &&) noexcept = default;
-ProjectBundleV2Builder::~ProjectBundleV2Builder() = default;
+ProjectBundleBuilder::ProjectBundleBuilder(ProjectBundleBuilder &&) noexcept = default;
+ProjectBundleBuilder &ProjectBundleBuilder::operator=(ProjectBundleBuilder &&) noexcept = default;
+ProjectBundleBuilder::~ProjectBundleBuilder() = default;
 
-ProjectBundleV2Builder &
-ProjectBundleV2Builder::add_logical(DesignKey design, const Circuit &circuit,
-                                    const PartLibraryBundle &selected_closure) {
+ProjectBundleBuilder &ProjectBundleBuilder::add_logical(DesignKey design, const Circuit &circuit,
+                                                        const PartLibraryBundle &selected_closure) {
     storage_->logicals.push_back(LogicalInput{std::move(design), &circuit, &selected_closure});
     return *this;
 }
 
-ProjectBundleV2Builder &ProjectBundleV2Builder::add_schematic(DesignKey design,
-                                                              SchematicKey schematic,
-                                                              const Schematic &model) {
+ProjectBundleBuilder &ProjectBundleBuilder::add_schematic(DesignKey design, SchematicKey schematic,
+                                                          const Schematic &model) {
     storage_->schematics.push_back(SchematicInput{std::move(design), std::move(schematic), &model});
     return *this;
 }
 
-ProjectBundleV2Builder &
-ProjectBundleV2Builder::add_board(DesignKey design, const Board &authoring_board,
-                                  const CompiledBoard &compiled, const BoardScene &scene,
-                                  const PartLibraryBundle &selected_closure) {
+ProjectBundleBuilder &ProjectBundleBuilder::add_board(DesignKey design,
+                                                      const Board &authoring_board,
+                                                      const CompiledBoard &compiled,
+                                                      const BoardScene &scene,
+                                                      const PartLibraryBundle &selected_closure) {
     storage_->boards.push_back(
         BoardInput{std::move(design), &authoring_board, &compiled, &scene, &selected_closure});
     return *this;
 }
 
-ProjectBundleV2Builder &ProjectBundleV2Builder::select_exports(ExportSelection selection) {
+ProjectBundleBuilder &ProjectBundleBuilder::select_exports(ExportSelection selection) {
     storage_->exports = std::move(selection);
     return *this;
 }
@@ -1586,7 +1588,8 @@ void ProjectArtifactGraph::accumulate_authoritative_artifacts(
         require(sha256_content_hash(board.compiled->physical_snapshot()) ==
                     board.compiled->provenance().physical_snapshot_digest(),
                 "CompiledBoard physical snapshot digest is stale");
-        const auto authoring_board_bytes = write_pcb_board(*board.board, FootprintLibrary{});
+        const auto authoring_board_bytes = write_pcb_board(
+            ResolvedBoardView{*board.board, board.compiled->footprints(), board.compiled->parts()});
         const auto authoring_board_snapshot =
             nlohmann::json::parse(authoring_board_bytes.begin(), authoring_board_bytes.end())
                 .dump();
@@ -1741,7 +1744,7 @@ void ProjectArtifactGraph::materialize_selected_exports(const ValidatedProjectBu
                     ErrorCode::InvalidArgument);
             const auto &target = std::get<ModelExportTarget>(request.target).model;
             const auto &board = board_for_compiled(target, boards);
-            bytes = write_pcb_placement_svg(board.compiled->board(), board.compiled->footprints());
+            bytes = write_pcb_placement_svg(board.compiled->view());
             dependencies.push_back(target);
             output_kind = ArtifactKind::BoardSvg;
             break;
@@ -1765,7 +1768,7 @@ void ProjectArtifactGraph::materialize_selected_exports(const ValidatedProjectBu
             }
             require(layer.has_value(), "Board layer target is unresolved",
                     ErrorCode::UnknownEntity);
-            bytes = write_pcb_placement_svg(board.compiled->board(), board.compiled->footprints(),
+            bytes = write_pcb_placement_svg(board.compiled->view(),
                                             PcbPlacementSvgOptions{.layer_filter = layer});
             dependencies.push_back(target.compiled_board);
             output_kind = ArtifactKind::BoardLayerImage;
@@ -1907,11 +1910,11 @@ void ProjectArtifactGraph::validate() {
     }
 }
 
-[[nodiscard]] ProjectBundleV2 encode_project_bundle(const ProjectIdentity &project,
-                                                    const ProjectRunSummary &run,
-                                                    const LogicalInputName &entrypoint,
-                                                    const ValidatedProjectBuild &validated,
-                                                    const ProjectArtifactGraph &graph) {
+[[nodiscard]] ProjectBundlePublication encode_project_bundle(const ProjectIdentity &project,
+                                                             const ProjectRunSummary &run,
+                                                             const LogicalInputName &entrypoint,
+                                                             const ValidatedProjectBuild &validated,
+                                                             const ProjectArtifactGraph &graph) {
     const auto dependency_lock = graph.dependency_lock();
     const auto dependency_lock_value = dependency_lock_json(dependency_lock);
     const auto &artifacts = graph.artifacts();
@@ -1952,7 +1955,7 @@ void ProjectArtifactGraph::validate() {
              {"artifacts", std::move(required_identity_artifacts)}};
     const auto build_id = BuildId{sha256_content_hash(canonical(build_identity))};
 
-    auto result = std::make_unique<ProjectBundleV2::Storage>();
+    auto result = std::make_unique<ProjectBundlePublication::Storage>();
     result->build_id = build_id;
     result->dependency_lock = dependency_lock;
     for (const auto &[unused, artifact] : artifacts) {
@@ -2047,7 +2050,7 @@ void ProjectArtifactGraph::validate() {
         require(folded_paths.insert(std::move(folded)).second,
                 "publication paths collide under ASCII case folding");
     }
-    return ProjectBundleV2{std::move(result)};
+    return ProjectBundlePublication{std::move(result)};
 }
 
 } // namespace
@@ -2085,7 +2088,7 @@ std::string project_bundle_v2_export_request_json(const ExportRequest &request) 
 
 } // namespace detail
 
-ProjectBundleV2 ProjectBundleV2Builder::build() const {
+ProjectBundlePublication ProjectBundleBuilder::build() const {
     const auto validated = validate_project_build(
         storage_->run, storage_->entrypoint, storage_->inputs, storage_->diagnostics,
         storage_->tests, storage_->logicals, storage_->schematics, storage_->boards);

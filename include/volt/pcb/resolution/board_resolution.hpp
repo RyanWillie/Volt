@@ -68,6 +68,32 @@ class ResolvedBoardPart {
     std::optional<std::string> model_3d_bytes_;
 };
 
+/** Non-owning resolved physical view backed by BoardResolution or CompiledBoard storage. */
+class ResolvedBoardView {
+  public:
+    /** Bind one Board to its exact resolved footprint and selected-part owners. */
+    ResolvedBoardView(const Board &board, const FootprintLibrary &footprints,
+                      std::span<const ResolvedBoardPart> parts)
+        : board_{&board}, footprints_{&footprints}, parts_{parts} {}
+
+    /** Return the exact named Board. */
+    [[nodiscard]] const Board &board() const noexcept { return *board_; }
+
+    /** Return the exact resolved footprint definitions. */
+    [[nodiscard]] const FootprintLibrary &footprints() const noexcept { return *footprints_; }
+
+    /** Return all exact selected implementations in component order. */
+    [[nodiscard]] std::span<const ResolvedBoardPart> parts() const noexcept { return parts_; }
+
+    /** Return the exact resolved implementation for a component, or null when none is selected. */
+    [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const noexcept;
+
+  private:
+    const Board *board_;
+    const FootprintLibrary *footprints_;
+    std::span<const ResolvedBoardPart> parts_;
+};
+
 /**
  * Immutable authoring-time physical resolution for exactly one named Board and selected closure.
  *
@@ -87,11 +113,8 @@ class BoardResolution {
                                                      FootprintLibrary footprints,
                                                      std::vector<ResolvedBoardPart> parts);
 
-    /** Return the immutable physically resolved projection consumed by PCB algorithms. */
-    [[nodiscard]] const Board &board() const noexcept { return resolved_board_; }
-
-    /** Return the exact named authoring Board from which this resolution was built. */
-    [[nodiscard]] const Board &authoring_board() const noexcept { return *authoring_board_; }
+    /** Return the exact named authoring Board. */
+    [[nodiscard]] const Board &board() const noexcept { return *board_; }
 
     /** Return the stable name of the resolved authoring Board. */
     [[nodiscard]] const BoardName &board_name() const noexcept { return board_name_; }
@@ -113,14 +136,19 @@ class BoardResolution {
     /** Return the exact resolved implementation for a component, or null when none is selected. */
     [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const noexcept;
 
+    /** Return the explicit non-owning consumer view backed by this resolution. */
+    [[nodiscard]] ResolvedBoardView view() const & noexcept {
+        return ResolvedBoardView{*board_, footprints_, parts_};
+    }
+
+    [[nodiscard]] ResolvedBoardView view() const && = delete;
+
   private:
     BoardResolution(const Board &board, ContentHash closure_digest,
                     BoardResolutionCapabilities capabilities, FootprintLibrary footprints,
                     std::vector<ResolvedBoardPart> parts);
 
-    const Board *authoring_board_;
-    Circuit resolved_circuit_;
-    Board resolved_board_;
+    const Board *board_;
     BoardName board_name_;
     ContentHash closure_digest_;
     BoardResolutionCapabilities capabilities_;

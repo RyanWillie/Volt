@@ -10,7 +10,7 @@
 
 #include <volt/io/parts/part_library_bundle.hpp>
 #include <volt/io/project_bundle.hpp>
-#include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/io/project_bundle_writer.hpp>
 #include <volt/io/schematic/schematic_writer.hpp>
 
 namespace {
@@ -48,8 +48,8 @@ class TempDirectory final {
     std::filesystem::path path_;
 };
 
-[[nodiscard]] volt::io::ProjectBundleV2Builder project_builder(std::string name) {
-    return volt::io::ProjectBundleV2Builder{
+[[nodiscard]] volt::io::ProjectBundleBuilder project_builder(std::string name) {
+    return volt::io::ProjectBundleBuilder{
         volt::io::ProjectIdentity{std::move(name), std::nullopt, std::nullopt},
         volt::io::ProjectRunSummary{true, volt::io::ProjectStatus::Clean, "default", {"design"}},
         volt::io::LogicalInputName{"project.py"},
@@ -87,7 +87,7 @@ TEST_CASE("ProjectBundle v2 reader matches the writer instance-rooted component 
     bundle.write(path);
 
     const auto reopened = volt::io::ProjectBundle::open(path);
-    const auto circuits = reopened.require_v2().loaded_project().circuits();
+    const auto circuits = reopened.graph().loaded_project().circuits();
     REQUIRE(circuits.size() == 1U);
     CHECK(circuits.front().model().all<volt::ComponentDefId>().size() == 1U);
     CHECK(circuits.front().model().all<volt::ComponentId>().size() == 0U);
@@ -138,8 +138,7 @@ TEST_CASE("ProjectBundle v2 resolves equal component identities within each logi
     const auto path = temporary.path() / "two-library-origins.volt";
     bundle.write(path);
 
-    const auto circuits =
-        volt::io::ProjectBundle::open(path).require_v2().loaded_project().circuits();
+    const auto circuits = volt::io::ProjectBundle::open(path).graph().loaded_project().circuits();
     REQUIRE(circuits.size() == 2U);
     for (const auto &circuit : circuits) {
         const auto artifact = circuit.artifact();
@@ -191,9 +190,6 @@ TEST_CASE("ProjectBundle v2 regenerates an empty-selection BOM without a fabrica
     const auto path = temporary.path() / "logical-exports.volt";
     selected.write(path);
 
-    CHECK(volt::io::ProjectBundle::open(path)
-              .require_v2()
-              .loaded_project()
-              .selected_exports()
-              .size() == 2U);
+    CHECK(volt::io::ProjectBundle::open(path).graph().loaded_project().selected_exports().size() ==
+          2U);
 }

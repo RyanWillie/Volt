@@ -14,7 +14,6 @@ from .library import (
     PinSpec,
     SchematicSymbolSpec,
     _normalize_schematic_symbols,
-    _schematic_symbol_for_variant,
 )
 
 if TYPE_CHECKING:
@@ -449,6 +448,27 @@ class ElectricalRecord:
         }
 
 
+@dataclass(frozen=True)
+class PartProvenance:
+    """Typed provenance lowered into the native exact-part definition."""
+
+    datasheet: str = ""
+    authored_by: str = ""
+    derived_from: str = ""
+
+    def __post_init__(self) -> None:
+        for name in ("datasheet", "authored_by", "derived_from"):
+            if not isinstance(getattr(self, name), str):
+                raise TypeError(f"PartProvenance {name} must be a string")
+
+    def _to_dict(self) -> dict[str, str]:
+        return {
+            "datasheet": self.datasheet,
+            "authored_by": self.authored_by,
+            "derived_from": self.derived_from,
+        }
+
+
 class Part:
     """Reusable Python declaration lowered into an exact native library part."""
 
@@ -463,7 +483,6 @@ class Part:
         name: str,
         pins: Iterable[PinSpec],
         symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
-        schematic_symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
         footprint: FootprintInput | None = None,
         pads: dict[int | str, PinPadValue] | None = None,
         value: str | None = None,
@@ -471,15 +490,13 @@ class Part:
         mpn: str | None = None,
         package: str | None = None,
         properties: dict | None = None,
-        physical_properties: dict | None = None,
         voltage_rating: float | None = None,
-        power_rating: float | None = None,
         contract: ComponentContract | None = None,
         electrical_records: Iterable[ElectricalRecord] = (),
+        provenance: PartProvenance | None = None,
         model_3d: PartModel3D | None = None,
         approved_alternate_mpns: Iterable[str] = (),
         prefix: str = "U",
-        extensions: dict | None = None,
         source_name: str | None = None,
         source_version: str | None = None,
     ) -> None:
@@ -492,16 +509,12 @@ class Part:
         if not prefix:
             raise ValueError("Part prefix must not be empty")
         normalized_pins = tuple(pins)
-        if symbol is not None and schematic_symbol is not None:
-            raise TypeError("Part accepts either symbol or schematic_symbol")
         alternate_mpns = tuple(str(mpn) for mpn in approved_alternate_mpns)
 
-        if power_rating is not None:
-            raise NotImplementedError(
-                "Power is not canonical exact-part data in this slice; use a later typed Power record"
-            )
         if contract is not None and not isinstance(contract, ComponentContract):
             raise TypeError("Part contract must be a ComponentContract")
+        if provenance is not None and not isinstance(provenance, PartProvenance):
+            raise TypeError("Part provenance must be a PartProvenance")
         records = tuple(electrical_records)
         if any(not isinstance(record, ElectricalRecord) for record in records):
             raise TypeError("Part electrical_records must contain ElectricalRecord instances")
@@ -517,9 +530,7 @@ class Part:
         for pin in self.pins:
             if not isinstance(pin, PinSpec):
                 raise TypeError("Part pins must be PinSpec instances")
-        self.schematic_symbols = _normalize_schematic_symbols(
-            schematic_symbol if schematic_symbol is not None else symbol
-        )
+        self.schematic_symbols = _normalize_schematic_symbols(symbol)
         self.footprint = footprint
         self.pads = None if pads is None else _freeze_value(pads)
         self.value = value
@@ -527,18 +538,15 @@ class Part:
         self.mpn = mpn
         self.package = package
         self.properties = _freeze_value(logical_properties)
-        self.physical_properties = None if physical_properties is None else _freeze_value(
-            physical_properties
-        )
         self.contract = contract
         self.electrical_records = records
+        self.provenance = provenance or PartProvenance()
         self._voltage_rating_input = (
             None if voltage_rating is None else float(voltage_rating)
         )
         self.model_3d = model_3d
         self.approved_alternate_mpns = alternate_mpns
         self.prefix = prefix
-        self.extensions = _freeze_value(extensions or {})
         self.source_name = source_name or name
         self.source_version = source_version
         self._library: Library | None = None
@@ -548,11 +556,6 @@ class Part:
     def library(self) -> Library | None:
         """Return the library this part was added to, if any."""
         return self._library
-
-    @property
-    def schematic_symbol(self) -> SchematicSymbolSpec | None:
-        """Return this part's default schematic symbol, if one is registered."""
-        return _schematic_symbol_for_variant(self.schematic_symbols, "default")
 
     def _bind_library(self, library: Library) -> None:
         if self._library is not None and self._library is not library:
@@ -580,18 +583,13 @@ class Part:
             "mpn": self.mpn,
             "package": self.package,
             "properties": _mutable_value(self.properties),
-            "physical_properties": (
-                None
-                if self.physical_properties is None
-                else _mutable_value(self.physical_properties)
-            ),
             "contract": None if self.contract is None else self.contract._to_dict(),
             "electrical_records": [record._to_dict() for record in self.electrical_records],
             "voltage_rating": self._voltage_rating_input,
+            "provenance": self.provenance._to_dict(),
             "model_3d": None if self.model_3d is None else self.model_3d._to_dict(),
             "approved_alternate_mpns": list(self.approved_alternate_mpns),
             "prefix": self.prefix,
-            "extensions": _mutable_value(self.extensions),
             "source_name": self.source_name,
             "source_version": self.source_version,
         }

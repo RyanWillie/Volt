@@ -22,12 +22,6 @@ BoardResolution resolve_board(const Board &board, const PartLibraryBundle &selec
     for (std::size_t index = 0; index < board.circuit().all<ComponentId>().size(); ++index) {
         const auto component_id = ComponentId{index};
         const auto &instance = board.circuit().get(component_id);
-        if (instance.selected_physical_part().has_value()) {
-            throw KernelLogicError{
-                ErrorCode::InvalidState,
-                "Board resolution does not accept legacy PhysicalPart selections",
-                EntityRef::component(component_id)};
-        }
         if (!instance.selected_library_part_ref().has_value()) {
             continue;
         }

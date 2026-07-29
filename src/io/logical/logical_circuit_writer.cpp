@@ -490,62 +490,6 @@ void write_electrical_attributes(std::ostream &out, const ElectricalAttributeMap
 
 [[nodiscard]] std::string net_class_id(NetClassId id) { return encode_local_id(id); }
 
-void write_selected_physical_part(std::ostream &out, const PhysicalPart &part) {
-    out << "{\n";
-    out << "      \"manufacturer_part\": { \"manufacturer\": "
-        << json_string(part.manufacturer_part().manufacturer())
-        << ", \"part_number\": " << json_string(part.manufacturer_part().part_number()) << " },\n";
-    out << "      \"package\": " << json_string(part.package().value()) << ",\n";
-    out << "      \"footprint\": { \"library\": " << json_string(part.footprint().library())
-        << ", \"name\": " << json_string(part.footprint().name()) << " },\n";
-    out << "      \"pin_pad_mappings\": [\n";
-    for (std::size_t index = 0; index < part.pin_pad_mappings().size(); ++index) {
-        const auto &mapping = part.pin_pad_mappings()[index];
-        out << "        { \"pin\": " << json_string(pin_def_id(mapping.pin()))
-            << ", \"pad\": " << json_string(mapping.pad()) << " }";
-        if (index + 1 != part.pin_pad_mappings().size()) {
-            out << ',';
-        }
-        out << '\n';
-    }
-    out << "      ],\n";
-    if (part.model_3d().has_value()) {
-        const auto &model_3d = part.model_3d().value();
-        out << "      \"model_3d\": {\n";
-        out << "        \"format\": " << json_string(model_3d.format()) << ",\n";
-        out << "        \"file_name\": " << json_string(model_3d.file_name()) << ",\n";
-        out << "        \"translation_mm\": [";
-        for (std::size_t index = 0; index < model_3d.translation_mm().size(); ++index) {
-            write_json_number(out, model_3d.translation_mm()[index]);
-            if (index + 1 != model_3d.translation_mm().size()) {
-                out << ", ";
-            }
-        }
-        out << "],\n";
-        out << "        \"rotation_deg\": ";
-        write_json_number(out, model_3d.rotation_deg());
-        out << "\n";
-        out << "      },\n";
-    }
-    if (!part.approved_alternate_mpns().empty()) {
-        out << "      \"approved_alternate_mpns\": [";
-        for (std::size_t index = 0; index < part.approved_alternate_mpns().size(); ++index) {
-            if (index != 0U) {
-                out << ", ";
-            }
-            out << json_string(part.approved_alternate_mpns()[index]);
-        }
-        out << "],\n";
-    }
-    out << "      \"properties\": ";
-    write_properties(out, part.properties());
-    if (!part.electrical_attributes().empty()) {
-        out << ",\n      \"electrical_attributes\": ";
-        write_electrical_attributes(out, part.electrical_attributes(), "        ", "      ");
-    }
-    out << "\n    }";
-}
-
 void write_selected_library_part(std::ostream &out, const LibraryPartRef &reference) {
     out << "{ \"library_namespace\": " << json_string(reference.library_namespace())
         << ", \"library_version\": " << json_string(reference.library_version())
@@ -767,11 +711,6 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         if (!component_attributes.empty()) {
             out << ", \"electrical_attributes\": ";
             detail::write_electrical_attributes(out, component_attributes, "        ", "      ");
-        }
-        const auto &selected_part = volt::queries::selected_physical_part(circuit, id);
-        if (selected_part.has_value()) {
-            out << ", \"selected_physical_part\": ";
-            detail::write_selected_physical_part(out, selected_part.value());
         }
         const auto &selected_library_part = volt::queries::selected_library_part_ref(circuit, id);
         if (selected_library_part.has_value()) {

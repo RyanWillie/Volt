@@ -120,11 +120,8 @@ class BoardSpatialIndex {
     /** Reject temporary board bindings because the index stores a caller-owned board pointer. */
     explicit BoardSpatialIndex(const Board &&board) = delete;
 
-    /** Build an index from board copper and placed footprint pads. */
-    BoardSpatialIndex(const Board &board, const FootprintLibrary &footprints);
-
-    /** Reject temporary board bindings because the index stores a caller-owned board pointer. */
-    BoardSpatialIndex(const Board &&board, const FootprintLibrary &footprints) = delete;
+    /** Build an index from resolved board copper and placed footprint pads. */
+    explicit BoardSpatialIndex(const ResolvedBoardView &resolved);
 
     /** Return the conservative board-wide copper-clearance bound used for pruning. */
     [[nodiscard]] double conservative_clearance_mm() const noexcept;

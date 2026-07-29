@@ -34,7 +34,7 @@
 
 - [ ] Write failing tests for `volt::queries::component_by_reference`, `net_by_name`, `pins_for`, `pin_by_name`, `pin_by_number`, `pin_by_definition`, module lookup queries, port binding queries, and `net_of`.
 - [ ] Move derived reads out of `Circuit` where they can be written against fundamental public accessors.
-- [ ] Preserve source compatibility only for root methods that are still fundamental primitives or necessary mutation-boundary helpers.
+- [ ] Retain only root methods that are fundamental primitives or necessary mutation-boundary helpers.
 - [ ] Run targeted circuit query tests, then full stage gates.
 
 ## Stage 3: ConnectivityModel

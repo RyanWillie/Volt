@@ -290,7 +290,7 @@ def test_library_commands_build_reopen_inspect_and_extract_deterministically(tmp
     assert main(["library", "inspect", str(first), "R-1K", "--json"]) == 0
     inspection = _read_stdout_json(capsys)
     assert inspection["format"] == "volt.part-library-bundle"
-    assert inspection["schema_version"] == 1
+    assert inspection["schema_version"] == 2
     assert inspection["part"]["exact_reference"]["part_key"] == "R-1K"
     assert build["library_digest"] == inspection["library_digest"]
     assert build["parts"][0]["exact_reference"] == inspection["part"]["exact_reference"]

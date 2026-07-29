@@ -178,12 +178,10 @@ include/volt/circuit/updates.hpp|struct|AssignNetClass
 include/volt/circuit/updates.hpp|class|PartLibrary
 include/volt/circuit/updates.hpp|struct|MarkIntentionalStub
 include/volt/circuit/updates.hpp|class|SelectLibraryPart
-include/volt/circuit/updates.hpp|struct|SelectPhysicalPart
 include/volt/circuit/updates.hpp|struct|SetAssemblyIntent
 include/volt/circuit/updates.hpp|struct|SetComponentElectricalAttribute
 include/volt/circuit/updates.hpp|struct|SetComponentProperty
 include/volt/circuit/updates.hpp|struct|SetNetElectricalAttribute
-include/volt/circuit/updates.hpp|struct|SetSelectedPartElectricalAttribute
 include/volt/circuit/updates.hpp|using|ComponentUpdate
 include/volt/circuit/updates.hpp|using|NetUpdate
 include/volt/circuit/validation/validation.hpp|class|NetContinuityView

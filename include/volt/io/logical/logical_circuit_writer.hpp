@@ -82,8 +82,6 @@ void write_electrical_attributes(std::ostream &out, const ElectricalAttributeMap
 
 [[nodiscard]] std::string module_instance_id(ModuleInstanceId id);
 
-void write_selected_physical_part(std::ostream &out, const PhysicalPart &part);
-
 void write_pin_definition_semantics(std::ostream &out, const PinDefinition &pin);
 
 } // namespace detail

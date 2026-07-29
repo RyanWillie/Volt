@@ -35,8 +35,6 @@ class BundleSource {
     [[nodiscard]] virtual std::vector<std::string> paths() const = 0;
 };
 
-void validate_legacy_project_bundle_path(std::string_view path);
-
 [[nodiscard]] std::unique_ptr<BundleSource>
 open_project_bundle_source(const std::filesystem::path &path);
 

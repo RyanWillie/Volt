@@ -30,7 +30,7 @@ def test_python_schematic_page_metadata_and_regions_are_kernel_owned():
     )
 
     with power.drawing(at=(1, 2), unit=5) as drawing:
-        placed = drawing.place(r1, symbol="resistor")
+        placed = drawing.place(r1, symbol="volt.passives:resistor")
     with power.drawing(at=(0, 10), unit=5) as drawing:
         drawing.wire(vcc).to((10, 10)).direct()
     power.wire(vcc, [(0, 0), (20, 0)])
@@ -142,14 +142,14 @@ def test_python_schematic_region_drawing_tags_two_terminal_symbols():
     assert projection["symbol_instances"][0]["authored_region"] == "Support"
 
 
-def test_python_schematic_sheet_backwards_compatibility_keeps_default_page():
-    design = volt.Design("schematic-backwards")
+def test_python_schematic_sheet_uses_default_page_metadata():
+    design = volt.Design("schematic-default-page")
 
-    sheet = design.schematic("Legacy")
+    sheet = design.schematic("Main")
 
     projection = json.loads(sheet.to_json())
-    assert sheet.name == "Legacy"
-    assert projection["sheets"][0]["metadata"]["title"] == "Legacy"
+    assert sheet.name == "Main"
+    assert projection["sheets"][0]["metadata"]["title"] == "Main"
     assert projection["sheets"][0]["metadata"]["orientation"] == "Landscape"
     assert projection["sheets"][0]["metadata"]["size"] == {"width": 297.0, "height": 210.0}
     assert projection["sheets"][0]["regions"] == []

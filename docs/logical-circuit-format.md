@@ -188,7 +188,7 @@ not persist Python authoring preset or role names.
 - `Required`
 - `MustNotConnect`
 
-The optional electrical-semantic fields use these spellings and default to their neutral
+The compact canonical electrical-semantic fields use these spellings and default to their neutral
 value when omitted:
 
 - `terminal_kind`: `Unspecified`, `Passive`, `Signal`, `Power`, `Ground`, or `NoConnect`
@@ -223,15 +223,14 @@ Component definitions describe reusable logical component shapes:
 non-empty `name`. Its component-local `variant` may be omitted on read and then defaults to
 `default`; the canonical writer always emits the resulting non-empty variant. Variants must be
 unique within one component definition. `pins` contains `pin_def` IDs in component-definition
-pin order. A pin definition belongs to at most one component definition, and a component
+pin order. Every pin definition belongs to exactly one component definition, and a component
 definition may reference each pin definition only once. The top-level `pin_definitions` table
 remains the canonical persistence representation and table order remains the source of
-deterministic `PinDefId` restoration. Unowned rows remain readable for v1 document
-compatibility, although complete typed construction does not create them.
+deterministic `PinDefId` restoration. Unowned rows are rejected.
 
-An explicitly authored portable component contract adds a `contract` object. Simple legacy
+An explicitly authored portable component contract adds a `contract` object. Concise current
 definitions omit it; readers lower those definitions into the same immutable contract model
-from the component name and deterministic ordered legacy pin keys.
+from the component name and deterministic ordered pin keys.
 
 ```json
 {
@@ -296,48 +295,6 @@ Components are concrete design occurrences:
   "electrical_attributes": {
     "forward_voltage": { "type": "quantity", "dimension": "voltage", "value": 2 }
   },
-  "selected_physical_part": {
-    "manufacturer_part": {
-      "manufacturer": "Lite-On",
-      "part_number": "LTST-C190KRKT"
-    },
-    "package": "0603",
-    "footprint": {
-      "library": "leds",
-      "name": "LED_0603_1608Metric"
-    },
-    "pin_pad_mappings": [
-      { "pin": "pin_def:1", "pad": "1" },
-      { "pin": "pin_def:0", "pad": "2" }
-    ],
-    "properties": {},
-    "electrical_attributes": {
-      "current_rating": { "type": "quantity", "dimension": "current", "value": 0.02 }
-    }
-  }
-}
-```
-
-`selected_physical_part` is optional. A selected part maps logical `pin_def` IDs to
-physical footprint pad labels. The mapping must exactly match the component definition's
-pins: no missing logical pins, no foreign logical pins, and no duplicate pad labels. A
-logical pin may appear more than once when multiple physical package pads are tied to that
-same logical pin.
-
-Selected parts may also carry:
-
-- `model_3d`: `format` must be `glb` or `step`; `file_name` must be a non-empty basename
-  rather than `.`, `..`, or a path; `translation_mm` must contain three finite numbers; and
-  `rotation_deg` must be finite
-- `approved_alternate_mpns`: an ordered, unique list of non-empty alternate part numbers
-- `properties`: typed scalar metadata
-- `electrical_attributes`: selected-part ratings and constraints using the shared typed
-  encoding
-
-Native exact selection instead uses the optional `selected_library_part` object:
-
-```json
-{
   "selected_library_part": {
     "library_namespace": "volt.optos",
     "library_version": "2026.1",
@@ -348,11 +305,12 @@ Native exact selection instead uses the optional `selected_library_part` object:
 }
 ```
 
-All five fields are required and structural. A component may contain at most one of
-`selected_library_part` and the retained legacy `selected_physical_part`. Reopening a logical
-circuit preserves the exact reference without copying intrinsic `PartDefinition` content.
+`selected_library_part` is optional. All five fields are required and structural when it is
+present. Reopening a logical circuit preserves the exact reference without copying intrinsic
+`PartDefinition` content into the logical model.
 Operations that require intrinsic part truth must resolve the reference through the matching
 immutable library snapshot and verify both digests plus component-contract compatibility.
+Removed inline physical-part fields are rejected rather than ignored.
 
 ## Concrete Pins
 
@@ -580,14 +538,11 @@ created from these templates use the module instance name as a prefix, such as
 must belong to the module component's component definition. A module component pin may
 appear in at most one template connection.
 
-Canonical v1 output provides exactly one `component_origins` entry for every module
+Canonical v1 input and output provide exactly one `component_origins` entry for every module
 component template in its definition. Each entry points to the concrete `component` created
-for that module instance. The v1 reader retains one documented legacy compatibility path:
-when `component_origins` is omitted, it infers the complete mapping only when instance name,
-component reference, and definition make every origin deterministic. It rejects ambiguous or
-connectivity-inconsistent input, and the next canonical write emits the inferred
-`component_origins`. `port_bindings` connect instance ports to parent concrete nets without
-merging the parent net and internal module-origin net into one logical net.
+for that module instance. Missing, duplicate, ambiguous, or connectivity-inconsistent origins
+are structural load failures. `port_bindings` connect instance ports to parent concrete nets
+without merging the parent net and internal module-origin net into one logical net.
 
 This hierarchy model intentionally persists only the current kernel-owned logical
 state: module definitions, template-local nets, ports, component templates, template pin
@@ -625,18 +580,16 @@ including:
 - duplicate connections for the same module component pin
 - module instances that do not provide exactly one concrete net origin for every
   template-local net
-- module instances whose explicit `component_origins` do not provide exactly one concrete
-  component origin for every module component template; omitted origins are accepted only by
-  the deterministic legacy-v1 inference described above
+- module instances whose `component_origins` do not provide exactly one concrete component
+  origin for every module component template
 - module component origins whose concrete component definition does not match the
   template component definition
 - module component origins whose concrete pins are not connected to the concrete nets
   required by the template connections
 - port bindings whose port does not belong to the module instance definition
 - port bindings that bind a module port to its own module-origin net
-- selected part mappings that do not exactly match the component definition
-- exact selected-part references with empty or placeholder identity fields, malformed digests,
-  or both selected-part representations on one component
+- exact selected-part references with empty or placeholder identity fields or malformed
+  digests
 - empty structural strings such as names, reference designators, package labels, footprint
   labels, manufacturer names, part numbers, and pad labels
 - invalid enum or property type spellings
@@ -688,8 +641,8 @@ A compact LED circuit may be represented as:
 }
 ```
 
-The example omits selected physical parts for brevity; component rows may include
-`selected_library_part` or the retained legacy `selected_physical_part` as shown above.
+The example omits exact part selection for brevity; component rows may include the
+`selected_library_part` object shown above.
 
 ## Versioning
 
@@ -698,8 +651,7 @@ Version 1 readers must require:
 - `format` equal to `volt.logical_circuit`
 - `version` equal to `1`
 
-The v1 reader may ignore unknown fields until an extension mechanism is defined. Unknown
-fields are not preserved when rewriting canonical output, so producers must not rely on
-unknown fields for data that should round-trip. Future versions should document migration
-or rejection behavior before adding incompatible semantics. See
-[schema-versioning.md](schema-versioning.md) for the shared compatibility policy.
+The v1 reader rejects removed fields from non-current logical representations. Until Volt
+has an external release or user contract, non-current artifacts must be regenerated rather
+than converted. See
+[schema-versioning.md](schema-versioning.md) for the shared current-schema policy.

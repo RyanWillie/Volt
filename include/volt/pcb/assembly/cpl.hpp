@@ -5,7 +5,7 @@
 #include <vector>
 
 #include <volt/core/diagnostics.hpp>
-#include <volt/pcb/board.hpp>
+#include <volt/pcb/resolution/board_resolution.hpp>
 
 namespace volt {
 
@@ -127,10 +127,10 @@ class Cpl {
 };
 
 /** Project board placements into a deterministic canonical CPL using default options. */
-[[nodiscard]] Cpl project_cpl(const Board &board, const FootprintLibrary &footprints);
+[[nodiscard]] Cpl project_cpl(const ResolvedBoardView &resolved);
 
 /** Project board placements into a deterministic canonical CPL. */
-[[nodiscard]] Cpl project_cpl(const Board &board, const FootprintLibrary &footprints,
+[[nodiscard]] Cpl project_cpl(const ResolvedBoardView &resolved,
                               const CplProjectionOptions &options);
 
 } // namespace volt

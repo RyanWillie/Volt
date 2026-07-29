@@ -224,7 +224,7 @@
             <dt>Logical JSON</dt><dd><code>pin_definitions</code> and <code>component_definitions</code> are written by <code>logical_circuit_writer.cpp</code>, parsed by <code>logical_circuit_parser.cpp</code>, and restored through the private restoration plan. Typed IDs and table order are preserved.</dd>
             <dt>Diagnostics</dt><dd>ERC consumes requirement, terminal, direction, signal domain, and pin voltage ranges. Drive and polarity remain persisted and inspectable but have no current diagnostic rule. Exact contracts include <code>UNCONNECTED_REQUIRED_PIN</code>, <code>PIN_MUST_NOT_CONNECT</code>, domain/driver and voltage-range findings.</dd>
             <dt>Python</dt><dd><code>Design.define_component</code>, <code>PinSpec</code>, library components, and role presets lower to the same primitive kernel fields; preset names are not persisted as alternate semantics.</dd>
-            <dt>Projection</dt><dd>Schematic symbol selection reads definition-owned symbol references. PCB later resolves selected-part mappings against the same definition pins; neither projection mutates definitions.</dd>
+            <dt>Projection</dt><dd>Schematic symbol selection reads definition-owned symbol references. PCB resolution joins the exact selected closure's pin-pad mappings to those definition pins; neither projection mutates definitions.</dd>
             <dt>Evidence</dt><dd><code>construction_specs_test.cpp</code>, <code>definitions_test.cpp</code>, logical writer/reader tests, LED golden, and the comprehensive <code>semantic_parity.volt.json</code> golden.</dd>
             <dt>Gap / action</dt><dd>Logical format documentation omitted signal domain, polarity, and symbol references. The format contract now documents the existing fields; no schema change was made.</dd>
           </dl>
@@ -234,12 +234,12 @@
           <header><h3>2. Component instances and concrete pins</h3><span class="status covered">Covered</span></header>
           <dl>
             <dt>C++ owner</dt><dd><code>ComponentInstance</code>, <code>ComponentInstanceSpec</code>, and <code>PinInstance</code> in <code>connectivity/instances.hpp</code>.</dd>
-            <dt>Construct / mutate</dt><dd><code>instantiate_component</code> creates the instance and exactly one concrete pin for every ordered definition pin in one atomic operation. Closed component updates change properties, electrical data, physical selection, or assembly intent.</dd>
+            <dt>Construct / mutate</dt><dd><code>instantiate_component</code> creates the instance and exactly one concrete pin for every ordered definition pin in one atomic operation. Closed component updates change properties, electrical data, exact selected references, or assembly intent.</dd>
             <dt>Inspect</dt><dd>Generic <code>get/all</code> plus free queries <code>pins_for</code>, <code>pin_by_name</code>, <code>pin_by_number</code>, and <code>pin_by_definition</code>.</dd>
             <dt>Logical JSON</dt><dd>Separate <code>components</code> and <code>pins</code> tables retain definition references and stable concrete IDs. Restoration rejects missing, duplicate, foreign, or incomplete pin materializations.</dd>
             <dt>Diagnostics</dt><dd>Instance/pin identity is reporting metadata in ERC, PCB readiness, BOM, and assembly findings; structural mismatches fail at load/mutation boundaries instead of becoming diagnostics.</dd>
             <dt>Python</dt><dd><code>Design.instantiate</code>, component convenience constructors, handles, and pin groups lower to the same component/pin tables.</dd>
-            <dt>Projection</dt><dd>Schematic and PCB items refer to canonical <code>ComponentId</code>/<code>PinId</code>. PCB pad resolution joins concrete pins to selected-part pin-definition mappings.</dd>
+            <dt>Projection</dt><dd>Schematic and PCB items refer to canonical <code>ComponentId</code>/<code>PinId</code>. PCB pad resolution joins concrete pins to mappings owned by BoardResolution or CompiledBoard.</dd>
             <dt>Evidence</dt><dd><code>construction_specs_test.cpp</code>, malformed reader tests, Python ownership tests, LED and hierarchy goldens.</dd>
             <dt>Gap / action</dt><dd>No semantic gap. Duplicate-reference and missing-definition failures already had canonical byte-atomic proof.</dd>
           </dl>
@@ -271,7 +271,7 @@
             <dt>Python</dt><dd><code>Design.define_module</code>, module draft nets/ports/components/connections, root <code>instantiate</code>, bound-port handles, and read-only hierarchy views.</dd>
             <dt>Projection</dt><dd>PCB ratsnest and copper continuity follow bindings without merging logical nets. Schematic and PCB continue to reference existing Circuit connectivity only.</dd>
             <dt>Evidence</dt><dd>Hierarchy and construction-spec tests, hierarchy golden, reader mismatch rejection, bound-port validation and PCB ratsnest tests.</dd>
-            <dt>Gap / action</dt><dd>Concrete net/reference collision tests previously checked counts only; they now compare canonical JSON bytes. Existing legacy-v1 origin inference is explicitly documented and still rewrites canonically.</dd>
+            <dt>Gap / action</dt><dd>Concrete net/reference collision tests compare canonical JSON bytes. Current inputs provide complete explicit origins.</dd>
           </dl>
         </article>
 
@@ -286,7 +286,7 @@
             <dt>Python</dt><dd>Natural authoring values and library/catalog specs lower to typed kernel attributes; Python does not retain a parallel units model.</dd>
             <dt>Projection</dt><dd>ERC consumes pin ranges, net voltage, and selected-part ratings. PCB consumes Circuit-owned net-class physical rules separately. BOM projects selected-part identity but does not reinterpret general electrical attributes.</dd>
             <dt>Evidence</dt><dd>Typed-attribute golden, electrical model/core tests, exact selected-part ERC tests, Python natural-value tests, PartLibraryBundle round trips, and comprehensive parity golden.</dd>
-            <dt>Gap / action</dt><dd>No current ownership gap. A named v1 fixture separately locks the compatibility converter for former inline selected-part records.</dd>
+            <dt>Gap / action</dt><dd>No current ownership gap. Logical input contains only the exact reference; resolved physical truth is supplied by the immutable selected closure.</dd>
           </dl>
         </article>
 
@@ -296,7 +296,7 @@
             <dt>C++ owner</dt><dd><code>PartLibraryBundle</code> owns exact <code>PartDefinition</code> data and immutable assets; <code>Circuit</code> stores only the selected <code>LibraryPartRef</code>.</dd>
             <dt>Construct / mutate</dt><dd><code>SelectLibraryPart</code> resolves through an explicit <code>ExactPartResolver</code> and checks the implemented component contract before mutation.</dd>
             <dt>Inspect</dt><dd><code>queries::selected_library_part_ref(Circuit, ComponentId)</code>; callers resolve the reference through the exact retained closure.</dd>
-            <dt>Logical JSON</dt><dd>Current authored circuits write <code>selected_library_part</code>. The versioned v1 converter accepts and canonically round-trips the former inline physical record during its compatibility window; ProjectBundle v2 publication never treats that record as a second current owner or writer route.</dd>
+            <dt>Logical JSON</dt><dd>Current authored circuits write only <code>selected_library_part</code>. Removed inline physical fields reject and ProjectBundle publication cannot treat logical JSON as a second physical owner.</dd>
             <dt>Diagnostics</dt><dd>Native selected-part ERC consumes canonical exact-part records in the default Design report; PCB/BOM readiness additionally require exact identity, footprint, and terminal-to-pad coverage.</dd>
             <dt>Python</dt><dd><code>Library.part</code> declares the immutable exact Part and <code>Design.instantiate(part)</code> selects its reference. Python retains no alternate part cache.</dd>
             <dt>Projection</dt><dd><code>BoardResolution</code> and <code>CompiledBoard</code> consume the exact closure; CPL, KiCad, fabrication, BOM, and model consumers read that verified artifact.</dd>
@@ -406,8 +406,8 @@
           <tbody>
             <tr><td>1 · definitions, pins, provenance, symbols</td><td><code>write_logical_circuit</code>; <code>write_pin_definition_semantics</code>; <code>write_pin_definition_electrical_attributes</code>; <code>write_properties</code></td><td><code>LogicalCircuitParser::read_pin_definitions</code>, <code>read_component_definitions</code>, <code>definition_source</code>, <code>schematic_symbol_references</code>; <code>restore_logical_circuit</code> calls <code>add_pin_definition</code>, <code>restore_pin_definition_attributes</code>, <code>add_component_definition</code></td><td><code>Logical circuit writer matches the comprehensive semantic parity golden</code>; <code>Comprehensive semantic parity fixture round-trips</code></td></tr>
             <tr><td>2–3 · instances, concrete pins, nets, connectivity</td><td><code>write_logical_circuit</code> emits <code>components</code>, <code>pins</code>, and ordered <code>nets[].pins</code></td><td><code>read_components</code>, <code>read_pins</code>, <code>read_nets</code>; restoration calls <code>add_component</code>, <code>add_pin</code>, and <code>add_net</code> on a new local Circuit</td><td><code>Logical circuit reader rejects a pin connected to more than one net</code>; <code>Authoring connect helper preflights the complete pin range before mutating</code>; LED and single-pin goldens</td></tr>
-            <tr><td>4 · hierarchy and bindings</td><td><code>write_logical_circuit</code> emits <code>module_definitions</code>/<code>module_instances</code>, origins, and bindings</td><td><code>read_module_definitions</code>, <code>read_module_instances</code>, <code>infer_component_origins</code>; restoration uses <code>add_module_definition</code>, <code>add_template_net</code>, <code>add_module_component</code>, <code>connect_module_pin</code>, <code>add_port_definition</code>, <code>restore_root_module_instance</code>, <code>bind_port</code></td><td>Hierarchy golden; concrete-name byte-atomic tests; <code>Logical circuit reader infers missing module component origins for v1 fixtures</code> locks canonical rewrite and second read/write</td></tr>
-            <tr><td>5–6 · typed attributes and exact selection</td><td><code>write_electrical_attributes</code>, <code>write_electrical_attribute_value</code>, <code>write_quantity_payload</code>, and current <code>selected_library_part</code> emission</td><td>Current restoration loads the exact reference; the named v1 compatibility fixture separately exercises inline-record parsing and canonical conversion</td><td>Typed electrical golden; current exact-selection LED golden; legacy v1 LED golden; PartLibraryBundle and selected-part ERC tests</td></tr>
+            <tr><td>4 · hierarchy and bindings</td><td><code>write_logical_circuit</code> emits <code>module_definitions</code>/<code>module_instances</code>, complete origins, and bindings</td><td><code>read_module_definitions</code>, <code>read_module_instances</code>; restoration uses <code>add_module_definition</code>, <code>add_template_net</code>, <code>add_module_component</code>, <code>connect_module_pin</code>, <code>add_port_definition</code>, <code>restore_root_module_instance</code>, <code>bind_port</code></td><td>Hierarchy golden; concrete-name byte-atomic tests; missing and incomplete origins reject</td></tr>
+            <tr><td>5–6 · typed attributes and exact selection</td><td><code>write_electrical_attributes</code>, <code>write_electrical_attribute_value</code>, <code>write_quantity_payload</code>, and current <code>selected_library_part</code> emission</td><td>Current restoration loads the exact reference and rejects removed inline physical fields</td><td>Typed electrical golden; current exact-selection LED golden; PartLibraryBundle and selected-part ERC tests</td></tr>
             <tr><td>7–8 · assembly/no-connect/stub intent</td><td><code>write_logical_circuit</code> emits deterministic <code>design_intent</code> collections</td><td><code>read_design_intent</code>; restoration applies typed stub, no-connect, and combined assembly-intent mutations</td><td><code>design_intent_test.cpp</code>, <code>test_design_intent.py</code>, BOM/CPL tests, comprehensive golden</td></tr>
             <tr><td>9 · net classes</td><td><code>write_net_classes</code> plus <code>write_derived_net_class_rule_value</code></td><td><code>read_net_classes</code>; restoration calls <code>add_net_class</code> and <code>assign_net_class</code></td><td><code>net_classes_test.cpp</code>, logical reader rule tests, comprehensive golden</td></tr>
             <tr><td>10 · IDs, order, typed errors, EntityRef</td><td>Every table is emitted in typed ID order by <code>write_logical_circuit</code>; errors and <code>EntityRef</code> are not persisted design state</td><td><code>LogicalCircuitParser::parse</code>, typed <code>local_id</code>/<code>resolve</code>, and restoration order checks reject prefix/range/table/cross-reference drift</td><td>Independent/interleaved table restoration tests; <code>errors_test.cpp</code>; Python exception translation tests; architecture checker/self-test</td></tr>
@@ -491,7 +491,7 @@
             <tr><td><code>instantiate_component</code></td><td>Component + complete concrete pin set</td><td>Missing definition and duplicate reference leave bytes unchanged.</td><td><span class="status covered">Covered</span></td></tr>
             <tr><td><code>instantiate_module</code></td><td>Instance + concrete nets/components/pins + origins</td><td>Duplicate instance and concrete net/reference collisions compare canonical bytes.</td><td><span class="status fixed">Proof added</span></td></tr>
             <tr><td>C++ bulk <code>authoring::connect</code></td><td>Multiple one-net-per-pin edges</td><td>Late conflict and late invalid pin now preflight the span and compare bytes.</td><td><span class="status fixed">Regression fixed</span></td></tr>
-            <tr><td>Closed component/net updates</td><td>Property/attribute/part/intent/class changes</td><td>Typed code/message and byte helper covers every closed variant, including invalid selected-part mapping.</td><td><span class="status fixed">Proof added</span></td></tr>
+            <tr><td>Closed component/net updates</td><td>Property/attribute/exact-reference/intent/class changes</td><td>Typed code/message and byte helpers cover every current closed variant.</td><td><span class="status fixed">Proof added</span></td></tr>
             <tr><td>Python endpoint and net-class bulk operations</td><td>Sequences of kernel operations from ergonomic syntax</td><td>Late type/owner/state failures preserve serialized bytes.</td><td><span class="status covered">Covered</span></td></tr>
             <tr><td>Python module draft edits</td><td>Draft nets/ports/components/connections</td><td>Candidate-spec preflight leaves materialized JSON and draft unchanged on failure.</td><td><span class="status covered">Covered</span></td></tr>
             <tr><td>Python root module instantiation</td><td>Draft commit + complete root instantiation</td><td>Operation now commits on a Circuit copy, move-assigns only after success, and proves both bytes and draft editability after failure.</td><td><span class="status fixed">Regression fixed</span></td></tr>
@@ -505,19 +505,19 @@
       <h2>Persistence proof</h2>
       <div class="proof-grid">
         <article class="proof"><h3>Deterministic goldens</h3><p>LED, single-pin diagnostic, typed electrical, hierarchy, and new comprehensive semantic-parity fixtures all satisfy read → write → read and write → read → write byte equality.</p></article>
-        <article class="proof"><h3>One rich aggregate</h3><p><code>tests/fixtures/semantic_parity.volt.json</code> combines provenance, symbols, all scalar property kinds, pin semantics/range, component quantity/tolerance, selected part/rating/model/alternates/mappings, net attributes, complete net-class rules, intent, hierarchy, origins, and bindings.</p></article>
+        <article class="proof"><h3>One rich aggregate</h3><p><code>tests/fixtures/semantic_parity.volt.json</code> combines provenance, symbols, scalar property kinds, pin semantics/range, component quantity/tolerance, exact selected reference, net attributes, complete net-class rules, intent, hierarchy, origins, and bindings.</p></article>
         <article class="proof"><h3>C++ ↔ Python parity</h3><p>Equivalent LED designs match the same exact JSON golden and empty diagnostic contract. Equivalent output-driver designs match the same exact JSON and the ordered <code>SINGLE_PIN_NET</code> tuple: warning, ERC, exact message, net and pin entities.</p></article>
-        <article class="proof"><h3>Version discipline</h3><p>No redesign-era format difference was found, so no version bump or migration was manufactured. The one pre-existing v1 <code>component_origins</code> omission path is now explicitly documented, tested, validated, and canonicalized on write.</p></article>
+        <article class="proof"><h3>Version discipline</h3><p>The current logical schema remains version 1. Its reader requires complete explicit origins and rejects removed inline physical fields; non-current artifacts must be regenerated.</p></article>
       </div>
     </section>
 
     <section id="architecture">
-      <h2>Compatibility and architecture proof</h2>
-      <p class="section-intro">Compatibility means supported authoring and downstream behavior remain stable—not that transitional storage-shaped APIs remain public.</p>
+      <h2>Current architecture proof</h2>
+      <p class="section-intro">Supported authoring and downstream behavior use one current typed ownership path.</p>
       <ul class="checks">
         <li>Public <code>Circuit</code> is locked to sixteen declarations: fifteen domain operations plus the deleted temporary-range overload.</li>
         <li>No public subsystem container shell, shared subsystem storage adapter, or replacement facade family remains.</li>
-        <li>No public passkey, raw restore, per-table stable-ID getter/count, or ordinary compatibility lock remains.</li>
+        <li>No public passkey, raw restore, per-table stable-ID getter/count, or alternate API lock remains.</li>
         <li>The sole logical restore authority is a narrow private friend accepting a typed restoration plan.</li>
         <li>The public snapshot and independent admission policy detect method/order/include drift, retired overloads, specialized root reads, and removed shell symbols.</li>
         <li>Independent exact public/protected declaration admission prevents a snapshot update from admitting raw same-name overloads, data members, aliases, nested mutation handles, protected escape hatches, or alternate borrowed-range factories.</li>
@@ -538,7 +538,7 @@
         <article class="gap proof-gap"><h3>Missing proof · cross-language parity</h3><p>No test compared equivalent C++/Python JSON and diagnostics.</p><small>Closed with shared valid and diagnostic goldens plus exact tuple checks.</small></article>
         <article class="gap proof-gap"><h3>Missing proof · rich persistence aggregate</h3><p>Coverage existed but was distributed across inline tests and four fixtures.</p><small>Closed with one comprehensive builder-backed golden and two-direction equivalence.</small></article>
         <article class="gap proof-gap"><h3>Missing proof · compound negative bytes</h3><p>Two hierarchy collisions checked only counts; invalid part mapping checked only absence.</p><small>Closed with full canonical byte assertions.</small></article>
-        <article class="gap docs"><h3>Documentation mismatch · v1 origins</h3><p>Docs said origins were always required while reader inferred a legacy omission.</p><small>Closed by documenting the narrow deterministic, validated, canonicalizing exception.</small></article>
+        <article class="gap docs"><h3>Documentation mismatch · origins</h3><p>Docs and implementation previously disagreed about omitted origins.</p><small>Closed by requiring complete explicit origins in the current contract.</small></article>
         <article class="gap docs"><h3>Documentation gap · rich fields</h3><p>Format docs omitted existing pin, symbol, part, intent, and net-class fields.</p><small>Closed by documenting current v1 behavior without changing the schema.</small></article>
         <article class="gap"><h3>Out-of-scope future features</h3><p>Nested modules, alias nets, power ties, new CLI/project framework architecture, and Python-only convenience semantics are not redesign regressions.</p><small>No action; they remain separate future work and cannot block parity by analogy.</small></article>
       </div>
@@ -553,7 +553,7 @@
           <tbody>
             <tr><td>Patch hygiene</td><td><code>git diff --check</code>; <code>python3 scripts/check-format.py</code>; build-config check</td><td>Passed</td></tr>
             <tr><td>Architecture</td><td>Checker normal + <code>--self-test</code>; public API snapshot; final forbidden-symbol searches</td><td>Passed; no transitional surface found</td></tr>
-            <tr><td>Focused regressions</td><td>Bulk-connect, root-module collision, typed-update, legacy-origin restoration, rich golden, range, and C++/Python parity cases</td><td>13 C++ cases / 86 assertions and 3 Python parity/atomicity cases passed</td></tr>
+            <tr><td>Focused regressions</td><td>Bulk-connect, root-module collision, typed-update, explicit-origin restoration, rich golden, range, and C++/Python parity cases</td><td>See the delivering pull request for exact-head results</td></tr>
             <tr><td>Complete development lane</td><td><code>cmake --workflow --preset dev</code></td><td>749 / 749 tests passed, including 714 C++ tests, 33 Python tests, 6 example-labelled tests, and 2 docs checks</td></tr>
             <tr><td>Logical persistence</td><td>Reader, writer, round-trip, golden, rich semantic parity, and cross-language cases</td><td>Byte equality and exact diagnostic contracts passed in the complete lane</td></tr>
             <tr><td>Documentation</td><td>Generated Python API docs, docs-site check, and explicit Doxygen <code>docs</code> target</td><td>Passed</td></tr>

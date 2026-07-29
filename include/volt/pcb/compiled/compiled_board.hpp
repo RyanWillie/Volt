@@ -237,6 +237,13 @@ class CompiledBoard final {
     /** Return exact selected implementations in component order. */
     [[nodiscard]] std::span<const ResolvedBoardPart> parts() const noexcept;
 
+    /** Return the exact resolved implementation for a component, or null when none is selected. */
+    [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const noexcept;
+
+    /** Return the explicit non-owning consumer view backed by this artifact. */
+    [[nodiscard]] ResolvedBoardView view() const & noexcept;
+    [[nodiscard]] ResolvedBoardView view() const && = delete;
+
     /** Return the verified pad resolutions frozen for delivery consumers. */
     [[nodiscard]] std::span<const PadResolution> pad_resolutions() const noexcept;
 

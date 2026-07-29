@@ -1,7 +1,7 @@
-# Schema Versioning And Compatibility Policy
+# Current Schema Policy
 
-Volt file formats declare both a format name and an integer schema version. The logical
-circuit format currently uses:
+Volt file formats declare a format name and an integer schema version. The logical circuit
+format currently uses:
 
 ```json
 {
@@ -10,68 +10,53 @@ circuit format currently uses:
 }
 ```
 
-The `format` field identifies the document family. The `version` field identifies the
-schema for that document family.
-
-## Current Logical Circuit Version
-
-The current logical circuit schema is version `1`, exposed by:
+The `format` field identifies the document family. The `version` field identifies its
+current canonical schema. The current logical circuit version is exposed by:
 
 ```cpp
 volt::io::logical_circuit_format_name()
 volt::io::logical_circuit_format_version()
 ```
 
-Writers emit exactly this format name and version. Readers accept exactly this format name
-and version until a compatibility path for another version is implemented.
+Writers emit exactly the current format and version. Readers accept exactly the current
+format and version.
 
 ## Reader Behavior
 
-A reader must reject unsupported documents deterministically before constructing partial
-circuit state:
+A reader must reject unsupported or non-canonical documents before constructing partial
+kernel state:
 
-- missing `format` or non-string `format` fails
-- `format` other than `volt.logical_circuit` fails
-- missing `version` or non-integer `version` fails
-- integer `version` other than `1` fails
+- required fields must be present with their documented types
+- removed fields and fields from a known non-current schema reject rather than being ignored
+- references must use valid typed local IDs and form a complete structurally valid graph
+- enum and property spellings must match the documented values
+- unsupported format names or schema versions reject
 
-Unsupported version failures are structural load errors. They are reported as exceptions,
-not diagnostics, because the reader cannot safely interpret the file as a valid `Circuit`.
+Unsupported documents are structural load errors, not diagnostics, because the reader
+cannot safely interpret them as valid kernel state.
 
-## Compatibility Stance For v1
+## Pre-release Policy
 
-The v1 reader is strict about interpreted structure:
+Until Volt has an external release or user contract, each Volt-authored reader supports
+only its current canonical schema. Old artifacts must be regenerated with the current Volt
+source. Volt does not retain old readers, converters, compatibility overloads, or legacy
+output modes during this pre-release period.
 
-- all required core fields must be present with the documented types
-- references must use valid typed local IDs
-- enum and property type spellings must match the documented values
-- structurally invalid input is rejected instead of normalized
+Current first-version schemas remain version `1`; being the first current version does not
+make them migration paths. ProjectBundle remains schema version `2`.
 
-One existing v1 compatibility exception is explicitly retained: a module instance may omit
-`component_origins` only when the reader can infer the complete one-to-one mapping
-deterministically from instance names, component references, and component definitions. The
-reader still validates restored template connectivity, and the canonical writer always emits
-the inferred field. This exception is covered by logical reader and round-trip tests; it does
-not relax any other required structure.
+## Changing a Schema
 
-The v1 reader may ignore unknown fields until an extension mechanism is defined. Unknown
-fields are not preserved when rewriting canonical output, so producers must not rely on
-unknown fields for data that should round-trip.
+When changing a Volt-authored schema:
 
-Future versions may add explicit compatibility logic, such as reading v1 and writing the
-current version, but that migration must be deliberate and tested. Until then, unsupported
-versions fail closed.
-
-## Future Versioning Rules
-
-When changing the logical circuit schema:
-
-1. Keep deterministic output for each writer version.
-2. Do not silently reinterpret fields with changed meaning.
-3. Add migration tests before accepting older versions.
+1. Preserve deterministic output for the new current writer.
+2. Do not silently reinterpret or ignore removed fields.
+3. Reject non-current versions and removed fields before publishing partial state.
 4. Preserve structural invariants at the load boundary.
-5. Keep design-quality findings in validation diagnostics, not load errors, unless the
-   schema itself is structurally invalid.
+5. Keep design-quality findings in validation diagnostics unless the document itself is
+   structurally invalid.
+6. Regenerate checked-in current fixtures and user artifacts.
 
-A future compatible reader may accept older versions, but it should still write the
-current canonical version unless an API explicitly requests legacy output.
+An external release or user contract may justify a future, separately accepted support
+policy. Until then, schema numbers identify current wire contracts; they do not authorize
+coexisting readers or writers.

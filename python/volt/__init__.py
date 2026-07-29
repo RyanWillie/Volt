@@ -57,6 +57,7 @@ from .part import (
     FeatureRoleBinding,
     FeatureSchema,
     Part,
+    PartProvenance,
 )
 from .logical import (
     Component,
@@ -88,7 +89,6 @@ from .pcb import (
     CompiledBoardIdentity,
     Cutout,
     Footprint,
-    FootprintDefinition,
     FootprintDrill,
     FootprintMarking,
     FootprintPad,
@@ -220,7 +220,6 @@ __all__ = [
     "PinGroup",
     "PinSpec",
     "Footprint",
-    "FootprintDefinition",
     "FootprintDrill",
     "FootprintMarking",
     "FootprintPad",
@@ -233,6 +232,7 @@ __all__ = [
     "KiCadPcbExport",
     "MechanicalKeepout",
     "Part",
+    "PartProvenance",
     "CanonicalRecordRequirement",
     "PART_LINEUP_DIAGNOSTIC_CODES",
     "PCB_FABRICATION_DIAGNOSTIC_CODES",

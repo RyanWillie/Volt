@@ -202,14 +202,9 @@ BoardSpatialIndex::to_copper_shape(BoardSpatialQueryShape candidate) {
 BoardSpatialIndex::BoardSpatialIndex(const Board &board)
     : BoardSpatialIndex{board, std::vector<detail::BoardCopperShape>{}} {}
 
-BoardSpatialIndex::BoardSpatialIndex(const Board &board, const FootprintLibrary &footprints)
-    : BoardSpatialIndex{board, [&board, &footprints]() {
-                            const auto resolution_footprints =
-                                queries::board_resolution_footprints(board, footprints);
-                            return detail::collect_copper_shapes(
-                                board, resolution_footprints,
-                                queries::resolve_pads(board, resolution_footprints));
-                        }()} {}
+BoardSpatialIndex::BoardSpatialIndex(const ResolvedBoardView &resolved)
+    : BoardSpatialIndex{resolved.board(),
+                        detail::collect_copper_shapes(resolved, queries::resolve_pads(resolved))} {}
 
 BoardSpatialIndex::BoardSpatialIndex(const Board &board,
                                      std::vector<detail::BoardCopperShape> shapes)

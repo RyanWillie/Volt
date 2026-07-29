@@ -237,10 +237,9 @@ void decode_project_models(ProjectBundleStorage &storage) {
             try {
                 auto model = std::make_unique<Board>(
                     read_pcb_board_text(*storage.v2_circuits[circuit].model, artifact.bytes));
-                require(write_pcb_board(*model, FootprintLibrary{}) == artifact.bytes &&
-                            model->name() == owner.board,
+                require(model->name() == owner.board,
                         ProjectBundleOpenErrorCode::OwnershipViolation,
-                        "Board payload is not canonical or disagrees with its named owner");
+                        "Board payload disagrees with its named owner");
                 storage.v2_boards.push_back(ProjectBundleStorage::V2Board{
                     owner.design, owner.board, index, circuit, std::move(model)});
             } catch (const ProjectBundleOpenError &) {
@@ -611,6 +610,11 @@ void verify_owner_graph(ProjectBundleStorage &storage, const LibraryDecoded &dec
         require(board->board == compiled.model->identity().board(),
                 ProjectBundleOpenErrorCode::OwnershipViolation,
                 "CompiledBoard name disagrees with its exact authoring Board dependency");
+        require(write_pcb_board(ResolvedBoardView{*board->model, compiled.model->footprints(),
+                                                  compiled.model->parts()}) ==
+                    storage.v2_artifacts[board->artifact].bytes,
+                ProjectBundleOpenErrorCode::OwnershipViolation,
+                "Board payload is not canonical for its exact CompiledBoard resolution");
         const auto &circuit = *storage.v2_circuits[board->circuit].model;
         require(compiled_board_logical_dependency_digest(circuit) ==
                     compiled.model->provenance().logical_dependency_digest(),
@@ -786,8 +790,7 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
                         target.model.content_digest(),
                     ProjectBundleOpenErrorCode::DigestMismatch,
                     "Board SVG target digest does not match its loaded CompiledBoard");
-            expected_bytes =
-                write_pcb_placement_svg(compiled->model->board(), compiled->model->footprints());
+            expected_bytes = write_pcb_placement_svg(compiled->model->view());
             break;
         }
         case ExportKind::BoardLayerImage: {
@@ -818,9 +821,8 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
             }
             require(layer.has_value(), ProjectBundleOpenErrorCode::OwnershipViolation,
                     "Board layer export target is absent from its CompiledBoard");
-            expected_bytes =
-                write_pcb_placement_svg(compiled->model->board(), compiled->model->footprints(),
-                                        PcbPlacementSvgOptions{.layer_filter = layer});
+            expected_bytes = write_pcb_placement_svg(compiled->model->view(),
+                                                     PcbPlacementSvgOptions{.layer_filter = layer});
             break;
         }
         case ExportKind::Bom: {

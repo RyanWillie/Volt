@@ -200,15 +200,10 @@ void LogicalCircuitParser::read_module_instances() {
                 resolve(net_ids_, string_field(origin_object, "net")));
         }
         auto component_origins = std::vector<std::pair<ModuleComponentId, ComponentId>>{};
-        if (const auto components = optional_array_field(instance_object, "component_origins")) {
-            for (const auto &origin_object : *components) {
-                component_origins.emplace_back(
-                    resolve(module_component_ids_,
-                            string_field(origin_object, "template_component")),
-                    resolve(component_ids_, string_field(origin_object, "component")));
-            }
-        } else {
-            component_origins = infer_component_origins(definition, name);
+        for (const auto &origin_object : array_field(instance_object, "component_origins")) {
+            component_origins.emplace_back(
+                resolve(module_component_ids_, string_field(origin_object, "template_component")),
+                resolve(component_ids_, string_field(origin_object, "component")));
         }
 
         auto bindings = std::vector<RestoredPortBinding>{};
@@ -227,24 +222,6 @@ void LogicalCircuitParser::read_module_instances() {
             std::move(bindings),
         });
     }
-}
-
-[[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>>
-LogicalCircuitParser::infer_component_origins(ModuleDefId definition,
-                                              const ModuleInstanceName &name) const {
-    auto component_origins = std::vector<std::pair<ModuleComponentId, ComponentId>>{};
-    for (const auto &restored : plan_.hierarchy.components) {
-        if (restored.module != definition) {
-            continue;
-        }
-        const auto concrete_reference =
-            ReferenceDesignator{name.value() + "/" + restored.component.reference().value()};
-        const auto concrete_component = component_reference_ids_.find(concrete_reference.value());
-        require(concrete_component != component_reference_ids_.end(),
-                "Missing module instance concrete component for inferred component origin");
-        component_origins.emplace_back(restored.id, concrete_component->second);
-    }
-    return component_origins;
 }
 
 } // namespace volt::io::detail

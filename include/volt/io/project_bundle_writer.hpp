@@ -19,12 +19,12 @@
 namespace volt::io {
 
 /** Supported deterministic ProjectBundle graph schema. */
-enum class ProjectBundleV2SchemaVersion : std::uint32_t {
+enum class ProjectBundleSchemaVersion : std::uint32_t {
     V2 = 2,
 };
 
 /** Supported native ProjectBundle producer contract. */
-enum class ProjectBundleV2ProducerVersion : std::uint32_t {
+enum class ProjectBundleProducerVersion : std::uint32_t {
     V1 = 1,
 };
 
@@ -379,7 +379,7 @@ class RelativeBundlePath {
 /** Immutable public descriptor of one bundled payload. */
 class ArtifactDescriptor {
   public:
-    /** Construct one fully validated descriptor; normally produced by ProjectBundleV2Builder. */
+    /** Construct one fully validated descriptor; normally produced by ProjectBundleBuilder. */
     ArtifactDescriptor(ArtifactId id, ArtifactRole role, ArtifactKind kind,
                        std::string schema_format, std::uint32_t schema_version,
                        std::string media_type, RelativeBundlePath path, ContentHash content_digest,
@@ -609,7 +609,7 @@ struct ProjectReport {
 };
 
 /** Deterministic output representation. */
-enum class ProjectBundleV2Representation {
+enum class ProjectBundleRepresentation {
     Directory,
     Zip,
 };
@@ -620,24 +620,24 @@ enum class ProjectBundleV2Representation {
  * The value owns canonical payload and manifest bytes. Publication is atomic and refuses every
  * non-empty destination.
  */
-class ProjectBundleV2 final {
+class ProjectBundlePublication final {
   public:
     /** Opaque complete native publication storage. */
     class Storage;
 
     /** Adopt complete builder-produced storage. */
-    explicit ProjectBundleV2(std::unique_ptr<Storage> storage);
+    explicit ProjectBundlePublication(std::unique_ptr<Storage> storage);
 
     /** ProjectBundle publications are immutable and non-copyable. */
-    ProjectBundleV2(const ProjectBundleV2 &) = delete;
+    ProjectBundlePublication(const ProjectBundlePublication &) = delete;
     /** ProjectBundle publications are immutable and non-copy-assignable. */
-    ProjectBundleV2 &operator=(const ProjectBundleV2 &) = delete;
+    ProjectBundlePublication &operator=(const ProjectBundlePublication &) = delete;
     /** Move a complete unpublished publication. */
-    ProjectBundleV2(ProjectBundleV2 &&) noexcept;
+    ProjectBundlePublication(ProjectBundlePublication &&) noexcept;
     /** Move-assign a complete unpublished publication. */
-    ProjectBundleV2 &operator=(ProjectBundleV2 &&) noexcept;
+    ProjectBundlePublication &operator=(ProjectBundlePublication &&) noexcept;
     /** Destroy native publication storage. */
-    ~ProjectBundleV2();
+    ~ProjectBundlePublication();
 
     /** Return the required-default authoritative build identity. */
     [[nodiscard]] const BuildId &build_id() const noexcept;
@@ -655,9 +655,9 @@ class ProjectBundleV2 final {
     [[nodiscard]] std::string archive_bytes() const;
 
     /** Atomically publish to a new empty destination. */
-    void write(const std::filesystem::path &destination,
-               ProjectBundleV2Representation representation =
-                   ProjectBundleV2Representation::Directory) const;
+    void write(
+        const std::filesystem::path &destination,
+        ProjectBundleRepresentation representation = ProjectBundleRepresentation::Directory) const;
 
   private:
     std::unique_ptr<Storage> storage_;
@@ -670,38 +670,38 @@ class ProjectBundleV2 final {
  * edges, paths, digests, dependency lock, and export outputs; callers cannot supply a manifest or
  * arbitrary graph edges.
  */
-class ProjectBundleV2Builder {
+class ProjectBundleBuilder {
   public:
     /** Begin one native ProjectBundle graph from completed Project inputs and reports. */
-    ProjectBundleV2Builder(ProjectIdentity project, ProjectRunSummary run,
-                           LogicalInputName entrypoint, std::vector<AuthoringInput> inputs,
-                           ProjectReport diagnostics, ProjectReport tests);
+    ProjectBundleBuilder(ProjectIdentity project, ProjectRunSummary run,
+                         LogicalInputName entrypoint, std::vector<AuthoringInput> inputs,
+                         ProjectReport diagnostics, ProjectReport tests);
     /** Builder state is unique and non-copyable. */
-    ProjectBundleV2Builder(const ProjectBundleV2Builder &) = delete;
+    ProjectBundleBuilder(const ProjectBundleBuilder &) = delete;
     /** Builder state is unique and non-copy-assignable. */
-    ProjectBundleV2Builder &operator=(const ProjectBundleV2Builder &) = delete;
+    ProjectBundleBuilder &operator=(const ProjectBundleBuilder &) = delete;
     /** Move complete builder state. */
-    ProjectBundleV2Builder(ProjectBundleV2Builder &&) noexcept;
+    ProjectBundleBuilder(ProjectBundleBuilder &&) noexcept;
     /** Move-assign complete builder state. */
-    ProjectBundleV2Builder &operator=(ProjectBundleV2Builder &&) noexcept;
+    ProjectBundleBuilder &operator=(ProjectBundleBuilder &&) noexcept;
     /** Destroy native builder state. */
-    ~ProjectBundleV2Builder();
+    ~ProjectBundleBuilder();
 
     /** Add one authoritative logical model and its exact reachable library closure. */
-    ProjectBundleV2Builder &add_logical(DesignKey design, const Circuit &circuit,
-                                        const PartLibraryBundle &selected_closure);
-    /** Add one authoritative Schematic owned by an already-added logical model. */
-    ProjectBundleV2Builder &add_schematic(DesignKey design, SchematicKey schematic,
-                                          const Schematic &model);
-    /** Add one complete Board, CompiledBoard, BoardScene, and exact library closure. */
-    ProjectBundleV2Builder &add_board(DesignKey design, const Board &authoring_board,
-                                      const CompiledBoard &compiled, const BoardScene &scene,
+    ProjectBundleBuilder &add_logical(DesignKey design, const Circuit &circuit,
                                       const PartLibraryBundle &selected_closure);
+    /** Add one authoritative Schematic owned by an already-added logical model. */
+    ProjectBundleBuilder &add_schematic(DesignKey design, SchematicKey schematic,
+                                        const Schematic &model);
+    /** Add one complete Board, CompiledBoard, BoardScene, and exact library closure. */
+    ProjectBundleBuilder &add_board(DesignKey design, const Board &authoring_board,
+                                    const CompiledBoard &compiled, const BoardScene &scene,
+                                    const PartLibraryBundle &selected_closure);
     /** Replace the closed opt-in export selection. */
-    ProjectBundleV2Builder &select_exports(ExportSelection selection);
+    ProjectBundleBuilder &select_exports(ExportSelection selection);
 
     /** Validate and materialize one complete immutable publication. */
-    [[nodiscard]] ProjectBundleV2 build() const;
+    [[nodiscard]] ProjectBundlePublication build() const;
 
   private:
     class Storage;

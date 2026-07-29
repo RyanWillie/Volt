@@ -30,7 +30,7 @@ def _passive_0603(ref):
     if tuple(ref) == ("leds", "LED_0603_1608Metric"):
         markings = (volt.FootprintMarking.polarity(_offset_rectangle(0.55, 0.0, 0.12, 0.60)),)
 
-    return volt.FootprintDefinition(
+    return volt.Footprint(
         ref,
         pads=(
             volt.FootprintPad.surface_mount(
@@ -55,7 +55,7 @@ def _passive_0603(ref):
 
 
 def _header_1x02():
-    return volt.FootprintDefinition(
+    return volt.Footprint(
         ("connectors", "PinHeader_1x02_P2.54mm"),
         pads=(
             volt.FootprintPad.through_hole(

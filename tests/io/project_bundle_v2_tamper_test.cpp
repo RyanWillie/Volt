@@ -21,7 +21,7 @@
 #include <volt/io/parts/part_library_bundle.hpp>
 #include <volt/io/pcb/compiled_board_consumers.hpp>
 #include <volt/io/project_bundle.hpp>
-#include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/io/project_bundle_writer.hpp>
 
 #include "support/compiled_board_export_helpers.hpp"
 #include "support/project_bundle_v2_board_test_support.hpp"
@@ -275,7 +275,7 @@ class LogicalFixture final {
                   volt::PartLibraryIdentity{"test.empty", "1", volt::PartLibrarySchemaVersion::V1}},
               {}, resolver_)} {}
 
-    [[nodiscard]] volt::io::ProjectBundleV2Builder
+    [[nodiscard]] volt::io::ProjectBundleBuilder
     builder(std::string source = "project source",
             std::vector<volt::io::AuthoringInput> extra_inputs = {}) const {
         auto inputs = std::vector<volt::io::AuthoringInput>{};
@@ -283,7 +283,7 @@ class LogicalFixture final {
                             volt::io::LogicalInputName{"project.py"}, std::move(source));
         inputs.insert(inputs.end(), std::make_move_iterator(extra_inputs.begin()),
                       std::make_move_iterator(extra_inputs.end()));
-        auto result = volt::io::ProjectBundleV2Builder{
+        auto result = volt::io::ProjectBundleBuilder{
             volt::io::ProjectIdentity{"fixture", std::optional{"1.0"},
                                       std::optional{"fixture project"}},
             volt::io::ProjectRunSummary{
@@ -436,8 +436,8 @@ struct TwoPartFixture {
                         std::move(compiled), std::move(scene)};
 }
 
-[[nodiscard]] volt::io::ProjectBundleV2Builder project_builder() {
-    return volt::io::ProjectBundleV2Builder{
+[[nodiscard]] volt::io::ProjectBundleBuilder project_builder() {
+    return volt::io::ProjectBundleBuilder{
         volt::io::ProjectIdentity{"board-fixture", std::nullopt, std::nullopt},
         volt::io::ProjectRunSummary{
             true, volt::io::ProjectStatus::Clean, "default", {"design", "board"}},
@@ -706,7 +706,7 @@ TEST_CASE("ProjectBundle v2 binds dependency lock and part owners to decoded log
         const auto root = temporary.path() / "exact-bom-part.volt";
         original.write(root);
         CHECK(volt::io::ProjectBundle::open(root)
-                  .require_v2()
+                  .graph()
                   .loaded_project()
                   .selected_exports()
                   .size() == 1U);

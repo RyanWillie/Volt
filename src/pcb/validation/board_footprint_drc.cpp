@@ -232,9 +232,9 @@ void validate_component_board_edge_clearance(
 
 } // namespace
 
-void validate_footprint_geometry_drc(const Board &board, const FootprintLibrary &footprints,
-                                     DiagnosticReport &report) {
-    const auto geometries = queries::project_footprint_geometries(board, footprints);
+void validate_footprint_geometry_drc(const ResolvedBoardView &resolved, DiagnosticReport &report) {
+    const auto &board = resolved.board();
+    const auto geometries = queries::project_footprint_geometries(resolved);
     validate_component_geometry_overlaps(board, geometries, report);
     validate_component_board_edge_clearance(board, geometries, report);
 }

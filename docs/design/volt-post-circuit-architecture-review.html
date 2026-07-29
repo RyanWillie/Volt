@@ -1068,7 +1068,7 @@ RatsnestResult compute_ratsnest(const CompiledBoard&amp;);</code></pre>
       <section id="python-project">
         <span class="section-kicker">09 · Python, Project &amp; CLI</span>
         <h2>Preserve the fluent surface.<br>Replace its private owner map.</h2>
-        <p class="section-lead">The 137-to-25 schematic lowering ratio is a success, not bloat. Public Python should remain ergonomic and source-compatible; its native state should stop pretending that Circuit owns Schematic and Board.</p>
+        <p class="section-lead">The 137-to-25 schematic lowering ratio is a success, not bloat. Public Python should remain ergonomic; its native state should stop pretending that Circuit owns Schematic and Board.</p>
 
         <div class="split">
           <div>
@@ -1196,7 +1196,7 @@ bundle.diagnostics</code></pre>
       <section id="migration">
         <span class="section-kicker">11 · Migration</span>
         <h2>Eight bounded slices,<br>each with a stop gate</h2>
-        <p class="section-lead">Do not land this as a broad rewrite. Preserve exact behaviour, move one owner or artifact boundary at a time, and delete compatibility paths only after measured callers have moved.</p>
+        <p class="section-lead">Do not land this as a broad rewrite. Preserve exact behaviour, move one owner or artifact boundary at a time, and delete transitional paths after measured callers have moved.</p>
 
         <div class="timeline">
           <div class="slice" data-step="0">
@@ -1232,7 +1232,7 @@ bundle.diagnostics</code></pre>
           <div class="slice" data-step="6">
             <h3>Separate PCB model and view</h3>
             <p>Version the canonical/view split, preserve a deliberate v3 read path, and make stale views disposable without affecting model load.</p>
-            <span class="gate-pill">Gate: deterministic round trips and explicit compatibility policy</span>
+            <span class="gate-pill">Gate: deterministic round trips and explicit format policy</span>
           </div>
           <div class="slice" data-step="7">
             <h3>Typed artifact graph and safe opening</h3>
@@ -1240,13 +1240,13 @@ bundle.diagnostics</code></pre>
             <span class="gate-pill">Gate: inspect commands prove project source is never executed</span>
           </div>
           <div class="slice" data-step="8">
-            <h3>Delete migrated compatibility paths</h3>
+            <h3>Delete migrated transitional paths</h3>
             <p>Remove old native forwarding and mixed-service entry points only after all tracked consumers, docs and examples use the target.</p>
             <span class="gate-pill">Gate: full suite, CI matrix, API checker and final parity report</span>
           </div>
         </div>
 
-        <div class="note warning"><strong>Migration rule:</strong> no public compatibility shim that creates a second semantic path. Temporary adapters may exist only inside a bounded slice, with an inventory and deletion gate in that same dependency chain.</div>
+        <div class="note warning"><strong>Transition rule:</strong> no public shim that creates a second semantic path. Temporary adapters may exist only inside a bounded slice, with an inventory and deletion gate in that same dependency chain.</div>
       </section>
 
       <section id="verification">
@@ -1266,7 +1266,7 @@ bundle.diagnostics</code></pre>
           <li>Stale/missing viewer sidecars never change authoritative model loading.</li>
           <li>Manifest loader rejects stale dependency digests and mixed-build artifacts.</li>
           <li>All 18 artifact kinds receive one documented role and complete dependency edges.</li>
-          <li>All 113 public Python exports, typed exception families, codes and entity metadata remain compatible.</li>
+          <li>All 113 measured public Python exports, typed exception families, codes and entity metadata remain present for this historical slice.</li>
           <li>Binding lifetime/destruction tests cover logical owner retention and cross-design errors.</li>
           <li>Board persistence/export proves independence from Python-only footprint caches after compilation.</li>
           <li>41 CLI tests and 46 Project Framework tests remain green.</li>
@@ -1302,7 +1302,7 @@ bundle.diagnostics</code></pre>
               <li>Schematic owns presentation; Board owns physical implementation; neither defines the netlist.</li>
               <li>Bad design intent remains diagnostic; structural invalidity remains a mutation/load boundary failure.</li>
               <li>Canonical logical, schematic and PCB model documents remain separate and deterministic unless deliberately versioned.</li>
-              <li>Public <code>volt.Design</code>, fluent Schematic/Board authoring and typed Python exceptions remain compatible.</li>
+              <li>Public <code>volt.Design</code>, fluent Schematic/Board authoring and typed Python exceptions remain ergonomic.</li>
               <li>Python owns source execution, Project orchestration and developer-facing run status; C++ owns semantic artifact construction, codecs and verified reopening. <code>BuildContext</code> stays stable.</li>
               <li>Public design→schematic→board stages stay fixed pending measured pain.</li>
               <li>CLI stays orchestration-only and preserves JSON/stdout/exit-code contracts.</li>
@@ -1324,7 +1324,7 @@ bundle.diagnostics</code></pre>
               <li><strong>CLI UX:</strong> shared <code>--bundle</code> flags or a new <code>inspect</code> command?</li>
               <li><strong>Low-level Python:</strong> whether read-only native model inspection is justified later.</li>
               <li><strong>Generic stages:</strong> the evidence threshold and first concrete domain that would admit <code>StageKey[T]</code>.</li>
-              <li><strong>Delivery defaults:</strong> exports are opt-in; D3/Q4 freeze the default authoritative payload and legacy flat-output transition.</li>
+              <li><strong>Delivery defaults:</strong> exports are opt-in; D3/Q4 freeze the default authoritative payload and retired flat-output transition.</li>
             </ol>
           </div>
         </div>

@@ -12,8 +12,7 @@
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/pcb/pcb_schema.hpp>
-#include <volt/pcb/board.hpp>
-#include <volt/pcb/footprints/footprints.hpp>
+#include <volt/pcb/resolution/board_resolution.hpp>
 
 namespace volt::io {
 
@@ -28,7 +27,7 @@ find_footprint_definition(const std::vector<FootprintDefinition> &definitions,
                           const FootprintRef &ref);
 
 [[nodiscard]] std::vector<FootprintDefinition>
-collect_footprint_definitions(const Board &board, const FootprintLibrary &footprints);
+collect_footprint_definitions(const ResolvedBoardView &resolved);
 
 [[nodiscard]] FootprintLibrary
 footprint_library_from_definitions(const std::vector<FootprintDefinition> &definitions);
@@ -73,7 +72,7 @@ void write_features(std::ostream &out, const Board &board);
 void write_footprint_definitions(std::ostream &out,
                                  const std::vector<FootprintDefinition> &definitions);
 
-void write_placements(std::ostream &out, const Board &board,
+void write_placements(std::ostream &out, const ResolvedBoardView &resolved,
                       const std::vector<FootprintDefinition> &definitions,
                       bool trailing_comma = false);
 
@@ -92,9 +91,9 @@ void write_board_texts(std::ostream &out, const Board &board, bool trailing_comm
 } // namespace detail
 
 /** Write deterministic canonical PCB projection JSON without derived viewer state. */
-void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibrary &footprints);
+void write_pcb_board(std::ostream &out, const ResolvedBoardView &resolved);
 
 /** Return deterministic canonical PCB projection JSON without derived viewer state. */
-[[nodiscard]] std::string write_pcb_board(const Board &board, const FootprintLibrary &footprints);
+[[nodiscard]] std::string write_pcb_board(const ResolvedBoardView &resolved);
 
 } // namespace volt::io

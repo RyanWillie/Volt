@@ -42,7 +42,7 @@ into a Markdown document under `docs/` rather than editing the exported HTML.
 - `circuit-aggregate-api.html` — single-page review companion for the accepted Circuit API
   ADR and migration roadmap
 - `circuit-semantic-parity.html` — final evidence matrix for Circuit API redesign parity,
-  atomicity, persistence, compatibility, and downstream behavior
+  atomicity, persistence, current-format policy, and downstream behavior
 - `architecture-m2-deletion-parity.html` — issue #321 deletion metrics, surviving graph,
   retained v1 boundary, and zero-state anti-regrowth evidence
 

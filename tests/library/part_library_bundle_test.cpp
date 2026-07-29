@@ -354,7 +354,7 @@ TEST_CASE("Selected PartLibraryBundle builds byte-identically and reopens fully 
     CHECK(std::string{first.bytes()} == std::string{second.bytes()});
     CHECK(first.digest() == second.digest());
     CHECK(first.digest().value() ==
-          "sha256:935b17cc0e14c58660bf503eba7b5bbfd1bcfabfa38e8a73f38b1825eece856e");
+          "sha256:0e741bd774e939dccfb3fcda131b1f39f388310b324ef3728fd3967f22ce1848");
     CHECK(std::ranges::is_sorted(first.entries(), {}, &volt::io::PartLibraryBundleEntry::path));
     CHECK(first.library().components().size() == 2U);
     CHECK(first.library().parts().size() == 2U);
@@ -413,6 +413,7 @@ TEST_CASE("PartLibraryBundle closure is explicit and empty closure is valid") {
     CHECK(empty.library().components().empty());
     CHECK(empty.library().parts().empty());
     CHECK(empty.entries().empty());
+    CHECK(decode_test_archive(empty.bytes()).manifest.at("schema_version") == 2U);
     const auto reopened_empty = volt::io::PartLibraryBundle::open(empty.bytes());
     CHECK(reopened_empty.entries().empty());
 
@@ -427,6 +428,7 @@ TEST_CASE("PartLibraryBundle closure is explicit and empty closure is valid") {
                                                            fixture.attachments);
     CHECK(bundle.library().components().size() == 1U);
     CHECK(bundle.library().parts().size() == 1U);
+    CHECK(decode_test_archive(bundle.bytes()).manifest.at("schema_version") == 2U);
     const auto admitted = fixture.builder.build(fixture.resolver);
     const auto admitted_reference = admitted.require(selected.front());
     CHECK(bundle.library_digest() == admitted.digest());

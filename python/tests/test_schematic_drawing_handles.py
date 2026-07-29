@@ -292,7 +292,7 @@ def test_python_schematic_endpoint_mutations_reject_mismatched_label_net():
     schematic = design.schematic("Main")
     logical_before = design.to_json()
 
-    resistor = schematic.place(r1, at=(0, 0), symbol="resistor")
+    resistor = schematic.place(r1, at=(0, 0), symbol="volt.passives:resistor")
     before = schematic.to_json()
 
     try:

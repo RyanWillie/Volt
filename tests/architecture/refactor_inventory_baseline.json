@@ -87,25 +87,20 @@
         "sha256": "e6f221990e143482cbd1c1441099b814380e33fa5aba74f0c7d15305089a233e"
       },
       {
-        "byte_count": 5751,
+        "byte_count": 4923,
         "path": "tests/fixtures/semantic_parity.volt.json",
-        "sha256": "586f628fae57101f43c57557f0323f2b33f241d970a92fc10f4d5046724ed9d4"
+        "sha256": "9166034fe2fb2d641e3594277a08a44f0fa17b24ca3bb12b86f8cb41b0c5d082"
       },
       {
         "byte_count": 4017,
         "path": "tests/fixtures/led_circuit.volt.json",
         "sha256": "da2e097e29c855fabdfb5544fcd6438399f58d641b1dd96aba26dc3a797ab56c"
-      },
-      {
-        "byte_count": 4276,
-        "path": "tests/fixtures/legacy_led_circuit_v1.volt.json",
-        "sha256": "8c5431708418331132814d29ba6b712108256c860e91aa6cca5f1c6957a4a1a5"
       }
     ],
     "semantic": [
       {
         "path": "tests/fixtures/semantic_parity.volt.json",
-        "sha256": "586f628fae57101f43c57557f0323f2b33f241d970a92fc10f4d5046724ed9d4",
+        "sha256": "9166034fe2fb2d641e3594277a08a44f0fa17b24ca3bb12b86f8cb41b0c5d082",
         "top_level_counts": {
           "component_definitions": 1,
           "components": 2,
@@ -276,30 +271,6 @@
         }
       },
       {
-        "path": "tests/fixtures/legacy_led_circuit_v1.volt.json",
-        "sha256": "8c5431708418331132814d29ba6b712108256c860e91aa6cca5f1c6957a4a1a5",
-        "top_level_counts": {
-          "component_definitions": 3,
-          "components": 3,
-          "nets": 3,
-          "pin_definitions": 6,
-          "pins": 6
-        },
-        "top_level_keys": [
-          "component_definitions",
-          "components",
-          "format",
-          "nets",
-          "pin_definitions",
-          "pins",
-          "version"
-        ],
-        "top_level_scalars": {
-          "format": "volt.logical_circuit",
-          "version": 1
-        }
-      },
-      {
         "path": "tests/fixtures/hierarchy_module.volt.json",
         "sha256": "d5cdc27f1430187dd2c1344e8ffdfa6f72a0a598a291ebc524f6e083d5e26b6b",
         "top_level_counts": {
@@ -329,7 +300,7 @@
       },
       {
         "path": "tests/fixtures/typed_electrical_attributes.volt.json",
-        "sha256": "00135f5399950bc9ec871e093f36c06a397d175911afd360537d5ea8ccd2b71e",
+        "sha256": "6769ca8e8beb84655b2db1389091fcf284db7dfbc09a20dbfa4a0706731d2c8c",
         "top_level_counts": {
           "component_definitions": 1,
           "components": 1,
@@ -385,9 +356,9 @@
     "canonical_artifacts": {
       "current_writer_ownership": {
         "entrypoint": "ProjectResult.write",
-        "legacy_python_artifact_record": false,
         "native_binding": "_volt._write_project_bundle_v2",
-        "native_board_preparation": "_volt._prepare_project_bundle_board"
+        "native_board_preparation": "_volt._prepare_project_bundle_board",
+        "retired_python_artifact_record": false
       },
       "native_project_artifact_kinds": [
         "board_layer_image",
@@ -412,6 +383,98 @@
         "symbol_definition",
         "whole_board_glb"
       ]
+    },
+    "current_format": {
+      "architecture_fixtures": {
+        "board_and_named_alternatives": [
+          "python/tests/fixtures/project_cli/multiple_boards/project_entry.py",
+          "python/tests/test_cli_project_workflow.py"
+        ],
+        "canonical_q4_cli": [
+          "python/tests/fixtures/project_cli/single_board/project_entry.py",
+          "python/tests/fixtures/project_cli/multiple_boards/project_entry.py",
+          "python/tests/test_cli_project_workflow.py"
+        ],
+        "immutable_compiled_board": [
+          "python/tests/test_issue_319_architecture_fixture.py"
+        ],
+        "led": [
+          "tests/support/architecture_led_fixture.hpp",
+          "tests/circuit/led_circuit_test.cpp",
+          "tests/io/logical/logical_circuit_writer_test.cpp"
+        ],
+        "part_library_bundle_and_offline_reopen": [
+          "python/tests/test_issue_319_architecture_fixture.py"
+        ],
+        "project_bundle_schema_2": [
+          "python/tests/test_issue_319_architecture_fixture.py",
+          "python/tests/test_cli_project_workflow.py"
+        ],
+        "source_regulator_esp32": [
+          "python/tests/test_issue_319_architecture_fixture.py"
+        ],
+        "typed_selected_exports_and_manufacturing": [
+          "python/tests/test_cli_project_workflow.py",
+          "python/tests/test_issue_319_architecture_fixture.py"
+        ],
+        "vault_board_scene": [
+          "python/tests/test_issue_319_architecture_fixture.py"
+        ]
+      },
+      "no_hidden_fallback_evidence": {
+        "canonical_cli_has_no_post_instantiation_selection": true,
+        "cpp_acceptance_has_no_example_include": true,
+        "project_bundle_open_never_executes_source": true
+      },
+      "production_callers": {
+        "native_component_definition_routes": [
+          "define_capacitor",
+          "define_component",
+          "define_connector_1x01",
+          "define_connector_1x02",
+          "define_connector_1x03",
+          "define_crystal_2pin",
+          "define_diode",
+          "define_inductor",
+          "define_led",
+          "define_library_part",
+          "define_op_amp_5pin",
+          "define_polarized_capacitor",
+          "define_regulator_3pin",
+          "define_resistor",
+          "define_switch_spst",
+          "define_test_point"
+        ],
+        "python_component_definition_routes": [
+          "define_capacitor",
+          "define_component",
+          "define_connector_1x01",
+          "define_connector_1x02",
+          "define_connector_1x03",
+          "define_crystal_2pin",
+          "define_diode",
+          "define_inductor",
+          "define_led",
+          "define_library_part",
+          "define_op_amp_5pin",
+          "define_polarized_capacitor",
+          "define_regulator_3pin",
+          "define_resistor",
+          "define_switch_spst",
+          "define_test_point"
+        ],
+        "supported_python_authoring_owners": [
+          "python/volt/design.py: typed component and exact Part lowering",
+          "python/volt/library.py: exact PartLibraryBundle selection",
+          "python/volt/project.py: Project orchestration and one native schema 2 publication",
+          "python/volt/project_bundle.py: verified current-schema reopen",
+          "python/volt/cli/__init__.py: canonical CLI orchestration"
+        ],
+        "tracked_non_example_project_entrypoints": [
+          "python/tests/fixtures/project_cli/multiple_boards/project_entry.py",
+          "python/tests/fixtures/project_cli/single_board/project_entry.py"
+        ]
+      }
     },
     "offline_fixtures": [
       "tests/fixtures/ap1117.part.volt.json",
@@ -484,7 +547,7 @@
           "python_type": "ArtifactId"
         },
         {
-          "cpp_type": "volt::io::ProjectBundleV2ArtifactView",
+          "cpp_type": "volt::io::ProjectBundleArtifactView",
           "path": "src/python/project_bundle_bindings.cpp",
           "python_type": "ProjectBundleArtifact"
         },
@@ -519,9 +582,9 @@
           "python_type": "LoadedProject"
         },
         {
-          "cpp_type": "volt::io::ProjectBundleGraphV2View",
+          "cpp_type": "volt::io::ProjectBundleGraphView",
           "path": "src/python/project_bundle_bindings.cpp",
-          "python_type": "ProjectBundleGraphV2View"
+          "python_type": "ProjectBundleGraphView"
         },
         {
           "cpp_type": "volt::io::ProjectBundle",
@@ -558,101 +621,6 @@
         "units"
       ]
     },
-    "production_migration": {
-      "architecture_fixtures": {
-        "board_and_named_alternatives": [
-          "python/tests/fixtures/project_cli/multiple_boards/project_entry.py",
-          "python/tests/test_cli_project_workflow.py"
-        ],
-        "canonical_q4_cli": [
-          "python/tests/fixtures/project_cli/single_board/project_entry.py",
-          "python/tests/fixtures/project_cli/multiple_boards/project_entry.py",
-          "python/tests/test_cli_project_workflow.py"
-        ],
-        "immutable_compiled_board": [
-          "python/tests/test_issue_319_architecture_fixture.py"
-        ],
-        "led": [
-          "tests/support/architecture_led_fixture.hpp",
-          "tests/circuit/led_circuit_test.cpp",
-          "tests/io/logical/logical_circuit_writer_test.cpp"
-        ],
-        "part_library_bundle_and_offline_reopen": [
-          "python/tests/test_issue_319_architecture_fixture.py"
-        ],
-        "project_bundle_v1": [
-          "tests/io/project_bundle_test.cpp"
-        ],
-        "project_bundle_v2": [
-          "python/tests/test_issue_319_architecture_fixture.py",
-          "python/tests/test_cli_project_workflow.py"
-        ],
-        "source_regulator_esp32": [
-          "python/tests/test_issue_319_architecture_fixture.py"
-        ],
-        "typed_selected_exports_and_manufacturing": [
-          "python/tests/test_cli_project_workflow.py",
-          "python/tests/test_issue_319_architecture_fixture.py"
-        ],
-        "vault_board_scene": [
-          "python/tests/test_issue_319_architecture_fixture.py"
-        ]
-      },
-      "no_hidden_fallback_evidence": {
-        "canonical_cli_has_no_post_instantiation_selection": true,
-        "cpp_acceptance_has_no_example_include": true,
-        "project_bundle_v1_fixture_has_no_example_input": true
-      },
-      "production_callers": {
-        "native_component_definition_routes": [
-          "define_capacitor",
-          "define_component",
-          "define_connector_1x01",
-          "define_connector_1x02",
-          "define_connector_1x03",
-          "define_crystal_2pin",
-          "define_diode",
-          "define_inductor",
-          "define_led",
-          "define_library_part",
-          "define_op_amp_5pin",
-          "define_polarized_capacitor",
-          "define_regulator_3pin",
-          "define_resistor",
-          "define_switch_spst",
-          "define_test_point"
-        ],
-        "python_component_definition_routes": [
-          "define_capacitor",
-          "define_component",
-          "define_connector_1x01",
-          "define_connector_1x02",
-          "define_connector_1x03",
-          "define_crystal_2pin",
-          "define_diode",
-          "define_inductor",
-          "define_led",
-          "define_library_part",
-          "define_op_amp_5pin",
-          "define_polarized_capacitor",
-          "define_regulator_3pin",
-          "define_resistor",
-          "define_switch_spst",
-          "define_test_point"
-        ],
-        "supported_python_authoring_owners": [
-          "python/volt/design.py: typed component and exact Part lowering",
-          "python/volt/library.py: exact PartLibraryBundle selection",
-          "python/volt/project.py: Project orchestration and one native v2 publication",
-          "python/volt/project_bundle.py: verified v1 and v2 reopen",
-          "python/volt/cli/__init__.py: canonical CLI orchestration"
-        ],
-        "tracked_non_example_project_entrypoints": [
-          "python/tests/fixtures/project_cli/multiple_boards/project_entry.py",
-          "python/tests/fixtures/project_cli/single_board/project_entry.py"
-        ]
-      }
-    },
     "public_contracts": {
       "cpp_api_snapshots": {
         "Board": {
@@ -661,11 +629,11 @@
         },
         "BoardRouter": {
           "path": "tests/architecture/boardrouter_public_api.txt",
-          "sha256": "1f416966f5c8a73b5dc1626b1816fb68d123b50034a92cc4c0072bc3671944eb"
+          "sha256": "df6b1e4cfe49f96b74cb12a828179b2c356699415467d404efb82f9ad7075173"
         },
         "BoardSpatialIndex": {
           "path": "tests/architecture/boardspatialindex_public_api.txt",
-          "sha256": "4eb63c38d59903082003a20e2d620deba24bd63966624891cdde9d8e13268042"
+          "sha256": "2941b4364600797097c432772279c6dd2cec812f500a200ab1219facb4f0dd40"
         },
         "Circuit": {
           "path": "tests/architecture/circuit_public_api.txt",
@@ -749,7 +717,6 @@
         "FeatureRoleBinding",
         "FeatureSchema",
         "Footprint",
-        "FootprintDefinition",
         "FootprintDrill",
         "FootprintMarking",
         "FootprintPad",
@@ -787,6 +754,7 @@
         "PadResolution",
         "Part",
         "PartModel3D",
+        "PartProvenance",
         "Pin",
         "PinGroup",
         "PinSpec",
@@ -835,6 +803,6 @@
       ]
     }
   },
-  "purpose": "Compact review evidence for issue #328, extended by issue #240 for native verified ProjectBundle read views, issue #319 for production-consumer migration, and issue #321 for zero-state anti-regrowth after deleting superseded routes. A baseline delta requires review; the checked-in evidence does not approve the change.",
+  "purpose": "Compact review evidence for issue #328, extended by issue #240 for native verified ProjectBundle read views, issue #319 for production-consumer ownership, and the current-format-only zero state. A baseline delta requires review; the checked-in evidence does not approve the change.",
   "schema_version": 4
 }

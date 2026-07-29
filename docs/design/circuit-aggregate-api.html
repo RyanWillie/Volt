@@ -163,12 +163,12 @@
     <div class="flow-node"><strong>Consumers</strong><span>validation · schematic · PCB · BOM · export</span></div>
   </div>
   <ul>
-    <li><strong>Circuit owns</strong> definitions, instances, pins, nets, connectivity, hierarchy, typed attributes, selected parts, assembly intent, net classes, and explicit logical intent.</li>
+    <li><strong>Circuit owns</strong> definitions, instances, pins, nets, connectivity, hierarchy, typed attributes, exact selected library references, assembly intent, net classes, and explicit logical intent.</li>
     <li><strong>Schematic and PCB own</strong> presentation and physical implementation data, but never logical connectivity.</li>
     <li><strong>Python owns</strong> ergonomic syntax and handles, but lowers every meaningful operation into the kernel.</li>
     <li><strong>Validation and analysis own</strong> read-only computation and diagnostics, not model state.</li>
   </ul>
-  <p><code>Circuit</code> stores canonical tables and indexes directly in private connectivity, hierarchy, and net-class state. Electrical meaning, selected parts, intent, net-class assignments, and module provenance live on their owning entities; there is no replacement subsystem owner or storage-adapter family.</p>
+  <p><code>Circuit</code> stores canonical tables and indexes directly in private connectivity, hierarchy, and net-class state. Electrical meaning, exact selected references, intent, net-class assignments, and module provenance live on their owning entities; resolved physical truth does not.</p>
 
   <h2>Target public API</h2>
   <p>This is the accepted sixteen-declaration contract. It exposes fifteen operations; the deleted rvalue overload is the explicit safety declaration that prevents a borrowed range from a temporary.</p>
@@ -224,15 +224,14 @@
       <p>Module instantiation remains a separate canonical operation over the committed definition.</p>
     </div>
   </div>
-  <p>Committed component definitions own immutable pin definitions. <code>PinDefId</code> remains canonical identity for concrete pins, module templates, selected-part mappings, validation, and JSON. There is no public post-commit pin-definition setter and no accidental per-instance <code>PinId</code> electrical-attribute model.</p>
+  <p>Committed component definitions own immutable pin definitions. <code>PinDefId</code> remains canonical identity for concrete pins, module templates, validation, and JSON. Physical pin-pad mappings remain in the resolved part owner. There is no public post-commit pin-definition setter and no accidental per-instance <code>PinId</code> electrical-attribute model.</p>
 
   <h2>Typed progressive updates</h2>
   <p>Some meaning is discovered after instantiation. Volt represents those changes with closed typed values instead of adding one root setter per field.</p>
   <pre><code>using ComponentUpdate = std::variant&lt;
     SetComponentProperty,
     SetComponentElectricalAttribute,
-    SelectPhysicalPart,
-    SetSelectedPartElectricalAttribute,
+    SelectLibraryPart,
     SetAssemblyIntent&gt;;
 
 using NetUpdate = std::variant&lt;
@@ -252,7 +251,7 @@ using NetUpdate = std::variant&lt;
       <p>One deterministic range primitive with range-for and <code>size()</code>, replacing per-table getter/count pairs.</p>
     </div>
   </div>
-  <p>Name/reference lookup, pin lookup, hierarchy traversal, origins, typed electrical and intent inspection, selected-part inspection, net-class resolution, adjacency, and other derived reads stay in <code>volt::queries</code>. They consume <code>const Circuit&amp;</code>, compose <code>get</code> and <code>all</code>, and return <code>optional</code> when absence is normal.</p>
+  <p>Name/reference lookup, pin lookup, hierarchy traversal, origins, typed electrical and intent inspection, exact selected-reference inspection, net-class resolution, adjacency, and other derived reads stay in <code>volt::queries</code>. They consume <code>const Circuit&amp;</code>, compose <code>get</code> and <code>all</code>, and return <code>optional</code> when absence is normal.</p>
 
   <h2>Error and idempotency contract</h2>
   <table>
@@ -274,7 +273,8 @@ using NetUpdate = std::variant&lt;
     <tbody>
       <tr><td>Pin requirement, terminal, direction, signal, drive, polarity, ranges</td><td>Immutable component-owned pin definitions</td><td>Connectivity and ERC compatibility diagnostics</td></tr>
       <tr><td>Voltage, current, resistance, capacitance, tolerance, limits</td><td>Typed spec fields and component/net update values</td><td>Constraint, rating, propagation, and future evaluation</td></tr>
-      <tr><td>Manufacturer part, package, pin-pad map, ratings</td><td>Selected physical part on component instance</td><td>BOM, footprint, pad mapping, readiness, rating diagnostics</td></tr>
+      <tr><td>Exact selected reference</td><td><code>LibraryPartRef</code> on the logical component instance</td><td>Stable selection identity without copied physical truth</td></tr>
+      <tr><td>Manufacturer part, package, pin-pad map, ratings</td><td><code>PartLibraryBundle</code>, <code>BoardResolution</code>, and <code>CompiledBoard</code></td><td>BOM, footprint, pad mapping, readiness, rating diagnostics</td></tr>
       <tr><td>DNP and selection override</td><td>Assembly intent component update</td><td>Variants, BOM, CPL, population diagnostics</td></tr>
       <tr><td>No-connect and intentional stub</td><td>Explicit Circuit-owned logical intent</td><td>Distinguishes deliberate choices from omissions</td></tr>
       <tr><td>Net classes and assignments</td><td>Definitions plus typed net updates</td><td>PCB rule derivation and electrical constraints</td></tr>

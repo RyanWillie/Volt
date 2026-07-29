@@ -41,9 +41,9 @@ namespace {
     return library;
 }
 
-void select_testpoint(volt::Circuit &circuit, volt::ComponentId component,
+void select_testpoint(volt::test::ResolvedBoardTestParts &parts, volt::ComponentId component,
                       volt::PinDefId pin_definition, std::string_view mpn) {
-    select_part(circuit, component, mpn, volt::PackageRef{"TP"},
+    select_part(parts, component, mpn, volt::PackageRef{"TP"},
                 volt::FootprintRef{"regression", "TP_1MM_REAL"},
                 std::vector{volt::PinPadMapping{pin_definition, "1"}});
 }
@@ -87,7 +87,7 @@ TEST_CASE("Real-board foundation supports selective diagnostic assertions") {
     const auto fixture = make_real_board_fixture();
     const auto layout = make_real_board_layout(fixture);
 
-    const auto report = volt::validate_board(layout.board, real_board_library());
+    const auto report = volt::validate_board(layout.view(real_board_library()));
 
     CHECK(report.empty());
     CHECK(find_diagnostics(report, "PCB_COPPER_CLEARANCE_VIOLATION").empty());
@@ -121,14 +121,14 @@ TEST_CASE("Real-board PCB readiness matrix covers mapping and unplaced-pad bound
 
     SECTION("selected part mapping to a non-electrical locator pad is a board-model error") {
         auto fixture = make_real_board_fixture();
-        select_part(fixture.circuit, fixture.led, "LTST-C190-LOCATOR", volt::PackageRef{"0603"},
+        select_part(fixture.parts, fixture.led, "LTST-C190-LOCATOR", volt::PackageRef{"0603"},
                     volt::FootprintRef{"regression", "LED_0603_WITH_LOCATOR"},
                     std::vector{volt::PinPadMapping{fixture.led_a_pin, "1"},
                                 volt::PinPadMapping{fixture.led_k_pin, "2"},
                                 volt::PinPadMapping{fixture.led_a_pin, "M1"}});
         const auto layout = make_real_board_layout(fixture);
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         REQUIRE(layout.led_placement.has_value());
         [[maybe_unused]] const auto diagnostic = require_diagnostic_with_entities(
@@ -149,15 +149,15 @@ TEST_CASE("Real-board PCB readiness matrix covers mapping and unplaced-pad bound
             fixture.circuit, "TP3", "PAD", volt::ConnectionRequirement::Required,
             volt::ElectricalTerminalKind::Passive, volt::ElectricalDirection::Passive,
             volt::ElectricalSignalDomain::Unspecified, volt::ElectricalDriveKind::Passive);
-        select_testpoint(fixture.circuit, first.component, first.definition, "TP-1MM-A");
-        select_testpoint(fixture.circuit, second.component, second.definition, "TP-1MM-B");
+        select_testpoint(fixture.parts, first.component, first.definition, "TP-1MM-A");
+        select_testpoint(fixture.parts, second.component, second.definition, "TP-1MM-B");
         const auto debug_net = fixture.circuit.add_net(
             volt::NetSpec{volt::NetName{"DEBUG_PAIR"}, volt::NetKind::Signal});
         fixture.circuit.connect(debug_net, first.pin);
         fixture.circuit.connect(debug_net, second.pin);
         const auto layout = make_real_board_layout(fixture);
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_count(report, "PCB_COMPONENT_NOT_PLACED", 2);
         [[maybe_unused]] const auto diagnostic = require_diagnostic_with_entities(
@@ -176,7 +176,7 @@ TEST_CASE("Real-board board-model matrix covers layer-stack and fabrication loss
         auto layout = make_real_board_layout(fixture);
         layout.board.set_layer_stack(volt::LayerStack{{layout.back, layout.front}, 1.6});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         [[maybe_unused]] const auto diagnostic = require_diagnostic_with_entities(
             report,
@@ -201,7 +201,7 @@ TEST_CASE("Real-board DRC matrix covers room, zone, and outline shape variants")
         room.set_track_width_mm(0.50);
         const auto room_id = layout.board.add_room(std::move(room));
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         const auto diagnostic = require_diagnostic_with_entities(
             report,
@@ -229,7 +229,7 @@ TEST_CASE("Real-board DRC matrix covers room, zone, and outline shape variants")
             std::vector{layout.front},
         });
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         [[maybe_unused]] const auto diagnostic = require_diagnostic_with_entities(
             report,
@@ -245,7 +245,7 @@ TEST_CASE("Real-board DRC matrix covers room, zone, and outline shape variants")
         const auto via = layout.board.add_via(volt::BoardVia{
             fixture.vdd, volt::BoardPoint{43.8, 11.0}, layout.front, layout.back, 0.30, 0.70});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         const auto diagnostic = require_diagnostic_with_entities(
             report,
@@ -265,7 +265,7 @@ TEST_CASE("Real-board manufacturability matrix covers limits, warnings, and phys
         auto layout = make_real_board_layout(fixture);
         layout.board.set_capability_profile(make_real_board_track_limit_profile());
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -283,7 +283,7 @@ TEST_CASE("Real-board manufacturability matrix covers limits, warnings, and phys
         const auto drill_outside = layout.board.add_via(volt::BoardVia{
             fixture.vdd, volt::BoardPoint{20.0, 18.0}, layout.front, layout.back, 0.30, 0.70});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         [[maybe_unused]] const auto thickness = require_diagnostic_with_entities(
             report,

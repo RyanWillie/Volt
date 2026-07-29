@@ -234,14 +234,6 @@ void write_symbol_instance(std::ostream &out, const Schematic &schematic, Symbol
         property_y += 7.0;
     }
 
-    const auto &selected_part =
-        volt::queries::selected_physical_part(schematic.circuit(), instance.component());
-    if (selected_part.has_value()) {
-        const auto &footprint = selected_part->footprint();
-        write_symbol_property(out, "Footprint", footprint.library() + ":" + footprint.name(),
-                              Point{instance.position().x(), property_y});
-    }
-
     for (std::size_t pin_index = 0; pin_index < symbol.pins().size(); ++pin_index) {
         out << "    (pin " << sexpr_string(symbol.pins()[pin_index].number()) << "\n";
         out << "      (uuid " << sexpr_string(stable_uuid(400U + (index * 100U) + pin_index))

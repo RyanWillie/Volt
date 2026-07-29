@@ -2,6 +2,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "support/resolved_board_test_parts.hpp"
+
 #include <cstddef>
 #include <functional>
 #include <optional>
@@ -178,6 +180,7 @@ two_pad_smd_footprint(volt::FootprintRef ref, double courtyard_half_width) {
 
 struct RealBoardFixture {
     volt::Circuit circuit;
+    volt::test::ResolvedBoardTestParts parts;
 
     volt::PinDefId header_gnd_pin;
     volt::PinDefId header_vbus_pin;
@@ -227,13 +230,13 @@ struct RealBoardFixture {
     volt::NetId reset;
 };
 
-[[maybe_unused]] void select_part(volt::Circuit &circuit, volt::ComponentId component,
-                                  std::string_view mpn, volt::PackageRef package,
-                                  volt::FootprintRef footprint,
+[[maybe_unused]] void select_part(volt::test::ResolvedBoardTestParts &parts,
+                                  volt::ComponentId component, std::string_view mpn,
+                                  volt::PackageRef package, volt::FootprintRef footprint,
                                   std::vector<volt::PinPadMapping> mappings) {
-    circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                  volt::ManufacturerPart{"Volt Regression", std::string{mpn}},
-                                  std::move(package), std::move(footprint), std::move(mappings)}});
+    parts.set(component,
+              volt::PhysicalPart{volt::ManufacturerPart{"Volt Regression", std::string{mpn}},
+                                 std::move(package), std::move(footprint), std::move(mappings)});
 }
 
 struct AddedPin {
@@ -274,6 +277,7 @@ struct AddedPin {
 
 [[nodiscard, maybe_unused]] RealBoardFixture make_real_board_fixture(bool select_led_part = true) {
     auto circuit = volt::Circuit{};
+    auto parts = volt::test::ResolvedBoardTestParts{};
 
     const auto pin = [](std::string name, std::string number, volt::ElectricalTerminalKind terminal,
                         volt::ElectricalDirection direction,
@@ -432,35 +436,36 @@ struct AddedPin {
     set_net_voltage(circuit, vdd, 3.3);
     set_net_voltage(circuit, ground, 0.0);
 
-    select_part(circuit, header, "HDR-1x4", volt::PackageRef{"1x4"},
+    select_part(parts, header, "HDR-1x4", volt::PackageRef{"1x4"},
                 volt::FootprintRef{"regression", "HDR_1x4_PWR"},
                 std::vector{volt::PinPadMapping{header_gnd_pin, "1"},
                             volt::PinPadMapping{header_vbus_pin, "2"},
                             volt::PinPadMapping{header_vdd_pin, "3"},
                             volt::PinPadMapping{header_reset_pin, "4"}});
-    select_part(circuit, regulator, "AP2112K", volt::PackageRef{"SOT-89"},
+    select_part(parts, regulator, "AP2112K", volt::PackageRef{"SOT-89"},
                 volt::FootprintRef{"regression", "SOT89_REG"},
                 std::vector{volt::PinPadMapping{regulator_vin_pin, "1"},
                             volt::PinPadMapping{regulator_gnd_pin, "2"},
                             volt::PinPadMapping{regulator_vout_pin, "3"}});
     select_part(
-        circuit, mcu, "MCU-QFN5", volt::PackageRef{"QFN-5"},
+        parts, mcu, "MCU-QFN5", volt::PackageRef{"QFN-5"},
         volt::FootprintRef{"regression", "QFN5_MCU"},
         std::vector{volt::PinPadMapping{mcu_gnd_pin, "1"}, volt::PinPadMapping{mcu_vdd_pin, "2"},
                     volt::PinPadMapping{mcu_gpio_pin, "3"}, volt::PinPadMapping{mcu_reset_pin, "4"},
                     volt::PinPadMapping{mcu_boot_pin, "5"}});
-    select_part(circuit, resistor, "RC0603-1K", volt::PackageRef{"0603"},
+    select_part(parts, resistor, "RC0603-1K", volt::PackageRef{"0603"},
                 volt::FootprintRef{"regression", "R_0603_REAL"},
                 std::vector{volt::PinPadMapping{resistor_a_pin, "1"},
                             volt::PinPadMapping{resistor_b_pin, "2"}});
     if (select_led_part) {
         select_part(
-            circuit, led, "LTST-C190", volt::PackageRef{"0603"},
+            parts, led, "LTST-C190", volt::PackageRef{"0603"},
             volt::FootprintRef{"regression", "LED_0603_REAL"},
             std::vector{volt::PinPadMapping{led_a_pin, "1"}, volt::PinPadMapping{led_k_pin, "2"}});
     }
 
     return RealBoardFixture{std::move(circuit),
+                            std::move(parts),
                             header_gnd_pin,
                             header_vbus_pin,
                             header_vdd_pin,
@@ -515,6 +520,7 @@ struct BoardOptions {
 
 struct RealBoardLayout {
     volt::Board board;
+    const volt::test::ResolvedBoardTestParts *parts;
     volt::BoardLayerId front;
     volt::BoardLayerId back;
     volt::ComponentPlacementId header_placement;
@@ -528,6 +534,10 @@ struct RealBoardLayout {
     volt::BoardTrackId led_drive_route;
     std::optional<volt::BoardTrackId> led_anode_route;
     volt::BoardTrackId reset_route;
+
+    [[nodiscard]] volt::ResolvedBoardView view(const volt::FootprintLibrary &footprints) const {
+        return parts->view(board, footprints);
+    }
 };
 
 [[nodiscard, maybe_unused]] RealBoardLayout make_real_board_layout(const RealBoardFixture &fixture,
@@ -592,20 +602,10 @@ struct RealBoardLayout {
         fixture.reset, front,
         std::vector{volt::BoardPoint{5.0, 16.0}, volt::BoardPoint{28.0, 16.0}}, 0.30});
 
-    return RealBoardLayout{std::move(board),
-                           front,
-                           back,
-                           header_placement,
-                           regulator_placement,
-                           mcu_placement,
-                           resistor_placement,
-                           led_placement,
-                           ground_route,
-                           vbus_route,
-                           vdd_route,
-                           led_drive_route,
-                           led_anode_route,
-                           reset_route};
+    return RealBoardLayout{std::move(board), &fixture.parts,      front,         back,
+                           header_placement, regulator_placement, mcu_placement, resistor_placement,
+                           led_placement,    ground_route,        vbus_route,    vdd_route,
+                           led_drive_route,  led_anode_route,     reset_route};
 }
 
 [[nodiscard, maybe_unused]] std::string diagnostic_code_list(const volt::DiagnosticReport &report) {

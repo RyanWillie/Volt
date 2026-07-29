@@ -95,9 +95,6 @@ module_component_origins(const Circuit &circuit, ModuleInstanceId instance);
                                                  std::string_view number);
 
 /** Return the selected physical implementation for a component, if one has been assigned. */
-[[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part(const Circuit &circuit,
-                                                                        ComponentId component);
-
 /** Return the selected exact native-library reference for a component, when assigned. */
 [[nodiscard]] const std::optional<LibraryPartRef> &selected_library_part_ref(const Circuit &circuit,
                                                                              ComponentId component);

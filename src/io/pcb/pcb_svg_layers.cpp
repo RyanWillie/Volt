@@ -55,15 +55,15 @@ namespace {
                                layer_id);
 }
 
-[[nodiscard]] bool placement_pad_selected_for_layer(const Board &board,
-                                                    const FootprintLibrary &footprints,
+[[nodiscard]] bool placement_pad_selected_for_layer(const ResolvedBoardView &resolved,
                                                     ComponentPlacementId placement_id,
                                                     FootprintPadId pad_id, BoardLayerId layer_id) {
+    const auto &board = resolved.board();
     if (placement_id.index() >= board.all<volt::ComponentPlacementId>().size()) {
         return false;
     }
     const auto &placement = board.get(placement_id);
-    const auto *definition = resolve_definition_for_placement(board, placement, footprints);
+    const auto *definition = resolve_definition_for_placement(resolved, placement);
     if (definition == nullptr || pad_id.index() >= definition->pad_count()) {
         return false;
     }
@@ -117,14 +117,14 @@ namespace {
            board_side_matches_layer(board, placement.side(), options.layer_filter.value());
 }
 
-[[nodiscard]] bool pad_resolution_selected(const Board &board, const PadResolution &resolution,
-                                           const FootprintLibrary &footprints,
+[[nodiscard]] bool pad_resolution_selected(const ResolvedBoardView &resolved,
+                                           const PadResolution &resolution,
                                            PcbPlacementSvgOptions options) {
     if (!options.layer_filter.has_value()) {
         return true;
     }
-    return placement_pad_selected_for_layer(board, footprints, resolution.placement(),
-                                            resolution.pad(), options.layer_filter.value());
+    return placement_pad_selected_for_layer(resolved, resolution.placement(), resolution.pad(),
+                                            options.layer_filter.value());
 }
 
 [[nodiscard]] bool via_intersects_layer(const Board &board, const BoardVia &via,

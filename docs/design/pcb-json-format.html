@@ -226,9 +226,9 @@
             <p><code>board</code> data is loaded into <code>volt::Board</code>: name, units, layers, stack, outline, features, footprint definitions, and placements.</p>
           </div>
           <div class="panel">
-            <span class="label">Legacy input only</span>
-            <h3>Viewer cache conversion</h3>
-            <p>Current writers omit <code>viewer</code>, and current readers reject it. An explicitly named legacy conversion reader validates the old derived cache against kernel-owned state, discards it, and returns only canonical Board data.</p>
+            <span class="label">Rejected input</span>
+            <h3>No viewer cache</h3>
+            <p>Current writers omit <code>viewer</code>, and current readers reject it. Derived pad projections and diagnostics are recomputed from kernel-owned BoardResolution or CompiledBoard state.</p>
           </div>
           <div class="panel">
             <span class="label amber">Consumer-owned</span>
@@ -391,31 +391,6 @@
     </section>
 
     <section>
-      <aside>Legacy Conversion</aside>
-      <div class="stack">
-        <div class="callout">
-          <h2>The mixed viewer cache is no longer a current artifact.</h2>
-          <p>The fields below describe legacy input accepted only by <code>read_legacy_pcb_board*</code>. Conversion validates them against recomputed kernel-owned state and discards them. <code>read_pcb_board*</code> rejects the same document, so legacy data cannot become an implicit fallback or competing source of truth.</p>
-        </div>
-        <table>
-          <thead>
-            <tr><th>Path</th><th>Derived meaning</th><th>Stability rule</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><code>viewer.pad_resolutions[].id</code></td><td>Stable pad projection ID: <code>pcb_pad:&lt;placement-index&gt;:&lt;pad-index&gt;</code>.</td><td>Matches SVG <code>data-pad-projection</code>.</td></tr>
-            <tr><td><code>placement</code>, <code>component</code>, <code>footprint</code>, <code>pad</code></td><td>Entity refs tying the projection to canonical board and circuit data.</td><td>Reader validates these against recomputed pad resolutions.</td></tr>
-            <tr><td><code>label</code></td><td>Footprint pad label copied for display.</td><td>Must match the referenced footprint pad.</td></tr>
-            <tr><td><code>position</code></td><td>Resolved board-space pad center.</td><td>Derived from placement transform and footprint pad position.</td></tr>
-            <tr><td><code>pin</code>, <code>net</code></td><td>Concrete logical pin and current logical net, or <code>null</code>.</td><td>References existing circuit IDs only; no netlist mutation.</td></tr>
-            <tr><td><code>status</code></td><td><code>connected</code>, <code>unconnected</code>, <code>non_electrical</code>, or <code>invalid</code>.</td><td>Recomputed from selected physical part mappings.</td></tr>
-            <tr><td><code>geometry</code></td><td>Pad geometry copy for quick preview checks.</td><td>Validated against the referenced footprint pad and discarded on load.</td></tr>
-            <tr><td><code>viewer.diagnostics[]</code></td><td>Legacy severity, code, message, and entity refs from board validation.</td><td>Validated during explicit conversion and then discarded; refs never become traversal handles.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section>
       <aside>SVG Preview</aside>
       <div class="stack">
         <div class="callout">
@@ -433,7 +408,7 @@
             <tr><td><code>.component-placement</code></td><td><code>data-placement</code>, <code>data-component</code>, <code>data-footprint-def</code>, <code>data-footprint</code></td><td><code>placements[].id</code>, <code>placements[].component</code>, <code>placements[].footprint</code>, footprint ref token</td></tr>
             <tr><td><code>.footprint-pad</code></td><td><code>data-pad-projection</code>, <code>data-pad</code>, <code>data-pin</code>, <code>data-net</code></td><td>Typed pad-resolution result, <code>footprint_pad</code>, logical pin, logical net</td></tr>
             <tr><td><code>.pad-overlay</code>, <code>.pad-net-label</code></td><td><code>data-pad-projection</code>, <code>data-net</code></td><td>Derived pad projection and logical net.</td></tr>
-            <tr><td><code>.diagnostic-label</code>, <code>.diagnostic-marker</code></td><td><code>data-diagnostic-code</code>, <code>data-entities</code></td><td><code>viewer.diagnostics[].code</code> and entity refs.</td></tr>
+            <tr><td><code>.diagnostic-label</code>, <code>.diagnostic-marker</code></td><td><code>data-diagnostic-code</code>, <code>data-entities</code></td><td>Current recomputed diagnostics and entity refs.</td></tr>
           </tbody>
         </table>
       </div>
@@ -460,12 +435,12 @@
       <div class="stack">
         <div class="callout red">
           <h2>Malformed structure fails at the load boundary.</h2>
-          <p>The current reader rejects duplicate or non-sequential IDs, dangling layer-stack entries, placements that reference missing components, footprint references that do not match selected physical parts, and any legacy <code>viewer</code> object. The explicit legacy conversion reader additionally rejects stale pad projection caches, dangling pin or net refs, and malformed diagnostic entity refs.</p>
+          <p>The current reader rejects duplicate or non-sequential IDs, dangling layer-stack entries, placements that reference missing components, unresolved footprint references, and any removed <code>viewer</code> object.</p>
         </div>
         <ul>
           <li>Structural integrity is enforced by the reader and kernel mutation APIs.</li>
           <li>Bad design intent, such as missing placement data or off-board pads, is reported through diagnostics.</li>
-          <li>Legacy viewer cache values must match recomputed kernel-owned state during explicit conversion; current reads and writes never treat the cache as authoritative.</li>
+          <li>Current reads and writes never treat derived cache data as authoritative.</li>
         </ul>
       </div>
     </section>

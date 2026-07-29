@@ -260,7 +260,7 @@ def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
                     else "bundle-write-failed"
                 ),
             ) from error
-        graph = ProjectBundle.open(args.output).v2
+        graph = ProjectBundle.open(args.output).graph
         payload = {
             **_outcome(result),
             "output": str(args.output),

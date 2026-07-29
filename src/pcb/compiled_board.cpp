@@ -5,7 +5,6 @@
 #include <ranges>
 #include <utility>
 
-#include <volt/circuit/updates.hpp>
 #include <volt/pcb/queries/board_queries.hpp>
 
 namespace volt {
@@ -88,15 +87,6 @@ namespace {
     return result;
 }
 
-[[nodiscard]] Circuit materialize_logical_dependencies(Circuit circuit,
-                                                       std::span<const ResolvedBoardPart> parts) {
-    for (const auto &part : parts) {
-        circuit.update(part.component(),
-                       SelectPhysicalPart{part.physical_part(), std::optional{part.reference()}});
-    }
-    return circuit;
-}
-
 [[nodiscard]] CompiledBoardPlacement
 freeze_placement(const Board &board, const FootprintLibrary &footprints,
                  std::span<const ResolvedBoardPart> parts,
@@ -168,10 +158,11 @@ class CompiledBoard::Storage {
             std::string logical_dependency_snapshot, std::string physical_snapshot,
             std::string bytes)
         : parts_{resolution.parts().begin(), resolution.parts().end()},
-          circuit_{materialize_logical_dependencies(std::move(logical_dependencies), parts_)},
+          circuit_{std::move(logical_dependencies)},
           board_{copy_board_snapshot(resolution.board(), circuit_)},
           footprints_{resolution.footprints()},
-          pad_resolutions_{queries::resolve_pads(board_, footprints_)},
+          pad_resolutions_{queries::resolve_pads(
+              ResolvedBoardView{board_, footprints_, std::span<const ResolvedBoardPart>{parts_}})},
           placements_{freeze_placements(board_, footprints_, parts_, pad_resolutions_)},
           capabilities_{std::move(capabilities)}, provenance_{std::move(provenance)},
           identity_{board_.name(), provenance_.provenance_digest()},
@@ -317,6 +308,14 @@ const FootprintLibrary &CompiledBoard::footprints() const noexcept { return stor
 
 std::span<const ResolvedBoardPart> CompiledBoard::parts() const noexcept {
     return storage_->parts_;
+}
+
+const ResolvedBoardPart *CompiledBoard::part(ComponentId component) const noexcept {
+    return view().part(component);
+}
+
+ResolvedBoardView CompiledBoard::view() const & noexcept {
+    return ResolvedBoardView{storage_->board_, storage_->footprints_, storage_->parts_};
 }
 
 std::span<const PadResolution> CompiledBoard::pad_resolutions() const noexcept {

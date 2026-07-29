@@ -13,15 +13,6 @@
 
 namespace {
 
-[[nodiscard]] volt::PhysicalPart resistor_part(volt::PinDefId first, volt::PinDefId second) {
-    return volt::PhysicalPart{
-        volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-        volt::PackageRef{"0603"},
-        volt::FootprintRef{"passives", "R_0603_1608Metric"},
-        std::vector{volt::PinPadMapping{first, "1"}, volt::PinPadMapping{second, "2"}},
-    };
-}
-
 template <typename Operation>
 void check_failure_is_byte_atomic(volt::Circuit &circuit, volt::ErrorCode expected_code,
                                   std::string_view expected_message, Operation operation) {
@@ -43,7 +34,6 @@ TEST_CASE("Circuit closed typed updates preserve every progressive semantic") {
     const auto definition = volt::test::define_component(
         circuit, "Resistor",
         {volt::test::passive_pin("1", "1"), volt::test::passive_pin("2", "2")});
-    const auto definition_pins = circuit.get(definition).pins();
     const auto component = volt::test::instantiate_component(circuit, definition, "R1");
     const auto net = volt::test::add_net(circuit, "VCC", volt::NetKind::Power);
     const auto component_attribute = volt::ElectricalAttributeSpec{
@@ -51,12 +41,6 @@ TEST_CASE("Circuit closed typed updates preserve every progressive semantic") {
         volt::ElectricalAttributeOwner::ComponentInstance,
         volt::ElectricalAttributeKind::DesignInput,
         volt::UnitDimension::Resistance,
-    };
-    const auto selected_part_attribute = volt::ElectricalAttributeSpec{
-        volt::ElectricalAttributeName{"voltage_rating"},
-        volt::ElectricalAttributeOwner::SelectedPart,
-        volt::ElectricalAttributeKind::Constraint,
-        volt::UnitDimension::Voltage,
     };
     const auto net_attribute = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"voltage"},
@@ -75,12 +59,6 @@ TEST_CASE("Circuit closed typed updates preserve every progressive semantic") {
                    volt::SetComponentElectricalAttribute{
                        component_attribute, volt::ElectricalAttributeValue{volt::Quantity{
                                                 volt::UnitDimension::Resistance, 330.0}}});
-    circuit.update(component,
-                   volt::SelectPhysicalPart{resistor_part(definition_pins[0], definition_pins[1])});
-    circuit.update(component,
-                   volt::SetSelectedPartElectricalAttribute{
-                       selected_part_attribute, volt::ElectricalAttributeValue{volt::Quantity{
-                                                    volt::UnitDimension::Voltage, 75.0}}});
     circuit.update(component, volt::SetAssemblyIntent{.dnp = true, .selection_override = true});
     circuit.update(net, volt::SetNetElectricalAttribute{
                             net_attribute, volt::ElectricalAttributeValue{
@@ -94,11 +72,6 @@ TEST_CASE("Circuit closed typed updates preserve every progressive semantic") {
     CHECK(volt::queries::component_electrical_attributes(circuit, component)
               .get(volt::ElectricalAttributeName{"resistance"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Resistance, 330.0});
-    REQUIRE(volt::queries::selected_physical_part(circuit, component).has_value());
-    CHECK(volt::queries::selected_physical_part(circuit, component)
-              ->electrical_attributes()
-              .get(volt::ElectricalAttributeName{"voltage_rating"})
-              .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 75.0});
     CHECK(volt::queries::component_dnp(circuit, component) == true);
     CHECK(volt::queries::is_component_selection_override(circuit, component));
     CHECK(volt::queries::net_electrical_attributes(circuit, net)
@@ -116,12 +89,6 @@ TEST_CASE("Circuit closed typed updates preserve every progressive semantic") {
                    volt::SetComponentElectricalAttribute{
                        component_attribute, volt::ElectricalAttributeValue{volt::Quantity{
                                                 volt::UnitDimension::Resistance, 330.0}}});
-    circuit.update(component,
-                   volt::SelectPhysicalPart{resistor_part(definition_pins[0], definition_pins[1])});
-    circuit.update(component,
-                   volt::SetSelectedPartElectricalAttribute{
-                       selected_part_attribute, volt::ElectricalAttributeValue{volt::Quantity{
-                                                    volt::UnitDimension::Voltage, 75.0}}});
     circuit.update(component, volt::SetAssemblyIntent{.dnp = true, .selection_override = true});
     circuit.update(net, volt::SetNetElectricalAttribute{
                             net_attribute, volt::ElectricalAttributeValue{
@@ -140,10 +107,6 @@ TEST_CASE("Circuit typed update failures leave canonical bytes unchanged") {
     const auto definition =
         volt::test::define_component(circuit, "Test point", {volt::test::passive_pin("1", "1")});
     const auto component = volt::test::instantiate_component(circuit, definition, "TP1");
-    const auto definition_pins = circuit.get(definition).pins();
-    const auto foreign_definition =
-        volt::test::define_component(circuit, "Foreign", {volt::test::passive_pin("1", "1")});
-    const auto foreign_pin = circuit.get(foreign_definition).pins().front();
     const auto net = volt::test::add_net(circuit, "TEST");
     const auto component_attribute = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"resistance"},
@@ -177,19 +140,6 @@ TEST_CASE("Circuit typed update failures leave canonical bytes unchanged") {
                                                         volt::UnitDimension::Resistance, 1.0}}});
         });
     check_failure_is_byte_atomic(
-        circuit, volt::ErrorCode::UnknownEntity, missing_component_message, [&] {
-            circuit.update(missing_component,
-                           volt::SelectPhysicalPart{
-                               resistor_part(definition_pins.front(), definition_pins.front())});
-        });
-    check_failure_is_byte_atomic(
-        circuit, volt::ErrorCode::UnknownEntity, missing_component_message, [&] {
-            circuit.update(missing_component,
-                           volt::SetSelectedPartElectricalAttribute{
-                               component_attribute, volt::ElectricalAttributeValue{volt::Quantity{
-                                                        volt::UnitDimension::Resistance, 1.0}}});
-        });
-    check_failure_is_byte_atomic(
         circuit, volt::ErrorCode::UnknownEntity, missing_component_message,
         [&] { circuit.update(missing_component, volt::SetAssemblyIntent{.dnp = true}); });
 
@@ -200,12 +150,6 @@ TEST_CASE("Circuit typed update failures leave canonical bytes unchanged") {
                            volt::SetComponentElectricalAttribute{
                                component_attribute, volt::ElectricalAttributeValue{volt::Quantity{
                                                         volt::UnitDimension::Voltage, 3.3}}});
-        });
-    check_failure_is_byte_atomic(
-        circuit, volt::ErrorCode::CrossReferenceViolation,
-        "Physical part maps a pin outside the component definition", [&] {
-            circuit.update(component, volt::SelectPhysicalPart{
-                                          resistor_part(definition_pins.front(), foreign_pin)});
         });
     check_failure_is_byte_atomic(circuit, volt::ErrorCode::InvalidArgument,
                                  "Assembly intent update must set DNP or selection override intent",

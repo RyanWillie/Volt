@@ -23,9 +23,6 @@ TEST_CASE("ProjectBundle v2 regenerates a selected CPL before publishing it") {
     const auto path = temporary.path() / "cpl.volt";
     selected.write(path);
 
-    CHECK(volt::io::ProjectBundle::open(path)
-              .require_v2()
-              .loaded_project()
-              .selected_exports()
-              .size() == 1U);
+    CHECK(volt::io::ProjectBundle::open(path).graph().loaded_project().selected_exports().size() ==
+          1U);
 }

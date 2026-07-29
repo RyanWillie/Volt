@@ -109,7 +109,7 @@ def test_project_bundle_default_graph_does_not_implicitly_export_assembly_files(
 
     assert manifest["export_selection"] == []
     assert len(manifest["dependency_lock"]["selected_parts"]) == 3
-    assert volt.ProjectBundle.open(bundle).v2.dependency_lock == manifest["dependency_lock"]
+    assert volt.ProjectBundle.open(bundle).graph.dependency_lock == manifest["dependency_lock"]
     kinds = {artifact["kind"] for artifact in manifest["artifacts"]}
     assert {"bom", "cpl", "kicad_pcb"}.isdisjoint(kinds)
     assert {"board_model", "compiled_board", "board_scene"} <= kinds

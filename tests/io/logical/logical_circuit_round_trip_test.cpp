@@ -38,10 +38,6 @@ TEST_CASE("Current exact-selection LED fixture round-trips without logical diagn
     check_fixture_round_trips("led_circuit.volt.json");
 }
 
-TEST_CASE("Legacy v1 physical-selection fixture round-trips during its compatibility window") {
-    check_fixture_round_trips("legacy_led_circuit_v1.volt.json");
-}
-
 TEST_CASE("Golden diagnostic fixture round-trips and preserves connectivity") {
     const auto fixture = read_fixture("single_pin_net.volt.json");
     const auto circuit = volt::io::read_logical_circuit_text(fixture);
@@ -80,8 +76,7 @@ TEST_CASE("Logical reader preserves independent connectivity table identity") {
     { "id": "pin_def:0", "name": "A1", "number": "1", "connection_requirement": "Required" },
     { "id": "pin_def:1", "name": "B1", "number": "1", "connection_requirement": "Required" },
     { "id": "pin_def:2", "name": "A2", "number": "2", "connection_requirement": "Required" },
-    { "id": "pin_def:3", "name": "B2", "number": "2", "connection_requirement": "Required" },
-    { "id": "pin_def:4", "name": "Unowned", "number": "3", "connection_requirement": "Required", "electrical_attributes": { "voltage_range": { "type": "quantity", "dimension": "voltage", "value": 5 } } }
+    { "id": "pin_def:3", "name": "B2", "number": "2", "connection_requirement": "Required" }
   ],
   "component_definitions": [
     { "id": "component_def:0", "name": "First", "pins": ["pin_def:0", "pin_def:2"], "properties": {} },
@@ -105,10 +100,6 @@ TEST_CASE("Logical reader preserves independent connectivity table identity") {
           std::vector{volt::PinDefId{0}, volt::PinDefId{2}});
     CHECK(restored.get(volt::ComponentDefId{1}).pins() ==
           std::vector{volt::PinDefId{1}, volt::PinDefId{3}});
-    CHECK(restored.get(volt::PinDefId{4}).name() == "Unowned");
-    CHECK(volt::queries::pin_definition_electrical_attributes(restored, volt::PinDefId{4})
-              .get(volt::ElectricalAttributeName{"voltage_range"})
-              .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 5.0});
     const auto rewritten = volt::io::write_logical_circuit(restored);
     CHECK(volt::io::write_logical_circuit(volt::io::read_logical_circuit_text(rewritten)) ==
           rewritten);

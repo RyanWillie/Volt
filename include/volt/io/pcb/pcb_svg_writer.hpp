@@ -14,8 +14,7 @@
 
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/pcb/pcb_schema.hpp>
-#include <volt/pcb/board.hpp>
-#include <volt/pcb/footprints/footprints.hpp>
+#include <volt/pcb/resolution/board_resolution.hpp>
 
 namespace volt::io {
 
@@ -77,14 +76,15 @@ void write_pcb_svg_number(std::ostream &out, double value);
                                                          const FootprintLibrary &footprints);
 
 [[nodiscard]] const FootprintDefinition *
-resolve_definition_for_placement(const Board &board, const ComponentPlacement &placement,
-                                 const FootprintLibrary &footprints);
+resolve_definition_for_placement(const ResolvedBoardView &resolved,
+                                 const ComponentPlacement &placement);
 
 [[nodiscard]] bool contains_footprint_ref(const std::vector<FootprintRef> &refs,
                                           const FootprintRef &ref);
 
-[[nodiscard]] std::optional<FootprintDefId> projection_footprint_definition_id_for_placement(
-    const Board &board, ComponentPlacementId placement_id, const FootprintLibrary &footprints);
+[[nodiscard]] std::optional<FootprintDefId>
+projection_footprint_definition_id_for_placement(const ResolvedBoardView &resolved,
+                                                 ComponentPlacementId placement_id);
 
 [[nodiscard]] const PadResolution *
 find_pad_resolution(const std::vector<PadResolution> &resolutions, ComponentPlacementId placement,
@@ -104,7 +104,7 @@ void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &pl
 void include_feature_bounds(PcbSvgBounds &bounds, const BoardFeature &feature);
 
 [[nodiscard]] PcbSvgBounds
-bounds_from_board(const Board &board, const FootprintLibrary &footprints,
+bounds_from_board(const ResolvedBoardView &resolved,
                   const std::vector<ProjectedFootprintGeometry> &footprint_geometries);
 
 [[nodiscard]] std::string pad_shape_class(FootprintPadShape shape);
@@ -133,13 +133,12 @@ keepout_restriction_list_attr(const std::vector<BoardKeepoutRestriction> &restri
 [[nodiscard]] bool pad_selected_for_layer(const Board &board, const FootprintPad &pad,
                                           BoardSide placement_side, BoardLayerId layer_id);
 
-[[nodiscard]] bool placement_pad_selected_for_layer(const Board &board,
-                                                    const FootprintLibrary &footprints,
+[[nodiscard]] bool placement_pad_selected_for_layer(const ResolvedBoardView &resolved,
                                                     ComponentPlacementId placement_id,
                                                     FootprintPadId pad_id, BoardLayerId layer_id);
 
-[[nodiscard]] bool pad_resolution_selected(const Board &board, const PadResolution &resolution,
-                                           const FootprintLibrary &footprints,
+[[nodiscard]] bool pad_resolution_selected(const ResolvedBoardView &resolved,
+                                           const PadResolution &resolution,
                                            PcbPlacementSvgOptions options);
 
 [[nodiscard]] bool via_intersects_layer(const Board &board, const BoardVia &via,
@@ -161,17 +160,17 @@ void write_copper(std::ostream &out, const Board &board, BoardLayerId layer);
 void write_pad(std::ostream &out, const FootprintPad &pad, FootprintPadId pad_id,
                const PadResolution *resolution);
 
-void write_placements(std::ostream &out, const Board &board, const FootprintLibrary &footprints,
+void write_placements(std::ostream &out, const ResolvedBoardView &resolved,
                       const std::vector<PadResolution> &resolutions,
                       const std::vector<ProjectedFootprintGeometry> &footprint_geometries,
                       const DiagnosticReport &diagnostics, PcbPlacementSvgOptions options);
 
-void write_pad_overlays(std::ostream &out, const Board &board,
+void write_pad_overlays(std::ostream &out, const ResolvedBoardView &resolved,
                         const std::vector<PadResolution> &resolutions,
-                        const FootprintLibrary &footprints, PcbPlacementSvgOptions options);
+                        PcbPlacementSvgOptions options);
 
-void write_ratsnest(std::ostream &out, const Board &board, const std::vector<RatsnestEdge> &edges,
-                    const FootprintLibrary &footprints, PcbPlacementSvgOptions options);
+void write_ratsnest(std::ostream &out, const ResolvedBoardView &resolved,
+                    const std::vector<RatsnestEdge> &edges, PcbPlacementSvgOptions options);
 
 void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticReport &diagnostics,
                        const PcbSvgBounds &bounds, PcbPlacementSvgOptions options);
@@ -179,13 +178,11 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
 } // namespace detail
 
 /** Write a deterministic SVG preview for a placement-only PCB projection. */
-void write_pcb_placement_svg(std::ostream &out, const Board &board,
-                             const FootprintLibrary &footprints,
+void write_pcb_placement_svg(std::ostream &out, const ResolvedBoardView &resolved,
                              PcbPlacementSvgOptions options = {});
 
 /** Return a deterministic SVG preview for a placement-only PCB projection. */
-[[nodiscard]] std::string write_pcb_placement_svg(const Board &board,
-                                                  const FootprintLibrary &footprints,
+[[nodiscard]] std::string write_pcb_placement_svg(const ResolvedBoardView &resolved,
                                                   PcbPlacementSvgOptions options = {});
 
 } // namespace volt::io

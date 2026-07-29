@@ -223,7 +223,7 @@ Remaining work:
 Goal: make each kernel-owned model layer deterministic, inspectable, and portable.
 
 Completed work includes the v1 logical circuit format spec, deterministic writer,
-structural reader, schema compatibility policy, and golden fixtures. Future work should
+structural reader, current-schema policy, and golden fixtures. Future work should
 add typed electrical semantics, projection data, and migrations only after the owning C++
 model exists.
 

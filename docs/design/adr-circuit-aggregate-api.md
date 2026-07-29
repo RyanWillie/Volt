@@ -70,8 +70,8 @@ a typed update, generic `get`/`all`, or a free query.
 - component-owned pin definitions and concrete pin instances;
 - nets and pin-to-net membership;
 - module definitions, instances, ports, bindings, and expansion provenance;
-- typed component, pin-definition, selected-part, and net electrical meaning;
-- selected physical parts and assembly intent;
+- typed component, pin-definition, and net electrical meaning;
+- exact selected library references and assembly intent;
 - explicit no-connect and intentional-stub intent;
 - net-class definitions and assignments.
 
@@ -80,7 +80,7 @@ reinterpret nets. Validation and analysis consume `const Circuit&`. Python and i
 lower syntax or external data into the same typed kernel operations.
 
 `Circuit` stores canonical entity tables and indexes directly in private connectivity,
-hierarchy, and net-class state. Electrical meaning, selected parts, assembly intent,
+hierarchy, and net-class state. Electrical meaning, exact selected references, assembly intent,
 no-connect intent, intentional-stub intent, net-class assignments, and module provenance live
 on their owning canonical entities. This private decomposition does not create another owner,
 subsystem API, or replacement facade family.
@@ -95,7 +95,8 @@ definition atomically.
 A committed component definition is immutable. Changing its pin shape or pin electrical
 meaning creates a new definition; there is no public post-commit pin-definition setter.
 `PinDefId` remains canonical internal identity for concrete pins, module templates,
-selected-part mapping, validation, and persistence. The authoring shape does not require
+validation, and persistence. Physical pin-pad mappings remain in the resolved part owner.
+The authoring shape does not require
 the logical JSON shape to change: complete pin values can still lower deterministically
 into the existing top-level pin-definition table.
 
@@ -112,8 +113,7 @@ root setter per field. The expected forms are equivalent to:
 using ComponentUpdate = std::variant<
     SetComponentProperty,
     SetComponentElectricalAttribute,
-    SelectPhysicalPart,
-    SetSelectedPartElectricalAttribute,
+    SelectLibraryPart,
     SetAssemblyIntent>;
 
 using NetUpdate = std::variant<
@@ -136,7 +136,7 @@ deterministic range-for iteration and `size()` without a separate getter and cou
 for every table. `net_of(PinId)` remains a fundamental relationship primitive.
 
 Lookup by name/reference, pin lookup, hierarchy traversal, origin lookup, typed electrical
-inspection, selected-part inspection, design-intent inspection, net-class resolution,
+inspection, exact selected-reference inspection, design-intent inspection, net-class resolution,
 adjacency, and other derived reads remain free functions in `volt::queries` over
 `const Circuit&`. They return `optional` when absence is normal. They compose `get` and `all`
 without privileged storage access. An indexed internal implementation may be retained where
@@ -145,7 +145,7 @@ measurement justifies it without exposing storage.
 ## Error Contract
 
 - Unknown or foreign IDs, dangling references, duplicate unique names, invalid
-  ownership, invalid selected-part mapping, and mutations that would create partial or
+  ownership, invalid exact selected-reference identity, and mutations that would create partial or
   inconsistent structure throw typed Volt exceptions at the boundary.
 - `connect(net, pin)` returns `false` only when the pin is already on that same net; it
   throws when the pin is on a different net or either ID is invalid.
@@ -157,8 +157,7 @@ measurement justifies it without exposing storage.
 - Free name/reference queries return `optional`; authoring handles may translate absence
   into a contextual typed error.
 
-Exact error codes and compatibility-sensitive messages are inventoried and locked before
-each legacy entry point is replaced.
+Exact error codes and structural boundary behavior are covered by focused tests.
 
 ## Persistence And Restoration
 
@@ -168,9 +167,10 @@ relationships, but raw `add_component`, `add_pin`, and root-instance restoration
 general public authoring operations.
 
 API compression must not imply model compression. Pin semantics, quantities, tolerances,
-selected-part ratings, pin-pad mappings, assembly intent, net classes, no-connect/stub
-intent, hierarchy, provenance, and their diagnostics remain loadable, serializable, and
-inspectable.
+exact selected references, assembly intent, net classes, no-connect/stub intent, hierarchy,
+provenance, and their diagnostics remain loadable, serializable, and inspectable. Resolved
+part ratings and pin-pad mappings live in PartLibraryBundle, BoardResolution, and
+CompiledBoard rather than Circuit.
 
 ## Migration
 
@@ -194,13 +194,13 @@ The native GitHub dependency graph under #261 is the execution source of truth:
 8. [#267](https://github.com/RyanWillie/Volt/issues/267) proves semantic, persistence,
    diagnostic, Python, and CI parity.
 
-The migration through #266 removes the time-bounded compatibility surface. Later work must use
-the typed aggregate contract rather than reintroducing forwarding shims.
+The work through #266 established the typed aggregate contract. Later work must use that
+contract rather than reintroducing forwarding shims.
 
 ## Consequences
 
-- The C++ API will break before 1.0; Volt does not retain compatibility shims after the
-  migration completes.
+- The C++ API may break before 1.0; Volt retains only the current API while no external user
+  contract exists.
 - The current Python authoring surface is preserved unless separately reviewed.
 - Internal state remains free to evolve without creating a new public facade.
 - The root API stays small without replacing clarity with a generic stringly mechanism.

@@ -14,7 +14,6 @@ namespace volt::io {
 
 /** Supported deterministic PartLibraryBundle manifest and archive schema. */
 enum class PartLibraryBundleSchemaVersion : std::uint32_t {
-    V1 = 1,
     V2 = 2,
 };
 

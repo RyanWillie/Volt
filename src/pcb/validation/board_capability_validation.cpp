@@ -11,6 +11,7 @@
 
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/pcb/board.hpp>
+#include <volt/pcb/resolution/board_resolution.hpp>
 
 #include <volt/core/errors.hpp>
 
@@ -228,8 +229,9 @@ void validate_stackup_capability(const Board &board, const BoardCapabilityProfil
     }
 }
 
-void validate_drill_capability(const Board &board, const BoardCapabilityProfile &profile,
-                               const FootprintLibrary &footprints, DiagnosticReport &report) {
+void validate_drill_capability(const ResolvedBoardView &resolved,
+                               const BoardCapabilityProfile &profile, DiagnosticReport &report) {
+    const auto &board = resolved.board();
     if (!profile.drill_diameter_range_mm().has_value()) {
         return;
     }
@@ -247,13 +249,13 @@ void validate_drill_capability(const Board &board, const BoardCapabilityProfile 
          placement_index < board.all<volt::ComponentPlacementId>().size(); ++placement_index) {
         const auto placement_id = ComponentPlacementId{placement_index};
         const auto &placement = board.get(placement_id);
-        const auto &selected_part =
-            volt::queries::selected_physical_part(board.circuit(), placement.component());
-        if (!selected_part.has_value()) {
+        const auto *selected_part = resolved.part(placement.component());
+        if (selected_part == nullptr) {
             continue;
         }
 
-        const auto footprint_resolution = resolve_footprint(selected_part.value(), footprints);
+        const auto footprint_resolution =
+            resolve_footprint(selected_part->physical_part(), resolved.footprints());
         const auto *definition = footprint_resolution.definition();
         if (definition == nullptr) {
             continue;
@@ -337,8 +339,9 @@ void validate_room_capability(const Board &board, const BoardCapabilityProfile &
 
 } // namespace
 
-void validate_capability_profile_rules(const Board &board, const FootprintLibrary &footprints,
+void validate_capability_profile_rules(const ResolvedBoardView &resolved,
                                        DiagnosticReport &report) {
+    const auto &board = resolved.board();
     if (!board.capability_profile().has_value()) {
         return;
     }
@@ -347,7 +350,7 @@ void validate_capability_profile_rules(const Board &board, const FootprintLibrar
     validate_net_class_capability(board, profile, report);
     validate_room_capability(board, profile, report);
     validate_stackup_capability(board, profile, report);
-    validate_drill_capability(board, profile, footprints, report);
+    validate_drill_capability(resolved, profile, report);
 }
 
 } // namespace volt::detail

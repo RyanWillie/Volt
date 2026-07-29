@@ -171,7 +171,7 @@ TEST_CASE("Real-board PCB readiness catches selected-part and pad-mapping edge c
         auto fixture = make_real_board_fixture(false);
         const auto layout = make_real_board_layout(fixture);
 
-        const auto board = volt::validate_board(layout.board, library);
+        const auto board = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             board,
@@ -183,13 +183,13 @@ TEST_CASE("Real-board PCB readiness catches selected-part and pad-mapping edge c
 
     SECTION("selected LED footprint typo is reported before DRC geometry") {
         auto fixture = make_real_board_fixture();
-        select_part(fixture.circuit, fixture.led, "LTST-C190-MISSING", volt::PackageRef{"0603"},
+        select_part(fixture.parts, fixture.led, "LTST-C190-MISSING", volt::PackageRef{"0603"},
                     volt::FootprintRef{"regression", "LED_DOES_NOT_EXIST"},
                     std::vector{volt::PinPadMapping{fixture.led_a_pin, "1"},
                                 volt::PinPadMapping{fixture.led_k_pin, "2"}});
         const auto layout = make_real_board_layout(fixture);
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -204,13 +204,13 @@ TEST_CASE("Real-board PCB readiness catches selected-part and pad-mapping edge c
     SECTION(
         "selected LED mapping to an unknown pad also reports the first missing electrical pad") {
         auto fixture = make_real_board_fixture();
-        select_part(fixture.circuit, fixture.led, "LTST-C190-BADPAD", volt::PackageRef{"0603"},
+        select_part(fixture.parts, fixture.led, "LTST-C190-BADPAD", volt::PackageRef{"0603"},
                     volt::FootprintRef{"regression", "LED_0603_REAL"},
                     std::vector{volt::PinPadMapping{fixture.led_a_pin, "99"},
                                 volt::PinPadMapping{fixture.led_k_pin, "2"}});
         const auto layout = make_real_board_layout(fixture);
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -225,17 +225,6 @@ TEST_CASE("Real-board PCB readiness catches selected-part and pad-mapping edge c
         CHECK(report.diagnostics()[1].entities() ==
               std::vector{volt::EntityRef::component(fixture.led),
                           volt::EntityRef::component_placement(layout.led_placement.value())});
-    }
-
-    SECTION(
-        "selected LED mapping to a pin from another component is rejected at mutation boundary") {
-        auto fixture = make_real_board_fixture();
-
-        CHECK_THROWS(select_part(fixture.circuit, fixture.led, "LTST-C190-WRONGPIN",
-                                 volt::PackageRef{"0603"},
-                                 volt::FootprintRef{"regression", "LED_0603_REAL"},
-                                 std::vector{volt::PinPadMapping{fixture.mcu_vdd_pin, "1"},
-                                             volt::PinPadMapping{fixture.led_k_pin, "2"}}));
     }
 }
 
@@ -253,7 +242,7 @@ TEST_CASE("Real-board DRC edge cases cover net-class, placement, zone, and featu
             layout.board.add_via(volt::BoardVia{fixture.led_drive, volt::BoardPoint{30.0, 18.0},
                                                 layout.front, layout.back, 0.30, 0.70});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -280,7 +269,7 @@ TEST_CASE("Real-board DRC edge cases cover net-class, placement, zone, and featu
         const auto layout = make_real_board_layout(
             fixture, BoardOptions{.led_position = volt::BoardPoint{43.8, 13.0}});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         const auto *outside = find_diagnostic(report, "PCB_PLACEMENT_OUTSIDE_OUTLINE");
         REQUIRE(outside != nullptr);
@@ -301,7 +290,7 @@ TEST_CASE("Real-board DRC edge cases cover net-class, placement, zone, and featu
         const auto outside = layout.board.add_feature(
             volt::BoardFeature::hole("FID2", volt::BoardPoint{46.0, 18.0}, 1.0, false, "fiducial"));
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -325,7 +314,7 @@ TEST_CASE("Real-board DRC edge cases cover net-class, placement, zone, and featu
                                                                volt::BoardRotation::degrees(0.0),
                                                                layout.front, 1.0});
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -348,7 +337,7 @@ TEST_CASE("Real-board DRC edge cases cover net-class, placement, zone, and featu
             fixture.led_drive,
         });
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -369,7 +358,7 @@ TEST_CASE("Real-board DRC edge cases cover net-class, placement, zone, and featu
             std::vector{layout.front},
         });
 
-        const auto report = volt::validate_board(layout.board, library);
+        const auto report = volt::validate_board(layout.view(library));
 
         check_diagnostic_summaries(
             report,
@@ -386,7 +375,7 @@ TEST_CASE("Real-board manufacturability edge cases cover physical capability fac
     auto layout = make_real_board_layout(fixture);
     layout.board.set_capability_profile(make_physical_edge_capability_profile());
 
-    const auto report = volt::validate_board(layout.board, real_board_library());
+    const auto report = volt::validate_board(layout.view(real_board_library()));
 
     check_diagnostic_summaries(
         report,

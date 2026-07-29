@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check compact architecture review evidence and durable compatibility inventories."""
+"""Check compact architecture review evidence and current-format inventories."""
 
 from __future__ import annotations
 
@@ -41,7 +41,6 @@ SEMANTIC_GOLDEN_PATHS = (
     "tests/fixtures/led.electrical.volt.json",
     "tests/fixtures/led.component-contract.volt.json",
     "tests/fixtures/led_circuit.volt.json",
-    "tests/fixtures/legacy_led_circuit_v1.volt.json",
     "tests/fixtures/hierarchy_module.volt.json",
     "tests/fixtures/typed_electrical_attributes.volt.json",
     "tests/fixtures/single_pin_net.volt.json",
@@ -67,7 +66,6 @@ BYTE_GOLDEN_PATHS = (
     "tests/fixtures/pcb_placement_preview.svg",
     "tests/fixtures/semantic_parity.volt.json",
     "tests/fixtures/led_circuit.volt.json",
-    "tests/fixtures/legacy_led_circuit_v1.volt.json",
 )
 
 EVIDENCE_LF_PATHS = tuple(
@@ -398,26 +396,26 @@ def current_project_writer_ownership(project_source: str) -> dict[str, object]:
         "typed v2 writer",
     )
 
-    legacy_definitions = [
+    retired_definitions = [
         node
         for node in ast.walk(tree)
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
         and node.name == "_artifact_record"
     ]
-    legacy_calls = [
+    retired_calls = [
         node
         for node in ast.walk(tree)
         if isinstance(node, ast.Call)
         and qualified_python_name(node.func) in {"_artifact_record", "self._artifact_record"}
     ]
     require(
-        not legacy_definitions and not legacy_calls,
-        "the legacy Python _artifact_record/v1 writer must not exist in the current Project path",
+        not retired_definitions and not retired_calls,
+        "the retired Python artifact-record writer must not exist in the current Project path",
     )
 
     return {
         "entrypoint": "ProjectResult.write",
-        "legacy_python_artifact_record": False,
+        "retired_python_artifact_record": False,
         "native_board_preparation": "_volt._prepare_project_bundle_board",
         "native_binding": "_volt._write_project_bundle_v2",
     }
@@ -491,8 +489,8 @@ ANTI_REGROWTH_PATH_PREFIXES = (
 )
 
 ANTI_REGROWTH_TEXT_PATTERNS = {
-    "legacy_example_reference": re.compile(r"(?<![A-Za-z0-9_])examples/"),
-    "legacy_stm32_benchmark": re.compile(r"\bstm32_usb_buck\b"),
+    "retired_example_reference": re.compile(r"(?<![A-Za-z0-9_])examples/"),
+    "retired_stm32_benchmark": re.compile(r"\bstm32_usb_buck\b"),
     "retired_library_component": re.compile(r"\bLibraryComponent\b"),
     "retired_physical_part_spec": re.compile(r"\bPhysicalPartSpec\b"),
     "retired_part_definition_lowering": re.compile(r"\b_PartDefinition\b"),
@@ -500,9 +498,7 @@ ANTI_REGROWTH_TEXT_PATTERNS = {
     "retired_flat_writer": re.compile(r"\bwrite_artifacts\s*\("),
     "retired_flat_writer_paths": re.compile(r"\bProjectArtifactPaths\b"),
     "retired_flat_cli": re.compile(r'"--flat"|`volt build --flat`'),
-    "retired_source_cli_alias": re.compile(
-        r"\bvolt (?:run|model|diagnostics|info)\b|legacy alias"
-    ),
+    "retired_source_cli_alias": re.compile(r"\bvolt (?:run|model|diagnostics|info)\b"),
     "retired_source_manufacturing_cli": re.compile(
         r"\bvolt export manufacturing\b|source-backed-export-retired|"
         r"\b_handle_export_manufacturing\b"
@@ -525,7 +521,7 @@ ANTI_REGROWTH_SCAN_FILES = {
     "pyproject.toml",
 }
 
-def legacy_example_import_lines(path: str, source: str) -> set[int]:
+def retired_example_import_lines(path: str, source: str) -> set[int]:
     if not path.endswith(".py"):
         return set()
     try:
@@ -549,10 +545,10 @@ def legacy_example_import_lines(path: str, source: str) -> set[int]:
 def anti_regrowth_text_violations(sources: dict[str, str]) -> list[str]:
     violations: list[str] = []
     for path, source in sorted(sources.items()):
-        example_import_lines = legacy_example_import_lines(path, source)
+        example_import_lines = retired_example_import_lines(path, source)
         for line_number, line in enumerate(source.splitlines(), start=1):
             if line_number in example_import_lines:
-                violations.append(f"legacy_example_reference:{path}:{line_number}")
+                violations.append(f"retired_example_reference:{path}:{line_number}")
             for name, pattern in ANTI_REGROWTH_TEXT_PATTERNS.items():
                 violation = f"{name}:{path}:{line_number}"
                 if pattern.search(line) and violation not in violations:
@@ -598,7 +594,7 @@ def python_component_definition_routes() -> list[str]:
     )
 
 
-def production_migration_inventory() -> dict[str, object]:
+def current_format_inventory() -> dict[str, object]:
     return {
         "production_callers": {
             "native_component_definition_routes": bound_component_definition_routes(),
@@ -610,8 +606,8 @@ def production_migration_inventory() -> dict[str, object]:
             "supported_python_authoring_owners": [
                 "python/volt/design.py: typed component and exact Part lowering",
                 "python/volt/library.py: exact PartLibraryBundle selection",
-                "python/volt/project.py: Project orchestration and one native v2 publication",
-                "python/volt/project_bundle.py: verified v1 and v2 reopen",
+                "python/volt/project.py: Project orchestration and one native schema 2 publication",
+                "python/volt/project_bundle.py: verified current-schema reopen",
                 "python/volt/cli/__init__.py: canonical CLI orchestration",
             ],
         },
@@ -634,8 +630,7 @@ def production_migration_inventory() -> dict[str, object]:
             "immutable_compiled_board": [
                 "python/tests/test_issue_319_architecture_fixture.py"
             ],
-            "project_bundle_v1": ["tests/io/project_bundle_test.cpp"],
-            "project_bundle_v2": [
+            "project_bundle_schema_2": [
                 "python/tests/test_issue_319_architecture_fixture.py",
                 "python/tests/test_cli_project_workflow.py",
             ],
@@ -664,8 +659,9 @@ def production_migration_inventory() -> dict[str, object]:
                 "${PROJECT_SOURCE_DIR}/examples"
                 not in read(ROOT / "tests" / "CMakeLists.txt")
             ),
-            "project_bundle_v1_fixture_has_no_example_input": (
-                "examples/" not in read(ROOT / "tests" / "io" / "project_bundle_test.cpp")
+            "project_bundle_open_never_executes_source": (
+                "never_executes_project_or_library_source"
+                in read(ROOT / "python" / "tests" / "test_project_bundle_open.py")
             ),
         },
     }
@@ -724,8 +720,8 @@ def collect_inventory() -> dict[str, object]:
         "schema_version": 4,
         "purpose": (
             "Compact review evidence for issue #328, extended by issue #240 for native verified "
-            "ProjectBundle read views, issue #319 for production-consumer migration, and issue "
-            "#321 for zero-state anti-regrowth after deleting superseded routes. A baseline delta "
+            "ProjectBundle read views, issue #319 for production-consumer ownership, and the "
+            "current-format-only zero state. A baseline delta "
             "requires review; the checked-in evidence does not approve the change."
         ),
         "inventories": {
@@ -768,7 +764,7 @@ def collect_inventory() -> dict[str, object]:
                 "hidden_footprint_injections": hidden_footprint_injections(),
             },
             "offline_fixtures": offline_fixtures(),
-            "production_migration": production_migration_inventory(),
+            "current_format": current_format_inventory(),
             "anti_regrowth": anti_regrowth_inventory(paths),
         },
         "goldens": golden_inventory(),
@@ -856,10 +852,10 @@ def run_self_tests() -> int:
             "canonical_artifacts",
             "ownership",
             "offline_fixtures",
-            "production_migration",
+            "current_format",
         },
         "the inventory must contain durable contract, artifact, ownership, fixture, and "
-        "production-migration evidence",
+        "current-format evidence",
     )
     serialized_inventory = json.dumps(inventory, sort_keys=True)
     require(
@@ -868,7 +864,7 @@ def run_self_tests() -> int:
         and "approved_references" not in serialized_inventory,
         "caller counts and future-slice approval metadata must not survive",
     )
-    production = inventory["inventories"]["production_migration"]
+    production = inventory["inventories"]["current_format"]
     expected_routes = {
         "define_capacitor",
         "define_component",
@@ -896,7 +892,7 @@ def run_self_tests() -> int:
     )
     require(
         all(production["no_hidden_fallback_evidence"].values()),
-        "production acceptance fixtures must not depend on legacy selection or example inputs",
+        "current-format acceptance fixtures must not depend on retired selection or source execution",
     )
     require(
         inventory["inventories"]["anti_regrowth"]
@@ -919,7 +915,7 @@ def run_self_tests() -> int:
                 "docs/current.md": "call result.write_artifacts(output)\n",
                 "python/volt/library.py": "class LibraryComponent:\n    pass\n",
                 "python/volt/cli/__init__.py": 'parser.add_argument("--flat")\n',
-                "python/volt/cli/legacy.py": "COMMAND = 'volt run --project .'\n",
+                "python/volt/cli/retired.py": "COMMAND = 'volt run --project .'\n",
                 "python/volt/cli/manufacturing.py": "COMMAND = 'volt export manufacturing'\n",
                 "skills/current.md": "component.select_part()\n",
             }
@@ -927,8 +923,8 @@ def run_self_tests() -> int:
         == [
             "retired_flat_writer:docs/current.md:1",
             "retired_flat_cli:python/volt/cli/__init__.py:1",
-            "retired_source_cli_alias:python/volt/cli/legacy.py:1",
             "retired_source_manufacturing_cli:python/volt/cli/manufacturing.py:1",
+            "retired_source_cli_alias:python/volt/cli/retired.py:1",
             "retired_library_component:python/volt/library.py:1",
             "retired_flat_writer_paths:python/volt/project.py:1",
             "retired_instance_selection:skills/current.md:1",
@@ -939,18 +935,18 @@ def run_self_tests() -> int:
         anti_regrowth_text_violations(
             {
                 "python/volt/current.py": (
-                    "import examples.legacy\n"
+                    "import examples.retired\n"
                     "from examples.other import fixture\n"
-                    "fixture = 'examples/legacy/project.py'\n"
+                    "fixture = 'examples/retired/project.py'\n"
                 ),
             }
         )
         == [
-            "legacy_example_reference:python/volt/current.py:1",
-            "legacy_example_reference:python/volt/current.py:2",
-            "legacy_example_reference:python/volt/current.py:3",
+            "retired_example_reference:python/volt/current.py:1",
+            "retired_example_reference:python/volt/current.py:2",
+            "retired_example_reference:python/volt/current.py:3",
         ],
-        "the anti-regrowth checker must detect dotted and slash legacy example references",
+        "the anti-regrowth checker must detect dotted and slash retired example references",
     )
     require(
         not anti_regrowth_text_violations(
@@ -1004,8 +1000,8 @@ def run_self_tests() -> int:
     ownership = current_project_writer_ownership(project_source)
     require(
         ownership["native_board_preparation"] == "_volt._prepare_project_bundle_board"
-        and ownership["legacy_python_artifact_record"] is False,
-        "current writer evidence must retain native v2 ownership and reject Python v1",
+        and ownership["retired_python_artifact_record"] is False,
+        "current writer evidence must retain native schema 2 ownership and reject a second writer",
     )
 
     bypassed_project = project_source.replace(
@@ -1037,7 +1033,7 @@ def run_self_tests() -> int:
     )
     require_writer_ownership_rejection(
         restored_artifact_record,
-        "the ownership gate must reject restoring the Python v1 artifact-record writer",
+        "the ownership gate must reject restoring the retired Python artifact-record writer",
     )
 
     bypassed_board_preparation = project_source.replace(

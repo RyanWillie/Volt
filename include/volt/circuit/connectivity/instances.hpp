@@ -55,11 +55,6 @@ class ComponentInstance {
         return electrical_attributes_;
     }
 
-    /** Return the selected physical implementation, if one has been assigned. */
-    [[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part() const noexcept {
-        return selected_physical_part_;
-    }
-
     /** Return the selected exact native-library reference, if one has been assigned. */
     [[nodiscard]] const std::optional<LibraryPartRef> &selected_library_part_ref() const noexcept {
         return selected_library_part_ref_;
@@ -83,16 +78,8 @@ class ComponentInstance {
     [[nodiscard]] ComponentInstance with_electrical_attribute(const ElectricalAttributeSpec &spec,
                                                               ElectricalAttributeValue value) const;
 
-    /** Return a copy with the selected physical implementation replaced. */
-    [[nodiscard]] ComponentInstance with_selected_physical_part(PhysicalPart part) const;
-
     /** Return a copy with the selected exact native-library reference replaced. */
     [[nodiscard]] ComponentInstance with_selected_library_part_ref(LibraryPartRef reference) const;
-
-    /** Return a copy with one selected-part electrical attribute set or replaced. */
-    [[nodiscard]] ComponentInstance
-    with_selected_part_electrical_attribute(const ElectricalAttributeSpec &spec,
-                                            ElectricalAttributeValue value) const;
 
     /** Return a copy with the supplied assembly-intent fields updated. */
     [[nodiscard]] ComponentInstance with_assembly_intent(std::optional<bool> dnp,
@@ -104,7 +91,6 @@ class ComponentInstance {
     ReferenceDesignator reference_;
     PropertyMap properties_;
     ElectricalAttributeMap electrical_attributes_;
-    std::optional<PhysicalPart> selected_physical_part_;
     std::optional<LibraryPartRef> selected_library_part_ref_;
     std::optional<bool> dnp_;
     bool selection_override_;

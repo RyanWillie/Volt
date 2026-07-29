@@ -279,20 +279,20 @@ void apply_escape_room_overrides(const Board &board, BoardRoom &room) {
     };
 }
 
-BoardRouter::BoardRouter(Board &board, const FootprintLibrary &footprints)
-    : board_{&board}, physical_board_{&board}, footprints_{footprints} {}
-
-BoardRouter::BoardRouter(Board &board, const BoardResolution &resolution)
-    : board_{&board}, physical_board_{&resolution.board()}, footprints_{resolution.footprints()} {
-    if (&resolution.authoring_board() != &board) {
+BoardRouter::BoardRouter(Board &board, ResolvedBoardView resolved)
+    : board_{&board}, resolved_{resolved} {
+    if (&resolved.board() != &board) {
         throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
-                                  "BoardRouter resolution belongs to another named Board"};
+                                  "BoardRouter resolved view belongs to another named Board"};
     }
 }
 
+BoardRouter::BoardRouter(Board &board, const BoardResolution &resolution)
+    : BoardRouter{board, resolution.view()} {}
+
 [[nodiscard]] BoardSpatialIndex &BoardRouter::index() const {
     if (!index_.has_value()) {
-        index_.emplace(*physical_board_, footprints_);
+        index_.emplace(resolved_);
     }
     return index_.value();
 }
@@ -345,7 +345,7 @@ void BoardRouter::require_routable_layer(BoardLayerId layer) const {
 }
 
 [[nodiscard]] BoardTrackRouteResult BoardRouter::add_track(BoardTrackRouteRequest request) {
-    const auto net = queries::resolve_board_route_net(*physical_board_, request, footprints_);
+    const auto net = queries::resolve_board_route_net(resolved_, request);
     auto points = std::vector<BoardPoint>{};
     points.reserve(request.endpoints.size());
     for (const auto &endpoint : request.endpoints) {
@@ -607,18 +607,15 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
     result.placement = placement_id;
     const auto &placement = board_->get(placement_id.value());
 
-    const auto &selected_part =
-        volt::queries::selected_physical_part(physical_board_->circuit(), component);
-    if (!selected_part.has_value()) {
+    const auto *selected_part = resolved_.part(component);
+    if (selected_part == nullptr) {
         throw KernelArgumentError{ErrorCode::InvalidState,
                                   "Cannot escape component without a selected physical part",
                                   EntityRef::component(component)};
     }
 
-    const auto resolution_footprints =
-        queries::board_resolution_footprints(*physical_board_, footprints_);
     const auto footprint_resolution =
-        resolve_footprint(selected_part.value(), resolution_footprints);
+        resolve_footprint(selected_part->physical_part(), resolved_.footprints());
     const auto *definition = footprint_resolution.definition();
     if (definition == nullptr) {
         throw KernelArgumentError{ErrorCode::InvalidState,
@@ -626,7 +623,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
                                   EntityRef::component(component)};
     }
 
-    const auto pad_resolutions = queries::resolve_pads(*physical_board_, resolution_footprints);
+    const auto pad_resolutions = queries::resolve_pads(resolved_);
     auto candidates = std::vector<EscapePadCandidate>{};
     auto room_layers = std::vector<BoardLayerId>{};
 

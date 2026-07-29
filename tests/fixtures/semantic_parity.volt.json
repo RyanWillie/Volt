@@ -21,28 +21,7 @@
       }, "electrical_attributes": {
         "frequency": { "type": "quantity", "dimension": "frequency", "value": 1000000 },
         "tolerance": { "type": "tolerance", "mode": "percent", "dimension": "ratio", "minus": 0.01, "plus": 0.02 }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Acme", "part_number": "CTRL-1" },
-      "package": "SOIC-2",
-      "footprint": { "library": "logic", "name": "SOIC-2_3.9x4.9mm" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:0", "pad": "1" },
-        { "pin": "pin_def:1", "pad": "2" }
-      ],
-      "model_3d": {
-        "format": "step",
-        "file_name": "controller.step",
-        "translation_mm": [0.10000000000000001, -0.20000000000000001, 0.29999999999999999],
-        "rotation_deg": 90
-      },
-      "approved_alternate_mpns": ["CTRL-1A", "CTRL-1B"],
-      "properties": {
-        "lifecycle": { "type": "string", "value": "active" }
-      },
-      "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 5.5 }
-      }
-    } },
+      } },
     { "id": "component:1", "definition": "component_def:0", "reference": "CH1/U1", "properties": {
         "mode": { "type": "string", "value": "module" }
       } }

@@ -99,20 +99,8 @@ TEST_CASE("Logical circuit writer emits typed electrical attributes") {
                                volt::ElectricalSignalDomain::Unspecified,
                                volt::ElectricalDriveKind::Passive}},
     });
-    const auto &pins = circuit.get(component_def).pins();
-    const auto first_pin = pins[0];
-    const auto second_pin = pins[1];
     const auto component = circuit.instantiate_component(
         component_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
-    circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                  volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                  volt::PackageRef{"0603"},
-                                  volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                  std::vector{
-                                      volt::PinPadMapping{first_pin, "1"},
-                                      volt::PinPadMapping{second_pin, "2"},
-                                  },
-                              }});
 
     circuit.update(component, volt::SetComponentElectricalAttribute{
                                   volt::ElectricalAttributeSpec{
@@ -129,19 +117,8 @@ TEST_CASE("Logical circuit writer emits typed electrical attributes") {
                            volt::ElectricalAttributeOwner::ComponentInstance,
                            volt::ElectricalAttributeKind::DesignInput, volt::UnitDimension::Ratio},
                        volt::ElectricalAttributeValue{volt::Tolerance::percent(0.01)}});
-    circuit.update(
-        component,
-        volt::SetSelectedPartElectricalAttribute{
-            volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{"voltage_rating"},
-                                          volt::ElectricalAttributeOwner::SelectedPart,
-                                          volt::ElectricalAttributeKind::DesignInput,
-                                          volt::UnitDimension::Voltage},
-            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 75.0}}});
-
     const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
     const auto &attributes = output["components"][0]["electrical_attributes"];
-    const auto &part_attributes =
-        output["components"][0]["selected_physical_part"]["electrical_attributes"];
 
     CHECK(attributes["resistance"]["type"] == "quantity");
     CHECK(attributes["resistance"]["dimension"] == "resistance");
@@ -151,48 +128,6 @@ TEST_CASE("Logical circuit writer emits typed electrical attributes") {
     CHECK(attributes["tolerance"]["dimension"] == "ratio");
     CHECK(attributes["tolerance"]["minus"] == 0.01);
     CHECK(attributes["tolerance"]["plus"] == 0.01);
-    CHECK(part_attributes["voltage_rating"]["type"] == "quantity");
-    CHECK(part_attributes["voltage_rating"]["dimension"] == "voltage");
-    CHECK(part_attributes["voltage_rating"]["value"] == 75.0);
-}
-
-TEST_CASE("Logical circuit writer emits selected-part 3D model metadata") {
-    volt::Circuit circuit;
-    const auto component_def = circuit.define_component(volt::ComponentSpec{
-        .name = "Resistor",
-        .pins = {volt::PinSpec{
-                     "1", "1", volt::ConnectionRequirement::Required,
-                     volt::ElectricalTerminalKind::Passive, volt::ElectricalDirection::Passive,
-                     volt::ElectricalSignalDomain::Unspecified, volt::ElectricalDriveKind::Passive},
-                 volt::PinSpec{"2", "2", volt::ConnectionRequirement::Required,
-                               volt::ElectricalTerminalKind::Passive,
-                               volt::ElectricalDirection::Passive,
-                               volt::ElectricalSignalDomain::Unspecified,
-                               volt::ElectricalDriveKind::Passive}},
-    });
-    const auto &pins = circuit.get(component_def).pins();
-    const auto first_pin = pins[0];
-    const auto second_pin = pins[1];
-    const auto component = circuit.instantiate_component(
-        component_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
-    circuit.update(
-        component,
-        volt::SelectPhysicalPart{volt::PhysicalPart{
-            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-            volt::PackageRef{"0603"},
-            volt::FootprintRef{"passives", "R_0603_1608Metric"},
-            std::vector{volt::PinPadMapping{first_pin, "1"}, volt::PinPadMapping{second_pin, "2"}},
-            {},
-            volt::PartModel3D{"glb", "resistor-body.glb", {0.5, -0.25, 0.8}, 15.0},
-        }});
-
-    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
-    const auto &model = output["components"][0]["selected_physical_part"]["model_3d"];
-
-    CHECK(model["format"] == "glb");
-    CHECK(model["file_name"] == "resistor-body.glb");
-    CHECK(model["translation_mm"] == nlohmann::json::array({0.5, -0.25, 0.8}));
-    CHECK(model["rotation_deg"] == 15.0);
 }
 
 TEST_CASE("Logical circuit writer emits net typed electrical attributes") {
@@ -322,43 +257,6 @@ TEST_CASE("Logical circuit writer emits override-only component assembly intent"
     CHECK(assembly["selection_override"] == true);
 }
 
-TEST_CASE("Logical circuit writer emits selected-part alternates") {
-    volt::Circuit circuit;
-    const auto component_def = circuit.define_component(volt::ComponentSpec{
-        .name = "Resistor",
-        .pins = {volt::PinSpec{
-                     "1", "1", volt::ConnectionRequirement::Required,
-                     volt::ElectricalTerminalKind::Passive, volt::ElectricalDirection::Passive,
-                     volt::ElectricalSignalDomain::Unspecified, volt::ElectricalDriveKind::Passive},
-                 volt::PinSpec{"2", "2", volt::ConnectionRequirement::Required,
-                               volt::ElectricalTerminalKind::Passive,
-                               volt::ElectricalDirection::Passive,
-                               volt::ElectricalSignalDomain::Unspecified,
-                               volt::ElectricalDriveKind::Passive}},
-    });
-    const auto &pins = circuit.get(component_def).pins();
-    const auto first_pin = pins[0];
-    const auto second_pin = pins[1];
-    const auto component = circuit.instantiate_component(
-        component_def, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
-    circuit.update(
-        component,
-        volt::SelectPhysicalPart{volt::PhysicalPart{
-            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-            volt::PackageRef{"0603"},
-            volt::FootprintRef{"passives", "R_0603_1608Metric"},
-            std::vector{volt::PinPadMapping{first_pin, "1"}, volt::PinPadMapping{second_pin, "2"}},
-            {},
-            std::nullopt,
-            std::vector<std::string>{"RC0603FR-07330RLA", "RC0603FR-07330RLB"},
-        }});
-
-    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
-
-    CHECK(output["components"][0]["selected_physical_part"]["approved_alternate_mpns"] ==
-          nlohmann::json::array({"RC0603FR-07330RLA", "RC0603FR-07330RLB"}));
-}
-
 TEST_CASE("Logical circuit writer emits net classes and net assignments") {
     volt::Circuit circuit;
     const auto net = circuit.add_net(volt::NetSpec{volt::NetName{"HV"}, volt::NetKind::Power});
@@ -407,7 +305,9 @@ TEST_CASE("Logical circuit writer emits pin electrical semantics") {
   "pin_definitions": [
     { "id": "pin_def:0", "name": "RESET", "number": "4", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital", "drive_kind": "HighImpedance", "polarity": "ActiveLow", "electrical_attributes": { "voltage_range": { "type": "range", "dimension": "voltage", "minimum": 0, "maximum": 5.5 } } }
   ],
-  "component_definitions": [],
+  "component_definitions": [
+    { "id": "component_def:0", "name": "ResetInput", "pins": ["pin_def:0"], "properties": {} }
+  ],
   "components": [],
   "pins": [],
   "nets": []

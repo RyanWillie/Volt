@@ -15,7 +15,7 @@
 
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
-#include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/io/project_bundle_writer.hpp>
 #include <volt/pcb/queries/board_queries.hpp>
 
 namespace volt::io::detail {
@@ -568,16 +568,6 @@ footprint_pad_reference_error(const ProjectReportReferenceContext &models, const
         return "project diagnostic footprint pad names a missing component placement";
     }
     const auto &placement = board.get(ComponentPlacementId{placement_index});
-    const auto &selected_physical =
-        queries::selected_physical_part(board.circuit(), placement.component());
-    if (selected_physical.has_value()) {
-        const auto footprint =
-            queries::footprint_definition_id(board, selected_physical->footprint());
-        if (!footprint.has_value() || pad_index >= board.get(*footprint).pad_count()) {
-            return "project diagnostic footprint pad is outside its paired placement";
-        }
-        return std::nullopt;
-    }
     const auto &selected_library =
         queries::selected_library_part_ref(board.circuit(), placement.component());
     if (!selected_library.has_value()) {

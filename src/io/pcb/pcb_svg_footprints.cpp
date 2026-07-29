@@ -299,17 +299,18 @@ void write_pad(std::ostream &out, const FootprintPad &pad, FootprintPadId pad_id
     out << "/>\n";
 }
 
-void write_placements(std::ostream &out, const Board &board, const FootprintLibrary &footprints,
+void write_placements(std::ostream &out, const ResolvedBoardView &resolved,
                       const std::vector<PadResolution> &resolutions,
                       const std::vector<ProjectedFootprintGeometry> &footprint_geometries,
                       const DiagnosticReport &diagnostics, PcbPlacementSvgOptions options) {
+    const auto &board = resolved.board();
     out << "    <g class=\"layer layer-footprints\">\n";
     write_package_geometry_layers(out, board, footprint_geometries, options);
     out << "      <g class=\"layer layer-pads\">\n";
     for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
         const auto &placement = board.get(placement_id);
-        const auto *definition = resolve_definition_for_placement(board, placement, footprints);
+        const auto *definition = resolve_definition_for_placement(resolved, placement);
         if (definition == nullptr) {
             continue;
         }
@@ -335,7 +336,7 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
         out << "\" data-placement=\"" << encode_local_id(placement_id) << "\" data-component=\""
             << encode_local_id(placement.component()) << '"';
         const auto footprint_definition_id =
-            projection_footprint_definition_id_for_placement(board, placement_id, footprints);
+            projection_footprint_definition_id_for_placement(resolved, placement_id);
         if (footprint_definition_id.has_value()) {
             out << " data-footprint-def=\"" << encode_local_id(footprint_definition_id.value())
                 << '"';
@@ -373,7 +374,7 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
     for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
         const auto &placement = board.get(placement_id);
-        const auto *definition = resolve_definition_for_placement(board, placement, footprints);
+        const auto *definition = resolve_definition_for_placement(resolved, placement);
         if (definition == nullptr || !placement_selected(board, placement, options) ||
             reference_designator_suppressed(diagnostics, placement_id)) {
             continue;

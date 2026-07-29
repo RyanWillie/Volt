@@ -56,71 +56,53 @@
 <body>
 <main>
   <header>
-    <div class="eyebrow">Issue #321 · Gate F1 M2</div>
-    <h1>One current owner, resolver, and publication path</h1>
-    <p class="lede">Measured against authorized baseline
-      <code>9ec94564136eb14f1cc0f06276d5caec2c03c793</code>. The deletion removes the
-      superseded Python lowering and publication surface, the legacy example estate, its benchmark
-      catalogue, and stale supporting material. Native exact-part ownership and verified
-      ProjectBundle publication remain the only current path.</p>
+    <div class="eyebrow">Current-format-only architecture evidence</div>
+    <h1>One current schema and one physical-truth path</h1>
+    <p class="lede">Measured from authorized baseline
+      <code>05c6aaa305f80bac7469a0a939bebacf4e8b6bd5</code>. Volt is pre-release and has no
+      external user contract, so Volt-authored readers accept only their current canonical
+      schema. Old artifacts are regenerated.</p>
     <div class="grid">
-      <div class="metric"><strong>−2,414</strong>production source lines</div>
-      <div class="metric"><strong>−4</strong>Python public exports</div>
-      <div class="metric"><strong>0</strong>retired current-route references</div>
+      <div class="metric"><strong>1</strong>ProjectBundle schema</div>
+      <div class="metric"><strong>1</strong>resolved physical owner path</div>
+      <div class="metric"><strong>0</strong>migration readers</div>
     </div>
   </header>
 
   <section>
-    <h2>Before / after</h2>
+    <h2>Deleted coexistence surfaces</h2>
     <table>
-      <thead><tr><th>Measured surface</th><th>Before</th><th>After</th><th>Delta</th></tr></thead>
+      <thead><tr><th>Surface</th><th>Current zero state</th><th>Evidence</th></tr></thead>
       <tbody>
-        <tr><td>Production C++, headers, and Python</td><td>91,949 lines</td><td>89,535 lines</td><td>−2,414</td></tr>
-        <tr><td>Production source files</td><td>324</td><td>323</td><td>−1</td></tr>
-        <tr><td>Python package exports</td><td>133</td><td>129</td><td>−4</td></tr>
-        <tr><td>Retired route references in production source</td><td>78</td><td>0</td><td>−78</td></tr>
-        <tr><td>Retired route references in source/docs/skills</td><td>498</td><td>0</td><td>−498</td></tr>
-        <tr><td>Source-backed CLI aliases and rejected options</td><td>6</td><td>0</td><td>−6</td></tr>
-        <tr><td>Legacy example estate</td><td>151 files</td><td>0</td><td>−151</td></tr>
-        <tr><td>Legacy example text</td><td>89,140 lines</td><td>0</td><td>−89,140</td></tr>
-        <tr><td>Legacy example tracked bytes</td><td>4,622,119</td><td>0</td><td>−4,622,119</td></tr>
-        <tr><td>Example-only tests</td><td>5 files / 2,043 lines</td><td>0</td><td>−5 / −2,043</td></tr>
-        <tr><td>All native and Python test source</td><td>157 files / 52,821 lines</td><td>152 files / 49,377 lines</td><td>−5 / −3,444</td></tr>
-        <tr><td>All docs and skill sources</td><td>98 files / 33,663 lines</td><td>66 files / 22,230 lines</td><td>−32 / −11,433</td></tr>
-        <tr><td>Stale docs and skill references deleted</td><td>33 files / 11,420 lines</td><td>0</td><td>−33 / −11,420</td></tr>
-        <tr><td>Native public root snapshots</td><td>199 declarations</td><td>199</td><td>unchanged</td></tr>
+        <tr><td>ProjectBundle readers and public views</td><td>Schema 2 only</td><td><code>ProjectBundle::open</code> publishes one verified <code>graph()</code></td></tr>
+        <tr><td>Part definition reader</td><td>Current v5 only</td><td>No converter or alternate parser</td></tr>
+        <tr><td>PCB reader</td><td>Current canonical document only</td><td>Removed viewer-cache fields reject</td></tr>
+        <tr><td>Logical selected-part storage</td><td>Exact <code>LibraryPartRef</code> only</td><td>Inline physical fields reject; origins are explicit</td></tr>
+        <tr><td>PartLibraryBundle</td><td>Schema 2 for every valid closure shape</td><td>No content-shape schema switch</td></tr>
+        <tr><td>Python Part inputs</td><td>Only native-lowered semantics</td><td>Typed <code>PartProvenance</code>; no extension bag or ghost properties</td></tr>
       </tbody>
     </table>
-    <p>Counts are physical lines and tracked bytes from the exact baseline tree and this tree.
-      Production covers <code>include</code>, <code>src</code>, and <code>python/volt</code>.
-      The route count uses the checked anti-regrowth vocabulary over current source,
-      documentation, and skills.</p>
   </section>
 
   <section>
     <h2>Surviving current graph</h2>
     <ul>
-      <li><code>Circuit</code> owns logical components, exact <code>LibraryPartRef</code> selections, nets, and intent.</li>
+      <li><code>Circuit</code> owns logical components, exact <code>LibraryPartRef</code> selections, nets, and intent; it contains no resolved <code>PhysicalPart</code>.</li>
       <li><code>PartLibraryBundle</code> owns immutable definitions, physical records, and content-addressed assets.</li>
-      <li><code>BoardResolution</code> resolves one explicit bundle closure; <code>CompiledBoard</code> owns the immutable consumed result.</li>
-      <li>Schematic, PCB, BOM, CPL, KiCad, fabrication, CLI, Vault, and reopen paths consume that graph.</li>
-      <li><code>ProjectResult.write</code> invokes the native ProjectBundle v2 writer; there is no second current artifact writer.</li>
+      <li><code>BoardResolution</code> owns authoring-time resolved physical truth; <code>CompiledBoard</code> owns the immutable historical result.</li>
+      <li>PCB, BOM, CPL, routing, rendering, KiCad, fabrication, Python Board, and ProjectBundle consumers receive that resolved context explicitly.</li>
+      <li><code>ProjectResult.write</code> invokes the native ProjectBundle schema 2 writer; there is no second artifact writer.</li>
       <li>The supported CLI executes source only through <code>check</code> and <code>build</code>; <code>inspect</code>, <code>diff</code>, and <code>export</code> consume verified bundles.</li>
     </ul>
   </section>
 
   <section class="boundary">
-    <h2>Retained supported boundaries</h2>
-    <p>The logical v1 reader/converter still accepts the former inline physical record and
-      canonically round-trips it during the documented v1 window. The named
-      <code>legacy_led_circuit_v1.volt.json</code> fixture isolates that proof. Current BOM
-      readiness reports <code>BOM_LEGACY_INLINE_SELECTED_PART_UNSUPPORTED</code> rather than
-      treating that read-only shape as a current exact selection. Restoration and resolved-board
-      materialization may construct the internal physical view, but Python authoring and
-      ProjectBundle v2 publication cannot use it as an alternate owner.</p>
-    <p>ProjectBundle v1 reopen remains <code>LegacyUnverified</code> and read-only. ProjectBundle
-      v2 reopen verifies the exact selected closure and artifact graph. No ambient lookup,
-      fallback resolver, cache authority, compatibility facade, or dual writer is retained.</p>
+    <h2>Retained current boundaries</h2>
+    <p>Current first-version owner schemas remain version 1 where that is their canonical
+      version. ProjectBundle remains schema version 2. A version number identifies the wire
+      contract; it is not a content-shape switch or permission for multiple readers.</p>
+    <p>External interoperability, including KiCad and manufacturing formats, remains supported.
+      It is an adapter boundary, not Volt artifact backward compatibility.</p>
     <p><code>ProjectResult.write_manufacturing_package</code> remains the single supported writer
       for its native fabrication-package format. It consumes the exact current project result and
       <code>CompiledBoard</code> handoff; it is not a ProjectBundle writer, owner, resolver, or
@@ -129,10 +111,11 @@
 
   <section>
     <h2>Anti-regrowth contract</h2>
-    <p class="ok">Zero forbidden paths and zero retired-route references.</p>
-    <p>The inventory checker now records the zero state and its self-test injects every retired
-      category to prove detection. It adds no waiver, allowlist, suppression, ignored path,
-      frozen caller count, or parity-document exclusion.</p>
+    <p class="ok">The public API snapshots and behavioral tests lock the zero state.</p>
+    <p>The architecture checker proves Circuit's closed public typed aggregate, while focused
+      open/reader tests prove unsupported schemas and removed fields reject. The inventory
+      baseline records the resulting file and API surface without adding a waiver, suppression,
+      or expanding an allowlist.</p>
   </section>
 </main>
 </body>

@@ -9,11 +9,10 @@
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
 #include <volt/pcb/geometry/board_geometry.hpp>
+#include <volt/pcb/resolution/board_resolution.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
 
 namespace volt {
-
-class BoardResolution;
 
 /** Authoring request to connect two board points on one existing logical net. */
 struct BoardRouteRequest {
@@ -138,11 +137,10 @@ struct BoardEscapeResult {
  */
 class BoardRouter {
   public:
-    /** Build a router with a spatial index over all current board copper. */
-    BoardRouter(Board &board, const FootprintLibrary &footprints);
+    /** Build a router over one explicit resolved physical view while mutating its Board. */
+    BoardRouter(Board &board, ResolvedBoardView resolved);
 
-    /** Build a router over one explicit resolved physical view while mutating its authoring Board.
-     */
+    /** Build a router over one immutable BoardResolution while mutating its authoring Board. */
     BoardRouter(Board &board, const BoardResolution &resolution);
 
     /** Resolve the copper sizing and allowed layers a net would route with. */
@@ -212,8 +210,7 @@ class BoardRouter {
     [[nodiscard]] BoardSpatialIndex &index() const;
 
     Board *board_;
-    const Board *physical_board_;
-    FootprintLibrary footprints_;
+    ResolvedBoardView resolved_;
     mutable std::optional<BoardSpatialIndex> index_;
 };
 

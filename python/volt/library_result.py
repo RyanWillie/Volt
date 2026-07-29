@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Iterable, Iterator
 
@@ -355,14 +354,7 @@ def _part_asset_payloads(part: Part, payload: dict[str, object]) -> list[dict[st
 
 
 def _part_provenance_payload(part: Part) -> dict[str, object]:
-    provenance = part.extensions.get("provenance", {})
-    if not isinstance(provenance, Mapping):
-        return {}
-    return {
-        "datasheet": provenance.get("datasheet", ""),
-        "authored_by": provenance.get("authored_by", ""),
-        "derived_from": provenance.get("derived_from", ""),
-    }
+    return part.provenance._to_dict()
 
 
 def _part_symbol_refs(part: Part) -> list[dict[str, object]]:

@@ -23,6 +23,7 @@
 namespace volt {
 
 class Board;
+class ResolvedBoardView;
 
 /// @cond
 namespace detail {
@@ -543,12 +544,12 @@ void append_via_shapes(const Board &board, std::vector<BoardCopperShape> &shapes
 
 void append_zone_shapes(const Board &board, std::vector<BoardCopperShape> &shapes);
 
-void append_pad_shapes(const Board &board, const FootprintLibrary &footprints,
+void append_pad_shapes(const ResolvedBoardView &resolved,
                        const std::vector<PadResolution> &resolutions,
                        std::vector<BoardCopperShape> &shapes);
 
 [[nodiscard]] std::vector<BoardCopperShape>
-collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
+collect_copper_shapes(const ResolvedBoardView &resolved,
                       const std::vector<PadResolution> &resolutions);
 
 [[nodiscard]] bool shape_satisfies_outline(const BoardCopperShape &shape,
@@ -592,8 +593,7 @@ void validate_keepout_vias(const Board &board, DiagnosticReport &report);
 
 void validate_keepout_placements(const Board &board, DiagnosticReport &report);
 
-void validate_board_visual(const Board &board, const FootprintLibrary &footprints,
-                           DiagnosticReport &report);
+void validate_board_visual(const ResolvedBoardView &resolved, DiagnosticReport &report);
 
 [[nodiscard]] std::size_t connectivity_root(std::vector<std::size_t> &parents, std::size_t index);
 
@@ -604,14 +604,13 @@ shape_index_for_pad(const std::vector<BoardCopperShape> &shapes, ComponentPlacem
 void validate_unrouted_nets(const Board &board, const std::vector<PadResolution> &resolutions,
                             const std::vector<BoardCopperShape> &shapes, DiagnosticReport &report);
 
-void validate_board_drc(const Board &board, const FootprintLibrary &footprints,
+void validate_board_drc(const ResolvedBoardView &resolved,
                         const std::vector<PadResolution> &pad_resolutions,
                         DiagnosticReport &report);
 
 } // namespace detail
 
-/** Validate placement-only board design issues against circuit and footprint context. */
-[[nodiscard]] DiagnosticReport validate_board(const Board &board,
-                                              const FootprintLibrary &footprints);
+/** Validate placement-only board design issues against exact resolved physical context. */
+[[nodiscard]] DiagnosticReport validate_board(const ResolvedBoardView &resolved);
 
 } // namespace volt

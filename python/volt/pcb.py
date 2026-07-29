@@ -342,10 +342,6 @@ class FootprintPad:
             "mechanical_role": self.mechanical_role,
         }
 
-
-FootprintDefinition = Footprint
-
-
 @dataclass(frozen=True)
 class PadResolution:
     """Derived board-space resolution for one placed footprint pad."""

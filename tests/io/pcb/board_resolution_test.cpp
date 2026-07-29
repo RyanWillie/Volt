@@ -192,24 +192,8 @@ TEST_CASE("Board resolution uses one exact closure deterministically without mut
     CHECK(first.footprints().definitions() == second.footprints().definitions());
     CHECK(volt::queries::selected_library_part_ref(selected.circuit, selected.component) ==
           reference);
-    CHECK_FALSE(
-        volt::queries::selected_physical_part(selected.circuit, selected.component).has_value());
-    CHECK(volt::queries::selected_physical_part(first.board().circuit(), selected.component)
-              .has_value());
-
-    auto rejected_projection = selected.circuit;
-    const auto wrong_reference = volt::LibraryPartRef{
-        reference.library_namespace(), reference.library_version(), volt::PartKey{"other"},
-        reference.library_digest(), reference.part_digest()};
-    CHECK_THROWS_AS(rejected_projection.update(
-                        selected.component,
-                        volt::SelectPhysicalPart{first.part(selected.component)->physical_part(),
-                                                 wrong_reference}),
-                    volt::KernelLogicError);
-    CHECK(volt::queries::selected_library_part_ref(rejected_projection, selected.component) ==
-          reference);
-    CHECK_FALSE(
-        volt::queries::selected_physical_part(rejected_projection, selected.component).has_value());
+    CHECK(&first.board() == &board);
+    CHECK(&first.board().circuit() == &selected.circuit);
 }
 
 TEST_CASE("Named Board resolutions remain independent over one selected closure") {
@@ -231,8 +215,8 @@ TEST_CASE("Named Board resolutions remain independent over one selected closure"
     const auto second = volt::io::resolve_board(second_board, bundle,
                                                 volt::BoardResolutionCapabilities{std::nullopt});
 
-    CHECK(first.authoring_board().name().value() == "First");
-    CHECK(second.authoring_board().name().value() == "Second");
+    CHECK(first.board().name().value() == "First");
+    CHECK(second.board().name().value() == "Second");
     CHECK(first.board().get(volt::ComponentPlacementId{0}).position() ==
           volt::BoardPoint{1.0, 2.0});
     CHECK(second.board().get(volt::ComponentPlacementId{0}).position() ==
@@ -257,20 +241,14 @@ TEST_CASE("Board resolution rejects bad assets and wrong closures atomically") {
                         complete_board, empty,
                         volt::BoardResolutionCapabilities{complete_board.capability_profile()}),
                     volt::KernelRangeError);
-    CHECK_FALSE(volt::queries::selected_physical_part(complete_selected.circuit,
-                                                      complete_selected.component)
-                    .has_value());
 
     auto cached_board = volt::Board{complete_selected.circuit, volt::BoardName{"Cached"}};
     static_cast<void>(cached_board.cache_footprint_definition(volt::passive_0603_footprint()));
-    CHECK_THROWS_AS(volt::io::resolve_board(
-                        cached_board, complete,
-                        volt::BoardResolutionCapabilities{cached_board.capability_profile()}),
-                    volt::KernelLogicError);
+    const auto cached_resolution = volt::io::resolve_board(
+        cached_board, complete,
+        volt::BoardResolutionCapabilities{cached_board.capability_profile()});
+    REQUIRE(cached_resolution.part(complete_selected.component) != nullptr);
     CHECK(cached_board.all<volt::FootprintDefId>().size() == 1U);
-    CHECK_FALSE(volt::queries::selected_physical_part(complete_selected.circuit,
-                                                      complete_selected.component)
-                    .has_value());
 
     auto profiled_board = volt::Board{complete_selected.circuit, volt::BoardName{"Profiled"}};
     profiled_board.set_capability_profile(volt::BoardCapabilityProfile{
@@ -284,7 +262,4 @@ TEST_CASE("Board resolution rejects bad assets and wrong closures atomically") {
                                             volt::BoardResolutionCapabilities{std::nullopt}),
                     volt::KernelLogicError);
     CHECK(profiled_board.all<volt::FootprintDefId>().size() == 0U);
-    CHECK_FALSE(volt::queries::selected_physical_part(complete_selected.circuit,
-                                                      complete_selected.component)
-                    .has_value());
 }

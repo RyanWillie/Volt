@@ -88,12 +88,12 @@ constexpr auto max_bundle_total_size = std::uint64_t{1024U * 1024U * 1024U};
     return true;
 }
 
-[[nodiscard]] std::vector<std::string> legacy_path_segments(std::string_view path) {
+[[nodiscard]] std::vector<std::string> source_path_segments(std::string_view path) {
     if (path.empty() || path.front() == '/' || path.find('\\') != std::string_view::npos ||
         path.find('\0') != std::string_view::npos || (path.size() >= 2U && path[1] == ':') ||
         !valid_utf8(path)) {
         fail(ProjectBundleOpenErrorCode::UnsafePath,
-             "ProjectBundle v1 path is not a safe UTF-8 relative path: " + std::string{path});
+             "ProjectBundle source path is not a safe UTF-8 relative path: " + std::string{path});
     }
     auto result = std::vector<std::string>{};
     auto cursor = std::size_t{0};
@@ -103,13 +103,13 @@ constexpr auto max_bundle_total_size = std::uint64_t{1024U * 1024U * 1024U};
         const auto segment = path.substr(cursor, end - cursor);
         if (segment.empty() || segment == "." || segment == "..") {
             fail(ProjectBundleOpenErrorCode::UnsafePath,
-                 "ProjectBundle v1 path contains an empty or relative segment: " +
+                 "ProjectBundle source path contains an empty or relative segment: " +
                      std::string{path});
         }
         for (const auto value : segment) {
             if (is_control(static_cast<unsigned char>(value))) {
                 fail(ProjectBundleOpenErrorCode::UnsafePath,
-                     "ProjectBundle v1 path contains a control byte: " + std::string{path});
+                     "ProjectBundle source path contains a control byte: " + std::string{path});
             }
         }
         result.emplace_back(segment);
@@ -144,7 +144,7 @@ constexpr auto max_bundle_total_size = std::uint64_t{1024U * 1024U * 1024U};
                  "ProjectBundle directory contains a symlink-like or unsupported entry");
         }
         const auto relative = iterator->path().lexically_relative(root).generic_string();
-        static_cast<void>(legacy_path_segments(relative));
+        static_cast<void>(source_path_segments(relative));
         if (std::filesystem::is_directory(status)) {
             result.push_back(relative + "/");
             continue;
@@ -234,7 +234,7 @@ void inventory_directory(int directory, std::string_view prefix, std::vector<std
         }
         const auto relative =
             prefix.empty() ? std::string{name} : std::string{prefix} + "/" + std::string{name};
-        static_cast<void>(legacy_path_segments(relative));
+        static_cast<void>(source_path_segments(relative));
         auto child = FileDescriptor{::openat(directory, std::string{name}.c_str(),
                                              O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK)};
         if (child.get() < 0) {
@@ -321,7 +321,7 @@ class DirectorySource final : public BundleSource {
     }
 
     [[nodiscard]] CapturedEntry read(std::string_view path) const override {
-        const auto segments = legacy_path_segments(path);
+        const auto segments = source_path_segments(path);
         auto current = FileDescriptor{::dup(root_.get())};
         if (current.get() < 0) {
             fail(ProjectBundleOpenErrorCode::MissingEntry,
@@ -554,7 +554,7 @@ class DirectorySource final : public BundleSource {
     [[nodiscard]] CapturedEntry read(std::string_view path) const override {
         require_current_root();
         auto current_path = root_path_;
-        const auto segments = legacy_path_segments(path);
+        const auto segments = source_path_segments(path);
         auto opened_chain = std::vector<WinHandle>{};
         opened_chain.reserve(segments.size());
         for (auto index = std::size_t{0}; index < segments.size(); ++index) {
@@ -826,7 +826,7 @@ struct ZipDirectoryRecord {
         if (directory) {
             safety_path.pop_back();
         }
-        static_cast<void>(legacy_path_segments(safety_path));
+        static_cast<void>(source_path_segments(safety_path));
         if (!names.insert(path).second) {
             fail(ProjectBundleOpenErrorCode::DuplicateIdentity,
                  "ProjectBundle ZIP contains a duplicate path: " + path);
@@ -952,7 +952,7 @@ class ZipSource final : public BundleSource {
     }
 
     [[nodiscard]] CapturedEntry read(std::string_view path) const override {
-        static_cast<void>(legacy_path_segments(path));
+        static_cast<void>(source_path_segments(path));
         const auto match = entries_.find(std::string{path});
         if (match == entries_.end()) {
             fail(ProjectBundleOpenErrorCode::MissingEntry,
@@ -977,10 +977,6 @@ class ZipSource final : public BundleSource {
 };
 
 } // namespace
-
-void validate_legacy_project_bundle_path(std::string_view path) {
-    static_cast<void>(legacy_path_segments(path));
-}
 
 [[nodiscard]] std::unique_ptr<BundleSource>
 open_project_bundle_source(const std::filesystem::path &path) {

@@ -10,7 +10,7 @@
 
 #include <volt/core/errors.hpp>
 #include <volt/io/parts/part_library_bundle.hpp>
-#include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/io/project_bundle_writer.hpp>
 
 namespace {
 
@@ -32,7 +32,7 @@ class LogicalFixture final {
                   volt::PartLibraryIdentity{"test.empty", "1", volt::PartLibrarySchemaVersion::V1}},
               {}, resolver_)} {}
 
-    [[nodiscard]] volt::io::ProjectBundleV2Builder
+    [[nodiscard]] volt::io::ProjectBundleBuilder
     builder(std::string source = "project source",
             std::vector<volt::io::AuthoringInput> extra_inputs = {}) const {
         auto inputs = std::vector<volt::io::AuthoringInput>{};
@@ -40,7 +40,7 @@ class LogicalFixture final {
                             volt::io::LogicalInputName{"project.py"}, std::move(source));
         inputs.insert(inputs.end(), std::make_move_iterator(extra_inputs.begin()),
                       std::make_move_iterator(extra_inputs.end()));
-        auto result = volt::io::ProjectBundleV2Builder{
+        auto result = volt::io::ProjectBundleBuilder{
             volt::io::ProjectIdentity{"fixture", std::optional{"1.0"},
                                       std::optional{"fixture project"}},
             volt::io::ProjectRunSummary{
@@ -65,7 +65,7 @@ class LogicalFixture final {
 };
 
 [[nodiscard]] const volt::io::ArtifactDescriptor &
-descriptor(const volt::io::ProjectBundleV2 &bundle, volt::io::ArtifactKind kind) {
+descriptor(const volt::io::ProjectBundlePublication &bundle, volt::io::ArtifactKind kind) {
     const auto match =
         std::ranges::find(bundle.artifacts(), kind, &volt::io::ArtifactDescriptor::kind);
     REQUIRE(match != bundle.artifacts().end());
@@ -130,7 +130,7 @@ TEST_CASE("ProjectBundle v2 writer is deterministic and identity sensitive") {
 
 TEST_CASE("ProjectBundle v2 writer derives run status from decoded reports") {
     const auto fixture = LogicalFixture{};
-    auto builder = volt::io::ProjectBundleV2Builder{
+    auto builder = volt::io::ProjectBundleBuilder{
         volt::io::ProjectIdentity{"fixture", std::nullopt, std::nullopt},
         volt::io::ProjectRunSummary{true, volt::io::ProjectStatus::Clean, "default", {"design"}},
         volt::io::LogicalInputName{"project.py"},
