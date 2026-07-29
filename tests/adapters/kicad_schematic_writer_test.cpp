@@ -9,10 +9,14 @@
 #include <string>
 #include <vector>
 
+#include <nlohmann/json.hpp>
+
 #include <volt/adapters/kicad/schematic_writer.hpp>
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/core/errors.hpp>
+#include <volt/io/logical/logical_circuit_reader.hpp>
+#include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
 
@@ -129,6 +133,49 @@ TEST_CASE("KiCad schematic writer resolves selected footprints from their exact 
     CHECK(result.text.find(R"((property "Footprint" "passives:R_0603_1608Metric")") !=
           std::string::npos);
     CHECK_THROWS(volt::adapters::kicad::write_flat_schematic(schematic, foreign_parts.bundle));
+}
+
+TEST_CASE("KiCad schematic writer rejects exact parts owned by another component definition") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto exact_parts = select_resistor_part(circuit, component);
+    const auto net =
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VCC"}, .kind = volt::NetKind::Power});
+
+    auto foreign_spec = resistor_component_spec();
+    foreign_spec.name = "Foreign resistor";
+    const auto footprint = volt::passive_0603_footprint();
+    const auto foreign_part =
+        volt::PhysicalPart{volt::ManufacturerPart{"Yageo", "RC0603FR-0710KL"},
+                           volt::PackageRef{"0603"}, footprint.ref(),
+                           std::vector{volt::PinPadMapping{volt::PinDefId{0}, "1"},
+                                       volt::PinPadMapping{volt::PinDefId{1}, "2"}}};
+    const auto foreign_parts = volt::test::make_export_fixture_library(
+        {{std::move(foreign_spec), foreign_part, footprint, volt::PartKey{"foreign-resistor"}}});
+    const auto foreign_reference = foreign_parts.bundle.require(foreign_parts.keys[0]);
+
+    auto document = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+    document["components"][0]["selected_library_part"] = {
+        {"library_namespace", foreign_reference.library_namespace()},
+        {"library_version", foreign_reference.library_version()},
+        {"part_key", foreign_reference.part_key().value()},
+        {"library_digest", foreign_reference.library_digest().value()},
+        {"part_digest", foreign_reference.part_digest().value()},
+    };
+    const auto restored = volt::io::read_logical_circuit_text(document.dump());
+    const auto schematic = make_flat_schematic(restored, component, net);
+
+    try {
+        static_cast<void>(
+            volt::adapters::kicad::write_flat_schematic(schematic, foreign_parts.bundle));
+        FAIL("Foreign component implementations must not supply KiCad footprints");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+        CHECK(std::string{error.what()} ==
+              "KiCad schematic selected part implements another component definition");
+        REQUIRE(error.entity().has_value());
+        CHECK(error.entity() == volt::EntityRef::component(component));
+    }
 }
 
 TEST_CASE("KiCad schematic writer reports unsupported out-of-subset constructs") {

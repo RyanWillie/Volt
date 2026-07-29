@@ -238,8 +238,14 @@ void write_symbol_instance(std::ostream &out, const Schematic &schematic, Symbol
     const auto &selected_ref =
         volt::queries::selected_library_part_ref(schematic.circuit(), instance.component());
     if (selected_ref.has_value()) {
-        const auto &footprint =
-            exact_parts.resolve(*selected_ref).orderable_part().footprint().footprint();
+        const auto &part = exact_parts.resolve(*selected_ref);
+        if (part.implemented_component() != definition.content_identity()) {
+            throw KernelLogicError{
+                ErrorCode::CrossReferenceViolation,
+                "KiCad schematic selected part implements another component definition",
+                EntityRef::component(instance.component())};
+        }
+        const auto &footprint = part.orderable_part().footprint().footprint();
         write_symbol_property(out, "Footprint", footprint.library() + ":" + footprint.name(),
                               Point{instance.position().x(), property_y});
     }
