@@ -6,7 +6,7 @@ import volt
 from project_framework_helpers import _passive_0603
 from volt import _volt
 from volt.diagnostics import _diagnostic_from_dict
-from volt.project import _flat_diagnostic_payload, _report_diagnostics
+from volt.project import _report_diagnostics
 
 
 def test_pcb_visual_diagnostic_codes_are_exported_in_stable_order():
@@ -58,7 +58,6 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "PIN_GROUND_ON_NON_GROUND_NET",
         "PIN_POWER_ON_GROUND_NET",
         "POWER_INPUT_WITHOUT_SOURCE",
-        "SELECTED_PART_VOLTAGE_RATING_EXCEEDED",
         "PIN_VOLTAGE_RANGE_VIOLATION",
         "NET_CLASS_VOLTAGE_EXCEEDED",
         "MULTIPLE_OUTPUTS_ON_NET",
@@ -115,6 +114,7 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "BOM_COMPONENT_MISSING_SELECTED_PART",
         "BOM_COMPONENT_IMPLICIT_DNP",
         "BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY",
+        "BOM_LEGACY_INLINE_SELECTED_PART_UNSUPPORTED",
     )
     assert volt.ASSEMBLY_DIAGNOSTIC_CODES == (
         "ASSEMBLY_COMPONENT_MISSING_SELECTED_PART",
@@ -123,28 +123,6 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "ASSEMBLY_ORIENTATION_AMBIGUOUS",
     )
 
-
-def test_voltage_rating_diagnostic_is_inspectable():
-    design = volt.Design("rating")
-    vdd = design.net("VDD", kind="power", voltage=5.0)
-    c1 = design.C(capacitance=100e-9, ref="C1")
-    c1.select_part(
-        manufacturer="Example",
-        part_number="LOW-VOLTAGE-CAP",
-        package="0603",
-        footprint=_passive_0603(("Capacitor_SMD", "C_0603")),
-        pin_pads={1: "1", 2: "2"},
-        voltage_rating=3.3,
-    )
-
-    vdd += c1[1]
-
-    report = design.validate()
-
-    assert report.has_errors
-    assert "SELECTED_PART_VOLTAGE_RATING_EXCEEDED" in {
-        diagnostic.code for diagnostic in report
-    }
 
 def test_pin_voltage_range_diagnostic_is_inspectable():
     design = volt.Design("pin-voltage")
@@ -462,7 +440,7 @@ def test_erc_and_drc_diagnostic_payload_categories_and_references_are_preserved(
     )
 
 
-def test_drc_diagnostic_measurement_is_parsed_and_flattened():
+def test_drc_diagnostic_measurement_is_preserved_in_project_diagnostics():
     drc = _diagnostic_from_dict(
         {
             "severity": "error",
@@ -486,8 +464,9 @@ def test_drc_diagnostic_measurement_is_parsed_and_flattened():
         board="Main",
     )
 
-    payload = _flat_diagnostic_payload(project_diagnostic)
-    assert payload["measurement"] == {"actual_mm": 0.12, "required_mm": 0.2}
+    assert project_diagnostic.measurement == volt.DiagnosticMeasurement(
+        actual_mm=0.12, required_mm=0.2
+    )
 
 
 def test_diagnostic_without_measurement_defaults_to_none():
@@ -557,34 +536,16 @@ def test_project_diagnostics_preserve_pcb_visual_overlay_payloads():
         board="Main",
     )
 
-    payload = _flat_diagnostic_payload(project_diagnostic)
-
     assert project_diagnostic.category == "pcb.visual"
-    assert payload == {
-        "severity": "warning",
-        "category": "pcb.visual",
+    assert project_diagnostic.overlays == diagnostics[0].overlays
+    assert project_diagnostic.expect_diagnostic_kwargs == {
         "code": "PCB_VISUAL_LABEL_OVERLAP",
-        "message": "Labels overlap",
-        "entities": [{"kind": "board", "index": 0}],
-        "overlays": [
-            {
-                "kind": "polygon",
-                "points": [[1.0, 1.0], [3.0, 1.0], [3.0, 2.0]],
-                "entities": [{"kind": "board_text", "index": 0}],
-                "layers": [{"kind": "board_layer", "index": 0}],
-            }
-        ],
-        "measurement": None,
-        "rule": None,
-        "expect_diagnostic_kwargs": {
-            "code": "PCB_VISUAL_LABEL_OVERLAP",
-            "severity": "warning",
-            "stage": "board",
-            "source": "pcb:Main",
-            "report": "pcb.visual",
-            "design": "demo",
-            "board": "Main",
-        },
+        "severity": "warning",
+        "stage": "board",
+        "source": "pcb:Main",
+        "report": "pcb.visual",
+        "design": "demo",
+        "board": "Main",
     }
 
 

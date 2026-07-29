@@ -36,9 +36,6 @@ into a Markdown document under `docs/` rather than editing the exported HTML.
 - [`volt-post-circuit-architecture-review.html`](volt-post-circuit-architecture-review.html)
   — approved owner-aligned Schematic/Board, `CompiledBoard`, artifact graph, bundle and
   project-tooling direction; focused ADRs freeze exact implementation contracts
-- [`volt-part-library-architecture-review.html`](volt-part-library-architecture-review.html)
-  — approved component/part identity, canonical Voltage/Current semantics, native library
-  bundle and exact-selection direction; focused ADRs freeze exact implementation contracts
 
 ## Design notes and explorations
 
@@ -46,6 +43,8 @@ into a Markdown document under `docs/` rather than editing the exported HTML.
   ADR and migration roadmap
 - `circuit-semantic-parity.html` — final evidence matrix for Circuit API redesign parity,
   atomicity, persistence, compatibility, and downstream behavior
+- `architecture-m2-deletion-parity.html` — issue #321 deletion metrics, surviving graph,
+  retained v1 boundary, and zero-state anti-regrowth evidence
 
 - `hierarchy-scoped-net-design.html` — exported mirror of
   [`../hierarchy-scoped-net-design.md`](../hierarchy-scoped-net-design.md)
@@ -54,11 +53,7 @@ into a Markdown document under `docs/` rather than editing the exported HTML.
 - `kicad-schematic-adapter-design.html` — KiCad schematic adapter design
 - `kicad-pcb-export-handoff.html` — KiCad PCB export handoff notes
 - `simulation-feature-guide-2026-05-28.html` — simulation feature guide
-- `volt-project-framework-spec-2026-06-02.html` — Volt project framework spec
-- `volt-project-framework-feature-guide-2026-06-03.html` — Volt project framework feature guide
 
 ## Dated implementation plans
 
-- `pcb-development-plan-2026-05-29.html` — PCB development plan
 - `kernel-compiled-libraries-refactor-plan-2026-06-01.html` — compiled-libraries refactor plan
-- `testing-overhaul-plan.html` — testing overhaul baseline review

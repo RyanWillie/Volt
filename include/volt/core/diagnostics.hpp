@@ -56,8 +56,6 @@ inline constexpr auto UnboundRequiredPort = std::string_view{"UNBOUND_REQUIRED_P
 inline constexpr auto PinGroundOnNonGroundNet = std::string_view{"PIN_GROUND_ON_NON_GROUND_NET"};
 inline constexpr auto PinPowerOnGroundNet = std::string_view{"PIN_POWER_ON_GROUND_NET"};
 inline constexpr auto PowerInputWithoutSource = std::string_view{"POWER_INPUT_WITHOUT_SOURCE"};
-inline constexpr auto SelectedPartVoltageRatingExceeded =
-    std::string_view{"SELECTED_PART_VOLTAGE_RATING_EXCEEDED"};
 inline constexpr auto PinVoltageRangeViolation = std::string_view{"PIN_VOLTAGE_RANGE_VIOLATION"};
 inline constexpr auto NetClassVoltageExceeded = std::string_view{"NET_CLASS_VOLTAGE_EXCEEDED"};
 inline constexpr auto MultipleOutputsOnNet = std::string_view{"MULTIPLE_OUTPUTS_ON_NET"};
@@ -168,6 +166,8 @@ inline constexpr auto ComponentMissingSelectedPart =
 inline constexpr auto ComponentImplicitDnp = std::string_view{"BOM_COMPONENT_IMPLICIT_DNP"};
 inline constexpr auto ApprovedAlternateDuplicatesPrimary =
     std::string_view{"BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY"};
+inline constexpr auto LegacyInlineSelectedPartUnsupported =
+    std::string_view{"BOM_LEGACY_INLINE_SELECTED_PART_UNSUPPORTED"};
 
 } // namespace bom_diagnostic_codes
 
@@ -193,7 +193,6 @@ inline constexpr auto Erc =
                erc_diagnostic_codes::PinGroundOnNonGroundNet,
                erc_diagnostic_codes::PinPowerOnGroundNet,
                erc_diagnostic_codes::PowerInputWithoutSource,
-               erc_diagnostic_codes::SelectedPartVoltageRatingExceeded,
                erc_diagnostic_codes::PinVoltageRangeViolation,
                erc_diagnostic_codes::NetClassVoltageExceeded,
                erc_diagnostic_codes::MultipleOutputsOnNet,
@@ -257,7 +256,8 @@ inline constexpr auto PartLineup = std::array{
 
 inline constexpr auto Bom = std::array{bom_diagnostic_codes::ComponentMissingSelectedPart,
                                        bom_diagnostic_codes::ComponentImplicitDnp,
-                                       bom_diagnostic_codes::ApprovedAlternateDuplicatesPrimary};
+                                       bom_diagnostic_codes::ApprovedAlternateDuplicatesPrimary,
+                                       bom_diagnostic_codes::LegacyInlineSelectedPartUnsupported};
 
 inline constexpr auto Assembly = std::array{assembly_diagnostic_codes::ComponentMissingSelectedPart,
                                             assembly_diagnostic_codes::PartIdentityMissing,

@@ -7,19 +7,26 @@ import json
 from .logical import Component
 
 
-def _component_json(component: Component) -> dict:
+def _component_json(component: Component) -> tuple[dict, dict]:
     logical = json.loads(component._design.to_json())
-    return next(
+    instance = next(
         item for item in logical["components"] if item["id"] == f"component:{component.index}"
     )
+    definition = next(
+        item
+        for item in logical["component_definitions"]
+        if item["id"] == instance["definition"]
+    )
+    return instance, definition
 
 
 def _component_value_label(component: Component) -> str | None:
-    target = _component_json(component)
+    target, definition = _component_json(component)
     for name in ("value", "Value"):
-        value = target["properties"].get(name)
-        if value is not None:
-            return str(value["value"])
+        for properties in (target["properties"], definition["properties"]):
+            value = properties.get(name)
+            if value is not None:
+                return str(value["value"])
 
     attributes = target.get("electrical_attributes", {})
     for name in ("resistance", "capacitance", "inductance", "voltage", "current", "power"):

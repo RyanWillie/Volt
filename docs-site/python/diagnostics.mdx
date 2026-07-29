@@ -52,8 +52,8 @@ keeps that policy visible so source, report, stage, or rule typos do not disappe
 
 | Stage | Call | Typical findings |
 | --- | --- | --- |
-| Logical circuit | `design.validate()` | Unconnected required pins, single-pin nets, incompatible electrical roles |
-| PCB readiness | `design.validate_for_pcb()` | Components that need selected physical parts before board work |
+| Logical design | `design.validate()` | Logical circuit findings plus exact-part Voltage/Current ERC from the retained closure |
+| PCB readiness | `design.validate_for_pcb()` | The default design findings once, plus missing exact PartRefs before board work |
 | Schematic projection | `schematic.validate()` | Missing presentation references or structurally invalid projection data |
 | Schematic readability | `schematic.validate_readability()` | Hard-to-read routes, labels, geometry, and density issues |
 | PCB projection | `board.validate()` | Missing footprints, invalid physical layout, rule violations |
@@ -68,4 +68,4 @@ assert not report.has_errors
 assert {diagnostic.code for diagnostic in report} == set()
 ```
 
-For examples and generated artifacts, fail fast on unexpected diagnostics so drift is caught in CI.
+For projects and generated artifacts, fail fast on unexpected diagnostics so drift is caught in CI.

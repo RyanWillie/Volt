@@ -14,11 +14,9 @@
 #include <variant>
 #include <vector>
 
-#include <volt/circuit/bom/bom.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/content_hash.hpp>
 #include <volt/io/assembly/cpl_writer.hpp>
-#include <volt/io/bom/bom_writer.hpp>
 #include <volt/io/logical/logical_circuit_reader.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
@@ -551,8 +549,16 @@ void verify_owner_graph(ProjectBundleStorage &storage, const LibraryDecoded &dec
                 if (!selected.has_value()) {
                     continue;
                 }
-                expected.insert(detail::project_bundle_v2_artifact_key(
-                    ArtifactId{ArtifactKind::PartDefinition, *selected}));
+                const auto selected_key = detail::project_bundle_v2_artifact_key(
+                    ArtifactId{ArtifactKind::PartDefinition, *selected});
+                const auto part = decoded.parts.find(selected_key);
+                require(part != decoded.parts.end(), ProjectBundleOpenErrorCode::OwnershipViolation,
+                        "logical model selected part is not decoded");
+                require(part->second->implemented_component() ==
+                            component_definition.content_identity(),
+                        ProjectBundleOpenErrorCode::OwnershipViolation,
+                        "logical model selected part implements another component definition");
+                expected.insert(selected_key);
             }
             require_exact_dependencies(descriptor_value, expected, "logical model");
             break;
@@ -832,7 +838,7 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
                         target.model.content_digest(),
                     ProjectBundleOpenErrorCode::DigestMismatch,
                     "BOM target digest does not match its loaded logical Circuit");
-            expected_bytes = write_bom_json(project_bom(*circuit->model));
+            expected_bytes = write_decoded_bom(*circuit->model, library);
             break;
         }
         case ExportKind::Cpl: {

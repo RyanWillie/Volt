@@ -6,43 +6,36 @@
 
 #include <volt/circuit/bom/bom.hpp>
 #include <volt/io/bom/bom_writer.hpp>
-#include <volt/io/pcb/board_resolution.hpp>
+#include <volt/io/parts/part_library_bundle.hpp>
+#include <volt/library/part_library.hpp>
 
 namespace volt::python {
 
-volt::Circuit PyCircuit::materialized_physical_circuit() const {
-    auto logical = materialized_circuit();
-    const auto board = volt::Board{logical, volt::BoardName{"Python reports"}};
-    const auto resolution = volt::io::resolve_board(
-        board, selected_part_bundle(), volt::BoardResolutionCapabilities{std::nullopt});
-    return resolution.board().circuit();
-}
-
 py::list PyCircuit::validate() const {
-    const auto circuit = materialized_physical_circuit();
-    return diagnostics_to_list(volt::validate_circuit(circuit));
+    const auto circuit = materialized_circuit();
+    return diagnostics_to_list(volt::validate_design(circuit, selected_part_bundle()));
 }
 
 py::list PyCircuit::validate_for_pcb() const {
-    const auto circuit = materialized_physical_circuit();
-    return diagnostics_to_list(volt::validate_for_pcb(circuit));
+    const auto circuit = materialized_circuit();
+    return diagnostics_to_list(volt::validate_for_pcb(circuit, selected_part_bundle()));
 }
 
 py::list PyCircuit::validate_bom_readiness() const {
-    const auto circuit = materialized_physical_circuit();
-    return diagnostics_to_list(volt::validate_bom_readiness(circuit));
+    const auto circuit = materialized_circuit();
+    return diagnostics_to_list(volt::validate_bom_readiness(circuit, selected_part_bundle()));
 }
 
 std::string PyCircuit::bom_json(const py::dict &sourcing_snapshot) const {
-    const auto circuit = materialized_physical_circuit();
-    return volt::io::write_bom_json(
-        volt::project_bom(circuit, sourcing_snapshot_from_dict(sourcing_snapshot)));
+    const auto circuit = materialized_circuit();
+    return volt::io::write_bom_json(volt::project_bom(
+        circuit, selected_part_bundle(), sourcing_snapshot_from_dict(sourcing_snapshot)));
 }
 
 std::string PyCircuit::bom_csv(const py::dict &sourcing_snapshot) const {
-    const auto circuit = materialized_physical_circuit();
-    return volt::io::write_bom_csv(
-        volt::project_bom(circuit, sourcing_snapshot_from_dict(sourcing_snapshot)));
+    const auto circuit = materialized_circuit();
+    return volt::io::write_bom_csv(volt::project_bom(
+        circuit, selected_part_bundle(), sourcing_snapshot_from_dict(sourcing_snapshot)));
 }
 
 std::string PyCircuit::bom_sourcing_snapshot_json(const py::dict &sourcing_snapshot) const {

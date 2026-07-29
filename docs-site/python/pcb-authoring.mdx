@@ -3,7 +3,9 @@ title: PCB Authoring
 description: Describe PCB layers, footprints, placements, routing, zones, keepouts, text, validation, and output.
 ---
 
-PCB authoring projects the logical design into physical board data. Board-ready real parts should attach selected physical part data with a first-class `volt.Footprint` object; board placement then resolves that object-owned geometry automatically.
+PCB authoring projects the logical design into physical board data. Board-ready components
+must be instantiated from exact library Parts with a first-class `volt.Footprint`; board
+resolution consumes that immutable PartLibraryBundle geometry.
 
 ## Board setup
 
@@ -40,16 +42,26 @@ resistor_0603 = volt.Footprint(
     body=((-0.8, -0.4), (0.8, -0.4), (0.8, 0.4), (-0.8, 0.4)),
 )
 
-r1.select_part(
+library = volt.Library("acme.passives", version="1.0.0")
+resistor = library.part(
+    "RC0603FR-07330RL",
+    pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+    symbol=resistor_symbol,
     manufacturer="Yageo",
-    part_number="RC0603FR-07330RL",
+    mpn="RC0603FR-07330RL",
     package="0603",
     footprint=resistor_0603,
-    pin_pads={1: "1", 2: "2"},
+    pads={1: "1", 2: "2"},
+    prefix="R",
 )
+r1 = design.instantiate(resistor, ref="R1")
 ```
 
-The footprint identity is still serialized as the selected part reference, but the `volt.Footprint` object carries the pad, courtyard, and body geometry needed for board placement. Omit `courtyard` or `body` when the footprint does not declare that polygon; an omitted polygon remains distinct from an invalid empty polygon. Polygon arrays use canonical boundary vertices and must not repeat the first vertex at the end. `board.cache_footprint(...)` remains available for importers, explicit board-owned snapshots, and low-level tests.
+The logical circuit serializes the exact selected PartRef, while the `volt.Footprint` asset
+carries pad, courtyard, and body geometry. Omit `courtyard` or `body` when the footprint does
+not declare that polygon; an omitted polygon remains distinct from an invalid empty polygon.
+Polygon arrays use canonical boundary vertices and must not repeat the first vertex at the
+end.
 
 ## Placement and routing
 

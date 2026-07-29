@@ -10,7 +10,6 @@ from ._footprint import Footprint, FootprintInput, footprint_ref
 from ._immutable import _freeze_value, _mutable_value
 from .library import (
     PartModel3D,
-    PhysicalPartSpec,
     PinPadValue,
     PinSpec,
     SchematicSymbolSpec,
@@ -450,27 +449,6 @@ class ElectricalRecord:
         }
 
 
-@dataclass(frozen=True)
-class _PartDefinition:
-    """Normalized lowering data for logical component specs."""
-
-    name: str
-    pins: tuple[PinSpec, ...]
-    properties: dict
-    source_namespace: str
-    source_name: str
-    source_version: str
-    physical_part: PhysicalPartSpec | None = None
-    prefix: str = "U"
-    schematic_symbols: tuple[SchematicSymbolSpec, ...] = ()
-    contract: ComponentContract | None = None
-
-    @property
-    def schematic_symbol(self) -> SchematicSymbolSpec | None:
-        """Return this definition's default schematic symbol, if one is registered."""
-        return _schematic_symbol_for_variant(self.schematic_symbols, "default")
-
-
 class Part:
     """Reusable Python declaration lowered into an exact native library part."""
 
@@ -491,7 +469,6 @@ class Part:
         value: str | None = None,
         manufacturer: str | None = None,
         mpn: str | None = None,
-        part_number: str | None = None,
         package: str | None = None,
         properties: dict | None = None,
         physical_properties: dict | None = None,
@@ -501,8 +478,6 @@ class Part:
         electrical_records: Iterable[ElectricalRecord] = (),
         model_3d: PartModel3D | None = None,
         approved_alternate_mpns: Iterable[str] = (),
-        orderable: PhysicalPartSpec | None = None,
-        orderable_part: PhysicalPartSpec | None = None,
         prefix: str = "U",
         extensions: dict | None = None,
         source_name: str | None = None,
@@ -519,42 +494,7 @@ class Part:
         normalized_pins = tuple(pins)
         if symbol is not None and schematic_symbol is not None:
             raise TypeError("Part accepts either symbol or schematic_symbol")
-        if mpn is not None and part_number is not None and mpn != part_number:
-            raise ValueError("Part mpn and part_number must match when both are provided")
-        if orderable is not None:
-            if orderable_part is not None:
-                raise TypeError("Part accepts either orderable or orderable_part")
-            orderable_part = orderable
-        same_numbered_pads = False
         alternate_mpns = tuple(str(mpn) for mpn in approved_alternate_mpns)
-        if orderable_part is not None:
-            if (
-                footprint is not None
-                or pads is not None
-                or manufacturer is not None
-                or mpn is not None
-                or part_number is not None
-                or package is not None
-                or physical_properties is not None
-                or voltage_rating is not None
-                or power_rating is not None
-                or model_3d is not None
-                or alternate_mpns
-            ):
-                raise TypeError(
-                    "Part accepts either orderable_part or explicit physical part fields"
-                )
-            footprint = orderable_part.footprint
-            pads = orderable_part.pin_pads
-            manufacturer = orderable_part.manufacturer
-            mpn = orderable_part.part_number
-            package = orderable_part.package
-            physical_properties = orderable_part.properties
-            voltage_rating = orderable_part.voltage_rating
-            power_rating = orderable_part.power_rating
-            model_3d = orderable_part.model_3d
-            alternate_mpns = orderable_part.approved_alternate_mpns
-            same_numbered_pads = orderable_part.same_numbered_pads
 
         if power_rating is not None:
             raise NotImplementedError(
@@ -584,7 +524,7 @@ class Part:
         self.pads = None if pads is None else _freeze_value(pads)
         self.value = value
         self.manufacturer = manufacturer
-        self.mpn = part_number if mpn is None else mpn
+        self.mpn = mpn
         self.package = package
         self.properties = _freeze_value(logical_properties)
         self.physical_properties = None if physical_properties is None else _freeze_value(
@@ -597,7 +537,6 @@ class Part:
         )
         self.model_3d = model_3d
         self.approved_alternate_mpns = alternate_mpns
-        self._same_numbered_pads = same_numbered_pads
         self.prefix = prefix
         self.extensions = _freeze_value(extensions or {})
         self.source_name = source_name or name
@@ -615,45 +554,19 @@ class Part:
         """Return this part's default schematic symbol, if one is registered."""
         return _schematic_symbol_for_variant(self.schematic_symbols, "default")
 
-    @property
-    def part_number(self) -> str | None:
-        """Return the manufacturer part number carried by this part."""
-        return self.mpn
-
     def _bind_library(self, library: Library) -> None:
         if self._library is not None and self._library is not library:
             raise ValueError(f"Part {self.name!r} already belongs to a different library")
         object.__setattr__(self, "_library", library)
 
-    def _physical_part_spec(self) -> PhysicalPartSpec | None:
-        if self.footprint is None:
-            return None
-        return PhysicalPartSpec(
-            manufacturer=self.manufacturer or "",
-            part_number=self.mpn or "",
-            package=self.package or _default_package(self.footprint),
-            footprint=self.footprint,
-            pin_pads=None if self.pads is None else _mutable_value(self.pads),
-            properties=(
-                None
-                if self.physical_properties is None
-                else _mutable_value(self.physical_properties)
-            ),
-            model_3d=self.model_3d,
-            approved_alternate_mpns=self.approved_alternate_mpns,
-            same_numbered_pads=self._same_numbered_pads,
-        )
-
     def _has_native_exact_definition(self) -> bool:
         """Return whether this declaration can form a complete native P3 part."""
-        physical = self._physical_part_spec()
         return bool(
             self.pins
             and isinstance(self.footprint, Footprint)
-            and physical is not None
-            and physical.manufacturer
-            and physical.part_number
-            and physical.package
+            and self.manufacturer
+            and self.mpn
+            and self.package
         )
 
     def _to_dict(self) -> dict:
@@ -714,8 +627,3 @@ def _pad_labels(value: PinPadValue) -> tuple[str, ...]:
     if isinstance(value, (tuple, list)):
         return tuple(str(item) for item in value)
     return (str(value),)
-
-
-def _default_package(footprint: FootprintInput) -> str:
-    _library, name = footprint_ref(footprint)
-    return name

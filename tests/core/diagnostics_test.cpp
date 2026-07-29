@@ -220,11 +220,14 @@ TEST_CASE("BOM diagnostic codes are stable constants") {
           "BOM_COMPONENT_IMPLICIT_DNP");
     CHECK(std::string{volt::bom_diagnostic_codes::ApprovedAlternateDuplicatesPrimary} ==
           "BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY");
+    CHECK(std::string{volt::bom_diagnostic_codes::LegacyInlineSelectedPartUnsupported} ==
+          "BOM_LEGACY_INLINE_SELECTED_PART_UNSUPPORTED");
     CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::Bom.begin(),
                                    volt::diagnostic_code_catalogs::Bom.end()} ==
           std::vector<std::string>{"BOM_COMPONENT_MISSING_SELECTED_PART",
                                    "BOM_COMPONENT_IMPLICIT_DNP",
-                                   "BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY"});
+                                   "BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY",
+                                   "BOM_LEGACY_INLINE_SELECTED_PART_UNSUPPORTED"});
 }
 
 TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
@@ -294,7 +297,6 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
               "PIN_GROUND_ON_NON_GROUND_NET",
               "PIN_POWER_ON_GROUND_NET",
               "POWER_INPUT_WITHOUT_SOURCE",
-              "SELECTED_PART_VOLTAGE_RATING_EXCEEDED",
               "PIN_VOLTAGE_RANGE_VIOLATION",
               "NET_CLASS_VOLTAGE_EXCEEDED",
               "MULTIPLE_OUTPUTS_ON_NET",

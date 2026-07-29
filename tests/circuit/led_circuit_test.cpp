@@ -40,37 +40,16 @@ TEST_CASE("Purpose-built LED fixture builds a valid logical circuit") {
     CHECK(circuit.get(r1.value()).properties().get(volt::PropertyKey{"value"}) ==
           volt::PropertyValue{"330 ohm"});
 
-    const auto &j1_part = volt::queries::selected_physical_part(circuit, j1.value());
-    const auto &r1_part = volt::queries::selected_physical_part(circuit, r1.value());
-    const auto &d1_part = volt::queries::selected_physical_part(circuit, d1.value());
+    const auto &j1_part = volt::queries::selected_library_part_ref(circuit, j1.value());
+    const auto &r1_part = volt::queries::selected_library_part_ref(circuit, r1.value());
+    const auto &d1_part = volt::queries::selected_library_part_ref(circuit, d1.value());
     REQUIRE(j1_part.has_value());
     REQUIRE(r1_part.has_value());
     REQUIRE(d1_part.has_value());
-    const auto &j1_pins = circuit.get(circuit.get(j1.value()).definition()).pins();
-    const auto &r1_pins = circuit.get(circuit.get(r1.value()).definition()).pins();
-    const auto &d1_pins = circuit.get(circuit.get(d1.value()).definition()).pins();
-
-    CHECK(j1_part->package().value() == "2.54mm-1x02");
-    CHECK(j1_part->footprint().name() == "PinHeader_1x02_P2.54mm_Vertical");
-    REQUIRE(j1_part->pin_pad_mappings().size() == 2);
-    CHECK(j1_part->pin_pad_mappings()[0].pin() == j1_pins[0]);
-    CHECK(j1_part->pin_pad_mappings()[0].pad() == "1");
-    CHECK(j1_part->pin_pad_mappings()[1].pin() == j1_pins[1]);
-    CHECK(j1_part->pin_pad_mappings()[1].pad() == "2");
-    CHECK(r1_part->package().value() == "0603");
-    CHECK(r1_part->footprint().name() == "R_0603_1608Metric");
-    REQUIRE(r1_part->pin_pad_mappings().size() == 2);
-    CHECK(r1_part->pin_pad_mappings()[0].pin() == r1_pins[0]);
-    CHECK(r1_part->pin_pad_mappings()[0].pad() == "1");
-    CHECK(r1_part->pin_pad_mappings()[1].pin() == r1_pins[1]);
-    CHECK(r1_part->pin_pad_mappings()[1].pad() == "2");
-    CHECK(d1_part->package().value() == "0603");
-    CHECK(d1_part->footprint().name() == "LED_0603_1608Metric");
-    REQUIRE(d1_part->pin_pad_mappings().size() == 2);
-    CHECK(d1_part->pin_pad_mappings()[0].pin() == d1_pins[1]);
-    CHECK(d1_part->pin_pad_mappings()[0].pad() == "1");
-    CHECK(d1_part->pin_pad_mappings()[1].pin() == d1_pins[0]);
-    CHECK(d1_part->pin_pad_mappings()[1].pad() == "2");
+    CHECK(j1_part->library_namespace() == "test.export");
+    CHECK(j1_part->part_key().value() == "header");
+    CHECK(r1_part->part_key().value() == "resistor");
+    CHECK(d1_part->part_key().value() == "led");
 
     CHECK(volt::validate_circuit(circuit).empty());
 }

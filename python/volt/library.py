@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable
+from typing import Iterable
 
 from ._immutable import _freeze_value, _mutable_value
 from ._library_symbol_builders import (
@@ -23,10 +23,6 @@ from ._footprint import FootprintInput
 from ._utils import _coordinate, _number, _positive_coordinate
 
 PinPadValue = str | tuple[str, ...] | list[str]
-
-if TYPE_CHECKING:
-    from .part import ComponentContract
-
 
 def _point3(value: tuple[float, float, float], context: str) -> tuple[float, float, float]:
     if not isinstance(value, tuple) or len(value) != 3:
@@ -168,80 +164,6 @@ class PinSpec:
                 None if maximum is None else _number(maximum),
             )
         return result
-
-
-@dataclass(frozen=True)
-class PhysicalPartSpec:
-    """Reusable selected physical part data; board-ready real parts should carry Footprint objects."""
-
-    manufacturer: str
-    part_number: str
-    package: str
-    footprint: FootprintInput
-    pin_pads: dict[int | str, PinPadValue] | None = None
-    properties: dict | None = None
-    voltage_rating: float | None = None
-    power_rating: float | None = None
-    model_3d: PartModel3D | None = None
-    approved_alternate_mpns: tuple[str, ...] = ()
-    same_numbered_pads: bool = False
-
-    def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "approved_alternate_mpns",
-            tuple(str(mpn) for mpn in self.approved_alternate_mpns),
-        )
-
-    @classmethod
-    def same_numbered(
-        cls,
-        *,
-        manufacturer: str,
-        part_number: str,
-        package: str,
-        footprint: FootprintInput,
-        properties: dict | None = None,
-        voltage_rating: float | None = None,
-        power_rating: float | None = None,
-        model_3d: PartModel3D | None = None,
-        approved_alternate_mpns: Iterable[str] = (),
-    ) -> PhysicalPartSpec:
-        """Create a physical part whose footprint pad labels match pin numbers."""
-        return cls(
-            manufacturer=manufacturer,
-            part_number=part_number,
-            package=package,
-            footprint=footprint,
-            properties=properties,
-            voltage_rating=voltage_rating,
-            power_rating=power_rating,
-            model_3d=model_3d,
-            approved_alternate_mpns=tuple(approved_alternate_mpns),
-            same_numbered_pads=True,
-        )
-
-    def pin_pads_for(self, component: LibraryComponent) -> dict[int | str, PinPadValue]:
-        """Return the pin-to-pad mapping for a library component."""
-        if self.same_numbered_pads:
-            result: dict[int | str, PinPadValue] = {}
-            for pin in component.pins:
-                number = pin.number
-                key: int | str
-                if isinstance(number, str) and number.isdigit():
-                    key = int(number)
-                else:
-                    key = number
-                result[key] = str(number)
-            return result
-        if self.pin_pads is None:
-            raise ValueError("physical part requires pin_pads or same_numbered_pads")
-        return dict(self.pin_pads)
-
-
-@dataclass(frozen=True)
-class OrderablePart(PhysicalPartSpec):
-    """Artifact-facing name for orderable physical part identity."""
 
 
 @dataclass(frozen=True)
@@ -555,45 +477,8 @@ class SchematicSymbolSpec:
         return primitive
 
 
-@dataclass(frozen=True)
-class LibraryComponent:
-    """Reusable component entry owned by a Python library."""
-
-    library: Library
-    name: str
-    pins: tuple[PinSpec, ...]
-    properties: dict
-    source_name: str
-    source_version: str
-    physical_part: PhysicalPartSpec | None = None
-    prefix: str = "U"
-    schematic_symbols: tuple[SchematicSymbolSpec, ...] = ()
-    contract: ComponentContract | None = None
-
-    @property
-    def schematic_symbol(self) -> SchematicSymbolSpec | None:
-        """Return this component's default schematic symbol, if one is registered."""
-        return _schematic_symbol_for_variant(self.schematic_symbols, "default")
-
-    def _to_part_definition(self):
-        from .part import _PartDefinition
-
-        return _PartDefinition(
-            name=self.name,
-            pins=self.pins,
-            properties=self.properties,
-            source_namespace=self.library.namespace,
-            source_name=self.source_name,
-            source_version=self.source_version,
-            physical_part=self.physical_part,
-            prefix=self.prefix,
-            schematic_symbols=self.schematic_symbols,
-            contract=self.contract,
-        )
-
-
 class Library:
-    """Collection of reusable Python-authored component definitions."""
+    """Collection of reusable Python-authored exact parts."""
 
     def __init__(self, namespace: str, *, version: str = "1.0.0"):
         if not namespace:
@@ -602,7 +487,6 @@ class Library:
             raise ValueError("Library version must not be empty")
         self.namespace = namespace
         self.version = version
-        self._components: dict[str, LibraryComponent] = {}
         self._parts: dict[str, Part] = {}
 
     def add(self, part: Part) -> Part:
@@ -611,7 +495,7 @@ class Library:
 
         if not isinstance(part, Part):
             raise TypeError("Library.add expects a Part")
-        if part.name in self._parts or part.name in self._components:
+        if part.name in self._parts:
             raise ValueError(f"Library part {part.name!r} already exists")
         part._bind_library(self)
         self._parts[part.name] = part
@@ -651,46 +535,9 @@ class Library:
 
         return self.add(Part(name=name, **kwargs))
 
-    def component(
-        self,
-        name: str,
-        *,
-        pins: Iterable[PinSpec],
-        properties: dict | None = None,
-        source_name: str | None = None,
-        source_version: str | None = None,
-        physical_part: PhysicalPartSpec | None = None,
-        prefix: str = "U",
-        schematic_symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
-        contract: ComponentContract | None = None,
-    ) -> LibraryComponent:
-        """Register a reusable component entry in this Python library."""
-        if not name:
-            raise ValueError("Library component name must not be empty")
-        if not prefix:
-            raise ValueError("Library component prefix must not be empty")
-        if name in self._components or name in self._parts:
-            raise ValueError(f"Library component {name!r} already exists")
-        component = LibraryComponent(
-            library=self,
-            name=name,
-            pins=tuple(pins),
-            properties=dict(properties or {}),
-            source_name=source_name or name,
-            source_version=source_version or self.version,
-            physical_part=physical_part,
-            prefix=prefix,
-            schematic_symbols=_normalize_schematic_symbols(schematic_symbol),
-            contract=contract,
-        )
-        self._components[name] = component
-        return component
-
-    def __getitem__(self, name: str) -> Part | LibraryComponent:
-        """Return a registered public part or legacy library component by name."""
-        if name in self._parts:
-            return self._parts[name]
-        return self._components[name]
+    def __getitem__(self, name: str) -> Part:
+        """Return a registered public part by name."""
+        return self._parts[name]
 
     def _ordered_parts(self) -> tuple[Part, ...]:
         return tuple(self._parts[name] for name in sorted(self._parts))

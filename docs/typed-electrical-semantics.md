@@ -481,7 +481,13 @@ Current validation entry points are:
 
 ```text
 validate_circuit
-  broad logical validation for normal authoring feedback
+  logical Circuit validation without resolver-dependent selected-part semantics
+
+validate_design
+  default logical validation plus exact-part Voltage/Current ERC through the retained closure
+
+validate_selected_part_erc
+  focused exact-part Voltage/Current ERC against one explicit native snapshot
 
 validate_connectivity
   focused connectivity checks
@@ -490,7 +496,7 @@ validate_electrical_rules
   electrical semantics checks over typed model data
 
 validate_for_pcb
-  PCB-readiness checks that require selected physical parts
+  default design diagnostics plus PCB-readiness checks over the exact selected-part closure
 ```
 
 Current typed checks include:
@@ -501,9 +507,9 @@ Current typed checks include:
 - obvious output conflicts
 - power/ground sanity checks
 - net voltage against connected pin voltage ranges
-- selected-part voltage rating against authored net voltage
+- exact-part absolute Voltage limits against authored net Voltage
 - assigned net-class maximum voltage against authored net voltage
-- missing selected physical parts when validating for PCB output
+- missing exact selected-part references when validating for PCB output
 
 Remaining validation work should build on explicit data:
 
@@ -513,7 +519,7 @@ Remaining validation work should build on explicit data:
 - regulator input/output checks after the necessary kernel-owned constraints are defined
 - current limits and power capability checks
 - no-connect assertions as stored design intent, distinct from generic pin semantics
-- selected-part compatibility beyond voltage rating
+- selected-part compatibility beyond the current typed Voltage/Current records
 - drive and domain compatibility once the constraint model is clearer
 - hierarchy and scoped-net validation after those primitives exist
 - net-class validation over reusable net classes
@@ -546,24 +552,22 @@ writer but remains independently usable; neither format is a package or registry
 Python provides ergonomic syntax over kernel-owned state:
 
 ```python
-r1 = d.R(resistance=330, tolerance=0.01, ref="R1")
+library = volt.Library("acme.passives", version="1.0.0")
+r_part = library.part(
+    "RC0603FR-07330RL",
+    pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+    symbol=resistor_symbol,
+    manufacturer="Yageo",
+    mpn="RC0603FR-07330RL",
+    package="0603",
+    footprint=resistor_0603,
+    pads={1: "1", 2: "2"},
+    voltage_rating=75,
+    prefix="R",
+)
+r1 = d.instantiate(r_part, ref="R1")
 c1 = d.C(capacitance=100e-9, voltage_rating=16, ref="C1")
 vdd = d.net("VDD", voltage=3.3)
-
-r1.select_part(
-    manufacturer="Yageo",
-    part_number="RC0603FR-07330RL",
-    package="0603",
-    footprint=volt.Footprint(
-        ("Resistor_SMD", "R_0603_1608Metric"),
-        pads=(
-            volt.FootprintPad.surface_mount("1", at=(-0.75, 0), size=(0.8, 0.9)),
-            volt.FootprintPad.surface_mount("2", at=(0.75, 0), size=(0.8, 0.9)),
-        ),
-    ),
-    pin_pads={1: "1", 2: "2"},
-    voltage_rating=75,
-)
 
 diagnostics = d.validate_for_pcb()
 ```

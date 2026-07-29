@@ -144,7 +144,6 @@ ctest --preset macos-llvm
 Run the LED logical-circuit example with:
 
 ```sh
-./build/macos-llvm/examples/volt_led_circuit_example
 ```
 
 ## Build Targets

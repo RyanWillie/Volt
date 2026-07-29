@@ -10,6 +10,7 @@
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/library/part_library.hpp>
 
 namespace volt {
 
@@ -59,10 +60,6 @@ void validate_power_and_ground_semantics(const Circuit &circuit, NetId net_id, c
                                          const std::vector<PinId> &group_pins,
                                          bool has_authored_power_supply, DiagnosticReport &report);
 
-void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId net_id, const Net &net,
-                                            const std::vector<PinId> &group_pins,
-                                            DiagnosticReport &report);
-
 void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net &net,
                                  const std::vector<PinId> &group_pins, DiagnosticReport &report);
 
@@ -86,7 +83,8 @@ void validate_required_module_ports(const Circuit &circuit, DiagnosticReport &re
 
 void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &report);
 
-void validate_bom_component_readiness(const Circuit &circuit, DiagnosticReport &report);
+void validate_bom_component_readiness(const Circuit &circuit, const ExactPartResolver &resolver,
+                                      DiagnosticReport &report);
 
 } // namespace detail
 
@@ -99,10 +97,8 @@ void validate_bom_component_readiness(const Circuit &circuit, DiagnosticReport &
 /** Run the default logical circuit validation suite. */
 [[nodiscard]] DiagnosticReport validate_circuit(const Circuit &circuit);
 
-/** Validate whether a circuit is ready for PCB/layout work. */
-[[nodiscard]] DiagnosticReport validate_for_pcb(const Circuit &circuit);
-
 /** Validate whether a circuit is ready for deterministic BOM projection and handoff. */
-[[nodiscard]] DiagnosticReport validate_bom_readiness(const Circuit &circuit);
+[[nodiscard]] DiagnosticReport validate_bom_readiness(const Circuit &circuit,
+                                                      const ExactPartResolver &resolver);
 
 } // namespace volt

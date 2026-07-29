@@ -5,8 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from contextlib import redirect_stdout
-from io import StringIO
 from pathlib import Path
 from typing import Sequence
 
@@ -17,15 +15,8 @@ from . import (
     EXIT_CHECK_FAILED,
     EXIT_COMMAND_FAILED,
     EXIT_SUCCESS,
-    _filtered_diagnostics,
-    _forward_project_stdout,
-    _info_payload,
-    _model_json_payload,
     _project_result_with_forwarded_stdout,
-    _validated_diagnostic_severities,
-    _validated_diagnostic_stage,
     load_project_config,
-    run_entrypoint,
 )
 
 
@@ -36,7 +27,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="volt-project-worker")
     parser.add_argument(
         "action",
-        choices=("run", "check", "build", "model", "diagnostics", "info"),
+        choices=("check", "build"),
     )
     parser.add_argument("--config", required=True, type=Path)
     parser.add_argument("--output", type=Path)
@@ -45,9 +36,6 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--design")
     parser.add_argument("--schematic")
     parser.add_argument("--board")
-    parser.add_argument("--stage")
-    parser.add_argument("--severities-json", default="[]")
-    parser.add_argument("--gate", action="store_true")
     return parser
 
 
@@ -237,15 +225,6 @@ def _failure(error: Exception) -> dict[str, object]:
 
 def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
     config = load_project_config(args.config)
-    if args.action == "run":
-        project_stdout = StringIO()
-        try:
-            with redirect_stdout(project_stdout):
-                run_entrypoint(config)
-        finally:
-            _forward_project_stdout(project_stdout)
-        return {}, EXIT_SUCCESS
-
     result = _project_result_with_forwarded_stdout(config)
     if args.action == "check":
         payload = _outcome(result)
@@ -292,39 +271,6 @@ def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
             "selected_export_count": len(graph.loaded_project.selected_exports),
         }
         return payload, EXIT_SUCCESS if result.ok else EXIT_CHECK_FAILED
-    if args.action == "model":
-        return (
-            _model_json_payload(
-                result,
-                design_selector=args.design,
-                schematic_selector=args.schematic,
-                board_selector=args.board,
-            ),
-            EXIT_SUCCESS,
-        )
-    if args.action == "diagnostics":
-        stage = _validated_diagnostic_stage(args.stage)
-        severities = json.loads(args.severities_json)
-        if not isinstance(severities, list) or not all(
-            isinstance(item, str) for item in severities
-        ):
-            raise CliError(
-                "Diagnostic severities must be a JSON array of strings.",
-                code="invalid-diagnostic-filter",
-            )
-        filtered = _filtered_diagnostics(
-            result,
-            stage=stage,
-            severities=_validated_diagnostic_severities(severities),
-        )
-        payload = _diagnostics_payload(result, diagnostics=filtered)
-        payload["tests"] = _tests_payload(result._test_results())
-        return (
-            payload,
-            EXIT_CHECK_FAILED if args.gate and not result.ok else EXIT_SUCCESS,
-        )
-    if args.action == "info":
-        return _info_payload(config, result), EXIT_SUCCESS
     raise AssertionError(f"Unsupported project worker action: {args.action}")
 
 

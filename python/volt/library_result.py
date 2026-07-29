@@ -266,18 +266,16 @@ def _part_artifact_prerequisites(part: Part, facts: _PartValidationFacts) -> boo
         facts.has_logical_pins and facts.has_object_footprint and facts.serializable
     ):
         return False
-    physical = part._physical_part_spec()
-    return bool(physical and physical.manufacturer and physical.part_number and physical.package)
+    return bool(part.manufacturer and part.mpn and part.package)
 
 
 def _part_artifact_payload(part: Part) -> dict[str, object]:
     if part.library is None:
         raise ValueError("part must be bound to a library before artifact emission")
-    physical = part._physical_part_spec()
-    if physical is None:
+    if part.footprint is None:
         raise ValueError("part artifact requires an orderable physical part")
-    pads = _part_physical_pin_pads(part, physical)
-    footprint_library, footprint_name = footprint_ref(physical.footprint)
+    pads = _part_physical_pin_pads(part)
+    footprint_library, footprint_name = footprint_ref(part.footprint)
     payload = {
         "identity": {
             "namespace": part.library.namespace,
@@ -295,27 +293,27 @@ def _part_artifact_payload(part: Part) -> dict[str, object]:
         "provenance": _part_provenance_payload(part),
         "symbols": _part_symbol_refs(part),
         "orderable_part": {
-            "manufacturer": physical.manufacturer,
-            "mpn": physical.part_number,
-            "package": physical.package,
+            "manufacturer": part.manufacturer,
+            "mpn": part.mpn,
+            "package": part.package,
             "footprint_library": footprint_library,
             "footprint_name": footprint_name,
-            "footprint_hash": _content_hash(_footprint_payload(physical.footprint)),
-            "footprint_pads": _part_footprint_pads(physical.footprint),
+            "footprint_hash": _content_hash(_footprint_payload(part.footprint)),
+            "footprint_pads": _part_footprint_pads(part.footprint),
             "footprint_courtyard": _part_footprint_polygon(
-                physical.footprint, "courtyard"
+                part.footprint, "courtyard"
             ),
-            "footprint_body": _part_footprint_polygon(physical.footprint, "body"),
+            "footprint_body": _part_footprint_polygon(part.footprint, "body"),
             "footprint_fabrication_outline": _part_footprint_polygon(
-                physical.footprint, "fabrication_outline"
+                part.footprint, "fabrication_outline"
             ),
             "footprint_assembly_outline": _part_footprint_polygon(
-                physical.footprint, "assembly_outline"
+                part.footprint, "assembly_outline"
             ),
-            "footprint_markings": _part_footprint_markings(physical.footprint),
+            "footprint_markings": _part_footprint_markings(part.footprint),
             "pin_pad_mappings": _part_pin_pad_mappings(part, pads),
-            "approved_alternate_mpns": list(physical.approved_alternate_mpns),
-            "model_3d": _model_3d_reference_payload(physical.model_3d),
+            "approved_alternate_mpns": list(part.approved_alternate_mpns),
+            "model_3d": _model_3d_reference_payload(part.model_3d),
         },
     }
     payload["assets"] = _part_asset_payloads(part, payload)
@@ -332,26 +330,25 @@ def _part_asset_payloads(part: Part, payload: dict[str, object]) -> list[dict[st
                 "bytes": _symbol_bytes(symbol),
             }
         )
-    physical = part._physical_part_spec()
-    if physical is None or not isinstance(physical.footprint, Footprint):
+    if not isinstance(part.footprint, Footprint):
         return assets
-    footprint_library, footprint_name = footprint_ref(physical.footprint)
+    footprint_library, footprint_name = footprint_ref(part.footprint)
     assets.append(
         {
             "kind": "footprint",
             "key": f"footprint:{footprint_library}/{footprint_name}",
-            "bytes": _canonical_bytes(_footprint_payload(physical.footprint)),
+            "bytes": _canonical_bytes(_footprint_payload(part.footprint)),
         }
     )
-    if physical.model_3d is not None:
+    if part.model_3d is not None:
         assets.append(
             {
                 "kind": "model_3d",
                 "key": (
-                    f"model:{physical.model_3d.format}/"
-                    f"{physical.model_3d.file_name}"
+                    f"model:{part.model_3d.format}/"
+                    f"{part.model_3d.file_name}"
                 ),
-                "bytes": physical.model_3d.source_path.read_bytes(),
+                "bytes": part.model_3d.source_path.read_bytes(),
             }
         )
     return assets
@@ -394,14 +391,10 @@ def _footprint_payload(footprint) -> dict[str, object]:
     return {"ref": (library, name)}
 
 
-def _part_physical_pin_pads(part: Part, physical=None) -> dict[int | str, object]:
-    if physical is None:
-        physical = part._physical_part_spec()
-    if physical is None:
+def _part_physical_pin_pads(part: Part) -> dict[int | str, object]:
+    if part.pads is None:
         return {}
-    if physical.same_numbered_pads or physical.pin_pads is not None:
-        return physical.pin_pads_for(part)
-    return {}
+    return dict(part.pads)
 
 
 def _part_footprint_pads(footprint: Footprint) -> list[dict[str, object]]:

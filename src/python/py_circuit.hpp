@@ -94,12 +94,6 @@ class PyCircuit {
 
     [[nodiscard]] py::list component_refs() const;
 
-    void select_authored_part(std::size_t component, const std::string &manufacturer,
-                              const std::string &part_number, const std::string &package,
-                              const py::dict &footprint, const py::dict &pin_pads,
-                              std::optional<double> voltage_rating, py::object model_3d,
-                              py::object model_3d_bytes, py::object approved_alternate_mpns);
-
     void set_component_quantity(std::size_t component, const std::string &name,
                                 const std::string &dimension_name, double value);
 
@@ -205,19 +199,6 @@ class PyCircuit {
     [[nodiscard]] std::string to_json() const;
 
   private:
-    struct AuthoredPartAsset {
-        volt::PartAssetKind kind;
-        std::string key;
-        std::string bytes;
-    };
-
-    struct AuthoredPartDraft {
-        volt::PartKey key;
-        volt::ComponentSpec component;
-        volt::PartDefinition part;
-        std::vector<AuthoredPartAsset> assets;
-    };
-
     /** Binding-local typed draft committed atomically through Circuit::define_module. */
     struct ModuleDraft {
         std::size_t handle;
@@ -254,8 +235,6 @@ class PyCircuit {
     public_module_component_index(volt::ModuleComponentId component) const;
 
     [[nodiscard]] volt::Circuit materialized_circuit() const;
-
-    [[nodiscard]] volt::Circuit materialized_physical_circuit() const;
 
     [[nodiscard]] std::vector<volt::PinId> pins_by_name(volt::ComponentId component,
                                                         const std::string &name) const;

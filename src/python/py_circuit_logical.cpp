@@ -2,32 +2,23 @@
 
 #include "binding_diagnostic_conversions.hpp"
 #include "binding_part_definition_conversions.hpp"
-#include "binding_pcb_conversions.hpp"
 #include "binding_schematic_conversions.hpp"
 #include "py_circuit_logical_helpers.hpp"
 #include "py_circuit_part_closure.hpp"
 #include "py_part_library.hpp"
 
 #include <map>
-#include <ranges>
-#include <set>
 #include <string>
 #include <utility>
 
 #include <volt/authoring/component_library.hpp>
-#include <volt/circuit/bom/bom.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/updates.hpp>
-#include <volt/io/bom/bom_writer.hpp>
-#include <volt/io/parts/footprint_asset.hpp>
 #include <volt/io/parts/part_library_bundle.hpp>
 #include <volt/io/schematic/schematic_writer.hpp>
 
 namespace volt::python {
 namespace {
-
-constexpr auto authored_library_namespace = "volt.python.design";
-constexpr auto authored_library_version = "1";
 
 [[nodiscard]] volt::ComponentContractSpec
 python_standard_contract(const volt::ContentHash &standard_digest, std::size_t pin_count) {
@@ -51,91 +42,6 @@ python_component_spec(const volt::authoring::ComponentSpec &source) {
         python_standard_contract(temporary.get(temporary_id).content_identity(), spec.pins.size());
     return spec;
 }
-
-[[nodiscard]] std::optional<volt::PartFootprintPolygon>
-part_polygon(const std::optional<volt::FootprintPolygon> &polygon) {
-    if (!polygon.has_value()) {
-        return std::nullopt;
-    }
-    auto points = std::vector<volt::PartFootprintPoint>{};
-    points.reserve(polygon->vertices().size());
-    for (const auto &point : polygon->vertices()) {
-        points.emplace_back(point.x_mm(), point.y_mm());
-    }
-    return volt::PartFootprintPolygon{std::move(points)};
-}
-
-[[nodiscard]] volt::PartFootprintMarkingKind part_marking_kind(volt::FootprintMarkingKind kind) {
-    switch (kind) {
-    case volt::FootprintMarkingKind::Silkscreen:
-        return volt::PartFootprintMarkingKind::Silkscreen;
-    case volt::FootprintMarkingKind::Polarity:
-        return volt::PartFootprintMarkingKind::Polarity;
-    case volt::FootprintMarkingKind::PinOne:
-        return volt::PartFootprintMarkingKind::PinOne;
-    }
-    throw volt::KernelLogicError{volt::ErrorCode::InvalidState,
-                                 "Footprint marking kind is unsupported"};
-}
-
-[[nodiscard]] std::vector<volt::PartFootprintMarking>
-part_markings(const volt::FootprintDefinition &footprint) {
-    auto result = std::vector<volt::PartFootprintMarking>{};
-    result.reserve(footprint.markings().size());
-    for (const auto &marking : footprint.markings()) {
-        result.emplace_back(part_marking_kind(marking.kind()),
-                            *part_polygon(std::optional{marking.polygon()}));
-    }
-    return result;
-}
-
-[[nodiscard]] std::vector<volt::PartFootprintPad>
-part_footprint_pads(const volt::FootprintDefinition &footprint) {
-    auto result = std::vector<volt::PartFootprintPad>{};
-    result.reserve(footprint.pads().size());
-    for (const auto &pad : footprint.pads()) {
-        if (!pad.mechanical_role().has_value()) {
-            result.emplace_back(pad.label(), pad.position().x_mm(), pad.position().y_mm(),
-                                pad.size().width_mm(), pad.size().height_mm());
-        } else if (*pad.mechanical_role() == volt::FootprintPadMechanicalRole::Thermal) {
-            result.emplace_back(pad.label(), pad.position().x_mm(), pad.position().y_mm(),
-                                pad.size().width_mm(), pad.size().height_mm(),
-                                volt::PartFootprintPadRole::Thermal);
-        } else {
-            result.emplace_back(pad.label(), pad.position().x_mm(), pad.position().y_mm(),
-                                pad.size().width_mm(), pad.size().height_mm(),
-                                volt::PartFootprintPadRole::Mechanical);
-        }
-    }
-    return result;
-}
-
-[[nodiscard]] std::string asset_key(volt::PartAssetKind kind, const std::string &key) {
-    return std::to_string(static_cast<unsigned int>(kind)) + ":" + key;
-}
-
-class AuthoredAssetResolver final : public volt::PartAssetResolver {
-  public:
-    void add(volt::PartAssetKind kind, const std::string &key, const std::string &bytes) {
-        const auto [match, inserted] = assets_.try_emplace(asset_key(kind, key), bytes);
-        if (!inserted && match->second != bytes) {
-            throw volt::KernelLogicError{volt::ErrorCode::CrossReferenceViolation,
-                                         "Authored part asset key has conflicting bytes"};
-        }
-    }
-
-    [[nodiscard]] std::optional<std::string>
-    resolve(const volt::PartAssetReference &reference) const override {
-        const auto match = assets_.find(asset_key(reference.kind(), reference.key()));
-        if (match == assets_.end()) {
-            return std::nullopt;
-        }
-        return match->second;
-    }
-
-  private:
-    std::map<std::string, std::string> assets_;
-};
 
 } // namespace
 
@@ -430,252 +336,6 @@ py::list PyCircuit::component_refs() const {
         result.append(std::move(item));
     }
     return result;
-}
-
-void PyCircuit::select_authored_part(std::size_t component, const std::string &manufacturer,
-                                     const std::string &part_number, const std::string &package,
-                                     const py::dict &footprint_payload, const py::dict &pin_pads,
-                                     std::optional<double> voltage_rating, py::object model_3d,
-                                     py::object model_3d_bytes,
-                                     py::object approved_alternate_mpns) {
-    for (std::size_t index = 0; index < circuit_.all<volt::ComponentId>().size(); ++index) {
-        if (circuit_.get(volt::ComponentId{index}).selected_library_part_ref().has_value() &&
-            (selected_part_bundle().identity().namespace_name() != authored_library_namespace ||
-             selected_part_bundle().identity().version() != authored_library_version)) {
-            throw volt::KernelLogicError{
-                volt::ErrorCode::InvalidState,
-                "A Design cannot mix an external exact library closure with authored parts"};
-        }
-    }
-    const auto component_handle = component_id(component);
-    const auto &instance = circuit_.get(component_handle);
-    const auto &definition = circuit_.get(instance.definition());
-    const auto footprint = footprint_definition_from_dict(footprint_payload);
-    const auto footprint_bytes = volt::io::write_footprint_asset(footprint);
-
-    auto pads_by_pin = std::map<std::size_t, std::vector<std::string>>{};
-
-    for (const auto item : pin_pads) {
-        const auto key = string_from_pin_key(item.first);
-        auto pin = std::optional<volt::PinId>{};
-        if (py::isinstance<py::int_>(item.first)) {
-            pin = queries::pin_by_number(circuit_, component_handle, key);
-        } else {
-            const auto matches = pins_by_name(component_handle, key);
-            if (matches.size() > 1) {
-                throw std::invalid_argument{"Component pin name is ambiguous"};
-            }
-            if (!matches.empty()) {
-                pin = matches.front();
-            }
-        }
-        if (!pin.has_value()) {
-            throw std::out_of_range{"Component has no pin with that name or number"};
-        }
-        const auto pin_definition = circuit_.get(pin.value()).definition();
-        const auto definition_match = std::ranges::find(definition.pins(), pin_definition);
-        if (definition_match == definition.pins().end()) {
-            throw volt::KernelLogicError{volt::ErrorCode::CrossReferenceViolation,
-                                         "Selected part pin belongs to another component"};
-        }
-        const auto pin_index =
-            static_cast<std::size_t>(definition_match - definition.pins().begin());
-        const auto [unused, inserted] =
-            pads_by_pin.emplace(pin_index, pad_labels_from_value(item.second));
-        if (!inserted) {
-            throw volt::KernelArgumentError{volt::ErrorCode::DuplicateName,
-                                            "Selected part maps one logical pin more than once"};
-        }
-    }
-
-    auto pin_terminal_mappings = std::vector<volt::PinPackageTerminalMapping>{};
-    auto terminal_pad_mappings = std::vector<volt::PackageTerminalPadMapping>{};
-    pin_terminal_mappings.reserve(definition.pins().size());
-    terminal_pad_mappings.reserve(definition.pins().size());
-    for (std::size_t index = 0; index < definition.pins().size(); ++index) {
-        const auto mapped = pads_by_pin.find(index);
-        if (mapped == pads_by_pin.end()) {
-            throw volt::KernelArgumentError{
-                volt::ErrorCode::CrossReferenceViolation,
-                "Every selected component PinKey must map to footprint pads"};
-        }
-        const auto &pin = circuit_.get(definition.pins()[index]);
-        auto pads = std::vector<volt::FootprintPadKey>{};
-        pads.reserve(mapped->second.size());
-        for (const auto &pad : mapped->second) {
-            pads.emplace_back(pad);
-        }
-        pin_terminal_mappings.emplace_back(definition.contract().pin_keys()[index],
-                                           std::vector{volt::PackageTerminalKey{pin.number()}});
-        terminal_pad_mappings.emplace_back(volt::PackageTerminalKey{pin.number()}, std::move(pads));
-    }
-
-    auto records = std::vector<volt::ElectricalRecordSpec>{};
-    if (voltage_rating.has_value()) {
-        require_finite(*voltage_rating, "Selected-part voltage rating must be finite");
-        if (definition.contract().pin_keys().size() != 2U) {
-            throw volt::KernelArgumentError{
-                volt::ErrorCode::InvalidArgument,
-                "voltage_rating requires an explicitly oriented two-pin exact part"};
-        }
-        records.push_back(volt::voltage_record(
-            volt::ElectricalSubject::directed_relation(volt::ElectricalPinIndex{0},
-                                                       volt::ElectricalPinIndex{1}),
-            volt::ElectricalMeaning::AbsoluteLimit,
-            volt::ElectricalValue{volt::QuantityRange::maximum(
-                volt::Quantity{volt::UnitDimension::Voltage, *voltage_rating})}));
-    }
-
-    auto model_reference = std::optional<volt::PartModel3DReference>{};
-    auto assets = std::vector<AuthoredPartAsset>{};
-    auto schematic_assets = std::vector<volt::PartSchematicAssetReference>{};
-    schematic_assets.reserve(definition.schematic_symbols().size());
-    for (const auto &reference : definition.schematic_symbols()) {
-        const auto bytes = retained_symbol_asset(reference);
-        if (!bytes.has_value()) {
-            throw volt::KernelRangeError{
-                volt::ErrorCode::UnknownEntity,
-                "Selected authored part has no authoritative bytes for its component symbol",
-                volt::EntityRef::component(component_handle)};
-        }
-        schematic_assets.emplace_back(reference.name(), reference.variant(),
-                                      volt::sha256_content_hash(*bytes));
-        assets.push_back(AuthoredPartAsset{volt::PartAssetKind::Schematic,
-                                           "symbol:" + reference.name() + "@" + reference.variant(),
-                                           *bytes});
-    }
-    assets.push_back(AuthoredPartAsset{
-        volt::PartAssetKind::Footprint,
-        "footprint:" + footprint.ref().library() + "/" + footprint.ref().name(), footprint_bytes});
-    if (model_3d.is_none() != model_3d_bytes.is_none()) {
-        throw volt::KernelArgumentError{volt::ErrorCode::InvalidArgument,
-                                        "3D model metadata and bytes must be supplied together"};
-    }
-    if (!model_3d.is_none()) {
-        const auto metadata = part_model_3d_from_object(model_3d).value();
-        const auto bytes = static_cast<std::string>(py::cast<py::bytes>(model_3d_bytes));
-        model_reference = volt::PartModel3DReference{
-            metadata.format(), metadata.file_name(), volt::sha256_content_hash(bytes),
-            metadata.translation_mm(), metadata.rotation_deg()};
-        assets.push_back(
-            AuthoredPartAsset{volt::PartAssetKind::Model3D,
-                              "model:" + metadata.format() + "/" + metadata.file_name(), bytes});
-    }
-
-    const auto key = volt::PartKey{"component-" + std::to_string(component_handle.index())};
-    auto draft = AuthoredPartDraft{
-        key, component_spec(circuit_, instance.definition()),
-        volt::PartDefinition{
-            definition,
-            volt::PartIdentity{authored_library_namespace, key.value(), authored_library_version},
-            volt::ElectricalRecordSet{definition.contract().pin_keys().size(), std::move(records)},
-            std::move(pin_terminal_mappings),
-            {},
-            volt::PartProvenance{},
-            std::move(schematic_assets),
-            volt::OrderablePart{
-                volt::ManufacturerPart{manufacturer, part_number}, volt::PackageRef{package},
-                volt::HashedFootprintReference{footprint.ref(),
-                                               volt::sha256_content_hash(footprint_bytes)},
-                part_footprint_pads(footprint), std::move(terminal_pad_mappings),
-                strings_from_iterable(approved_alternate_mpns,
-                                      "approved_alternate_mpns must be iterable"),
-                std::move(model_reference), part_polygon(footprint.courtyard()),
-                part_polygon(footprint.body()), part_polygon(footprint.fabrication_outline()),
-                part_polygon(footprint.assembly_outline()), part_markings(footprint)}},
-        std::move(assets)};
-
-    auto prospective_drafts = std::map<std::size_t, AuthoredPartDraft>{};
-    for (std::size_t index = 0; index < circuit_.all<volt::ComponentId>().size(); ++index) {
-        const auto existing_component = volt::ComponentId{index};
-        const auto &existing = circuit_.get(existing_component);
-        if (existing_component == component_handle ||
-            !existing.selected_library_part_ref().has_value()) {
-            continue;
-        }
-        const auto &existing_part =
-            selected_part_bundle().resolve(*existing.selected_library_part_ref());
-        auto existing_assets = std::vector<AuthoredPartAsset>{};
-        for (const auto &reference : volt::part_asset_references(existing_part)) {
-            const auto bytes = selected_part_bundle().asset(reference);
-            if (!bytes.has_value()) {
-                throw volt::KernelRangeError{
-                    volt::ErrorCode::UnknownEntity,
-                    "Selected authored part asset is absent from its retained exact closure",
-                    volt::EntityRef::component(existing_component)};
-            }
-            existing_assets.push_back(
-                AuthoredPartAsset{reference.kind(), reference.key(), std::string{*bytes}});
-        }
-        prospective_drafts.emplace(
-            index, AuthoredPartDraft{existing.selected_library_part_ref()->part_key(),
-                                     component_spec(circuit_, existing.definition()), existing_part,
-                                     std::move(existing_assets)});
-    }
-    prospective_drafts.insert_or_assign(component_handle.index(), std::move(draft));
-    auto builder = volt::PartLibraryBuilder{volt::PartLibraryIdentity{
-        authored_library_namespace, authored_library_version, volt::PartLibrarySchemaVersion::V1}};
-    auto resolver = AuthoredAssetResolver{};
-    auto component_digests = std::map<std::string, volt::ContentHash>{};
-    auto component_roots = std::vector<volt::ComponentKey>{};
-    auto component_attachments = std::vector<volt::io::PartLibraryBundleComponentAttachment>{};
-    for (std::size_t index = 0; index < circuit_.all<volt::ComponentDefId>().size(); ++index) {
-        const auto definition_id = volt::ComponentDefId{index};
-        const auto &candidate = circuit_.get(definition_id);
-        builder.add_component(component_spec(circuit_, definition_id));
-        component_digests.emplace(candidate.contract().key().value(), candidate.content_identity());
-        if (!candidate.source().has_value()) {
-            continue;
-        }
-        component_roots.push_back(candidate.contract().key());
-        for (const auto &symbol : candidate.schematic_symbols()) {
-            if (symbol.variant() != "default") {
-                continue;
-            }
-            const auto bytes = retained_symbol_asset(symbol);
-            if (!bytes.has_value()) {
-                throw volt::KernelRangeError{
-                    volt::ErrorCode::UnknownEntity,
-                    "External component definition has no authoritative default symbol bytes"};
-            }
-            const auto symbol_key = "symbol:" + symbol.name() + "@" + symbol.variant();
-            resolver.add(volt::PartAssetKind::Schematic, symbol_key, *bytes);
-            component_attachments.emplace_back(
-                candidate.contract().key(),
-                volt::PartAssetReference{volt::PartAssetKind::Schematic, symbol_key,
-                                         volt::sha256_content_hash(*bytes)});
-        }
-    }
-    auto selected = std::vector<volt::PartKey>{};
-    for (const auto &[unused_component, candidate] : prospective_drafts) {
-        auto component_check = volt::Circuit{};
-        const auto definition_check = component_check.define_component(candidate.component);
-        const auto &lowered = component_check.get(definition_check);
-        const auto component_key = lowered.contract().key().value();
-        const auto existing = component_digests.find(component_key);
-        if (existing == component_digests.end() || existing->second != lowered.content_identity()) {
-            throw volt::KernelLogicError{
-                volt::ErrorCode::CrossReferenceViolation,
-                "Authored component key resolves to conflicting component content"};
-        }
-        builder.add_part(candidate.part);
-        selected.push_back(candidate.key);
-        for (const auto &asset : candidate.assets) {
-            resolver.add(asset.kind, asset.key, asset.bytes);
-        }
-    }
-    auto bundle = std::make_shared<const volt::io::PartLibraryBundle>(
-        volt::io::PartLibraryBundle::build_with_component_roots(
-            builder, selected, component_roots, resolver, {}, component_attachments));
-
-    auto prospective_circuit = circuit_;
-    for (const auto &[selected_component, candidate] : prospective_drafts) {
-        const auto reference = bundle->require(candidate.key);
-        prospective_circuit.update(volt::ComponentId{selected_component},
-                                   volt::SelectLibraryPart{*bundle, reference});
-    }
-    circuit_ = std::move(prospective_circuit);
-    selected_part_bundle_->replace_bundle(std::move(bundle));
 }
 
 void PyCircuit::set_component_quantity(std::size_t component, const std::string &name,

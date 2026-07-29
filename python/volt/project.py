@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 import inspect
-import re
-import shutil
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -137,24 +135,6 @@ class ExpectedDiagnosticResult:
     def expect_diagnostic_kwargs(self) -> dict[str, str]:
         """Return the checked policy as ``Project.expect_diagnostic`` keyword arguments."""
         return _expect_diagnostic_kwargs(self)
-
-
-@dataclass(frozen=True)
-class ProjectArtifactPaths:
-    """Flat artifact paths written for example and viewer consumers."""
-
-    logical_json: Path | None = None
-    schematic_json: Path | None = None
-    schematic_svg: Path | None = None
-    schematic_body_svg: Path | None = None
-    schematic_svg_pages: tuple[Path, ...] = ()
-    pcb_json: Path | None = None
-    pcb_svg: Path | None = None
-    pcb_layer_svgs: tuple[Path, ...] = ()
-    kicad_pcb: Path | None = None
-    cpl_json: Path | None = None
-    cpl_csv: Path | None = None
-    diagnostics_json: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -763,92 +743,6 @@ class ProjectResult:
             archive=archive,
         )
 
-    def write_artifacts(
-        self,
-        path: str | Path,
-        *,
-        slug: str | None = None,
-        pcb_svg_options: dict[str, object] | None = None,
-    ) -> ProjectArtifactPaths:
-        """Write standard flat example/viewer artifacts and return their paths."""
-        root = Path(path)
-        root.mkdir(parents=True, exist_ok=True)
-        base = slug or _safe_slug(self.project.name)
-        design = self.design() if self.designs else None
-        schematic = self.schematic() if self.schematics else None
-        board = self.board() if self.boards else None
-
-        logical_json = root / f"{base}.volt.json" if design is not None else None
-        schematic_json = (
-            root / f"{base}.volt.schematic.json" if schematic is not None else None
-        )
-        schematic_svg = root / f"{base}.svg" if schematic is not None else None
-        schematic_body_svg = root / f"{base}.body.svg" if schematic is not None else None
-        schematic_pages_dir = root / f"{base}.pages"
-        pcb_json = root / f"{base}.volt.pcb.json" if board is not None else None
-        pcb_svg = root / f"{base}.pcb.svg" if board is not None else None
-        kicad_pcb = (
-            root / f"{base}.kicad_pcb"
-            if board is not None and board.has_capability_profile
-            else None
-        )
-        cpl_json = root / f"{base}.cpl.json" if board is not None else None
-        cpl_csv = root / f"{base}.cpl.csv" if board is not None else None
-        diagnostics_json = root / f"{base}.validation.json"
-        svg_options = dict(pcb_svg_options or {})
-        separate_layers = svg_options.pop("separate_layers", False)
-        if not isinstance(separate_layers, bool):
-            raise TypeError("pcb_svg_options['separate_layers'] must be a boolean")
-        if separate_layers and "layer" in svg_options:
-            raise ValueError(
-                "pcb_svg_options cannot include 'layer' when separate_layers is enabled"
-            )
-
-        if design is not None and logical_json is not None:
-            _write_text(logical_json, design.to_json())
-        schematic_svg_pages: tuple[Path, ...] = ()
-        if schematic is not None:
-            _write_text(schematic_json, schematic.to_json())
-            _write_text(schematic_svg, schematic.to_svg())
-            _write_text(schematic_body_svg, schematic.to_body_svg())
-            shutil.rmtree(schematic_pages_dir, ignore_errors=True)
-            schematic_svg_pages = schematic.write_svg_pages(schematic_pages_dir, prefix=base)
-        pcb_layer_svgs: tuple[Path, ...] = ()
-        if board is not None:
-            pcb_json_text = board.to_json()
-            _write_text(pcb_json, pcb_json_text)
-            _write_text(pcb_svg, board.to_svg(**svg_options))
-            if separate_layers:
-                layer_paths: list[Path] = []
-                layers = json.loads(pcb_json_text)["board"]["layers"]
-                tokens = _pcb_svg_layer_filename_tokens([str(layer["name"]) for layer in layers])
-                for layer, token in zip(layers, tokens):
-                    layer_index = int(str(layer["id"]).removeprefix("board_layer:"))
-                    layer_svg = root / f"{base}.pcb.{token}.svg"
-                    _write_text(layer_svg, board.to_svg(**svg_options, layer=layer_index))
-                    layer_paths.append(layer_svg)
-                pcb_layer_svgs = tuple(layer_paths)
-            if kicad_pcb is not None:
-                _write_text(kicad_pcb, board.to_kicad_pcb().text)
-            _write_text(cpl_json, board.cpl_json())
-            _write_text(cpl_csv, board.cpl_csv())
-        _write_json(diagnostics_json, _flat_diagnostics_payload(self))
-
-        return ProjectArtifactPaths(
-            logical_json=logical_json,
-            schematic_json=schematic_json,
-            schematic_svg=schematic_svg,
-            schematic_body_svg=schematic_body_svg,
-            schematic_svg_pages=schematic_svg_pages,
-            pcb_json=pcb_json,
-            pcb_svg=pcb_svg,
-            pcb_layer_svgs=pcb_layer_svgs,
-            kicad_pcb=kicad_pcb,
-            cpl_json=cpl_json,
-            cpl_csv=cpl_csv,
-            diagnostics_json=diagnostics_json,
-        )
-
     def _test_results(self) -> tuple[ProjectTestResult, ...]:
         return tuple(test for stage in self._stages for test in stage.tests)
 
@@ -1101,36 +995,6 @@ def _check_for_stage(stage: ProjectStage, models: tuple[object, ...]):
     raise RuntimeError(f"Unsupported project stage {stage.name}")
 
 
-_SAFE_PATH_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
-_PCB_SVG_LAYER_TOKEN_CHARS = re.compile(r"[^A-Za-z0-9]+")
-
-
-def _safe_slug(name: str) -> str:
-    cleaned = _SAFE_PATH_CHARS.sub("-", name.strip()).strip("-._")
-    return cleaned or "model"
-
-
-def _pcb_svg_layer_filename_token(layer_name: str) -> str:
-    cleaned = _PCB_SVG_LAYER_TOKEN_CHARS.sub("_", layer_name.strip()).strip("_")
-    return cleaned or "layer"
-
-
-def _pcb_svg_layer_filename_tokens(layer_names: list[str]) -> list[str]:
-    seen: dict[str, int] = {}
-    tokens: list[str] = []
-    for name in layer_names:
-        token = _pcb_svg_layer_filename_token(name)
-        count = seen.get(token, 0) + 1
-        seen[token] = count
-        tokens.append(token if count == 1 else f"{token}_{count}")
-    return tokens
-
-
-def _write_text(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
-
-
 def _canonical_report_bytes(payload: dict[str, object]) -> str:
     return json.dumps(
         payload,
@@ -1265,10 +1129,6 @@ def _expected_diagnostics_ok(
     return not unexpected and not missing
 
 
-def _write_json(path: Path, payload: object) -> None:
-    _write_text(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
-
-
 def _diagnostics_payload(
     result: ProjectResult,
     *,
@@ -1309,50 +1169,6 @@ def _diagnostics_payload(
     }
 
 
-def _flat_diagnostics_payload(
-    result: ProjectResult,
-    *,
-    diagnostics: ProjectDiagnostics | None = None,
-    status: str | None = None,
-) -> dict:
-    diagnostics = tuple(result.diagnostics if diagnostics is None else diagnostics)
-    status = result.status if status is None else status
-    expected, unexpected, missing = _diagnostic_policy_snapshot(
-        result.project._expected_diagnostics,
-        ProjectDiagnostics(diagnostics),
-    )
-    reports: dict[str, dict] = {}
-    for report_name in _flat_report_names(diagnostics):
-        report_diagnostics = tuple(
-            diagnostic for diagnostic in diagnostics if _flat_report_name(diagnostic) == report_name
-        )
-        reports[report_name] = {
-            "summary": _diagnostic_summary(ProjectDiagnostics(report_diagnostics)),
-            "diagnostics": [_flat_diagnostic_payload(diagnostic) for diagnostic in report_diagnostics],
-        }
-    return {
-        "status": status,
-        "summary": _diagnostic_summary(ProjectDiagnostics(diagnostics)),
-        "diagnostics": [
-            {"source": _flat_report_name(diagnostic), **_flat_diagnostic_payload(diagnostic)}
-            for diagnostic in diagnostics
-        ],
-        "reports": reports,
-        "expected": [
-            _expected_diagnostic_result_payload(expectation)
-            for expectation in expected
-        ],
-        "unexpected": [
-            {"source": _flat_report_name(diagnostic), **_flat_diagnostic_payload(diagnostic)}
-            for diagnostic in unexpected
-        ],
-        "missing_expected": [
-            _expected_diagnostic_result_payload(expectation)
-            for expectation in missing
-        ],
-    }
-
-
 def _diagnostic_policy_snapshot(
     expectations: Iterable[ExpectedDiagnostic],
     diagnostics: ProjectDiagnostics,
@@ -1368,48 +1184,6 @@ def _diagnostic_policy_snapshot(
     )
     missing = tuple(result for result in matches if not result.matched)
     return matches, unexpected, missing
-
-
-def _flat_report_names(diagnostics: tuple[ProjectDiagnostic, ...]) -> tuple[str, ...]:
-    names: list[str] = []
-    for diagnostic in diagnostics:
-        name = _flat_report_name(diagnostic)
-        if name not in names:
-            names.append(name)
-    for name in (
-        "logical_design",
-        "pcb_board",
-        "pcb_readiness",
-        "schematic_readability",
-        "schematic_readiness",
-    ):
-        if name not in names:
-            names.append(name)
-    return tuple(names)
-
-
-def _flat_report_name(diagnostic: ProjectDiagnostic) -> str:
-    return {
-        "logical.default": "logical_design",
-        "logical.pcb_ready": "pcb_readiness",
-        "schematic.readability": "schematic_readability",
-        "schematic.readiness": "schematic_readiness",
-        "pcb.board": "pcb_board",
-    }.get(diagnostic.report, diagnostic.report)
-
-
-def _flat_diagnostic_payload(diagnostic: ProjectDiagnostic) -> dict[str, object]:
-    return {
-        "severity": diagnostic.severity,
-        "category": diagnostic.category,
-        "code": diagnostic.code,
-        "message": diagnostic.message,
-        "entities": [_diagnostic_entity_payload(entity) for entity in diagnostic.entities],
-        "overlays": [_diagnostic_overlay_payload(overlay) for overlay in diagnostic.overlays],
-        "measurement": _diagnostic_measurement_payload(diagnostic.measurement),
-        "rule": diagnostic.rule,
-        "expect_diagnostic_kwargs": diagnostic.expect_diagnostic_kwargs,
-    }
 
 
 def _project_diagnostic_payload(diagnostic: ProjectDiagnostic) -> dict[str, object]:

@@ -4,23 +4,37 @@ import volt
 from project_framework_helpers import _delivery_profile, _passive_0603
 
 
-def _select_resistor(component, *, part_number="RC0603FR-07330RL"):
-    component.select_part(
-        manufacturer="Yageo",
-        part_number=part_number,
-        package="0603",
-        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-        pin_pads={1: "1", 2: "2"},
+def _resistor_parts(*specs):
+    library = volt.Library("volt.tests.assembly", version="1.0.0")
+    return tuple(
+        library.part(
+            name,
+            pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+            value=value,
+            manufacturer="Yageo",
+            mpn=mpn,
+            package="0603",
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+            pads={1: "1", 2: "2"},
+            prefix="R",
+        )
+        for name, value, mpn in specs
     )
-    return component
 
 
-def _assembly_ready_design():
+def _assembly_ready_design(*, include_extra=False):
+    specs = [
+        ("R-330", "330", "RC0603FR-07330RL"),
+        ("R-1K", "1k", "RC0603FR-071KL"),
+    ]
+    if include_extra:
+        specs.append(("R-10K", "10k", "RC0603FR-0710KL"))
+    parts = _resistor_parts(*specs)
     design = volt.Design("assembly-demo")
-    r1 = design.R("330", ref="R1").dnp(False)
-    r2 = design.R("1k", ref="R2").dnp(False)
-    _select_resistor(r1)
-    _select_resistor(r2, part_number="RC0603FR-071KL")
+    design.instantiate(parts[0], ref="R1").dnp(False)
+    design.instantiate(parts[1], ref="R2").dnp(False)
+    if include_extra:
+        design.instantiate(parts[2], ref="R3").dnp(False)
     return design
 
 
@@ -54,9 +68,9 @@ def test_board_cpl_projection_exposes_kernel_json_and_csv():
 def test_board_assembly_diagnostics_are_explicit():
     design = volt.Design("assembly-gaps")
     placed_without_part = design.R("330", ref="R1").dnp(False)
-    unplaced = design.R("1k", ref="R2").dnp(False)
+    (unplaced_part,) = _resistor_parts(("R-1K", "1k", "RC0603FR-071KL"))
+    unplaced = design.instantiate(unplaced_part, ref="R2").dnp(False)
     design.R("10k", ref="R3").dnp(False)
-    _select_resistor(unplaced)
     board = design.add_board("Main")
     board.place(placed_without_part, at=(1, 2))
 
@@ -78,10 +92,7 @@ def test_project_bundle_default_graph_does_not_implicitly_export_assembly_files(
 
     @project.design
     def design():
-        result = _assembly_ready_design()
-        unplaced = result.R("10k", ref="R3").dnp(False)
-        _select_resistor(unplaced, part_number="RC0603FR-0710KL")
-        return result
+        return _assembly_ready_design(include_extra=True)
 
     @project.board
     def board(context):

@@ -783,8 +783,8 @@
 
       <section id="workflows">
         <span class="section-kicker">04 · Real workflows</span>
-        <h2>The authoring path works.<br>The reopening path is missing.</h2>
-        <p class="section-lead">Three real Project examples validate the fixed public stage sequence. The usability gap appears after a build: model, diagnostics and info commands reconstruct the project by importing and executing its Python entrypoint because there is no public bundle reader.</p>
+        <h2>Author once.<br>Reopen without source execution.</h2>
+        <p class="section-lead">The fixed public stage sequence produces one verified ProjectBundle. Current inspection, diff and typed-export commands consume that bundle without importing or executing the Python entrypoint again.</p>
 
         <div class="split">
           <div class="panel good">
@@ -802,18 +802,15 @@ def schematic(ctx: BuildContext): ...
 def board(ctx: BuildContext): ...
 
 result = project.run()</code></pre>
-            <p>All three staged examples fit this model. <code>ProjectResource</code> already carries extra typed authoring inputs without adding arbitrary public stages.</p>
+            <p><code>ProjectResource</code> carries extra typed authoring inputs without adding arbitrary public stages.</p>
           </div>
-          <div class="panel caution">
-            <span class="tag brick">Missing today</span>
+          <div class="panel good">
+            <span class="tag teal">Supported today</span>
             <h3 style="margin-top: .9rem;">Inspect without execution</h3>
-            <pre><code><span class="comment"># Current command semantics:</span>
-volt model --project . --board Main --json
-volt diagnostics --project . --check
-volt info --project . --json
-
-<span class="comment"># Each imports and executes project Python again.</span></code></pre>
-            <p>The accepted Project Framework policy says tools should inspect a result bundle without rerunning Python. Current CLI inspection does not yet satisfy that lifecycle.</p>
+            <pre><code>volt build --project . --output build/controller
+volt inspect --bundle build/controller --board controller:Main --json
+volt export --bundle build/controller --output dist/controller --kind board_svg</code></pre>
+            <p><code>build</code> is the only source-executing publication route. <code>inspect</code>, <code>diff</code> and <code>export</code> reopen the verified artifact graph.</p>
           </div>
         </div>
 
@@ -1116,18 +1113,16 @@ compiled = board.compile()  <span class="comment"># optional advanced seam</span
 volt build --project . --output build/controller
 
 <span class="comment"># Artifact path — never imports project source.</span>
-volt info        --bundle build/controller --json
-volt model       --bundle build/controller --board controller:Main --json
-volt diagnostics --bundle build/controller --stage board --check
-volt export manufacturing --bundle build/controller \
-  --board controller:Main --output dist/controller --archive</code></pre>
+volt inspect --bundle build/controller --board controller:Main --json
+volt export --bundle build/controller --output dist/controller \
+  --kind board_svg</code></pre>
         <pre><code>bundle = volt.ProjectBundle.open("build/controller")
 bundle.models(kind="board")
 bundle.artifacts(role="view")
 bundle.diagnostics</code></pre>
-        <p class="small">Exact CLI spelling is open: shared <code>--bundle</code> is shown because it extends existing commands and selectors. A new <code>inspect</code> command is also credible. The invariant is stronger than the syntax: inspection must not execute authoring Python.</p>
+        <p class="small">The supported artifact path is exact: <code>inspect</code>, <code>diff</code> and <code>export</code> accept verified bundles and never execute authoring Python.</p>
 
-        <div class="note warning"><strong>Do not genericise stages now.</strong> All three real Project examples fit design→schematic→board, <code>ProjectResource</code> already carries extra typed inputs, and the accepted policy requires evidence before a custom graph. Admit a typed <code>StageKey[T]</code> only when a real fourth output domain cannot fit without contortion.</div>
+        <div class="note warning"><strong>Do not genericise stages now.</strong> The supported project workflows fit design→schematic→board, <code>ProjectResource</code> already carries extra typed inputs, and the accepted policy requires evidence before a custom graph. Admit a typed <code>StageKey[T]</code> only when a real fourth output domain cannot fit without contortion.</div>
       </section>
 
       <section id="artifacts">

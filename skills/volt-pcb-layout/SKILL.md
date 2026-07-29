@@ -24,9 +24,9 @@ the layout.
 ## Preconditions
 
 - A logical circuit (`Design`) exists with nets and components.
-- Each placed component has a **selected physical part** with footprint geometry and a
-  pin→pad map (`part.select_part(... footprint=..., pin_pads=...)`). Verify with
-  `design.validate_for_pcb()` before placing — unresolved footprints make pad anchors fail.
+- Each placed component was instantiated from an exact versioned library `Part` with
+  footprint geometry and a pin→pad map. Verify with `design.validate_for_pcb()` before
+  placing — unresolved footprints make pad anchors fail.
 - You know the board's intent: rough size, layer count, which net is ground, which parts
   are connectors / mounting references.
 
@@ -290,8 +290,3 @@ This is where "looks professional" gets verified, not assumed.
   rotation 0° or 90°.
 - **Treating the rubric as a gate.** It is advisory. Diagnose and improve; do not refuse to
   finish a board over an `info`.
-
-## Further reading
-
-- `references/layout-grammar.md` — full method-by-method reference for the `board.layout()` grammar.
-- `references/walkthrough-555-routing.md` — narrated read of the routing section of `examples/timer_555_led_blinker/board.py`.

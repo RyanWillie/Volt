@@ -11,7 +11,6 @@ FetchContent_MakeAvailable(pybind11)
 
 file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt)
 file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt/cli)
-file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt/libraries)
 set(
     VOLT_PYTHON_PACKAGE_FILES
     __init__.py
@@ -49,19 +48,6 @@ foreach(package_file IN LISTS VOLT_PYTHON_PACKAGE_FILES)
     configure_file(
         ${PROJECT_SOURCE_DIR}/python/volt/${package_file}
         ${PROJECT_BINARY_DIR}/python/volt/${package_file}
-        COPYONLY
-    )
-endforeach()
-
-set(
-    VOLT_PYTHON_LIBRARY_FILES
-    __init__.py
-    stm32_usb_buck.py
-)
-foreach(library_file IN LISTS VOLT_PYTHON_LIBRARY_FILES)
-    configure_file(
-        ${PROJECT_SOURCE_DIR}/python/volt/libraries/${library_file}
-        ${PROJECT_BINARY_DIR}/python/volt/libraries/${library_file}
         COPYONLY
     )
 endforeach()
@@ -147,9 +133,6 @@ if(VOLT_BUILD_TESTS)
         string(REGEX REPLACE "\\.py$" "" test_name ${test_name})
 
         set(test_labels python)
-        if(test_relative MATCHES "^examples/")
-            list(APPEND test_labels example integration)
-        endif()
         # ENVIRONMENT_MODIFICATION applies path_list_prepend in reverse order.
         # Effective PYTHONPATH: build tree, source root, test helpers.
         # This ensures the built _volt extension is imported before source files.

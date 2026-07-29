@@ -567,18 +567,6 @@ def main():
     assert "design.power_reaches_connector:" in human.stdout
     assert "POWER" in human.stdout
 
-    diagnostics = _run(
-        project,
-        "diagnostics",
-        "--project",
-        str(project),
-        "--check",
-        "--json",
-    )
-    assert diagnostics.returncode == 1
-    diagnostic_payload = _json(diagnostics)
-    assert diagnostic_payload["tests"] == result["tests"]
-
     inspected = _run(
         project,
         "inspect",

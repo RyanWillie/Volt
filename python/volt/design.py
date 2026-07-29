@@ -10,14 +10,13 @@ from ._utils import _number
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
 from .library import (
     Library,
-    LibraryComponent,
     PinSpec,
     SchematicSymbolSpec,
     _normalize_schematic_symbols,
     _schematic_symbol_refs,
 )
 from .logical import Component, ComponentDefinition, ModuleDefinition, ModuleInstance, Net, NetClass
-from .part import ComponentContract, Part, _PartDefinition
+from .part import ComponentContract, Part
 from ._schematic_metadata import _schematic_sheet_metadata
 from .schematic import Schematic
 
@@ -261,13 +260,13 @@ class Design:
 
     def instantiate(
         self,
-        definition: ComponentDefinition | ModuleDefinition | LibraryComponent | Part,
+        definition: ComponentDefinition | ModuleDefinition | Part,
         *,
         ref: str | None = None,
         prefix: str | None = None,
         properties: dict | None = None,
     ) -> Component | ModuleInstance:
-        """Instantiate a component definition, module definition, library component, or part."""
+        """Instantiate a component definition, module definition, or exact library part."""
         if isinstance(definition, Part):
             if definition.library is None:
                 raise ValueError("Part must be added to a Library before instantiation")
@@ -293,33 +292,6 @@ class Design:
                 component.index, snapshot, definition.source_name
             )
             return component
-        if isinstance(definition, LibraryComponent):
-            definition = definition._to_part_definition()
-
-        if isinstance(definition, _PartDefinition):
-            component_definition = self._define_part_definition(definition)
-            component = self.instantiate(
-                component_definition,
-                ref=ref,
-                prefix=definition.prefix if prefix is None else prefix,
-                properties=properties,
-            )
-            if definition.physical_part is not None:
-                part = definition.physical_part
-                component.select_part(
-                    manufacturer=part.manufacturer,
-                    part_number=part.part_number,
-                    package=part.package,
-                    footprint=part.footprint,
-                    pin_pads=part.pin_pads_for(definition),
-                    properties=part.properties,
-                    voltage_rating=part.voltage_rating,
-                    power_rating=part.power_rating,
-                    model_3d=part.model_3d,
-                    approved_alternate_mpns=part.approved_alternate_mpns,
-                )
-            return component
-
         if isinstance(definition, ModuleDefinition):
             if definition._design is not self:
                 raise ValueError("Module definition belongs to a different design")
@@ -337,8 +309,7 @@ class Design:
 
         if not isinstance(definition, ComponentDefinition):
             raise TypeError(
-                "instantiate expects a ComponentDefinition, ModuleDefinition, "
-                "LibraryComponent, or Part handle"
+                "instantiate expects a ComponentDefinition, ModuleDefinition, or Part handle"
             )
         if definition._design is not self:
             raise ValueError("Component definition belongs to a different design")
@@ -349,23 +320,6 @@ class Design:
         else:
             component = self._circuit.instantiate_ref(definition.index, ref, properties or {})
         return Component(self, component)
-
-    def _define_part_definition(self, part: _PartDefinition) -> ComponentDefinition:
-        return self.define_component(
-            part.name,
-            pins=part.pins,
-            properties=part.properties,
-            source=(
-                part.source_namespace,
-                part.source_name,
-                part.source_version,
-            ),
-            schematic_symbol=part.schematic_symbols,
-            contract=part.contract,
-        )
-
-    def _define_library_component(self, component: LibraryComponent) -> ComponentDefinition:
-        return self._define_part_definition(component._to_part_definition())
 
     def _register_schematic_symbol(self, symbol: SchematicSymbolSpec) -> None:
         self._schematic_document.register_schematic_symbol(symbol._to_dict())
@@ -499,7 +453,7 @@ class Design:
         return self.load_schematic_json(Path(path).read_text(encoding="utf-8"))
 
     def validate(self) -> DiagnosticReport:
-        """Run logical design validation and return the diagnostic report."""
+        """Run default logical validation and exact-part Voltage/Current ERC."""
         return DiagnosticReport(_diagnostic_from_dict(item) for item in self._circuit.validate())
 
     def validate_for_pcb(self) -> DiagnosticReport:

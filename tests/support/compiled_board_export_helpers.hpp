@@ -34,6 +34,13 @@ class ExportFixtureAssetResolver final : public PartAssetResolver {
 };
 
 struct ExportFixturePart {
+    ExportFixturePart(ComponentSpec component_value, PhysicalPart physical_value,
+                      FootprintDefinition footprint_value, PartKey key_value,
+                      std::optional<std::string> model_bytes_value = std::nullopt)
+        : component{std::move(component_value)}, physical{std::move(physical_value)},
+          footprint{std::move(footprint_value)}, key{std::move(key_value)},
+          model_bytes{std::move(model_bytes_value)} {}
+
     ComponentSpec component;
     PhysicalPart physical;
     FootprintDefinition footprint;

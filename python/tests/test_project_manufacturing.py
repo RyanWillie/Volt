@@ -7,8 +7,6 @@ from pathlib import Path
 import pytest
 import volt
 
-from volt.cli import main
-
 
 def _write_project(
     root: Path,
@@ -30,12 +28,6 @@ entrypoint = "{entrypoint}"
 def _write_entrypoint(root: Path, body: str) -> None:
     root.joinpath("project_entry.py").write_text(body, encoding="utf-8")
     sys.modules.pop("project_entry", None)
-
-
-def _read_stdout_json(capsys):
-    captured = capsys.readouterr()
-    assert captured.err == ""
-    return json.loads(captured.out)
 
 
 def _run_project_direct(root: Path) -> volt.ProjectResult:
@@ -178,39 +170,50 @@ def main():
     @project.design
     def design():
         design = volt.Design("status-led")
-        vcc = design.net("VCC", kind="power")
-        led_a = design.net("LED_A")
-        gnd = design.net("GND", kind="ground")
-        j1 = design.connector_1x02(ref="J1")
-        r1 = design.R("330", ref="R1")
-        d1 = design.LED(ref="D1")
-        vcc += j1[1], r1[1]
-        led_a += r1[2], d1["A"]
-        gnd += d1["K"], j1[2]
-        j1.select_part(
+        library = volt.Library("volt.tests.cli.manufacturing", version="1.0.0")
+        header = library.part(
+            "Header-1x02",
+            pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
             manufacturer="Generic",
-            part_number="HDR-1x02",
+            mpn="HDR-1x02",
             package="2.54mm-1x02",
             footprint=volt.FootprintDefinition(
                 ("test", "Header1x02"),
                 pads=_header_1x02().pads,
             ),
-            pin_pads={{1: "1", 2: "2"}},
+            pads={{1: "1", 2: "2"}},
+            prefix="J",
         )
-        r1.select_part(
+        resistor = library.part(
+            "Resistor-330R",
+            pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
             manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
+            mpn="RC0603FR-07330RL",
             package="0603",
             footprint=_rect_0603(("test", "RectR0603")),
-            pin_pads={{1: "1", 2: "2"}},
+            pads={{1: "1", 2: "2"}},
+            prefix="R",
+            value="330",
         )
-        d1.select_part(
+        led = library.part(
+            "Status-LED",
+            pins=(volt.PinSpec("A", 1), volt.PinSpec("K", 2)),
             manufacturer="Lite-On",
-            part_number="LTST-C190KRKT",
+            mpn="LTST-C190KRKT",
             package="0603",
             footprint=_rect_0603(("test", "RectD0603")),
-            pin_pads={{"A": "1", "K": "2"}},
+            pads={{"A": "1", "K": "2"}},
+            prefix="D",
         )
+        vcc = design.net("VCC", kind="power")
+        led_a = design.net("LED_A")
+        gnd = design.net("GND", kind="ground")
+        j1 = design.instantiate(header, ref="J1")
+        r1 = design.instantiate(resistor, ref="R1")
+        d1 = design.instantiate(led, ref="D1")
+        vcc += j1[1], r1[1]
+        led_a += r1[2], d1["A"]
+        gnd += d1["K"], j1[2]
         for component in (j1, r1, d1):
             component.dnp(False)
         return design
@@ -309,47 +312,7 @@ profile = "profiles/generic.volt.json"
     _write_manufacturing_entrypoint(root, lossy=lossy, board_profile=board_profile)
 
 
-def test_export_manufacturing_reports_verified_bundle_migration_without_writing(
-    tmp_path, capsys
-):
-    root = tmp_path / "board"
-    output = tmp_path / "manufacturing-package"
-    _write_manufacturing_project(root)
-    root.joinpath("project_entry.py").write_text(
-        "raise RuntimeError('retired command executed project source')\n",
-        encoding="utf-8",
-    )
-
-    assert (
-        main(
-            [
-                "export",
-                "manufacturing",
-                "--json",
-                "--archive",
-                "--output",
-                str(output),
-                "--project",
-                str(root),
-            ]
-        )
-        == 2
-    )
-
-    payload = _read_stdout_json(capsys)
-    assert payload["format"] == "volt.cli-result"
-    assert payload["schema_version"] == 1
-    assert payload["command"] == "export"
-    assert payload["error"]["code"] == "source-backed-export-retired"
-    assert "Select `fabrication` during `volt build`" in payload["error"]["message"]
-    assert "`volt export --bundle ...`" in payload["error"]["message"]
-    assert not output.exists()
-    assert not output.with_suffix(".zip").exists()
-
-
-def test_project_result_manufacturing_package_remains_available_after_cli_retirement(
-    tmp_path,
-):
+def test_project_result_manufacturing_package_writes_exact_native_handoff(tmp_path):
     root = tmp_path / "board"
     direct_output = tmp_path / "direct-package"
     _write_manufacturing_project(root)

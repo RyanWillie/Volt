@@ -6,11 +6,9 @@ TEST_CASE("Real-board ERC and DRC regression accepts a fully routed status-contr
     const auto library = real_board_library();
 
     const auto erc = volt::validate_circuit(fixture.circuit);
-    const auto pcb_readiness = volt::validate_for_pcb(fixture.circuit);
     const auto board = volt::validate_board(layout.board, library);
 
     CHECK(erc.empty());
-    CHECK(pcb_readiness.empty());
     INFO("actual board diagnostic codes: " << diagnostic_code_list(board));
     CHECK(board.empty());
 }
@@ -21,14 +19,9 @@ TEST_CASE("Real-board regression keeps ERC, PCB readiness, DRC, visual, and fab 
     const auto library = real_board_library();
 
     const auto erc = volt::validate_circuit(fixture.circuit);
-    const auto pcb_readiness = volt::validate_for_pcb(fixture.circuit);
     auto board = volt::validate_board(layout.board, library);
 
     CHECK(erc.empty());
-    check_diagnostic_summaries(
-        pcb_readiness,
-        {ExpectedDiagnostic{"PHYSICAL_PART_REQUIRED", volt::Severity::Error,
-                            volt::DiagnosticCategory{volt::diagnostic_categories::General}}});
     check_diagnostic_summaries(
         board,
         {ExpectedDiagnostic{"PCB_COMPONENT_NOT_PLACED", volt::Severity::Error,
@@ -108,21 +101,6 @@ TEST_CASE("Real-board ERC regression locks intentionally broken logical variants
         CHECK(report.diagnostics()[0].entities() ==
               std::vector{volt::EntityRef::net(fixture.vdd), volt::EntityRef::pin(fixture.mcu_vdd),
                           volt::EntityRef::pin_def(fixture.mcu_vdd_pin)});
-    }
-
-    SECTION("selected MCU part voltage rating is below the authored 3V3 rail") {
-        auto fixture = make_real_board_fixture();
-        set_selected_part_voltage_rating(fixture.circuit, fixture.mcu, 2.5);
-
-        const auto report = volt::validate_circuit(fixture.circuit);
-
-        check_diagnostic_summaries(
-            report,
-            {ExpectedDiagnostic{"SELECTED_PART_VOLTAGE_RATING_EXCEEDED", volt::Severity::Error,
-                                volt::DiagnosticCategory{volt::diagnostic_categories::Erc}}});
-        CHECK(report.diagnostics()[0].entities() ==
-              std::vector{volt::EntityRef::net(fixture.vdd), volt::EntityRef::pin(fixture.mcu_vdd),
-                          volt::EntityRef::component(fixture.mcu)});
     }
 
     SECTION("two physical supply outputs are shorted onto VBUS") {

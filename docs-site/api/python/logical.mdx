@@ -25,8 +25,8 @@ Source: `python/volt/logical.py`
 | `schematic_symbol_variant(self, variant: str) -> SchematicSymbolSpec \| str \| None` | Return the schematic symbol registered for a named symbol variant. |
 | `__getitem__(self, key: int \| str) -> Pin` | Return a component pin by physical number, name, or explicit alias. |
 | `pins(self, name: str) -> PinGroup` | Return every component pin that has the given name. |
-| `select_part(self, *, manufacturer: str, part_number: str, package: str, footprint: Footprint, pin_pads: dict[int \| str, PinPadValue], properties: dict \| None = None, voltage_rating: float \| None = None, power_rating: float \| None = None, model_3d: PartModel3D \| None = None, approved_alternate_mpns: Iterable[str] = (), selection_override: bool = False) -> Component` | Select one exact P6-backed physical part with explicit footprint geometry. |
 | `dnp(self, value: bool = True) -> Component` | Set explicit do-not-populate assembly intent for this component. |
+| `selection_override(self, value: bool = True) -> Component` | Set explicit selected-part override intent for this component. |
 
 ## `volt.ComponentDefinition`
 
@@ -118,7 +118,7 @@ Source: `python/volt/logical.py`
 | --- | --- |
 | `net(self, name: str, *, kind: str = 'signal') -> ModuleNet` | Create a template-local net inside this module definition. |
 | `port(self, name: str, *, kind: str = 'signal', role: str = 'passive', required: bool = True) -> ModulePort` | Create a module boundary port backed by an internal template net. |
-| `instantiate(self, definition: ComponentDefinition \| LibraryComponent, *, ref: str, properties: dict \| None = None) -> ModuleComponent` | Instantiate a component template inside this module definition. |
+| `instantiate(self, definition: ComponentDefinition, *, ref: str, properties: dict \| None = None) -> ModuleComponent` | Instantiate a component template inside this module definition. |
 | `connect(self, *endpoints) -> ModuleNet` | Connect module-local pins to exactly one module net or port. |
 | `template_nets(self) -> tuple[TemplateNetInfo, ...]` | Return read-only descriptions of this module's template nets. |
 | `ports(self) -> tuple[PortInfo, ...]` | Return read-only descriptions of this module's boundary ports. |

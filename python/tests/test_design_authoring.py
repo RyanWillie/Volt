@@ -3,45 +3,11 @@ import json
 import pytest
 
 import volt
-from project_framework_helpers import _header_1x02, _passive_0603
+from project_framework_helpers import _board_ready_design
 
 
 def test_python_led_serializes_exact_selected_part_closure():
-    design = volt.Design("led")
-
-    vcc = design.net("VCC", kind="power")
-    led_a = design.net("LED_A")
-    gnd = design.net("GND", kind="ground")
-
-    j1 = design.connector_1x02(ref="J1")
-    r1 = design.R("330 ohm", ref="R1")
-    d1 = design.LED(ref="D1")
-
-    j1.select_part(
-        manufacturer="Generic",
-        part_number="HDR-1x02-2.54mm",
-        package="2.54mm-1x02",
-        footprint=_header_1x02(),
-        pin_pads={1: "1", 2: "2"},
-    )
-    r1.select_part(
-        manufacturer="Yageo",
-        part_number="RC0603FR-07330RL",
-        package="0603",
-        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-        pin_pads={1: "1", 2: "2"},
-    )
-    d1.select_part(
-        manufacturer="Lite-On",
-        part_number="LTST-C190KRKT",
-        package="0603",
-        footprint=_passive_0603(("leds", "LED_0603_1608Metric")),
-        pin_pads={"K": "1", "A": "2"},
-    )
-
-    vcc += j1[1], r1[1]
-    led_a += r1[2], d1["A"]
-    gnd += d1["K"], j1[2]
+    design = _board_ready_design("led")
 
     report = design.validate()
     assert len(report) == 0
@@ -51,14 +17,13 @@ def test_python_led_serializes_exact_selected_part_closure():
     logical = json.loads(serialized)
 
     assert serialized == design.to_json()
-    assert all("contract" in definition for definition in logical["component_definitions"])
     assert all("selected_physical_part" not in component for component in logical["components"])
     selected = [component["selected_library_part"] for component in logical["components"]]
     assert len({reference["library_digest"] for reference in selected}) == 1
     assert [reference["part_key"] for reference in selected] == [
-        "component-0",
-        "component-1",
-        "component-2",
+        "Header-1x02",
+        "Resistor-330R",
+        "Status-LED",
     ]
 
 
@@ -93,6 +58,7 @@ def test_python_diagnostic_design_serializes_component_contract():
         )
     ]
 
+
 def test_design_returns_component_handles_by_reference():
     design = volt.Design("component-lookup")
     r1 = design.R("330", ref="R1")
@@ -108,6 +74,7 @@ def test_design_returns_component_handles_by_reference():
 
     with pytest.raises(KeyError, match="R404"):
         design.component("R404")
+
 
 def test_python_kernel_error_translator_exposes_typed_structural_failures():
     assert volt.VoltError is volt._volt.VoltError

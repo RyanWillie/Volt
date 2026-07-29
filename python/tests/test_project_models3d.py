@@ -7,9 +7,30 @@ import volt
 from project_framework_helpers import _delivery_profile, _header_1x02, _passive_0603
 
 
-def _mark_populated(design, *references):
-    for reference in references:
-        design.component(reference).dnp(False)
+def _model_part(
+    library,
+    name,
+    *,
+    manufacturer,
+    mpn,
+    package,
+    footprint,
+    model_3d=None,
+    prefix="R",
+    value=None,
+):
+    return library.part(
+        name,
+        pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+        manufacturer=manufacturer,
+        mpn=mpn,
+        package=package,
+        footprint=footprint,
+        pads={1: "1", 2: "2"},
+        model_3d=model_3d,
+        prefix=prefix,
+        value=value,
+    )
 
 
 def test_part_model_3d_requires_absolute_source_path():
@@ -28,40 +49,53 @@ def test_project_result_writes_part_model_assets_and_placement_transforms(tmp_pa
     @project.design
     def design():
         design = volt.Design("model-bundle")
+        library = volt.Library("volt.tests.models3d", version="1.0.0")
+        header = _model_part(
+            library,
+            "Header-1x02",
+            manufacturer="Generic",
+            mpn="HDR-1x02",
+            package="2.54mm-1x02",
+            footprint=_header_1x02(),
+            prefix="J",
+        )
+        model = volt.PartModel3D(
+            asset_path,
+            offset=(1.0, 2.0, 0.3),
+            rotation=30,
+        )
+        r330 = _model_part(
+            library,
+            "Resistor-330R",
+            manufacturer="Yageo",
+            mpn="RC0603FR-07330RL",
+            package="0603",
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+            model_3d=model,
+            value="330",
+        )
+        r1k = _model_part(
+            library,
+            "Resistor-1K",
+            manufacturer="Yageo",
+            mpn="RC0603FR-071KL",
+            package="0603",
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+            model_3d=model,
+            value="1k",
+        )
         vcc = design.net("VCC", kind="power")
         mid = design.net("MID")
         gnd = design.net("GND", kind="ground")
-        j1 = design.connector_1x02(ref="J1")
-        r1 = design.R("330", ref="R1")
-        r2 = design.R("1k", ref="R2")
+        j1 = design.instantiate(header, ref="J1")
+        r1 = design.instantiate(r330, ref="R1")
+        r2 = design.instantiate(r1k, ref="R2")
         vcc += j1[1], r1[1]
         mid += r1[2], r2[1]
         gnd += r2[2], j1[2]
-
-        design.component("J1").select_part(
-            manufacturer="Generic",
-            part_number="HDR-1x02",
-            package="2.54mm-1x02",
-            footprint=_header_1x02(),
-            pin_pads={1: "1", 2: "2"},
-        )
-        for ref, part_number in (
-            ("R1", "RC0603FR-07330RL"),
-            ("R2", "RC0603FR-071KL"),
-        ):
-            design.component(ref).select_part(
-                manufacturer="Yageo",
-                part_number=part_number,
-                package="0603",
-                footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-                pin_pads={1: "1", 2: "2"},
-                model_3d=volt.PartModel3D(
-                    asset_path,
-                    offset=(1.0, 2.0, 0.3),
-                    rotation=30,
-                ),
-            )
-        _mark_populated(design, "J1", "R1", "R2")
+        j1.dnp(False)
+        r1.dnp(False)
+        r2.dnp(False)
         return design
 
     @project.board
@@ -133,29 +167,35 @@ def test_project_result_keeps_distinct_model_assets_with_same_hash(tmp_path):
     @project.design
     def design():
         design = volt.Design("model-metadata-collision")
+        library = volt.Library("volt.tests.models3d.collision", version="1.0.0")
+        r330 = _model_part(
+            library,
+            "Resistor-330R",
+            manufacturer="Yageo",
+            mpn="RC0603FR-07330RL",
+            package="0603",
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+            model_3d=volt.PartModel3D(glb_asset),
+            value="330",
+        )
+        r1k = _model_part(
+            library,
+            "Resistor-1K",
+            manufacturer="Yageo",
+            mpn="RC0603FR-071KL",
+            package="0603",
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+            model_3d=volt.PartModel3D(step_asset),
+            value="1k",
+        )
         vcc = design.net("VCC", kind="power")
         gnd = design.net("GND", kind="ground")
-        r1 = design.R("330", ref="R1")
-        r2 = design.R("1k", ref="R2")
+        r1 = design.instantiate(r330, ref="R1")
+        r2 = design.instantiate(r1k, ref="R2")
         vcc += r1[1], r2[1]
         gnd += r1[2], r2[2]
-        design.component("R1").select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
-            package="0603",
-            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-            pin_pads={1: "1", 2: "2"},
-            model_3d=volt.PartModel3D(glb_asset),
-        )
-        design.component("R2").select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-071KL",
-            package="0603",
-            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-            pin_pads={1: "1", 2: "2"},
-            model_3d=volt.PartModel3D(step_asset),
-        )
-        _mark_populated(design, "R1", "R2")
+        r1.dnp(False)
+        r2.dnp(False)
         return design
 
     @project.board
@@ -182,47 +222,22 @@ def test_project_result_keeps_distinct_model_assets_with_same_hash(tmp_path):
 
 def test_missing_part_model_asset_is_rejected_at_exact_part_admission(tmp_path):
     design = volt.Design("model-admission")
-    resistor = design.R("330", ref="R1")
-
-    with pytest.raises(FileNotFoundError):
-        resistor.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
-            package="0603",
-            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-            pin_pads={1: "1", 2: "2"},
-            model_3d=volt.PartModel3D(tmp_path / "missing-body.glb"),
-        )
-
-    assert "selected_library_part" not in json.loads(design.to_json())["components"][0]
-
-
-def test_missing_part_model_asset_preserves_existing_exact_selection(tmp_path):
-    asset = tmp_path / "body.glb"
-    asset.write_bytes(b"body")
-    design = volt.Design("model-admission-atomic")
-    resistor = design.R("330", ref="R1")
-    resistor.select_part(
+    library = volt.Library("volt.tests.models3d.missing", version="1.0.0")
+    resistor = _model_part(
+        library,
+        "Resistor-330R",
         manufacturer="Yageo",
-        part_number="RC0603FR-07330RL",
+        mpn="RC0603FR-07330RL",
         package="0603",
         footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-        pin_pads={1: "1", 2: "2"},
-        model_3d=volt.PartModel3D(asset),
+        model_3d=volt.PartModel3D(tmp_path / "missing-body.glb"),
+        value="330",
     )
-    before = design.to_json()
 
     with pytest.raises(FileNotFoundError):
-        resistor.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
-            package="0603",
-            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-            pin_pads={1: "1", 2: "2"},
-            model_3d=volt.PartModel3D(tmp_path / "missing-body.glb"),
-        )
+        design.instantiate(resistor, ref="R1")
 
-    assert design.to_json() == before
+    assert json.loads(design.to_json())["components"] == []
 
 
 def test_project_result_default_profile_keeps_absent_part_models_optional(tmp_path):
@@ -233,29 +248,34 @@ def test_project_result_default_profile_keeps_absent_part_models_optional(tmp_pa
     @project.design
     def design():
         design = volt.Design("default-profile")
-        vcc = design.net("VCC", kind="power")
-        gnd = design.net("GND", kind="ground")
-        j1 = design.connector_1x02(ref="J1")
-        r1 = design.R("330", ref="R1")
-        vcc += j1[1], r1[1]
-        gnd += r1[2], j1[2]
-
-        design.component("J1").select_part(
+        library = volt.Library("volt.tests.models3d.default", version="1.0.0")
+        header = _model_part(
+            library,
+            "Header-1x02",
             manufacturer="Generic",
-            part_number="HDR-1x02",
+            mpn="HDR-1x02",
             package="2.54mm-1x02",
             footprint=_header_1x02(),
-            pin_pads={1: "1", 2: "2"},
             model_3d=volt.PartModel3D(header_asset),
+            prefix="J",
         )
-        design.component("R1").select_part(
+        resistor = _model_part(
+            library,
+            "Resistor-330R",
             manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
+            mpn="RC0603FR-07330RL",
             package="0603",
             footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-            pin_pads={1: "1", 2: "2"},
+            value="330",
         )
-        _mark_populated(design, "J1", "R1")
+        vcc = design.net("VCC", kind="power")
+        gnd = design.net("GND", kind="ground")
+        j1 = design.instantiate(header, ref="J1")
+        r1 = design.instantiate(resistor, ref="R1")
+        vcc += j1[1], r1[1]
+        gnd += r1[2], j1[2]
+        j1.dnp(False)
+        r1.dnp(False)
         return design
 
     @project.board

@@ -7,6 +7,7 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/constraints/net_class_resolution.hpp>
 #include <volt/core/rule_set.hpp>
+#include <volt/library/part_library.hpp>
 
 namespace volt::detail {
 
@@ -241,43 +242,6 @@ void validate_power_and_ground_semantics(const Circuit &circuit, NetId net_id, c
     }
 }
 
-void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId net_id, const Net &,
-                                            const std::vector<PinId> &group_pins,
-                                            DiagnosticReport &report) {
-    const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
-    const auto voltage_rating_attribute_name = ElectricalAttributeName{"voltage_rating"};
-    const auto &net_attributes = volt::queries::net_electrical_attributes(circuit, net_id);
-    if (net_attributes.contains(voltage_attribute_name)) {
-        const auto &net_voltage_attribute = net_attributes.get(voltage_attribute_name);
-        if (net_voltage_attribute.kind() == ElectricalAttributeValueKind::Quantity) {
-            const auto net_voltage = std::abs(net_voltage_attribute.as_quantity().value());
-            for (const auto pin_id : group_pins) {
-                const auto &pin = circuit.get(pin_id);
-                const auto &selected_part =
-                    volt::queries::selected_physical_part(circuit, pin.component());
-                if (!selected_part.has_value() || !selected_part->electrical_attributes().contains(
-                                                      voltage_rating_attribute_name)) {
-                    continue;
-                }
-
-                const auto &voltage_rating_attribute =
-                    selected_part->electrical_attributes().get(voltage_rating_attribute_name);
-                if (voltage_rating_attribute.kind() != ElectricalAttributeValueKind::Quantity) {
-                    continue;
-                }
-
-                const auto voltage_rating = voltage_rating_attribute.as_quantity().value();
-                if (net_voltage > voltage_rating) {
-                    report.add(erc_error(erc_diagnostic_codes::SelectedPartVoltageRatingExceeded,
-                                         "Net voltage exceeds selected part voltage rating",
-                                         std::vector{EntityRef::net(net_id), EntityRef::pin(pin_id),
-                                                     EntityRef::component(pin.component())}));
-                }
-            }
-        }
-    }
-}
-
 void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net &,
                                  const std::vector<PinId> &group_pins, DiagnosticReport &report) {
     const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
@@ -448,7 +412,6 @@ void validate_net_electrical_rules(const Circuit &circuit, const NetContinuityVi
 
         validate_power_and_ground_semantics(circuit, net_id, net, group_pins,
                                             has_authored_power_supply, report);
-        validate_selected_part_voltage_ratings(circuit, net_id, net, group_pins, report);
         validate_pin_voltage_ranges(circuit, net_id, net, group_pins, report);
         validate_net_class_voltage_limit(circuit, net_id, report);
         validate_output_driver_conflicts(circuit, net_id, group_pins, report);
@@ -470,7 +433,6 @@ void validate_net_semantics(const Circuit &circuit, const NetContinuityView &con
         }
         validate_power_and_ground_semantics(circuit, net_id, net, group_pins,
                                             has_authored_power_supply, report);
-        validate_selected_part_voltage_ratings(circuit, net_id, net, group_pins, report);
         validate_pin_voltage_ranges(circuit, net_id, net, group_pins, report);
         validate_net_class_voltage_limit(circuit, net_id, report);
         validate_output_driver_conflicts(circuit, net_id, group_pins, report);
@@ -502,8 +464,7 @@ void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &
     for (std::size_t index = 0; index < circuit.all<volt::ComponentId>().size(); ++index) {
         const auto component_id = ComponentId{index};
         const auto &component = circuit.get(component_id);
-        if (!volt::queries::selected_physical_part(circuit, component_id).has_value() &&
-            !volt::queries::selected_library_part_ref(circuit, component_id).has_value() &&
+        if (!volt::queries::selected_library_part_ref(circuit, component_id).has_value() &&
             !volt::queries::component_dnp(circuit, component_id).value_or(false)) {
             report.add(Diagnostic{
                 Severity::Error,
@@ -516,7 +477,8 @@ void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &
     }
 }
 
-void validate_bom_component_readiness(const Circuit &circuit, DiagnosticReport &report) {
+void validate_bom_component_readiness(const Circuit &circuit, const ExactPartResolver &resolver,
+                                      DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.all<volt::ComponentId>().size(); ++index) {
         const auto component_id = ComponentId{index};
         const auto &component = circuit.get(component_id);
@@ -529,22 +491,30 @@ void validate_bom_component_readiness(const Circuit &circuit, DiagnosticReport &
                                  entities));
         }
 
-        const auto &selected_part = volt::queries::selected_physical_part(circuit, component_id);
-        const auto has_exact_selection =
-            volt::queries::selected_library_part_ref(circuit, component_id).has_value();
-        if (!dnp.value_or(false) && !selected_part.has_value() && !has_exact_selection) {
+        const auto &selected_ref = volt::queries::selected_library_part_ref(circuit, component_id);
+        if (volt::queries::selected_physical_part(circuit, component_id).has_value() &&
+            !selected_ref.has_value()) {
+            report.add(bom_error(
+                bom_diagnostic_codes::LegacyInlineSelectedPartUnsupported,
+                "Legacy inline selected part is read-compatible but cannot drive current BOM "
+                "readiness without an exact library reference",
+                entities));
+            continue;
+        }
+        if (!dnp.value_or(false) && !selected_ref.has_value()) {
             report.add(
                 bom_error(bom_diagnostic_codes::ComponentMissingSelectedPart,
                           "Populated component requires a selected physical part for BOM readiness",
                           entities));
             continue;
         }
-        if (!selected_part.has_value()) {
+        if (!selected_ref.has_value()) {
             continue;
         }
 
-        const auto &primary = selected_part->manufacturer_part().part_number();
-        for (const auto &alternate : selected_part->approved_alternate_mpns()) {
+        const auto &orderable = resolver.resolve(*selected_ref).orderable_part();
+        const auto &primary = orderable.manufacturer_part().part_number();
+        for (const auto &alternate : orderable.approved_alternate_mpns()) {
             if (alternate == primary) {
                 report.add(bom_error(bom_diagnostic_codes::ApprovedAlternateDuplicatesPrimary,
                                      "Approved alternate MPN duplicates the selected primary MPN",
@@ -608,23 +578,12 @@ namespace volt {
     return report;
 }
 
-[[nodiscard]] DiagnosticReport validate_for_pcb(const Circuit &circuit) {
-    auto report = validate_circuit(circuit);
-
-    auto rules = RuleSet<Circuit>{};
-    rules.add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
-        detail::validate_physical_part_selection(rule_circuit, rule_report);
-    });
-    rules.run(circuit, report);
-
-    return report;
-}
-
-[[nodiscard]] DiagnosticReport validate_bom_readiness(const Circuit &circuit) {
+[[nodiscard]] DiagnosticReport validate_bom_readiness(const Circuit &circuit,
+                                                      const ExactPartResolver &resolver) {
     auto report = DiagnosticReport{};
     auto rules = RuleSet<Circuit>{};
-    rules.add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
-        detail::validate_bom_component_readiness(rule_circuit, rule_report);
+    rules.add([&resolver](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
+        detail::validate_bom_component_readiness(rule_circuit, resolver, rule_report);
     });
     rules.run(circuit, report);
 

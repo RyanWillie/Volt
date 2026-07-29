@@ -370,7 +370,7 @@ def _write_manufacturing_contents(
             "description": result.project.description,
         },
         "command": {
-            "name": "volt export manufacturing",
+            "name": "ProjectResult.write_manufacturing_package",
             "board": board_selector,
             "archive": archive,
         },

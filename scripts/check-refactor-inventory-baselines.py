@@ -41,6 +41,7 @@ SEMANTIC_GOLDEN_PATHS = (
     "tests/fixtures/led.electrical.volt.json",
     "tests/fixtures/led.component-contract.volt.json",
     "tests/fixtures/led_circuit.volt.json",
+    "tests/fixtures/legacy_led_circuit_v1.volt.json",
     "tests/fixtures/hierarchy_module.volt.json",
     "tests/fixtures/typed_electrical_attributes.volt.json",
     "tests/fixtures/single_pin_net.volt.json",
@@ -66,6 +67,7 @@ BYTE_GOLDEN_PATHS = (
     "tests/fixtures/pcb_placement_preview.svg",
     "tests/fixtures/semantic_parity.volt.json",
     "tests/fixtures/led_circuit.volt.json",
+    "tests/fixtures/legacy_led_circuit_v1.volt.json",
 )
 
 EVIDENCE_LF_PATHS = tuple(
@@ -137,19 +139,6 @@ def python_all_exports() -> list[str]:
             continue
         return sorted(str(item) for item in ast.literal_eval(node.value))
     raise AssertionError("__all__ not found in python/volt/__init__.py")
-
-
-def dataclass_fields(path: Path, class_name: str) -> list[str]:
-    tree = ast.parse(read(path), filename=relative(path))
-    for node in tree.body:
-        if not isinstance(node, ast.ClassDef) or node.name != class_name:
-            continue
-        return sorted(
-            child.target.id
-            for child in node.body
-            if isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name)
-        )
-    return []
 
 
 def init_assigned_attributes(path: Path, class_name: str) -> list[str]:
@@ -451,9 +440,6 @@ def canonical_artifact_inventory() -> dict[str, object]:
         "current_writer_ownership": current_project_writer_ownership(
             read(ROOT / "python" / "volt" / "project.py"),
         ),
-        "project_artifact_path_fields": dataclass_fields(
-            ROOT / "python" / "volt" / "project.py", "ProjectArtifactPaths"
-        ),
         "native_project_artifact_kinds": native_project_artifact_kinds(),
     }
 
@@ -480,141 +466,117 @@ def tracked_paths() -> list[str]:
         raise AssertionError(
             f"git ls-files failed: {result.stderr.decode('utf-8', errors='replace')}"
         )
-    return sorted(
-        field.decode("utf-8")
+    paths = sorted(
+        path
         for field in result.stdout.split(b"\0")
         if field
+        for path in (field.decode("utf-8"),)
     )
+    require_tracked_paths_exist(paths)
+    return paths
 
 
-def example_reference_lines(paths: list[str]) -> list[str]:
-    references: list[str] = []
-    excluded = {
-        relative(BASELINE_PATH),
-        "scripts/check-refactor-inventory-baselines.py",
-    }
-    pattern = re.compile(r"""(?<![A-Za-z0-9_])examples(?=/|\.|["'`])""")
+def require_tracked_paths_exist(paths: list[str]) -> None:
+    missing = [path for path in paths if not (ROOT / path).exists()]
+    if missing:
+        raise AssertionError(
+            "git index contains tracked paths missing from the worktree: " + ", ".join(missing)
+        )
+
+
+ANTI_REGROWTH_PATH_PREFIXES = (
+    "examples/",
+    "python/tests/examples/",
+    "python/volt/libraries/",
+)
+
+ANTI_REGROWTH_TEXT_PATTERNS = {
+    "legacy_example_reference": re.compile(r"(?<![A-Za-z0-9_])examples/"),
+    "legacy_stm32_benchmark": re.compile(r"\bstm32_usb_buck\b"),
+    "retired_library_component": re.compile(r"\bLibraryComponent\b"),
+    "retired_physical_part_spec": re.compile(r"\bPhysicalPartSpec\b"),
+    "retired_part_definition_lowering": re.compile(r"\b_PartDefinition\b"),
+    "retired_instance_selection": re.compile(r"\.select_part\s*\("),
+    "retired_flat_writer": re.compile(r"\bwrite_artifacts\s*\("),
+    "retired_flat_writer_paths": re.compile(r"\bProjectArtifactPaths\b"),
+    "retired_flat_cli": re.compile(r'"--flat"|`volt build --flat`'),
+    "retired_source_cli_alias": re.compile(
+        r"\bvolt (?:run|model|diagnostics|info)\b|legacy alias"
+    ),
+    "retired_source_manufacturing_cli": re.compile(
+        r"\bvolt export manufacturing\b|source-backed-export-retired|"
+        r"\b_handle_export_manufacturing\b"
+    ),
+    "retired_projection_forwarding": re.compile(r"\bselect_authored_part\b"),
+}
+
+ANTI_REGROWTH_SCAN_PREFIXES = (
+    "docs/",
+    "docs-site/",
+    "python/",
+    "skills/",
+    "src/",
+)
+
+ANTI_REGROWTH_SCAN_FILES = {
+    ".gitattributes",
+    "CMakeLists.txt",
+    "README.md",
+    "pyproject.toml",
+}
+
+def legacy_example_import_lines(path: str, source: str) -> set[int]:
+    if not path.endswith(".py"):
+        return set()
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as error:
+        raise AssertionError(f"cannot inspect Python imports in {path}: {error}") from error
+    lines: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            if any(
+                alias.name == "examples" or alias.name.startswith("examples.")
+                for alias in node.names
+            ):
+                lines.add(node.lineno)
+        elif isinstance(node, ast.ImportFrom) and node.module is not None:
+            if node.module == "examples" or node.module.startswith("examples."):
+                lines.add(node.lineno)
+    return lines
+
+
+def anti_regrowth_text_violations(sources: dict[str, str]) -> list[str]:
+    violations: list[str] = []
+    for path, source in sorted(sources.items()):
+        example_import_lines = legacy_example_import_lines(path, source)
+        for line_number, line in enumerate(source.splitlines(), start=1):
+            if line_number in example_import_lines:
+                violations.append(f"legacy_example_reference:{path}:{line_number}")
+            for name, pattern in ANTI_REGROWTH_TEXT_PATTERNS.items():
+                violation = f"{name}:{path}:{line_number}"
+                if pattern.search(line) and violation not in violations:
+                    violations.append(violation)
+    return violations
+
+
+def anti_regrowth_inventory(paths: list[str]) -> dict[str, object]:
+    forbidden_paths = sorted(
+        path
+        for path in paths
+        if any(path.startswith(prefix) for prefix in ANTI_REGROWTH_PATH_PREFIXES)
+    )
+    sources: dict[str, str] = {}
     for path in paths:
-        if path.startswith("examples/") or path in excluded:
+        if not path.startswith(ANTI_REGROWTH_SCAN_PREFIXES) and path not in ANTI_REGROWTH_SCAN_FILES:
             continue
         try:
-            lines = read(ROOT / path).splitlines()
+            sources[path] = read(ROOT / path)
         except (UnicodeDecodeError, OSError):
             continue
-        references.extend(
-            f"{path}:{line_number}"
-            for line_number, line in enumerate(lines, start=1)
-            if pattern.search(line)
-        )
-    return references
-
-
-def benchmark_reference_lines(paths: list[str]) -> list[str]:
-    references: list[str] = []
-    excluded = {
-        relative(BASELINE_PATH),
-        "python/volt/libraries/stm32_usb_buck.py",
-        "scripts/check-refactor-inventory-baselines.py",
-    }
-    pattern = re.compile(r"\bstm32_usb_buck\b")
-    for path in paths:
-        if path.startswith("examples/") or path in excluded:
-            continue
-        try:
-            lines = read(ROOT / path).splitlines()
-        except (UnicodeDecodeError, OSError):
-            continue
-        references.extend(
-            f"{path}:{line_number}"
-            for line_number, line in enumerate(lines, start=1)
-            if pattern.search(line)
-        )
-    return references
-
-
-def is_documentation_reference(reference: str) -> bool:
-    path = reference.rsplit(":", 1)[0]
-    return path.startswith(
-        ("docs/", "docs-site/", "README", "CONTRIBUTING", "ROADMAP")
-    ) or (
-        Path(path).suffix in {".html", ".md", ".mdx", ".rst"}
-    )
-
-
-def stm32_benchmark_declarations() -> dict[str, object]:
-    path = ROOT / "python" / "volt" / "libraries" / "stm32_usb_buck.py"
-    tree = ast.parse(read(path), filename=relative(path))
-    part_routes: list[str] = []
-    component_routes: list[str] = []
-    for node in tree.body:
-        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
-            continue
-        if not isinstance(node.targets[0], ast.Name) or not isinstance(node.value, ast.Call):
-            continue
-        function = node.value.func
-        if (
-            not isinstance(function, ast.Attribute)
-            or not isinstance(function.value, ast.Name)
-            or function.value.id != "LIB"
-        ):
-            continue
-        if function.attr == "part":
-            part_routes.append(node.targets[0].id)
-        elif function.attr == "component":
-            component_routes.append(node.targets[0].id)
     return {
-        "module": relative(path),
-        "namespace": "volt.benchmarks.stm32_usb_buck",
-        "legacy_component_declarations": sorted(component_routes),
-        "native_part_declarations": sorted(part_routes),
-    }
-
-
-def m2_deletion_inventory(paths: list[str]) -> dict[str, object]:
-    legacy_files = [path for path in paths if path.startswith("examples/")]
-    example_references = example_reference_lines(paths)
-    benchmark_references = benchmark_reference_lines(paths)
-
-    return {
-        "legacy_example_roots": sorted(
-            {"/".join(path.split("/")[:2]) for path in legacy_files}
-        ),
-        "legacy_example_files": legacy_files,
-        "example_test_callers": [
-            path for path in paths if path.startswith("python/tests/examples/")
-        ],
-        "example_documentation_references": [
-            reference
-            for reference in example_references
-            if is_documentation_reference(reference)
-        ],
-        "example_other_tracked_references": [
-            reference
-            for reference in example_references
-            if not is_documentation_reference(reference)
-        ],
-        "stm32_benchmark": {
-            **stm32_benchmark_declarations(),
-            "documentation_references": [
-                reference
-                for reference in benchmark_references
-                if is_documentation_reference(reference)
-            ],
-            "test_and_caller_files": sorted(
-                {
-                    reference.rsplit(":", 1)[0]
-                    for reference in benchmark_references
-                    if not is_documentation_reference(reference)
-                    and reference.startswith(("python/", "scripts/", "src/"))
-                }
-            ),
-            "other_tracked_references": [
-                reference
-                for reference in benchmark_references
-                if not is_documentation_reference(reference)
-                and not reference.startswith(("python/", "scripts/", "src/"))
-            ],
-        },
+        "forbidden_paths": forbidden_paths,
+        "retired_route_references": anti_regrowth_text_violations(sources),
     }
 
 
@@ -637,16 +599,6 @@ def python_component_definition_routes() -> list[str]:
 
 
 def production_migration_inventory() -> dict[str, object]:
-    paths = tracked_paths()
-    acceptance_paths = {
-        "python/tests/fixtures/project_cli/multiple_boards/project_entry.py",
-        "python/tests/fixtures/project_cli/single_board/project_entry.py",
-        "python/tests/test_cli.py",
-        "python/tests/test_cli_project_workflow.py",
-        "python/tests/test_issue_319_architecture_fixture.py",
-        "tests/io/project_bundle_test.cpp",
-        "tests/support/architecture_led_fixture.hpp",
-    }
     return {
         "production_callers": {
             "native_component_definition_routes": bound_component_definition_routes(),
@@ -701,10 +653,6 @@ def production_migration_inventory() -> dict[str, object]:
             ],
         },
         "no_hidden_fallback_evidence": {
-            "stm32_benchmark_excluded_from_production_acceptance": all(
-                "stm32_usb_buck" not in read(ROOT / path)
-                for path in acceptance_paths
-            ),
             "canonical_cli_has_no_post_instantiation_selection": all(
                 ".select_part(" not in read(ROOT / path)
                 for path in (
@@ -720,7 +668,6 @@ def production_migration_inventory() -> dict[str, object]:
                 "examples/" not in read(ROOT / "tests" / "io" / "project_bundle_test.cpp")
             ),
         },
-        "m2_deletion_targets": m2_deletion_inventory(paths),
     }
 
 
@@ -772,13 +719,14 @@ def golden_inventory() -> dict[str, object]:
 
 
 def collect_inventory() -> dict[str, object]:
+    paths = tracked_paths()
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "purpose": (
             "Compact review evidence for issue #328, extended by issue #240 for native verified "
-            "ProjectBundle read views and issue #319 for production-consumer migration plus the "
-            "explicit M2 example deletion inventory. A baseline delta requires review; the "
-            "checked-in evidence does not approve the change."
+            "ProjectBundle read views, issue #319 for production-consumer migration, and issue "
+            "#321 for zero-state anti-regrowth after deleting superseded routes. A baseline delta "
+            "requires review; the checked-in evidence does not approve the change."
         ),
         "inventories": {
             "public_contracts": {
@@ -821,6 +769,7 @@ def collect_inventory() -> dict[str, object]:
             },
             "offline_fixtures": offline_fixtures(),
             "production_migration": production_migration_inventory(),
+            "anti_regrowth": anti_regrowth_inventory(paths),
         },
         "goldens": golden_inventory(),
     }
@@ -902,6 +851,7 @@ def run_self_tests() -> int:
     require(
         set(inventory["inventories"])
         == {
+            "anti_regrowth",
             "public_contracts",
             "canonical_artifacts",
             "ownership",
@@ -946,60 +896,74 @@ def run_self_tests() -> int:
     )
     require(
         all(production["no_hidden_fallback_evidence"].values()),
-        "production acceptance fixtures must not depend on legacy selection or examples",
-    )
-    m2_targets = production["m2_deletion_targets"]
-    require(
-        m2_targets["legacy_example_files"]
-        == [path for path in tracked_paths() if path.startswith("examples/")],
-        "the M2 deletion inventory must name every tracked legacy example file",
+        "production acceptance fixtures must not depend on legacy selection or example inputs",
     )
     require(
-        m2_targets["example_test_callers"],
-        "the M2 deletion inventory must retain every example-only Python test caller",
+        inventory["inventories"]["anti_regrowth"]
+        == {"forbidden_paths": [], "retired_route_references": []},
+        "M2 must leave no retired path or route in the current tree",
     )
+    try:
+        require_tracked_paths_exist(["tests/fixtures/__missing_tracked_path__"])
+    except AssertionError as error:
+        require(
+            "__missing_tracked_path__" in str(error),
+            "missing tracked paths must be named in the governance failure",
+        )
+    else:
+        raise AssertionError("the inventory must reject tracked paths missing from the worktree")
     require(
-        {
-            "scripts/check-format.py:9",
-            "scripts/check-circuit-architecture-boundary.py:17",
-            "scripts/check-circuit-architecture-boundary.py:23",
-        }.issubset(set(m2_targets["example_other_tracked_references"])),
-        "the M2 deletion inventory must include standalone quoted example-directory references",
-    )
-    benchmark = m2_targets["stm32_benchmark"]
-    require(
-        benchmark["module"] == "python/volt/libraries/stm32_usb_buck.py"
-        and benchmark["namespace"] == "volt.benchmarks.stm32_usb_buck"
-        and len(benchmark["legacy_component_declarations"]) == 17
-        and not benchmark["native_part_declarations"],
-        "the complete 17-entry STM32 benchmark must remain unchanged and owned by M2",
-    )
-    require(
-        benchmark["test_and_caller_files"],
-        "the M2 inventory must name every tracked STM32 benchmark test and caller",
-    )
-    require(
-        ".gitattributes:19" in benchmark["other_tracked_references"],
-        "the M2 inventory must retain the STM32 benchmark artifact policy reference",
-    )
-    require(
-        "stm32_usb_buck"
-        not in json.dumps(
+        anti_regrowth_text_violations(
             {
-                "production_callers": production["production_callers"],
-                "architecture_fixtures": production["architecture_fixtures"],
-            },
-            sort_keys=True,
-        ),
-        "STM32 benchmark data must not be classified as M1 production acceptance",
+                "python/volt/project.py": "class ProjectArtifactPaths:\n    pass\n",
+                "docs/current.md": "call result.write_artifacts(output)\n",
+                "python/volt/library.py": "class LibraryComponent:\n    pass\n",
+                "python/volt/cli/__init__.py": 'parser.add_argument("--flat")\n',
+                "python/volt/cli/legacy.py": "COMMAND = 'volt run --project .'\n",
+                "python/volt/cli/manufacturing.py": "COMMAND = 'volt export manufacturing'\n",
+                "skills/current.md": "component.select_part()\n",
+            }
+        )
+        == [
+            "retired_flat_writer:docs/current.md:1",
+            "retired_flat_cli:python/volt/cli/__init__.py:1",
+            "retired_source_cli_alias:python/volt/cli/legacy.py:1",
+            "retired_source_manufacturing_cli:python/volt/cli/manufacturing.py:1",
+            "retired_library_component:python/volt/library.py:1",
+            "retired_flat_writer_paths:python/volt/project.py:1",
+            "retired_instance_selection:skills/current.md:1",
+        ],
+        "the anti-regrowth checker must detect each retired current route",
     )
     require(
-        not any(
-            item["path"].startswith("examples/")
-            for group in inventory["goldens"].values()
-            for item in group
+        anti_regrowth_text_violations(
+            {
+                "python/volt/current.py": (
+                    "import examples.legacy\n"
+                    "from examples.other import fixture\n"
+                    "fixture = 'examples/legacy/project.py'\n"
+                ),
+            }
+        )
+        == [
+            "legacy_example_reference:python/volt/current.py:1",
+            "legacy_example_reference:python/volt/current.py:2",
+            "legacy_example_reference:python/volt/current.py:3",
+        ],
+        "the anti-regrowth checker must detect dotted and slash legacy example references",
+    )
+    require(
+        not anti_regrowth_text_violations(
+            {
+                "include/native.hpp": "LibraryComponentRef owner;\nOrderablePart part;\n",
+                "docs/current.md": (
+                    "Use Library.part() and ProjectResult.write().\n"
+                    "See the following examples.\n"
+                    'These "examples" describe the current API.\n'
+                ),
+            }
         ),
-        "Gate F1 goldens must not use legacy examples as acceptance inputs",
+        "the anti-regrowth checker must accept current vocabulary and ordinary example prose",
     )
     require(
         parse_check_attr_eol(b"one\0eol\0lf\0two\0eol\0unspecified\0")

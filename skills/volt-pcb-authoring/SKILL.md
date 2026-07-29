@@ -1,6 +1,6 @@
 ---
 name: volt-pcb-authoring
-description: Author or review the Volt PCB board structure and manufacturing handoff. Use when defining stackup, layers, design rules, board outline, mounting holes, capability profiles, or producing Gerbers/Excellon, BOM, CPL, native fabrication report, manifest, inspection HTML, and manufacturing package output. Triggers on: board structure, stackup, design rules, capability profile, manufacturing package, Gerbers, BOM, CPL, native fabrication, KiCad export, PCB_KICAD_FAB_EXPORT_LOSS, volt export manufacturing.
+description: Author or review the Volt PCB board structure and manufacturing handoff. Use when defining stackup, layers, design rules, board outline, mounting holes, capability profiles, or producing Gerbers/Excellon, BOM, CPL, native fabrication report, manifest, inspection HTML, and manufacturing package output. Triggers on: board structure, stackup, design rules, capability profile, manufacturing package, Gerbers, BOM, CPL, native fabrication, KiCad export, PCB_KICAD_FAB_EXPORT_LOSS.
 ---
 
 # Volt PCB Authoring — Structure and Manufacturing Handoff
@@ -20,7 +20,7 @@ This skill covers board structure definition and the manufacturing handoff. For 
 | `set_design_rules`, `set_capability_profile` | `board.layout(...)` session |
 | `set_rectangular_outline`, `board.add(volt.Hole(...))` | `board.escape(...)`, `board.assisted_connect(...)` |
 | `result.write_manufacturing_package(...)` | `board.add_zone(...)`, `board.add_room(...)` |
-| `volt export manufacturing`, KiCad export review | `board.resolve_pads()`, routing DRC |
+| Manufacturing-package and KiCad export review | `board.resolve_pads()`, routing DRC |
 
 ---
 
@@ -33,7 +33,7 @@ for diagnostic in design.validate_for_pcb():
     print(diagnostic.severity, diagnostic.code, diagnostic.message)
 ```
 
-`design.validate_for_pcb()` (source: `python/volt/design.py`) adds PCB-readiness checks on top of `design.validate()`: selected physical parts, footprint geometry, and pin-pad mappings must be present for all placed components. Do not select parts or create nets in the PCB layer; consume what the logical circuit owns.
+`design.validate_for_pcb()` (source: `python/volt/design.py`) adds PCB-readiness checks on top of `design.validate()`: every populated component needs an exact selected PartRef, and its typed electrical records are checked through the retained PartLibraryBundle. BoardResolution and `board.validate()` then verify footprint geometry and pin-pad mappings from that same closure. Do not select parts or create nets in the PCB layer; consume what the logical circuit owns.
 
 Once components are placed, board DRC also checks package geometry against the design rules and the board edge. Watch for `PCB_COMPONENT_ASSEMBLY_CLEARANCE_WARNING` (two package bodies closer than `package_assembly_clearance`) and `PCB_COMPONENT_BOARD_EDGE_CLEARANCE_VIOLATION` (a package body too close to the outline). These depend on footprints declaring `body`/outline geometry (see `volt-component-authoring`); fix them by spacing parts or pulling them off the edge in `volt-pcb-layout`, not by loosening the rule.
 
@@ -48,7 +48,8 @@ assert result.ok, [d.code for d in result.diagnostics]
 
 ## 2. Board Structure
 
-The full structure sequence: get the board handle → add layers → commit the stack → set design rules → set outline → add holes. See `references/board-structure.md` for the cookbook with quoted source.
+The full structure sequence is: get the board handle → add layers → commit the stack →
+set design rules → set outline → add holes.
 
 ### 2.1 Board handle
 
@@ -116,7 +117,7 @@ Other board primitives: `volt.Slot(start, end, width, ...)`, `volt.Cutout(outlin
 
 ### 2.7 Capability profile
 
-Attach a pinned manufacturer capability snapshot to the board before running manufacturing export. It is required by `write_manufacturing_package`.
+Attach a pinned manufacturer capability snapshot to the board before writing a manufacturing package.
 
 ```python
 profile = volt.CapabilityProfile(
@@ -137,7 +138,7 @@ board.set_capability_profile(profile)
 
 ## 3. Manufacturing Handoff
 
-Use `result.write_manufacturing_package(...)` or the CLI equivalent `volt export manufacturing`. Both invoke the same deterministic package writer.
+Use the dedicated ProjectResult manufacturing-package writer after the Project run is clean.
 
 ### 3.1 Python API
 
@@ -165,13 +166,7 @@ Returns `ManufacturingPackageResult` with `.output`, `.board`, `.status`, `.arch
 
 See `references/manufacturing-package.md` for the complete file listing and error gate semantics.
 
-### 3.2 CLI
-
-```bash
-volt export manufacturing --board Main --profile profiles/jlcpcb.volt.json --archive dist/my-board
-```
-
-### 3.3 Gate: ManufacturingPackageError
+### 3.2 Gate: ManufacturingPackageError
 
 The method raises `volt.ManufacturingPackageError` (and does not write an orderable-looking package) when:
 
@@ -180,7 +175,7 @@ The method raises `volt.ManufacturingPackageError` (and does not write an ordera
 3. `manufacturing_profile` is missing or lacks required fields.
 4. The board's capability profile is missing.
 
-### 3.4 Produced file set
+### 3.3 Produced file set
 
 ```
 dist/my-board-manufacturing/
@@ -200,7 +195,7 @@ dist/my-board-manufacturing/
   (my-board-manufacturing.zip)  ← if archive=True
 ```
 
-### 3.5 KiCad export and fab-critical loss
+### 3.4 KiCad export and fab-critical loss
 
 ```python
 kicad_export = board.to_kicad_pcb()
@@ -217,7 +212,11 @@ for warning in kicad_export.warnings:
 After producing the manufacturing package:
 
 - `result.ok` is `True` before calling `write_manufacturing_package`.
-- **View the rendered board SVG as an image** (`board.to_svg()` or the `*.pcb.svg` / per-layer SVGs from `write_artifacts`) and look: placement sane, silkscreen legible and clear of pads, board outline and mounting holes correct, no overlaps or off-board parts. Diagnostics and link-checks won't show you a cramped or unreadable board — see "Viewing Rendered Output" in `../shared-volt-architecture.md` for how to view or rasterize it.
+- **View the rendered board SVG as an image** using `board.to_svg()` and look: placement
+  sane, silkscreen legible and clear of pads, board outline and mounting holes correct, no
+  overlaps or off-board parts. Diagnostics and link-checks won't show you a cramped or
+  unreadable board — see "Viewing Rendered Output" in `../shared-volt-architecture.md` for
+  how to view or rasterize it.
 - Open `manufacturing/inspection.html` and spot-check that Gerber links resolve.
 - Review `manufacturing/native-fabrication.json` → `coverage.fab_critical_loss` must be `false`.
 - Verify `manufacturing/manifest.json` has the expected board name, profile, and artifact list.
@@ -229,12 +228,8 @@ After producing the manufacturing package:
 
 ## References
 
-- `references/board-structure.md` — layers, stackup, design rules, outline, holes cookbook with quoted source.
 - `references/manufacturing-package.md` — `write_manufacturing_package` arguments, produced files, error gate.
-- `references/walkthrough-pcb-led-board.md` — narrated read of `examples/pcb_led_board/main.py`.
 - `../shared-volt-architecture.md` — non-negotiables and canonical doc index.
 - `docs/python-api.md` — Project Framework and manufacturing package sections.
 - `docs/design/pcb-json-format.html` — PCB JSON structure, viewer diagnostics, capability lint.
 - `docs/design/kicad-pcb-export-handoff.html` — KiCad adapter review and `PCB_KICAD_FAB_EXPORT_LOSS`.
-- `examples/timer_555_led_blinker/board.py` — full structure + routing example.
-- `examples/pcb_led_board/main.py` — first-board LED PCB end-to-end.

@@ -46,15 +46,6 @@ struct ExpectedDiagnostic {
     };
 }
 
-[[nodiscard, maybe_unused]] volt::ElectricalAttributeSpec selected_part_voltage_rating_spec() {
-    return volt::ElectricalAttributeSpec{
-        volt::ElectricalAttributeName{"voltage_rating"},
-        volt::ElectricalAttributeOwner::SelectedPart,
-        volt::ElectricalAttributeKind::DesignInput,
-        volt::UnitDimension::Voltage,
-    };
-}
-
 [[maybe_unused]] void set_net_voltage(volt::Circuit &circuit, volt::NetId net, double voltage) {
     circuit.update(net, volt::SetNetElectricalAttribute{
                             net_voltage_spec(), volt::ElectricalAttributeValue{volt::Quantity{
@@ -66,15 +57,6 @@ struct ExpectedDiagnostic {
         pin_voltage_range_spec(), volt::ElectricalAttributeValue{volt::QuantityRange::bounded(
                                       volt::Quantity{volt::UnitDimension::Voltage, low},
                                       volt::Quantity{volt::UnitDimension::Voltage, high})}};
-}
-
-[[maybe_unused]] void set_selected_part_voltage_rating(volt::Circuit &circuit,
-                                                       volt::ComponentId component,
-                                                       double voltage) {
-    circuit.update(component, volt::SetSelectedPartElectricalAttribute{
-                                  selected_part_voltage_rating_spec(),
-                                  volt::ElectricalAttributeValue{
-                                      volt::Quantity{volt::UnitDimension::Voltage, voltage}}});
 }
 
 [[nodiscard, maybe_unused]] volt::FootprintPolygon rectangle_polygon(double half_width,
@@ -476,14 +458,6 @@ struct AddedPin {
             circuit, led, "LTST-C190", volt::PackageRef{"0603"},
             volt::FootprintRef{"regression", "LED_0603_REAL"},
             std::vector{volt::PinPadMapping{led_a_pin, "1"}, volt::PinPadMapping{led_k_pin, "2"}});
-    }
-
-    set_selected_part_voltage_rating(circuit, header, 30.0);
-    set_selected_part_voltage_rating(circuit, regulator, 16.0);
-    set_selected_part_voltage_rating(circuit, mcu, 5.5);
-    set_selected_part_voltage_rating(circuit, resistor, 50.0);
-    if (select_led_part) {
-        set_selected_part_voltage_rating(circuit, led, 5.0);
     }
 
     return RealBoardFixture{std::move(circuit),

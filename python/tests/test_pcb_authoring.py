@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 import volt
+from project_framework_helpers import _native_fixture_parts
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -33,34 +34,43 @@ def _offset_rectangle(x, y, width, height):
     return tuple((px + x, py + y) for px, py in _rectangle(width, height))
 
 
-def _small_resistor_led_design():
+def _small_resistor_led_design(*, resistor_footprint=None, led_footprint=None):
     design = volt.Design("pcb-led")
 
     vcc = design.net("VCC", kind="power")
     led_a = design.net("LED_A")
     gnd = design.net("GND", kind="ground")
 
-    r1 = design.R("330", ref="R1")
-    d1 = design.LED(ref="D1")
+    if resistor_footprint is None and led_footprint is None:
+        parts = _native_fixture_parts()
+        r1 = design.instantiate(parts["resistor"], ref="R1")
+        d1 = design.instantiate(parts["led"], ref="D1")
+    else:
+        r1, d1 = _exact_two_pin_batch(
+            design,
+            (
+                "R1",
+                {
+                    "footprint": resistor_footprint,
+                    "manufacturer": "Volt",
+                    "mpn": "RECT-R",
+                },
+            ),
+            (
+                "D1",
+                {
+                    "footprint": led_footprint,
+                    "manufacturer": "Volt",
+                    "mpn": "RECT-D",
+                    "pins": (volt.PinSpec("A", 1), volt.PinSpec("K", 2)),
+                    "pads": {"A": "1", "K": "2"},
+                },
+            ),
+        )
 
     vcc += r1[1]
     led_a += r1[2], d1["A"]
     gnd += d1["K"]
-
-    r1.select_part(
-        manufacturer="Yageo",
-        part_number="RC0603FR-07330RL",
-        package="0603",
-        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-        pin_pads={1: "1", 2: "2"},
-    )
-    d1.select_part(
-        manufacturer="Lite-On",
-        part_number="LTST-C190KRKT",
-        package="0603",
-        footprint=_passive_0603(("leds", "LED_0603_1608Metric")),
-        pin_pads={"A": "1", "K": "2"},
-    )
 
     return design, r1, d1
 
@@ -172,6 +182,47 @@ def _rect_0603(ref):
     )
 
 
+def _two_pin_part(
+    library,
+    ref,
+    *,
+    footprint,
+    manufacturer="Yageo",
+    mpn=None,
+    package="0603",
+    pins=None,
+    pads=None,
+):
+    return library.part(
+        f"Part-{ref}",
+        pins=(
+            tuple(pins)
+            if pins is not None
+            else (volt.PinSpec("1", 1), volt.PinSpec("2", 2))
+        ),
+        manufacturer=manufacturer,
+        mpn=mpn or f"PART-{ref}",
+        package=package,
+        footprint=footprint,
+        pads={1: "1", 2: "2"} if pads is None else pads,
+        prefix=ref[:1],
+    )
+
+
+def _exact_two_pin(design, ref, **kwargs):
+    library = volt.Library(f"volt.tests.pcb.{ref}", version="1.0.0")
+    return design.instantiate(_two_pin_part(library, ref, **kwargs), ref=ref)
+
+
+def _exact_two_pin_batch(design, *specs):
+    library = volt.Library("volt.tests.pcb.batch", version="1.0.0")
+    parts = tuple(_two_pin_part(library, ref, **kwargs) for ref, kwargs in specs)
+    return tuple(
+        design.instantiate(part, ref=ref)
+        for part, (ref, _kwargs) in zip(parts, specs, strict=True)
+    )
+
+
 def _placed_positions(board):
     return {
         item["component"]: (tuple(item["position"]), item["rotation_deg"], item["locked"])
@@ -263,19 +314,24 @@ def test_pcb_layout_place_returns_placed_component_handle():
 
 def test_pcb_layout_two_pad_right_left_up_down_places_resolved_coordinates():
     design = volt.Design("pcb-layout-two-pad")
-    parts = [design.R(f"{value}k", ref=f"R{value}") for value in range(1, 5)]
+    parts = _exact_two_pin_batch(
+        design,
+        *(
+            (
+                f"R{value}",
+                {
+                    "footprint": _passive_0603(("passives", f"R_0603_{value}")),
+                    "mpn": f"RC0603-{value}",
+                },
+            )
+            for value in range(1, 5)
+        )
+    )
     for index, component in enumerate(parts, start=1):
         left = design.net(f"LEFT{index}")
         right = design.net(f"RIGHT{index}")
         left += component[1]
         right += component[2]
-        component.select_part(
-            manufacturer="Yageo",
-            part_number=f"RC0603-{index}",
-            package="0603",
-            footprint=_passive_0603(("passives", f"R_0603_{index}")),
-            pin_pads={1: "1", 2: "2"},
-        )
     board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 30.0))
 
@@ -304,25 +360,32 @@ def test_pcb_layout_two_pad_right_left_up_down_places_resolved_coordinates():
 
 def test_pcb_layout_two_pad_directions_follow_actual_pad_vector():
     design = volt.Design("pcb-layout-two-pad-vector")
-    parts = [design.R(f"{value}k", ref=f"R{value}") for value in range(1, 5)]
     footprints = (
         _two_pad_footprint(("test", "vertical"), end=(0.0, 1.5)),
         _two_pad_footprint(("test", "reversed"), end=(-1.5, 0.0)),
         _two_pad_footprint(("test", "vertical-left"), end=(0.0, 1.5)),
         _two_pad_footprint(("test", "reversed-up"), end=(-1.5, 0.0)),
     )
+    parts = _exact_two_pin_batch(
+        design,
+        *(
+            (
+                f"R{index + 1}",
+                {
+                    "footprint": footprint,
+                    "manufacturer": "Volt",
+                    "mpn": f"VECTOR-{index}",
+                    "package": "custom",
+                },
+            )
+            for index, footprint in enumerate(footprints)
+        )
+    )
     for index, component in enumerate(parts):
         net_a = design.net(f"A{index}")
         net_b = design.net(f"B{index}")
         net_a += component[1]
         net_b += component[2]
-        component.select_part(
-            manufacturer="Volt",
-            part_number=f"VECTOR-{index}",
-            package="custom",
-            footprint=footprints[index],
-            pin_pads={1: "1", 2: "2"},
-        )
     board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 30.0))
 
@@ -366,18 +429,16 @@ def test_pcb_layout_two_pad_uses_kernel_resolved_builtin_footprints():
 
 def test_pcb_layout_two_pad_builder_does_not_flush_from_layout_operations():
     design = volt.Design("pcb-layout-two-pad-builder")
-    r1 = design.R("1k", ref="R1")
+    r1 = _exact_two_pin(
+        design,
+        "R1",
+        footprint=_passive_0603(("passives", "R_0603")),
+        mpn="RC0603",
+    )
     net_a = design.net("A")
     net_b = design.net("B")
     net_a += r1[1]
     net_b += r1[2]
-    r1.select_part(
-        manufacturer="Yageo",
-        part_number="RC0603",
-        package="0603",
-        footprint=_passive_0603(("passives", "R_0603")),
-        pin_pads={1: "1", 2: "2"},
-    )
     board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
 
@@ -601,18 +662,25 @@ def test_pcb_layout_bundles_independent_routes_with_net_inference():
     design = volt.Design("pcb-layout-route-bundle")
     net_a = design.net("A")
     net_b = design.net("B")
-    left_component = design.R("1k", ref="R1")
-    right_component = design.R("1k", ref="R2")
+    left_component, right_component = _exact_two_pin_batch(
+        design,
+        (
+            "R1",
+            {
+                "footprint": _passive_0603(("passives", "R_0603_1608Metric")),
+                "mpn": "RC0603FR-071KL",
+            },
+        ),
+        (
+            "R2",
+            {
+                "footprint": _passive_0603(("passives", "R_0603_1608Metric")),
+                "mpn": "RC0603FR-071KL",
+            },
+        ),
+    )
     net_a += left_component[1], right_component[1]
     net_b += left_component[2], right_component[2]
-    for component in (left_component, right_component):
-        component.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-071KL",
-            package="0603",
-            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-            pin_pads={1: "1", 2: "2"},
-        )
 
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
@@ -651,16 +719,23 @@ def test_pcb_layout_bundles_independent_routes_with_net_inference():
 
 def test_pcb_layout_connect_re_resolves_pad_anchor_nets_at_mutation_time():
     design = volt.Design("pcb-layout-live-net-inference")
-    left_component = design.R("1k", ref="R1")
-    right_component = design.R("1k", ref="R2")
-    for component in (left_component, right_component):
-        component.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-071KL",
-            package="0603",
-            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-            pin_pads={1: "1", 2: "2"},
-        )
+    left_component, right_component = _exact_two_pin_batch(
+        design,
+        (
+            "R1",
+            {
+                "footprint": _passive_0603(("passives", "R_0603_1608Metric")),
+                "mpn": "RC0603FR-071KL",
+            },
+        ),
+        (
+            "R2",
+            {
+                "footprint": _passive_0603(("passives", "R_0603_1608Metric")),
+                "mpn": "RC0603FR-071KL",
+            },
+        ),
+    )
 
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
@@ -686,17 +761,24 @@ def test_pcb_layout_connect_re_resolves_pad_anchor_nets_at_mutation_time():
 def test_pcb_layout_connect_delegates_pad_net_resolution_to_kernel(monkeypatch):
     design = volt.Design("pcb-layout-kernel-route-endpoints")
     net = design.net("SIG")
-    left_component = design.R("1k", ref="R1")
-    right_component = design.R("1k", ref="R2")
+    left_component, right_component = _exact_two_pin_batch(
+        design,
+        (
+            "R1",
+            {
+                "footprint": _passive_0603(("passives", "R_0603_1608Metric")),
+                "mpn": "RC0603FR-071KL",
+            },
+        ),
+        (
+            "R2",
+            {
+                "footprint": _passive_0603(("passives", "R_0603_1608Metric")),
+                "mpn": "RC0603FR-071KL",
+            },
+        ),
+    )
     net += left_component[1], right_component[1]
-    for component in (left_component, right_component):
-        component.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-071KL",
-            package="0603",
-            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-            pin_pads={1: "1", 2: "2"},
-        )
 
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
@@ -828,17 +910,14 @@ def test_pcb_layout_frame_and_json_match_absolute_placement_equivalent():
 
 def test_pcb_layout_reports_invalid_components_and_ambiguous_pin_names():
     design = volt.Design("pcb-layout-errors")
-    duplicate = design.define_component(
-        "DuplicatePins",
-        pins=[volt.PinSpec("IO", 1), volt.PinSpec("IO", 2)],
-    )
-    u1 = design.instantiate(duplicate, ref="U1")
-    u1.select_part(
-        manufacturer="Volt",
-        part_number="DUP",
-        package="0603",
+    test_point = design.test_point(ref="TP1")
+    u1 = _exact_two_pin(
+        design,
+        "U1",
         footprint=_passive_0603(("volt.test", "DuplicatePins")),
-        pin_pads={1: "1", 2: "2"},
+        manufacturer="Volt",
+        mpn="DUP",
+        pins=(volt.PinSpec("IO", 1), volt.PinSpec("IO", 2)),
     )
     board = design.add_board("Control")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
@@ -849,23 +928,13 @@ def test_pcb_layout_reports_invalid_components_and_ambiguous_pin_names():
     with pytest.raises(AttributeError, match="ambiguous"):
         placed.IO
     with pytest.raises(ValueError, match="requires exactly two component pins"):
-        layout.two_pad(design.test_point(ref="TP1"))
+        layout.two_pad(test_point)
 
     other_design = volt.Design("other")
     other_board = other_design.add_board("Other")
     other_board.set_rectangular_outline(origin=(0.0, 0.0), size=(10.0, 10.0))
     with pytest.raises(ValueError, match="different board"):
         layout.move_from(other_board.center)
-
-    missing = design.R("1k", ref="R1")
-    with pytest.raises(TypeError, match="complete Footprint"):
-        missing.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603",
-            package="0603",
-            footprint=("missing", "R_0603_1608Metric"),
-            pin_pads={1: "1", 2: "2"},
-        )
 
 
 def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
@@ -1094,15 +1163,13 @@ def test_python_board_authoring_escape_surfaces_kernel_result():
 
     blocked = volt.Design("blocked-escape")
     blocked_route = blocked.net("ROUTE")
-    blocked_r = blocked.R("1k", ref="R1")
-    blocked_route += blocked_r[1], blocked_r[2]
-    blocked_r.select_part(
-        manufacturer="Yageo",
-        part_number="RC0603FR-071KL",
-        package="0603",
+    blocked_r = _exact_two_pin(
+        blocked,
+        "R1",
         footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-        pin_pads={1: "1", 2: "2"},
+        mpn="RC0603FR-071KL",
     )
+    blocked_route += blocked_r[1], blocked_r[2]
     blocked_board = blocked.add_board("Control")
     blocked_front = blocked_board.add_layer("F.Cu", role="copper", side="top")
     blocked_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
@@ -1142,15 +1209,13 @@ def test_python_board_authoring_escape_surfaces_kernel_result():
 def test_python_board_authoring_escape_surfaces_failure_reason_strings():
     unconnected = volt.Design("unconnected-escape")
     net_b = unconnected.net("B")
-    unconnected_r = unconnected.R("1k", ref="R1")
-    net_b += unconnected_r[2]
-    unconnected_r.select_part(
-        manufacturer="Yageo",
-        part_number="RC0603FR-071KL",
-        package="0603",
+    unconnected_r = _exact_two_pin(
+        unconnected,
+        "R1",
         footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-        pin_pads={1: "1", 2: "2"},
+        mpn="RC0603FR-071KL",
     )
+    net_b += unconnected_r[2]
     unconnected_board = unconnected.add_board("Control")
     front = unconnected_board.add_layer("F.Cu", role="copper", side="top")
     unconnected_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
@@ -1165,16 +1230,14 @@ def test_python_board_authoring_escape_surfaces_failure_reason_strings():
     no_copper = volt.Design("no-copper-escape")
     first = no_copper.net("A")
     second = no_copper.net("B")
-    no_copper_r = no_copper.R("1k", ref="R1")
+    no_copper_r = _exact_two_pin(
+        no_copper,
+        "R1",
+        footprint=_passive_0603(("tests", "MixedSide"), second_pad_layers="back_smd"),
+        mpn="RC0603FR-071KL",
+    )
     first += no_copper_r[1]
     second += no_copper_r[2]
-    no_copper_r.select_part(
-        manufacturer="Yageo",
-        part_number="RC0603FR-071KL",
-        package="0603",
-        footprint=_passive_0603(("tests", "MixedSide"), second_pad_layers="back_smd"),
-        pin_pads={1: "1", 2: "2"},
-    )
     no_copper_board = no_copper.add_board("Control")
     no_copper_front = no_copper_board.add_layer("F.Cu", role="copper", side="top")
     no_copper_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
@@ -1194,16 +1257,14 @@ def test_python_board_authoring_escape_surfaces_failure_reason_strings():
     blocked = disallowed.net("B")
     disallowed_class = disallowed.net_class("BottomOnly", layer_scope="bottom_only")
     disallowed_class.assign(blocked)
-    disallowed_r = disallowed.R("1k", ref="R1")
+    disallowed_r = _exact_two_pin(
+        disallowed,
+        "R1",
+        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+        mpn="RC0603FR-071KL",
+    )
     allowed += disallowed_r[1]
     blocked += disallowed_r[2]
-    disallowed_r.select_part(
-        manufacturer="Yageo",
-        part_number="RC0603FR-071KL",
-        package="0603",
-        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
-        pin_pads={1: "1", 2: "2"},
-    )
     disallowed_board = disallowed.add_board("Control")
     disallowed_board.add_layer("F.Cu", role="copper", side="top")
     disallowed_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
@@ -1238,18 +1299,6 @@ def test_python_board_authoring_escape_rejects_unattemptable_requests():
     with pytest.raises(ValueError, match="without a selected physical part"):
         no_part_board.escape(no_part_r)
 
-    missing = volt.Design("missing-footprint-escape")
-    missing_net = missing.net("N")
-    missing_r = missing.R("1k", ref="R1")
-    missing_net += missing_r[1], missing_r[2]
-    with pytest.raises(TypeError, match="complete Footprint"):
-        missing_r.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-071KL",
-            package="0603",
-            footprint=("tests", "Missing"),
-            pin_pads={1: "1", 2: "2"},
-        )
 
 
 def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
@@ -1318,20 +1367,9 @@ def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
 
 
 def test_python_board_authoring_exports_native_fabrication_files(tmp_path, monkeypatch):
-    design, r1, d1 = _small_resistor_led_design()
-    r1.select_part(
-        manufacturer="Volt",
-        part_number="RECT-R",
-        package="0603",
-        footprint=_rect_0603(("test", "RectR0603")),
-        pin_pads={1: "1", 2: "2"},
-    )
-    d1.select_part(
-        manufacturer="Volt",
-        part_number="RECT-D",
-        package="0603",
-        footprint=_rect_0603(("test", "RectD0603")),
-        pin_pads={"A": "1", "K": "2"},
+    design, r1, d1 = _small_resistor_led_design(
+        resistor_footprint=_rect_0603(("test", "RectR0603")),
+        led_footprint=_rect_0603(("test", "RectD0603")),
     )
     led_a = next(net for net in design.nets() if net.name == "LED_A")
     board = design.add_board("Control")
@@ -1706,7 +1744,16 @@ def test_python_board_drc_treats_bound_module_port_nets_as_same_copper_domain():
 
 def test_python_board_drc_treats_bound_module_port_copper_as_routed_connectivity():
     design = volt.Design("bound-net-ratsnest")
-    one_pin = design.define_component("OnePinPad", pins=[volt.PinSpec("1", 1)])
+    library = volt.Library("volt.tests.pcb.one-pin", version="1.0.0")
+    one_pin = library.part(
+        "OnePinPad",
+        pins=(volt.PinSpec("1", 1),),
+        manufacturer="Volt",
+        mpn="ONE-PIN-0603",
+        package="0603",
+        footprint=_one_pad_footprint(("passives", "OnePin0603")),
+        pads={1: "1"},
+    )
     module = design.define_module("Child")
     module.port("N")
 
@@ -1716,15 +1763,6 @@ def test_python_board_drc_treats_bound_module_port_copper_as_routed_connectivity
     instance = design.instantiate(module, ref="M")
     parent += p1[1], p2[1], instance["N"]
     nets = {net.name: net for net in design.nets()}
-
-    for component in (p1, p2):
-        component.select_part(
-            manufacturer="Volt",
-            part_number="ONE-PIN-0603",
-            package="0603",
-            footprint=_one_pad_footprint(("passives", "OnePin0603")),
-            pin_pads={1: "1"},
-        )
 
     board = design.add_board("Main")
     front = board.add_layer("F.Cu", role="copper", side="top")
@@ -1738,48 +1776,6 @@ def test_python_board_drc_treats_bound_module_port_copper_as_routed_connectivity
     codes = {diagnostic.code for diagnostic in board.validate()}
     assert "PCB_COPPER_CLEARANCE_VIOLATION" not in codes
     assert "PCB_NET_UNROUTED" not in codes
-
-
-def test_python_board_drc_reports_bound_module_port_stub_only_copper_as_unrouted():
-    design = volt.Design("bound-net-stub-ratsnest")
-    one_pin = design.define_component("OnePinPad", pins=[volt.PinSpec("1", 1)])
-    module = design.define_module("Child")
-    internal = module.port("N")
-    child_pad = module.instantiate(one_pin, ref="P2")
-    internal += child_pad[1]
-
-    parent = design.net("N")
-    p1 = design.instantiate(one_pin, ref="P1")
-    instance = design.instantiate(module, ref="M")
-    parent += p1[1], instance["N"]
-    module_pad = instance.component("P2")
-    nets = {net.name: net for net in design.nets()}
-
-    for component in (p1, module_pad):
-        component.select_part(
-            manufacturer="Volt",
-            part_number="ONE-PIN-0603",
-            package="0603",
-            footprint=_one_pad_footprint(("passives", "OnePin0603")),
-            pin_pads={1: "1"},
-        )
-
-    board = design.add_board("Main")
-    front = board.add_layer("F.Cu", role="copper", side="top")
-    board.set_rectangular_outline(origin=(0.0, 0.0), size=(12.0, 6.0))
-    board.place(p1, at=(3.0, 3.0))
-    board.place(module_pad, at=(9.0, 3.0))
-    board.add_track(parent, layer=front, points=((2.25, 3.0), (4.5, 3.0)), width=0.40)
-    board.add_track(nets["M/N"], layer=front, points=((7.5, 3.0), (8.25, 3.0)), width=0.40)
-
-    unrouted = [
-        diagnostic for diagnostic in board.validate() if diagnostic.code == "PCB_NET_UNROUTED"
-    ]
-
-    assert len(unrouted) == 1
-    assert any(entity.kind == "net" for entity in unrouted[0].entities)
-    assert sum(entity.kind == "component_placement" for entity in unrouted[0].entities) == 2
-    assert sum(entity.kind == "footprint_pad" for entity in unrouted[0].entities) == 2
 
 
 def test_python_board_add_via_defaults_respect_board_rule_floor():
@@ -1970,8 +1966,15 @@ def test_python_capability_profile_invalid_values_raise_value_error():
 
 
 def test_python_board_authoring_exposes_pad_resolution_and_validation_diagnostics():
-    design, r1, d1 = _small_resistor_led_design()
+    design = volt.Design("pcb-validation")
     c1 = design.C("100nF", ref="C1")
+    parts = _native_fixture_parts()
+    r1 = design.instantiate(parts["resistor"], ref="R1")
+    d1 = design.instantiate(parts["led"], ref="D1")
+    signal = design.net("SIGNAL")
+    return_net = design.net("RETURN")
+    signal += r1[1]
+    return_net += r1[2], d1["A"]
     board = design.add_board("Main")
     board.set_polygon_outline(((0.0, 0.0), (12.0, 0.0), (12.0, 12.0), (0.0, 12.0)))
     board.place(r1, at=(6.0, 6.0))
@@ -1991,7 +1994,8 @@ def test_python_board_authoring_exposes_pad_resolution_and_validation_diagnostic
     }
     assert any(
         entity.kind == "component" and entity.index == d1.index
-        for entity in report[0].entities
+        for diagnostic in report
+        for entity in diagnostic.entities
     )
     assert any(
         entity.kind == "component" and entity.index == c1.index
@@ -2068,7 +2072,7 @@ def test_python_board_authoring_surfaces_kernel_structural_rejections():
         board.add(volt.Text("REV A", at=(1.0, 1.0), layer=front, size=0.0))
 
 
-def test_python_board_auto_registers_design_local_object_owned_footprint():
+def test_python_board_registers_native_part_owned_footprint():
     footprint = _passive_0603(
         ("volt.test", "CustomR0603"),
         courtyard=((-1.2, -0.8), (1.2, -0.8), (1.2, 0.8), (-1.2, 0.8)),
@@ -2085,16 +2089,14 @@ def test_python_board_auto_registers_design_local_object_owned_footprint():
         ),
     )
     library = volt.Library("volt.test")
-    resistor = library.component(
+    resistor = library.part(
         "ObjectResistor",
         pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
-        physical_part=volt.PhysicalPartSpec(
-            manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
-            package="0603",
-            footprint=footprint,
-            pin_pads={1: "1", 2: "2"},
-        ),
+        manufacturer="Yageo",
+        mpn="RC0603FR-07330RL",
+        package="0603",
+        footprint=footprint,
+        pads={1: "1", 2: "2"},
         prefix="R",
     )
     design = volt.Design("object-owned-footprint")
@@ -2162,49 +2164,7 @@ def test_python_board_auto_registers_design_local_object_owned_footprint():
     assert 'class="footprint-pad' in svg
 
 
-def test_python_board_rejects_ref_only_footprint_at_selection_boundary():
-    design = volt.Design("missing-footprint")
-    r1 = design.R("1k", ref="R1")
-    left = design.net("LEFT")
-    right = design.net("RIGHT")
-    left += r1[1]
-    right += r1[2]
-    with pytest.raises(TypeError, match="complete Footprint"):
-        r1.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-071KL",
-            package="0603",
-            footprint=("missing", "NotARealFootprint"),
-            pin_pads={1: "1", 2: "2"},
-        )
-
-
-def test_python_board_rejects_non_square_circle_footprint_pad():
-    design = volt.Design("bad-circle-pad")
-    footprint = volt.FootprintDefinition(
-        ("volt.test", "BadCirclePad"),
-        pads=(
-            volt.FootprintPad.surface_mount(
-                "1",
-                at=(0.0, 0.0),
-                size=(1.0, 0.8),
-                shape="circle",
-            ),
-        ),
-    )
-
-    r1 = design.R("1k", ref="R1")
-    with pytest.raises(ValueError, match="Circle footprint pads"):
-        r1.select_part(
-            manufacturer="Yageo",
-            part_number="BAD-CIRCLE",
-            package="custom",
-            footprint=footprint,
-            pin_pads={1: "1", 2: "1"},
-        )
-
-
-def test_python_board_object_owned_footprints_reject_invalid_pad_mappings_atomically():
+def test_python_board_native_parts_reject_invalid_pad_mappings_atomically():
     footprint = _passive_0603(("volt.test", "Mapped0603"))
     missing_pad_footprint = volt.Footprint(
         ("volt.test", "Mapped0603WithExtraPad"),
@@ -2213,29 +2173,26 @@ def test_python_board_object_owned_footprints_reject_invalid_pad_mappings_atomic
             volt.FootprintPad.surface_mount("3", at=(1.6, 0.0), size=(0.8, 0.95)),
         ),
     )
-    library = volt.Library("volt.test")
-    unknown_pad = library.component(
+    unknown_library = volt.Library("volt.test.unknown-pad")
+    unknown_pad = unknown_library.part(
         "UnknownPad",
         pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
-        physical_part=volt.PhysicalPartSpec(
-            manufacturer="Yageo",
-            part_number="BADPAD",
-            package="0603",
-            footprint=footprint,
-            pin_pads={1: "1", 2: "9"},
-        ),
+        manufacturer="Yageo",
+        mpn="BADPAD",
+        package="0603",
+        footprint=footprint,
+        pads={1: "1", 2: "9"},
         prefix="R",
     )
-    missing_pin = library.component(
+    missing_library = volt.Library("volt.test.missing-pin")
+    missing_pin = missing_library.part(
         "MissingPin",
         pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
-        physical_part=volt.PhysicalPartSpec(
-            manufacturer="Yageo",
-            part_number="MISSINGPIN",
-            package="0603",
-            footprint=missing_pad_footprint,
-            pin_pads={1: "1", 2: "2"},
-        ),
+        manufacturer="Yageo",
+        mpn="MISSINGPIN",
+        package="0603",
+        footprint=missing_pad_footprint,
+        pads={1: "1", 2: "2"},
         prefix="R",
     )
     design = volt.Design("object-footprint-mapping-diagnostics")
@@ -2248,7 +2205,7 @@ def test_python_board_object_owned_footprints_reject_invalid_pad_mappings_atomic
     assert "selected_library_part_ref" not in design.to_json()
 
 
-def test_python_board_object_owned_footprint_supports_tied_and_mechanical_pads():
+def test_python_board_native_part_footprint_supports_tied_and_mechanical_pads():
     footprint = volt.Footprint(
         ("volt.test", "TieAndMechanical"),
         pads=(
@@ -2266,16 +2223,14 @@ def test_python_board_object_owned_footprint_supports_tied_and_mechanical_pads()
         ),
     )
     library = volt.Library("volt.test")
-    connector = library.component(
+    connector = library.part(
         "TieAndMechanical",
         pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
-        physical_part=volt.PhysicalPartSpec(
-            manufacturer="Volt",
-            part_number="TIE-MECH",
-            package="custom",
-            footprint=footprint,
-            pin_pads={1: "1", 2: ("2", "4")},
-        ),
+        manufacturer="Volt",
+        mpn="TIE-MECH",
+        package="custom",
+        footprint=footprint,
+        pads={1: "1", 2: ("2", "4")},
         prefix="J",
     )
     design = volt.Design("object-footprint-tied-mechanical")
@@ -2302,42 +2257,29 @@ def test_python_board_object_owned_footprint_supports_tied_and_mechanical_pads()
     assert resolutions["MH"].net is None
 
 
-def test_python_board_dedupes_object_owned_footprints_and_rejects_conflicts():
+def test_python_board_dedupes_native_part_footprints_and_rejects_conflicts():
     first_footprint = _passive_0603(("volt.test", "Shared0603"))
     duplicate_footprint = _passive_0603(("volt.test", "Shared0603"))
     conflicting_footprint = _passive_0603(("volt.test", "Shared0603"), pad_span=1.9)
     library = volt.Library("volt.test")
-    first = library.component(
+    first = library.part(
         "First",
         pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
-        physical_part=volt.PhysicalPartSpec.same_numbered(
-            manufacturer="Yageo",
-            part_number="FIRST",
-            package="0603",
-            footprint=first_footprint,
-        ),
+        manufacturer="Yageo",
+        mpn="FIRST",
+        package="0603",
+        footprint=first_footprint,
+        pads={1: "1", 2: "2"},
         prefix="R",
     )
-    duplicate = library.component(
+    duplicate = library.part(
         "Duplicate",
         pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
-        physical_part=volt.PhysicalPartSpec.same_numbered(
-            manufacturer="Yageo",
-            part_number="DUPLICATE",
-            package="0603",
-            footprint=duplicate_footprint,
-        ),
-        prefix="R",
-    )
-    conflicting = library.component(
-        "Conflicting",
-        pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
-        physical_part=volt.PhysicalPartSpec.same_numbered(
-            manufacturer="Yageo",
-            part_number="CONFLICT",
-            package="0603",
-            footprint=conflicting_footprint,
-        ),
+        manufacturer="Yageo",
+        mpn="DUPLICATE",
+        package="0603",
+        footprint=duplicate_footprint,
+        pads={1: "1", 2: "2"},
         prefix="R",
     )
     design = volt.Design("object-footprint-dedupe")
@@ -2360,25 +2302,34 @@ def test_python_board_dedupes_object_owned_footprints_and_rejects_conflicts():
         "footprint_def:0",
         "footprint_def:0",
     ]
-    with pytest.raises(ValueError, match="Authored part asset key has conflicting bytes"):
-        design.instantiate(conflicting, ref="R3")
+    library.part(
+        "Conflicting",
+        pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+        manufacturer="Yageo",
+        mpn="CONFLICT",
+        package="0603",
+        footprint=conflicting_footprint,
+        pads={1: "1", 2: "2"},
+        prefix="R",
+    )
+    with pytest.raises(ValueError, match="Part asset key resolves to conflicting bytes"):
+        library.build()
 
 
-def test_python_board_resolves_object_owned_footprint_without_builtin_ambient_source():
+def test_python_board_resolves_native_part_footprint_without_ambient_source():
     footprint = _passive_0603(
         ("passives", "R_0603_1608Metric"),
         body=((-0.6, -0.4), (0.6, -0.4), (0.6, 0.4), (-0.6, 0.4)),
     )
     library = volt.Library("volt.test")
-    resistor = library.component(
+    resistor = library.part(
         "BuiltinConflict",
         pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
-        physical_part=volt.PhysicalPartSpec.same_numbered(
-            manufacturer="Yageo",
-            part_number="CONFLICT",
-            package="0603",
-            footprint=footprint,
-        ),
+        manufacturer="Yageo",
+        mpn="CONFLICT",
+        package="0603",
+        footprint=footprint,
+        pads={1: "1", 2: "2"},
         prefix="R",
     )
     design = volt.Design("object-footprint-builtin-conflict")

@@ -30,12 +30,16 @@ void check_fixture_round_trips(const std::string &name) {
 
 } // namespace
 
-TEST_CASE("Golden LED fixture round-trips without logical diagnostics") {
+TEST_CASE("Current exact-selection LED fixture round-trips without logical diagnostics") {
     const auto fixture = read_fixture("led_circuit.volt.json");
     const auto circuit = volt::io::read_logical_circuit_text(fixture);
 
     CHECK(volt::validate_circuit(circuit).empty());
     check_fixture_round_trips("led_circuit.volt.json");
+}
+
+TEST_CASE("Legacy v1 physical-selection fixture round-trips during its compatibility window") {
+    check_fixture_round_trips("legacy_led_circuit_v1.volt.json");
 }
 
 TEST_CASE("Golden diagnostic fixture round-trips and preserves connectivity") {

@@ -210,9 +210,16 @@ for diagnostic in design.validate():
     print(diagnostic.severity, diagnostic.code, diagnostic.message)
 ```
 
-`Design.validate()` runs the default logical validation suite. `Design.validate_for_pcb()`
-adds PCB-readiness checks, including selected physical part requirements, without making
-selected parts mandatory for logical-only designs.
+`Design.validate()` runs the default logical suite and exact-part Voltage/Current ERC using
+the Design's retained exact part-library closure. It does not require selected parts for
+logical-only designs. `Design.validate_for_pcb()` includes the same default diagnostics once,
+then adds PCB-readiness checks such as missing exact selections. Footprint and pad geometry are
+resolved and validated by BoardResolution and board validation rather than copied into the
+logical Circuit.
+
+`Design.validate_selected_part_erc(library)` remains the focused selected-part-only entry
+point for checking a Design against one explicitly supplied native library snapshot. It does
+not replace the retained closure used by `validate()` or add logical/PCB-readiness diagnostics.
 
 ## Project Framework
 
@@ -352,16 +359,10 @@ responses. Exit status is stable: 0 for success, 1 for a completed check/build/d
 result does not pass its gate, and 2 for command, selector, source, publication, or bundle
 integrity failure. Human output is deterministic and concise.
 
-The old source-backed `volt export manufacturing --project ...` and flat
-`volt build --flat` paths are retired with migration errors. Select the required typed
-outputs during `volt build`, then publish them from the verified bundle with
-`volt export --bundle ...`.
-
 `result.write_manufacturing_package(path, board=None, manufacturing_profile=None,
 archive=False)` writes the full deterministic manufacturing handoff package for one
-project board. This direct Python API remains available for compatibility, but the
-source-backed CLI alias is retired in favor of the verified workflow above. The method
-writes native Gerber/Excellon files, BOM, CPL, diagnostics, profile metadata, native
+project board. It is the single supported manufacturing-package entrypoint. The method writes
+native Gerber/Excellon files, BOM, CPL, diagnostics, profile metadata, native
 fabrication coverage, manifest, inspection HTML, and optional deterministic zip archive.
 If the project result is not ok or native fabrication reports fab-critical loss, the
 method raises `volt.ManufacturingPackageError` and does not write an orderable-looking
@@ -471,18 +472,20 @@ not Python-only metadata; they lower into kernel-owned pin definitions and logic
 ERC consumes these typed semantics for power/ground checks, such as reporting a typed
 power input connected to a net with no typed supply source.
 
-## Selected Physical Parts
+## Exact Library Parts
 
-Component definitions describe the logical shape of a device. Component instances are
-concrete occurrences in the design. A selected physical part attaches the implementation
-choice for one component instance:
+Board-ready component identity is declared once in a versioned `Library`. Instantiating an
+exact `Part` selects its native `LibraryPartRef`; there is no later mutable physical-selection
+step:
 
 ```python
-r1 = d.R(resistance=330, tolerance=0.01, ref="R1")
-
-r1.select_part(
+library = volt.Library("acme.passives", version="1.0.0")
+resistor = library.part(
+    "RC0603FR-07330RL",
+    pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+    symbol=resistor_symbol,
     manufacturer="Yageo",
-    part_number="RC0603FR-07330RL",
+    mpn="RC0603FR-07330RL",
     package="0603",
     footprint=volt.Footprint(
         ("Resistor_SMD", "R_0603_1608Metric"),
@@ -491,48 +494,30 @@ r1.select_part(
             volt.FootprintPad.surface_mount("2", at=(0.75, 0), size=(0.8, 0.9)),
         ),
     ),
-    pin_pads={
+    pads={
         1: "1",
         2: "2",
     },
     voltage_rating=75,
+    prefix="R",
 )
+
+r1 = d.instantiate(resistor, ref="R1")
 ```
 
-`footprint` must be a complete `Footprint`, not only a `(library, name)` reference.
-For custom components, `pin_pads` may use pin names. This example reuses a complete
-SOIC-8 footprint defined by the authoring library:
+`footprint` must be a complete `Footprint`, not only a `(library, name)` reference. `pads`
+may use pin names or numbers. The complete library closure is immutable when its first Part
+is instantiated, so define every member before authoring the circuit.
 
-```python
-u1.select_part(
-    manufacturer="Texas Instruments",
-    part_number="TLV9002IDR",
-    package="SOIC-8",
-    footprint=soic8_footprint,
-    pin_pads={
-        "OUT": "1",
-        "IN-": "2",
-        "IN+": "3",
-        "V-": "4",
-        "V+": "8",
-    },
-    voltage_rating=5.5,
-)
-```
-
-`select_part()` admits the authored component contract, part, footprint asset, and optional
-3D model into an exact native P6 library closure, then stores only its `LibraryPartRef` on
-the component. Logical JSON therefore serializes `selected_library_part`; Python does not
-retain a footprint cache or an alternate physical-part record. At each PCB/report boundary,
-Volt resolves one named Board against that exact selected closure and atomically validates
-the contract, terminal-to-pad mapping, assets, digests, ownership, and capabilities.
+Logical JSON serializes only `selected_library_part`; Python does not retain a footprint
+cache or alternate physical-part record. At each PCB/report boundary Volt resolves one named
+Board against that exact selected closure and atomically validates the contract,
+terminal-to-pad mapping, assets, digests, ownership, and capabilities.
 
 The kernel rejects structurally invalid mappings, including missing or unknown logical pins,
 duplicate physical pads, and incomplete footprint assets. A logical pin may map to more than
 one physical pad when the selected package exposes tied lands, such as a tabbed regulator
-package. `voltage_rating` lowers into a canonical typed `Voltage` limit in the exact part.
-Free-form selected-part `properties` and `power_rating` are not accepted by this API because
-neither belongs to the current canonical exact-part schema.
+package. `voltage_rating` lowers into a canonical typed `Voltage` limit in the exact Part.
 
 ## Module Definitions
 
