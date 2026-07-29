@@ -13,7 +13,7 @@ namespace volt::python {
 
 py::list PyCircuit::validate() const {
     const auto circuit = materialized_circuit();
-    return diagnostics_to_list(volt::validate_circuit(circuit));
+    return diagnostics_to_list(volt::validate_design(circuit, selected_part_bundle()));
 }
 
 py::list PyCircuit::validate_for_pcb() const {

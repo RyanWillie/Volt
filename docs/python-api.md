@@ -210,11 +210,16 @@ for diagnostic in design.validate():
     print(diagnostic.severity, diagnostic.code, diagnostic.message)
 ```
 
-`Design.validate()` runs the default logical validation suite. `Design.validate_for_pcb()`
-adds PCB-readiness checks using the Design's retained exact part-library closure, including
-missing selections and exact-part electrical constraints, without making selected parts
-mandatory for logical-only designs. Footprint and pad geometry are resolved and validated by
-BoardResolution and board validation rather than copied into the logical Circuit.
+`Design.validate()` runs the default logical suite and exact-part Voltage/Current ERC using
+the Design's retained exact part-library closure. It does not require selected parts for
+logical-only designs. `Design.validate_for_pcb()` includes the same default diagnostics once,
+then adds PCB-readiness checks such as missing exact selections. Footprint and pad geometry are
+resolved and validated by BoardResolution and board validation rather than copied into the
+logical Circuit.
+
+`Design.validate_selected_part_erc(library)` remains the focused selected-part-only entry
+point for checking a Design against one explicitly supplied native library snapshot. It does
+not replace the retained closure used by `validate()` or add logical/PCB-readiness diagnostics.
 
 ## Project Framework
 

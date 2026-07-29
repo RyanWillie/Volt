@@ -7,6 +7,7 @@ from project_framework_helpers import (
     _board_ready_design,
     _minimal_design,
     _native_fixture_parts,
+    _overvoltage_exact_part_design,
     _passive_0603,
     _stage_board,
     _stage_schematic,
@@ -302,6 +303,25 @@ def test_project_result_reports_diagnostics_and_ok_state():
     }
     assert {diagnostic.stage for diagnostic in diagnostics} == {"design"}
     assert {diagnostic.source for diagnostic in diagnostics} == {"logical:bad-led"}
+
+
+def test_logical_only_project_result_includes_exact_selected_part_erc():
+    project = volt.Project("overvoltage")
+
+    @project.design
+    def design():
+        return _overvoltage_exact_part_design()
+
+    result = project.run_through(project.design)
+    matches = [
+        diagnostic
+        for diagnostic in result.diagnostics
+        if diagnostic.code == "SELECTED_PART_VOLTAGE_ABSOLUTE_LIMIT_VIOLATION"
+    ]
+
+    assert result.boards == ()
+    assert len(matches) == 1
+    assert matches[0].report == "logical.default"
 
 
 def test_project_diagnostic_exposes_copyable_expectation_kwargs(tmp_path):

@@ -82,6 +82,7 @@ void decode_project_models(detail::ProjectBundleStorage &storage);
 void decode_compiled_and_scenes(detail::ProjectBundleStorage &storage);
 void verify_owner_graph(detail::ProjectBundleStorage &storage, const LibraryDecoded &decoded,
                         const ArtifactIndex &index);
+[[nodiscard]] std::string write_decoded_bom(const Circuit &circuit, const LibraryDecoded &library);
 void verify_exports(detail::ProjectBundleStorage &storage, const LibraryDecoded &library,
                     const ExportSelection &selection);
 

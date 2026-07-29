@@ -173,6 +173,30 @@ def _board_ready_design(name="status-led"):
     return design
 
 
+def _overvoltage_exact_part_design(name="overvoltage-exact-part"):
+    library = volt.Library("volt.tests.project.overvoltage", version="1.0.0")
+    pins = (volt.PinSpec("1", 1), volt.PinSpec("2", 2))
+    part = library.part(
+        "Rated-3V9",
+        pins=pins,
+        symbol=_fixture_symbol("Rated-3V9", pins),
+        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+        pads={1: "1", 2: "2"},
+        manufacturer="Volt Tests",
+        mpn="RATED-3V9",
+        package="0603",
+        prefix="R",
+        voltage_rating=3.9,
+    )
+    design = volt.Design(name)
+    component = design.instantiate(part, ref="R1")
+    vdd = design.net("VDD", kind="power", voltage=5.0)
+    ground = design.net("GND", kind="ground")
+    vdd += component[1]
+    ground += component[2]
+    return design
+
+
 def _stage_schematic(design):
     sheet = design.schematic("Main", size=(420, 240), margins=(8, 8, 8, 8))
     nets = {net.name: net for net in design.nets()}

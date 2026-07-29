@@ -623,8 +623,84 @@ TEST_CASE("ProjectBundle v2 binds dependency lock and part owners to decoded log
     const auto fixture = board_fixture();
     auto builder = project_builder();
     builder.add_logical(volt::io::DesignKey{"main"}, *fixture.circuit, fixture.bundle);
+    const auto baseline = builder.build();
+    const auto baseline_logical =
+        std::ranges::find(baseline.artifacts(), volt::io::ArtifactKind::LogicalModel,
+                          &volt::io::ArtifactDescriptor::kind);
+    REQUIRE(baseline_logical != baseline.artifacts().end());
+    builder.select_exports(
+        {volt::io::ExportRequest{volt::io::ExportKind::Bom,
+                                 volt::io::ModelExportTarget{volt::io::ArtifactRef{
+                                     baseline_logical->id(), baseline_logical->content_digest()}},
+                                 volt::io::ExportRequestSchema{}, volt::io::BomParameters{}}});
     const auto original = builder.build();
     const auto temporary = TempDirectory{};
+
+    SECTION("exact selected part resolves from the vendored closure for BOM projection") {
+        const auto root = temporary.path() / "exact-bom-part.volt";
+        original.write(root);
+        CHECK(volt::io::ProjectBundle::open(root)
+                  .require_v2()
+                  .loaded_project()
+                  .selected_exports()
+                  .size() == 1U);
+    }
+
+    SECTION("BOM exact reference with a foreign library origin is rejected") {
+        const auto root = temporary.path() / "foreign-bom-origin.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        const auto logical_artifact =
+            std::ranges::find(manifest.at("artifacts"), "logical_model",
+                              [](const auto &artifact) { return artifact.at("kind"); });
+        REQUIRE(logical_artifact != manifest.at("artifacts").end());
+        auto payload =
+            OrderedJson::parse(read_bytes(root / logical_artifact->at("path").get<std::string>()));
+        REQUIRE(replace_string_field(payload, "library_namespace",
+                                     fixture.bundle.identity().namespace_name(),
+                                     "foreign.project") == 1U);
+        replace_artifact_payload(root, manifest, "logical_model", payload.dump());
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
+    }
+
+    SECTION("BOM exact reference with a foreign library digest is rejected") {
+        const auto root = temporary.path() / "foreign-bom-digest.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        const auto logical_artifact =
+            std::ranges::find(manifest.at("artifacts"), "logical_model",
+                              [](const auto &artifact) { return artifact.at("kind"); });
+        REQUIRE(logical_artifact != manifest.at("artifacts").end());
+        auto payload =
+            OrderedJson::parse(read_bytes(root / logical_artifact->at("path").get<std::string>()));
+        REQUIRE(replace_string_field(payload, "library_digest",
+                                     fixture.bundle.reference_digest().value(),
+                                     volt::sha256_content_hash("foreign").value()) == 1U);
+        replace_artifact_payload(root, manifest, "logical_model", payload.dump());
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
+    }
+
+    SECTION("BOM exact reference without its vendored part is rejected") {
+        const auto root = temporary.path() / "missing-bom-part.volt";
+        original.write(root);
+        auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        auto retained = OrderedJson::array();
+        auto removed = false;
+        for (auto &artifact : manifest.at("artifacts")) {
+            if (artifact.at("kind") == "part_definition") {
+                std::filesystem::remove(root / artifact.at("path").get<std::string>());
+                removed = true;
+            } else {
+                retained.push_back(std::move(artifact));
+            }
+        }
+        REQUIRE(removed);
+        manifest["artifacts"] = std::move(retained);
+        reseal_manifest(root, manifest);
+        check_open_error(root, volt::io::ProjectBundleOpenErrorCode::MalformedArchive);
+    }
 
     SECTION("unreferenced vendored selected part") {
         const auto root = temporary.path() / "orphan-part.volt";

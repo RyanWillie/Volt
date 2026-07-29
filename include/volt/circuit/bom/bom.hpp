@@ -167,11 +167,11 @@ class Bom {
     std::vector<BomLine> lines_;
 };
 
-/** Project a circuit through one explicit exact-part resolver without sourcing metadata. */
-[[nodiscard]] Bom project_bom(const Circuit &circuit, const ExactPartResolver &resolver);
+/** Project a circuit through one explicit part-definition resolver without sourcing metadata. */
+[[nodiscard]] Bom project_bom(const Circuit &circuit, const PartDefinitionResolver &resolver);
 
-/** Project a circuit through one explicit exact-part resolver and merge sourcing by MPN. */
-[[nodiscard]] Bom project_bom(const Circuit &circuit, const ExactPartResolver &resolver,
+/** Project a circuit through one explicit part-definition resolver and merge sourcing by MPN. */
+[[nodiscard]] Bom project_bom(const Circuit &circuit, const PartDefinitionResolver &resolver,
                               const BomSourcingSnapshot &sourcing);
 
 } // namespace volt

@@ -68,6 +68,7 @@ add_library(
     project_bundle_v2_graph.cpp
     project_bundle_v2_manifest.cpp
     project_bundle_v2_models.cpp
+    project_bundle_v2_part_resolver.cpp
     project_bundle_v2_reports.cpp
     project_bundle_v2_writer.cpp
     schematic/detail_schematic_svg_common.cpp

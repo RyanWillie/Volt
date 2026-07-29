@@ -158,20 +158,27 @@ class PartLibraryBuilder {
     std::vector<PartDefinition> parts_;
 };
 
-/** Canonical immutable integrity boundary for selecting and resolving one exact part. */
-class ExactPartResolver {
+/** Narrow immutable boundary for resolving complete exact part definitions. */
+class PartDefinitionResolver {
   public:
-    virtual ~ExactPartResolver() = default;
+    /** Resolve one complete exact reference or reject every integrity mismatch. */
+    [[nodiscard]] virtual const PartDefinition &
+    resolve(const LibraryPartRef &reference) const & = 0;
+
+    /** Destroy a resolver implementation. */
+    virtual ~PartDefinitionResolver() = default;
+};
+
+/** Canonical immutable integrity boundary for selecting and resolving one exact part. */
+class ExactPartResolver : public PartDefinitionResolver {
+  public:
+    ~ExactPartResolver() override = default;
 
     /** Return the admitted library identity carried by exact references. */
     [[nodiscard]] virtual const PartLibraryIdentity &identity() const & noexcept = 0;
 
     /** Return the exact digest that resolved references must carry. */
     [[nodiscard]] virtual const ContentHash &reference_digest() const & noexcept = 0;
-
-    /** Resolve one complete exact reference or reject every integrity mismatch. */
-    [[nodiscard]] virtual const PartDefinition &
-    resolve(const LibraryPartRef &reference) const & = 0;
 };
 
 /** Immutable validated C++-owned in-memory part-library snapshot. */
@@ -255,6 +262,10 @@ class PartLibrary : public ExactPartResolver {
 /** Validate selected exact-part Voltage and continuous-Current semantics against connectivity. */
 [[nodiscard]] DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
                                                           const ExactPartResolver &resolver);
+
+/** Run the default logical and exact selected-part diagnostic composition. */
+[[nodiscard]] DiagnosticReport validate_design(const Circuit &circuit,
+                                               const ExactPartResolver &resolver);
 
 /** Validate whether a circuit and its exact selected-part closure are ready for PCB/layout work. */
 [[nodiscard]] DiagnosticReport validate_for_pcb(const Circuit &circuit,

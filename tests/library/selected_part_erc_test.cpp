@@ -459,7 +459,7 @@ TEST_CASE("Native selected-part ERC diagnoses accepted and absolute Voltage viol
           std::optional<std::string>{"volt.part_erc.voltage.absolute_limit@1"});
 }
 
-TEST_CASE("PCB readiness checks authored net Voltage against exact-part absolute limits") {
+TEST_CASE("Default and PCB validation compose exact-part ERC without duplicates") {
     auto fixture = make_fixture();
     const auto positive = fixture.circuit.add_net(
         volt::NetSpec{.name = volt::NetName{"VDD"}, .kind = volt::NetKind::Power});
@@ -476,7 +476,8 @@ TEST_CASE("PCB readiness checks authored net Voltage against exact-part absolute
                 volt::ElectricalAttributeKind::DesignInput, volt::UnitDimension::Voltage},
             volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 5.0}}});
 
-    const auto report = volt::validate_for_pcb(fixture.circuit, fixture.library);
+    const auto report = volt::validate_design(fixture.circuit, fixture.library);
+    const auto pcb_report = volt::validate_for_pcb(fixture.circuit, fixture.library);
 
     const auto *diagnostic = ::diagnostic(report, "SELECTED_PART_VOLTAGE_ABSOLUTE_LIMIT_VIOLATION");
     REQUIRE(diagnostic != nullptr);
@@ -485,6 +486,14 @@ TEST_CASE("PCB readiness checks authored net Voltage against exact-part absolute
                                                 volt::EntityRef::net(negative)});
     CHECK(diagnostic->rule() ==
           std::optional<std::string>{"volt.part_erc.voltage.absolute_limit@1"});
+    const auto absolute_limit_code =
+        volt::DiagnosticCode{"SELECTED_PART_VOLTAGE_ABSOLUTE_LIMIT_VIOLATION"};
+    CHECK(std::ranges::count_if(report.diagnostics(), [&](const auto &item) {
+              return item.code() == absolute_limit_code;
+          }) == 1);
+    CHECK(std::ranges::count_if(pcb_report.diagnostics(), [&](const auto &item) {
+              return item.code() == absolute_limit_code;
+          }) == 1);
 }
 
 TEST_CASE("Native selected-part ERC is identical after logical round-trip") {

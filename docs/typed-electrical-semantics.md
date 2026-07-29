@@ -481,7 +481,13 @@ Current validation entry points are:
 
 ```text
 validate_circuit
-  broad logical validation for normal authoring feedback
+  logical Circuit validation without resolver-dependent selected-part semantics
+
+validate_design
+  default logical validation plus exact-part Voltage/Current ERC through the retained closure
+
+validate_selected_part_erc
+  focused exact-part Voltage/Current ERC against one explicit native snapshot
 
 validate_connectivity
   focused connectivity checks
@@ -490,7 +496,7 @@ validate_electrical_rules
   electrical semantics checks over typed model data
 
 validate_for_pcb
-  PCB-readiness checks over the Circuit and its exact selected-part closure
+  default design diagnostics plus PCB-readiness checks over the exact selected-part closure
 ```
 
 Current typed checks include:

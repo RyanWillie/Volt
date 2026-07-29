@@ -453,7 +453,7 @@ class Design:
         return self.load_schematic_json(Path(path).read_text(encoding="utf-8"))
 
     def validate(self) -> DiagnosticReport:
-        """Run logical design validation and return the diagnostic report."""
+        """Run default logical validation and exact-part Voltage/Current ERC."""
         return DiagnosticReport(_diagnostic_from_dict(item) for item in self._circuit.validate())
 
     def validate_for_pcb(self) -> DiagnosticReport:

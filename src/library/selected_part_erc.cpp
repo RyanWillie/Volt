@@ -464,20 +464,27 @@ DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
     return report;
 }
 
+[[nodiscard]] DiagnosticReport validate_design(const Circuit &circuit,
+                                               const ExactPartResolver &resolver) {
+    auto report = validate_circuit(circuit);
+
+    const auto selected_part_report = validate_selected_part_erc(circuit, resolver);
+    for (const auto &diagnostic : selected_part_report.diagnostics()) {
+        report.add(diagnostic);
+    }
+
+    return report;
+}
+
 [[nodiscard]] DiagnosticReport validate_for_pcb(const Circuit &circuit,
                                                 const ExactPartResolver &resolver) {
-    auto report = validate_circuit(circuit);
+    auto report = validate_design(circuit, resolver);
 
     auto rules = RuleSet<Circuit>{};
     rules.add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
         detail::validate_physical_part_selection(rule_circuit, rule_report);
     });
     rules.run(circuit, report);
-
-    const auto selected_part_report = validate_selected_part_erc(circuit, resolver);
-    for (const auto &diagnostic : selected_part_report.diagnostics()) {
-        report.add(diagnostic);
-    }
 
     return report;
 }

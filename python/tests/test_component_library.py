@@ -10,6 +10,7 @@ from helpers import (
     _definition_for_component,
     _two_pin_test_symbol,
 )
+from project_framework_helpers import _overvoltage_exact_part_design
 
 
 def test_library_public_symbol_classes_stay_on_public_import_surface():
@@ -1199,3 +1200,14 @@ def test_pcb_readiness_requires_selected_physical_parts():
 
     assert "PHYSICAL_PART_REQUIRED" not in {diagnostic.code for diagnostic in logical_report}
     assert "PHYSICAL_PART_REQUIRED" in {diagnostic.code for diagnostic in pcb_report}
+
+
+def test_default_validation_includes_exact_selected_part_erc_without_a_board():
+    design = _overvoltage_exact_part_design()
+
+    default_report = design.validate()
+    pcb_report = design.validate_for_pcb()
+    code = "SELECTED_PART_VOLTAGE_ABSOLUTE_LIMIT_VIOLATION"
+
+    assert sum(diagnostic.code == code for diagnostic in default_report) == 1
+    assert sum(diagnostic.code == code for diagnostic in pcb_report) == 1

@@ -101,11 +101,11 @@ BomLine::BomLine(std::string manufacturer, std::string mpn, std::string package,
 Bom::Bom(std::vector<BomComponent> components, std::vector<BomLine> lines)
     : components_{std::move(components)}, lines_{std::move(lines)} {}
 
-[[nodiscard]] Bom project_bom(const Circuit &circuit, const ExactPartResolver &resolver) {
+[[nodiscard]] Bom project_bom(const Circuit &circuit, const PartDefinitionResolver &resolver) {
     return project_bom(circuit, resolver, BomSourcingSnapshot{});
 }
 
-[[nodiscard]] Bom project_bom(const Circuit &circuit, const ExactPartResolver &resolver,
+[[nodiscard]] Bom project_bom(const Circuit &circuit, const PartDefinitionResolver &resolver,
                               const BomSourcingSnapshot &sourcing) {
     auto components = std::vector<BomComponent>{};
     components.reserve(circuit.all<volt::ComponentId>().size());

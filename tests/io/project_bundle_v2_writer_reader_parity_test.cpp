@@ -150,7 +150,7 @@ TEST_CASE("ProjectBundle v2 resolves equal component identities within each logi
     }
 }
 
-TEST_CASE("ProjectBundle v2 regenerates logical and Schematic exports on reopen") {
+TEST_CASE("ProjectBundle v2 regenerates an empty-selection BOM without a fabricated closure") {
     auto circuit = volt::Circuit{};
     auto schematic = volt::Schematic{circuit};
     auto resolver = EmptyAssetResolver{};
