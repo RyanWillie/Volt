@@ -220,7 +220,7 @@ template <typename Fixture>
 
 [[nodiscard]] volt::ResolvedBoardView resolved(const volt::Board &board,
                                                const volt::FootprintLibrary &footprints) {
-    return volt::ResolvedBoardView{board, footprints, {}};
+    return volt::ResolvedBoardView::test_only(board, footprints, {});
 }
 
 [[nodiscard]] const volt::Diagnostic *find_diagnostic(const volt::DiagnosticReport &report,

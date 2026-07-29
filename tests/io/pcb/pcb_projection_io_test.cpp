@@ -186,7 +186,7 @@ TEST_CASE("PCB writer emits deterministic canonical board JSON without a viewer 
     REQUIRE(document["board"]["placements"].size() == 1);
     CHECK(document["board"]["placements"][0]["id"] == "component_placement:0");
     CHECK(document["board"]["placements"][0]["component"] == "component:0");
-    CHECK(document["board"]["placements"][0]["footprint"] == "footprint_def:0");
+    CHECK_FALSE(document["board"]["placements"][0].contains("footprint"));
     CHECK(document["board"]["placements"][0]["position"] == nlohmann::json::array({25.0, 15.0}));
     CHECK(document["board"]["placements"][0]["rotation_deg"] == 90.0);
     CHECK(document["board"]["placements"][0]["side"] == "top");
@@ -468,7 +468,7 @@ TEST_CASE("PCB JSON retains canonical footprint geometry without a derived viewe
     const auto &placement = document["board"]["placements"][0];
     const auto &footprint = document["board"]["footprint_definitions"][0];
     const auto &pad = footprint["pads"][0];
-    CHECK(placement["footprint"] == footprint["id"]);
+    CHECK_FALSE(placement.contains("footprint"));
 
     CHECK(pad["shape"] == "rounded_rectangle");
     CHECK(pad["position"] == nlohmann::json::array({-0.75, 0.0}));
@@ -873,13 +873,18 @@ TEST_CASE("PCB projection reader rejects dangling references") {
             Catch::Matchers::Message("PCB layer stack references missing board layer"));
     }
 
-    SECTION("footprint references") {
+    SECTION("removed footprint associations") {
         auto document = make_board_json(fixture);
-        document["board"]["placements"][0]["footprint"] = "footprint_def:99";
+        document["board"]["placements"][0]["footprint"] = "footprint_def:0";
 
         CHECK_THROWS_MATCHES(
             volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
-            Catch::Matchers::Message("PCB placement references missing footprint definition"));
+            Catch::Matchers::Message("PCB placement contains unsupported footprint association"));
+
+        document["board"]["placements"][0]["footprint"] = nullptr;
+        CHECK_THROWS_MATCHES(
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            Catch::Matchers::Message("PCB placement contains unsupported footprint association"));
     }
 
     SECTION("track net references") {

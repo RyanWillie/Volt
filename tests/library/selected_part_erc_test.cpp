@@ -560,7 +560,8 @@ TEST_CASE("Exact selection satisfies missing-selection readiness without becomin
     static_cast<void>(board.place_component(volt::ComponentPlacement{
         led, volt::BoardPoint{1.0, 2.0}, volt::BoardRotation::degrees(0.0)}));
     const auto footprints = volt::builtin_footprint_library();
-    const auto board_missing = volt::validate_board(volt::ResolvedBoardView{board, footprints, {}});
+    const auto board_missing =
+        volt::validate_board(volt::ResolvedBoardView::test_only(board, footprints, {}));
     CHECK(has_diagnostic(board_missing, "PCB_COMPONENT_MISSING_SELECTED_PART"));
 
     static_cast<void>(select(fixture.circuit, led, fixture.library, "led"));
@@ -569,6 +570,7 @@ TEST_CASE("Exact selection satisfies missing-selection readiness without becomin
     CHECK_FALSE(has_diagnostic(pcb_selected, "PHYSICAL_PART_REQUIRED"));
     CHECK_FALSE(has_diagnostic(bom_selected, "BOM_COMPONENT_MISSING_SELECTED_PART"));
 
-    const auto unresolved = volt::validate_board(volt::ResolvedBoardView{board, footprints, {}});
+    const auto unresolved =
+        volt::validate_board(volt::ResolvedBoardView::test_only(board, footprints, {}));
     CHECK(has_diagnostic(unresolved, "PCB_FOOTPRINT_UNRESOLVED"));
 }

@@ -146,9 +146,6 @@ class PcbBoardReader {
 
     void read_texts(Board &board, const nlohmann::json &board_json) const;
 
-    void validate_placement_footprint(const Board &board,
-                                      const nlohmann::json &placement_json) const;
-
     const Circuit &circuit_;
     const nlohmann::json &document_;
 };
@@ -594,7 +591,8 @@ void PcbBoardReader::read_placements(Board &board, const nlohmann::json &board_j
             throw KernelLogicError{ErrorCode::UnknownEntity,
                                    "PCB placement references missing component"};
         }
-        validate_placement_footprint(board, placement_json);
+        require(!placement_json.contains("footprint"),
+                "PCB placement contains unsupported footprint association");
         const auto id = board.place_component(ComponentPlacement{
             component,
             board_point(field(placement_json, "position")),
@@ -820,19 +818,6 @@ void PcbBoardReader::read_texts(Board &board, const nlohmann::json &board_json) 
             bool_field(text_json, "locked"),
         });
         require(id == expected, "PCB text IDs must be sequential");
-    }
-}
-
-void PcbBoardReader::validate_placement_footprint(const Board &board,
-                                                  const nlohmann::json &placement_json) const {
-    const auto footprint = nullable_string_field(placement_json, "footprint");
-    if (!footprint.has_value()) {
-        return;
-    }
-    const auto footprint_id = decode_local_id<FootprintDefId>(footprint.value());
-    if (footprint_id.index() >= board.all<volt::FootprintDefId>().size()) {
-        throw KernelLogicError{ErrorCode::UnknownEntity,
-                               "PCB placement references missing footprint definition"};
     }
 }
 

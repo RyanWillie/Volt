@@ -158,7 +158,7 @@ make_placed_resistors(std::size_t count, volt::FootprintRef footprint = volt::Fo
 
 [[nodiscard]] volt::ResolvedBoardView resolved(const volt::Board &board,
                                                const volt::FootprintLibrary &footprints) {
-    return volt::ResolvedBoardView{board, footprints, {}};
+    return volt::ResolvedBoardView::test_only(board, footprints, {});
 }
 
 [[nodiscard]] volt::ResolvedBoardView resolved(const PlacementFixture &fixture,

@@ -62,7 +62,7 @@ void set_net_electrical_attribute(volt::Circuit &circuit, volt::NetId net,
 [[nodiscard]] volt::DiagnosticReport
 validate_board_with_builtin_footprints(const volt::Board &board) {
     const auto footprints = volt::builtin_footprint_library();
-    return volt::validate_board(volt::ResolvedBoardView{board, footprints, {}});
+    return volt::validate_board(volt::ResolvedBoardView::test_only(board, footprints, {}));
 }
 
 } // namespace

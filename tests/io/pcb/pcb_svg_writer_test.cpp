@@ -650,8 +650,8 @@ TEST_CASE("PCB SVG writer renders generic board feature primitives") {
         volt::BoardFeature::hole("TH", volt::BoardPoint{4.0, 20.0}, 2.0, false, "tooling")));
 
     const auto footprints = volt::builtin_footprint_library();
-    const auto svg =
-        volt::io::write_pcb_placement_svg(volt::ResolvedBoardView{board, footprints, {}});
+    const auto svg = volt::io::write_pcb_placement_svg(
+        volt::ResolvedBoardView::test_only(board, footprints, {}));
 
     CHECK(svg.find("class=\"board-feature hole\"") != std::string::npos);
     CHECK(svg.find("class=\"board-feature slot\"") != std::string::npos);
@@ -972,10 +972,10 @@ TEST_CASE("PCB SVG writer filters board layer diagnostics by selected layer") {
 
     const auto footprints = volt::builtin_footprint_library();
     const auto back_svg =
-        volt::io::write_pcb_placement_svg(volt::ResolvedBoardView{board, footprints, {}},
+        volt::io::write_pcb_placement_svg(volt::ResolvedBoardView::test_only(board, footprints, {}),
                                           volt::io::PcbPlacementSvgOptions{.layer_filter = back});
     const auto silk_svg =
-        volt::io::write_pcb_placement_svg(volt::ResolvedBoardView{board, footprints, {}},
+        volt::io::write_pcb_placement_svg(volt::ResolvedBoardView::test_only(board, footprints, {}),
                                           volt::io::PcbPlacementSvgOptions{.layer_filter = silk});
 
     CHECK(back_svg.find("PCB_LAYER_STACK_SIDE_ORDER_CONFLICT") != std::string::npos);
@@ -1069,10 +1069,11 @@ TEST_CASE("PCB SVG writer expands bounds to include selected diagnostic overlays
 
     const auto footprints = volt::FootprintLibrary{};
     const auto without_diagnostics = volt::io::write_pcb_placement_svg(
-        volt::ResolvedBoardView{board, footprints, {}},
+        volt::ResolvedBoardView::test_only(board, footprints, {}),
         volt::io::PcbPlacementSvgOptions{.diagnostic_overlays = false});
-    const auto with_diagnostics = volt::io::write_pcb_placement_svg(
-        volt::ResolvedBoardView{board, footprints, std::span<const volt::ResolvedBoardPart>{}});
+    const auto with_diagnostics =
+        volt::io::write_pcb_placement_svg(volt::ResolvedBoardView::test_only(
+            board, footprints, std::span<const volt::ResolvedBoardPart>{}));
 
     CHECK(without_diagnostics.find("viewBox=\"0 0 13 13\"") != std::string::npos);
     CHECK(with_diagnostics.find("viewBox=\"0 0 16.8 17\"") != std::string::npos);
@@ -1094,7 +1095,7 @@ TEST_CASE("PCB SVG writer expands bounds to include off-board placements") {
     CHECK(svg.find("data-placement=\"component_placement:0\"") != std::string::npos);
 }
 
-TEST_CASE("PCB SVG writer uses board-cached footprint definitions") {
+TEST_CASE("PCB SVG writer does not recover physical truth from Board footprint caches") {
     const auto fixture = make_resistor_circuit();
     auto board = make_preview_board(fixture);
     [[maybe_unused]] const auto footprint =
@@ -1103,7 +1104,7 @@ TEST_CASE("PCB SVG writer uses board-cached footprint definitions") {
 
     const auto svg = volt::io::write_pcb_placement_svg(fixture.parts.view(board, empty_library));
 
-    CHECK(svg.find("data-pad-projection=\"pcb_pad:0:0\"") != std::string::npos);
-    CHECK(svg.find("data-net=\"net:0\"") != std::string::npos);
-    CHECK(svg.find("PCB_FOOTPRINT_UNRESOLVED") == std::string::npos);
+    CHECK(svg.find("data-pad-projection=\"pcb_pad:0:0\"") == std::string::npos);
+    CHECK(svg.find("data-net=\"net:0\"") == std::string::npos);
+    CHECK(svg.find("PCB_FOOTPRINT_UNRESOLVED") != std::string::npos);
 }

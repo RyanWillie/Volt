@@ -2156,7 +2156,7 @@ def test_python_board_registers_native_part_owned_footprint():
             "polygon": [[-1.0, -0.5], [-0.85, -0.5], [-1.0, -0.35]],
         },
     ]
-    assert document["board"]["placements"][0]["footprint"] == "footprint_def:0"
+    assert "footprint" not in document["board"]["placements"][0]
     assert "viewer" not in document
 
     svg = board.to_svg()
@@ -2298,10 +2298,7 @@ def test_python_board_dedupes_native_part_footprints_and_rejects_conflicts():
     document = json.loads(board.to_json())
 
     assert len(document["board"]["footprint_definitions"]) == 1
-    assert [placement["footprint"] for placement in document["board"]["placements"]] == [
-        "footprint_def:0",
-        "footprint_def:0",
-    ]
+    assert all("footprint" not in placement for placement in document["board"]["placements"])
     library.part(
         "Conflicting",
         pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],

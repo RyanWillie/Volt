@@ -10,41 +10,6 @@
 namespace volt {
 namespace {
 
-[[nodiscard]] bool same_capability_range(const std::optional<BoardCapabilityRange> &lhs,
-                                         const std::optional<BoardCapabilityRange> &rhs) {
-    return lhs.has_value() == rhs.has_value() &&
-           (!lhs.has_value() ||
-            (lhs->minimum_mm == rhs->minimum_mm && lhs->maximum_mm == rhs->maximum_mm));
-}
-
-[[nodiscard]] bool same_capability_profile(const BoardCapabilityProfile &lhs,
-                                           const BoardCapabilityProfile &rhs) {
-    const auto same_clearances =
-        std::ranges::equal(lhs.minimum_clearances(), rhs.minimum_clearances(),
-                           [](const BoardClearancePair &left, const BoardClearancePair &right) {
-                               return left.first == right.first && left.second == right.second &&
-                                      left.clearance_mm == right.clearance_mm;
-                           });
-    const auto same_refinements =
-        std::ranges::equal(lhs.copper_weight_refinements(), rhs.copper_weight_refinements(),
-                           [](const BoardCapabilityCopperWeightRefinement &left,
-                              const BoardCapabilityCopperWeightRefinement &right) {
-                               return left.copper_weight_oz == right.copper_weight_oz &&
-                                      left.minimum_track_width_mm == right.minimum_track_width_mm &&
-                                      left.minimum_clearance_mm == right.minimum_clearance_mm;
-                           });
-    return lhs.name() == rhs.name() && lhs.provenance().source == rhs.provenance().source &&
-           lhs.provenance().as_of == rhs.provenance().as_of &&
-           lhs.minimum_track_width_mm() == rhs.minimum_track_width_mm() &&
-           lhs.minimum_via_drill_mm() == rhs.minimum_via_drill_mm() &&
-           lhs.minimum_via_annular_mm() == rhs.minimum_via_annular_mm() && same_clearances &&
-           same_refinements &&
-           lhs.supported_copper_layer_counts() == rhs.supported_copper_layer_counts() &&
-           same_capability_range(lhs.board_thickness_range_mm(), rhs.board_thickness_range_mm()) &&
-           lhs.available_copper_weights_oz() == rhs.available_copper_weights_oz() &&
-           same_capability_range(lhs.drill_diameter_range_mm(), rhs.drill_diameter_range_mm());
-}
-
 [[nodiscard]] Board copy_board_snapshot(const Board &source, const Circuit &circuit) {
     auto result = Board{circuit, source.name()};
     result.set_design_rules(source.design_rules());
@@ -153,22 +118,22 @@ CompiledBoardPlacement::CompiledBoardPlacement(ComponentPlacementId placement,
 
 class CompiledBoard::Storage {
   public:
-    Storage(Circuit logical_dependencies, const BoardResolution &resolution,
-            CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
-            std::string logical_dependency_snapshot, std::string physical_snapshot,
-            std::string bytes)
-        : parts_{resolution.parts().begin(), resolution.parts().end()},
-          circuit_{std::move(logical_dependencies)},
-          board_{copy_board_snapshot(resolution.board(), circuit_)},
-          footprints_{resolution.footprints()},
-          pad_resolutions_{queries::resolve_pads(
-              ResolvedBoardView{board_, footprints_, std::span<const ResolvedBoardPart>{parts_}})},
-          placements_{freeze_placements(board_, footprints_, parts_, pad_resolutions_)},
+    Storage(Circuit logical_dependencies, const Board &board, FootprintLibrary footprints,
+            std::vector<ResolvedBoardPart> parts, CompiledBoardCapabilities capabilities,
+            CompiledBoardProvenance provenance, std::string logical_dependency_snapshot,
+            std::string physical_snapshot, std::string bytes)
+        : parts_{std::move(parts)}, circuit_{std::move(logical_dependencies)},
+          board_{copy_board_snapshot(board, circuit_)}, footprints_{std::move(footprints)},
           capabilities_{std::move(capabilities)}, provenance_{std::move(provenance)},
           identity_{board_.name(), provenance_.provenance_digest()},
           logical_dependency_snapshot_{std::move(logical_dependency_snapshot)},
           physical_snapshot_{std::move(physical_snapshot)}, bytes_{std::move(bytes)},
           content_digest_{sha256_content_hash(bytes_)} {}
+
+    void finalize(const ResolvedBoardView &resolved) {
+        pad_resolutions_ = queries::resolve_pads(resolved);
+        placements_ = freeze_placements(board_, footprints_, parts_, pad_resolutions_);
+    }
 
     std::vector<ResolvedBoardPart> parts_;
     Circuit circuit_;
@@ -253,25 +218,13 @@ CompiledBoard &CompiledBoard::operator=(CompiledBoard &&other) noexcept = defaul
 CompiledBoard::~CompiledBoard() = default;
 
 CompiledBoard CompiledBoard::materialize_verified(
-    Circuit logical_dependencies, const BoardResolution &resolution,
+    Circuit logical_dependencies, const Board &board, ContentHash selected_closure_digest,
+    FootprintLibrary footprints, std::vector<ResolvedBoardPart> parts,
     CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
     std::string logical_dependency_snapshot, std::string physical_snapshot, std::string bytes) {
-    if (resolution.board_name().value() != resolution.board().name().value()) {
-        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
-                               "CompiledBoard resolution Board identity is inconsistent"};
-    }
-    if (resolution.closure_digest() != provenance.selected_closure_digest()) {
+    if (selected_closure_digest != provenance.selected_closure_digest()) {
         throw KernelLogicError{ErrorCode::CrossReferenceViolation,
                                "CompiledBoard resolution closure digest is inconsistent"};
-    }
-    if (!resolution.capabilities().profile().has_value()) {
-        throw KernelLogicError{ErrorCode::InvalidState,
-                               "CompiledBoard requires one concrete capability profile"};
-    }
-    if (!same_capability_profile(*resolution.capabilities().profile(), capabilities.profile()) ||
-        !std::ranges::equal(resolution.capabilities().additional(), capabilities.additional())) {
-        throw KernelLogicError{ErrorCode::CrossReferenceViolation,
-                               "CompiledBoard capability snapshot differs from its resolution"};
     }
     if (bytes.empty() || logical_dependency_snapshot.empty() || physical_snapshot.empty()) {
         throw KernelArgumentError{ErrorCode::InvalidArgument,
@@ -283,9 +236,12 @@ CompiledBoard CompiledBoard::materialize_verified(
         throw KernelLogicError{ErrorCode::CrossReferenceViolation,
                                "CompiledBoard canonical payload digest is inconsistent"};
     }
-    return CompiledBoard{std::make_unique<Storage>(
-        std::move(logical_dependencies), resolution, std::move(capabilities), std::move(provenance),
-        std::move(logical_dependency_snapshot), std::move(physical_snapshot), std::move(bytes))};
+    auto result = CompiledBoard{std::make_unique<Storage>(
+        std::move(logical_dependencies), board, std::move(footprints), std::move(parts),
+        std::move(capabilities), std::move(provenance), std::move(logical_dependency_snapshot),
+        std::move(physical_snapshot), std::move(bytes))};
+    result.storage_->finalize(result.view());
+    return result;
 }
 
 const CompiledBoardIdentity &CompiledBoard::identity() const noexcept {
@@ -314,8 +270,10 @@ const ResolvedBoardPart *CompiledBoard::part(ComponentId component) const noexce
     return view().part(component);
 }
 
-ResolvedBoardView CompiledBoard::view() const & {
-    return ResolvedBoardView{storage_->board_, storage_->footprints_, storage_->parts_};
+ResolvedBoardView CompiledBoard::view() const & { return ResolvedBoardView::from(*this); }
+
+ResolvedBoardView ResolvedBoardView::from(const CompiledBoard &compiled) {
+    return ResolvedBoardView{compiled.board(), compiled.footprints(), compiled.parts(), true};
 }
 
 std::span<const PadResolution> CompiledBoard::pad_resolutions() const noexcept {

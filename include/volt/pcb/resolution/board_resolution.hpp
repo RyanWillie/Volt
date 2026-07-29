@@ -13,6 +13,9 @@
 
 namespace volt {
 
+class BoardResolution;
+class CompiledBoard;
+
 /** Additional exact asset families required by one Board resolution. */
 enum class BoardAssetCapability {
     Models3D,
@@ -74,40 +77,52 @@ class ResolvedBoardPart {
 /** Non-owning resolved physical view backed by BoardResolution or CompiledBoard storage. */
 class ResolvedBoardView {
   public:
-    /** Validate and bind one Board to its exact resolved footprint and selected-part owners. */
-    ResolvedBoardView(const Board &board, const FootprintLibrary &footprints,
-                      std::span<const ResolvedBoardPart> parts);
+    /** Bind one complete verified BoardResolution owner. */
+    [[nodiscard]] static ResolvedBoardView from(const BoardResolution &resolution);
+    [[nodiscard]] static ResolvedBoardView from(BoardResolution &&resolution) = delete;
 
-    /** Reject temporary owners because the view borrows all three inputs. */
-    ResolvedBoardView(Board &&board, const FootprintLibrary &footprints,
-                      std::span<const ResolvedBoardPart> parts) = delete;
-    ResolvedBoardView(const Board &board, FootprintLibrary &&footprints,
-                      std::span<const ResolvedBoardPart> parts) = delete;
-    ResolvedBoardView(Board &&board, FootprintLibrary &&footprints,
-                      std::span<const ResolvedBoardPart> parts) = delete;
+    /** Bind one complete immutable CompiledBoard owner. */
+    [[nodiscard]] static ResolvedBoardView from(const CompiledBoard &compiled);
+    [[nodiscard]] static ResolvedBoardView from(CompiledBoard &&compiled) = delete;
+
+#if defined(VOLT_TEST_SUPPORT)
+    /** Construct an explicitly partial raw view for isolated diagnostic and geometry tests. */
+    [[nodiscard]] static ResolvedBoardView test_only(const Board &board,
+                                                     const FootprintLibrary &footprints,
+                                                     std::span<const ResolvedBoardPart> parts) {
+        return ResolvedBoardView{board, footprints, parts, false};
+    }
+
     template <std::ranges::contiguous_range Range>
         requires std::same_as<std::remove_cv_t<std::ranges::range_value_t<Range>>,
                               ResolvedBoardPart> &&
                      (!std::ranges::borrowed_range<Range>)
-    ResolvedBoardView(const Board &board, const FootprintLibrary &footprints,
-                      Range &&parts) = delete;
+    [[nodiscard]] static ResolvedBoardView
+        test_only(const Board &board, const FootprintLibrary &footprints, Range &&parts) = delete;
+#endif
 
     /** Return the exact named Board. */
-    [[nodiscard]] const Board &board() const noexcept { return *board_; }
+    [[nodiscard]] const Board &board() const;
 
     /** Return the exact resolved footprint definitions. */
-    [[nodiscard]] const FootprintLibrary &footprints() const noexcept { return *footprints_; }
+    [[nodiscard]] const FootprintLibrary &footprints() const;
 
     /** Return all exact selected implementations in component order. */
-    [[nodiscard]] std::span<const ResolvedBoardPart> parts() const noexcept { return parts_; }
+    [[nodiscard]] std::span<const ResolvedBoardPart> parts() const;
 
     /** Return the exact resolved implementation for a component, or null when none is selected. */
-    [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const noexcept;
+    [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const;
 
   private:
+    ResolvedBoardView(const Board &board, const FootprintLibrary &footprints,
+                      std::span<const ResolvedBoardPart> parts, bool complete);
+
+    void require_current() const;
+
     const Board *board_;
     const FootprintLibrary *footprints_;
     std::span<const ResolvedBoardPart> parts_;
+    bool complete_;
 };
 
 /**
@@ -118,19 +133,16 @@ class ResolvedBoardView {
  */
 class BoardResolution {
   public:
+    /** Exact IO owner allowed to publish one fully verified resolution. */
+    class Codec;
+
     BoardResolution(const BoardResolution &) = delete;
     BoardResolution &operator=(const BoardResolution &) = delete;
     BoardResolution(BoardResolution &&) = delete;
     BoardResolution &operator=(BoardResolution &&) = delete;
 
-    /** Atomically materialize already-resolved native inputs into the immutable PCB result. */
-    [[nodiscard]] static BoardResolution materialize(const Board &board, ContentHash closure_digest,
-                                                     BoardResolutionCapabilities capabilities,
-                                                     FootprintLibrary footprints,
-                                                     std::vector<ResolvedBoardPart> parts);
-
     /** Return the exact named authoring Board. */
-    [[nodiscard]] const Board &board() const noexcept { return *board_; }
+    [[nodiscard]] const Board &board() const;
 
     /** Return the stable name of the resolved authoring Board. */
     [[nodiscard]] const BoardName &board_name() const noexcept { return board_name_; }
@@ -144,22 +156,25 @@ class BoardResolution {
     }
 
     /** Return the complete native footprint definitions decoded from the selected closure. */
-    [[nodiscard]] const FootprintLibrary &footprints() const noexcept { return footprints_; }
+    [[nodiscard]] const FootprintLibrary &footprints() const;
 
     /** Return all exact selected implementations in component order. */
-    [[nodiscard]] std::span<const ResolvedBoardPart> parts() const noexcept { return parts_; }
+    [[nodiscard]] std::span<const ResolvedBoardPart> parts() const;
 
     /** Return the exact resolved implementation for a component, or null when none is selected. */
     [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const;
 
     /** Return the explicit non-owning consumer view backed by this resolution. */
-    [[nodiscard]] ResolvedBoardView view() const & {
-        return ResolvedBoardView{*board_, footprints_, parts_};
-    }
+    [[nodiscard]] ResolvedBoardView view() const &;
 
     [[nodiscard]] ResolvedBoardView view() const && = delete;
 
   private:
+    [[nodiscard]] static BoardResolution
+    materialize_verified(const Board &board, ContentHash closure_digest,
+                         BoardResolutionCapabilities capabilities, FootprintLibrary footprints,
+                         std::vector<ResolvedBoardPart> parts);
+
     BoardResolution(const Board &board, ContentHash closure_digest,
                     BoardResolutionCapabilities capabilities, FootprintLibrary footprints,
                     std::vector<ResolvedBoardPart> parts);

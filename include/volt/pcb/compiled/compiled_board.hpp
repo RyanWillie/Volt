@@ -271,11 +271,11 @@ class CompiledBoard final {
 
     explicit CompiledBoard(std::unique_ptr<Storage> storage);
 
-    [[nodiscard]] static CompiledBoard
-    materialize_verified(Circuit logical_dependencies, const BoardResolution &resolution,
-                         CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
-                         std::string logical_dependency_snapshot, std::string physical_snapshot,
-                         std::string bytes);
+    [[nodiscard]] static CompiledBoard materialize_verified(
+        Circuit logical_dependencies, const Board &board, ContentHash selected_closure_digest,
+        FootprintLibrary footprints, std::vector<ResolvedBoardPart> parts,
+        CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
+        std::string logical_dependency_snapshot, std::string physical_snapshot, std::string bytes);
 
     std::unique_ptr<Storage> storage_;
 };

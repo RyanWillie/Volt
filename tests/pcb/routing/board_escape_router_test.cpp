@@ -512,7 +512,7 @@ TEST_CASE("Escape router rejects component requests that cannot be attempted", "
         no_part_component, volt::BoardPoint{0.0, 0.0}, volt::BoardRotation::degrees(0.0)}));
     const auto no_part_footprints = volt::FootprintLibrary{};
     auto no_part_router = volt::BoardRouter{
-        no_part_board, volt::ResolvedBoardView{no_part_board, no_part_footprints, {}}};
+        no_part_board, volt::ResolvedBoardView::test_only(no_part_board, no_part_footprints, {})};
     CHECK_THROWS_MATCHES(
         no_part_router.escape(no_part_component), std::invalid_argument,
         Catch::Matchers::Message("Cannot escape component without a selected physical part"));

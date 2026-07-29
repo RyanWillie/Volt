@@ -131,11 +131,11 @@ class ResolvedBoardTestParts {
 
     [[nodiscard]] ResolvedBoardView view(const Board &board,
                                          const FootprintLibrary &footprints) const {
-        return ResolvedBoardView{board, footprints, parts_};
+        return ResolvedBoardView::test_only(board, footprints, parts_);
     }
 
     [[nodiscard]] ResolvedBoardView view_builtin(const Board &board) const {
-        return ResolvedBoardView{board, builtin_footprints_, parts_};
+        return ResolvedBoardView::test_only(board, builtin_footprints_, parts_);
     }
 
     [[nodiscard]] std::span<const ResolvedBoardPart> parts() const noexcept { return parts_; }

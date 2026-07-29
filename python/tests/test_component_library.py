@@ -851,7 +851,7 @@ def test_project_instantiates_imported_part_without_manual_footprint_cache():
     assert [definition["ref"] for definition in definitions] == [
         {"library": "Resistor_SMD", "name": "R_0603_1608Metric"}
     ]
-    assert document["board"]["placements"][0]["footprint"] == "footprint_def:0"
+    assert "footprint" not in document["board"]["placements"][0]
 
 
 def test_part_pin_pad_mapping_supports_tied_pads():

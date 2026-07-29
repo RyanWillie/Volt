@@ -132,7 +132,8 @@ target_include_directories(
         ${PROJECT_SOURCE_DIR}/tests
 )
 target_compile_definitions(
-    volt_core_tests PRIVATE VOLT_TEST_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/tests/fixtures"
+    volt_core_tests
+    PRIVATE VOLT_TEST_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/tests/fixtures" VOLT_TEST_SUPPORT
 )
 if(MINGW)
     target_compile_options(volt_core_tests PRIVATE -Wa,-mbig-obj)

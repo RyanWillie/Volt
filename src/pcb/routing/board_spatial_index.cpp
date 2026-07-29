@@ -204,7 +204,9 @@ BoardSpatialIndex::BoardSpatialIndex(const Board &board)
 
 BoardSpatialIndex::BoardSpatialIndex(const ResolvedBoardView &resolved)
     : BoardSpatialIndex{resolved.board(),
-                        detail::collect_copper_shapes(resolved, queries::resolve_pads(resolved))} {}
+                        detail::collect_copper_shapes(resolved, queries::resolve_pads(resolved))} {
+    mutable_state().resolved = resolved;
+}
 
 BoardSpatialIndex::BoardSpatialIndex(const Board &board,
                                      std::vector<detail::BoardCopperShape> shapes)
@@ -238,6 +240,9 @@ void BoardSpatialIndex::ensure_conservative_bound_current() const {
 }
 
 void BoardSpatialIndex::ensure_geometry_current() const {
+    if (state().resolved.has_value()) {
+        static_cast<void>(state().resolved->board());
+    }
     if (!state().geometry_snapshot.value().is_current()) {
         throw KernelLogicError{
             ErrorCode::InvalidState,
@@ -327,6 +332,9 @@ void BoardSpatialIndex::index_shape(std::size_t shape_index) {
 }
 
 void BoardSpatialIndex::insert(BoardSpatialQueryShape shape) {
+    if (state().resolved.has_value()) {
+        static_cast<void>(state().resolved->board());
+    }
     auto copper_shape = to_copper_shape(std::move(shape));
     if (state().geometry_snapshot.value().is_current()) {
         append_shape(std::move(copper_shape));

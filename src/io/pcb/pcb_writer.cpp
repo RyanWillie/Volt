@@ -393,29 +393,14 @@ void write_rules(std::ostream &out, const Board &board) {
     out << "},\n";
 }
 
-void write_placements(std::ostream &out, const ResolvedBoardView &resolved,
-                      const std::vector<FootprintDefinition> &definitions, bool trailing_comma) {
-    const auto &board = resolved.board();
+void write_placements(std::ostream &out, const Board &board, bool trailing_comma) {
     out << "    \"placements\": [\n";
     for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto id = ComponentPlacementId{index};
         const auto &placement = board.get(id);
-        const auto *selected_part = resolved.part(placement.component());
-        auto footprint = std::optional<FootprintDefId>{};
-        if (selected_part != nullptr) {
-            footprint =
-                find_footprint_definition(definitions, selected_part->physical_part().footprint());
-        }
-
         out << "      {\"id\": " << json_string(encode_local_id(id))
             << ", \"component\": " << json_string(encode_local_id(placement.component()))
-            << ", \"footprint\": ";
-        if (footprint.has_value()) {
-            out << json_string(encode_local_id(footprint.value()));
-        } else {
-            out << "null";
-        }
-        out << ", \"position\": ";
+            << ", \"position\": ";
         write_board_point(out, placement.position());
         out << ", \"rotation_deg\": ";
         write_number(out, placement.rotation().degrees());
@@ -602,7 +587,7 @@ void write_pcb_board(std::ostream &out, const ResolvedBoardView &resolved) {
     detail::write_board_geometry(out, board);
     detail::write_features(out, board);
     detail::write_footprint_definitions(out, definitions);
-    detail::write_placements(out, resolved, definitions,
+    detail::write_placements(out, board,
                              board.all<volt::BoardTrackId>().size() != 0U ||
                                  board.all<volt::BoardViaId>().size() != 0U ||
                                  board.all<volt::BoardZoneId>().size() != 0U ||

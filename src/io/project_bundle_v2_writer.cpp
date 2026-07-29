@@ -26,6 +26,7 @@
 #include <volt/io/bom/bom_writer.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
+#include <volt/io/pcb/board_resolution.hpp>
 #include <volt/io/pcb/board_scene.hpp>
 #include <volt/io/pcb/compiled_board.hpp>
 #include <volt/io/pcb/pcb_svg_writer.hpp>
@@ -1588,8 +1589,13 @@ void ProjectArtifactGraph::accumulate_authoritative_artifacts(
         require(sha256_content_hash(board.compiled->physical_snapshot()) ==
                     board.compiled->provenance().physical_snapshot_digest(),
                 "CompiledBoard physical snapshot digest is stale");
-        const auto authoring_board_bytes = write_pcb_board(
-            ResolvedBoardView{*board.board, board.compiled->footprints(), board.compiled->parts()});
+        const auto authoring_resolution = resolve_board(
+            *board.board, *board.bundle,
+            BoardResolutionCapabilities{board.compiled->capabilities().profile(),
+                                        std::vector<BoardAssetCapability>{
+                                            board.compiled->capabilities().additional().begin(),
+                                            board.compiled->capabilities().additional().end()}});
+        const auto authoring_board_bytes = write_pcb_board(authoring_resolution.view());
         const auto authoring_board_snapshot =
             nlohmann::json::parse(authoring_board_bytes.begin(), authoring_board_bytes.end())
                 .dump();

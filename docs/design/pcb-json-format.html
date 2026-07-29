@@ -326,7 +326,7 @@
             <tr><th>Path</th><th>Canonical fields</th><th>Why a viewer needs it</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>board.footprint_definitions[].id</code></td><td><code>footprint_def:&lt;n&gt;</code></td><td>Stable target for placements and SVG <code>data-footprint-def</code>.</td></tr>
+            <tr><td><code>board.footprint_definitions[].id</code></td><td><code>footprint_def:&lt;n&gt;</code></td><td>Stable identity for embedded footprint geometry. Exact placement association is derived only from a verified BoardResolution or CompiledBoard.</td></tr>
             <tr><td><code>board.footprint_definitions[].ref</code></td><td>Library and footprint name.</td><td>Human-readable package identity.</td></tr>
             <tr><td><code>pads[].id</code></td><td><code>footprint_pad:&lt;n&gt;</code>, local to the footprint definition.</td><td>Stable selector for pad geometry and pad projections.</td></tr>
             <tr><td><code>pads[].label</code></td><td>Physical pad label from the footprint.</td><td>Inspection and pin-pad mapping display.</td></tr>
@@ -353,7 +353,6 @@
           <tbody>
             <tr><td><code>placements[].id</code></td><td>Stable placement entity ID.</td><td>SVG <code>data-placement</code> and diagnostic entity refs.</td></tr>
             <tr><td><code>placements[].component</code></td><td>Existing logical component ID.</td><td>Inspection link to reference designator and selected physical part.</td></tr>
-            <tr><td><code>placements[].footprint</code></td><td>Resolved <code>footprint_def</code> ID or <code>null</code> if unavailable.</td><td>Joins a placement to renderable footprint geometry.</td></tr>
             <tr><td><code>placements[].position</code></td><td>Board-space placement origin in millimeters.</td><td>Translate footprint-local geometry.</td></tr>
             <tr><td><code>placements[].rotation_deg</code></td><td>Board rotation in degrees.</td><td>Rotate footprint-local points around the placement origin.</td></tr>
             <tr><td><code>placements[].side</code></td><td><code>top</code> or <code>bottom</code>.</td><td>Bottom-side placements mirror local X before rotation.</td></tr>
@@ -369,8 +368,8 @@
       <aside>Renderer Use</aside>
       <div class="stack">
         <div class="callout green">
-          <h2>A renderer should consume JSON directly.</h2>
-          <p>The SVG preview is optional debug output. A 2D or first 3D renderer should use the JSON board outline, thickness, features, footprint package geometry, pad geometry, placement transforms, and pad projection identity as its input model.</p>
+          <h2>A renderer combines Board JSON with its verified resolved owner.</h2>
+          <p>The SVG preview is optional debug output. A renderer may use the JSON board outline, thickness, features, embedded footprint geometry, and placement transforms directly. It must use BoardResolution or CompiledBoard to bind a placement to its exact selected footprint and pad projection identity.</p>
         </div>
         <table>
           <thead>
@@ -382,7 +381,7 @@
             <tr><td>Mechanical features</td><td><code>board.geometry.openings[]</code>, <code>board.geometry.cutouts[]</code>, <code>board.geometry.surface_features[]</code></td><td>Render board holes, slots, cutouts, and board-side primitives from stable feature IDs and board-space geometry.</td></tr>
             <tr><td>Footprint pad bodies</td><td><code>board.footprint_definitions[].pads[]</code></td><td>Render pad shape, size, drill, and layer membership in footprint-local coordinates.</td></tr>
             <tr><td>Footprint package geometry</td><td><code>body</code>, <code>courtyard</code>, <code>fabrication_outline</code>, <code>assembly_outline</code>, <code>markings[]</code></td><td>Render package occupancy and semantic marks from declared footprint geometry. Missing fields mean no such geometry was declared.</td></tr>
-            <tr><td>Placed pads</td><td><code>board.placements[]</code> plus referenced <code>footprint_def</code></td><td>Apply placement side, rotation, and translation to every footprint-local pad. Bottom-side placements mirror local X before rotation.</td></tr>
+            <tr><td>Placed pads</td><td>Typed pad and footprint projections over <code>BoardResolution</code> or <code>CompiledBoard</code></td><td>Bind the exact selected footprint first, then apply placement side, rotation, and translation. Bottom-side placements mirror local X before rotation.</td></tr>
             <tr><td>Selection identity</td><td>Typed validation, ratsnest and rendering results over <code>CompiledBoard</code></td><td>Use exact-revision derived services for pad projections, pin and net refs, and diagnostic overlays. Current PCB JSON does not cache them.</td></tr>
           </tbody>
         </table>
@@ -405,7 +404,7 @@
             <tr><td><code>svg.pcb-placement-preview</code></td><td><code>data-board</code>, <code>data-board-name</code>, <code>data-units</code></td><td><code>board.id</code>, <code>board.name</code>, <code>board.units</code></td></tr>
             <tr><td><code>.board-outline</code></td><td><code>data-board</code></td><td><code>board.id</code></td></tr>
             <tr><td><code>.board-feature</code>, <code>.board-feature-label</code></td><td><code>data-board-feature</code></td><td><code>board.features[].id</code></td></tr>
-            <tr><td><code>.component-placement</code></td><td><code>data-placement</code>, <code>data-component</code>, <code>data-footprint-def</code>, <code>data-footprint</code></td><td><code>placements[].id</code>, <code>placements[].component</code>, <code>placements[].footprint</code>, footprint ref token</td></tr>
+            <tr><td><code>.component-placement</code></td><td><code>data-placement</code>, <code>data-component</code>, <code>data-footprint-def</code>, <code>data-footprint</code></td><td><code>placements[].id</code>, <code>placements[].component</code>, and exact footprint identity derived from the resolved owner</td></tr>
             <tr><td><code>.footprint-pad</code></td><td><code>data-pad-projection</code>, <code>data-pad</code>, <code>data-pin</code>, <code>data-net</code></td><td>Typed pad-resolution result, <code>footprint_pad</code>, logical pin, logical net</td></tr>
             <tr><td><code>.pad-overlay</code>, <code>.pad-net-label</code></td><td><code>data-pad-projection</code>, <code>data-net</code></td><td>Derived pad projection and logical net.</td></tr>
             <tr><td><code>.diagnostic-label</code>, <code>.diagnostic-marker</code></td><td><code>data-diagnostic-code</code>, <code>data-entities</code></td><td>Current recomputed diagnostics and entity refs.</td></tr>
@@ -435,7 +434,7 @@
       <div class="stack">
         <div class="callout red">
           <h2>Malformed structure fails at the load boundary.</h2>
-          <p>The current reader rejects duplicate or non-sequential IDs, dangling layer-stack entries, placements that reference missing components, unresolved footprint references, and any removed <code>viewer</code> object.</p>
+          <p>The current reader rejects duplicate or non-sequential IDs, dangling layer-stack entries, placements that reference missing components, any placement-level <code>footprint</code> association that cannot be verified at this source boundary, and any removed <code>viewer</code> object.</p>
         </div>
         <ul>
           <li>Structural integrity is enforced by the reader and kernel mutation APIs.</li>

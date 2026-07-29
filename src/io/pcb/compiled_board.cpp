@@ -1304,16 +1304,17 @@ template <typename Publisher>
                 string_field(manifest, "board_name", "CompiledBoard manifest"),
             "CompiledBoard physical Board identity is stale", ErrorCode::CrossReferenceViolation);
 
-    auto resolution_capabilities = BoardResolutionCapabilities{
-        capabilities.profile(), std::vector<BoardAssetCapability>{capabilities.additional().begin(),
-                                                                  capabilities.additional().end()}};
-    const auto resolution = BoardResolution::materialize(
-        physical_board, closure_digest, std::move(resolution_capabilities),
-        std::move(footprint_library), std::move(resolved_parts));
+    require(physical_board.capability_profile().has_value(),
+            "CompiledBoard physical Board has no capability profile",
+            ErrorCode::CrossReferenceViolation);
+    require(write_capability_profile(*physical_board.capability_profile()) ==
+                write_capability_profile(capabilities.profile()),
+            "CompiledBoard physical Board capability profile is stale",
+            ErrorCode::CrossReferenceViolation);
 
     const auto build = string_field(manifest, "compiler_build", "CompiledBoard manifest");
     const auto expected_provenance =
-        provenance_digest(resolution.board_name().value(), build, logical_digest, physical_digest,
+        provenance_digest(physical_board.name().value(), build, logical_digest, physical_digest,
                           closure_digest, capability_digest);
     const auto stored_provenance =
         ContentHash{string_field(manifest, "provenance_digest", "CompiledBoard manifest")};
@@ -1332,7 +1333,8 @@ template <typename Publisher>
         stored_provenance,
     };
     auto compiled =
-        publisher(std::move(logical_circuit), resolution, std::move(capabilities),
+        publisher(std::move(logical_circuit), std::move(physical_board), closure_digest,
+                  std::move(footprint_library), std::move(resolved_parts), std::move(capabilities),
                   std::move(provenance), logical_bytes, physical_bytes, std::string{bytes});
     require(build_physical_snapshot(compiled.view()) == physical_bytes,
             "CompiledBoard materialized Board differs from its canonical physical snapshot",
@@ -1352,12 +1354,14 @@ namespace volt {
 
 CompiledBoard CompiledBoard::Codec::open(std::string_view bytes) {
     return io::open_compiled_board_impl(
-        bytes, [](Circuit logical_dependencies, const BoardResolution &resolution,
+        bytes, [](Circuit logical_dependencies, Board board, ContentHash selected_closure_digest,
+                  FootprintLibrary footprints, std::vector<ResolvedBoardPart> parts,
                   CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
                   std::string logical_dependency_snapshot, std::string physical_snapshot,
                   std::string archive_bytes) {
             return CompiledBoard::materialize_verified(
-                std::move(logical_dependencies), resolution, std::move(capabilities),
+                std::move(logical_dependencies), board, std::move(selected_closure_digest),
+                std::move(footprints), std::move(parts), std::move(capabilities),
                 std::move(provenance), std::move(logical_dependency_snapshot),
                 std::move(physical_snapshot), std::move(archive_bytes));
         });

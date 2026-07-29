@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <vector>
 
+#include <volt/pcb/resolution/board_resolution.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
 
 namespace volt::detail {
@@ -23,6 +24,7 @@ struct BoardSpatialIndexCell {
 
 struct BoardSpatialIndexState {
     const Board *board = nullptr;
+    std::optional<ResolvedBoardView> resolved;
     std::vector<BoardCopperShape> shapes;
     std::vector<BoardSpatialIndexBox> boxes;
     std::vector<BoardSpatialIndexCell> cells;

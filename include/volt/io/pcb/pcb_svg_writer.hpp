@@ -72,9 +72,6 @@ void write_pcb_svg_number(std::ostream &out, double value);
 
 [[nodiscard]] std::string footprint_ref_token(const FootprintRef &ref);
 
-[[nodiscard]] FootprintLibrary preview_footprint_library(const Board &board,
-                                                         const FootprintLibrary &footprints);
-
 [[nodiscard]] const FootprintDefinition *
 resolve_definition_for_placement(const ResolvedBoardView &resolved,
                                  const ComponentPlacement &placement);

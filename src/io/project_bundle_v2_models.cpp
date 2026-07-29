@@ -610,8 +610,7 @@ void verify_owner_graph(ProjectBundleStorage &storage, const LibraryDecoded &dec
         require(board->board == compiled.model->identity().board(),
                 ProjectBundleOpenErrorCode::OwnershipViolation,
                 "CompiledBoard name disagrees with its exact authoring Board dependency");
-        require(write_pcb_board(ResolvedBoardView{*board->model, compiled.model->footprints(),
-                                                  compiled.model->parts()}) ==
+        require(write_pcb_board(compiled.model->view()) ==
                     storage.v2_artifacts[board->artifact].bytes,
                 ProjectBundleOpenErrorCode::OwnershipViolation,
                 "Board payload is not canonical for its exact CompiledBoard resolution");

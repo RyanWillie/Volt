@@ -72,9 +72,7 @@ void write_features(std::ostream &out, const Board &board);
 void write_footprint_definitions(std::ostream &out,
                                  const std::vector<FootprintDefinition> &definitions);
 
-void write_placements(std::ostream &out, const ResolvedBoardView &resolved,
-                      const std::vector<FootprintDefinition> &definitions,
-                      bool trailing_comma = false);
+void write_placements(std::ostream &out, const Board &board, bool trailing_comma = false);
 
 void write_tracks(std::ostream &out, const Board &board, bool trailing_comma = false);
 
