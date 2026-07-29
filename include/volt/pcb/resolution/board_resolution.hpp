@@ -1,7 +1,10 @@
 #pragma once
 
+#include <concepts>
 #include <optional>
+#include <ranges>
 #include <span>
+#include <type_traits>
 #include <vector>
 
 #include <volt/circuit/parts/selected_part.hpp>
@@ -82,9 +85,12 @@ class ResolvedBoardView {
                       std::span<const ResolvedBoardPart> parts) = delete;
     ResolvedBoardView(Board &&board, FootprintLibrary &&footprints,
                       std::span<const ResolvedBoardPart> parts) = delete;
-    template <typename Allocator>
+    template <std::ranges::contiguous_range Range>
+        requires std::same_as<std::remove_cv_t<std::ranges::range_value_t<Range>>,
+                              ResolvedBoardPart> &&
+                     (!std::ranges::borrowed_range<Range>)
     ResolvedBoardView(const Board &board, const FootprintLibrary &footprints,
-                      std::vector<ResolvedBoardPart, Allocator> &&parts) = delete;
+                      Range &&parts) = delete;
 
     /** Return the exact named Board. */
     [[nodiscard]] const Board &board() const noexcept { return *board_; }

@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
 #include <concepts>
 #include <map>
 #include <optional>
@@ -138,6 +139,12 @@ static_assert(
 static_assert(!std::constructible_from<volt::ResolvedBoardView, const volt::Board &,
                                        const volt::FootprintLibrary &,
                                        std::vector<volt::ResolvedBoardPart> &&>);
+static_assert(!std::constructible_from<volt::ResolvedBoardView, const volt::Board &,
+                                       const volt::FootprintLibrary &,
+                                       std::array<volt::ResolvedBoardPart, 1> &&>);
+static_assert(std::constructible_from<volt::ResolvedBoardView, const volt::Board &,
+                                      const volt::FootprintLibrary &,
+                                      std::span<const volt::ResolvedBoardPart>>);
 
 TEST_CASE("Footprint assets round-trip complete native geometry deterministically") {
     const auto outline = volt::FootprintPolygon{std::vector{
