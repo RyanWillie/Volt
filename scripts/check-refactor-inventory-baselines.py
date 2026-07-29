@@ -491,7 +491,7 @@ ANTI_REGROWTH_PATH_PREFIXES = (
 )
 
 ANTI_REGROWTH_TEXT_PATTERNS = {
-    "legacy_example_reference": re.compile(r"""(?<![A-Za-z0-9_])examples(?=/|\.|["'`])"""),
+    "legacy_example_reference": re.compile(r"(?<![A-Za-z0-9_])examples/"),
     "legacy_stm32_benchmark": re.compile(r"\bstm32_usb_buck\b"),
     "retired_library_component": re.compile(r"\bLibraryComponent\b"),
     "retired_physical_part_spec": re.compile(r"\bPhysicalPartSpec\b"),
@@ -525,13 +525,38 @@ ANTI_REGROWTH_SCAN_FILES = {
     "pyproject.toml",
 }
 
+def legacy_example_import_lines(path: str, source: str) -> set[int]:
+    if not path.endswith(".py"):
+        return set()
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as error:
+        raise AssertionError(f"cannot inspect Python imports in {path}: {error}") from error
+    lines: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            if any(
+                alias.name == "examples" or alias.name.startswith("examples.")
+                for alias in node.names
+            ):
+                lines.add(node.lineno)
+        elif isinstance(node, ast.ImportFrom) and node.module is not None:
+            if node.module == "examples" or node.module.startswith("examples."):
+                lines.add(node.lineno)
+    return lines
+
+
 def anti_regrowth_text_violations(sources: dict[str, str]) -> list[str]:
     violations: list[str] = []
     for path, source in sorted(sources.items()):
+        example_import_lines = legacy_example_import_lines(path, source)
         for line_number, line in enumerate(source.splitlines(), start=1):
+            if line_number in example_import_lines:
+                violations.append(f"legacy_example_reference:{path}:{line_number}")
             for name, pattern in ANTI_REGROWTH_TEXT_PATTERNS.items():
-                if pattern.search(line):
-                    violations.append(f"{name}:{path}:{line_number}")
+                violation = f"{name}:{path}:{line_number}"
+                if pattern.search(line) and violation not in violations:
+                    violations.append(violation)
     return violations
 
 
@@ -894,8 +919,8 @@ def run_self_tests() -> int:
                 "docs/current.md": "call result.write_artifacts(output)\n",
                 "python/volt/library.py": "class LibraryComponent:\n    pass\n",
                 "python/volt/cli/__init__.py": 'parser.add_argument("--flat")\n',
-                "python/volt/cli/legacy.py": "volt run --project .\n",
-                "python/volt/cli/manufacturing.py": "volt export manufacturing\n",
+                "python/volt/cli/legacy.py": "COMMAND = 'volt run --project .'\n",
+                "python/volt/cli/manufacturing.py": "COMMAND = 'volt export manufacturing'\n",
                 "skills/current.md": "component.select_part()\n",
             }
         )
@@ -915,6 +940,7 @@ def run_self_tests() -> int:
             {
                 "python/volt/current.py": (
                     "import examples.legacy\n"
+                    "from examples.other import fixture\n"
                     "fixture = 'examples/legacy/project.py'\n"
                 ),
             }
@@ -922,6 +948,7 @@ def run_self_tests() -> int:
         == [
             "legacy_example_reference:python/volt/current.py:1",
             "legacy_example_reference:python/volt/current.py:2",
+            "legacy_example_reference:python/volt/current.py:3",
         ],
         "the anti-regrowth checker must detect dotted and slash legacy example references",
     )
@@ -929,10 +956,14 @@ def run_self_tests() -> int:
         not anti_regrowth_text_violations(
             {
                 "include/native.hpp": "LibraryComponentRef owner;\nOrderablePart part;\n",
-                "docs/current.md": "Use Library.part() and ProjectResult.write().\n",
+                "docs/current.md": (
+                    "Use Library.part() and ProjectResult.write().\n"
+                    "See the following examples.\n"
+                    'These "examples" describe the current API.\n'
+                ),
             }
         ),
-        "the anti-regrowth checker must accept the surviving native graph vocabulary",
+        "the anti-regrowth checker must accept current vocabulary and ordinary example prose",
     )
     require(
         parse_check_attr_eol(b"one\0eol\0lf\0two\0eol\0unspecified\0")
