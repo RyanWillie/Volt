@@ -114,6 +114,7 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "BOM_COMPONENT_MISSING_SELECTED_PART",
         "BOM_COMPONENT_IMPLICIT_DNP",
         "BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY",
+        "BOM_LEGACY_INLINE_SELECTED_PART_UNSUPPORTED",
     )
     assert volt.ASSEMBLY_DIAGNOSTIC_CODES == (
         "ASSEMBLY_COMPONENT_MISSING_SELECTED_PART",

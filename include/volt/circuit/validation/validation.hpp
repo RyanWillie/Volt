@@ -97,9 +97,6 @@ void validate_bom_component_readiness(const Circuit &circuit, const ExactPartRes
 /** Run the default logical circuit validation suite. */
 [[nodiscard]] DiagnosticReport validate_circuit(const Circuit &circuit);
 
-/** Validate whether a circuit is ready for PCB/layout work. */
-[[nodiscard]] DiagnosticReport validate_for_pcb(const Circuit &circuit);
-
 /** Validate whether a circuit is ready for deterministic BOM projection and handoff. */
 [[nodiscard]] DiagnosticReport validate_bom_readiness(const Circuit &circuit,
                                                       const ExactPartResolver &resolver);

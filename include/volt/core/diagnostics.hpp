@@ -166,6 +166,8 @@ inline constexpr auto ComponentMissingSelectedPart =
 inline constexpr auto ComponentImplicitDnp = std::string_view{"BOM_COMPONENT_IMPLICIT_DNP"};
 inline constexpr auto ApprovedAlternateDuplicatesPrimary =
     std::string_view{"BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY"};
+inline constexpr auto LegacyInlineSelectedPartUnsupported =
+    std::string_view{"BOM_LEGACY_INLINE_SELECTED_PART_UNSUPPORTED"};
 
 } // namespace bom_diagnostic_codes
 
@@ -254,7 +256,8 @@ inline constexpr auto PartLineup = std::array{
 
 inline constexpr auto Bom = std::array{bom_diagnostic_codes::ComponentMissingSelectedPart,
                                        bom_diagnostic_codes::ComponentImplicitDnp,
-                                       bom_diagnostic_codes::ApprovedAlternateDuplicatesPrimary};
+                                       bom_diagnostic_codes::ApprovedAlternateDuplicatesPrimary,
+                                       bom_diagnostic_codes::LegacyInlineSelectedPartUnsupported};
 
 inline constexpr auto Assembly = std::array{assembly_diagnostic_codes::ComponentMissingSelectedPart,
                                             assembly_diagnostic_codes::PartIdentityMissing,

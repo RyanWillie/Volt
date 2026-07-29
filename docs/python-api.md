@@ -211,8 +211,10 @@ for diagnostic in design.validate():
 ```
 
 `Design.validate()` runs the default logical validation suite. `Design.validate_for_pcb()`
-adds PCB-readiness checks, including selected physical part requirements, without making
-selected parts mandatory for logical-only designs.
+adds PCB-readiness checks using the Design's retained exact part-library closure, including
+missing selections and exact-part electrical constraints, without making selected parts
+mandatory for logical-only designs. Footprint and pad geometry are resolved and validated by
+BoardResolution and board validation rather than copied into the logical Circuit.
 
 ## Project Framework
 

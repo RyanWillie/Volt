@@ -466,13 +466,22 @@ def tracked_paths() -> list[str]:
         raise AssertionError(
             f"git ls-files failed: {result.stderr.decode('utf-8', errors='replace')}"
         )
-    return sorted(
+    paths = sorted(
         path
         for field in result.stdout.split(b"\0")
         if field
         for path in (field.decode("utf-8"),)
-        if (ROOT / path).exists()
     )
+    require_tracked_paths_exist(paths)
+    return paths
+
+
+def require_tracked_paths_exist(paths: list[str]) -> None:
+    missing = [path for path in paths if not (ROOT / path).exists()]
+    if missing:
+        raise AssertionError(
+            "git index contains tracked paths missing from the worktree: " + ", ".join(missing)
+        )
 
 
 ANTI_REGROWTH_PATH_PREFIXES = (
@@ -869,6 +878,15 @@ def run_self_tests() -> int:
         == {"forbidden_paths": [], "retired_route_references": []},
         "M2 must leave no retired path or route in the current tree",
     )
+    try:
+        require_tracked_paths_exist(["tests/fixtures/__missing_tracked_path__"])
+    except AssertionError as error:
+        require(
+            "__missing_tracked_path__" in str(error),
+            "missing tracked paths must be named in the governance failure",
+        )
+    else:
+        raise AssertionError("the inventory must reject tracked paths missing from the worktree")
     require(
         anti_regrowth_text_violations(
             {

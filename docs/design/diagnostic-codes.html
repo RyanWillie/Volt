@@ -497,9 +497,10 @@
   validate_connectivity(circuit)
   validate_electrical_rules(circuit)
 
-validate_for_pcb(circuit)
+validate_for_pcb(circuit, exact_part_resolver)
   validate_circuit(circuit)
-  validate physical part selection
+  validate exact selected-part references
+  validate exact-part electrical records against connectivity and authored net Voltage
 
 validate_board(board, footprints)
   validate placement and footprint readiness
@@ -510,9 +511,11 @@ Project board stage diagnostics
         <p>
           Use <code>validate_circuit(circuit)</code> for the default complete logical
           validation suite. The named entry points expose stable intent-level groups for
-          tests and future tools. Use <code>validate_for_pcb(circuit)</code> when a
-          workflow needs physical implementation readiness; the smaller pass helpers
-          remain internal structure.
+          tests and future tools. Use
+          <code>validate_for_pcb(circuit, exact_part_resolver)</code> when a workflow
+          needs physical implementation readiness. Footprint and pad geometry remain
+          BoardResolution/board-validation concerns; the smaller pass helpers remain
+          internal structure.
         </p>
       </div>
     </section>

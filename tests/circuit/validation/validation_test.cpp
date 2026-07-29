@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "support/circuit_test_helpers.hpp"
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -16,8 +17,24 @@
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/library/part_library.hpp>
 
 namespace {
+
+class EmptyAssetResolver final : public volt::PartAssetResolver {
+  public:
+    [[nodiscard]] std::optional<std::string>
+    resolve(const volt::PartAssetReference &) const override {
+        return std::nullopt;
+    }
+};
+
+[[nodiscard]] volt::PartLibrary empty_part_library() {
+    const auto resolver = EmptyAssetResolver{};
+    const auto builder = volt::PartLibraryBuilder{
+        volt::PartLibraryIdentity{"volt.tests.empty", "1", volt::PartLibrarySchemaVersion::V1}};
+    return builder.build(resolver);
+}
 
 void set_pin_voltage_range(volt::PinSpec &pin, double minimum, double maximum) {
     pin.electrical_attributes.push_back(volt::ElectricalAttributeAssignment{
@@ -440,6 +457,7 @@ TEST_CASE("Full circuit validation preserves connectivity before electrical rule
 }
 
 TEST_CASE("PCB readiness validation reports components without selected physical parts") {
+    const auto library = empty_part_library();
     volt::Circuit circuit;
     const auto first_pin_def_spec = volt::PinSpec{"1",
                                                   "1",
@@ -468,7 +486,7 @@ TEST_CASE("PCB readiness validation reports components without selected physical
     circuit.connect(output, second_pin);
 
     const auto logical_report = volt::validate_circuit(circuit);
-    const auto pcb_report = volt::validate_for_pcb(circuit);
+    const auto pcb_report = volt::validate_for_pcb(circuit, library);
 
     REQUIRE(logical_report.count() == 2);
     CHECK(logical_report.diagnostics()[0].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
@@ -484,7 +502,7 @@ TEST_CASE("PCB readiness validation reports components without selected physical
     CHECK(diagnostic.entities()[1] == volt::EntityRef::component_def(resistor_def));
 
     circuit.update(resistor, volt::SetAssemblyIntent{.dnp = true});
-    const auto dnp_report = volt::validate_for_pcb(circuit);
+    const auto dnp_report = volt::validate_for_pcb(circuit, library);
     REQUIRE(dnp_report.count() == 2);
     CHECK(dnp_report.diagnostics()[0].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
     CHECK(dnp_report.diagnostics()[1].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});

@@ -32,6 +32,7 @@
 #include <volt/io/pcb/board_resolution.hpp>
 #include <volt/io/pcb/pcb_reader.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
+#include <volt/library/part_library.hpp>
 
 namespace volt::io {
 namespace {
@@ -1136,9 +1137,11 @@ decode_parts(const Json &selected_parts, const std::map<std::string, DecodedComp
     return encode_archive(manifest, payloads);
 }
 
-[[nodiscard]] DiagnosticReport design_diagnostics(const Board &board,
+[[nodiscard]] DiagnosticReport design_diagnostics(const Circuit &circuit,
+                                                  const ExactPartResolver &resolver,
+                                                  const Board &board,
                                                   const FootprintLibrary &footprints) {
-    auto result = validate_for_pcb(board.circuit());
+    auto result = validate_for_pcb(circuit, resolver);
     const auto board_diagnostics = validate_board(board, footprints);
     for (const auto &diagnostic : board_diagnostics.diagnostics()) {
         result.add(diagnostic);
@@ -1151,9 +1154,10 @@ decode_parts(const Json &selected_parts, const std::map<std::string, DecodedComp
 CompiledBoardCompileResult compile_board(const Circuit &circuit, const Board &board,
                                          const PartLibraryBundle &selected_closure,
                                          CompiledBoardCapabilities capabilities) {
-    auto diagnostics = validate_for_pcb(board.circuit());
+    auto diagnostics = DiagnosticReport{};
     auto archive_bytes = std::string{};
     try {
+        diagnostics = validate_for_pcb(board.circuit(), selected_closure);
         if (&board.circuit() != &circuit) {
             throw KernelLogicError{
                 ErrorCode::CrossReferenceViolation,
@@ -1174,7 +1178,8 @@ CompiledBoardCompileResult compile_board(const Circuit &circuit, const Board &bo
     }
 
     auto artifact = open_compiled_board(archive_bytes);
-    diagnostics = design_diagnostics(artifact.board(), artifact.footprints());
+    diagnostics =
+        design_diagnostics(circuit, selected_closure, artifact.board(), artifact.footprints());
     return CompiledBoardCompileResult::success(std::move(artifact), std::move(diagnostics));
 }
 

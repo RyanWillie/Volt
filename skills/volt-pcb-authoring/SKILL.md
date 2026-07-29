@@ -33,7 +33,7 @@ for diagnostic in design.validate_for_pcb():
     print(diagnostic.severity, diagnostic.code, diagnostic.message)
 ```
 
-`design.validate_for_pcb()` (source: `python/volt/design.py`) adds PCB-readiness checks on top of `design.validate()`: selected physical parts, footprint geometry, and pin-pad mappings must be present for all placed components. Do not select parts or create nets in the PCB layer; consume what the logical circuit owns.
+`design.validate_for_pcb()` (source: `python/volt/design.py`) adds PCB-readiness checks on top of `design.validate()`: every populated component needs an exact selected PartRef, and its typed electrical records are checked through the retained PartLibraryBundle. BoardResolution and `board.validate()` then verify footprint geometry and pin-pad mappings from that same closure. Do not select parts or create nets in the PCB layer; consume what the logical circuit owns.
 
 Once components are placed, board DRC also checks package geometry against the design rules and the board edge. Watch for `PCB_COMPONENT_ASSEMBLY_CLEARANCE_WARNING` (two package bodies closer than `package_assembly_clearance`) and `PCB_COMPONENT_BOARD_EDGE_CLEARANCE_VIOLATION` (a package body too close to the outline). These depend on footprints declaring `body`/outline geometry (see `volt-component-authoring`); fix them by spacing parts or pulling them off the edge in `volt-pcb-layout`, not by loosening the rule.
 

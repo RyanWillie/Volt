@@ -459,6 +459,34 @@ TEST_CASE("Native selected-part ERC diagnoses accepted and absolute Voltage viol
           std::optional<std::string>{"volt.part_erc.voltage.absolute_limit@1"});
 }
 
+TEST_CASE("PCB readiness checks authored net Voltage against exact-part absolute limits") {
+    auto fixture = make_fixture();
+    const auto positive = fixture.circuit.add_net(
+        volt::NetSpec{.name = volt::NetName{"VDD"}, .kind = volt::NetKind::Power});
+    const auto negative = fixture.circuit.add_net(
+        volt::NetSpec{.name = volt::NetName{"GND"}, .kind = volt::NetKind::Ground});
+    const auto load = instantiate(fixture.circuit, fixture.load_definition, "U1");
+    static_cast<void>(select(fixture.circuit, load, fixture.library, "mcu-500ma"));
+    connect_domain(fixture.circuit, load, positive, negative);
+    fixture.circuit.update(
+        positive,
+        volt::SetNetElectricalAttribute{
+            volt::ElectricalAttributeSpec{
+                volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
+                volt::ElectricalAttributeKind::DesignInput, volt::UnitDimension::Voltage},
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 5.0}}});
+
+    const auto report = volt::validate_for_pcb(fixture.circuit, fixture.library);
+
+    const auto *diagnostic = ::diagnostic(report, "SELECTED_PART_VOLTAGE_ABSOLUTE_LIMIT_VIOLATION");
+    REQUIRE(diagnostic != nullptr);
+    CHECK(diagnostic->entities() == std::vector{volt::EntityRef::component(load),
+                                                volt::EntityRef::net(positive),
+                                                volt::EntityRef::net(negative)});
+    CHECK(diagnostic->rule() ==
+          std::optional<std::string>{"volt.part_erc.voltage.absolute_limit@1"});
+}
+
 TEST_CASE("Native selected-part ERC is identical after logical round-trip") {
     auto fixture = make_fixture();
     static_cast<void>(build_supply_circuit(fixture, "source-over", {"mcu-500ma"}));
@@ -558,7 +586,7 @@ TEST_CASE("Exact selection satisfies missing-selection readiness without becomin
     const auto led = instantiate(fixture.circuit, fixture.led_definition, "D1");
     fixture.circuit.update(led, volt::SetAssemblyIntent{.dnp = false});
 
-    const auto pcb_missing = volt::validate_for_pcb(fixture.circuit);
+    const auto pcb_missing = volt::validate_for_pcb(fixture.circuit, fixture.library);
     const auto bom_missing = volt::validate_bom_readiness(fixture.circuit, fixture.library);
     CHECK(has_diagnostic(pcb_missing, "PHYSICAL_PART_REQUIRED"));
     CHECK(has_diagnostic(bom_missing, "BOM_COMPONENT_MISSING_SELECTED_PART"));
@@ -570,7 +598,7 @@ TEST_CASE("Exact selection satisfies missing-selection readiness without becomin
     CHECK(has_diagnostic(board_missing, "PCB_COMPONENT_MISSING_SELECTED_PART"));
 
     static_cast<void>(select(fixture.circuit, led, fixture.library, "led"));
-    const auto pcb_selected = volt::validate_for_pcb(fixture.circuit);
+    const auto pcb_selected = volt::validate_for_pcb(fixture.circuit, fixture.library);
     const auto bom_selected = volt::validate_bom_readiness(fixture.circuit, fixture.library);
     CHECK_FALSE(has_diagnostic(pcb_selected, "PHYSICAL_PART_REQUIRED"));
     CHECK_FALSE(has_diagnostic(bom_selected, "BOM_COMPONENT_MISSING_SELECTED_PART"));

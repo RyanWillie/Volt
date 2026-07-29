@@ -5,6 +5,7 @@
 
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <string>
 
 #include <volt/circuit/connectivity/queries.hpp>
@@ -12,8 +13,24 @@
 #include <volt/core/errors.hpp>
 #include <volt/io/logical/logical_circuit_reader.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
+#include <volt/library/part_library.hpp>
 
 namespace {
+
+class EmptyAssetResolver final : public volt::PartAssetResolver {
+  public:
+    [[nodiscard]] std::optional<std::string>
+    resolve(const volt::PartAssetReference &) const override {
+        return std::nullopt;
+    }
+};
+
+[[nodiscard]] volt::PartLibrary empty_part_library() {
+    const auto resolver = EmptyAssetResolver{};
+    const auto builder = volt::PartLibraryBuilder{
+        volt::PartLibraryIdentity{"volt.tests.empty", "1", volt::PartLibrarySchemaVersion::V1}};
+    return builder.build(resolver);
+}
 
 std::string read_fixture(const std::string &name) {
     auto input = std::ifstream{std::string{VOLT_TEST_FIXTURE_DIR} + "/" + name};
@@ -28,6 +45,25 @@ TEST_CASE("Logical circuit reader round-trips the legacy v1 LED fixture") {
     const auto circuit = volt::io::read_logical_circuit_text(fixture);
 
     CHECK(volt::io::write_logical_circuit(circuit) == fixture);
+}
+
+TEST_CASE("Legacy v1 inline selections are explicit read-only BOM inputs") {
+    const auto circuit =
+        volt::io::read_logical_circuit_text(read_fixture("legacy_led_circuit_v1.volt.json"));
+    const auto library = empty_part_library();
+
+    const auto report = volt::validate_bom_readiness(circuit, library);
+    auto legacy_diagnostics = std::size_t{0};
+    auto missing_diagnostics = std::size_t{0};
+    for (const auto &diagnostic : report.diagnostics()) {
+        legacy_diagnostics +=
+            diagnostic.code().value() == "BOM_LEGACY_INLINE_SELECTED_PART_UNSUPPORTED" ? 1U : 0U;
+        missing_diagnostics +=
+            diagnostic.code().value() == "BOM_COMPONENT_MISSING_SELECTED_PART" ? 1U : 0U;
+    }
+
+    CHECK(legacy_diagnostics == 3U);
+    CHECK(missing_diagnostics == 0U);
 }
 
 TEST_CASE("Logical circuit reader preserves component definition source metadata") {

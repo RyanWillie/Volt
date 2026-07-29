@@ -12,6 +12,7 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/validation/validation.hpp>
 #include <volt/core/errors.hpp>
+#include <volt/core/rule_set.hpp>
 
 namespace volt {
 
@@ -230,6 +231,23 @@ void add_record(Claim &claim, const ElectricalRecord &record) {
            *provided.maximum > *accepted.maximum;
 }
 
+[[nodiscard]] std::optional<double> authored_net_voltage(const Circuit &circuit, NetId net) {
+    const auto &attributes = queries::net_electrical_attributes(circuit, net);
+    const auto name = ElectricalAttributeName{"voltage"};
+    if (attributes.contains(name)) {
+        const auto &attribute = attributes.get(name);
+        if (attribute.kind() == ElectricalAttributeValueKind::Quantity &&
+            attribute.as_quantity().dimension() == UnitDimension::Voltage) {
+            return attribute.as_quantity().value();
+        }
+        return std::nullopt;
+    }
+    if (circuit.get(net).kind() == NetKind::Ground) {
+        return 0.0;
+    }
+    return std::nullopt;
+}
+
 } // namespace
 
 DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
@@ -290,6 +308,32 @@ DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
     for (const auto &[key, claim] : claims) {
         static_cast<void>(key);
         ordered.push_back(std::cref(claim));
+    }
+
+    for (const auto constraint_ref : ordered) {
+        const auto &constraint = constraint_ref.get();
+        if (constraint.observable != ElectricalObservable::Voltage ||
+            constraint.meaning != ElectricalMeaning::AbsoluteLimit ||
+            !constraint.bounds.has_value()) {
+            continue;
+        }
+        const auto positive = authored_net_voltage(circuit, constraint.domain.positive);
+        const auto negative = authored_net_voltage(circuit, constraint.domain.negative);
+        if (!positive.has_value() || !negative.has_value()) {
+            continue;
+        }
+        const auto voltage = *positive - *negative;
+        const auto authored = Bounds{voltage, voltage};
+        if (!below(authored, *constraint.bounds) && !above(authored, *constraint.bounds)) {
+            continue;
+        }
+        report.add(erc_diagnostic(
+            erc_diagnostic_codes::SelectedPartVoltageAbsoluteLimitViolation,
+            "Authored net Voltage exceeds an exact-part absolute limit; constrained part " +
+                constraint.provenance,
+            {EntityRef::component(constraint.component), EntityRef::net(constraint.domain.positive),
+             EntityRef::net(constraint.domain.negative)},
+            absolute_voltage_rule));
     }
 
     for (const auto provided_ref : ordered) {
@@ -417,6 +461,24 @@ DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
             "Continuous Current budget cannot be certified because a subject is unresolved",
             std::move(entities), current_budget_rule));
     }
+    return report;
+}
+
+[[nodiscard]] DiagnosticReport validate_for_pcb(const Circuit &circuit,
+                                                const ExactPartResolver &resolver) {
+    auto report = validate_circuit(circuit);
+
+    auto rules = RuleSet<Circuit>{};
+    rules.add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
+        detail::validate_physical_part_selection(rule_circuit, rule_report);
+    });
+    rules.run(circuit, report);
+
+    const auto selected_part_report = validate_selected_part_erc(circuit, resolver);
+    for (const auto &diagnostic : selected_part_report.diagnostics()) {
+        report.add(diagnostic);
+    }
+
     return report;
 }
 

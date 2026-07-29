@@ -492,6 +492,15 @@ void validate_bom_component_readiness(const Circuit &circuit, const ExactPartRes
         }
 
         const auto &selected_ref = volt::queries::selected_library_part_ref(circuit, component_id);
+        if (volt::queries::selected_physical_part(circuit, component_id).has_value() &&
+            !selected_ref.has_value()) {
+            report.add(bom_error(
+                bom_diagnostic_codes::LegacyInlineSelectedPartUnsupported,
+                "Legacy inline selected part is read-compatible but cannot drive current BOM "
+                "readiness without an exact library reference",
+                entities));
+            continue;
+        }
         if (!dnp.value_or(false) && !selected_ref.has_value()) {
             report.add(
                 bom_error(bom_diagnostic_codes::ComponentMissingSelectedPart,
@@ -564,18 +573,6 @@ namespace volt {
             const auto continuity = detail::NetContinuityView{rule_circuit};
             detail::validate_net_semantics(rule_circuit, continuity, rule_report);
         });
-    rules.run(circuit, report);
-
-    return report;
-}
-
-[[nodiscard]] DiagnosticReport validate_for_pcb(const Circuit &circuit) {
-    auto report = validate_circuit(circuit);
-
-    auto rules = RuleSet<Circuit>{};
-    rules.add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
-        detail::validate_physical_part_selection(rule_circuit, rule_report);
-    });
     rules.run(circuit, report);
 
     return report;

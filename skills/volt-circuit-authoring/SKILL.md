@@ -165,7 +165,7 @@ fails. `result.write(path)` writes the deterministic, versioned ProjectBundle.
 | Duplicate component reference, duplicate net name, pin already on a net, invalid selected-part pin-pad mapping | **Exception** at the mutation call site |
 | Unconnected required pin, single-pin net, incompatible drivers | **Diagnostic** from `design.validate()` or collected by the Project run |
 | Exact selected-part electrical record violation | **Diagnostic** from the Project run's native selected-part validation |
-| PCB-readiness gaps (no selected part, no footprint) | **Diagnostic** from `design.validate_for_pcb()` |
+| PCB-readiness gaps or exact-part electrical violations | **Diagnostic** from `design.validate_for_pcb()` |
 
 Diagnostics are not raised. Inspect `result.diagnostics` and `diagnostics/diagnostics.json`. Use `project.expect_diagnostic(code=...)` only when the finding is intentional and documented.
 

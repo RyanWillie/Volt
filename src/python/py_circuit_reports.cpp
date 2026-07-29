@@ -7,6 +7,7 @@
 #include <volt/circuit/bom/bom.hpp>
 #include <volt/io/bom/bom_writer.hpp>
 #include <volt/io/parts/part_library_bundle.hpp>
+#include <volt/library/part_library.hpp>
 
 namespace volt::python {
 
@@ -17,7 +18,7 @@ py::list PyCircuit::validate() const {
 
 py::list PyCircuit::validate_for_pcb() const {
     const auto circuit = materialized_circuit();
-    return diagnostics_to_list(volt::validate_for_pcb(circuit));
+    return diagnostics_to_list(volt::validate_for_pcb(circuit, selected_part_bundle()));
 }
 
 py::list PyCircuit::validate_bom_readiness() const {

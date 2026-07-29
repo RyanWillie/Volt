@@ -490,7 +490,7 @@ validate_electrical_rules
   electrical semantics checks over typed model data
 
 validate_for_pcb
-  PCB-readiness checks that require selected physical parts
+  PCB-readiness checks over the Circuit and its exact selected-part closure
 ```
 
 Current typed checks include:
@@ -501,9 +501,9 @@ Current typed checks include:
 - obvious output conflicts
 - power/ground sanity checks
 - net voltage against connected pin voltage ranges
-- selected-part voltage rating against authored net voltage
+- exact-part absolute Voltage limits against authored net Voltage
 - assigned net-class maximum voltage against authored net voltage
-- missing selected physical parts when validating for PCB output
+- missing exact selected-part references when validating for PCB output
 
 Remaining validation work should build on explicit data:
 
@@ -513,7 +513,7 @@ Remaining validation work should build on explicit data:
 - regulator input/output checks after the necessary kernel-owned constraints are defined
 - current limits and power capability checks
 - no-connect assertions as stored design intent, distinct from generic pin semantics
-- selected-part compatibility beyond voltage rating
+- selected-part compatibility beyond the current typed Voltage/Current records
 - drive and domain compatibility once the constraint model is clearer
 - hierarchy and scoped-net validation after those primitives exist
 - net-class validation over reusable net classes

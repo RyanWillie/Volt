@@ -75,7 +75,7 @@
     <table>
       <thead><tr><th>Measured surface</th><th>Before</th><th>After</th><th>Delta</th></tr></thead>
       <tbody>
-        <tr><td>Production C++, headers, and Python</td><td>91,949 lines</td><td>89,475 lines</td><td>−2,474</td></tr>
+        <tr><td>Production C++, headers, and Python</td><td>91,949 lines</td><td>89,544 lines</td><td>−2,405</td></tr>
         <tr><td>Production source files</td><td>324</td><td>322</td><td>−2</td></tr>
         <tr><td>Python package exports</td><td>133</td><td>129</td><td>−4</td></tr>
         <tr><td>Retired route references in production source</td><td>78</td><td>0</td><td>−78</td></tr>
@@ -85,8 +85,8 @@
         <tr><td>Legacy example text</td><td>89,140 lines</td><td>0</td><td>−89,140</td></tr>
         <tr><td>Legacy example tracked bytes</td><td>4,622,119</td><td>0</td><td>−4,622,119</td></tr>
         <tr><td>Example-only tests</td><td>5 files / 2,043 lines</td><td>0</td><td>−5 / −2,043</td></tr>
-        <tr><td>All native and Python test source</td><td>157 files / 52,821 lines</td><td>152 files / 49,056 lines</td><td>−5 / −3,765</td></tr>
-        <tr><td>All docs and skill sources</td><td>98 files / 33,663 lines</td><td>66 files / 22,207 lines</td><td>−32 / −11,456</td></tr>
+        <tr><td>All native and Python test source</td><td>157 files / 52,821 lines</td><td>152 files / 49,142 lines</td><td>−5 / −3,679</td></tr>
+        <tr><td>All docs and skill sources</td><td>98 files / 33,663 lines</td><td>66 files / 22,214 lines</td><td>−32 / −11,449</td></tr>
         <tr><td>Stale docs and skill references deleted</td><td>33 files / 11,420 lines</td><td>0</td><td>−33 / −11,420</td></tr>
         <tr><td>Native public root snapshots</td><td>199 declarations</td><td>199</td><td>unchanged</td></tr>
       </tbody>
@@ -113,9 +113,11 @@
     <h2>Retained supported boundaries</h2>
     <p>The logical v1 reader/converter still accepts the former inline physical record and
       canonically round-trips it during the documented v1 window. The named
-      <code>legacy_led_circuit_v1.volt.json</code> fixture isolates that proof. Restoration and
-      resolved-board materialization may construct the internal physical view, but Python
-      authoring and ProjectBundle v2 publication cannot use it as an alternate owner.</p>
+      <code>legacy_led_circuit_v1.volt.json</code> fixture isolates that proof. Current BOM
+      readiness reports <code>BOM_LEGACY_INLINE_SELECTED_PART_UNSUPPORTED</code> rather than
+      treating that read-only shape as a current exact selection. Restoration and resolved-board
+      materialization may construct the internal physical view, but Python authoring and
+      ProjectBundle v2 publication cannot use it as an alternate owner.</p>
     <p>ProjectBundle v1 reopen remains <code>LegacyUnverified</code> and read-only. ProjectBundle
       v2 reopen verifies the exact selected closure and artifact graph. No ambient lookup,
       fallback resolver, cache authority, compatibility facade, or dual writer is retained.</p>

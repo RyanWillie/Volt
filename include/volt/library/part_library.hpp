@@ -256,4 +256,8 @@ class PartLibrary : public ExactPartResolver {
 [[nodiscard]] DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
                                                           const ExactPartResolver &resolver);
 
+/** Validate whether a circuit and its exact selected-part closure are ready for PCB/layout work. */
+[[nodiscard]] DiagnosticReport validate_for_pcb(const Circuit &circuit,
+                                                const ExactPartResolver &resolver);
+
 } // namespace volt
