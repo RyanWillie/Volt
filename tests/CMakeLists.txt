@@ -130,7 +130,6 @@ target_compile_features(volt_core_tests PRIVATE cxx_std_23)
 target_include_directories(
     volt_core_tests
     PRIVATE
-        ${PROJECT_SOURCE_DIR}/examples
         ${PROJECT_SOURCE_DIR}/tests
 )
 target_compile_definitions(

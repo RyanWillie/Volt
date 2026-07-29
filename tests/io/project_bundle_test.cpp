@@ -10,6 +10,7 @@
 #include <iterator>
 #include <limits>
 #include <map>
+#include <memory>
 #include <optional>
 #include <ranges>
 #include <set>
@@ -21,7 +22,16 @@
 #include <nlohmann/json.hpp>
 #include <zlib.h>
 
+#include <volt/core/content_hash.hpp>
+#include <volt/io/logical/logical_circuit_writer.hpp>
+#include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/io/project_bundle.hpp>
+#include <volt/io/schematic/schematic_writer.hpp>
+#include <volt/pcb/board.hpp>
+#include <volt/pcb/footprints/footprints.hpp>
+#include <volt/schematic/schematic.hpp>
+
+#include <support/architecture_led_fixture.hpp>
 
 namespace {
 
@@ -52,21 +62,6 @@ class TempDirectory final {
     std::filesystem::path path_;
 };
 
-[[nodiscard]] std::filesystem::path fixture_root() {
-    return std::filesystem::path{VOLT_TEST_FIXTURE_DIR}.parent_path().parent_path() / "examples" /
-           "pcb_led_board" / "artifacts" / "pcb_led_board.volt";
-}
-
-[[nodiscard]] std::vector<std::filesystem::path> existing_fixture_roots() {
-    const auto examples =
-        std::filesystem::path{VOLT_TEST_FIXTURE_DIR}.parent_path().parent_path() / "examples";
-    return {
-        examples / "pcb_led_board" / "artifacts" / "pcb_led_board.volt",
-        examples / "stm32_usb_buck" / "artifacts" / "stm32_usb_buck.volt",
-        examples / "timer_555_led_blinker" / "artifacts" / "timer_555_led_blinker.volt",
-    };
-}
-
 [[nodiscard]] std::string read_bytes(const std::filesystem::path &path) {
     auto input = std::ifstream{path, std::ios::binary};
     REQUIRE(input);
@@ -87,6 +82,98 @@ void write_bytes(const std::filesystem::path &path, std::string_view bytes) {
 
 void write_json(const std::filesystem::path &path, const Json &value) {
     write_bytes(path, value.dump(2) + "\n");
+}
+
+[[nodiscard]] std::filesystem::path fixture_root() {
+    static const auto fixture = [] {
+        auto temporary = std::make_unique<TempDirectory>();
+        const auto root = temporary->path() / "architecture-v1.volt";
+        const auto circuit = volt::test::build_architecture_led_fixture();
+        auto schematic = volt::Schematic{circuit};
+        [[maybe_unused]] const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+        auto board = volt::Board{circuit, volt::BoardName{"Main"}};
+
+        const auto logical_bytes = volt::io::write_logical_circuit(circuit);
+        const auto schematic_bytes = volt::io::write_schematic(schematic);
+        const auto board_bytes = volt::io::write_pcb_board(board, volt::FootprintLibrary{});
+        const auto bom_bytes = std::string{"reference,value\n"};
+        const auto diagnostics = Json{
+            {"status", "clean"},
+            {"summary", {{"errors", 0U}, {"infos", 0U}, {"warnings", 0U}}},
+        };
+        const auto tests = Json{
+            {"summary", {{"failed", 0U}, {"passed", 0U}}},
+            {"tests", Json::array()},
+        };
+        const auto artifacts =
+            Json::array({{{"kind", "logical"},
+                          {"name", "architecture-fixture"},
+                          {"path", "logical/architecture-fixture.volt.json"},
+                          {"media_type", "application/vnd.volt.logical+json"},
+                          {"group", {{"design", "architecture-fixture"}}}},
+                         {{"kind", "schematic"},
+                          {"name", "Main"},
+                          {"path", "schematic/Main.volt.schematic.json"},
+                          {"media_type", "application/vnd.volt.schematic+json"},
+                          {"group", {{"design", "architecture-fixture"}, {"schematic", "Main"}}}},
+                         {{"kind", "schematic_svg"},
+                          {"name", "Main"},
+                          {"path", "schematic/Main.svg"},
+                          {"media_type", "image/svg+xml"},
+                          {"group", {{"design", "architecture-fixture"}, {"schematic", "Main"}}}},
+                         {{"kind", "pcb"},
+                          {"name", "Main"},
+                          {"path", "pcb/Main.volt.pcb.json"},
+                          {"media_type", "application/vnd.volt.pcb+json"},
+                          {"group", {{"design", "architecture-fixture"}, {"board", "Main"}}}},
+                         {{"kind", "bom_csv"},
+                          {"name", "architecture-fixture"},
+                          {"path", "bom/bom.csv"},
+                          {"media_type", "text/csv"},
+                          {"group", {{"design", "architecture-fixture"}}},
+                          {"sha256", volt::sha256_content_hash(bom_bytes).value().substr(7U)}},
+                         {{"kind", "diagnostics"},
+                          {"name", "Project diagnostics"},
+                          {"path", "diagnostics/diagnostics.json"},
+                          {"media_type", "application/json"}},
+                         {{"kind", "project_tests"},
+                          {"name", "Project tests"},
+                          {"path", "diagnostics/tests.json"},
+                          {"media_type", "application/json"}}});
+        const auto manifest = Json{
+            {"format", "volt.project_result"},
+            {"schema_version", 1U},
+            {"project",
+             {{"name", "architecture-fixture"},
+              {"version", "1.0.0"},
+              {"description", "Purpose-built ProjectBundle v1 read fixture"}}},
+            {"ok", true},
+            {"profile", "test"},
+            {"status", "clean"},
+            {"stages", Json::array()},
+            {"artifacts", artifacts},
+            {"diagnostics",
+             {{"path", "diagnostics/diagnostics.json"},
+              {"status", "clean"},
+              {"summary", diagnostics.at("summary")}}},
+            {"tests", {{"path", "diagnostics/tests.json"}, {"summary", tests.at("summary")}}},
+        };
+
+        write_bytes(root / "logical/architecture-fixture.volt.json", logical_bytes);
+        write_bytes(root / "schematic/Main.volt.schematic.json", schematic_bytes);
+        write_bytes(root / "schematic/Main.svg", "<svg xmlns=\"http://www.w3.org/2000/svg\"/>\n");
+        write_bytes(root / "pcb/Main.volt.pcb.json", board_bytes);
+        write_bytes(root / "bom/bom.csv", bom_bytes);
+        write_json(root / "diagnostics/diagnostics.json", diagnostics);
+        write_json(root / "diagnostics/tests.json", tests);
+        write_json(root / "manifest.volt.json", manifest);
+        return temporary;
+    }();
+    return fixture->path() / "architecture-v1.volt";
+}
+
+[[nodiscard]] std::vector<std::filesystem::path> existing_fixture_roots() {
+    return {fixture_root()};
 }
 
 [[nodiscard]] std::filesystem::path copy_fixture(const TempDirectory &temporary) {
@@ -281,30 +368,43 @@ TEST_CASE("ProjectBundle reopens an existing v1 directory truthfully and without
     const auto before = regular_file_snapshot(fixture_root());
     auto bundle = volt::io::ProjectBundle::open(fixture_root());
 
+    CHECK(volt::sha256_content_hash(
+              read_bytes(fixture_root() / "logical/architecture-fixture.volt.json"))
+              .value() ==
+          "sha256:8c5431708418331132814d29ba6b712108256c860e91aa6cca5f1c6957a4a1a5");
+    CHECK(
+        volt::sha256_content_hash(read_bytes(fixture_root() / "schematic/Main.volt.schematic.json"))
+            .value() == "sha256:6c0f6ea3080c1dd2ac6ee53506d26314c81de3fbc0e788f442c3505edba4fe95");
+    CHECK(
+        volt::sha256_content_hash(read_bytes(fixture_root() / "pcb/Main.volt.pcb.json")).value() ==
+        "sha256:020f0b267f6aa87caab3f47bf2c39ac263635fe5e4248f68f0e5abba9f7d9081");
+    CHECK(volt::sha256_content_hash(read_bytes(fixture_root() / "manifest.volt.json")).value() ==
+          "sha256:55fbef2044fbe9b3177a3a7c23e1847ae707910529914d4f8ed087412ac1eeeb");
+
     CHECK(bundle.schema_version() == volt::io::ProjectBundleSchemaVersion::V1);
     CHECK(bundle.storage_kind() == volt::io::ProjectBundleStorageKind::Directory);
     CHECK(bundle.integrity_status() == volt::io::BundleIntegrityStatus::LegacyUnverified);
     CHECK(std::holds_alternative<volt::io::LegacyProjectBundleV1View>(bundle.view()));
 
     const auto legacy = bundle.legacy_v1();
-    CHECK(legacy.project_name() == "pcb-led-board");
-    CHECK_FALSE(legacy.project_version().has_value());
-    CHECK(legacy.project_description() == "First-board LED PCB example");
+    CHECK(legacy.project_name() == "architecture-fixture");
+    CHECK(legacy.project_version() == "1.0.0");
+    CHECK(legacy.project_description() == "Purpose-built ProjectBundle v1 read fixture");
     CHECK(legacy.integrity_status() == volt::io::BundleIntegrityStatus::LegacyUnverified);
     CHECK(legacy.circuits().size() == 1U);
     CHECK(legacy.schematics().size() == 1U);
     CHECK(legacy.boards().size() == 1U);
-    CHECK(legacy.circuits().front().design() == "pcb-led-board");
-    CHECK(legacy.schematics().front().design() == "pcb-led-board");
-    CHECK(legacy.schematics().front().schematic() == "First Board LED");
-    CHECK(legacy.schematics().front().circuit().design() == "pcb-led-board");
-    CHECK(legacy.boards().front().design() == "pcb-led-board");
-    CHECK(legacy.boards().front().board() == "First Board LED");
-    CHECK(legacy.boards().front().circuit().design() == "pcb-led-board");
+    CHECK(legacy.circuits().front().design() == "architecture-fixture");
+    CHECK(legacy.schematics().front().design() == "architecture-fixture");
+    CHECK(legacy.schematics().front().schematic() == "Main");
+    CHECK(legacy.schematics().front().circuit().design() == "architecture-fixture");
+    CHECK(legacy.boards().front().design() == "architecture-fixture");
+    CHECK(legacy.boards().front().board() == "Main");
+    CHECK(legacy.boards().front().circuit().design() == "architecture-fixture");
     CHECK(legacy.manifest_bytes() == read_bytes(fixture_root() / "manifest.volt.json"));
 
     const auto artifacts = legacy.artifacts();
-    REQUIRE(artifacts.size() == 17U);
+    REQUIRE(artifacts.size() == 7U);
     auto paths = std::vector<std::string>{};
     paths.reserve(artifacts.size());
     std::ranges::transform(artifacts, std::back_inserter(paths),
@@ -313,8 +413,9 @@ TEST_CASE("ProjectBundle reopens an existing v1 directory truthfully and without
     const auto asset = std::ranges::find_if(
         artifacts, [](const auto &artifact) { return artifact.recorded_sha256().has_value(); });
     REQUIRE(asset != artifacts.end());
+    CHECK(asset->path() == "bom/bom.csv");
     CHECK(asset->recorded_sha256() ==
-          "4b91321ef3df9390eb915bd133820f68e31cb54c88ce033e9445ceeec00eb8bf");
+          volt::sha256_content_hash(read_bytes(fixture_root() / "bom/bom.csv")).value().substr(7U));
     CHECK_FALSE(asset->bytes().empty());
     CHECK(Json::parse(asset->manifest_record_json()).at("path") == asset->path());
     CHECK(regular_file_snapshot(fixture_root()) == before);
@@ -340,8 +441,8 @@ TEST_CASE("ProjectBundle storage leases remain valid across owner moves and dest
         return reassigned.legacy_v1().boards().front();
     }();
 
-    CHECK(retained_board.board() == "First Board LED");
-    CHECK(retained_board.circuit().design() == "pcb-led-board");
+    CHECK(retained_board.board() == "Main");
+    CHECK(retained_board.circuit().design() == "architecture-fixture");
     CHECK_FALSE(retained_board.artifact().bytes().empty());
 }
 
@@ -399,7 +500,7 @@ TEST_CASE("ProjectBundle open is offline data-only and ignores undeclared source
 
     const auto before = regular_file_snapshot(root);
     const auto bundle = volt::io::ProjectBundle::open(root);
-    CHECK(bundle.legacy_v1().project_name() == "pcb-led-board");
+    CHECK(bundle.legacy_v1().project_name() == "architecture-fixture");
     CHECK_FALSE(std::filesystem::exists(sentinel));
     CHECK(regular_file_snapshot(root) == before);
 }
@@ -430,7 +531,7 @@ TEST_CASE("ProjectBundle fail-closed dispatch rejects incomplete v2 and unknown 
 }
 
 TEST_CASE("ProjectBundle rejects unsafe duplicate colliding and aliased directory paths") {
-    const auto logical_path = std::string{"logical/pcb-led-board.volt.json"};
+    const auto logical_path = std::string{"logical/architecture-fixture.volt.json"};
     const auto unsafe_paths = std::vector<std::string>{
         "../logical.json",       "/absolute.json",
         "C:/drive.json",         R"(logical\board.json)",
@@ -614,8 +715,7 @@ TEST_CASE("ProjectBundle verifies every recorded v1 digest and rejects missing b
     SECTION("digest mismatch") {
         auto temporary = TempDirectory{};
         const auto root = copy_fixture(temporary);
-        const auto asset = root / "assets" / "models" /
-                           "4b91321ef3df9390eb915bd133820f68e31cb54c88ce033e9445ceeec00eb8bf.step";
+        const auto asset = root / "bom" / "bom.csv";
         write_bytes(asset, "tampered");
         CHECK(open_error(root) == volt::io::ProjectBundleOpenErrorCode::DigestMismatch);
     }
@@ -650,14 +750,14 @@ TEST_CASE("ProjectBundle rejects malformed manifests and every supported-model d
     SECTION("logical decode") {
         auto temporary = TempDirectory{};
         const auto root = copy_fixture(temporary);
-        write_bytes(root / "logical" / "pcb-led-board.volt.json", "{}");
+        write_bytes(root / "logical" / "architecture-fixture.volt.json", "{}");
         CHECK(open_error(root) == volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
     }
 
     SECTION("duplicate JSON key in supported model") {
         auto temporary = TempDirectory{};
         const auto root = copy_fixture(temporary);
-        write_bytes(root / "logical" / "pcb-led-board.volt.json",
+        write_bytes(root / "logical" / "architecture-fixture.volt.json",
                     R"({"format":"volt.logical","format":"volt.logical"})");
         CHECK(open_error(root) == volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
     }
@@ -665,14 +765,14 @@ TEST_CASE("ProjectBundle rejects malformed manifests and every supported-model d
     SECTION("schematic decode") {
         auto temporary = TempDirectory{};
         const auto root = copy_fixture(temporary);
-        write_bytes(root / "schematic" / "First-Board-LED.volt.schematic.json", "{}");
+        write_bytes(root / "schematic" / "Main.volt.schematic.json", "{}");
         CHECK(open_error(root) == volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
     }
 
     SECTION("board decode") {
         auto temporary = TempDirectory{};
         const auto root = copy_fixture(temporary);
-        write_bytes(root / "pcb" / "First-Board-LED.volt.pcb.json", "{}");
+        write_bytes(root / "pcb" / "Main.volt.pcb.json", "{}");
         CHECK(open_error(root) == volt::io::ProjectBundleOpenErrorCode::ModelDecodeFailure);
     }
 
@@ -706,9 +806,9 @@ TEST_CASE("ProjectBundle rejects malformed manifests and every supported-model d
     SECTION("board manifest and payload identity mismatch") {
         auto temporary = TempDirectory{};
         const auto root = copy_fixture(temporary);
-        auto board = read_json(root / "pcb" / "First-Board-LED.volt.pcb.json");
+        auto board = read_json(root / "pcb" / "Main.volt.pcb.json");
         board["board"]["name"] = "Foreign";
-        write_json(root / "pcb" / "First-Board-LED.volt.pcb.json", board);
+        write_json(root / "pcb" / "Main.volt.pcb.json", board);
         CHECK(open_error(root) == volt::io::ProjectBundleOpenErrorCode::OwnershipViolation);
     }
 }

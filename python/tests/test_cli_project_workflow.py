@@ -175,7 +175,7 @@ def test_verified_single_board_workflow_executes_source_only_for_check_and_build
     assert [item["name"] for item in default_inspection["boards"]] == ["Main"]
     assert len(default_inspection["compiled_boards"]) == 1
     assert len(default_inspection["scenes"]) == 1
-    assert len(default_inspection["parts"]) == 2
+    assert len(default_inspection["parts"]) == 1
     assert default_inspection["selected_exports"] == []
     assert {item["kind"] for item in default_inspection["artifacts"]} >= {
         "logical_model",
@@ -396,7 +396,8 @@ def test_multiple_named_boards_require_exact_export_and_inspection_selectors(
     error = _json(ambiguous)
     assert error["error"]["code"] == "exact-board-selector-required"
     assert "controller:Main" in error["error"]["message"]
-    assert "panel:Main" in error["error"]["message"]
+    assert "controller:Compact" in error["error"]["message"]
+    assert "controller:Extended" in error["error"]["message"]
 
     bundle = tmp_path / "alpha.volt"
     selected = _run(

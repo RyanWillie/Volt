@@ -4,6 +4,9 @@ from pathlib import Path
 import volt
 
 
+FIXTURE_LIBRARY = volt.Library("volt.tests.project_cli", version="1.0.0")
+
+
 def _record_source_execution():
     sentinel = os.environ.get("VOLT_TEST_SOURCE_SENTINEL")
     if sentinel:
@@ -40,6 +43,32 @@ def _footprint():
     )
 
 
+RESISTOR_1K = FIXTURE_LIBRARY.part(
+    "R_0603_1K",
+    pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),
+    symbol=volt.SchematicSymbolSpec(
+        "volt.tests.project_cli:R_0603",
+        pins=(
+            volt.SchematicSymbolSpec.pin("1", 1, (-10, 0), "Right"),
+            volt.SchematicSymbolSpec.pin("2", 2, (10, 0), "Left"),
+        ),
+        primitives=(
+            volt.SchematicSymbolSpec.line((-10, 0), (-5, 0)),
+            volt.SchematicSymbolSpec.rectangle((-5, -2), (5, 2)),
+            volt.SchematicSymbolSpec.line((5, 0), (10, 0)),
+        ),
+    ),
+    footprint=_footprint(),
+    pads={1: "1", 2: "2"},
+    value="1k",
+    manufacturer="Fixture",
+    mpn="R-1K",
+    package="0603",
+    model_3d=volt.PartModel3D(Path(__file__).with_name("r_0603.step").resolve()),
+    prefix="R",
+)
+
+
 def main():
     _record_source_execution()
     project = volt.Project(
@@ -51,19 +80,13 @@ def main():
     @project.design
     def design():
         result = volt.Design("controller")
-        r1 = result.R("1k", ref="R1")
-        r2 = result.R("1k", ref="R2")
+        r1 = result.instantiate(
+            RESISTOR_1K, ref="R1", properties=dict(RESISTOR_1K.properties)
+        )
+        r2 = result.instantiate(
+            RESISTOR_1K, ref="R2", properties=dict(RESISTOR_1K.properties)
+        )
         for resistor in (r1, r2):
-            resistor.select_part(
-                manufacturer="Fixture",
-                part_number="R-1K",
-                package="0603",
-                footprint=_footprint(),
-                pin_pads={1: "1", 2: "2"},
-                model_3d=volt.PartModel3D(
-                    Path(__file__).with_name("r_0603.step").resolve()
-                ),
-            )
             resistor.dnp(False)
         signal = result.net("SIGNAL")
         return_path = result.net("RETURN")

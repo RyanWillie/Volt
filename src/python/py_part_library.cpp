@@ -115,6 +115,8 @@ struct BuiltLibrary {
     volt::PartLibrary library;
     std::optional<volt::io::PartLibraryBundle> selected_bundle;
     std::map<std::string, volt::ComponentSpec> component_specs;
+    std::vector<volt::ComponentKey> component_roots;
+    std::vector<volt::io::PartLibraryBundleComponentAttachment> component_attachments;
 };
 
 [[nodiscard]] BuiltLibrary build_library(const std::string &namespace_name,
@@ -125,6 +127,8 @@ struct BuiltLibrary {
     auto resolver = PayloadAssetResolver{};
     auto specs = std::map<std::string, volt::ComponentSpec>{};
     auto component_digests = std::map<std::string, volt::ContentHash>{};
+    auto component_roots = std::vector<volt::ComponentKey>{};
+    auto component_attachments = std::vector<volt::io::PartLibraryBundleComponentAttachment>{};
     auto selected = std::vector<volt::PartKey>{};
 
     for (const auto item : parts) {
@@ -136,6 +140,28 @@ struct BuiltLibrary {
         if (existing == component_digests.end()) {
             builder.add_component(lowered.component_spec);
             component_digests.emplace(component_key, digest);
+            component_roots.push_back(lowered.component.contract().key());
+            // Exact Parts may omit the optional default projection or expose named variants only.
+            // Component-only roots attach a symbol only when the component declares a default.
+            for (const auto &symbol : lowered.component.schematic_symbols()) {
+                if (symbol.variant() != "default") {
+                    continue;
+                }
+                const auto part_symbol =
+                    std::ranges::find_if(lowered.part.schematic_assets(), [&](const auto &asset) {
+                        return asset.name() == symbol.name() && asset.variant() == symbol.variant();
+                    });
+                if (part_symbol == lowered.part.schematic_assets().end()) {
+                    throw volt::KernelLogicError{
+                        volt::ErrorCode::CrossReferenceViolation,
+                        "Part lowering is missing its component default symbol"};
+                }
+                component_attachments.emplace_back(
+                    lowered.component.contract().key(),
+                    volt::PartAssetReference{volt::PartAssetKind::Schematic,
+                                             "symbol:" + symbol.name() + "@" + symbol.variant(),
+                                             part_symbol->hash()});
+            }
         } else if (existing->second != digest) {
             throw volt::KernelLogicError{volt::ErrorCode::CrossReferenceViolation,
                                          "ComponentKey resolves to conflicting component content"};
@@ -150,11 +176,17 @@ struct BuiltLibrary {
     }
     auto bundle = std::optional<volt::io::PartLibraryBundle>{};
     if (selected_bundle) {
-        bundle.emplace(volt::io::PartLibraryBundle::build(builder, selected, resolver));
+        bundle.emplace(volt::io::PartLibraryBundle::build_with_component_roots(
+            builder, selected, component_roots, resolver, {}, component_attachments));
     }
     auto library = builder.build(resolver);
-    return BuiltLibrary{std::move(builder), std::move(resolver), std::move(library),
-                        std::move(bundle), std::move(specs)};
+    return BuiltLibrary{std::move(builder),
+                        std::move(resolver),
+                        std::move(library),
+                        std::move(bundle),
+                        std::move(specs),
+                        std::move(component_roots),
+                        std::move(component_attachments)};
 }
 
 } // namespace
@@ -163,13 +195,17 @@ struct PyPartLibrary::State {
     explicit State(BuiltLibrary built)
         : builder{std::move(built.builder)}, resolver{std::move(built.resolver)},
           library{std::move(built.library)}, selected_bundle{std::move(built.selected_bundle)},
-          component_specs{std::move(built.component_specs)} {}
+          component_specs{std::move(built.component_specs)},
+          component_roots{std::move(built.component_roots)},
+          component_attachments{std::move(built.component_attachments)} {}
 
     volt::PartLibraryBuilder builder;
     PayloadAssetResolver resolver;
     volt::PartLibrary library;
     std::optional<volt::io::PartLibraryBundle> selected_bundle;
     std::map<std::string, volt::ComponentSpec> component_specs;
+    std::vector<volt::ComponentKey> component_roots;
+    std::vector<volt::io::PartLibraryBundleComponentAttachment> component_attachments;
 };
 
 PyPartLibrary::PyPartLibrary(std::string namespace_name, std::string version, const py::list &parts,
@@ -263,8 +299,9 @@ py::bytes PyPartLibrary::bundle_bytes() const {
     for (const auto &part : state_->library.parts()) {
         selected.emplace_back(part.identity().name());
     }
-    const auto bundle =
-        volt::io::PartLibraryBundle::build(state_->builder, selected, state_->resolver);
+    const auto bundle = volt::io::PartLibraryBundle::build_with_component_roots(
+        state_->builder, selected, state_->component_roots, state_->resolver, {},
+        state_->component_attachments);
     return py::bytes{bundle.bytes()};
 }
 

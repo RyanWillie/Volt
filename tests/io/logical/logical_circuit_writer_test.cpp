@@ -15,9 +15,8 @@
 #include <volt/io/logical/logical_circuit_reader.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 
+#include <support/architecture_led_fixture.hpp>
 #include <support/semantic_parity_circuit.hpp>
-
-#include "led_circuit.hpp"
 
 namespace {
 
@@ -29,7 +28,7 @@ std::string read_fixture(const std::string &name) {
 } // namespace
 
 TEST_CASE("Logical circuit writer emits deterministic output") {
-    const auto circuit = volt::examples::build_led_circuit();
+    const auto circuit = volt::test::build_architecture_led_fixture();
 
     CHECK(volt::io::write_logical_circuit(circuit) == volt::io::write_logical_circuit(circuit));
 }
@@ -503,8 +502,8 @@ TEST_CASE("Logical circuit writer emits hierarchy module scaffold") {
     CHECK(instance_json["port_bindings"][0]["parent_net"] == "net:2");
 }
 
-TEST_CASE("Logical circuit writer matches the LED golden fixture") {
-    const auto circuit = volt::examples::build_led_circuit();
+TEST_CASE("Logical circuit writer matches the purpose-built LED golden fixture") {
+    const auto circuit = volt::test::build_architecture_led_fixture();
 
     CHECK(volt::io::write_logical_circuit(circuit) == read_fixture("led_circuit.volt.json"));
 }

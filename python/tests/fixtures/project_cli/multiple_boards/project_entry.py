@@ -39,13 +39,15 @@ def main():
 
     @project.design
     def design():
-        return volt.Design("controller"), volt.Design("panel")
+        return volt.Design("controller")
 
     @project.board
     def board(context):
+        design = context.design()
         return (
-            _board(context.design("controller"), "Main", (20, 10)),
-            _board(context.design("panel"), "Main", (24, 12)),
+            _board(design, "Main", (20, 10)),
+            _board(design, "Compact", (16, 8)),
+            _board(design, "Extended", (24, 12)),
         )
 
     return project

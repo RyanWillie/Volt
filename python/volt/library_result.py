@@ -329,7 +329,7 @@ def _part_asset_payloads(part: Part, payload: dict[str, object]) -> list[dict[st
             {
                 "kind": "schematic",
                 "key": f"symbol:{symbol_ref['name']}@{symbol_ref['variant']}",
-                "bytes": _canonical_bytes(_symbol_payload(symbol)),
+                "bytes": _symbol_bytes(symbol),
             }
         )
     physical = part._physical_part_spec()
@@ -373,7 +373,7 @@ def _part_symbol_refs(part: Part) -> list[dict[str, object]]:
         {
             "name": symbol.name,
             "variant": symbol.variant,
-            "hash": _content_hash(_symbol_payload(symbol)),
+            "hash": str(_volt.content_hash(_symbol_bytes(symbol))),
             "pins": [
                 {"name": pin.name, "number": str(pin.number)}
                 for pin in symbol.pins
@@ -383,10 +383,8 @@ def _part_symbol_refs(part: Part) -> list[dict[str, object]]:
     ]
 
 
-def _symbol_payload(symbol) -> dict[str, object]:
-    payload = symbol._to_dict()
-    payload["variant"] = symbol.variant
-    return payload
+def _symbol_bytes(symbol) -> bytes:
+    return bytes(_volt._write_symbol_definition_asset(symbol._to_dict()))
 
 
 def _footprint_payload(footprint) -> dict[str, object]:
