@@ -18,7 +18,7 @@
 
 namespace volt::io {
 
-/** Supported deterministic ProjectBundle graph schema. */
+/** Persisted current ProjectBundle wire-schema tag; it is not a reader dispatch choice. */
 enum class ProjectBundleSchemaVersion : std::uint32_t {
     V2 = 2,
 };

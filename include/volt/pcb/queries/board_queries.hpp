@@ -23,7 +23,8 @@ placement_for_component(const Board &board, ComponentId component) noexcept;
 [[nodiscard]] bool footprint_definition_conflicts(const FootprintDefinition &board_definition,
                                                   const FootprintDefinition &library_definition);
 
-/** Resolve placed footprint pads against existing Circuit pins and connectivity. */
+/** Resolve placed footprint pads against the view's exact physical parts and logical connectivity.
+ */
 [[nodiscard]] std::vector<PadResolution> resolve_pads(const ResolvedBoardView &resolved);
 
 /** Project resolved footprint package geometry into board coordinates. */

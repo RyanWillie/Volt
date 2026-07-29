@@ -59,6 +59,12 @@ void set_net_electrical_attribute(volt::Circuit &circuit, volt::NetId net,
     };
 }
 
+[[nodiscard]] volt::DiagnosticReport
+validate_board_with_builtin_footprints(const volt::Board &board) {
+    const auto footprints = volt::builtin_footprint_library();
+    return volt::validate_board(volt::ResolvedBoardView{board, footprints, {}});
+}
+
 } // namespace
 
 TEST_CASE("Circuit stores net classes by stable ID and name") {
@@ -228,8 +234,7 @@ TEST_CASE("Board validation applies assigned net-class copper clearance") {
         0.10,
     });
 
-    const auto report =
-        volt::validate_board(volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}});
+    const auto report = validate_board_with_builtin_footprints(board);
 
     const auto *clearance = find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION");
     REQUIRE(clearance != nullptr);
@@ -468,8 +473,7 @@ TEST_CASE("Board validation applies net-class track width, via size, and layer r
     const auto small_via =
         board.add_via(volt::BoardVia{net, volt::BoardPoint{12.0, 12.0}, front, back, 0.20, 0.40});
 
-    const auto report =
-        volt::validate_board(volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}});
+    const auto report = validate_board_with_builtin_footprints(board);
 
     const auto *width = find_diagnostic(report, "PCB_TRACK_WIDTH_BELOW_NET_CLASS");
     REQUIRE(width != nullptr);
@@ -594,8 +598,7 @@ TEST_CASE("Board validation applies semantic layer scopes on a four-layer board"
         inner_net, front, std::vector{volt::BoardPoint{1.0, 12.0}, volt::BoardPoint{8.0, 12.0}},
         0.2});
 
-    const auto report =
-        volt::validate_board(volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}});
+    const auto report = validate_board_with_builtin_footprints(board);
 
     auto disallowed = std::vector<volt::EntityRef>{};
     for (const auto &diagnostic : report.diagnostics()) {
@@ -632,8 +635,7 @@ TEST_CASE("Board validation applies clearance-matrix pair rules") {
         second_net, front, std::vector{volt::BoardPoint{1.0, 1.4}, volt::BoardPoint{8.0, 1.4}},
         0.10});
 
-    const auto report =
-        volt::validate_board(volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}});
+    const auto report = validate_board_with_builtin_footprints(board);
 
     const auto *violation = find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION");
     REQUIRE(violation != nullptr);
@@ -683,8 +685,7 @@ TEST_CASE("Board validation lets same-room clearance replace net-class and matri
         second_net, front, std::vector{volt::BoardPoint{1.0, 1.4}, volt::BoardPoint{8.0, 1.4}},
         0.10});
 
-    const auto report =
-        volt::validate_board(volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}});
+    const auto report = validate_board_with_builtin_footprints(board);
 
     const auto *violation = find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION");
     REQUIRE(violation != nullptr);
@@ -735,8 +736,7 @@ TEST_CASE("Board validation lets lower same-room clearance suppress net-class cl
         second_net, front, std::vector{volt::BoardPoint{1.0, 1.4}, volt::BoardPoint{8.0, 1.4}},
         0.10});
 
-    const auto report =
-        volt::validate_board(volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}});
+    const auto report = validate_board_with_builtin_footprints(board);
 
     CHECK(find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION") == nullptr);
 
@@ -757,8 +757,7 @@ TEST_CASE("Board validation lets lower same-room clearance suppress net-class cl
         second_net, no_room_front,
         std::vector{volt::BoardPoint{1.0, 1.4}, volt::BoardPoint{8.0, 1.4}}, 0.10});
 
-    const auto no_room_report = volt::validate_board(
-        volt::ResolvedBoardView{no_room_board, volt::builtin_footprint_library(), {}});
+    const auto no_room_report = validate_board_with_builtin_footprints(no_room_board);
 
     CHECK(find_diagnostic(no_room_report, "PCB_COPPER_CLEARANCE_VIOLATION") != nullptr);
 }
@@ -792,8 +791,7 @@ TEST_CASE("Board validation ignores room clearance when only one shape is inside
         second_net, front, std::vector{volt::BoardPoint{1.0, 1.4}, volt::BoardPoint{8.0, 1.4}},
         0.10});
 
-    const auto report =
-        volt::validate_board(volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}});
+    const auto report = validate_board_with_builtin_footprints(board);
 
     CHECK(find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION") == nullptr);
 }
@@ -825,8 +823,7 @@ TEST_CASE("Board validation lets room track width replace resolved net-class wid
     const auto track = board.add_track(volt::BoardTrack{
         net, front, std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}}, 0.15});
 
-    const auto report =
-        volt::validate_board(volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}});
+    const auto report = validate_board_with_builtin_footprints(board);
 
     const auto *width = find_diagnostic(report, "PCB_TRACK_WIDTH_BELOW_NET_CLASS");
     REQUIRE(width != nullptr);
@@ -879,8 +876,7 @@ TEST_CASE("Board validation resolves overlapping rooms by priority then lowest I
         second_net, front, std::vector{volt::BoardPoint{1.0, 1.4}, volt::BoardPoint{8.0, 1.4}},
         0.10});
 
-    const auto report =
-        volt::validate_board(volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}});
+    const auto report = validate_board_with_builtin_footprints(board);
 
     const auto *violation = find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION");
     REQUIRE(violation != nullptr);
@@ -924,8 +920,7 @@ TEST_CASE("Board validation ignores overlapping rooms without clearance override
         second_net, front, std::vector{volt::BoardPoint{1.0, 1.4}, volt::BoardPoint{8.0, 1.4}},
         0.10});
 
-    const auto report =
-        volt::validate_board(volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}});
+    const auto report = validate_board_with_builtin_footprints(board);
 
     const auto *violation = find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION");
     REQUIRE(violation != nullptr);
@@ -963,8 +958,7 @@ TEST_CASE("Board validation ignores overlapping rooms without track-width overri
     const auto track = board.add_track(volt::BoardTrack{
         net, front, std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}}, 0.15});
 
-    const auto report =
-        volt::validate_board(volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}});
+    const auto report = validate_board_with_builtin_footprints(board);
 
     const auto *width = find_diagnostic(report, "PCB_TRACK_WIDTH_BELOW_NET_CLASS");
     REQUIRE(width != nullptr);

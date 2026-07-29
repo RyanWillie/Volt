@@ -367,14 +367,13 @@ Build-local and document-local IDs are not portable content identities.
 Encoding-format and semantic-model versions are distinct. The semantic-model version is a
 component/part digest input, so a change of meaning creates a new semantic identity. A
 lossless re-encoding may preserve that semantic identity while the serialized-byte or
-bundle digest changes. Readers reject unsupported versions before constructing partial
-state and do not silently reinterpret changed meanings. Any old-format migration must be
-explicit, deterministic, and tested before a writer emits the successor version.
+bundle digest changes. Until Volt has an external release or user contract, readers accept
+only the current canonical version and reject every other version before constructing
+partial state. Old artifacts must be regenerated from current source; production retains no
+old-format reader or converter.
 
-This ADR does not choose `volt.part` v5 or another successor and does not migrate the
-current v4 artifact. The implementation slice must make that version decision explicitly,
-retain a tested v4 read/conversion path while required, and write only the selected current
-canonical format.
+The current `volt.part` artifact is v5. Its reader and writer implement only that canonical
+contract.
 
 ## Error And Diagnostic Contract
 

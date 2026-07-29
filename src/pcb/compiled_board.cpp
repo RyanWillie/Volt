@@ -314,7 +314,7 @@ const ResolvedBoardPart *CompiledBoard::part(ComponentId component) const noexce
     return view().part(component);
 }
 
-ResolvedBoardView CompiledBoard::view() const & noexcept {
+ResolvedBoardView CompiledBoard::view() const & {
     return ResolvedBoardView{storage_->board_, storage_->footprints_, storage_->parts_};
 }
 

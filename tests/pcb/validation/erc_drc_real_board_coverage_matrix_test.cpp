@@ -41,9 +41,10 @@ namespace {
     return library;
 }
 
-void select_testpoint(volt::test::ResolvedBoardTestParts &parts, volt::ComponentId component,
-                      volt::PinDefId pin_definition, std::string_view mpn) {
-    select_part(parts, component, mpn, volt::PackageRef{"TP"},
+void select_testpoint(volt::Circuit &circuit, volt::test::ResolvedBoardTestParts &parts,
+                      volt::ComponentId component, volt::PinDefId pin_definition,
+                      std::string_view mpn) {
+    select_part(circuit, parts, component, mpn, volt::PackageRef{"TP"},
                 volt::FootprintRef{"regression", "TP_1MM_REAL"},
                 std::vector{volt::PinPadMapping{pin_definition, "1"}});
 }
@@ -121,7 +122,8 @@ TEST_CASE("Real-board PCB readiness matrix covers mapping and unplaced-pad bound
 
     SECTION("selected part mapping to a non-electrical locator pad is a board-model error") {
         auto fixture = make_real_board_fixture();
-        select_part(fixture.parts, fixture.led, "LTST-C190-LOCATOR", volt::PackageRef{"0603"},
+        select_part(fixture.circuit, fixture.parts, fixture.led, "LTST-C190-LOCATOR",
+                    volt::PackageRef{"0603"},
                     volt::FootprintRef{"regression", "LED_0603_WITH_LOCATOR"},
                     std::vector{volt::PinPadMapping{fixture.led_a_pin, "1"},
                                 volt::PinPadMapping{fixture.led_k_pin, "2"},
@@ -149,8 +151,10 @@ TEST_CASE("Real-board PCB readiness matrix covers mapping and unplaced-pad bound
             fixture.circuit, "TP3", "PAD", volt::ConnectionRequirement::Required,
             volt::ElectricalTerminalKind::Passive, volt::ElectricalDirection::Passive,
             volt::ElectricalSignalDomain::Unspecified, volt::ElectricalDriveKind::Passive);
-        select_testpoint(fixture.parts, first.component, first.definition, "TP-1MM-A");
-        select_testpoint(fixture.parts, second.component, second.definition, "TP-1MM-B");
+        select_testpoint(fixture.circuit, fixture.parts, first.component, first.definition,
+                         "TP-1MM-A");
+        select_testpoint(fixture.circuit, fixture.parts, second.component, second.definition,
+                         "TP-1MM-B");
         const auto debug_net = fixture.circuit.add_net(
             volt::NetSpec{volt::NetName{"DEBUG_PAIR"}, volt::NetKind::Signal});
         fixture.circuit.connect(debug_net, first.pin);

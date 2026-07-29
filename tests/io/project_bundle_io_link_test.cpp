@@ -112,7 +112,6 @@ class EmptyResolver final : public volt::PartAssetResolver {
 } // namespace
 
 int main() {
-    using volt::io::BundleIntegrityStatus;
     using volt::io::ProjectBundleOpenError;
     using volt::io::ProjectBundleOpenErrorCode;
     using volt::io::ProjectBundleSchemaVersion;

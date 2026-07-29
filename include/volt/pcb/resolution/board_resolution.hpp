@@ -43,7 +43,7 @@ class BoardResolutionCapabilities {
 /** One exact selected implementation resolved for a Circuit component. */
 class ResolvedBoardPart {
   public:
-    /** Build one fully validated component-to-part resolution record. */
+    /** Record one exact component-to-part resolution for boundary validation. */
     ResolvedBoardPart(ComponentId component, LibraryPartRef reference, PhysicalPart physical_part,
                       std::optional<std::string> model_3d_bytes = std::nullopt);
 
@@ -71,10 +71,20 @@ class ResolvedBoardPart {
 /** Non-owning resolved physical view backed by BoardResolution or CompiledBoard storage. */
 class ResolvedBoardView {
   public:
-    /** Bind one Board to its exact resolved footprint and selected-part owners. */
+    /** Validate and bind one Board to its exact resolved footprint and selected-part owners. */
     ResolvedBoardView(const Board &board, const FootprintLibrary &footprints,
-                      std::span<const ResolvedBoardPart> parts)
-        : board_{&board}, footprints_{&footprints}, parts_{parts} {}
+                      std::span<const ResolvedBoardPart> parts);
+
+    /** Reject temporary owners because the view borrows all three inputs. */
+    ResolvedBoardView(Board &&board, const FootprintLibrary &footprints,
+                      std::span<const ResolvedBoardPart> parts) = delete;
+    ResolvedBoardView(const Board &board, FootprintLibrary &&footprints,
+                      std::span<const ResolvedBoardPart> parts) = delete;
+    ResolvedBoardView(Board &&board, FootprintLibrary &&footprints,
+                      std::span<const ResolvedBoardPart> parts) = delete;
+    template <typename Allocator>
+    ResolvedBoardView(const Board &board, const FootprintLibrary &footprints,
+                      std::vector<ResolvedBoardPart, Allocator> &&parts) = delete;
 
     /** Return the exact named Board. */
     [[nodiscard]] const Board &board() const noexcept { return *board_; }
@@ -134,10 +144,10 @@ class BoardResolution {
     [[nodiscard]] std::span<const ResolvedBoardPart> parts() const noexcept { return parts_; }
 
     /** Return the exact resolved implementation for a component, or null when none is selected. */
-    [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const noexcept;
+    [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const;
 
     /** Return the explicit non-owning consumer view backed by this resolution. */
-    [[nodiscard]] ResolvedBoardView view() const & noexcept {
+    [[nodiscard]] ResolvedBoardView view() const & {
         return ResolvedBoardView{*board_, footprints_, parts_};
     }
 

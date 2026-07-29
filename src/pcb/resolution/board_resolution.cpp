@@ -59,17 +59,59 @@ void require_capability_profile(const Board &board,
     }
 }
 
-void require_materialization_inputs(const Board &board,
-                                    const BoardResolutionCapabilities &capabilities,
-                                    const FootprintLibrary &footprints,
-                                    const std::vector<ResolvedBoardPart> &parts) {
-    require_capability_profile(board, capabilities);
-
+void require_resolved_view_inputs(const Board &board, const FootprintLibrary &footprints,
+                                  std::span<const ResolvedBoardPart> parts) {
     for (std::size_t index = 1; index < parts.size(); ++index) {
         if (parts[index - 1U].component().index() >= parts[index].component().index()) {
             throw KernelArgumentError{
                 ErrorCode::InvalidArgument,
                 "Resolved Board parts must use unique ascending component order"};
+        }
+    }
+
+    for (const auto &part : parts) {
+        const auto component = part.component();
+        if (component.index() >= board.circuit().all<ComponentId>().size()) {
+            throw KernelLogicError{
+                ErrorCode::CrossReferenceViolation,
+                "Resolved Board part references a component outside the authoring Circuit",
+                EntityRef::component(component)};
+        }
+        const auto &instance = board.circuit().get(component);
+        if (!instance.selected_library_part_ref().has_value() ||
+            part.reference() != *instance.selected_library_part_ref()) {
+            throw KernelLogicError{
+                ErrorCode::CrossReferenceViolation,
+                "Resolved Board part reference differs from authoring Circuit selection",
+                EntityRef::component(component)};
+        }
+    }
+
+    for (std::size_t index = 0; index < board.all<FootprintDefId>().size(); ++index) {
+        const auto &definition = board.get(FootprintDefId{index});
+        const auto *resolved = footprints.find(definition.ref());
+        if (resolved != nullptr && *resolved != definition) {
+            throw KernelLogicError{
+                ErrorCode::CrossReferenceViolation,
+                "Board footprint definition differs from its exact selected closure"};
+        }
+    }
+}
+
+void require_materialization_inputs(const Board &board,
+                                    const BoardResolutionCapabilities &capabilities,
+                                    const FootprintLibrary &footprints,
+                                    const std::vector<ResolvedBoardPart> &parts) {
+    require_capability_profile(board, capabilities);
+    require_resolved_view_inputs(board, footprints, parts);
+
+    for (std::size_t index = 0; index < board.all<FootprintDefId>().size(); ++index) {
+        const auto &definition = board.get(FootprintDefId{index});
+        const auto *resolved = footprints.find(definition.ref());
+        if (resolved == nullptr || *resolved != definition) {
+            throw KernelLogicError{
+                ErrorCode::CrossReferenceViolation,
+                "Board footprint definition differs from its exact selected closure"};
         }
     }
 
@@ -88,12 +130,7 @@ void require_materialization_inputs(const Board &board,
         }
 
         const auto &part = parts[resolved_index];
-        if (part.reference() != *instance.selected_library_part_ref()) {
-            throw KernelLogicError{
-                ErrorCode::CrossReferenceViolation,
-                "Resolved Board part reference differs from authoring Circuit selection",
-                EntityRef::component(component)};
-        }
+        const auto &definition = board.circuit().get(instance.definition());
         const auto *footprint = footprints.find(part.physical_part().footprint());
         if (footprint == nullptr) {
             throw KernelRangeError{
@@ -102,7 +139,6 @@ void require_materialization_inputs(const Board &board,
                 EntityRef::component(component)};
         }
         for (const auto &mapping : part.physical_part().pin_pad_mappings()) {
-            const auto &definition = board.circuit().get(instance.definition());
             if (std::ranges::find(definition.pins(), mapping.pin()) == definition.pins().end()) {
                 throw KernelLogicError{
                     ErrorCode::CrossReferenceViolation,
@@ -117,30 +153,28 @@ void require_materialization_inputs(const Board &board,
                     EntityRef::component(component)};
             }
         }
+        for (const auto pin : definition.pins()) {
+            const auto mapped = std::ranges::any_of(
+                part.physical_part().pin_pad_mappings(),
+                [pin](const PinPadMapping &mapping) { return mapping.pin() == pin; });
+            if (!mapped) {
+                throw KernelLogicError{
+                    ErrorCode::CrossReferenceViolation,
+                    "Resolved Board part does not map every component-definition pin",
+                    EntityRef::pin_def(pin)};
+            }
+        }
+        ++resolved_index;
+    }
 
+    for (const auto &part : parts) {
         const auto expects_model_bytes = capabilities.has(BoardAssetCapability::Models3D) &&
                                          part.physical_part().model_3d().has_value();
         if (part.model_3d_bytes().has_value() != expects_model_bytes) {
             throw KernelLogicError{
                 ErrorCode::CrossReferenceViolation,
                 "Resolved Board part 3D bytes do not match the requested capability closure",
-                EntityRef::component(component)};
-        }
-        ++resolved_index;
-    }
-    if (resolved_index != parts.size()) {
-        throw KernelLogicError{
-            ErrorCode::CrossReferenceViolation,
-            "Resolved Board parts contain a component outside the authoring selections"};
-    }
-
-    for (std::size_t index = 0; index < board.all<FootprintDefId>().size(); ++index) {
-        const auto &definition = board.get(FootprintDefId{index});
-        const auto *resolved = footprints.find(definition.ref());
-        if (resolved == nullptr || *resolved != definition) {
-            throw KernelLogicError{
-                ErrorCode::CrossReferenceViolation,
-                "Board footprint definition differs from its exact selected closure"};
+                EntityRef::component(part.component())};
         }
     }
 
@@ -178,6 +212,12 @@ ResolvedBoardPart::ResolvedBoardPart(ComponentId component, LibraryPartRef refer
     : component_{component}, reference_{std::move(reference)},
       physical_part_{std::move(physical_part)}, model_3d_bytes_{std::move(model_3d_bytes)} {}
 
+ResolvedBoardView::ResolvedBoardView(const Board &board, const FootprintLibrary &footprints,
+                                     std::span<const ResolvedBoardPart> parts)
+    : board_{&board}, footprints_{&footprints}, parts_{parts} {
+    require_resolved_view_inputs(board, footprints, parts);
+}
+
 BoardResolution BoardResolution::materialize(const Board &board, ContentHash closure_digest,
                                              BoardResolutionCapabilities capabilities,
                                              FootprintLibrary footprints,
@@ -194,7 +234,7 @@ BoardResolution::BoardResolution(const Board &board, ContentHash closure_digest,
       capabilities_{std::move(capabilities)}, footprints_{std::move(footprints)},
       parts_{std::move(parts)} {}
 
-const ResolvedBoardPart *BoardResolution::part(ComponentId component) const noexcept {
+const ResolvedBoardPart *BoardResolution::part(ComponentId component) const {
     return view().part(component);
 }
 

@@ -4,6 +4,7 @@
 
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/errors.hpp>
+#include <volt/library/part_library.hpp>
 
 namespace volt::adapters::kicad::detail {
 
@@ -201,7 +202,7 @@ void write_label(std::ostream &out, const Schematic &schematic, const NetLabel &
 }
 
 void write_symbol_instance(std::ostream &out, const Schematic &schematic, SymbolInstanceId id,
-                           std::size_t index) {
+                           std::size_t index, const ExactPartResolver &exact_parts) {
     const auto &instance = schematic.get(id);
     const auto &symbol = schematic.get(instance.symbol_definition());
     const auto &component = schematic.circuit().get(instance.component());
@@ -234,6 +235,15 @@ void write_symbol_instance(std::ostream &out, const Schematic &schematic, Symbol
         property_y += 7.0;
     }
 
+    const auto &selected_ref =
+        volt::queries::selected_library_part_ref(schematic.circuit(), instance.component());
+    if (selected_ref.has_value()) {
+        const auto &footprint =
+            exact_parts.resolve(*selected_ref).orderable_part().footprint().footprint();
+        write_symbol_property(out, "Footprint", footprint.library() + ":" + footprint.name(),
+                              Point{instance.position().x(), property_y});
+    }
+
     for (std::size_t pin_index = 0; pin_index < symbol.pins().size(); ++pin_index) {
         out << "    (pin " << sexpr_string(symbol.pins()[pin_index].number()) << "\n";
         out << "      (uuid " << sexpr_string(stable_uuid(400U + (index * 100U) + pin_index))
@@ -256,7 +266,8 @@ void write_symbol_instance(std::ostream &out, const Schematic &schematic, Symbol
 
 namespace volt::adapters::kicad {
 
-[[nodiscard]] SchematicExportResult write_flat_schematic(const Schematic &schematic) {
+[[nodiscard]] SchematicExportResult write_flat_schematic(const Schematic &schematic,
+                                                         const ExactPartResolver &exact_parts) {
     auto result = SchematicExportResult{};
     if (schematic.all<volt::SheetId>().size() > 1U) {
         result.loss_report.add_warning(
@@ -290,7 +301,8 @@ namespace volt::adapters::kicad {
             detail::write_label(out, schematic, schematic.get(sheet.net_labels()[index]), index);
         }
         for (std::size_t index = 0; index < sheet.symbol_instances().size(); ++index) {
-            detail::write_symbol_instance(out, schematic, sheet.symbol_instances()[index], index);
+            detail::write_symbol_instance(out, schematic, sheet.symbol_instances()[index], index,
+                                          exact_parts);
         }
     }
 

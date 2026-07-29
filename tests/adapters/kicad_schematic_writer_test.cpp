@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "support/circuit_test_helpers.hpp"
+#include "support/compiled_board_export_helpers.hpp"
 
 #include <fstream>
 #include <iterator>
@@ -36,7 +36,7 @@ volt::SymbolDefinition make_resistor_symbol() {
     return symbol;
 }
 
-volt::ComponentId add_resistor(volt::Circuit &circuit) {
+volt::ComponentSpec resistor_component_spec() {
     const auto first_pin = volt::PinSpec{"A",
                                          "1",
                                          volt::ConnectionRequirement::Required,
@@ -51,8 +51,11 @@ volt::ComponentId add_resistor(volt::Circuit &circuit) {
                                           volt::ElectricalDirection::Passive,
                                           volt::ElectricalSignalDomain::Unspecified,
                                           volt::ElectricalDriveKind::Passive};
-    const auto definition =
-        volt::test::define_component(circuit, "Resistor", std::vector{first_pin, second_pin});
+    return volt::ComponentSpec{.name = "Resistor", .pins = {first_pin, second_pin}};
+}
+
+volt::ComponentId add_resistor(volt::Circuit &circuit) {
+    const auto definition = circuit.define_component(resistor_component_spec());
     const auto component = circuit.instantiate_component(
         definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
     circuit.update(component, volt::SetComponentProperty{volt::PropertyKey{"Value"},
@@ -60,6 +63,22 @@ volt::ComponentId add_resistor(volt::Circuit &circuit) {
     circuit.update(component, volt::SetComponentProperty{volt::PropertyKey{"tolerance"},
                                                          volt::PropertyValue{"1%"}});
     return component;
+}
+
+volt::test::ExportFixtureLibrary select_resistor_part(volt::Circuit &circuit,
+                                                      volt::ComponentId component) {
+    const auto &definition = circuit.get(circuit.get(component).definition());
+    const auto footprint = volt::passive_0603_footprint();
+    const auto part =
+        volt::PhysicalPart{volt::ManufacturerPart{"Yageo", "RC0603FR-0710KL"},
+                           volt::PackageRef{"0603"}, footprint.ref(),
+                           std::vector{volt::PinPadMapping{definition.pins()[0], "1"},
+                                       volt::PinPadMapping{definition.pins()[1], "2"}}};
+    auto library = volt::test::make_export_fixture_library(
+        {{resistor_component_spec(), part, footprint, volt::PartKey{"resistor"}}});
+    circuit.update(component, volt::SelectLibraryPart{library.bundle,
+                                                      library.bundle.require(library.keys[0])});
+    return library;
 }
 
 volt::Schematic make_flat_schematic(const volt::Circuit &circuit, volt::ComponentId component,
@@ -85,12 +104,31 @@ TEST_CASE("KiCad schematic writer exports a deterministic flat schematic subset"
     const auto net =
         circuit.add_net(volt::NetSpec{.name = volt::NetName{"VCC"}, .kind = volt::NetKind::Power});
     const auto schematic = make_flat_schematic(circuit, component, net);
+    const auto exact_parts = volt::test::make_export_fixture_library({});
 
-    const auto result = volt::adapters::kicad::write_flat_schematic(schematic);
+    const auto result = volt::adapters::kicad::write_flat_schematic(schematic, exact_parts.bundle);
 
     CHECK_FALSE(result.loss_report.has_warnings());
     CHECK(result.text == read_fixture("kicad_flat_resistor.kicad_sch"));
-    CHECK(result.text == volt::adapters::kicad::write_flat_schematic(schematic).text);
+    CHECK(result.text ==
+          volt::adapters::kicad::write_flat_schematic(schematic, exact_parts.bundle).text);
+}
+
+TEST_CASE("KiCad schematic writer resolves selected footprints from their exact owner") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto exact_parts = select_resistor_part(circuit, component);
+    const auto net =
+        circuit.add_net(volt::NetSpec{.name = volt::NetName{"VCC"}, .kind = volt::NetKind::Power});
+    const auto schematic = make_flat_schematic(circuit, component, net);
+    const auto foreign_parts = volt::test::make_export_fixture_library({});
+
+    const auto result = volt::adapters::kicad::write_flat_schematic(schematic, exact_parts.bundle);
+
+    CHECK_FALSE(result.loss_report.has_warnings());
+    CHECK(result.text.find(R"((property "Footprint" "passives:R_0603_1608Metric")") !=
+          std::string::npos);
+    CHECK_THROWS(volt::adapters::kicad::write_flat_schematic(schematic, foreign_parts.bundle));
 }
 
 TEST_CASE("KiCad schematic writer reports unsupported out-of-subset constructs") {
@@ -107,8 +145,9 @@ TEST_CASE("KiCad schematic writer reports unsupported out-of-subset constructs")
     unsupported_symbol.add_primitive(volt::SymbolCircle{volt::Point{0.0, 0.0}, 2.0});
     [[maybe_unused]] const auto unsupported_symbol_id =
         schematic.add_symbol_definition(std::move(unsupported_symbol));
+    const auto exact_parts = volt::test::make_export_fixture_library({});
 
-    const auto result = volt::adapters::kicad::write_flat_schematic(schematic);
+    const auto result = volt::adapters::kicad::write_flat_schematic(schematic, exact_parts.bundle);
 
     REQUIRE(result.loss_report.warnings().size() == 2);
     CHECK(result.loss_report.warnings().at(0).kind ==
@@ -129,8 +168,9 @@ TEST_CASE("KiCad schematic writer preserves canonical net label names") {
         volt::SheetId{0},
         volt::NetLabel{net, volt::Point{14.0, 16.0}, volt::SchematicOrientation::Right,
                        std::nullopt, std::string{"SWDIO"}});
+    const auto exact_parts = volt::test::make_export_fixture_library({});
 
-    const auto result = volt::adapters::kicad::write_flat_schematic(schematic);
+    const auto result = volt::adapters::kicad::write_flat_schematic(schematic, exact_parts.bundle);
 
     CHECK(result.text.find("(label \"SUPPORT/SWDIO\"") != std::string::npos);
     CHECK(result.text.find("(label \"SWDIO\"") == std::string::npos);
@@ -145,11 +185,14 @@ TEST_CASE("KiCad schematic writer rejects non-finite numeric property values") {
     const auto net =
         circuit.add_net(volt::NetSpec{.name = volt::NetName{"VCC"}, .kind = volt::NetKind::Power});
     const auto schematic = make_flat_schematic(circuit, component, net);
+    const auto exact_parts = volt::test::make_export_fixture_library({});
 
-    CHECK_THROWS_AS(volt::adapters::kicad::write_flat_schematic(schematic), std::invalid_argument);
+    CHECK_THROWS_AS(volt::adapters::kicad::write_flat_schematic(schematic, exact_parts.bundle),
+                    std::invalid_argument);
 
     try {
-        [[maybe_unused]] const auto result = volt::adapters::kicad::write_flat_schematic(schematic);
+        [[maybe_unused]] const auto result =
+            volt::adapters::kicad::write_flat_schematic(schematic, exact_parts.bundle);
         FAIL("expected KiCad finite-number rejection");
     } catch (const volt::KernelError &error) {
         CHECK(error.code() == volt::ErrorCode::InvalidArgument);

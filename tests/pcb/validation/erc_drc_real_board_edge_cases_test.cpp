@@ -183,7 +183,8 @@ TEST_CASE("Real-board PCB readiness catches selected-part and pad-mapping edge c
 
     SECTION("selected LED footprint typo is reported before DRC geometry") {
         auto fixture = make_real_board_fixture();
-        select_part(fixture.parts, fixture.led, "LTST-C190-MISSING", volt::PackageRef{"0603"},
+        select_part(fixture.circuit, fixture.parts, fixture.led, "LTST-C190-MISSING",
+                    volt::PackageRef{"0603"},
                     volt::FootprintRef{"regression", "LED_DOES_NOT_EXIST"},
                     std::vector{volt::PinPadMapping{fixture.led_a_pin, "1"},
                                 volt::PinPadMapping{fixture.led_k_pin, "2"}});
@@ -204,8 +205,8 @@ TEST_CASE("Real-board PCB readiness catches selected-part and pad-mapping edge c
     SECTION(
         "selected LED mapping to an unknown pad also reports the first missing electrical pad") {
         auto fixture = make_real_board_fixture();
-        select_part(fixture.parts, fixture.led, "LTST-C190-BADPAD", volt::PackageRef{"0603"},
-                    volt::FootprintRef{"regression", "LED_0603_REAL"},
+        select_part(fixture.circuit, fixture.parts, fixture.led, "LTST-C190-BADPAD",
+                    volt::PackageRef{"0603"}, volt::FootprintRef{"regression", "LED_0603_REAL"},
                     std::vector{volt::PinPadMapping{fixture.led_a_pin, "99"},
                                 volt::PinPadMapping{fixture.led_k_pin, "2"}});
         const auto layout = make_real_board_layout(fixture);

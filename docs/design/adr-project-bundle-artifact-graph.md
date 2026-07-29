@@ -633,16 +633,11 @@ at stable addresses before constructing Schematics and Boards that borrow them. 
 shape is equivalent to:
 
 ```cpp
-enum class BundleIntegrityStatus {
-    Verified,
-};
-
 class ProjectBundle final {
   public:
     static ProjectBundle open(const std::filesystem::path &root);
 
     [[nodiscard]] ProjectBundleSchemaVersion schema_version() const noexcept;
-    [[nodiscard]] BundleIntegrityStatus integrity_status() const noexcept;
     [[nodiscard]] ProjectBundleGraphView graph() const;
 };
 ```
@@ -712,8 +707,8 @@ component-contract schema versions.
 - Writing requires a structurally complete required graph, though diagnostics may contain
   design errors and project tests may fail. An incomplete manually constructed result emits
   no bundle.
-- The opener accepts only schema version `2`, verifies the complete graph described by this
-  ADR, and reports `BundleIntegrityStatus::Verified`.
+- The opener accepts only schema version `2` and publishes an owner only after verifying the
+  complete graph described by this ADR.
 - Unsupported schemas reject before artifact publication. The opener never upgrades,
   converts, imports source, consults ambient libraries, or returns a partial graph.
 - Until Volt has an external release or user contract, non-current ProjectBundle artifacts

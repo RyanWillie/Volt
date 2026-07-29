@@ -271,7 +271,6 @@ def test_issue_319_fixture_proves_v2_compiled_scene_and_manufacturing_reopen(tmp
 
     bundle = volt.ProjectBundle.open(first)
     loaded = bundle.graph.loaded_project
-    assert bundle.integrity_status == volt.BundleIntegrityStatus.VERIFIED
     assert [model.design for model in loaded.circuits] == ["controller"]
     assert [model.name for model in loaded.schematics] == ["Main"]
     assert [model.name for model in loaded.boards] == ["Main"]

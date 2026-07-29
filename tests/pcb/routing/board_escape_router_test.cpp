@@ -75,12 +75,13 @@ struct EscapeBoard {
         }
     }
 
-    parts.set(component, volt::PhysicalPart{
-                             volt::ManufacturerPart{"Texas Instruments", "TLC555CDR"},
-                             volt::PackageRef{"SOIC-8"},
-                             volt::FootprintRef{"ics", "SOIC-8_3.9x4.9mm_P1.27mm"},
-                             std::move(mappings),
-                         });
+    parts.set(circuit, component,
+              volt::PhysicalPart{
+                  volt::ManufacturerPart{"Texas Instruments", "TLC555CDR"},
+                  volt::PackageRef{"SOIC-8"},
+                  volt::FootprintRef{"ics", "SOIC-8_3.9x4.9mm_P1.27mm"},
+                  std::move(mappings),
+              });
 
     return SoicFixture{std::move(circuit), std::move(parts), component, std::move(nets)};
 }
@@ -278,13 +279,14 @@ TEST_CASE("Escape router selects an allowed layer for multi-layer pads", "[pcb][
     circuit.connect(second_net,
                     volt::queries::pin_by_definition(circuit, component, second_pin).value());
     auto parts = volt::test::ResolvedBoardTestParts{};
-    parts.set(component, volt::PhysicalPart{
-                             volt::ManufacturerPart{"Generic", "PinHeader_1x02"},
-                             volt::PackageRef{"1x02"},
-                             volt::FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
-                             std::vector{volt::PinPadMapping{first_pin, "1"},
-                                         volt::PinPadMapping{second_pin, "2"}},
-                         });
+    parts.set(
+        circuit, component,
+        volt::PhysicalPart{
+            volt::ManufacturerPart{"Generic", "PinHeader_1x02"},
+            volt::PackageRef{"1x02"},
+            volt::FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
+            std::vector{volt::PinPadMapping{first_pin, "1"}, volt::PinPadMapping{second_pin, "2"}},
+        });
 
     auto bottom_only = volt::NetClass{volt::NetClassName{"BottomOnly"}};
     bottom_only.set_layer_scope(volt::NetClassLayerScope::BottomOnly);
@@ -399,13 +401,14 @@ TEST_CASE("Escape router reports pads with no copper layer while escaping other 
     circuit.connect(second_net,
                     volt::queries::pin_by_definition(circuit, component, second_pin).value());
     auto parts = volt::test::ResolvedBoardTestParts{};
-    parts.set(component, volt::PhysicalPart{
-                             volt::ManufacturerPart{"Volt", "MixedSide"},
-                             volt::PackageRef{"MixedSide"},
-                             volt::FootprintRef{"tests", "MixedSide"},
-                             std::vector{volt::PinPadMapping{first_pin, "1"},
-                                         volt::PinPadMapping{second_pin, "2"}},
-                         });
+    parts.set(
+        circuit, component,
+        volt::PhysicalPart{
+            volt::ManufacturerPart{"Volt", "MixedSide"},
+            volt::PackageRef{"MixedSide"},
+            volt::FootprintRef{"tests", "MixedSide"},
+            std::vector{volt::PinPadMapping{first_pin, "1"}, volt::PinPadMapping{second_pin, "2"}},
+        });
 
     auto board = volt::Board{circuit};
     const auto front = board.add_layer(
@@ -515,7 +518,7 @@ TEST_CASE("Escape router rejects component requests that cannot be attempted", "
         Catch::Matchers::Message("Cannot escape component without a selected physical part"));
 
     auto missing_parts = volt::test::ResolvedBoardTestParts{};
-    missing_parts.set(no_part_component,
+    missing_parts.set(no_part_circuit, no_part_component,
                       volt::PhysicalPart{volt::ManufacturerPart{"Volt", "MissingFootprint"},
                                          volt::PackageRef{"Missing"},
                                          volt::FootprintRef{"tests", "Missing"},

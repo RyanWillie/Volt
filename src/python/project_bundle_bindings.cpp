@@ -351,9 +351,6 @@ void bind_project_bundle(py::module_ &module) {
     py::enum_<volt::io::ProjectBundleStorageKind>(module, "ProjectBundleStorageKind")
         .value("DIRECTORY", volt::io::ProjectBundleStorageKind::Directory)
         .value("ZIP_ARCHIVE", volt::io::ProjectBundleStorageKind::ZipArchive);
-    py::enum_<volt::io::BundleIntegrityStatus>(module, "BundleIntegrityStatus")
-        .value("VERIFIED", volt::io::BundleIntegrityStatus::Verified);
-
     py::class_<volt::io::ArtifactId>(module, "ArtifactId")
         .def_property_readonly("kind",
                                [](const volt::io::ArtifactId &id) {
@@ -485,7 +482,6 @@ void bind_project_bundle(py::module_ &module) {
         .def_static("open", &volt::io::ProjectBundle::open, py::arg("path"))
         .def_property_readonly("schema_version", &volt::io::ProjectBundle::schema_version)
         .def_property_readonly("storage_kind", &volt::io::ProjectBundle::storage_kind)
-        .def_property_readonly("integrity_status", &volt::io::ProjectBundle::integrity_status)
         .def_property_readonly("graph", &volt::io::ProjectBundle::graph);
 
     module.def(

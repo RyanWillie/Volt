@@ -23,11 +23,6 @@ enum class ProjectBundleStorageKind {
     ZipArchive,
 };
 
-/** Truthful integrity state published after one complete bundle open. */
-enum class BundleIntegrityStatus {
-    Verified,
-};
-
 /** Stable structural failure family for the fail-closed ProjectBundle open boundary. */
 enum class ProjectBundleOpenErrorCode {
     MissingBundle,
@@ -238,11 +233,6 @@ class ProjectBundleGraphView final {
 
     /// @endcond
 
-    /** Return the verified trust state. */
-    [[nodiscard]] BundleIntegrityStatus integrity_status() const noexcept {
-        return BundleIntegrityStatus::Verified;
-    }
-
     /** Return the verified human project name. */
     [[nodiscard]] std::string project_name() const;
     /** Return the optional verified human project version. */
@@ -303,9 +293,6 @@ class ProjectBundle final {
 
     /** Return the physical storage kind opened by this owner. */
     [[nodiscard]] ProjectBundleStorageKind storage_kind() const noexcept;
-
-    /** Return the verified integrity state. */
-    [[nodiscard]] BundleIntegrityStatus integrity_status() const noexcept;
 
     /** Return the verified current artifact graph. */
     [[nodiscard]] ProjectBundleGraphView graph() const;

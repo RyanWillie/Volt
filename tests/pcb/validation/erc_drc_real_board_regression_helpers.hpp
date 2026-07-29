@@ -230,11 +230,11 @@ struct RealBoardFixture {
     volt::NetId reset;
 };
 
-[[maybe_unused]] void select_part(volt::test::ResolvedBoardTestParts &parts,
+[[maybe_unused]] void select_part(volt::Circuit &circuit, volt::test::ResolvedBoardTestParts &parts,
                                   volt::ComponentId component, std::string_view mpn,
                                   volt::PackageRef package, volt::FootprintRef footprint,
                                   std::vector<volt::PinPadMapping> mappings) {
-    parts.set(component,
+    parts.set(circuit, component,
               volt::PhysicalPart{volt::ManufacturerPart{"Volt Regression", std::string{mpn}},
                                  std::move(package), std::move(footprint), std::move(mappings)});
 }
@@ -436,30 +436,30 @@ struct AddedPin {
     set_net_voltage(circuit, vdd, 3.3);
     set_net_voltage(circuit, ground, 0.0);
 
-    select_part(parts, header, "HDR-1x4", volt::PackageRef{"1x4"},
+    select_part(circuit, parts, header, "HDR-1x4", volt::PackageRef{"1x4"},
                 volt::FootprintRef{"regression", "HDR_1x4_PWR"},
                 std::vector{volt::PinPadMapping{header_gnd_pin, "1"},
                             volt::PinPadMapping{header_vbus_pin, "2"},
                             volt::PinPadMapping{header_vdd_pin, "3"},
                             volt::PinPadMapping{header_reset_pin, "4"}});
-    select_part(parts, regulator, "AP2112K", volt::PackageRef{"SOT-89"},
+    select_part(circuit, parts, regulator, "AP2112K", volt::PackageRef{"SOT-89"},
                 volt::FootprintRef{"regression", "SOT89_REG"},
                 std::vector{volt::PinPadMapping{regulator_vin_pin, "1"},
                             volt::PinPadMapping{regulator_gnd_pin, "2"},
                             volt::PinPadMapping{regulator_vout_pin, "3"}});
     select_part(
-        parts, mcu, "MCU-QFN5", volt::PackageRef{"QFN-5"},
+        circuit, parts, mcu, "MCU-QFN5", volt::PackageRef{"QFN-5"},
         volt::FootprintRef{"regression", "QFN5_MCU"},
         std::vector{volt::PinPadMapping{mcu_gnd_pin, "1"}, volt::PinPadMapping{mcu_vdd_pin, "2"},
                     volt::PinPadMapping{mcu_gpio_pin, "3"}, volt::PinPadMapping{mcu_reset_pin, "4"},
                     volt::PinPadMapping{mcu_boot_pin, "5"}});
-    select_part(parts, resistor, "RC0603-1K", volt::PackageRef{"0603"},
+    select_part(circuit, parts, resistor, "RC0603-1K", volt::PackageRef{"0603"},
                 volt::FootprintRef{"regression", "R_0603_REAL"},
                 std::vector{volt::PinPadMapping{resistor_a_pin, "1"},
                             volt::PinPadMapping{resistor_b_pin, "2"}});
     if (select_led_part) {
         select_part(
-            parts, led, "LTST-C190", volt::PackageRef{"0603"},
+            circuit, parts, led, "LTST-C190", volt::PackageRef{"0603"},
             volt::FootprintRef{"regression", "LED_0603_REAL"},
             std::vector{volt::PinPadMapping{led_a_pin, "1"}, volt::PinPadMapping{led_k_pin, "2"}});
     }

@@ -121,7 +121,6 @@ from .project import (
 )
 from .project_bundle import (
     ArtifactId,
-    BundleIntegrityStatus,
     ProjectBundle,
     ProjectBundleSchemaVersion,
     ProjectBundleStorageKind,
@@ -248,7 +247,6 @@ __all__ = [
     "ArtifactId",
     "ProjectBundleSchemaVersion",
     "ProjectBundleStorageKind",
-    "BundleIntegrityStatus",
     "ProjectDiagnostic",
     "ProjectDiagnostics",
     "ProjectResource",

@@ -73,8 +73,8 @@ struct QueryFixture {
         volt::FootprintRef{"tests", "OnePad"},
         std::vector{volt::PinPadMapping{pin_definition, "1"}},
     };
-    parts.set(first_component, selected_part);
-    parts.set(second_component, selected_part);
+    parts.set(circuit, first_component, selected_part);
+    parts.set(circuit, second_component, selected_part);
     return QueryFixture{std::move(circuit), std::move(parts), first_component, second_component,
                         shared_net};
 }

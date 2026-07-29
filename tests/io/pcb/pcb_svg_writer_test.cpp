@@ -76,13 +76,14 @@ struct MultiComponentNetCircuit {
     circuit.connect(second_net, second_pin);
 
     if (select_physical_part) {
-        parts.set(component, volt::PhysicalPart{
-                                 volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                 volt::PackageRef{"0603"},
-                                 volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                 std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                             volt::PinPadMapping{second_pin_definition, "2"}},
-                             });
+        parts.set(circuit, component,
+                  volt::PhysicalPart{
+                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                      volt::PackageRef{"0603"},
+                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                  });
     }
 
     return ResistorCircuit{std::move(circuit),
@@ -130,13 +131,14 @@ struct MultiComponentNetCircuit {
             component_definition,
             volt::ComponentInstanceSpec{
                 .reference = volt::ReferenceDesignator{"R" + std::to_string(index + 1U)}});
-        parts.set(component, volt::PhysicalPart{
-                                 volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                 volt::PackageRef{"0603"},
-                                 footprint,
-                                 std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                             volt::PinPadMapping{second_pin_definition, "2"}},
-                             });
+        parts.set(circuit, component,
+                  volt::PhysicalPart{
+                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                      volt::PackageRef{"0603"},
+                      footprint,
+                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                  });
         const auto connected_pin_definition =
             index == 0U ? second_pin_definition : first_pin_definition;
         circuit.connect(
@@ -257,7 +259,7 @@ TEST_CASE("PCB SVG writer exposes stable selectors matching PCB JSON entities") 
 
 TEST_CASE("PCB SVG writer renders declared footprint body and courtyard polygons") {
     auto fixture = make_resistor_circuit(false);
-    fixture.parts.set(fixture.component,
+    fixture.parts.set(fixture.circuit, fixture.component,
                       volt::PhysicalPart{
                           volt::ManufacturerPart{"Volt", "DeclaredGeometry"},
                           volt::PackageRef{"DeclaredGeometry"},
@@ -273,8 +275,9 @@ TEST_CASE("PCB SVG writer renders declared footprint body and courtyard polygons
     [[maybe_unused]] const auto placement = board.place_component(volt::ComponentPlacement{
         fixture.component, volt::BoardPoint{15.0, 10.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto svg =
-        volt::io::write_pcb_placement_svg(fixture.parts.view(board, volt::FootprintLibrary{}));
+    auto footprints = volt::FootprintLibrary{};
+    footprints.add(resistor_with_declared_geometry());
+    const auto svg = volt::io::write_pcb_placement_svg(fixture.parts.view(board, footprints));
 
     CHECK(svg.find("<g class=\"layer layer-package-courtyards\">") != std::string::npos);
     CHECK(svg.find("<g class=\"layer layer-package-bodies\">") != std::string::npos);
@@ -293,7 +296,7 @@ TEST_CASE("PCB SVG writer renders declared footprint body and courtyard polygons
 
 TEST_CASE("PCB SVG writer marks pad-derived footprint envelopes as synthetic") {
     auto fixture = make_resistor_circuit(false);
-    fixture.parts.set(fixture.component,
+    fixture.parts.set(fixture.circuit, fixture.component,
                       volt::PhysicalPart{
                           volt::ManufacturerPart{"Volt", "PadOnly"},
                           volt::PackageRef{"PadOnly"},
@@ -402,8 +405,9 @@ TEST_CASE("PCB SVG writer omits default reference labels that obstruct dense pla
     [[maybe_unused]] const auto second = board.place_component(volt::ComponentPlacement{
         fixture.components[1], volt::BoardPoint{10.0, 7.5}, volt::BoardRotation::degrees(0.0)});
 
-    const auto svg =
-        volt::io::write_pcb_placement_svg(fixture.parts.view(board, volt::FootprintLibrary{}));
+    auto footprints = volt::FootprintLibrary{};
+    footprints.add(resistor_with_declared_geometry());
+    const auto svg = volt::io::write_pcb_placement_svg(fixture.parts.view(board, footprints));
 
     CHECK(svg.find("data-component=\"component:0\" x=\"10\" y=\"7.5\"") == std::string::npos);
     CHECK(svg.find("data-component=\"component:1\" x=\"10\" y=\"5\"") != std::string::npos);
@@ -455,7 +459,7 @@ TEST_CASE("PCB SVG writer groups composite output by board layer") {
         "REV A", volt::BoardPoint{5.0, 15.0}, volt::BoardRotation::degrees(0.0), silk, 1.2});
 
     const auto svg = volt::io::write_pcb_placement_svg(
-        volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}});
+        fixture.parts.view(board, volt::builtin_footprint_library()));
 
     CHECK(svg.find("id=\"pcb-layer-F_Cu\"") != std::string::npos);
     CHECK(svg.find("class=\"pcb-layer board-layer layer-F_Cu\"") != std::string::npos);
@@ -517,7 +521,7 @@ TEST_CASE("PCB SVG writer filters layer-owned content for a selected layer") {
 
 TEST_CASE("PCB SVG writer preserves through-hole pad copper on non-placement-side layers") {
     auto fixture = make_resistor_circuit(false);
-    fixture.parts.set(fixture.component,
+    fixture.parts.set(fixture.circuit, fixture.component,
                       volt::PhysicalPart{
                           volt::ManufacturerPart{"Generic", "PinHeader_1x02"},
                           volt::PackageRef{"1x02"},
@@ -645,8 +649,9 @@ TEST_CASE("PCB SVG writer renders generic board feature primitives") {
     static_cast<void>(board.add_feature(
         volt::BoardFeature::hole("TH", volt::BoardPoint{4.0, 20.0}, 2.0, false, "tooling")));
 
-    const auto svg = volt::io::write_pcb_placement_svg(
-        volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}});
+    const auto footprints = volt::builtin_footprint_library();
+    const auto svg =
+        volt::io::write_pcb_placement_svg(volt::ResolvedBoardView{board, footprints, {}});
 
     CHECK(svg.find("class=\"board-feature hole\"") != std::string::npos);
     CHECK(svg.find("class=\"board-feature slot\"") != std::string::npos);
@@ -965,12 +970,13 @@ TEST_CASE("PCB SVG writer filters board layer diagnostics by selected layer") {
         volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
     board.set_layer_stack(volt::LayerStack{{back, front}, 1.6});
 
-    const auto back_svg = volt::io::write_pcb_placement_svg(
-        volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}},
-        volt::io::PcbPlacementSvgOptions{.layer_filter = back});
-    const auto silk_svg = volt::io::write_pcb_placement_svg(
-        volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}},
-        volt::io::PcbPlacementSvgOptions{.layer_filter = silk});
+    const auto footprints = volt::builtin_footprint_library();
+    const auto back_svg =
+        volt::io::write_pcb_placement_svg(volt::ResolvedBoardView{board, footprints, {}},
+                                          volt::io::PcbPlacementSvgOptions{.layer_filter = back});
+    const auto silk_svg =
+        volt::io::write_pcb_placement_svg(volt::ResolvedBoardView{board, footprints, {}},
+                                          volt::io::PcbPlacementSvgOptions{.layer_filter = silk});
 
     CHECK(back_svg.find("PCB_LAYER_STACK_SIDE_ORDER_CONFLICT") != std::string::npos);
     CHECK(silk_svg.find("PCB_LAYER_STACK_SIDE_ORDER_CONFLICT") == std::string::npos);
@@ -1061,11 +1067,12 @@ TEST_CASE("PCB SVG writer expands bounds to include selected diagnostic overlays
     [[maybe_unused]] const auto text = board.add_text(volt::BoardText{
         "LONG", volt::BoardPoint{4.0, 1.0}, volt::BoardRotation::degrees(0.0), silk, 2.0});
 
+    const auto footprints = volt::FootprintLibrary{};
     const auto without_diagnostics = volt::io::write_pcb_placement_svg(
-        volt::ResolvedBoardView{board, volt::FootprintLibrary{}, {}},
+        volt::ResolvedBoardView{board, footprints, {}},
         volt::io::PcbPlacementSvgOptions{.diagnostic_overlays = false});
-    const auto with_diagnostics = volt::io::write_pcb_placement_svg(volt::ResolvedBoardView{
-        board, volt::FootprintLibrary{}, std::span<const volt::ResolvedBoardPart>{}});
+    const auto with_diagnostics = volt::io::write_pcb_placement_svg(
+        volt::ResolvedBoardView{board, footprints, std::span<const volt::ResolvedBoardPart>{}});
 
     CHECK(without_diagnostics.find("viewBox=\"0 0 13 13\"") != std::string::npos);
     CHECK(with_diagnostics.find("viewBox=\"0 0 16.8 17\"") != std::string::npos);

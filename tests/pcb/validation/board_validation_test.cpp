@@ -141,13 +141,14 @@ make_placed_resistors(std::size_t count, volt::FootprintRef footprint = volt::Fo
             component_definition,
             volt::ComponentInstanceSpec{
                 .reference = volt::ReferenceDesignator{"R" + std::to_string(index + 1U)}});
-        parts.set(component, volt::PhysicalPart{
-                                 volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                 volt::PackageRef{"0603"},
-                                 footprint,
-                                 std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                             volt::PinPadMapping{second_pin_definition, "2"}},
-                             });
+        parts.set(circuit, component,
+                  volt::PhysicalPart{
+                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                      volt::PackageRef{"0603"},
+                      footprint,
+                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                  });
         components.push_back(component);
     }
 
@@ -676,7 +677,7 @@ TEST_CASE(
     "Board visual validation uses shared default reference geometry for pad-only footprints") {
     const auto library = mixed_package_library();
     auto fixture = make_placed_resistors(2, square_package_ref());
-    fixture.parts.set(fixture.components[1],
+    fixture.parts.set(fixture.circuit, fixture.components[1],
                       volt::PhysicalPart{
                           volt::ManufacturerPart{"Volt", "PAD-ONLY"},
                           volt::PackageRef{"PAD"},

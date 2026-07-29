@@ -84,13 +84,14 @@ struct TwoResistorCircuit {
     circuit.connect(second_net, second_pin);
 
     if (select_physical_part) {
-        parts.set(component, volt::PhysicalPart{
-                                 volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                 volt::PackageRef{"0603"},
-                                 volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                 std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                             volt::PinPadMapping{second_pin_definition, "2"}},
-                             });
+        parts.set(circuit, component,
+                  volt::PhysicalPart{
+                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                      volt::PackageRef{"0603"},
+                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                  });
     }
 
     return ResistorCircuit{std::move(circuit),
@@ -136,13 +137,14 @@ struct TwoResistorCircuit {
             component_definition,
             volt::ComponentInstanceSpec{
                 .reference = volt::ReferenceDesignator{"R" + std::to_string(index + 1U)}});
-        parts.set(component, volt::PhysicalPart{
-                                 volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                 volt::PackageRef{"0603"},
-                                 volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                 std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                             volt::PinPadMapping{second_pin_definition, "2"}},
-                             });
+        parts.set(circuit, component,
+                  volt::PhysicalPart{
+                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                      volt::PackageRef{"0603"},
+                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                  });
         const auto connected_pin_definition =
             index == 0U ? second_pin_definition : first_pin_definition;
         circuit.connect(
@@ -186,13 +188,14 @@ struct TwoResistorCircuit {
         volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R2"}});
 
     for (const auto component : std::vector{first_component, second_component}) {
-        parts.set(component, volt::PhysicalPart{
-                                 volt::ManufacturerPart{"Example", "DENSE"},
-                                 volt::PackageRef{"DENSE"},
-                                 footprint,
-                                 std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                             volt::PinPadMapping{second_pin_definition, "2"}},
-                             });
+        parts.set(circuit, component,
+                  volt::PhysicalPart{
+                      volt::ManufacturerPart{"Example", "DENSE"},
+                      volt::PackageRef{"DENSE"},
+                      footprint,
+                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                  });
         const auto first_pin =
             volt::queries::pin_by_definition(circuit, component, first_pin_definition).value();
         const auto second_pin =
@@ -840,7 +843,7 @@ TEST_CASE("BoardRouter rejects route endpoint intent with unresolved footprint d
 
     auto missing_mapping = make_resistor_circuit();
     missing_mapping.parts.set(
-        missing_mapping.component,
+        missing_mapping.circuit, missing_mapping.component,
         volt::PhysicalPart{
             volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
             volt::PackageRef{"0603"},
@@ -932,12 +935,13 @@ TEST_CASE("Board derives ratsnest edges across bound module port nets") {
     [[maybe_unused]] const auto binding = circuit.bind_port(instance, port, parent_net);
     auto parts = volt::test::ResolvedBoardTestParts{};
     for (const auto component : std::vector{parent_component, internal_component}) {
-        parts.set(component, volt::PhysicalPart{
-                                 volt::ManufacturerPart{"Volt", "ONE-PIN-0603"},
-                                 volt::PackageRef{"0603"},
-                                 volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                 std::vector{volt::PinPadMapping{pin_definition, "1"}},
-                             });
+        parts.set(circuit, component,
+                  volt::PhysicalPart{
+                      volt::ManufacturerPart{"Volt", "ONE-PIN-0603"},
+                      volt::PackageRef{"0603"},
+                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                      std::vector{volt::PinPadMapping{pin_definition, "1"}},
+                  });
     }
 
     auto board = volt::Board{circuit};
@@ -1630,7 +1634,7 @@ TEST_CASE("Board validation warns when physical facts sit at capability boundari
 
 TEST_CASE("Board validation reports via and pad drills outside capability") {
     auto fixture = make_resistor_circuit(false);
-    fixture.parts.set(fixture.component,
+    fixture.parts.set(fixture.circuit, fixture.component,
                       volt::PhysicalPart{
                           volt::ManufacturerPart{"Example", "TH-2"},
                           volt::PackageRef{"TH"},
@@ -1869,7 +1873,7 @@ TEST_CASE("Board validation reports unrouted placed logical nets before routing 
 
 TEST_CASE("Board validation detects pad edges crossing a concave outline") {
     auto fixture = make_resistor_circuit(false);
-    fixture.parts.set(fixture.component,
+    fixture.parts.set(fixture.circuit, fixture.component,
                       volt::PhysicalPart{
                           volt::ManufacturerPart{"Volt", "wide-pad-fixture"},
                           volt::PackageRef{"fixture"},
@@ -1917,7 +1921,7 @@ TEST_CASE("Board validation detects pad edges crossing a concave outline") {
 
 TEST_CASE("Board validation diagnoses footprint resolution and pad geometry issues") {
     auto fixture = make_resistor_circuit(false);
-    fixture.parts.set(fixture.component,
+    fixture.parts.set(fixture.circuit, fixture.component,
                       volt::PhysicalPart{
                           volt::ManufacturerPart{"Acme", "NOPE"},
                           volt::PackageRef{"custom"},
@@ -1939,7 +1943,7 @@ TEST_CASE("Board validation diagnoses footprint resolution and pad geometry issu
     CHECK(unresolved_footprint->entities()[0] == volt::EntityRef::component(fixture.component));
     CHECK(unresolved_footprint->entities()[1] == volt::EntityRef::component_placement(placement));
 
-    fixture.parts.set(fixture.component,
+    fixture.parts.set(fixture.circuit, fixture.component,
                       volt::PhysicalPart{
                           volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
                           volt::PackageRef{"0603"},

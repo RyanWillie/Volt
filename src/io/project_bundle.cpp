@@ -300,10 +300,6 @@ ProjectBundleStorageKind ProjectBundle::storage_kind() const noexcept {
     return storage_->storage_kind;
 }
 
-BundleIntegrityStatus ProjectBundle::integrity_status() const noexcept {
-    return BundleIntegrityStatus::Verified;
-}
-
 ProjectBundleGraphView ProjectBundle::graph() const { return ProjectBundleGraphView{storage_}; }
 
 } // namespace volt::io

@@ -241,7 +241,7 @@ class CompiledBoard final {
     [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const noexcept;
 
     /** Return the explicit non-owning consumer view backed by this artifact. */
-    [[nodiscard]] ResolvedBoardView view() const & noexcept;
+    [[nodiscard]] ResolvedBoardView view() const &;
     [[nodiscard]] ResolvedBoardView view() const && = delete;
 
     /** Return the verified pad resolutions frozen for delivery consumers. */

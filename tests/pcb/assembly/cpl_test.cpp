@@ -48,7 +48,7 @@ struct CplCircuit {
     const auto pins = circuit.get(definition).pins();
     const auto component = circuit.instantiate_component(
         definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{reference}});
-    parts.set(component,
+    parts.set(circuit, component,
               volt::PhysicalPart{
                   volt::ManufacturerPart{"Yageo", mpn},
                   volt::PackageRef{"0603"},

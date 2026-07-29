@@ -20,7 +20,8 @@
 namespace {
 
 [[nodiscard]] volt::ResolvedBoardView resolved(const volt::Board &board) {
-    return volt::ResolvedBoardView{board, volt::builtin_footprint_library(), {}};
+    static const auto footprints = volt::builtin_footprint_library();
+    return volt::ResolvedBoardView{board, footprints, {}};
 }
 
 struct BoardFixture {
