@@ -97,8 +97,8 @@ class ResolvedBoardView {
         requires std::same_as<std::remove_cv_t<std::ranges::range_value_t<Range>>,
                               ResolvedBoardPart> &&
                      (!std::ranges::borrowed_range<Range>)
-    [[nodiscard]] static ResolvedBoardView
-        test_only(const Board &board, const FootprintLibrary &footprints, Range &&parts) = delete;
+    [[nodiscard]] static auto test_only(const Board &board, const FootprintLibrary &footprints,
+                                        Range &&parts) -> ResolvedBoardView = delete;
 #endif
 
     /** Return the exact named Board. */
