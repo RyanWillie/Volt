@@ -16,6 +16,8 @@
 #include <nlohmann/json.hpp>
 
 #include <volt/core/errors.hpp>
+#include <volt/io/logical/logical_circuit_reader.hpp>
+#include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/parts/part_library_bundle.hpp>
 #include <volt/io/pcb/compiled_board_consumers.hpp>
 #include <volt/io/project_bundle.hpp>
@@ -260,6 +262,7 @@ void check_open_error(const std::filesystem::path &path,
         static_cast<void>(volt::io::ProjectBundle::open(path));
         FAIL("ProjectBundle open unexpectedly succeeded");
     } catch (const volt::io::ProjectBundleOpenError &error) {
+        INFO(error.what());
         CHECK(error.code() == expected);
     }
 }
@@ -312,8 +315,71 @@ struct BoardFixture {
     volt::BoardScene scene;
 };
 
+struct TwoPartFixture {
+    std::unique_ptr<volt::Circuit> circuit;
+    volt::io::PartLibraryBundle bundle;
+};
+
 [[nodiscard]] std::string minimal_glb() {
     return std::string{'g', 'l', 'T', 'F', '\x02', '\0', '\0', '\0', '\x0c', '\0', '\0', '\0'};
+}
+
+[[nodiscard]] TwoPartFixture two_part_fixture() {
+    auto circuit = std::make_unique<volt::Circuit>();
+    const auto resistor_spec = volt::ComponentSpec{
+        .name = "Project resistor",
+        .pins = {volt::PinSpec{.name = "A", .number = "1"}},
+        .source = volt::DefinitionSource{"test.project", "resistor", "1"},
+        .contract =
+            volt::ComponentContractSpec{
+                .key = volt::ComponentKey{"test.project/resistor@1"},
+                .pin_keys = {volt::PinKey{"A"}},
+            },
+    };
+    const auto capacitor_spec = volt::ComponentSpec{
+        .name = "Project capacitor",
+        .pins = {volt::PinSpec{.name = "A", .number = "1"}},
+        .source = volt::DefinitionSource{"test.project", "capacitor", "1"},
+        .contract =
+            volt::ComponentContractSpec{
+                .key = volt::ComponentKey{"test.project/capacitor@1"},
+                .pin_keys = {volt::PinKey{"A"}},
+            },
+    };
+    const auto resistor_definition = circuit->define_component(resistor_spec);
+    const auto capacitor_definition = circuit->define_component(capacitor_spec);
+    const auto resistor = circuit->instantiate_component(
+        resistor_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
+    const auto capacitor = circuit->instantiate_component(
+        capacitor_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"C1"}});
+    const auto resistor_footprint = volt::FootprintDefinition{
+        volt::FootprintRef{"test.project", "R1"},
+        std::vector{volt::FootprintPad::surface_mount(
+            "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.0, 0.0},
+            volt::FootprintSize{1.0, 1.0}, volt::FootprintLayerSet::front_smd())}};
+    const auto capacitor_footprint = volt::FootprintDefinition{
+        volt::FootprintRef{"test.project", "C1"},
+        std::vector{volt::FootprintPad::surface_mount(
+            "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.0, 0.0},
+            volt::FootprintSize{1.0, 1.0}, volt::FootprintLayerSet::front_smd())}};
+    const auto resistor_part = volt::PhysicalPart{
+        volt::ManufacturerPart{"Volt", "PROJECT-R1"}, volt::PackageRef{"0603"},
+        resistor_footprint.ref(),
+        std::vector{volt::PinPadMapping{circuit->get(resistor_definition).pins().front(), "1"}}};
+    const auto capacitor_part = volt::PhysicalPart{
+        volt::ManufacturerPart{"Volt", "PROJECT-C1"}, volt::PackageRef{"0603"},
+        capacitor_footprint.ref(),
+        std::vector{volt::PinPadMapping{circuit->get(capacitor_definition).pins().front(), "1"}}};
+    auto library = volt::test::make_export_fixture_library(
+        {{resistor_spec, resistor_part, resistor_footprint, volt::PartKey{"resistor"}},
+         {capacitor_spec, capacitor_part, capacitor_footprint, volt::PartKey{"capacitor"}}});
+    circuit->update(resistor, volt::SelectLibraryPart{library.bundle,
+                                                      library.bundle.require(library.keys.at(0))});
+    circuit->update(capacitor, volt::SelectLibraryPart{library.bundle,
+                                                       library.bundle.require(library.keys.at(1))});
+    return TwoPartFixture{std::move(circuit), std::move(library.bundle)};
 }
 
 [[nodiscard]] BoardFixture board_fixture(double width = 30.0, bool models3d = false) {
@@ -803,6 +869,34 @@ TEST_CASE("ProjectBundle v2 binds dependency lock and part owners to decoded log
         reseal_manifest(root, manifest);
         check_open_error(root, volt::io::ProjectBundleOpenErrorCode::OwnershipViolation);
     }
+}
+
+TEST_CASE("ProjectBundle v2 rejects selected parts that implement another component") {
+    const auto fixture = two_part_fixture();
+    auto builder = project_builder();
+    builder.add_logical(volt::io::DesignKey{"main"}, *fixture.circuit, fixture.bundle);
+
+    const auto temporary = TempDirectory{};
+    const auto root = temporary.path() / "swapped-selected-parts.volt";
+    builder.build().write(root);
+    auto manifest = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+    const auto logical_artifact =
+        std::ranges::find(manifest.at("artifacts"), "logical_model",
+                          [](const auto &artifact) { return artifact.at("kind"); });
+    REQUIRE(logical_artifact != manifest.at("artifacts").end());
+    auto payload =
+        OrderedJson::parse(read_bytes(root / logical_artifact->at("path").get<std::string>()));
+    REQUIRE(payload.at("components").size() == 2U);
+    auto first_selected = payload.at("components").at(0).at("selected_library_part");
+    payload.at("components").at(0).at("selected_library_part") =
+        payload.at("components").at(1).at("selected_library_part");
+    payload.at("components").at(1).at("selected_library_part") = std::move(first_selected);
+    const auto canonical =
+        volt::io::write_logical_circuit(volt::io::read_logical_circuit_text(payload.dump()));
+    replace_artifact_payload(root, manifest, "logical_model", canonical);
+    reseal_manifest(root, manifest);
+
+    check_open_error(root, volt::io::ProjectBundleOpenErrorCode::OwnershipViolation);
 }
 
 TEST_CASE("ProjectBundle v2 binds footprint pad references to their paired placements") {

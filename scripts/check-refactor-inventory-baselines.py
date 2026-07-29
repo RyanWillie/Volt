@@ -491,7 +491,7 @@ ANTI_REGROWTH_PATH_PREFIXES = (
 )
 
 ANTI_REGROWTH_TEXT_PATTERNS = {
-    "legacy_example_reference": re.compile(r"(?<![A-Za-z0-9_])examples/"),
+    "legacy_example_reference": re.compile(r"""(?<![A-Za-z0-9_])examples(?=/|\.|["'`])"""),
     "legacy_stm32_benchmark": re.compile(r"\bstm32_usb_buck\b"),
     "retired_library_component": re.compile(r"\bLibraryComponent\b"),
     "retired_physical_part_spec": re.compile(r"\bPhysicalPartSpec\b"),
@@ -909,6 +909,21 @@ def run_self_tests() -> int:
             "retired_instance_selection:skills/current.md:1",
         ],
         "the anti-regrowth checker must detect each retired current route",
+    )
+    require(
+        anti_regrowth_text_violations(
+            {
+                "python/volt/current.py": (
+                    "import examples.legacy\n"
+                    "fixture = 'examples/legacy/project.py'\n"
+                ),
+            }
+        )
+        == [
+            "legacy_example_reference:python/volt/current.py:1",
+            "legacy_example_reference:python/volt/current.py:2",
+        ],
+        "the anti-regrowth checker must detect dotted and slash legacy example references",
     )
     require(
         not anti_regrowth_text_violations(

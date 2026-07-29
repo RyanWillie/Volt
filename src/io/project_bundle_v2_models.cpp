@@ -549,8 +549,16 @@ void verify_owner_graph(ProjectBundleStorage &storage, const LibraryDecoded &dec
                 if (!selected.has_value()) {
                     continue;
                 }
-                expected.insert(detail::project_bundle_v2_artifact_key(
-                    ArtifactId{ArtifactKind::PartDefinition, *selected}));
+                const auto selected_key = detail::project_bundle_v2_artifact_key(
+                    ArtifactId{ArtifactKind::PartDefinition, *selected});
+                const auto part = decoded.parts.find(selected_key);
+                require(part != decoded.parts.end(), ProjectBundleOpenErrorCode::OwnershipViolation,
+                        "logical model selected part is not decoded");
+                require(part->second->implemented_component() ==
+                            component_definition.content_identity(),
+                        ProjectBundleOpenErrorCode::OwnershipViolation,
+                        "logical model selected part implements another component definition");
+                expected.insert(selected_key);
             }
             require_exact_dependencies(descriptor_value, expected, "logical model");
             break;
