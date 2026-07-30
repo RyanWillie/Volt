@@ -219,7 +219,8 @@ ResolvedBoardPart::ResolvedBoardPart(ComponentId component, LibraryPartRef refer
 
 ResolvedBoardView::ResolvedBoardView(const Board &board, const FootprintLibrary &footprints,
                                      std::span<const ResolvedBoardPart> parts, bool complete)
-    : board_{&board}, footprints_{&footprints}, parts_{parts}, complete_{complete} {
+    : board_{&board}, footprints_{footprints}, parts_{parts.begin(), parts.end()},
+      complete_{complete} {
     require_current();
 }
 
@@ -229,10 +230,10 @@ ResolvedBoardView ResolvedBoardView::from(const BoardResolution &resolution) {
 
 void ResolvedBoardView::require_current() const {
     if (complete_) {
-        require_complete_resolved_inputs(*board_, *footprints_, parts_);
+        require_complete_resolved_inputs(*board_, footprints_, parts_);
         return;
     }
-    require_resolved_view_inputs(*board_, *footprints_, parts_);
+    require_resolved_view_inputs(*board_, footprints_, parts_);
 }
 
 const Board &ResolvedBoardView::board() const {
@@ -242,7 +243,7 @@ const Board &ResolvedBoardView::board() const {
 
 const FootprintLibrary &ResolvedBoardView::footprints() const {
     require_current();
-    return *footprints_;
+    return footprints_;
 }
 
 std::span<const ResolvedBoardPart> ResolvedBoardView::parts() const {
@@ -289,7 +290,9 @@ std::span<const ResolvedBoardPart> BoardResolution::parts() const {
 }
 
 const ResolvedBoardPart *BoardResolution::part(ComponentId component) const {
-    return view().part(component);
+    require_materialization_inputs(*board_, capabilities_, footprints_, parts_);
+    const auto match = std::ranges::find(parts_, component, &ResolvedBoardPart::component);
+    return match != parts_.end() ? &*match : nullptr;
 }
 
 ResolvedBoardView BoardResolution::view() const & { return ResolvedBoardView::from(*this); }

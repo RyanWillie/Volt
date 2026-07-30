@@ -16,6 +16,7 @@
 #include <volt/io/pcb/board_resolution.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
+#include <volt/pcb/routing/board_router.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
 
 namespace {
@@ -268,6 +269,26 @@ TEST_CASE("Board spatial indexes retain no borrowed physical resolution storage"
     }
 
     CHECK_NOTHROW(index->copper_clearance_candidates());
+}
+
+TEST_CASE("Board routers retain an explicit resolved physical consumer snapshot") {
+    auto fixture = resolution_fixture();
+    const auto bundle = volt::io::PartLibraryBundle::build(
+        fixture.builder, std::vector{fixture.key}, fixture.resolver);
+    auto selected = selected_circuit(fixture.spec, bundle, fixture.key);
+    auto board = volt::Board{selected.circuit, volt::BoardName{"Main"}};
+    static_cast<void>(board.place_component(
+        volt::ComponentPlacement{selected.component, volt::BoardPoint{10.0, 5.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top, false}));
+    auto router = std::optional<volt::BoardRouter>{};
+    {
+        const auto resolution =
+            volt::io::resolve_board(board, bundle, volt::BoardResolutionCapabilities{std::nullopt});
+        router.emplace(board, resolution);
+    }
+
+    const auto result = router->escape(selected.component);
+    CHECK_FALSE(result.pads.empty());
 }
 
 TEST_CASE("Resolved Board views expose only verified owners and reject retained stale selections") {

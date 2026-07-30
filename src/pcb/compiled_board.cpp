@@ -267,7 +267,9 @@ std::span<const ResolvedBoardPart> CompiledBoard::parts() const noexcept {
 }
 
 const ResolvedBoardPart *CompiledBoard::part(ComponentId component) const noexcept {
-    return view().part(component);
+    const auto match =
+        std::ranges::find(storage_->parts_, component, &ResolvedBoardPart::component);
+    return match != storage_->parts_.end() ? &*match : nullptr;
 }
 
 ResolvedBoardView CompiledBoard::view() const & { return ResolvedBoardView::from(*this); }

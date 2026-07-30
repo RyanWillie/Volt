@@ -74,7 +74,7 @@ class ResolvedBoardPart {
     std::optional<std::string> model_3d_bytes_;
 };
 
-/** Non-owning resolved physical view backed by BoardResolution or CompiledBoard storage. */
+/** Owning resolved physical consumer snapshot derived from BoardResolution or CompiledBoard. */
 class ResolvedBoardView {
   public:
     /** Bind one complete verified BoardResolution owner. */
@@ -120,8 +120,8 @@ class ResolvedBoardView {
     void require_current() const;
 
     const Board *board_;
-    const FootprintLibrary *footprints_;
-    std::span<const ResolvedBoardPart> parts_;
+    FootprintLibrary footprints_;
+    std::vector<ResolvedBoardPart> parts_;
     bool complete_;
 };
 
@@ -164,7 +164,7 @@ class BoardResolution {
     /** Return the exact resolved implementation for a component, or null when none is selected. */
     [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const;
 
-    /** Return the explicit non-owning consumer view backed by this resolution. */
+    /** Return an owning resolved physical consumer snapshot for this Board. */
     [[nodiscard]] ResolvedBoardView view() const &;
 
     [[nodiscard]] ResolvedBoardView view() const && = delete;

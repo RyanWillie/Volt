@@ -280,8 +280,8 @@ void apply_escape_room_overrides(const Board &board, BoardRoom &room) {
 }
 
 BoardRouter::BoardRouter(Board &board, ResolvedBoardView resolved)
-    : board_{&board}, resolved_{resolved} {
-    if (&resolved.board() != &board) {
+    : board_{&board}, resolved_{std::move(resolved)} {
+    if (&resolved_.board() != &board) {
         throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
                                   "BoardRouter resolved view belongs to another named Board"};
     }

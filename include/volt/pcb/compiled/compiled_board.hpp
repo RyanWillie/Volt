@@ -240,7 +240,7 @@ class CompiledBoard final {
     /** Return the exact resolved implementation for a component, or null when none is selected. */
     [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const noexcept;
 
-    /** Return the explicit non-owning consumer view backed by this artifact. */
+    /** Return an owning resolved physical consumer snapshot for this artifact Board. */
     [[nodiscard]] ResolvedBoardView view() const &;
     [[nodiscard]] ResolvedBoardView view() const && = delete;
 
