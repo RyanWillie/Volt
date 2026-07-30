@@ -4,7 +4,7 @@ project(VoltPackagingConsumer LANGUAGES CXX)
 
 # Consume Volt exactly as a downstream project does: through the installed package
 # configuration, never through the Volt source tree.
-find_package(Volt CONFIG REQUIRED)
+find_package(Volt 0.1.0 EXACT CONFIG REQUIRED)
 
 # The umbrella target plus the aggregate public header.
 add_executable(volt_consumer_umbrella umbrella.cpp)

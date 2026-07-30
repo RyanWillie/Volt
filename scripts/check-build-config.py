@@ -318,6 +318,19 @@ def check_package_install() -> None:
         "VOLT_INSTALL must default to off when Volt is consumed as a subproject",
     )
     require("volt_install_package()" in root_cmake, "Root CMakeLists must install the Volt package")
+    install_rules = read("cmake/VoltInstallRules.cmake")
+    require(
+        "COMPONENT VoltSDK" in install_rules,
+        "C++ install rules must use the isolated VoltSDK component",
+    )
+    require(
+        'PATTERN "*.hpp"' in install_rules,
+        "The installed public include tree must contain headers only",
+    )
+    require(
+        "COMPATIBILITY ExactVersion" in install_rules,
+        "Pre-release package compatibility must require the exact Volt version",
+    )
 
     for cmake_path, install_call in LIBRARY_INSTALL_CALLS.items():
         require(
@@ -329,6 +342,11 @@ def check_package_install() -> None:
     require(
         "$<BUILD_INTERFACE:Volt::NlohmannJson>" in io_cmake,
         "The private header-only JSON dependency must stay out of the installed link interface",
+    )
+    config_template = read("cmake/VoltConfig.cmake.in")
+    require(
+        "find_dependency(ZLIB)" in config_template,
+        "The installed static IO target must resolve its Zlib link dependency",
     )
     require(
         "python scripts/check-package-install.py" in ci_workflow,

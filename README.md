@@ -91,7 +91,7 @@ Install the C++ libraries, headers, and CMake package configuration:
 ```sh
 cmake --preset release
 cmake --build --preset release
-cmake --install build/release --prefix /your/prefix
+cmake --install build/release --prefix /your/prefix --component VoltSDK
 ```
 
 Then consume Volt from a downstream project:
@@ -103,7 +103,8 @@ target_link_libraries(my_target PRIVATE Volt::Volt)
 
 `Volt::Volt` is an umbrella over the layered targets; link a single layer such as
 `Volt::Circuit` or `Volt::IO` instead when that is all you need. `Volt::KiCadAdapter` is
-installed but deliberately sits outside the umbrella, so link it explicitly.
+installed but deliberately sits outside the umbrella, so link it explicitly. Until Volt
+reaches a stable release, versioned package requests require the exact Volt version.
 
 Verify the install tree and a downstream build at any time with:
 

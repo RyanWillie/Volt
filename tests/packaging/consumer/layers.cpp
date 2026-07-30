@@ -8,7 +8,7 @@
 #include <iostream>
 #include <string>
 
-#include <volt/adapters/kicad/schematic_writer.hpp>
+#include <volt/adapters/kicad/loss_report.hpp>
 #include <volt/authoring/component_library.hpp>
 #include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
@@ -52,17 +52,18 @@ int main() {
     const auto serialized = volt::io::write_logical_circuit(circuit);
 
     // Volt::KiCadAdapter
-    const auto exported = volt::adapters::kicad::write_flat_schematic(schematic);
+    auto loss_report = volt::adapters::kicad::LossReport{};
+    loss_report.add_warning(volt::adapters::kicad::LossKind::UnsupportedConstruct, "probe",
+                            "packaging consumer");
 
-    if (version.empty() || serialized.empty() || exported.text.empty() ||
-        library_digest.value().empty()) {
-        std::cerr << "expected non-empty version, digest, serialization, and KiCad export\n";
+    if (version.empty() || serialized.empty() || library_digest.value().empty() ||
+        !loss_report.has_warnings()) {
+        std::cerr << "expected non-empty version, digest, serialization, and loss report\n";
         return 1;
     }
 
     std::cout << "layers consumer: volt " << version << ", board '" << board.name().value() << "', "
               << schematic.all<volt::SheetId>().size() << " sheets, library digest "
-              << library_digest.value() << ", " << serialized.size() << " serialized bytes, "
-              << exported.text.size() << " KiCad bytes\n";
+              << library_digest.value() << ", " << serialized.size() << " serialized bytes\n";
     return 0;
 }

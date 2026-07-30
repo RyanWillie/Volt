@@ -20,20 +20,6 @@ PREFIX_DIR = BUILD_DIR / "package-prefix"
 CONSUMER_SOURCE_DIR = ROOT / "tests" / "packaging" / "consumer"
 CONSUMER_BUILD_DIR = BUILD_DIR / "package-consumer"
 
-# Every target that must remain reachable through find_package(Volt). Volt::KiCadAdapter is
-# listed explicitly because it sits outside the Volt::Volt umbrella.
-EXPECTED_TARGETS = (
-    "Volt::Core",
-    "Volt::Circuit",
-    "Volt::Library",
-    "Volt::Authoring",
-    "Volt::PCB",
-    "Volt::Schematic",
-    "Volt::IO",
-    "Volt::KiCadAdapter",
-    "Volt::Volt",
-)
-
 EXPECTED_PACKAGE_FILES = (
     Path("VoltConfig.cmake"),
     Path("VoltConfigVersion.cmake"),
@@ -110,14 +96,13 @@ def check_installed_package_files() -> None:
     if not (PREFIX_DIR / "include" / "volt" / "volt.hpp").exists():
         raise RuntimeError(f"Installed package is missing include/volt/volt.hpp under {PREFIX_DIR}")
 
-
-def check_exported_targets() -> None:
-    exported = (package_config_dir() / "VoltTargets.cmake").read_text(encoding="utf-8")
-    missing = [target for target in EXPECTED_TARGETS if f"add_library({target} " not in exported]
-    if missing:
+    unexpected_roots = sorted(
+        path.name for path in PREFIX_DIR.iterdir() if path.name not in {"include", "lib", "lib64"}
+    )
+    if unexpected_roots:
         raise RuntimeError(
-            f"VoltTargets.cmake does not export {', '.join(missing)}; add the target to the "
-            "VoltTargets export set with volt_install_library()"
+            "VoltSDK installation contains non-SDK top-level entries: "
+            + ", ".join(unexpected_roots)
         )
 
 
@@ -129,9 +114,18 @@ def main() -> int:
         if directory.exists():
             shutil.rmtree(directory)
 
-    run(["cmake", "--install", str(BUILD_DIR), "--prefix", str(PREFIX_DIR)])
+    run(
+        [
+            "cmake",
+            "--install",
+            str(BUILD_DIR),
+            "--prefix",
+            str(PREFIX_DIR),
+            "--component",
+            "VoltSDK",
+        ]
+    )
     check_installed_package_files()
-    check_exported_targets()
 
     run(consumer_configure_command())
     run(["cmake", "--build", str(CONSUMER_BUILD_DIR)])

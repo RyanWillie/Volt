@@ -13,9 +13,9 @@ function(volt_install_library target export_name)
     install(
         TARGETS ${target}
         EXPORT VoltTargets
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT VoltSDK
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT VoltSDK
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT VoltSDK
     )
 endfunction()
 
@@ -25,7 +25,13 @@ function(volt_install_package)
         return()
     endif()
 
-    install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/volt DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(
+        DIRECTORY ${PROJECT_SOURCE_DIR}/include/volt
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        COMPONENT VoltSDK
+        FILES_MATCHING
+        PATTERN "*.hpp"
+    )
 
     set(VOLT_INSTALL_CMAKEDIR ${CMAKE_INSTALL_LIBDIR}/cmake/Volt)
     install(
@@ -33,6 +39,7 @@ function(volt_install_package)
         FILE VoltTargets.cmake
         NAMESPACE Volt::
         DESTINATION ${VOLT_INSTALL_CMAKEDIR}
+        COMPONENT VoltSDK
     )
 
     include(CMakePackageConfigHelpers)
@@ -43,11 +50,12 @@ function(volt_install_package)
     )
     write_basic_package_version_file(
         ${PROJECT_BINARY_DIR}/VoltConfigVersion.cmake
-        COMPATIBILITY SameMajorVersion
+        COMPATIBILITY ExactVersion
     )
     install(
         FILES ${PROJECT_BINARY_DIR}/VoltConfig.cmake
               ${PROJECT_BINARY_DIR}/VoltConfigVersion.cmake
         DESTINATION ${VOLT_INSTALL_CMAKEDIR}
+        COMPONENT VoltSDK
     )
 endfunction()
