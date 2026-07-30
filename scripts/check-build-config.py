@@ -8,6 +8,21 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 
 
+# Exported target names must match the in-tree Volt:: aliases so that find_package and
+# add_subdirectory consumers see identical names.
+LIBRARY_INSTALL_CALLS = {
+    "src/core/CMakeLists.txt": "volt_install_library(volt_core Core)",
+    "src/circuit/CMakeLists.txt": "volt_install_library(volt_circuit Circuit)",
+    "src/library/CMakeLists.txt": "volt_install_library(volt_library Library)",
+    "src/authoring/CMakeLists.txt": "volt_install_library(volt_authoring Authoring)",
+    "src/pcb/CMakeLists.txt": "volt_install_library(volt_pcb PCB)",
+    "src/schematic/CMakeLists.txt": "volt_install_library(volt_schematic Schematic)",
+    "src/io/CMakeLists.txt": "volt_install_library(volt_io IO)",
+    "src/adapters/kicad/CMakeLists.txt": "volt_install_library(volt_kicad_adapter KiCadAdapter)",
+    "CMakeLists.txt": "volt_install_library(volt Volt)",
+}
+
+
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
@@ -291,6 +306,77 @@ def check_python_package_build() -> None:
     require("pypa/gh-action-pypi-publish" not in ci_workflow, "CI must not publish to PyPI yet")
 
 
+def check_package_install() -> None:
+    root_cmake = read("CMakeLists.txt")
+    io_cmake = read("src/io/CMakeLists.txt")
+    ci_workflow = read(".github/workflows/ci.yml")
+    pyproject = read("pyproject.toml")
+
+    require("option(VOLT_INSTALL" in root_cmake, "Install rules must be gated behind VOLT_INSTALL")
+    require(
+        "${PROJECT_IS_TOP_LEVEL}" in root_cmake,
+        "VOLT_INSTALL must default to off when Volt is consumed as a subproject",
+    )
+    require("volt_install_package()" in root_cmake, "Root CMakeLists must install the Volt package")
+    install_rules = read("cmake/VoltInstallRules.cmake")
+    require(
+        "COMPONENT VoltSDK" in install_rules,
+        "C++ install rules must use the isolated VoltSDK component",
+    )
+    require(
+        'PATTERN "*.hpp"' in install_rules,
+        "The installed public include tree must contain headers only",
+    )
+    require(
+        "VoltConfigVersion.cmake.in" in install_rules,
+        "Pre-release package compatibility must use Volt's strict version policy",
+    )
+
+    for cmake_path, install_call in LIBRARY_INSTALL_CALLS.items():
+        require(
+            install_call in read(cmake_path),
+            f"{cmake_path} must register its target with `{install_call}` so the target stays "
+            "reachable through find_package(Volt)",
+        )
+
+    require(
+        "$<BUILD_INTERFACE:Volt::NlohmannJson>" in io_cmake,
+        "The private header-only JSON dependency must stay out of the installed link interface",
+    )
+    require(
+        "volt_install_library(zlibstatic InternalZlib)" in io_cmake,
+        "Fetched Zlib must be installed with the C++ SDK",
+    )
+    require(
+        "OUTPUT_NAME volt_internal_zlib" in io_cmake,
+        "The packaged fallback archive must not collide with a system libz",
+    )
+    require(
+        "$<INSTALL_INTERFACE:${VOLT_INSTALL_ZLIB_TARGET}>" in io_cmake,
+        "The installed IO target must select its packaged or system Zlib dependency",
+    )
+    config_template = read("cmake/VoltConfig.cmake.in")
+    require(
+        "if(@VOLT_PACKAGE_NEEDS_SYSTEM_ZLIB@)" in config_template
+        and "find_dependency(ZLIB)" in config_template,
+        "The installed static IO target must resolve Zlib only when it was externally supplied",
+    )
+    version_template = read("cmake/VoltConfigVersion.cmake.in")
+    require(
+        "PACKAGE_FIND_VERSION STREQUAL PACKAGE_VERSION" in version_template
+        and "PACKAGE_FIND_VERSION_RANGE" in version_template,
+        "The package version file must reject different versions and version ranges",
+    )
+    require(
+        "python scripts/check-package-install.py" in ci_workflow,
+        "CI must verify that a downstream consumer builds against the installed package",
+    )
+    require(
+        'VOLT_INSTALL = "OFF"' in pyproject,
+        "The Python wheel must not stage the C++ SDK install tree",
+    )
+
+
 def main() -> int:
     checks = (
         check_test_presets,
@@ -302,6 +388,7 @@ def main() -> int:
         check_ci_tooling,
         check_python_pytest_harness,
         check_python_package_build,
+        check_package_install,
     )
     failures = []
     for check in checks:

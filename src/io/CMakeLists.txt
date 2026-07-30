@@ -22,6 +22,19 @@ if(NOT ZLIB_FOUND)
     set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(zlib)
     add_library(ZLIB::ZLIB ALIAS zlibstatic)
+    set_target_properties(
+        zlibstatic
+        PROPERTIES
+            OUTPUT_NAME volt_internal_zlib
+            INTERFACE_INCLUDE_DIRECTORIES
+                "$<BUILD_INTERFACE:${zlib_SOURCE_DIR}>;$<BUILD_INTERFACE:${zlib_BINARY_DIR}>"
+    )
+    volt_install_library(zlibstatic InternalZlib)
+    set(VOLT_PACKAGE_NEEDS_SYSTEM_ZLIB OFF PARENT_SCOPE)
+    set(VOLT_INSTALL_ZLIB_TARGET Volt::InternalZlib)
+else()
+    set(VOLT_PACKAGE_NEEDS_SYSTEM_ZLIB ON PARENT_SCOPE)
+    set(VOLT_INSTALL_ZLIB_TARGET ZLIB::ZLIB)
 endif()
 
 add_library(volt_nlohmann_json INTERFACE)
@@ -91,8 +104,15 @@ target_link_libraries(
         Volt::Schematic
         Volt::PCB
     PRIVATE
-        Volt::NlohmannJson
-        ZLIB::ZLIB
+        # Wrapped in $<BUILD_INTERFACE:> so the header-only JSON dependency stays out of the
+        # installed link interface. A static library normally records even PRIVATE deps as
+        # $<LINK_ONLY:...>, which would force Volt::NlohmannJson into the export set and make
+        # consumers resolve a dependency that is already compiled into libvolt_io.
+        $<BUILD_INTERFACE:Volt::NlohmannJson>
+        # A fetched Zlib archive is installed with Volt; a system Zlib remains an external
+        # package dependency. Both routes use ZLIB::ZLIB inside the source build.
+        $<BUILD_INTERFACE:ZLIB::ZLIB>
+        $<INSTALL_INTERFACE:${VOLT_INSTALL_ZLIB_TARGET}>
 )
 target_include_directories(
     volt_io
@@ -104,3 +124,4 @@ volt_apply_project_warnings(volt_io PRIVATE)
 volt_apply_clang_tidy(volt_io)
 volt_apply_sanitizers(volt_io)
 volt_apply_coverage(volt_io)
+volt_install_library(volt_io IO)

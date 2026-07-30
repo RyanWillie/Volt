@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Volt::IO is static, so a system Zlib remains a downstream link requirement. Builds that
+# could not find a system package install Volt::InternalZlib in the SDK export instead.
+if(@VOLT_PACKAGE_NEEDS_SYSTEM_ZLIB@)
+    find_dependency(ZLIB)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/VoltTargets.cmake")

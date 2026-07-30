@@ -42,12 +42,18 @@ The current kernel foundation includes:
 - golden round-trip fixtures
 - schema versioning policy
 - cross-platform CI for formatting, build, tests, and docs
+- installable CMake package with exported layered targets
 
 ## Active Milestones
 
 ### Open-Source Readiness
 
 Goal: make the repository straightforward for contributors and downstream users.
+
+Completed:
+
+- CMake install rules and an exported `find_package(Volt CONFIG REQUIRED)` package, guarded
+  in CI by a downstream consumer build against the install tree
 
 Remaining work:
 
