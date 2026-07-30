@@ -48,9 +48,10 @@ function(volt_install_package)
         ${PROJECT_BINARY_DIR}/VoltConfig.cmake
         INSTALL_DESTINATION ${VOLT_INSTALL_CMAKEDIR}
     )
-    write_basic_package_version_file(
+    configure_file(
+        ${PROJECT_SOURCE_DIR}/cmake/VoltConfigVersion.cmake.in
         ${PROJECT_BINARY_DIR}/VoltConfigVersion.cmake
-        COMPATIBILITY ExactVersion
+        @ONLY
     )
     install(
         FILES ${PROJECT_BINARY_DIR}/VoltConfig.cmake

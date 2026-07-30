@@ -19,6 +19,8 @@ BUILD_DIR = ROOT / "build" / "dev"
 PREFIX_DIR = BUILD_DIR / "package-prefix"
 CONSUMER_SOURCE_DIR = ROOT / "tests" / "packaging" / "consumer"
 CONSUMER_BUILD_DIR = BUILD_DIR / "package-consumer"
+MISMATCH_CONSUMER_BUILD_DIR = BUILD_DIR / "package-consumer-version-mismatch"
+RANGE_CONSUMER_BUILD_DIR = BUILD_DIR / "package-consumer-version-range"
 
 EXPECTED_PACKAGE_FILES = (
     Path("VoltConfig.cmake"),
@@ -39,7 +41,9 @@ def cmake_cache_value(name: str) -> str:
     raise RuntimeError(f"{name} was not written to {BUILD_DIR / 'CMakeCache.txt'}")
 
 
-def consumer_configure_command() -> list[str]:
+def consumer_configure_command(
+    build_dir: Path = CONSUMER_BUILD_DIR, required_version: str = "0.1.0"
+) -> list[str]:
     # Build the consumer with the same generator, compiler, and configuration that produced
     # the installed archives. A consumer can only link artifacts from a compatible toolchain,
     # so letting CMake pick a platform default is not a realistic downstream simulation. On
@@ -50,11 +54,12 @@ def consumer_configure_command() -> list[str]:
         "-S",
         str(CONSUMER_SOURCE_DIR),
         "-B",
-        str(CONSUMER_BUILD_DIR),
+        str(build_dir),
         "-G",
         cmake_cache_value("CMAKE_GENERATOR"),
         f"-DCMAKE_CXX_COMPILER={cmake_cache_value('CMAKE_CXX_COMPILER')}",
         f"-DCMAKE_PREFIX_PATH={PREFIX_DIR}",
+        f"-DVOLT_REQUIRED_VERSION={required_version}",
     ]
 
     build_type = cmake_cache_value("CMAKE_BUILD_TYPE")
@@ -106,11 +111,26 @@ def check_installed_package_files() -> None:
         )
 
 
+def expect_version_rejection(build_dir: Path, required_version: str) -> None:
+    command = consumer_configure_command(build_dir, required_version=required_version)
+    print("+", " ".join(command), flush=True)
+    result = subprocess.run(command, cwd=ROOT, check=False)
+    if result.returncode == 0:
+        raise RuntimeError(
+            f"Volt 0.1.0 package incorrectly accepted requested version {required_version}"
+        )
+
+
 def main() -> int:
     if not (BUILD_DIR / "CMakeCache.txt").exists():
         raise RuntimeError(f"{BUILD_DIR} is not configured; run 'cmake --preset dev' first")
 
-    for directory in (PREFIX_DIR, CONSUMER_BUILD_DIR):
+    for directory in (
+        PREFIX_DIR,
+        CONSUMER_BUILD_DIR,
+        MISMATCH_CONSUMER_BUILD_DIR,
+        RANGE_CONSUMER_BUILD_DIR,
+    ):
         if directory.exists():
             shutil.rmtree(directory)
 
@@ -130,6 +150,9 @@ def main() -> int:
     run(consumer_configure_command())
     run(["cmake", "--build", str(CONSUMER_BUILD_DIR)])
     run(["ctest", "--test-dir", str(CONSUMER_BUILD_DIR), "--output-on-failure"])
+
+    expect_version_rejection(MISMATCH_CONSUMER_BUILD_DIR, "0.1.0.1")
+    expect_version_rejection(RANGE_CONSUMER_BUILD_DIR, "0.1.0...0.1.0")
 
     print("package install check passed")
     return 0

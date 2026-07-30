@@ -328,8 +328,8 @@ def check_package_install() -> None:
         "The installed public include tree must contain headers only",
     )
     require(
-        "COMPATIBILITY ExactVersion" in install_rules,
-        "Pre-release package compatibility must require the exact Volt version",
+        "VoltConfigVersion.cmake.in" in install_rules,
+        "Pre-release package compatibility must use Volt's strict version policy",
     )
 
     for cmake_path, install_call in LIBRARY_INSTALL_CALLS.items():
@@ -360,6 +360,12 @@ def check_package_install() -> None:
         "if(@VOLT_PACKAGE_NEEDS_SYSTEM_ZLIB@)" in config_template
         and "find_dependency(ZLIB)" in config_template,
         "The installed static IO target must resolve Zlib only when it was externally supplied",
+    )
+    version_template = read("cmake/VoltConfigVersion.cmake.in")
+    require(
+        "PACKAGE_FIND_VERSION STREQUAL PACKAGE_VERSION" in version_template
+        and "PACKAGE_FIND_VERSION_RANGE" in version_template,
+        "The package version file must reject different versions and version ranges",
     )
     require(
         "python scripts/check-package-install.py" in ci_workflow,
