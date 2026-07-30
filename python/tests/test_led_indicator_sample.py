@@ -151,10 +151,11 @@ def test_led_indicator_public_workflow_is_complete_and_offline(tmp_path: Path) -
     with pytest.raises(AttributeError):
         scene.compiled_board = {}
 
-    project.joinpath("main.py").write_text(
-        "raise RuntimeError('offline commands executed project source')\n",
-        encoding="utf-8",
-    )
+    for module in ("main.py", "parts.py", "project_tests.py"):
+        project.joinpath(module).write_text(
+            "raise RuntimeError('offline commands executed project source')\n",
+            encoding="utf-8",
+        )
 
     inspected = _run(project, "inspect", "--bundle", str(first), "--json")
     assert inspected.returncode == 0
