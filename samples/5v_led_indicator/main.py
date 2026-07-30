@@ -231,7 +231,7 @@ RED_LED = LIBRARY.part(
             maximum=2.4,
             conditions=(_LED_TEST_CURRENT,),
         ),
-        volt.ElectricalRecord.absolute_current(_LED_JUNCTION, maximum=0.025),
+        volt.ElectricalRecord.absolute_current(_LED_JUNCTION, maximum=0.030),
         volt.ElectricalRecord.absolute_voltage(_LED_JUNCTION, minimum=-5.0),
     ),
     provenance=volt.PartProvenance(
