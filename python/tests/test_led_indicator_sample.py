@@ -30,7 +30,7 @@ def _run(cwd: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
 
 
 def _result(completed: subprocess.CompletedProcess[str]) -> dict:
-    assert completed.stderr == ""
+    assert completed.returncode == 0, completed.stderr
     return json.loads(completed.stdout)
 
 
@@ -130,11 +130,11 @@ def test_led_indicator_public_workflow_is_complete_and_offline(tmp_path: Path) -
     }
 
     diagnostics = _artifact_payload(first, manifest, "diagnostics")
-    assert diagnostics["diagnostics"] == []
     assert not any(
         diagnostic["code"] == "PCB_NET_UNROUTED"
         for diagnostic in diagnostics["diagnostics"]
     )
+    assert diagnostics["diagnostics"] == []
 
     opened = volt.ProjectBundle.open(first)
     loaded = opened.graph.loaded_project

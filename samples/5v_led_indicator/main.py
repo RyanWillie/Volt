@@ -208,6 +208,11 @@ RED_LED = LIBRARY.part(
             (0.8, 0.4),
             (-0.8, 0.4),
         ),
+        markings=(
+            volt.FootprintMarking.polarity(
+                ((0.49, -0.3), (0.61, -0.3), (0.61, 0.3), (0.49, 0.3))
+            ),
+        ),
     ),
     pads={"A": "2", "K": "1"},
     value="RED",

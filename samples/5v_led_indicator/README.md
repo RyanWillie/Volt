@@ -11,9 +11,10 @@ Project layout:
 - `README.md` — workflow and artifact guide.
 
 `main.py` owns the three exact part declarations, the example-local `volt.Library`,
-canonical Circuit connectivity, authored schematic, one two-layer `Indicator` Board, and
-project tests. `volt.toml` is the discovery entrypoint. The project does not publish a
-standalone part-library artifact or depend on a reusable parts catalogue.
+canonical Circuit connectivity, authored schematic, one two-layer `Indicator` Board
+whose current routes all use `F.Cu`, and project tests. `volt.toml` is the discovery
+entrypoint. The project does not publish a standalone part-library artifact or depend
+on a reusable parts catalogue.
 
 From this directory, with Volt installed:
 
