@@ -72,22 +72,6 @@ namespace volt::test {
                                       ElectricalAttributeOwner::ComponentInstance,
                                       ElectricalAttributeKind::Constraint, UnitDimension::Ratio},
                                   ElectricalAttributeValue{Tolerance::percent(0.01, 0.02)}});
-    circuit.update(component, SelectPhysicalPart{PhysicalPart{
-                                  ManufacturerPart{"Acme", "CTRL-1"},
-                                  PackageRef{"SOIC-2"},
-                                  FootprintRef{"logic", "SOIC-2_3.9x4.9mm"},
-                                  std::vector{PinPadMapping{definition_pins[0], "1"},
-                                              PinPadMapping{definition_pins[1], "2"}},
-                                  PropertyMap{{PropertyKey{"lifecycle"}, PropertyValue{"active"}}},
-                                  PartModel3D{"step", "controller.step", {0.1, -0.2, 0.3}, 90.0},
-                                  std::vector<std::string>{"CTRL-1A", "CTRL-1B"},
-                              }});
-    circuit.update(component, SetSelectedPartElectricalAttribute{
-                                  ElectricalAttributeSpec{ElectricalAttributeName{"voltage_rating"},
-                                                          ElectricalAttributeOwner::SelectedPart,
-                                                          ElectricalAttributeKind::Constraint,
-                                                          UnitDimension::Voltage},
-                                  ElectricalAttributeValue{Quantity{UnitDimension::Voltage, 5.5}}});
     circuit.update(component, SetAssemblyIntent{.dnp = true, .selection_override = true});
 
     const auto bus = circuit.add_net(NetSpec{.name = NetName{"BUS"}, .kind = NetKind::Signal});

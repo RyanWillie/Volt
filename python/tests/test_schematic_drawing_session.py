@@ -36,8 +36,8 @@ def test_python_schematic_dsl_rejects_invalid_references():
     other_r1 = other.R("10k", ref="R1")
 
     schematic = design.schematic("Main")
-    symbol = schematic.place(r1, at=(40, 20), symbol="resistor")
-    other_symbol = other.schematic("Main").place(other_r1, at=(40, 20), symbol="resistor")
+    symbol = schematic.place(r1, at=(40, 20), symbol="volt.passives:resistor")
+    other_symbol = other.schematic("Main").place(other_r1, at=(40, 20), symbol="volt.passives:resistor")
     handle = schematic.drawing(at=(80, 20)).place(r1)
     other_handle = other.schematic("Other").drawing(at=(80, 20)).place(other_r1)
 

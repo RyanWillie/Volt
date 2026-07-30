@@ -21,7 +21,7 @@
 #include <volt/io/parts/part_library_bundle.hpp>
 #include <volt/io/pcb/compiled_board_consumers.hpp>
 #include <volt/io/project_bundle.hpp>
-#include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/io/project_bundle_writer.hpp>
 
 #include "support/compiled_board_export_helpers.hpp"
 
@@ -170,8 +170,8 @@ board_fixture(double width = 30.0,
 
 [[nodiscard]] BoardFixture mixed_footprint_board_fixture();
 
-[[nodiscard]] inline volt::io::ProjectBundleV2Builder project_builder() {
-    return volt::io::ProjectBundleV2Builder{
+[[nodiscard]] inline volt::io::ProjectBundleBuilder project_builder() {
+    return volt::io::ProjectBundleBuilder{
         volt::io::ProjectIdentity{"board-fixture", std::nullopt, std::nullopt},
         volt::io::ProjectRunSummary{
             true, volt::io::ProjectStatus::Clean, "default", {"design", "board"}},
@@ -183,7 +183,7 @@ board_fixture(double width = 30.0,
         volt::io::ProjectReport{R"({"summary":{"passed":0,"failed":0},"tests":[]})"}};
 }
 
-[[nodiscard]] inline volt::io::ProjectBundleV2Builder board_builder(const BoardFixture &fixture) {
+[[nodiscard]] inline volt::io::ProjectBundleBuilder board_builder(const BoardFixture &fixture) {
     auto builder = project_builder();
     builder.add_logical(volt::io::DesignKey{"main"}, *fixture.circuit, fixture.bundle);
     builder.add_board(volt::io::DesignKey{"main"}, fixture.board, fixture.compiled, fixture.scene,
@@ -192,7 +192,7 @@ board_fixture(double width = 30.0,
 }
 
 [[nodiscard]] inline const volt::io::ArtifactDescriptor &
-descriptor(const volt::io::ProjectBundleV2 &bundle, volt::io::ArtifactKind kind) {
+descriptor(const volt::io::ProjectBundlePublication &bundle, volt::io::ArtifactKind kind) {
     const auto match =
         std::ranges::find(bundle.artifacts(), kind, &volt::io::ArtifactDescriptor::kind);
     REQUIRE(match != bundle.artifacts().end());

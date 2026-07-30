@@ -226,9 +226,9 @@
             <p><code>board</code> data is loaded into <code>volt::Board</code>: name, units, layers, stack, outline, features, footprint definitions, and placements.</p>
           </div>
           <div class="panel">
-            <span class="label">Legacy input only</span>
-            <h3>Viewer cache conversion</h3>
-            <p>Current writers omit <code>viewer</code>, and current readers reject it. An explicitly named legacy conversion reader validates the old derived cache against kernel-owned state, discards it, and returns only canonical Board data.</p>
+            <span class="label">Rejected input</span>
+            <h3>No viewer cache</h3>
+            <p>Current writers omit <code>viewer</code>, and current readers reject it. Derived pad projections and diagnostics are recomputed from kernel-owned BoardResolution or CompiledBoard state.</p>
           </div>
           <div class="panel">
             <span class="label amber">Consumer-owned</span>
@@ -326,7 +326,7 @@
             <tr><th>Path</th><th>Canonical fields</th><th>Why a viewer needs it</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>board.footprint_definitions[].id</code></td><td><code>footprint_def:&lt;n&gt;</code></td><td>Stable target for placements and SVG <code>data-footprint-def</code>.</td></tr>
+            <tr><td><code>board.footprint_definitions[].id</code></td><td><code>footprint_def:&lt;n&gt;</code></td><td>Stable identity for embedded footprint geometry. Exact placement association is derived only from a verified BoardResolution or CompiledBoard.</td></tr>
             <tr><td><code>board.footprint_definitions[].ref</code></td><td>Library and footprint name.</td><td>Human-readable package identity.</td></tr>
             <tr><td><code>pads[].id</code></td><td><code>footprint_pad:&lt;n&gt;</code>, local to the footprint definition.</td><td>Stable selector for pad geometry and pad projections.</td></tr>
             <tr><td><code>pads[].label</code></td><td>Physical pad label from the footprint.</td><td>Inspection and pin-pad mapping display.</td></tr>
@@ -353,7 +353,6 @@
           <tbody>
             <tr><td><code>placements[].id</code></td><td>Stable placement entity ID.</td><td>SVG <code>data-placement</code> and diagnostic entity refs.</td></tr>
             <tr><td><code>placements[].component</code></td><td>Existing logical component ID.</td><td>Inspection link to reference designator and selected physical part.</td></tr>
-            <tr><td><code>placements[].footprint</code></td><td>Resolved <code>footprint_def</code> ID or <code>null</code> if unavailable.</td><td>Joins a placement to renderable footprint geometry.</td></tr>
             <tr><td><code>placements[].position</code></td><td>Board-space placement origin in millimeters.</td><td>Translate footprint-local geometry.</td></tr>
             <tr><td><code>placements[].rotation_deg</code></td><td>Board rotation in degrees.</td><td>Rotate footprint-local points around the placement origin.</td></tr>
             <tr><td><code>placements[].side</code></td><td><code>top</code> or <code>bottom</code>.</td><td>Bottom-side placements mirror local X before rotation.</td></tr>
@@ -369,8 +368,8 @@
       <aside>Renderer Use</aside>
       <div class="stack">
         <div class="callout green">
-          <h2>A renderer should consume JSON directly.</h2>
-          <p>The SVG preview is optional debug output. A 2D or first 3D renderer should use the JSON board outline, thickness, features, footprint package geometry, pad geometry, placement transforms, and pad projection identity as its input model.</p>
+          <h2>A renderer combines Board JSON with its verified resolved owner.</h2>
+          <p>The SVG preview is optional debug output. A renderer may use the JSON board outline, thickness, features, embedded footprint geometry, and placement transforms directly. It must use BoardResolution or CompiledBoard to bind a placement to its exact selected footprint and pad projection identity.</p>
         </div>
         <table>
           <thead>
@@ -382,36 +381,11 @@
             <tr><td>Mechanical features</td><td><code>board.geometry.openings[]</code>, <code>board.geometry.cutouts[]</code>, <code>board.geometry.surface_features[]</code></td><td>Render board holes, slots, cutouts, and board-side primitives from stable feature IDs and board-space geometry.</td></tr>
             <tr><td>Footprint pad bodies</td><td><code>board.footprint_definitions[].pads[]</code></td><td>Render pad shape, size, drill, and layer membership in footprint-local coordinates.</td></tr>
             <tr><td>Footprint package geometry</td><td><code>body</code>, <code>courtyard</code>, <code>fabrication_outline</code>, <code>assembly_outline</code>, <code>markings[]</code></td><td>Render package occupancy and semantic marks from declared footprint geometry. Missing fields mean no such geometry was declared.</td></tr>
-            <tr><td>Placed pads</td><td><code>board.placements[]</code> plus referenced <code>footprint_def</code></td><td>Apply placement side, rotation, and translation to every footprint-local pad. Bottom-side placements mirror local X before rotation.</td></tr>
+            <tr><td>Placed pads</td><td>Typed pad and footprint projections over <code>BoardResolution</code> or <code>CompiledBoard</code></td><td>Bind the exact selected footprint first, then apply placement side, rotation, and translation. Bottom-side placements mirror local X before rotation.</td></tr>
             <tr><td>Selection identity</td><td>Typed validation, ratsnest and rendering results over <code>CompiledBoard</code></td><td>Use exact-revision derived services for pad projections, pin and net refs, and diagnostic overlays. Current PCB JSON does not cache them.</td></tr>
           </tbody>
         </table>
         <p>Rich package bodies, component heights, external 3D model references, asset bundles, and generated model files are intentionally absent from this board-only 3D readiness slice. They should be added as kernel-owned PCB projection data when those concepts exist in Volt.</p>
-      </div>
-    </section>
-
-    <section>
-      <aside>Legacy Conversion</aside>
-      <div class="stack">
-        <div class="callout">
-          <h2>The mixed viewer cache is no longer a current artifact.</h2>
-          <p>The fields below describe legacy input accepted only by <code>read_legacy_pcb_board*</code>. Conversion validates them against recomputed kernel-owned state and discards them. <code>read_pcb_board*</code> rejects the same document, so legacy data cannot become an implicit fallback or competing source of truth.</p>
-        </div>
-        <table>
-          <thead>
-            <tr><th>Path</th><th>Derived meaning</th><th>Stability rule</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><code>viewer.pad_resolutions[].id</code></td><td>Stable pad projection ID: <code>pcb_pad:&lt;placement-index&gt;:&lt;pad-index&gt;</code>.</td><td>Matches SVG <code>data-pad-projection</code>.</td></tr>
-            <tr><td><code>placement</code>, <code>component</code>, <code>footprint</code>, <code>pad</code></td><td>Entity refs tying the projection to canonical board and circuit data.</td><td>Reader validates these against recomputed pad resolutions.</td></tr>
-            <tr><td><code>label</code></td><td>Footprint pad label copied for display.</td><td>Must match the referenced footprint pad.</td></tr>
-            <tr><td><code>position</code></td><td>Resolved board-space pad center.</td><td>Derived from placement transform and footprint pad position.</td></tr>
-            <tr><td><code>pin</code>, <code>net</code></td><td>Concrete logical pin and current logical net, or <code>null</code>.</td><td>References existing circuit IDs only; no netlist mutation.</td></tr>
-            <tr><td><code>status</code></td><td><code>connected</code>, <code>unconnected</code>, <code>non_electrical</code>, or <code>invalid</code>.</td><td>Recomputed from selected physical part mappings.</td></tr>
-            <tr><td><code>geometry</code></td><td>Pad geometry copy for quick preview checks.</td><td>Validated against the referenced footprint pad and discarded on load.</td></tr>
-            <tr><td><code>viewer.diagnostics[]</code></td><td>Legacy severity, code, message, and entity refs from board validation.</td><td>Validated during explicit conversion and then discarded; refs never become traversal handles.</td></tr>
-          </tbody>
-        </table>
       </div>
     </section>
 
@@ -430,10 +404,10 @@
             <tr><td><code>svg.pcb-placement-preview</code></td><td><code>data-board</code>, <code>data-board-name</code>, <code>data-units</code></td><td><code>board.id</code>, <code>board.name</code>, <code>board.units</code></td></tr>
             <tr><td><code>.board-outline</code></td><td><code>data-board</code></td><td><code>board.id</code></td></tr>
             <tr><td><code>.board-feature</code>, <code>.board-feature-label</code></td><td><code>data-board-feature</code></td><td><code>board.features[].id</code></td></tr>
-            <tr><td><code>.component-placement</code></td><td><code>data-placement</code>, <code>data-component</code>, <code>data-footprint-def</code>, <code>data-footprint</code></td><td><code>placements[].id</code>, <code>placements[].component</code>, <code>placements[].footprint</code>, footprint ref token</td></tr>
+            <tr><td><code>.component-placement</code></td><td><code>data-placement</code>, <code>data-component</code>, <code>data-footprint-def</code>, <code>data-footprint</code></td><td><code>placements[].id</code>, <code>placements[].component</code>, and exact footprint identity derived from the resolved owner</td></tr>
             <tr><td><code>.footprint-pad</code></td><td><code>data-pad-projection</code>, <code>data-pad</code>, <code>data-pin</code>, <code>data-net</code></td><td>Typed pad-resolution result, <code>footprint_pad</code>, logical pin, logical net</td></tr>
             <tr><td><code>.pad-overlay</code>, <code>.pad-net-label</code></td><td><code>data-pad-projection</code>, <code>data-net</code></td><td>Derived pad projection and logical net.</td></tr>
-            <tr><td><code>.diagnostic-label</code>, <code>.diagnostic-marker</code></td><td><code>data-diagnostic-code</code>, <code>data-entities</code></td><td><code>viewer.diagnostics[].code</code> and entity refs.</td></tr>
+            <tr><td><code>.diagnostic-label</code>, <code>.diagnostic-marker</code></td><td><code>data-diagnostic-code</code>, <code>data-entities</code></td><td>Current recomputed diagnostics and entity refs.</td></tr>
           </tbody>
         </table>
       </div>
@@ -460,12 +434,12 @@
       <div class="stack">
         <div class="callout red">
           <h2>Malformed structure fails at the load boundary.</h2>
-          <p>The current reader rejects duplicate or non-sequential IDs, dangling layer-stack entries, placements that reference missing components, footprint references that do not match selected physical parts, and any legacy <code>viewer</code> object. The explicit legacy conversion reader additionally rejects stale pad projection caches, dangling pin or net refs, and malformed diagnostic entity refs.</p>
+          <p>The current reader rejects duplicate or non-sequential IDs, dangling layer-stack entries, placements that reference missing components, any placement-level <code>footprint</code> association that cannot be verified at this source boundary, and any removed <code>viewer</code> object.</p>
         </div>
         <ul>
           <li>Structural integrity is enforced by the reader and kernel mutation APIs.</li>
           <li>Bad design intent, such as missing placement data or off-board pads, is reported through diagnostics.</li>
-          <li>Legacy viewer cache values must match recomputed kernel-owned state during explicit conversion; current reads and writes never treat the cache as authoritative.</li>
+          <li>Current reads and writes never treat derived cache data as authoritative.</li>
         </ul>
       </div>
     </section>

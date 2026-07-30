@@ -531,15 +531,15 @@ def _optional_symbol_text(value: str | None, label: str) -> str | None:
 def _default_two_terminal_symbol_spec(name: str) -> SchematicSymbolSpec | None:
     # Production defaults keep identity in fields or explicitly authored text, not
     # internal debug glyphs embedded in generic element geometry.
-    if name in ("resistor", "volt.passives:resistor"):
+    if name == "volt.passives:resistor":
         return _resistor_symbol_spec(name)
-    if name in ("capacitor", "volt.passives:capacitor"):
+    if name == "volt.passives:capacitor":
         return _capacitor_symbol_spec(name)
-    if name in ("inductor", "volt.passives:inductor"):
+    if name == "volt.passives:inductor":
         return _inductor_symbol_spec(name)
-    if name in ("diode", "volt.discretes:diode"):
+    if name == "volt.discretes:diode":
         return _diode_symbol_spec(name)
-    if name in ("led", "volt.optos:led"):
+    if name == "volt.optos:led":
         return _led_symbol_spec(name)
     return None
 

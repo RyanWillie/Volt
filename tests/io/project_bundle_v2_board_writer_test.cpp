@@ -24,7 +24,7 @@ TEST_CASE("ProjectBundle v2 derives one exact complete Board graph and rejects s
     const auto path = temporary.path() / "board.volt";
     bundle.write(path);
     const auto reopened = volt::io::ProjectBundle::open(path);
-    const auto reopened_project = reopened.require_v2().loaded_project();
+    const auto reopened_project = reopened.graph().loaded_project();
     CHECK(reopened_project.circuits().size() == 1U);
     CHECK(reopened_project.boards().size() == 1U);
     CHECK(reopened_project.compiled_boards().size() == 1U);

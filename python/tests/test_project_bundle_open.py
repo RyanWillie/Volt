@@ -24,9 +24,7 @@ def test_project_bundle_v2_python_view_matches_verified_native_graph(tmp_path):
     bundle = volt.ProjectBundle.open(path)
     assert bundle.schema_version == volt.ProjectBundleSchemaVersion.V2
     assert bundle.storage_kind == volt.ProjectBundleStorageKind.DIRECTORY
-    assert bundle.integrity_status == volt.BundleIntegrityStatus.VERIFIED_V2
-
-    graph = bundle.v2
+    graph = bundle.graph
     assert graph.project_name == "reopen"
     assert graph.build_id == manifest["build_id"]
     assert graph.bundle_digest == manifest["bundle_digest"]

@@ -13,21 +13,17 @@
 #include <volt/core/errors.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
 
-namespace volt::io {
-BoardResolution resolve_board(const Board &board, const PartLibraryBundle &selected_closure,
-                              BoardResolutionCapabilities capabilities) {
+namespace volt {
+
+BoardResolution BoardResolution::Codec::resolve(const Board &board,
+                                                const io::PartLibraryBundle &selected_closure,
+                                                BoardResolutionCapabilities capabilities) {
     auto footprints = FootprintLibrary{};
     auto parts = std::vector<ResolvedBoardPart>{};
 
     for (std::size_t index = 0; index < board.circuit().all<ComponentId>().size(); ++index) {
         const auto component_id = ComponentId{index};
         const auto &instance = board.circuit().get(component_id);
-        if (instance.selected_physical_part().has_value()) {
-            throw KernelLogicError{
-                ErrorCode::InvalidState,
-                "Board resolution does not accept legacy PhysicalPart selections",
-                EntityRef::component(component_id)};
-        }
         if (!instance.selected_library_part_ref().has_value()) {
             continue;
         }
@@ -36,7 +32,7 @@ BoardResolution resolve_board(const Board &board, const PartLibraryBundle &selec
         const auto &part = selected_closure.resolve(reference);
         const auto &component = board.circuit().get(instance.definition());
 
-        const auto footprint_reference = detail::footprint_asset_reference(part);
+        const auto footprint_reference = io::detail::footprint_asset_reference(part);
         const auto footprint_bytes = selected_closure.asset(footprint_reference);
         if (!footprint_bytes.has_value()) {
             throw KernelRangeError{ErrorCode::UnknownEntity,
@@ -48,12 +44,12 @@ BoardResolution resolve_board(const Board &board, const PartLibraryBundle &selec
                                    "Selected exact footprint asset digest does not match bytes",
                                    EntityRef::component(component_id)};
         }
-        const auto footprint = read_footprint_asset(*footprint_bytes);
+        const auto footprint = io::read_footprint_asset(*footprint_bytes);
 
         auto model_bytes = std::optional<std::string>{};
         const auto &model = part.orderable_part().model_3d();
         if (capabilities.has(BoardAssetCapability::Models3D) && model.has_value()) {
-            const auto asset_reference = detail::model_asset_reference(*model);
+            const auto asset_reference = io::detail::model_asset_reference(*model);
             const auto asset = selected_closure.asset(asset_reference);
             if (!asset.has_value()) {
                 throw KernelRangeError{ErrorCode::UnknownEntity,
@@ -68,17 +64,27 @@ BoardResolution resolve_board(const Board &board, const PartLibraryBundle &selec
             model_bytes = std::string{*asset};
         }
 
-        detail::add_exact_footprint(footprints, footprint);
-        parts.push_back(detail::materialize_resolved_part(board.circuit(), component_id, part,
-                                                          footprint, std::move(model_bytes),
-                                                          component.content_identity()));
+        io::detail::add_exact_footprint(footprints, footprint);
+        parts.push_back(io::detail::materialize_resolved_part(board.circuit(), component_id, part,
+                                                              footprint, std::move(model_bytes),
+                                                              component.content_identity()));
     }
 
     std::ranges::sort(parts, [](const ResolvedBoardPart &lhs, const ResolvedBoardPart &rhs) {
         return lhs.component().index() < rhs.component().index();
     });
-    return BoardResolution::materialize(board, selected_closure.digest(), std::move(capabilities),
-                                        std::move(footprints), std::move(parts));
+    return BoardResolution::materialize_verified(board, selected_closure.digest(),
+                                                 std::move(capabilities), std::move(footprints),
+                                                 std::move(parts));
+}
+
+} // namespace volt
+
+namespace volt::io {
+
+BoardResolution resolve_board(const Board &board, const PartLibraryBundle &selected_closure,
+                              BoardResolutionCapabilities capabilities) {
+    return BoardResolution::Codec::resolve(board, selected_closure, std::move(capabilities));
 }
 
 } // namespace volt::io

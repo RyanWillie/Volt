@@ -180,6 +180,13 @@ TEST_CASE("Common component catalog specs carry stable default schematic symbol 
     }
 }
 
+TEST_CASE("Default schematic symbols require canonical namespaced identities") {
+    for (const auto name : {"resistor", "capacitor", "led", "connector_1x02"}) {
+        INFO(name);
+        CHECK_FALSE(volt::default_schematic_symbol(name).has_value());
+    }
+}
+
 TEST_CASE("Op amp catalog spec models both supply rails as power inputs") {
     auto circuit = volt::Circuit{};
 

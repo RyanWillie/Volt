@@ -151,11 +151,10 @@ template <CircuitEntityId Id> [[nodiscard]] entity_range_t<Id> all() const && = 
 """.strip().splitlines()
 )
 
-CIRCUIT_LEGACY_PUBLIC_DECLARATIONS = frozenset(
+CIRCUIT_RETIRED_PUBLIC_DECLARATIONS = frozenset(
     """
 [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition, ModuleInstanceName name)
 [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition, ReferenceDesignator reference, PropertyMap properties = {})
-[[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part(ComponentId component) const
 [[nodiscard]] const ElectricalAttributeMap &component_electrical_attributes(ComponentId component) const
 [[nodiscard]] const ElectricalAttributeMap &pin_definition_electrical_attributes(PinDefId pin_definition) const
 [[nodiscard]] const ElectricalAttributeMap &net_electrical_attributes(NetId net) const
@@ -177,7 +176,6 @@ CIRCUIT_LEGACY_PUBLIC_DECLARATIONS = frozenset(
 
 CIRCUIT_STORAGE_SHAPED_READ_NAMES = frozenset(
     {
-        "selected_physical_part",
         "component_electrical_attributes",
         "pin_definition_electrical_attributes",
         "net_electrical_attributes",
@@ -248,7 +246,7 @@ template <SchematicEntityId Id> [[nodiscard]] schematic_entity_range_t<Id> all()
 """.strip().splitlines()
 )
 
-SCHEMATIC_LEGACY_PUBLIC_DECLARATIONS = frozenset(
+SCHEMATIC_RETIRED_PUBLIC_DECLARATIONS = frozenset(
     """
 void replace_with(Schematic replacement)
 [[nodiscard]] std::size_t add_sheet_region(SheetId sheet, SheetRegion region)
@@ -1342,7 +1340,7 @@ def check_no_raw_structural_throws(failures: list[str]) -> None:
 
 def circuit_contract_configuration_failures(
     required: frozenset[str] = CIRCUIT_REQUIRED_PUBLIC_METHOD_DECLARATIONS,
-    legacy: frozenset[str] = CIRCUIT_LEGACY_PUBLIC_DECLARATIONS,
+    retired: frozenset[str] = CIRCUIT_RETIRED_PUBLIC_DECLARATIONS,
     expected_count: int = CIRCUIT_PUBLIC_DECLARATION_COUNT,
 ) -> list[str]:
     failures: list[str] = []
@@ -1352,10 +1350,10 @@ def circuit_contract_configuration_failures(
             f"{expected_count}"
         )
 
-    overlap = sorted(required & legacy)
+    overlap = sorted(required & retired)
     for declaration in overlap:
         failures.append(
-            "Circuit declaration is both required and legacy, so the retired surface could "
+            "Circuit declaration is both required and retired, so the retired surface could "
             f"regrow: {declaration}"
         )
 
@@ -1417,7 +1415,7 @@ def circuit_public_method_admission_failures(header_text: str) -> list[str]:
                 f"query: {declaration}"
             )
             continue
-        if declaration in CIRCUIT_LEGACY_PUBLIC_DECLARATIONS:
+        if declaration in CIRCUIT_RETIRED_PUBLIC_DECLARATIONS:
             failures.append(
                 "Circuit public declaration is a retired pre-1.0 construction or read "
                 f"surface: {declaration}"
@@ -1445,7 +1443,7 @@ def check_circuit_public_method_admission(failures: list[str]) -> None:
 
 def schematic_contract_configuration_failures(
     required: frozenset[str] = SCHEMATIC_REQUIRED_PUBLIC_METHOD_DECLARATIONS,
-    legacy: frozenset[str] = SCHEMATIC_LEGACY_PUBLIC_DECLARATIONS,
+    retired: frozenset[str] = SCHEMATIC_RETIRED_PUBLIC_DECLARATIONS,
     expected_count: int = SCHEMATIC_PUBLIC_DECLARATION_COUNT,
 ) -> list[str]:
     failures: list[str] = []
@@ -1455,10 +1453,10 @@ def schematic_contract_configuration_failures(
             f"{expected_count}"
         )
 
-    overlap = sorted(required & legacy)
+    overlap = sorted(required & retired)
     for declaration in overlap:
         failures.append(
-            "Schematic declaration is both required and legacy, so the retired surface could "
+            "Schematic declaration is both required and retired, so the retired surface could "
             f"regrow: {declaration}"
         )
 
@@ -1520,7 +1518,7 @@ def schematic_public_method_admission_failures(header_text: str) -> list[str]:
                 f"free query: {declaration}"
             )
             continue
-        if declaration in SCHEMATIC_LEGACY_PUBLIC_DECLARATIONS:
+        if declaration in SCHEMATIC_RETIRED_PUBLIC_DECLARATIONS:
             failures.append(
                 "Schematic public declaration is a retired storage-shaped surface: "
                 f"{declaration}"
@@ -2225,7 +2223,7 @@ def run_self_tests() -> int:
         [
             "[[nodiscard]] ModuleInstanceId instantiate_module(ModuleDefId definition, "
             "ModuleInstanceSpec spec)",
-            *sorted(CIRCUIT_LEGACY_PUBLIC_DECLARATIONS),
+            *sorted(CIRCUIT_RETIRED_PUBLIC_DECLARATIONS),
         ]
     ) + ";\n};"
     retired_surface_failures = circuit_public_method_admission_failures(
@@ -2237,7 +2235,7 @@ def run_self_tests() -> int:
         if "retired pre-1.0" in failure or "storage-shaped derived read" in failure
     ]
     require_self_test(
-        len(retired_declaration_failures) == len(CIRCUIT_LEGACY_PUBLIC_DECLARATIONS)
+        len(retired_declaration_failures) == len(CIRCUIT_RETIRED_PUBLIC_DECLARATIONS)
         and all(
             any(name in failure for failure in retired_declaration_failures)
             for name in CIRCUIT_STORAGE_SHAPED_READ_NAMES
@@ -2254,13 +2252,13 @@ def run_self_tests() -> int:
         "the final required Circuit declarations must match the 16-entry budget and stay "
         "disjoint from the retired surface",
     )
-    legacy_overlap_sample = next(iter(CIRCUIT_LEGACY_PUBLIC_DECLARATIONS))
+    retired_overlap_sample = next(iter(CIRCUIT_RETIRED_PUBLIC_DECLARATIONS))
     overlap_failures = circuit_contract_configuration_failures(
-        frozenset({legacy_overlap_sample}), frozenset({legacy_overlap_sample}), 1
+        frozenset({retired_overlap_sample}), frozenset({retired_overlap_sample}), 1
     )
     require_self_test(
-        any("both required and legacy" in failure for failure in overlap_failures),
-        "checker configuration must reject declarations present in both final and legacy sets",
+        any("both required and retired" in failure for failure in overlap_failures),
+        "checker configuration must reject declarations present in both final and retired sets",
     )
 
     required_schematic_sample = "class Schematic final { public:\n" + ";\n".join(
@@ -2271,7 +2269,7 @@ def run_self_tests() -> int:
         "the final 18-declaration Schematic contract must admit its exact required surface",
     )
     retired_schematic_sample = "class Schematic final { public:\n" + ";\n".join(
-        sorted(SCHEMATIC_LEGACY_PUBLIC_DECLARATIONS)
+        sorted(SCHEMATIC_RETIRED_PUBLIC_DECLARATIONS)
     ) + ";\n};"
     retired_schematic_failures = schematic_public_method_admission_failures(
         retired_schematic_sample

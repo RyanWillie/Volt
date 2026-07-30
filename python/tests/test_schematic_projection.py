@@ -24,8 +24,8 @@ def test_python_schematic_placement_serializes_kernel_projection():
     d1 = design.LED(ref="D1")
 
     schematic = design.schematic("Main")
-    first = schematic.place(r1, at=(40, 20), symbol="resistor")
-    second = schematic.place(d1, at=(90, 20), symbol="led")
+    first = schematic.place(r1, at=(40, 20), symbol="volt.passives:resistor")
+    second = schematic.place(d1, at=(90, 20), symbol="volt.optos:led")
     wire = schematic.wire(vcc, [(20, 20), (40, 20)])
     label = schematic.label(vcc, at=(20, 16))
 
@@ -67,8 +67,8 @@ def test_python_schematic_placement_serializes_kernel_projection():
         }
     ]
     assert [symbol["name"] for symbol in projection["symbol_definitions"]] == [
-        "resistor",
-        "led",
+        "volt.passives:resistor",
+        "volt.optos:led",
     ]
     assert projection["symbol_instances"] == [
         {
@@ -117,7 +117,7 @@ def test_python_schematic_symbol_handles_expose_pin_anchors():
     r1 = design.R(resistance=330, ref="R1")
 
     schematic = design.schematic("Main")
-    symbol = schematic.place(r1, at=(40, 20), symbol="resistor")
+    symbol = schematic.place(r1, at=(40, 20), symbol="volt.passives:resistor")
 
     assert symbol.pin_anchor(1) == (40.0, 20.0)
     assert symbol.pin_anchor("2") == (60.0, 20.0)
@@ -179,8 +179,8 @@ def test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects():
     assert tuple(pin.index for pin in led_a.pins()) == (r1[2].index, d1["A"].index)
 
     schematic = design.schematic("Main")
-    resistor = schematic.place(r1, at=(40, 20), orient="down", symbol="resistor")
-    led = schematic.place(d1, at=(90, 30), symbol="led")
+    resistor = schematic.place(r1, at=(40, 20), orient="down", symbol="volt.passives:resistor")
+    led = schematic.place(d1, at=(90, 30), symbol="volt.optos:led")
     no_connect_target = schematic.place(tp1, at=(130, 70), symbol="test:point")
 
     r1_left = resistor.pin(1)
@@ -647,7 +647,7 @@ def test_detached_schematic_symbol_pin_helpers_report_missing_component_context(
     design = volt.Design("schematic-detached-symbol")
     r1 = design.R("10k", ref="R1")
     schematic = design.schematic("Main")
-    placed = schematic.place(r1, at=(40, 20), symbol="resistor")
+    placed = schematic.place(r1, at=(40, 20), symbol="volt.passives:resistor")
     detached = volt.SchematicSymbol(schematic, placed.index)
 
     try:

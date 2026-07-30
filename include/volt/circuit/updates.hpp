@@ -30,14 +30,6 @@ struct SetComponentElectricalAttribute {
     ElectricalAttributeValue value;
 };
 
-/** Select one physical implementation for a component instance. */
-struct SelectPhysicalPart {
-    /** Complete selected physical part and pin-pad mapping. */
-    PhysicalPart physical_part;
-    /** Exact source reference required when materializing a selected-library projection. */
-    std::optional<LibraryPartRef> source_reference = std::nullopt;
-};
-
 /** Select one exact part resolved through an immutable native library snapshot. */
 class SelectLibraryPart {
   public:
@@ -57,14 +49,6 @@ class SelectLibraryPart {
     ContentHash implemented_component_;
 };
 
-/** Set or replace one typed electrical attribute on a selected physical part. */
-struct SetSelectedPartElectricalAttribute {
-    /** Selected-part-owned attribute specification. */
-    ElectricalAttributeSpec spec;
-    /** Typed attribute value to store. */
-    ElectricalAttributeValue value;
-};
-
 /** Progressively set component assembly intent without clearing unspecified fields. */
 struct SetAssemblyIntent {
     /** Explicit do-not-populate value to set, when present. */
@@ -74,9 +58,8 @@ struct SetAssemblyIntent {
 };
 
 /** Closed set of progressive updates accepted for component instances. */
-using ComponentUpdate =
-    std::variant<SetComponentProperty, SetComponentElectricalAttribute, SelectPhysicalPart,
-                 SelectLibraryPart, SetSelectedPartElectricalAttribute, SetAssemblyIntent>;
+using ComponentUpdate = std::variant<SetComponentProperty, SetComponentElectricalAttribute,
+                                     SelectLibraryPart, SetAssemblyIntent>;
 
 /** Set or replace one typed electrical attribute on a logical net. */
 struct SetNetElectricalAttribute {

@@ -1,7 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
+#include <concepts>
 #include <map>
 #include <optional>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -13,6 +16,8 @@
 #include <volt/io/pcb/board_resolution.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
+#include <volt/pcb/routing/board_router.hpp>
+#include <volt/pcb/routing/board_spatial_index.hpp>
 
 namespace {
 
@@ -66,7 +71,9 @@ struct ResolutionFixture {
     volt::PartKey key;
 };
 
-[[nodiscard]] ResolutionFixture resolution_fixture(std::string footprint_bytes = {}) {
+[[nodiscard]] ResolutionFixture resolution_fixture(std::string footprint_bytes = {},
+                                                   std::string library_namespace = "test.parts",
+                                                   std::string part_key = "resolved-resistor") {
     auto spec = resistor_spec();
     auto component_circuit = volt::Circuit{};
     const auto definition_id = component_circuit.define_component(spec);
@@ -79,10 +86,10 @@ struct ResolutionFixture {
         volt::PartAssetKind::Footprint,
         "footprint:" + footprint.ref().library() + "/" + footprint.ref().name(),
         volt::sha256_content_hash(footprint_bytes)};
-    const auto key = volt::PartKey{"resolved-resistor"};
+    const auto key = volt::PartKey{part_key};
     auto part = volt::PartDefinition{
         definition,
-        volt::PartIdentity{"test.parts", key.value(), "1"},
+        volt::PartIdentity{library_namespace, key.value(), "1"},
         volt::ElectricalRecordSet{2},
         {volt::PinPackageTerminalMapping{volt::PinKey{"A"}, {volt::PackageTerminalKey{"1"}}},
          volt::PinPackageTerminalMapping{volt::PinKey{"B"}, {volt::PackageTerminalKey{"2"}}}},
@@ -99,7 +106,7 @@ struct ResolutionFixture {
              volt::PackageTerminalPadMapping{volt::PackageTerminalKey{"2"},
                                              {volt::FootprintPadKey{"2"}}}}}};
     auto builder = volt::PartLibraryBuilder{
-        volt::PartLibraryIdentity{"test.parts", "1", volt::PartLibrarySchemaVersion::V1}};
+        volt::PartLibraryIdentity{library_namespace, "1", volt::PartLibrarySchemaVersion::V1}};
     builder.add_component(spec).add_part(std::move(part));
     auto resolver = MemoryResolver{};
     resolver.add(footprint_reference, std::move(footprint_bytes));
@@ -124,6 +131,31 @@ struct SelectedCircuit {
 }
 
 } // namespace
+
+static_assert(!std::constructible_from<volt::ResolvedBoardView, volt::Board &&,
+                                       const volt::FootprintLibrary &,
+                                       std::span<const volt::ResolvedBoardPart>>);
+static_assert(
+    !std::constructible_from<volt::ResolvedBoardView, const volt::Board &,
+                             volt::FootprintLibrary &&, std::span<const volt::ResolvedBoardPart>>);
+static_assert(!std::constructible_from<volt::ResolvedBoardView, const volt::Board &,
+                                       const volt::FootprintLibrary &,
+                                       std::vector<volt::ResolvedBoardPart> &&>);
+static_assert(!std::constructible_from<volt::ResolvedBoardView, const volt::Board &,
+                                       const volt::FootprintLibrary &,
+                                       std::array<volt::ResolvedBoardPart, 1> &&>);
+static_assert(!std::constructible_from<volt::ResolvedBoardView, const volt::Board &,
+                                       const volt::FootprintLibrary &,
+                                       std::span<const volt::ResolvedBoardPart>>);
+
+template <typename PartRange>
+concept CanBuildRawTestView = requires(
+    const volt::Board &board, const volt::FootprintLibrary &footprints, PartRange &&parts) {
+    volt::ResolvedBoardView::test_only(board, footprints, std::forward<PartRange>(parts));
+};
+
+static_assert(CanBuildRawTestView<std::span<const volt::ResolvedBoardPart>>);
+static_assert(!CanBuildRawTestView<std::array<volt::ResolvedBoardPart, 1>>);
 
 TEST_CASE("Footprint assets round-trip complete native geometry deterministically") {
     const auto outline = volt::FootprintPolygon{std::vector{
@@ -192,24 +224,8 @@ TEST_CASE("Board resolution uses one exact closure deterministically without mut
     CHECK(first.footprints().definitions() == second.footprints().definitions());
     CHECK(volt::queries::selected_library_part_ref(selected.circuit, selected.component) ==
           reference);
-    CHECK_FALSE(
-        volt::queries::selected_physical_part(selected.circuit, selected.component).has_value());
-    CHECK(volt::queries::selected_physical_part(first.board().circuit(), selected.component)
-              .has_value());
-
-    auto rejected_projection = selected.circuit;
-    const auto wrong_reference = volt::LibraryPartRef{
-        reference.library_namespace(), reference.library_version(), volt::PartKey{"other"},
-        reference.library_digest(), reference.part_digest()};
-    CHECK_THROWS_AS(rejected_projection.update(
-                        selected.component,
-                        volt::SelectPhysicalPart{first.part(selected.component)->physical_part(),
-                                                 wrong_reference}),
-                    volt::KernelLogicError);
-    CHECK(volt::queries::selected_library_part_ref(rejected_projection, selected.component) ==
-          reference);
-    CHECK_FALSE(
-        volt::queries::selected_physical_part(rejected_projection, selected.component).has_value());
+    CHECK(&first.board() == &board);
+    CHECK(&first.board().circuit() == &selected.circuit);
 }
 
 TEST_CASE("Named Board resolutions remain independent over one selected closure") {
@@ -231,12 +247,73 @@ TEST_CASE("Named Board resolutions remain independent over one selected closure"
     const auto second = volt::io::resolve_board(second_board, bundle,
                                                 volt::BoardResolutionCapabilities{std::nullopt});
 
-    CHECK(first.authoring_board().name().value() == "First");
-    CHECK(second.authoring_board().name().value() == "Second");
+    CHECK(first.board().name().value() == "First");
+    CHECK(second.board().name().value() == "Second");
     CHECK(first.board().get(volt::ComponentPlacementId{0}).position() ==
           volt::BoardPoint{1.0, 2.0});
     CHECK(second.board().get(volt::ComponentPlacementId{0}).position() ==
           volt::BoardPoint{9.0, 8.0});
+}
+
+TEST_CASE("Board spatial indexes retain no borrowed physical resolution storage") {
+    auto fixture = resolution_fixture();
+    const auto bundle = volt::io::PartLibraryBundle::build(
+        fixture.builder, std::vector{fixture.key}, fixture.resolver);
+    auto selected = selected_circuit(fixture.spec, bundle, fixture.key);
+    auto board = volt::Board{selected.circuit, volt::BoardName{"Main"}};
+    auto index = std::optional<volt::BoardSpatialIndex>{};
+    {
+        const auto resolution =
+            volt::io::resolve_board(board, bundle, volt::BoardResolutionCapabilities{std::nullopt});
+        index.emplace(resolution.view());
+    }
+
+    CHECK_NOTHROW(index->copper_clearance_candidates());
+}
+
+TEST_CASE("Board routers retain an explicit resolved physical consumer snapshot") {
+    auto fixture = resolution_fixture();
+    const auto bundle = volt::io::PartLibraryBundle::build(
+        fixture.builder, std::vector{fixture.key}, fixture.resolver);
+    auto selected = selected_circuit(fixture.spec, bundle, fixture.key);
+    auto board = volt::Board{selected.circuit, volt::BoardName{"Main"}};
+    static_cast<void>(board.place_component(
+        volt::ComponentPlacement{selected.component, volt::BoardPoint{10.0, 5.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top, false}));
+    auto router = std::optional<volt::BoardRouter>{};
+    {
+        const auto resolution =
+            volt::io::resolve_board(board, bundle, volt::BoardResolutionCapabilities{std::nullopt});
+        router.emplace(board, resolution);
+    }
+
+    const auto result = router->escape(selected.component);
+    CHECK_FALSE(result.pads.empty());
+}
+
+TEST_CASE("Resolved Board views expose only verified owners and reject retained stale selections") {
+    auto first_fixture = resolution_fixture();
+    const auto first_bundle = volt::io::PartLibraryBundle::build(
+        first_fixture.builder, std::vector{first_fixture.key}, first_fixture.resolver);
+    auto first_selected = selected_circuit(first_fixture.spec, first_bundle, first_fixture.key);
+    auto first_board = volt::Board{first_selected.circuit, volt::BoardName{"First"}};
+    const auto first = volt::io::resolve_board(first_board, first_bundle,
+                                               volt::BoardResolutionCapabilities{std::nullopt});
+    const auto retained = first.view();
+    const auto retained_index = volt::BoardSpatialIndex{retained};
+    CHECK(retained.part(first_selected.component) != nullptr);
+
+    auto second_fixture = resolution_fixture({}, "test.other-parts", "other-resistor");
+    const auto second_bundle = volt::io::PartLibraryBundle::build(
+        second_fixture.builder, std::vector{second_fixture.key}, second_fixture.resolver);
+    const auto replacement = second_bundle.require(second_fixture.key);
+    first_selected.circuit.update(first_selected.component,
+                                  volt::SelectLibraryPart{second_bundle, replacement});
+    CHECK_THROWS_AS(retained.part(first_selected.component), volt::KernelLogicError);
+    CHECK_THROWS_AS(retained.board(), volt::KernelLogicError);
+    CHECK_THROWS_AS(retained_index.copper_clearance_candidates(), volt::KernelLogicError);
+    CHECK_THROWS_AS(first.view(), volt::KernelLogicError);
+    CHECK_THROWS_AS(first.part(first_selected.component), volt::KernelLogicError);
 }
 
 TEST_CASE("Board resolution rejects bad assets and wrong closures atomically") {
@@ -257,20 +334,14 @@ TEST_CASE("Board resolution rejects bad assets and wrong closures atomically") {
                         complete_board, empty,
                         volt::BoardResolutionCapabilities{complete_board.capability_profile()}),
                     volt::KernelRangeError);
-    CHECK_FALSE(volt::queries::selected_physical_part(complete_selected.circuit,
-                                                      complete_selected.component)
-                    .has_value());
 
     auto cached_board = volt::Board{complete_selected.circuit, volt::BoardName{"Cached"}};
     static_cast<void>(cached_board.cache_footprint_definition(volt::passive_0603_footprint()));
-    CHECK_THROWS_AS(volt::io::resolve_board(
-                        cached_board, complete,
-                        volt::BoardResolutionCapabilities{cached_board.capability_profile()}),
-                    volt::KernelLogicError);
+    const auto cached_resolution = volt::io::resolve_board(
+        cached_board, complete,
+        volt::BoardResolutionCapabilities{cached_board.capability_profile()});
+    REQUIRE(cached_resolution.part(complete_selected.component) != nullptr);
     CHECK(cached_board.all<volt::FootprintDefId>().size() == 1U);
-    CHECK_FALSE(volt::queries::selected_physical_part(complete_selected.circuit,
-                                                      complete_selected.component)
-                    .has_value());
 
     auto profiled_board = volt::Board{complete_selected.circuit, volt::BoardName{"Profiled"}};
     profiled_board.set_capability_profile(volt::BoardCapabilityProfile{
@@ -284,7 +355,4 @@ TEST_CASE("Board resolution rejects bad assets and wrong closures atomically") {
                                             volt::BoardResolutionCapabilities{std::nullopt}),
                     volt::KernelLogicError);
     CHECK(profiled_board.all<volt::FootprintDefId>().size() == 0U);
-    CHECK_FALSE(volt::queries::selected_physical_part(complete_selected.circuit,
-                                                      complete_selected.component)
-                    .has_value());
 }

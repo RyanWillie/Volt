@@ -8,7 +8,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/io/project_bundle_writer.hpp>
 
 #include "support/project_bundle_v2_board_test_support.hpp"
 
@@ -105,10 +105,10 @@ class BundleAssetResolver final : public volt::PartAssetResolver {
                             .dump();
 }
 
-[[nodiscard]] volt::io::ProjectBundleV2Builder project_builder_with_diagnostics(
+[[nodiscard]] volt::io::ProjectBundleBuilder project_builder_with_diagnostics(
     std::string diagnostics,
     volt::io::ProjectStatus status = volt::io::ProjectStatus::ExpectedDiagnostics) {
-    return volt::io::ProjectBundleV2Builder{
+    return volt::io::ProjectBundleBuilder{
         volt::io::ProjectIdentity{"board-fixture", std::nullopt, std::nullopt},
         volt::io::ProjectRunSummary{
             status != volt::io::ProjectStatus::Failed, status, "default", {"design", "board"}},
@@ -158,7 +158,7 @@ library_with_extra_summary_pad(const volt::io::PartLibraryBundle &original) {
                                               BundleAssetResolver{original});
 }
 
-void check_build_error(volt::io::ProjectBundleV2Builder &builder, std::string_view expected) {
+void check_build_error(volt::io::ProjectBundleBuilder &builder, std::string_view expected) {
     try {
         static_cast<void>(builder.build());
         FAIL("ProjectBundle v2 build unexpectedly succeeded");

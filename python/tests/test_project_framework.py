@@ -1150,7 +1150,7 @@ def test_project_bundle_scopes_library_diagnostics_to_selected_parts(tmp_path):
         volt.Part(
             name="Unused",
             pins=(volt.PinSpec("A", 1), volt.PinSpec("B", 2)),
-            footprint=volt.FootprintDefinition(
+            footprint=volt.Footprint(
                 ("volt.test.parts", "Overlap"),
                 pads=(
                     volt.FootprintPad.surface_mount(
@@ -1184,7 +1184,7 @@ def test_project_bundle_scopes_library_diagnostics_to_selected_parts(tmp_path):
     path = tmp_path / "selected-library-scope.volt"
     result.write(path)
     bundle = volt.ProjectBundle.open(path)
-    report = json.loads(bundle.v2.loaded_project.diagnostics.bytes)
+    report = json.loads(bundle.graph.loaded_project.diagnostics.bytes)
 
     assert report["status"] == "clean"
     assert report["diagnostics"] == []
@@ -1199,7 +1199,7 @@ def test_project_bundle_scopes_library_diagnostics_by_exact_release_and_part_key
             name=name,
             source_name=source_name,
             pins=(volt.PinSpec("A", 1),),
-            footprint=volt.FootprintDefinition(
+            footprint=volt.Footprint(
                 ("volt.test.release", footprint_name),
                 pads=(
                     volt.FootprintPad.surface_mount(
@@ -1246,7 +1246,7 @@ def test_project_bundle_scopes_library_diagnostics_by_exact_release_and_part_key
     path = tmp_path / "exact-library-report-scope.volt"
     result.write(path)
     bundle = volt.ProjectBundle.open(path)
-    report = json.loads(bundle.v2.loaded_project.diagnostics.bytes)
+    report = json.loads(bundle.graph.loaded_project.diagnostics.bytes)
 
     assert all(
         diagnostic["source"] != "part:unused-key"
@@ -1259,7 +1259,7 @@ def test_project_bundle_scopes_library_diagnostics_by_exact_release_and_part_key
     )
     assert {
         (row["library"], row["version"])
-        for row in bundle.v2.dependency_lock["libraries"]
+        for row in bundle.graph.dependency_lock["libraries"]
     } == {("volt.test.release", "1"), ("volt.test.release", "3")}
 
 

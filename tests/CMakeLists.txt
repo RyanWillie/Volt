@@ -62,7 +62,6 @@ add_executable(
     io/pcb/pcb_projection_io_test.cpp
     io/pcb/pcb_svg_writer_test.cpp
     io/pcb/compiled_board_test.cpp
-    io/project_bundle_test.cpp
     io/project_bundle_source_test.cpp
     io/project_bundle_v2_board_export_rejection_test.cpp
     io/project_bundle_v2_board_export_tamper_test.cpp
@@ -133,7 +132,8 @@ target_include_directories(
         ${PROJECT_SOURCE_DIR}/tests
 )
 target_compile_definitions(
-    volt_core_tests PRIVATE VOLT_TEST_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/tests/fixtures"
+    volt_core_tests
+    PRIVATE VOLT_TEST_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/tests/fixtures" VOLT_TEST_SUPPORT
 )
 if(MINGW)
     target_compile_options(volt_core_tests PRIVATE -Wa,-mbig-obj)

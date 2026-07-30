@@ -9,7 +9,6 @@ tests/fixtures/ap1117.part.volt.json text eol=lf
 tests/fixtures/*.electrical.volt.json text eol=lf
 tests/fixtures/*.component-contract.volt.json text eol=lf
 tests/fixtures/led_circuit.volt.json text eol=lf
-tests/fixtures/legacy_led_circuit_v1.volt.json text eol=lf
 tests/fixtures/hierarchy_module.volt.json text eol=lf
 tests/fixtures/typed_electrical_attributes.volt.json text eol=lf
 tests/fixtures/single_pin_net.volt.json text eol=lf

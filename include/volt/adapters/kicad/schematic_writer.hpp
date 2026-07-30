@@ -15,6 +15,10 @@
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
 
+namespace volt {
+class ExactPartResolver;
+}
+
 namespace volt::adapters::kicad {
 
 /** Result of exporting Volt schematic projection data to a KiCad schematic document. */
@@ -69,11 +73,12 @@ void write_label(std::ostream &out, const Schematic &schematic, const NetLabel &
                  std::size_t index);
 
 void write_symbol_instance(std::ostream &out, const Schematic &schematic, SymbolInstanceId id,
-                           std::size_t index);
+                           std::size_t index, const ExactPartResolver &exact_parts);
 
 } // namespace detail
 
-/** Write one flat KiCad schematic sheet from Volt-owned logical and schematic data. */
-[[nodiscard]] SchematicExportResult write_flat_schematic(const Schematic &schematic);
+/** Write one flat KiCad sheet from Volt logical/schematic data and explicit exact-part truth. */
+[[nodiscard]] SchematicExportResult write_flat_schematic(const Schematic &schematic,
+                                                         const ExactPartResolver &exact_parts);
 
 } // namespace volt::adapters::kicad

@@ -332,7 +332,6 @@ TEST_CASE("Circuit selects one exact P4 reference atomically without copying int
     const auto led = instantiate(fixture.circuit, fixture.led_definition, "D1");
 
     CHECK_FALSE(volt::queries::selected_library_part_ref(fixture.circuit, led).has_value());
-    CHECK_FALSE(volt::queries::selected_physical_part(fixture.circuit, led).has_value());
     CHECK_THROWS_AS(volt::PartKey{"placeholder"}, volt::KernelArgumentError);
     CHECK_THROWS_AS(volt::PartKey{"unspecified"}, volt::KernelArgumentError);
     CHECK_THROWS_AS(volt::PartKey{"synthetic"}, volt::KernelArgumentError);
@@ -340,19 +339,6 @@ TEST_CASE("Circuit selects one exact P4 reference atomically without copying int
     const auto selected = select(fixture.circuit, led, fixture.library, "led");
     REQUIRE(volt::queries::selected_library_part_ref(fixture.circuit, led).has_value());
     CHECK(*volt::queries::selected_library_part_ref(fixture.circuit, led) == selected);
-    CHECK_FALSE(volt::queries::selected_physical_part(fixture.circuit, led).has_value());
-    const auto legacy_power = volt::ElectricalAttributeSpec{
-        volt::ElectricalAttributeName{"power_rating"},
-        volt::ElectricalAttributeOwner::SelectedPart,
-        volt::ElectricalAttributeKind::DesignInput,
-        volt::UnitDimension::Power,
-    };
-    CHECK_THROWS_AS(
-        fixture.circuit.update(led,
-                               volt::SetSelectedPartElectricalAttribute{
-                                   legacy_power, volt::ElectricalAttributeValue{volt::Quantity{
-                                                     volt::UnitDimension::Power, 0.25}}}),
-        volt::KernelLogicError);
     CHECK(*volt::queries::selected_library_part_ref(fixture.circuit, led) == selected);
 
     const auto forged_digest = volt::sha256_content_hash("forged");
@@ -390,37 +376,7 @@ TEST_CASE("Exact selected-part reference persists and reopens deterministically"
     const auto reopened = volt::io::read_logical_circuit_text(first_write);
     REQUIRE(volt::queries::selected_library_part_ref(reopened, led).has_value());
     CHECK(*volt::queries::selected_library_part_ref(reopened, led) == selected);
-    CHECK_FALSE(volt::queries::selected_physical_part(reopened, led).has_value());
     CHECK(volt::io::write_logical_circuit(reopened) == first_write);
-}
-
-TEST_CASE("Legacy selected-part Power remains typed and survives logical reopen") {
-    auto fixture = make_fixture();
-    const auto load = instantiate(fixture.circuit, fixture.load_definition, "U1");
-    const auto pins = fixture.circuit.get(fixture.load_definition).pins();
-    fixture.circuit.update(
-        load, volt::SelectPhysicalPart{volt::PhysicalPart{
-                  volt::ManufacturerPart{"Legacy", "POWER-PART"},
-                  volt::PackageRef{"TEST-2"},
-                  volt::FootprintRef{"TestFootprints", "legacy"},
-                  {volt::PinPadMapping{pins[0], "1"}, volt::PinPadMapping{pins[1], "2"}}}});
-    const auto power = volt::ElectricalAttributeSpec{
-        volt::ElectricalAttributeName{"power_rating"},
-        volt::ElectricalAttributeOwner::SelectedPart,
-        volt::ElectricalAttributeKind::DesignInput,
-        volt::UnitDimension::Power,
-    };
-    fixture.circuit.update(load, volt::SetSelectedPartElectricalAttribute{
-                                     power, volt::ElectricalAttributeValue{
-                                                volt::Quantity{volt::UnitDimension::Power, 0.25}}});
-
-    const auto reopened =
-        volt::io::read_logical_circuit_text(volt::io::write_logical_circuit(fixture.circuit));
-    const auto &selected = volt::queries::selected_physical_part(reopened, load);
-    REQUIRE(selected.has_value());
-    CHECK(selected->electrical_attributes()
-              .get(volt::ElectricalAttributeName{"power_rating"})
-              .as_quantity() == volt::Quantity{volt::UnitDimension::Power, 0.25});
 }
 
 TEST_CASE("Native selected-part ERC diagnoses accepted and absolute Voltage violations") {
@@ -603,7 +559,9 @@ TEST_CASE("Exact selection satisfies missing-selection readiness without becomin
     auto board = volt::Board{fixture.circuit};
     static_cast<void>(board.place_component(volt::ComponentPlacement{
         led, volt::BoardPoint{1.0, 2.0}, volt::BoardRotation::degrees(0.0)}));
-    const auto board_missing = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto footprints = volt::builtin_footprint_library();
+    const auto board_missing =
+        volt::validate_board(volt::ResolvedBoardView::test_only(board, footprints, {}));
     CHECK(has_diagnostic(board_missing, "PCB_COMPONENT_MISSING_SELECTED_PART"));
 
     static_cast<void>(select(fixture.circuit, led, fixture.library, "led"));
@@ -612,11 +570,7 @@ TEST_CASE("Exact selection satisfies missing-selection readiness without becomin
     CHECK_FALSE(has_diagnostic(pcb_selected, "PHYSICAL_PART_REQUIRED"));
     CHECK_FALSE(has_diagnostic(bom_selected, "BOM_COMPONENT_MISSING_SELECTED_PART"));
 
-    const auto cpl = volt::project_cpl(board, volt::builtin_footprint_library());
-    CHECK_FALSE(has_diagnostic(cpl.diagnostics(), "ASSEMBLY_COMPONENT_MISSING_SELECTED_PART"));
-    CHECK(has_diagnostic(cpl.diagnostics(), "ASSEMBLY_PART_IDENTITY_MISSING"));
-
-    const auto board_report = volt::validate_board(board, volt::builtin_footprint_library());
-    CHECK_FALSE(has_diagnostic(board_report, "PCB_COMPONENT_MISSING_SELECTED_PART"));
-    CHECK(has_diagnostic(board_report, "PCB_FOOTPRINT_UNRESOLVED"));
+    const auto unresolved =
+        volt::validate_board(volt::ResolvedBoardView::test_only(board, footprints, {}));
+    CHECK(has_diagnostic(unresolved, "PCB_FOOTPRINT_UNRESOLVED"));
 }

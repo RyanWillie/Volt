@@ -200,14 +200,13 @@ BoardScene BoardScene::from_compiled(const CompiledBoard &compiled) {
 }
 
 CompiledBoardValidation validate_board(const CompiledBoard &compiled) {
-    return CompiledBoardValidation{compiled.identity(),
-                                   validate_board(compiled.board(), compiled.footprints())};
+    return CompiledBoardValidation{compiled.identity(), validate_board(compiled.view())};
 }
 
 CompiledBoardRatsnest compute_ratsnest(const CompiledBoard &compiled) {
     return CompiledBoardRatsnest{
         compiled.identity(),
-        queries::ratsnest_edges(compiled.board(), compiled.footprints()),
+        queries::ratsnest_edges(compiled.view()),
     };
 }
 
@@ -218,7 +217,7 @@ CompiledBoardCpl project_cpl(const CompiledBoard &compiled) {
 CompiledBoardCpl project_cpl(const CompiledBoard &compiled, const CplProjectionOptions &options) {
     return CompiledBoardCpl{
         compiled.identity(),
-        project_cpl(compiled.board(), compiled.footprints(), options),
+        project_cpl(compiled.view(), options),
     };
 }
 

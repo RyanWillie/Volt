@@ -237,6 +237,13 @@ class CompiledBoard final {
     /** Return exact selected implementations in component order. */
     [[nodiscard]] std::span<const ResolvedBoardPart> parts() const noexcept;
 
+    /** Return the exact resolved implementation for a component, or null when none is selected. */
+    [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const noexcept;
+
+    /** Return an owning resolved physical consumer snapshot for this artifact Board. */
+    [[nodiscard]] ResolvedBoardView view() const &;
+    [[nodiscard]] ResolvedBoardView view() const && = delete;
+
     /** Return the verified pad resolutions frozen for delivery consumers. */
     [[nodiscard]] std::span<const PadResolution> pad_resolutions() const noexcept;
 
@@ -264,11 +271,11 @@ class CompiledBoard final {
 
     explicit CompiledBoard(std::unique_ptr<Storage> storage);
 
-    [[nodiscard]] static CompiledBoard
-    materialize_verified(Circuit logical_dependencies, const BoardResolution &resolution,
-                         CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
-                         std::string logical_dependency_snapshot, std::string physical_snapshot,
-                         std::string bytes);
+    [[nodiscard]] static CompiledBoard materialize_verified(
+        Circuit logical_dependencies, const Board &board, ContentHash selected_closure_digest,
+        FootprintLibrary footprints, std::vector<ResolvedBoardPart> parts,
+        CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
+        std::string logical_dependency_snapshot, std::string physical_snapshot, std::string bytes);
 
     std::unique_ptr<Storage> storage_;
 };

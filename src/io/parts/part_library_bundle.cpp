@@ -949,9 +949,8 @@ PartLibraryBundle PartLibraryBundle::build_with_component_roots(
 
     std::ranges::sort(entries, {}, &PartLibraryBundleEntry::path);
     std::ranges::sort(selected_roots);
-    const auto schema_version = component_root_keys.empty() ? PartLibraryBundleSchemaVersion::V1
-                                                            : PartLibraryBundleSchemaVersion::V2;
-    auto core = manifest_core(library, reference_digest, entries, selected_roots, schema_version);
+    auto core = manifest_core(library, reference_digest, entries, selected_roots,
+                              PartLibraryBundleSchemaVersion::V2);
     auto manifest = core;
     manifest["content_digest"] = content_digest(core, entries, payloads).value();
     auto bytes = encode_archive(manifest, entries, payloads);
@@ -971,9 +970,7 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
                        "PartLibraryBundle manifest format is unsupported");
         const auto bundle_schema_version = required_u32(decoded.manifest, "schema_version");
         require_bundle(bundle_schema_version ==
-                               static_cast<std::uint32_t>(PartLibraryBundleSchemaVersion::V1) ||
-                           bundle_schema_version ==
-                               static_cast<std::uint32_t>(PartLibraryBundleSchemaVersion::V2),
+                           static_cast<std::uint32_t>(PartLibraryBundleSchemaVersion::V2),
                        "PartLibraryBundle manifest schema is unsupported");
         const auto selected_roots = required_string_array(decoded.manifest, "selected_roots");
         const auto &producer = decoded.manifest.at("producer");
@@ -991,17 +988,6 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
             payloads_by_id.emplace(entry.id(), decoded.payloads_by_path.at(entry.path()));
             entries_by_id.emplace(entry.id(), &entry);
         }
-        const auto has_component_root = std::ranges::any_of(selected_roots, [&](const auto &root) {
-            const auto entry = entries_by_id.find(root);
-            return entry != entries_by_id.end() &&
-                   entry->second->role() == PartLibraryBundleEntryRole::ComponentDefinition;
-        });
-        require_bundle(has_component_root ==
-                           (bundle_schema_version ==
-                            static_cast<std::uint32_t>(PartLibraryBundleSchemaVersion::V2)),
-                       "PartLibraryBundle component roots do not match its schema version",
-                       ErrorCode::CrossReferenceViolation);
-
         auto core = decoded.manifest;
         core.erase("content_digest");
         require_bundle(ContentHash{required_string(decoded.manifest, "content_digest")} ==

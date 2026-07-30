@@ -511,15 +511,10 @@ void filter_net_classes(Json &logical) {
     return LogicalSnapshot{wrapper.dump(), std::move(component_documents)};
 }
 
-[[nodiscard]] std::string build_physical_snapshot(const Board &board) {
-    auto document = parse_json(write_pcb_board(board, FootprintLibrary{}), "PCB snapshot");
+[[nodiscard]] std::string build_physical_snapshot(const ResolvedBoardView &resolved) {
+    auto document = parse_json(write_pcb_board(resolved), "PCB snapshot");
     require(document.find("viewer") == document.end(),
-            "Current PCB writer emitted legacy derived viewer state", ErrorCode::InvalidState);
-    const auto &board_json = field(document, "board", "PCB snapshot");
-    const auto &footprints = field(board_json, "footprint_definitions", "PCB Board snapshot");
-    require(footprints.is_array() && footprints.empty(),
-            "CompiledBoard authoring Board must not carry cached footprint definitions",
-            ErrorCode::InvalidState);
+            "Current PCB writer emitted unsupported derived viewer state", ErrorCode::InvalidState);
     return document.dump();
 }
 
@@ -1098,7 +1093,7 @@ decode_parts(const Json &selected_parts, const std::map<std::string, DecodedComp
                                               const CompiledBoardCapabilities &capabilities) {
     auto payloads = std::map<std::string, Payload>{};
     const auto logical = build_logical_snapshot(circuit);
-    const auto physical = build_physical_snapshot(board);
+    const auto physical = build_physical_snapshot(resolution.view());
     const auto capability = capabilities_json(capabilities).dump();
     add_payload(payloads, "snapshots/capabilities.json", "capability_snapshot", capability);
     add_payload(payloads, "snapshots/logical.json", "logical_dependencies", logical.bytes);
@@ -1139,10 +1134,9 @@ decode_parts(const Json &selected_parts, const std::map<std::string, DecodedComp
 
 [[nodiscard]] DiagnosticReport design_diagnostics(const Circuit &circuit,
                                                   const ExactPartResolver &resolver,
-                                                  const Board &board,
-                                                  const FootprintLibrary &footprints) {
+                                                  const ResolvedBoardView &resolved) {
     auto result = validate_for_pcb(circuit, resolver);
-    const auto board_diagnostics = validate_board(board, footprints);
+    const auto board_diagnostics = validate_board(resolved);
     for (const auto &diagnostic : board_diagnostics.diagnostics()) {
         result.add(diagnostic);
     }
@@ -1178,8 +1172,7 @@ CompiledBoardCompileResult compile_board(const Circuit &circuit, const Board &bo
     }
 
     auto artifact = open_compiled_board(archive_bytes);
-    diagnostics =
-        design_diagnostics(circuit, selected_closure, artifact.board(), artifact.footprints());
+    diagnostics = design_diagnostics(circuit, selected_closure, artifact.view());
     return CompiledBoardCompileResult::success(std::move(artifact), std::move(diagnostics));
 }
 
@@ -1271,8 +1264,6 @@ template <typename Publisher>
     for (std::size_t index = 0; index < logical_circuit.all<ComponentId>().size(); ++index) {
         const auto component = ComponentId{index};
         const auto &instance = logical_circuit.get(component);
-        require(!instance.selected_physical_part().has_value(),
-                "CompiledBoard logical snapshot contains resolved physical truth");
         if (!instance.selected_library_part_ref().has_value()) {
             continue;
         }
@@ -1313,16 +1304,17 @@ template <typename Publisher>
                 string_field(manifest, "board_name", "CompiledBoard manifest"),
             "CompiledBoard physical Board identity is stale", ErrorCode::CrossReferenceViolation);
 
-    auto resolution_capabilities = BoardResolutionCapabilities{
-        capabilities.profile(), std::vector<BoardAssetCapability>{capabilities.additional().begin(),
-                                                                  capabilities.additional().end()}};
-    const auto resolution = BoardResolution::materialize(
-        physical_board, closure_digest, std::move(resolution_capabilities),
-        std::move(footprint_library), std::move(resolved_parts));
+    require(physical_board.capability_profile().has_value(),
+            "CompiledBoard physical Board has no capability profile",
+            ErrorCode::CrossReferenceViolation);
+    require(write_capability_profile(*physical_board.capability_profile()) ==
+                write_capability_profile(capabilities.profile()),
+            "CompiledBoard physical Board capability profile is stale",
+            ErrorCode::CrossReferenceViolation);
 
     const auto build = string_field(manifest, "compiler_build", "CompiledBoard manifest");
     const auto expected_provenance =
-        provenance_digest(resolution.board_name().value(), build, logical_digest, physical_digest,
+        provenance_digest(physical_board.name().value(), build, logical_digest, physical_digest,
                           closure_digest, capability_digest);
     const auto stored_provenance =
         ContentHash{string_field(manifest, "provenance_digest", "CompiledBoard manifest")};
@@ -1341,9 +1333,10 @@ template <typename Publisher>
         stored_provenance,
     };
     auto compiled =
-        publisher(std::move(logical_circuit), resolution, std::move(capabilities),
+        publisher(std::move(logical_circuit), std::move(physical_board), closure_digest,
+                  std::move(footprint_library), std::move(resolved_parts), std::move(capabilities),
                   std::move(provenance), logical_bytes, physical_bytes, std::string{bytes});
-    require(build_physical_snapshot(compiled.board()) == physical_bytes,
+    require(build_physical_snapshot(compiled.view()) == physical_bytes,
             "CompiledBoard materialized Board differs from its canonical physical snapshot",
             ErrorCode::InvalidState);
     return compiled;
@@ -1361,12 +1354,14 @@ namespace volt {
 
 CompiledBoard CompiledBoard::Codec::open(std::string_view bytes) {
     return io::open_compiled_board_impl(
-        bytes, [](Circuit logical_dependencies, const BoardResolution &resolution,
+        bytes, [](Circuit logical_dependencies, Board board, ContentHash selected_closure_digest,
+                  FootprintLibrary footprints, std::vector<ResolvedBoardPart> parts,
                   CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
                   std::string logical_dependency_snapshot, std::string physical_snapshot,
                   std::string archive_bytes) {
             return CompiledBoard::materialize_verified(
-                std::move(logical_dependencies), resolution, std::move(capabilities),
+                std::move(logical_dependencies), board, std::move(selected_closure_digest),
+                std::move(footprints), std::move(parts), std::move(capabilities),
                 std::move(provenance), std::move(logical_dependency_snapshot),
                 std::move(physical_snapshot), std::move(archive_bytes));
         });

@@ -334,7 +334,7 @@ py::dict PyPartLibraryBundle::inspect() const {
     }
     auto result = py::dict{};
     result["format"] = std::string{volt::io::part_library_bundle_format_name()};
-    result["schema_version"] = 1;
+    result["schema_version"] = 2;
     result["producer_version"] = 1;
     result["bundle_digest"] = digest();
     result["library_digest"] = library_digest();

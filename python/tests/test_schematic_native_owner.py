@@ -80,7 +80,7 @@ def test_foreign_schematic_ids_reject_typed_and_leave_both_owners_byte_identical
         volt.CrossReferenceError,
         match="belongs to a different design",
     ) as component_error:
-        schematic.place(foreign_component, at=(40, 20), symbol="resistor")
+        schematic.place(foreign_component, at=(40, 20), symbol="volt.passives:resistor")
     assert component_error.value.code == "CrossReferenceViolation"
     assert component_error.value.entity is None
 
@@ -104,14 +104,14 @@ def test_direct_owner_preserves_public_serialized_bytes_and_diagnostics():
     net = circuit.add_net("SIG")
     direct = volt._volt.SchematicDocument(circuit)
     sheet = direct.schematic_sheet("Main", {})
-    direct.place_schematic_symbol(sheet, component, "resistor", 40, 20, "Right")
+    direct.place_schematic_symbol(sheet, component, "volt.passives:resistor", 40, 20, "Right")
     direct.add_schematic_wire(sheet, net, [(20, 20), (40, 20)], "Direct")
 
     design = volt.Design("public-schematic-owner")
     public_component = design.R(ref="R1")
     public_net = design.net("SIG")
     public = design.schematic("Main")
-    public.place(public_component, at=(40, 20), symbol="resistor")
+    public.place(public_component, at=(40, 20), symbol="volt.passives:resistor")
     public.wire(public_net, [(20, 20), (40, 20)])
 
     assert direct.schematic_to_json().encode() == public.to_json().encode()

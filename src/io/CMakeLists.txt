@@ -63,7 +63,6 @@ add_library(
     pcb/pcb_writer_rooms.cpp
     project_bundle.cpp
     project_bundle_source.cpp
-    project_bundle_v1.cpp
     project_bundle_v2.cpp
     project_bundle_v2_graph.cpp
     project_bundle_v2_manifest.cpp

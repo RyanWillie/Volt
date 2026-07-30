@@ -4,7 +4,7 @@
 #include <string>
 #include <string_view>
 
-#include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/io/project_bundle_writer.hpp>
 
 namespace volt::io::detail {
 

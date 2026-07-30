@@ -1,4 +1,5 @@
 #include <optional>
+#include <utility>
 
 #include <volt/io/pcb/board_resolution.hpp>
 
@@ -13,6 +14,16 @@ class EmptyAssetResolver final : public volt::PartAssetResolver {
 };
 
 } // namespace
+
+template <typename BoardArgument>
+concept CanResolveBoard = requires(BoardArgument &&board, const volt::io::PartLibraryBundle &bundle,
+                                   volt::BoardResolutionCapabilities capabilities) {
+    volt::io::resolve_board(std::forward<BoardArgument>(board), bundle, capabilities);
+};
+
+static_assert(CanResolveBoard<volt::Board &>);
+static_assert(!CanResolveBoard<volt::Board>);
+static_assert(!CanResolveBoard<const volt::Board>);
 
 int main() {
     auto builder = volt::PartLibraryBuilder{

@@ -13,7 +13,7 @@
 #include <volt/core/errors.hpp>
 #include <volt/io/parts/part_library_bundle.hpp>
 #include <volt/io/project_bundle.hpp>
-#include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/io/project_bundle_writer.hpp>
 #include <volt/io/schematic/schematic_writer.hpp>
 
 namespace {
@@ -76,7 +76,7 @@ class LogicalFixture final {
                   volt::PartLibraryIdentity{"test.empty", "1", volt::PartLibrarySchemaVersion::V1}},
               {}, resolver_)} {}
 
-    [[nodiscard]] volt::io::ProjectBundleV2Builder
+    [[nodiscard]] volt::io::ProjectBundleBuilder
     builder(std::string source = "project source",
             std::vector<volt::io::AuthoringInput> extra_inputs = {}) const {
         auto inputs = std::vector<volt::io::AuthoringInput>{};
@@ -84,7 +84,7 @@ class LogicalFixture final {
                             volt::io::LogicalInputName{"project.py"}, std::move(source));
         inputs.insert(inputs.end(), std::make_move_iterator(extra_inputs.begin()),
                       std::make_move_iterator(extra_inputs.end()));
-        auto result = volt::io::ProjectBundleV2Builder{
+        auto result = volt::io::ProjectBundleBuilder{
             volt::io::ProjectIdentity{"fixture", std::optional{"1.0"},
                                       std::optional{"fixture project"}},
             volt::io::ProjectRunSummary{
@@ -122,8 +122,7 @@ TEST_CASE("ProjectBundle v2 publication is atomic immutable and representation s
     const auto original = snapshot(directory);
     const auto reopened_directory = volt::io::ProjectBundle::open(directory);
     CHECK(reopened_directory.schema_version() == volt::io::ProjectBundleSchemaVersion::V2);
-    CHECK(reopened_directory.integrity_status() == volt::io::BundleIntegrityStatus::VerifiedV2);
-    const auto directory_view = reopened_directory.require_v2();
+    const auto directory_view = reopened_directory.graph();
     CHECK(directory_view.build_id() == bundle.build_id());
     CHECK(directory_view.bundle_digest() == bundle.bundle_digest());
     CHECK(directory_view.artifacts().size() == bundle.artifacts().size());
@@ -133,12 +132,12 @@ TEST_CASE("ProjectBundle v2 publication is atomic immutable and representation s
     CHECK_THROWS_AS(bundle.write(directory), volt::KernelError);
     CHECK(snapshot(directory) == original);
 
-    bundle.write(archive, volt::io::ProjectBundleV2Representation::Zip);
+    bundle.write(archive, volt::io::ProjectBundleRepresentation::Zip);
     const auto reopened_archive = volt::io::ProjectBundle::open(archive);
-    const auto archive_view = reopened_archive.require_v2();
+    const auto archive_view = reopened_archive.graph();
     CHECK(archive_view.bundle_digest() == bundle.bundle_digest());
     CHECK(read_bytes(archive) == bundle.archive_bytes());
-    CHECK_THROWS_AS(bundle.write(archive, volt::io::ProjectBundleV2Representation::Zip),
+    CHECK_THROWS_AS(bundle.write(archive, volt::io::ProjectBundleRepresentation::Zip),
                     volt::KernelError);
     CHECK(read_bytes(archive) == bundle.archive_bytes());
 
@@ -168,7 +167,7 @@ TEST_CASE("ProjectBundle v2 strong identities reject unsafe or cross-kind values
         volt::io::ExportRequestSchema{static_cast<volt::io::ExportRequestSchemaVersion>(99)},
         volt::KernelError);
     CHECK_THROWS_AS(
-        (volt::io::ProjectBundleV2Builder{
+        (volt::io::ProjectBundleBuilder{
             volt::io::ProjectIdentity{"fixture", std::nullopt, std::nullopt},
             volt::io::ProjectRunSummary{
                 true, volt::io::ProjectStatus::Clean, "default", {"design", "design"}},

@@ -36,28 +36,10 @@ ComponentInstance::with_electrical_attribute(const ElectricalAttributeSpec &spec
 }
 
 [[nodiscard]] ComponentInstance
-ComponentInstance::with_selected_physical_part(PhysicalPart part) const {
-    auto result = *this;
-    result.selected_library_part_ref_.reset();
-    result.selected_physical_part_ = std::move(part);
-    return result;
-}
-
-[[nodiscard]] ComponentInstance
 ComponentInstance::with_selected_library_part_ref(LibraryPartRef reference) const {
     auto result = *this;
     result.selected_library_part_ref_ = std::move(reference);
     return result;
-}
-
-[[nodiscard]] ComponentInstance
-ComponentInstance::with_selected_part_electrical_attribute(const ElectricalAttributeSpec &spec,
-                                                           ElectricalAttributeValue value) const {
-    if (!selected_physical_part_.has_value()) {
-        throw KernelLogicError{ErrorCode::InvalidState, "Component has no selected physical part"};
-    }
-    return with_selected_physical_part(
-        selected_physical_part_->with_electrical_attribute(spec, value));
 }
 
 [[nodiscard]] ComponentInstance

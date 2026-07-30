@@ -438,7 +438,7 @@ def test_selected_part_erc_resolution_is_explicit_and_exact():
         design.validate_selected_part_erc(other)
 
 
-def test_part_instantiation_has_no_legacy_physical_part_fallback():
+def test_part_instantiation_requires_a_complete_native_exact_part():
     library = volt.Library("test.incomplete")
     part = library.part(
         "LOGICAL-ONLY",
@@ -558,11 +558,11 @@ def test_native_conditions_tolerance_and_evidence_round_trip_deterministically()
     assert record["evidence"] == ["sha256:" + "0" * 64]
 
 
-def test_opaque_ratings_and_exact_part_power_are_explicitly_rejected():
+def test_removed_opaque_rating_inputs_are_not_accepted():
     with pytest.raises(TypeError, match="ratings"):
         volt.Part(name="P", pins=(volt.PinSpec("1", 1),), ratings={"mystery": 1})
 
-    with pytest.raises(NotImplementedError, match="Power"):
+    with pytest.raises(TypeError, match="power_rating"):
         volt.Part(
             name="R",
             pins=(volt.PinSpec("1", 1), volt.PinSpec("2", 2)),

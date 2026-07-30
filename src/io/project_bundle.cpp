@@ -5,61 +5,19 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <variant>
 #include <vector>
 
 #include <nlohmann/json.hpp>
 
 #include "project_bundle_source.hpp"
 #include "project_bundle_storage.hpp"
-#include "project_bundle_v1.hpp"
 #include "project_bundle_v2.hpp"
 #include "project_bundle_v2_contract.hpp"
 
 namespace volt::io {
 namespace {
 
-[[nodiscard]] std::string_view meaning_name(ProjectBundleV2Meaning meaning) noexcept {
-    switch (meaning) {
-    case ProjectBundleV2Meaning::ArtifactGraph:
-        return "artifact_graph";
-    case ProjectBundleV2Meaning::ArtifactRoles:
-        return "artifact_roles";
-    case ProjectBundleV2Meaning::ArtifactKinds:
-        return "artifact_kinds";
-    case ProjectBundleV2Meaning::DependencyEdges:
-        return "dependency_edges";
-    case ProjectBundleV2Meaning::DependencyLock:
-        return "dependency_lock";
-    case ProjectBundleV2Meaning::BuildId:
-        return "build_id";
-    case ProjectBundleV2Meaning::AuthoringInputsDigest:
-        return "authoring_inputs_digest";
-    case ProjectBundleV2Meaning::BundleDigest:
-        return "bundle_digest";
-    case ProjectBundleV2Meaning::CompleteArtifactDigests:
-        return "complete_artifact_digests";
-    case ProjectBundleV2Meaning::CompiledBoards:
-        return "compiled_boards";
-    case ProjectBundleV2Meaning::BoardScenes:
-        return "board_scenes";
-    case ProjectBundleV2Meaning::SelectedClosure:
-        return "selected_closure";
-    case ProjectBundleV2Meaning::CapabilityRecords:
-        return "capability_records";
-    case ProjectBundleV2Meaning::VerifiedProvenance:
-        return "verified_provenance";
-    }
-    return "unknown";
-}
-
-[[nodiscard]] std::string unavailable_message(ProjectBundleSchemaVersion schema,
-                                              ProjectBundleV2Meaning meaning) {
-    return "ProjectBundle schema " + std::to_string(static_cast<std::uint32_t>(schema)) +
-           " does not contain requested v2 meaning " + std::string{meaning_name(meaning)};
-}
-
-[[nodiscard]] ProjectBundleSchemaVersion dispatched_schema(std::string_view bytes) {
+void require_current_schema(std::string_view bytes) {
     try {
         const auto root = nlohmann::json::parse(bytes);
         if (!root.is_object() || !root.contains("format") || !root.at("format").is_string() ||
@@ -72,15 +30,11 @@ namespace {
                                          "ProjectBundle manifest schema_version is invalid"};
         }
         const auto schema = root.at("schema_version").get<std::uint32_t>();
-        if (schema == 1U) {
-            return ProjectBundleSchemaVersion::V1;
+        if (schema != static_cast<std::uint32_t>(ProjectBundleSchemaVersion::V2)) {
+            throw ProjectBundleOpenError{ProjectBundleOpenErrorCode::UnsupportedSchema,
+                                         "ProjectBundle manifest schema is unsupported: " +
+                                             std::to_string(schema)};
         }
-        if (schema == 2U) {
-            return ProjectBundleSchemaVersion::V2;
-        }
-        throw ProjectBundleOpenError{ProjectBundleOpenErrorCode::UnsupportedSchema,
-                                     "ProjectBundle manifest schema is unsupported: " +
-                                         std::to_string(schema)};
     } catch (const ProjectBundleOpenError &) {
         throw;
     } catch (const nlohmann::json::exception &error) {
@@ -95,181 +49,24 @@ namespace {
 ProjectBundleOpenError::ProjectBundleOpenError(ProjectBundleOpenErrorCode code, std::string message)
     : std::runtime_error{message}, code_{code} {}
 
-ProjectBundleUnavailableError::ProjectBundleUnavailableError(ProjectBundleSchemaVersion schema,
-                                                             ProjectBundleV2Meaning meaning)
-    : std::logic_error{unavailable_message(schema, meaning)}, schema_{schema}, meaning_{meaning} {}
-
-LegacyProjectBundleV1ArtifactView::LegacyProjectBundleV1ArtifactView(
+ProjectBundleArtifactView::ProjectBundleArtifactView(
     std::shared_ptr<const detail::ProjectBundleStorage> storage, std::size_t index)
     : storage_{std::move(storage)}, index_{index} {}
 
-std::string LegacyProjectBundleV1ArtifactView::kind() const {
-    return storage_->artifacts.at(index_).kind;
-}
-
-std::string LegacyProjectBundleV1ArtifactView::name() const {
-    return storage_->artifacts.at(index_).name;
-}
-
-std::string LegacyProjectBundleV1ArtifactView::path() const {
-    return storage_->artifacts.at(index_).path;
-}
-
-std::string LegacyProjectBundleV1ArtifactView::media_type() const {
-    return storage_->artifacts.at(index_).media_type;
-}
-
-std::optional<std::string>
-LegacyProjectBundleV1ArtifactView::group_value(const std::string &key) const {
-    const auto &group = storage_->artifacts.at(index_).group;
-    const auto match = group.find(key);
-    return match == group.end() ? std::nullopt : std::optional{match->second};
-}
-
-std::optional<std::string> LegacyProjectBundleV1ArtifactView::recorded_sha256() const {
-    return storage_->artifacts.at(index_).sha256;
-}
-
-std::string LegacyProjectBundleV1ArtifactView::manifest_record_json() const {
-    return storage_->artifacts.at(index_).manifest_record_json;
-}
-
-std::string LegacyProjectBundleV1ArtifactView::bytes() const {
-    return storage_->artifacts.at(index_).bytes;
-}
-
-LegacyProjectBundleV1LogicalDocumentView::LegacyProjectBundleV1LogicalDocumentView(
-    std::shared_ptr<const detail::ProjectBundleStorage> storage, std::size_t index)
-    : storage_{std::move(storage)}, index_{index} {}
-
-std::string LegacyProjectBundleV1LogicalDocumentView::design() const {
-    return storage_->circuits.at(index_).design;
-}
-
-LegacyProjectBundleV1ArtifactView LegacyProjectBundleV1LogicalDocumentView::artifact() const {
-    return LegacyProjectBundleV1ArtifactView{storage_, storage_->circuits.at(index_).artifact};
-}
-
-LegacyProjectBundleV1SchematicView::LegacyProjectBundleV1SchematicView(
-    std::shared_ptr<const detail::ProjectBundleStorage> storage, std::size_t index)
-    : storage_{std::move(storage)}, index_{index} {}
-
-std::string LegacyProjectBundleV1SchematicView::design() const {
-    return storage_->schematics.at(index_).design;
-}
-
-std::string LegacyProjectBundleV1SchematicView::schematic() const {
-    return storage_->schematics.at(index_).schematic;
-}
-
-LegacyProjectBundleV1ArtifactView LegacyProjectBundleV1SchematicView::artifact() const {
-    return LegacyProjectBundleV1ArtifactView{storage_, storage_->schematics.at(index_).artifact};
-}
-
-LegacyProjectBundleV1LogicalDocumentView LegacyProjectBundleV1SchematicView::circuit() const {
-    return LegacyProjectBundleV1LogicalDocumentView{storage_,
-                                                    storage_->schematics.at(index_).circuit};
-}
-
-LegacyProjectBundleV1BoardView::LegacyProjectBundleV1BoardView(
-    std::shared_ptr<const detail::ProjectBundleStorage> storage, std::size_t index)
-    : storage_{std::move(storage)}, index_{index} {}
-
-std::string LegacyProjectBundleV1BoardView::design() const {
-    return storage_->boards.at(index_).design;
-}
-
-std::string LegacyProjectBundleV1BoardView::board() const {
-    return storage_->boards.at(index_).board;
-}
-
-LegacyProjectBundleV1ArtifactView LegacyProjectBundleV1BoardView::artifact() const {
-    return LegacyProjectBundleV1ArtifactView{storage_, storage_->boards.at(index_).artifact};
-}
-
-LegacyProjectBundleV1LogicalDocumentView LegacyProjectBundleV1BoardView::circuit() const {
-    return LegacyProjectBundleV1LogicalDocumentView{storage_, storage_->boards.at(index_).circuit};
-}
-
-LegacyProjectBundleV1View::LegacyProjectBundleV1View(
-    std::shared_ptr<const detail::ProjectBundleStorage> storage)
-    : storage_{std::move(storage)} {}
-
-std::string LegacyProjectBundleV1View::project_name() const { return storage_->project_name; }
-
-std::optional<std::string> LegacyProjectBundleV1View::project_version() const {
-    return storage_->project_version;
-}
-
-std::optional<std::string> LegacyProjectBundleV1View::project_description() const {
-    return storage_->project_description;
-}
-
-std::string LegacyProjectBundleV1View::manifest_bytes() const { return storage_->manifest_bytes; }
-
-std::vector<LegacyProjectBundleV1ArtifactView> LegacyProjectBundleV1View::artifacts() const {
-    auto result = std::vector<LegacyProjectBundleV1ArtifactView>{};
-    result.reserve(storage_->artifacts.size());
-    for (auto index = std::size_t{0}; index < storage_->artifacts.size(); ++index) {
-        result.emplace_back(storage_, index);
-    }
-    return result;
-}
-
-std::vector<LegacyProjectBundleV1LogicalDocumentView> LegacyProjectBundleV1View::circuits() const {
-    auto result = std::vector<LegacyProjectBundleV1LogicalDocumentView>{};
-    result.reserve(storage_->circuits.size());
-    for (auto index = std::size_t{0}; index < storage_->circuits.size(); ++index) {
-        result.emplace_back(storage_, index);
-    }
-    return result;
-}
-
-std::vector<LegacyProjectBundleV1SchematicView> LegacyProjectBundleV1View::schematics() const {
-    auto result = std::vector<LegacyProjectBundleV1SchematicView>{};
-    result.reserve(storage_->schematics.size());
-    for (auto index = std::size_t{0}; index < storage_->schematics.size(); ++index) {
-        result.emplace_back(storage_, index);
-    }
-    return result;
-}
-
-std::vector<LegacyProjectBundleV1BoardView> LegacyProjectBundleV1View::boards() const {
-    auto result = std::vector<LegacyProjectBundleV1BoardView>{};
-    result.reserve(storage_->boards.size());
-    for (auto index = std::size_t{0}; index < storage_->boards.size(); ++index) {
-        result.emplace_back(storage_, index);
-    }
-    return result;
-}
-
-ProjectBundleMeaningAvailability
-LegacyProjectBundleV1View::availability(ProjectBundleV2Meaning) const noexcept {
-    return ProjectBundleMeaningAvailability::UnavailableInV1;
-}
-
-[[noreturn]] void LegacyProjectBundleV1View::require(ProjectBundleV2Meaning meaning) const {
-    throw ProjectBundleUnavailableError{ProjectBundleSchemaVersion::V1, meaning};
-}
-
-ProjectBundleV2ArtifactView::ProjectBundleV2ArtifactView(
-    std::shared_ptr<const detail::ProjectBundleStorage> storage, std::size_t index)
-    : storage_{std::move(storage)}, index_{index} {}
-
-const ArtifactDescriptor &ProjectBundleV2ArtifactView::descriptor() const & {
+const ArtifactDescriptor &ProjectBundleArtifactView::descriptor() const & {
     return storage_->v2_artifacts.at(index_).descriptor;
 }
 
-std::string ProjectBundleV2ArtifactView::id_json() const {
+std::string ProjectBundleArtifactView::id_json() const {
     return detail::project_bundle_v2_artifact_id_json(
         storage_->v2_artifacts.at(index_).descriptor.id());
 }
 
-std::string ProjectBundleV2ArtifactView::manifest_record_json() const {
+std::string ProjectBundleArtifactView::manifest_record_json() const {
     return storage_->v2_artifacts.at(index_).manifest_record_json;
 }
 
-std::string ProjectBundleV2ArtifactView::bytes() const {
+std::string ProjectBundleArtifactView::bytes() const {
     return storage_->v2_artifacts.at(index_).bytes;
 }
 
@@ -281,7 +78,7 @@ const DesignKey &LoadedLogicalModelView::design() const & {
     return storage_->v2_circuits.at(index_).design;
 }
 
-ProjectBundleV2ArtifactView LoadedLogicalModelView::artifact() const {
+ProjectBundleArtifactView LoadedLogicalModelView::artifact() const {
     return {storage_, storage_->v2_circuits.at(index_).artifact};
 }
 
@@ -301,7 +98,7 @@ const SchematicKey &LoadedSchematicView::schematic() const & {
     return storage_->v2_schematics.at(index_).schematic;
 }
 
-ProjectBundleV2ArtifactView LoadedSchematicView::artifact() const {
+ProjectBundleArtifactView LoadedSchematicView::artifact() const {
     return {storage_, storage_->v2_schematics.at(index_).artifact};
 }
 
@@ -321,7 +118,7 @@ const DesignKey &LoadedBoardView::design() const & { return storage_->v2_boards.
 
 const BoardName &LoadedBoardView::board() const & { return storage_->v2_boards.at(index_).board; }
 
-ProjectBundleV2ArtifactView LoadedBoardView::artifact() const {
+ProjectBundleArtifactView LoadedBoardView::artifact() const {
     return {storage_, storage_->v2_boards.at(index_).artifact};
 }
 
@@ -339,7 +136,7 @@ const CompiledBoardIdentity &LoadedCompiledBoardView::identity() const & {
     return storage_->v2_compiled_boards.at(index_).model->identity();
 }
 
-ProjectBundleV2ArtifactView LoadedCompiledBoardView::artifact() const {
+ProjectBundleArtifactView LoadedCompiledBoardView::artifact() const {
     return {storage_, storage_->v2_compiled_boards.at(index_).artifact};
 }
 
@@ -351,7 +148,7 @@ LoadedBoardSceneView::LoadedBoardSceneView(
     std::shared_ptr<const detail::ProjectBundleStorage> storage, std::size_t index)
     : storage_{std::move(storage)}, index_{index} {}
 
-ProjectBundleV2ArtifactView LoadedBoardSceneView::artifact() const {
+ProjectBundleArtifactView LoadedBoardSceneView::artifact() const {
     return {storage_, storage_->v2_board_scenes.at(index_).artifact};
 }
 
@@ -411,14 +208,14 @@ std::vector<LoadedBoardSceneView> LoadedProject::board_scenes() const {
     return result;
 }
 
-ProjectBundleV2ArtifactView LoadedProject::diagnostics() const {
+ProjectBundleArtifactView LoadedProject::diagnostics() const {
     return {storage_, storage_->v2_diagnostics};
 }
 
-ProjectBundleV2ArtifactView LoadedProject::tests() const { return {storage_, storage_->v2_tests}; }
+ProjectBundleArtifactView LoadedProject::tests() const { return {storage_, storage_->v2_tests}; }
 
-std::vector<ProjectBundleV2ArtifactView> LoadedProject::selected_exports() const {
-    auto result = std::vector<ProjectBundleV2ArtifactView>{};
+std::vector<ProjectBundleArtifactView> LoadedProject::selected_exports() const {
+    auto result = std::vector<ProjectBundleArtifactView>{};
     result.reserve(storage_->v2_selected_exports.size());
     for (const auto index : storage_->v2_selected_exports) {
         result.emplace_back(storage_, index);
@@ -426,44 +223,42 @@ std::vector<ProjectBundleV2ArtifactView> LoadedProject::selected_exports() const
     return result;
 }
 
-ProjectBundleGraphV2View::ProjectBundleGraphV2View(
+ProjectBundleGraphView::ProjectBundleGraphView(
     std::shared_ptr<const detail::ProjectBundleStorage> storage)
     : storage_{std::move(storage)} {}
 
-std::string ProjectBundleGraphV2View::project_name() const { return storage_->project_name; }
+std::string ProjectBundleGraphView::project_name() const { return storage_->project_name; }
 
-std::optional<std::string> ProjectBundleGraphV2View::project_version() const {
+std::optional<std::string> ProjectBundleGraphView::project_version() const {
     return storage_->project_version;
 }
 
-std::optional<std::string> ProjectBundleGraphV2View::project_description() const {
+std::optional<std::string> ProjectBundleGraphView::project_description() const {
     return storage_->project_description;
 }
 
-std::string ProjectBundleGraphV2View::manifest_bytes() const { return storage_->manifest_bytes; }
+std::string ProjectBundleGraphView::manifest_bytes() const { return storage_->manifest_bytes; }
 
-const BuildId &ProjectBundleGraphV2View::build_id() const & {
-    return storage_->v2_build_id.value();
-}
+const BuildId &ProjectBundleGraphView::build_id() const & { return storage_->v2_build_id.value(); }
 
-const ContentHash &ProjectBundleGraphV2View::bundle_digest() const & {
+const ContentHash &ProjectBundleGraphView::bundle_digest() const & {
     return storage_->v2_bundle_digest.value();
 }
 
-const ContentHash &ProjectBundleGraphV2View::authoring_inputs_digest() const & {
+const ContentHash &ProjectBundleGraphView::authoring_inputs_digest() const & {
     return storage_->v2_authoring_inputs_digest.value();
 }
 
-const DependencyLock &ProjectBundleGraphV2View::dependency_lock() const & {
+const DependencyLock &ProjectBundleGraphView::dependency_lock() const & {
     return storage_->v2_dependency_lock.value();
 }
 
-const ExportSelection &ProjectBundleGraphV2View::export_selection() const & {
+const ExportSelection &ProjectBundleGraphView::export_selection() const & {
     return storage_->v2_export_selection;
 }
 
-std::vector<ProjectBundleV2ArtifactView> ProjectBundleGraphV2View::artifacts() const {
-    auto result = std::vector<ProjectBundleV2ArtifactView>{};
+std::vector<ProjectBundleArtifactView> ProjectBundleGraphView::artifacts() const {
+    auto result = std::vector<ProjectBundleArtifactView>{};
     result.reserve(storage_->v2_artifacts.size());
     for (auto index = std::size_t{0}; index < storage_->v2_artifacts.size(); ++index) {
         result.emplace_back(storage_, index);
@@ -471,17 +266,17 @@ std::vector<ProjectBundleV2ArtifactView> ProjectBundleGraphV2View::artifacts() c
     return result;
 }
 
-std::optional<ProjectBundleV2ArtifactView>
-ProjectBundleGraphV2View::artifact(const ArtifactId &id) const {
+std::optional<ProjectBundleArtifactView>
+ProjectBundleGraphView::artifact(const ArtifactId &id) const {
     for (auto index = std::size_t{0}; index < storage_->v2_artifacts.size(); ++index) {
         if (storage_->v2_artifacts[index].descriptor.id() == id) {
-            return ProjectBundleV2ArtifactView{storage_, index};
+            return ProjectBundleArtifactView{storage_, index};
         }
     }
     return std::nullopt;
 }
 
-LoadedProject ProjectBundleGraphV2View::loaded_project() const { return LoadedProject{storage_}; }
+LoadedProject ProjectBundleGraphView::loaded_project() const { return LoadedProject{storage_}; }
 
 ProjectBundle::ProjectBundle(std::shared_ptr<const detail::ProjectBundleStorage> storage)
     : storage_{std::move(storage)} {}
@@ -493,10 +288,7 @@ ProjectBundle::~ProjectBundle() = default;
 ProjectBundle ProjectBundle::open(const std::filesystem::path &path) {
     auto source = detail::open_project_bundle_source(path);
     auto manifest_capture = source->read(detail::project_bundle_manifest_path);
-    const auto schema = dispatched_schema(manifest_capture.bytes);
-    if (schema == ProjectBundleSchemaVersion::V1) {
-        return ProjectBundle{detail::open_project_bundle_v1(*source, std::move(manifest_capture))};
-    }
+    require_current_schema(manifest_capture.bytes);
     return ProjectBundle{detail::open_project_bundle_v2(*source, std::move(manifest_capture))};
 }
 
@@ -508,33 +300,6 @@ ProjectBundleStorageKind ProjectBundle::storage_kind() const noexcept {
     return storage_->storage_kind;
 }
 
-BundleIntegrityStatus ProjectBundle::integrity_status() const noexcept {
-    return storage_->schema == ProjectBundleSchemaVersion::V2
-               ? BundleIntegrityStatus::VerifiedV2
-               : BundleIntegrityStatus::LegacyUnverified;
-}
-
-ProjectBundleContentsView ProjectBundle::view() const {
-    if (storage_->schema == ProjectBundleSchemaVersion::V2) {
-        return ProjectBundleGraphV2View{storage_};
-    }
-    return LegacyProjectBundleV1View{storage_};
-}
-
-LegacyProjectBundleV1View ProjectBundle::legacy_v1() const {
-    if (storage_->schema != ProjectBundleSchemaVersion::V1) {
-        throw ProjectBundleUnavailableError{storage_->schema,
-                                            ProjectBundleV2Meaning::ArtifactGraph};
-    }
-    return LegacyProjectBundleV1View{storage_};
-}
-
-ProjectBundleGraphV2View ProjectBundle::require_v2() const {
-    if (storage_->schema != ProjectBundleSchemaVersion::V2) {
-        throw ProjectBundleUnavailableError{storage_->schema,
-                                            ProjectBundleV2Meaning::ArtifactGraph};
-    }
-    return ProjectBundleGraphV2View{storage_};
-}
+ProjectBundleGraphView ProjectBundle::graph() const { return ProjectBundleGraphView{storage_}; }
 
 } // namespace volt::io

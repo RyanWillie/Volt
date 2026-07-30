@@ -329,7 +329,7 @@
         <p class="dek">
           Refactor the C++20 kernel from mostly header-only targets into compiled static
           libraries, starting with a tightly scoped PCB pilot. Keep behavior, validation,
-          serialization, and public include compatibility unchanged unless a later phase explicitly
+          serialization, and public include names unchanged unless a later phase explicitly
           calls out an API decision.
         </p>
       </div>
@@ -634,8 +634,8 @@ touch include/volt/pcb/board.hpp
             <h3>Split <code>schematic.hpp</code>, then compile bodies</h3>
             <p>
               Mirror the PCB split: sheet metadata, sheet content, endpoints, symbols-instances,
-              and <code>Schematic</code> mutation APIs. Keep umbrella compatibility through
-              <code>volt/schematic/schematic.hpp</code>.
+              and <code>Schematic</code> mutation APIs. Keep
+              <code>volt/schematic/schematic.hpp</code> as the umbrella include.
             </p>
           </div>
         </div>

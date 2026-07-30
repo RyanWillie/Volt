@@ -12,19 +12,7 @@
     { "id": "component:0", "definition": "component_def:0", "reference": "R1", "properties": {}, "electrical_attributes": {
         "resistance": { "type": "quantity", "dimension": "resistance", "value": 330 },
         "tolerance": { "type": "tolerance", "mode": "percent", "dimension": "ratio", "minus": 0.01, "plus": 0.01 }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-07330RL" },
-      "package": "0603",
-      "footprint": { "library": "passives", "name": "R_0603_1608Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:0", "pad": "1" },
-        { "pin": "pin_def:1", "pad": "2" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 75 }
-      }
-    } }
+      } }
   ],
   "pins": [
     { "id": "pin:0", "component": "component:0", "definition": "pin_def:0" },

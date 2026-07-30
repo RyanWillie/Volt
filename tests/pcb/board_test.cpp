@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "support/resolved_board_test_parts.hpp"
+
 #include <cstddef>
 #include <limits>
 #include <optional>
@@ -18,6 +20,7 @@ namespace {
 
 struct ResistorCircuit {
     volt::Circuit circuit;
+    volt::test::ResolvedBoardTestParts parts;
     volt::ComponentId component;
     volt::PinDefId first_pin_definition;
     volt::PinDefId second_pin_definition;
@@ -29,6 +32,7 @@ struct ResistorCircuit {
 
 struct MultiComponentNetCircuit {
     volt::Circuit circuit;
+    volt::test::ResolvedBoardTestParts parts;
     std::vector<volt::ComponentId> components;
     volt::PinDefId first_pin_definition;
     volt::PinDefId second_pin_definition;
@@ -37,12 +41,14 @@ struct MultiComponentNetCircuit {
 
 struct TwoResistorCircuit {
     volt::Circuit circuit;
+    volt::test::ResolvedBoardTestParts parts;
     volt::ComponentId first_component;
     volt::ComponentId second_component;
 };
 
 [[nodiscard]] ResistorCircuit make_resistor_circuit(bool select_physical_part = true) {
     auto circuit = volt::Circuit{};
+    auto parts = volt::test::ResolvedBoardTestParts{};
     const auto component_definition = circuit.define_component(volt::ComponentSpec{
         .name = "Resistor",
         .pins =
@@ -78,16 +84,18 @@ struct TwoResistorCircuit {
     circuit.connect(second_net, second_pin);
 
     if (select_physical_part) {
-        circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                      volt::PackageRef{"0603"},
-                                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                                  volt::PinPadMapping{second_pin_definition, "2"}},
-                                  }});
+        parts.set(circuit, component,
+                  volt::PhysicalPart{
+                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                      volt::PackageRef{"0603"},
+                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                  });
     }
 
     return ResistorCircuit{std::move(circuit),
+                           std::move(parts),
                            component,
                            first_pin_definition,
                            second_pin_definition,
@@ -99,6 +107,7 @@ struct TwoResistorCircuit {
 
 [[nodiscard]] MultiComponentNetCircuit make_multi_component_net(std::size_t component_count) {
     auto circuit = volt::Circuit{};
+    auto parts = volt::test::ResolvedBoardTestParts{};
     const auto component_definition = circuit.define_component(volt::ComponentSpec{
         .name = "Resistor",
         .pins =
@@ -128,13 +137,14 @@ struct TwoResistorCircuit {
             component_definition,
             volt::ComponentInstanceSpec{
                 .reference = volt::ReferenceDesignator{"R" + std::to_string(index + 1U)}});
-        circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                      volt::PackageRef{"0603"},
-                                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                                  volt::PinPadMapping{second_pin_definition, "2"}},
-                                  }});
+        parts.set(circuit, component,
+                  volt::PhysicalPart{
+                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                      volt::PackageRef{"0603"},
+                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                  });
         const auto connected_pin_definition =
             index == 0U ? second_pin_definition : first_pin_definition;
         circuit.connect(
@@ -143,12 +153,14 @@ struct TwoResistorCircuit {
         components.push_back(component);
     }
 
-    return MultiComponentNetCircuit{std::move(circuit), std::move(components), first_pin_definition,
+    return MultiComponentNetCircuit{std::move(circuit),    std::move(parts),
+                                    std::move(components), first_pin_definition,
                                     second_pin_definition, shared_net};
 }
 
 [[nodiscard]] TwoResistorCircuit make_two_resistor_circuit(volt::FootprintRef footprint) {
     auto circuit = volt::Circuit{};
+    auto parts = volt::test::ResolvedBoardTestParts{};
     const auto component_definition = circuit.define_component(volt::ComponentSpec{
         .name = "Resistor",
         .pins =
@@ -176,13 +188,14 @@ struct TwoResistorCircuit {
         volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R2"}});
 
     for (const auto component : std::vector{first_component, second_component}) {
-        circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                      volt::ManufacturerPart{"Example", "DENSE"},
-                                      volt::PackageRef{"DENSE"},
-                                      footprint,
-                                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                                  volt::PinPadMapping{second_pin_definition, "2"}},
-                                  }});
+        parts.set(circuit, component,
+                  volt::PhysicalPart{
+                      volt::ManufacturerPart{"Example", "DENSE"},
+                      volt::PackageRef{"DENSE"},
+                      footprint,
+                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                  });
         const auto first_pin =
             volt::queries::pin_by_definition(circuit, component, first_pin_definition).value();
         const auto second_pin =
@@ -195,7 +208,19 @@ struct TwoResistorCircuit {
         circuit.connect(second_net, second_pin);
     }
 
-    return TwoResistorCircuit{std::move(circuit), first_component, second_component};
+    return TwoResistorCircuit{std::move(circuit), std::move(parts), first_component,
+                              second_component};
+}
+
+template <typename Fixture>
+[[nodiscard]] volt::ResolvedBoardView resolved(const Fixture &fixture, const volt::Board &board,
+                                               const volt::FootprintLibrary &footprints) {
+    return fixture.parts.view(board, footprints);
+}
+
+[[nodiscard]] volt::ResolvedBoardView resolved(const volt::Board &board,
+                                               const volt::FootprintLibrary &footprints) {
+    return volt::ResolvedBoardView::test_only(board, footprints, {});
 }
 
 [[nodiscard]] const volt::Diagnostic *find_diagnostic(const volt::DiagnosticReport &report,
@@ -544,39 +569,6 @@ TEST_CASE("Board rejects structurally invalid board and placement mutations") {
                     std::invalid_argument);
 }
 
-TEST_CASE("Board rejects cached footprint definitions that conflict with resolution libraries") {
-    auto fixture = make_resistor_circuit();
-    auto board = volt::Board{fixture.circuit};
-    [[maybe_unused]] const auto footprint =
-        board.cache_footprint_definition(conflicting_passive_0603_footprint());
-
-    CHECK_THROWS_AS(volt::queries::resolve_pads(board, volt::builtin_footprint_library()),
-                    std::logic_error);
-}
-
-TEST_CASE("Board rejects cached package geometry conflicts when pads match") {
-    auto fixture = make_resistor_circuit();
-    auto board = volt::Board{fixture.circuit};
-    const auto library = volt::builtin_footprint_library();
-    const auto *builtin = library.find(volt::FootprintRef{"passives", "R_0603_1608Metric"});
-    REQUIRE(builtin != nullptr);
-
-    const auto body = volt::FootprintPolygon{std::vector{
-        volt::FootprintPoint{-0.4, -0.3},
-        volt::FootprintPoint{0.4, -0.3},
-        volt::FootprintPoint{0.4, 0.3},
-        volt::FootprintPoint{-0.4, 0.3},
-    }};
-    [[maybe_unused]] const auto cached = board.cache_footprint_definition(
-        volt::FootprintDefinition{builtin->ref(), builtin->pads(),
-                                  volt::FootprintPackageGeometry{std::nullopt, body, body, body}});
-    [[maybe_unused]] const auto placement = board.place_component(volt::ComponentPlacement{
-        fixture.component, volt::BoardPoint{10.0, 6.0}, volt::BoardRotation::degrees(0.0)});
-
-    CHECK_THROWS_AS(volt::queries::resolve_pads(board, library), std::logic_error);
-    CHECK_THROWS_AS(volt::queries::project_footprint_geometries(board, library), std::logic_error);
-}
-
 TEST_CASE("Board accepts cached package geometry that matches library identity") {
     auto fixture = make_resistor_circuit();
     auto board = volt::Board{fixture.circuit};
@@ -588,8 +580,9 @@ TEST_CASE("Board accepts cached package geometry that matches library identity")
     [[maybe_unused]] const auto placement = board.place_component(volt::ComponentPlacement{
         fixture.component, volt::BoardPoint{10.0, 6.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto resolutions = volt::queries::resolve_pads(board, library);
-    const auto projected = volt::queries::project_footprint_geometries(board, library);
+    const auto resolutions = volt::queries::resolve_pads(resolved(fixture, board, library));
+    const auto projected =
+        volt::queries::project_footprint_geometries(resolved(fixture, board, library));
 
     REQUIRE(resolutions.size() == 2U);
     CHECK(resolutions[0].status() == volt::PadResolutionStatus::Connected);
@@ -700,7 +693,7 @@ TEST_CASE("Board resolves placed pads to logical pins and existing nets") {
     const auto placement = board.place_component(volt::ComponentPlacement{
         fixture.component, volt::BoardPoint{10.0, 8.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto resolutions = volt::queries::resolve_pads(board, volt::builtin_footprint_library());
+    const auto resolutions = volt::queries::resolve_pads(fixture.parts.view_builtin(board));
 
     REQUIRE(resolutions.size() == 2);
     CHECK(resolutions[0].placement() == placement);
@@ -725,7 +718,7 @@ TEST_CASE("BoardRouter resolves routed track nets from pad endpoint intent") {
     const auto second_placement = board.place_component(volt::ComponentPlacement{
         fixture.components[1], volt::BoardPoint{20.0, 10.0}, volt::BoardRotation::degrees(0.0)});
 
-    auto router = volt::BoardRouter{board, volt::builtin_footprint_library()};
+    auto router = volt::BoardRouter{board, fixture.parts.view_builtin(board)};
     const auto routed = router.add_track(volt::BoardTrackRouteRequest{
         std::nullopt,
         front,
@@ -752,7 +745,7 @@ TEST_CASE("BoardRouter rejects route endpoint intent that cannot resolve one log
         volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
     const auto placement = board.place_component(volt::ComponentPlacement{
         fixture.component, volt::BoardPoint{10.0, 8.0}, volt::BoardRotation::degrees(0.0)});
-    auto router = volt::BoardRouter{board, volt::builtin_footprint_library()};
+    auto router = volt::BoardRouter{board, fixture.parts.view_builtin(board)};
 
     CHECK_THROWS_AS(router.add_track(volt::BoardTrackRouteRequest{
                         std::nullopt,
@@ -804,7 +797,7 @@ TEST_CASE("BoardRouter validates explicit route net overrides against pad endpoi
     const auto first_pad = volt::BoardRouteEndpoint::footprint_pad(
         volt::BoardPoint{9.25, 8.0}, placement, volt::FootprintPadId{0});
     const auto free_endpoint = volt::BoardRouteEndpoint::board_point(volt::BoardPoint{6.0, 8.0});
-    auto router = volt::BoardRouter{board, volt::builtin_footprint_library()};
+    auto router = volt::BoardRouter{board, fixture.parts.view_builtin(board)};
 
     const auto routed = router.add_track(volt::BoardTrackRouteRequest{
         std::optional<volt::NetId>{fixture.first_net},
@@ -832,7 +825,8 @@ TEST_CASE("BoardRouter rejects route endpoint intent with unresolved footprint d
         volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
     const auto no_part_placement = no_part_board.place_component(volt::ComponentPlacement{
         no_part.component, volt::BoardPoint{10.0, 8.0}, volt::BoardRotation::degrees(0.0)});
-    auto no_part_router = volt::BoardRouter{no_part_board, volt::builtin_footprint_library()};
+    auto no_part_router =
+        volt::BoardRouter{no_part_board, no_part.parts.view_builtin(no_part_board)};
 
     CHECK_THROWS_AS(
         no_part_router.add_track(volt::BoardTrackRouteRequest{
@@ -848,23 +842,23 @@ TEST_CASE("BoardRouter rejects route endpoint intent with unresolved footprint d
         std::invalid_argument);
 
     auto missing_mapping = make_resistor_circuit();
-    missing_mapping.circuit.update(
-        missing_mapping.component,
-        volt::SelectPhysicalPart{volt::PhysicalPart{
+    missing_mapping.parts.set(
+        missing_mapping.circuit, missing_mapping.component,
+        volt::PhysicalPart{
             volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
             volt::PackageRef{"0603"},
             volt::FootprintRef{"passives", "R_0603_1608Metric"},
             std::vector{volt::PinPadMapping{missing_mapping.first_pin_definition, "1"},
                         volt::PinPadMapping{missing_mapping.second_pin_definition, "99"}},
-        }});
+        });
     auto missing_mapping_board = volt::Board{missing_mapping.circuit};
     const auto missing_mapping_front = missing_mapping_board.add_layer(
         volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
     const auto missing_mapping_placement = missing_mapping_board.place_component(
         volt::ComponentPlacement{missing_mapping.component, volt::BoardPoint{10.0, 8.0},
                                  volt::BoardRotation::degrees(0.0)});
-    auto missing_mapping_router =
-        volt::BoardRouter{missing_mapping_board, volt::builtin_footprint_library()};
+    auto missing_mapping_router = volt::BoardRouter{
+        missing_mapping_board, missing_mapping.parts.view_builtin(missing_mapping_board)};
 
     CHECK_THROWS_AS(missing_mapping_router.add_track(volt::BoardTrackRouteRequest{
                         std::nullopt,
@@ -888,7 +882,7 @@ TEST_CASE("Board derives a ratsnest edge for a simple two-component net") {
     const auto second_placement = board.place_component(volt::ComponentPlacement{
         fixture.components[1], volt::BoardPoint{20.0, 10.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto edges = volt::queries::ratsnest_edges(board, volt::builtin_footprint_library());
+    const auto edges = volt::queries::ratsnest_edges(fixture.parts.view_builtin(board));
 
     REQUIRE(edges.size() == 1);
     CHECK(edges[0].net() == fixture.shared_net);
@@ -939,13 +933,15 @@ TEST_CASE("Board derives ratsnest edges across bound module port nets") {
         parent_net,
         volt::queries::pin_by_definition(circuit, parent_component, pin_definition).value());
     [[maybe_unused]] const auto binding = circuit.bind_port(instance, port, parent_net);
+    auto parts = volt::test::ResolvedBoardTestParts{};
     for (const auto component : std::vector{parent_component, internal_component}) {
-        circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                      volt::ManufacturerPart{"Volt", "ONE-PIN-0603"},
-                                      volt::PackageRef{"0603"},
-                                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                      std::vector{volt::PinPadMapping{pin_definition, "1"}},
-                                  }});
+        parts.set(circuit, component,
+                  volt::PhysicalPart{
+                      volt::ManufacturerPart{"Volt", "ONE-PIN-0603"},
+                      volt::PackageRef{"0603"},
+                      volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                      std::vector{volt::PinPadMapping{pin_definition, "1"}},
+                  });
     }
 
     auto board = volt::Board{circuit};
@@ -954,7 +950,8 @@ TEST_CASE("Board derives ratsnest edges across bound module port nets") {
     const auto internal_placement = board.place_component(volt::ComponentPlacement{
         internal_component, volt::BoardPoint{9.0, 3.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto edges = volt::queries::ratsnest_edges(board, volt::builtin_footprint_library());
+    const auto edges =
+        volt::queries::ratsnest_edges(parts.view(board, volt::builtin_footprint_library()));
 
     REQUIRE(edges.size() == 1);
     CHECK(edges[0].net() == parent_net);
@@ -976,8 +973,8 @@ TEST_CASE("Board derives deterministic nearest ratsnest edges for a multi-pad ne
     const auto third_placement = board.place_component(volt::ComponentPlacement{
         fixture.components[2], volt::BoardPoint{15.0, 10.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto first = volt::queries::ratsnest_edges(board, volt::builtin_footprint_library());
-    const auto second = volt::queries::ratsnest_edges(board, volt::builtin_footprint_library());
+    const auto first = volt::queries::ratsnest_edges(fixture.parts.view_builtin(board));
+    const auto second = volt::queries::ratsnest_edges(fixture.parts.view_builtin(board));
 
     REQUIRE(first.size() == 2);
     REQUIRE(second.size() == first.size());
@@ -997,7 +994,7 @@ TEST_CASE("Board derives deterministic nearest ratsnest edges for a multi-pad ne
     CHECK(second[1].to().placement() == first[1].to().placement());
 }
 
-TEST_CASE("Board pad resolution and validation use cached footprint definitions") {
+TEST_CASE("Board pad resolution and validation accept matching explicit resolved definitions") {
     auto fixture = make_resistor_circuit();
     auto board = volt::Board{fixture.circuit};
     board.set_outline(
@@ -1007,9 +1004,9 @@ TEST_CASE("Board pad resolution and validation use cached footprint definitions"
     [[maybe_unused]] const auto placement = board.place_component(volt::ComponentPlacement{
         fixture.component, volt::BoardPoint{10.0, 8.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto empty_library = volt::FootprintLibrary{};
-    const auto resolutions = volt::queries::resolve_pads(board, empty_library);
-    const auto report = volt::validate_board(board, empty_library);
+    const auto library = volt::builtin_footprint_library();
+    const auto resolutions = volt::queries::resolve_pads(resolved(fixture, board, library));
+    const auto report = volt::validate_board(resolved(fixture, board, library));
 
     REQUIRE(resolutions.size() == 2);
     CHECK(resolutions[0].net() == fixture.first_net);
@@ -1077,8 +1074,10 @@ TEST_CASE("Board projects complete footprint package geometry through placement 
         volt::ComponentPlacement{fixture.component, volt::BoardPoint{10.0, 20.0},
                                  volt::BoardRotation::degrees(90.0), volt::BoardSide::Bottom});
 
+    auto library = volt::FootprintLibrary{};
+    library.add(footprint);
     const auto geometries =
-        volt::queries::project_footprint_geometries(board, volt::FootprintLibrary{});
+        volt::queries::project_footprint_geometries(resolved(fixture, board, library));
 
     REQUIRE(geometries.size() == 1);
     CHECK(geometries[0].placement() == placement);
@@ -1115,7 +1114,7 @@ TEST_CASE("Board validation reports design issues without owning connectivity") 
     auto fixture = make_resistor_circuit(false);
     auto board = volt::Board{fixture.circuit};
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(fixture.parts.view_builtin(board));
 
     const auto *missing_outline = find_diagnostic(report, "PCB_BOARD_OUTLINE_MISSING");
     REQUIRE(missing_outline != nullptr);
@@ -1145,7 +1144,7 @@ TEST_CASE("Board validation reports suspicious board primitive intent") {
     const auto outside = board.add_feature(
         volt::BoardFeature::hole("TH", volt::BoardPoint{12.0, 5.0}, 2.0, false, "tooling"));
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
 
     const auto *role = find_diagnostic(report, "PCB_BOARD_FEATURE_ROLE_MISSING");
     REQUIRE(role != nullptr);
@@ -1164,7 +1163,7 @@ TEST_CASE("Board validation reports logical nets with no placed pads as board di
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(fixture.parts.view_builtin(board));
 
     const auto *unimplemented_net = find_diagnostic(report, "PCB_NET_WITHOUT_PLACED_PADS");
     REQUIRE(unimplemented_net != nullptr);
@@ -1181,7 +1180,7 @@ TEST_CASE("Board validation checks transformed pad bodies against the outline") 
     const auto placement = board.place_component(volt::ComponentPlacement{
         fixture.component, volt::BoardPoint{1.1, 2.5}, volt::BoardRotation::degrees(0.0)});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(fixture.parts.view_builtin(board));
 
     const auto *outside_outline = find_diagnostic(report, "PCB_PLACEMENT_OUTSIDE_OUTLINE");
     REQUIRE(outside_outline != nullptr);
@@ -1224,7 +1223,7 @@ TEST_CASE("Board validation reports first PCB DRC rule violations") {
         0.25,
     });
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(fixture.parts.view_builtin(board));
 
     const auto *track_width = find_diagnostic(report, "PCB_TRACK_WIDTH_BELOW_MINIMUM");
     REQUIRE(track_width != nullptr);
@@ -1312,7 +1311,7 @@ TEST_CASE("Board DRC reports component body and courtyard overlaps with clean pa
     const auto second_placement = board.place_component(volt::ComponentPlacement{
         fixture.second_component, volt::BoardPoint{12.5, 10.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto report = volt::validate_board(board, library);
+    const auto report = volt::validate_board(resolved(fixture, board, library));
 
     CHECK(find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION") == nullptr);
 
@@ -1373,7 +1372,7 @@ TEST_CASE("Board DRC accepts spaced component body and courtyard geometry") {
         volt::ComponentPlacement{fixture.second_component, volt::BoardPoint{18.0, 10.0},
                                  volt::BoardRotation::degrees(0.0), volt::BoardSide::Top});
 
-    const auto report = volt::validate_board(board, library);
+    const auto report = volt::validate_board(resolved(fixture, board, library));
 
     CHECK(find_diagnostic(report, "PCB_COMPONENT_BODY_OVERLAP") == nullptr);
     CHECK(find_diagnostic(report, "PCB_COMPONENT_COURTYARD_OVERLAP") == nullptr);
@@ -1400,7 +1399,7 @@ TEST_CASE("Board DRC ignores component geometry overlaps on opposite sides") {
         volt::ComponentPlacement{fixture.second_component, volt::BoardPoint{10.0, 10.0},
                                  volt::BoardRotation::degrees(0.0), volt::BoardSide::Bottom});
 
-    const auto report = volt::validate_board(board, library);
+    const auto report = volt::validate_board(resolved(fixture, board, library));
 
     CHECK(find_diagnostic(report, "PCB_COMPONENT_BODY_OVERLAP") == nullptr);
     CHECK(find_diagnostic(report, "PCB_COMPONENT_COURTYARD_OVERLAP") == nullptr);
@@ -1424,7 +1423,8 @@ TEST_CASE("Board DRC explicitly skips component overlap checks without footprint
     const auto second_placement = board.place_component(volt::ComponentPlacement{
         fixture.second_component, volt::BoardPoint{12.5, 10.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto geometries = volt::queries::project_footprint_geometries(board, library);
+    const auto geometries =
+        volt::queries::project_footprint_geometries(resolved(fixture, board, library));
     REQUIRE(geometries.size() == 2);
     CHECK(geometries[0].placement() == first_placement);
     CHECK_FALSE(geometries[0].courtyard().has_value());
@@ -1433,7 +1433,7 @@ TEST_CASE("Board DRC explicitly skips component overlap checks without footprint
     CHECK_FALSE(geometries[1].courtyard().has_value());
     CHECK_FALSE(geometries[1].body().has_value());
 
-    const auto report = volt::validate_board(board, library);
+    const auto report = volt::validate_board(resolved(fixture, board, library));
 
     CHECK(find_diagnostic(report, "PCB_COMPONENT_BODY_OVERLAP") == nullptr);
     CHECK(find_diagnostic(report, "PCB_COMPONENT_COURTYARD_OVERLAP") == nullptr);
@@ -1447,7 +1447,7 @@ TEST_CASE("Board validation emits no capability diagnostics without an explicit 
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
     board.set_design_rules(volt::BoardDesignRules{0.01, 0.02, 0.03, 0.04, 0.0});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
 
     CHECK(find_diagnostic(report, "PCB_RULE_BELOW_CAPABILITY") == nullptr);
     CHECK(find_diagnostic(report, "PCB_RULE_AT_CAPABILITY_MINIMUM") == nullptr);
@@ -1461,7 +1461,7 @@ TEST_CASE("Board validation reports board scalar rules below capability") {
     board.set_capability_profile(make_capability_profile());
     board.set_design_rules(volt::BoardDesignRules{0.30, 0.19, 0.35, 0.70, 0.35});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
 
     const auto *diagnostic = find_diagnostic(report, "PCB_RULE_BELOW_CAPABILITY");
     REQUIRE(diagnostic != nullptr);
@@ -1480,7 +1480,7 @@ TEST_CASE("Board validation reports clearance matrix entries below capability") 
     rules.set_clearance_mm(volt::BoardClearanceKind::Track, volt::BoardClearanceKind::Pad, 0.19);
     board.set_design_rules(rules);
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
 
     const auto *diagnostic = find_diagnostic(report, "PCB_RULE_BELOW_CAPABILITY");
     REQUIRE(diagnostic != nullptr);
@@ -1507,7 +1507,7 @@ TEST_CASE("Board validation reports room overrides below capability") {
     room.set_track_width_mm(0.10);
     const auto room_id = board.add_room(std::move(room));
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
 
     const auto *diagnostic = find_diagnostic(report, "PCB_RULE_BELOW_CAPABILITY");
     REQUIRE(diagnostic != nullptr);
@@ -1529,7 +1529,7 @@ TEST_CASE("Board validation warns when net class rules sit at capability minimum
     board.set_capability_profile(make_capability_profile());
     board.set_design_rules(volt::BoardDesignRules{0.30, 0.30, 0.40, 0.80, 0.40});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
 
     const auto *diagnostic = find_diagnostic(report, "PCB_RULE_AT_CAPABILITY_MINIMUM");
     REQUIRE(diagnostic != nullptr);
@@ -1560,7 +1560,7 @@ TEST_CASE("Board validation applies copper-weight refinements to room overrides"
     room.set_copper_clearance_mm(0.20);
     const auto room_id = board.add_room(std::move(room));
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
 
     const auto *diagnostic = find_diagnostic(report, "PCB_RULE_BELOW_CAPABILITY");
     REQUIRE(diagnostic != nullptr);
@@ -1584,7 +1584,7 @@ TEST_CASE("Board validation reports fabrication physical facts outside capabilit
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
     board.set_capability_profile(make_physical_capability_profile());
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
 
     const auto *layer_count = find_diagnostic(report, "PCB_COPPER_LAYER_COUNT_OUTSIDE_CAPABILITY");
     REQUIRE(layer_count != nullptr);
@@ -1621,7 +1621,7 @@ TEST_CASE("Board validation warns when physical facts sit at capability boundari
     static_cast<void>(board.add_via(
         volt::BoardVia{fixture.first_net, volt::BoardPoint{5.0, 5.0}, front, back, 0.15, 0.25}));
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(fixture.parts.view_builtin(board));
 
     const auto *thickness = find_diagnostic(report, "PCB_BOARD_THICKNESS_AT_CAPABILITY_LIMIT");
     REQUIRE(thickness != nullptr);
@@ -1634,14 +1634,14 @@ TEST_CASE("Board validation warns when physical facts sit at capability boundari
 
 TEST_CASE("Board validation reports via and pad drills outside capability") {
     auto fixture = make_resistor_circuit(false);
-    fixture.circuit.update(fixture.component,
-                           volt::SelectPhysicalPart{volt::PhysicalPart{
-                               volt::ManufacturerPart{"Example", "TH-2"},
-                               volt::PackageRef{"TH"},
-                               volt::FootprintRef{"test", "TH_2"},
-                               std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
-                                           volt::PinPadMapping{fixture.second_pin_definition, "2"}},
-                           }});
+    fixture.parts.set(fixture.circuit, fixture.component,
+                      volt::PhysicalPart{
+                          volt::ManufacturerPart{"Example", "TH-2"},
+                          volt::PackageRef{"TH"},
+                          volt::FootprintRef{"test", "TH_2"},
+                          std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
+                                      volt::PinPadMapping{fixture.second_pin_definition, "2"}},
+                      });
     auto library = volt::FootprintLibrary{};
     library.add(volt::FootprintDefinition{
         volt::FootprintRef{"test", "TH_2"},
@@ -1670,7 +1670,7 @@ TEST_CASE("Board validation reports via and pad drills outside capability") {
     const auto via = board.add_via(
         volt::BoardVia{fixture.first_net, volt::BoardPoint{8.0, 8.0}, front, back, 6.4, 6.6});
 
-    const auto report = volt::validate_board(board, library);
+    const auto report = volt::validate_board(resolved(fixture, board, library));
 
     const auto drills = find_diagnostics(report, "PCB_DRILL_DIAMETER_OUTSIDE_CAPABILITY");
     REQUIRE(drills.size() == 2);
@@ -1701,7 +1701,7 @@ TEST_CASE("Board validation ignores absent fabrication physical capability limit
     static_cast<void>(board.add_via(
         volt::BoardVia{fixture.first_net, volt::BoardPoint{8.0, 8.0}, front, back, 6.4, 6.6}));
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(fixture.parts.view_builtin(board));
 
     CHECK(find_diagnostic(report, "PCB_COPPER_LAYER_COUNT_OUTSIDE_CAPABILITY") == nullptr);
     CHECK(find_diagnostic(report, "PCB_BOARD_THICKNESS_OUTSIDE_CAPABILITY") == nullptr);
@@ -1727,7 +1727,7 @@ TEST_CASE("Board validation reports netless zones outside the board outline") {
         std::vector{front},
     });
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
 
     const auto *outside_outline = find_diagnostic(report, "PCB_COPPER_OUTSIDE_OUTLINE");
     REQUIRE(outside_outline != nullptr);
@@ -1764,7 +1764,7 @@ TEST_CASE("Board validation reports obvious keepout violations") {
     const auto via = board.add_via(
         volt::BoardVia{fixture.first_net, volt::BoardPoint{6.0, 6.0}, front, back, 0.30, 0.70});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(fixture.parts.view_builtin(board));
 
     const auto *copper_keepout = find_diagnostic(report, "PCB_KEEPOUT_COPPER_VIOLATION");
     REQUIRE(copper_keepout != nullptr);
@@ -1803,7 +1803,7 @@ TEST_CASE("Board validation maps bottom-side surface-mount pads to bottom copper
         0.25,
     });
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(fixture.parts.view_builtin(board));
 
     const auto *clearance = find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION");
     REQUIRE(clearance != nullptr);
@@ -1833,7 +1833,7 @@ TEST_CASE("Board validation reports unrouted placed logical nets after routing b
         0.25,
     });
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(fixture.parts.view_builtin(board));
 
     const auto *unrouted = find_diagnostic(report, "PCB_NET_UNROUTED");
     REQUIRE(unrouted != nullptr);
@@ -1858,7 +1858,7 @@ TEST_CASE("Board validation reports unrouted placed logical nets before routing 
     const auto second_placement = board.place_component(volt::ComponentPlacement{
         fixture.components[1], volt::BoardPoint{20.0, 10.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(fixture.parts.view_builtin(board));
 
     const auto *unrouted = find_diagnostic(report, "PCB_NET_UNROUTED");
     REQUIRE(unrouted != nullptr);
@@ -1873,14 +1873,14 @@ TEST_CASE("Board validation reports unrouted placed logical nets before routing 
 
 TEST_CASE("Board validation detects pad edges crossing a concave outline") {
     auto fixture = make_resistor_circuit(false);
-    fixture.circuit.update(fixture.component,
-                           volt::SelectPhysicalPart{volt::PhysicalPart{
-                               volt::ManufacturerPart{"Volt", "wide-pad-fixture"},
-                               volt::PackageRef{"fixture"},
-                               volt::FootprintRef{"test", "WidePad"},
-                               std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
-                                           volt::PinPadMapping{fixture.second_pin_definition, "2"}},
-                           }});
+    fixture.parts.set(fixture.circuit, fixture.component,
+                      volt::PhysicalPart{
+                          volt::ManufacturerPart{"Volt", "wide-pad-fixture"},
+                          volt::PackageRef{"fixture"},
+                          volt::FootprintRef{"test", "WidePad"},
+                          std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
+                                      volt::PinPadMapping{fixture.second_pin_definition, "2"}},
+                      });
 
     auto library = volt::FootprintLibrary{};
     library.add(volt::FootprintDefinition{
@@ -1909,7 +1909,7 @@ TEST_CASE("Board validation detects pad edges crossing a concave outline") {
     const auto placement = board.place_component(volt::ComponentPlacement{
         fixture.component, volt::BoardPoint{3.0, 1.9}, volt::BoardRotation::degrees(0.0)});
 
-    const auto report = volt::validate_board(board, library);
+    const auto report = volt::validate_board(resolved(fixture, board, library));
 
     const auto *outside_outline = find_diagnostic(report, "PCB_PLACEMENT_OUTSIDE_OUTLINE");
     REQUIRE(outside_outline != nullptr);
@@ -1921,21 +1921,21 @@ TEST_CASE("Board validation detects pad edges crossing a concave outline") {
 
 TEST_CASE("Board validation diagnoses footprint resolution and pad geometry issues") {
     auto fixture = make_resistor_circuit(false);
-    fixture.circuit.update(fixture.component,
-                           volt::SelectPhysicalPart{volt::PhysicalPart{
-                               volt::ManufacturerPart{"Acme", "NOPE"},
-                               volt::PackageRef{"custom"},
-                               volt::FootprintRef{"missing", "NotARealFootprint"},
-                               std::vector{volt::PinPadMapping{fixture.first_pin_definition, "99"},
-                                           volt::PinPadMapping{fixture.second_pin_definition, "2"}},
-                           }});
+    fixture.parts.set(fixture.circuit, fixture.component,
+                      volt::PhysicalPart{
+                          volt::ManufacturerPart{"Acme", "NOPE"},
+                          volt::PackageRef{"custom"},
+                          volt::FootprintRef{"missing", "NotARealFootprint"},
+                          std::vector{volt::PinPadMapping{fixture.first_pin_definition, "99"},
+                                      volt::PinPadMapping{fixture.second_pin_definition, "2"}},
+                      });
     auto board = volt::Board{fixture.circuit};
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{5.0, 5.0}));
     const auto placement = board.place_component(volt::ComponentPlacement{
         fixture.component, volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
 
-    auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    auto report = volt::validate_board(fixture.parts.view_builtin(board));
     const auto *unresolved_footprint = find_diagnostic(report, "PCB_FOOTPRINT_UNRESOLVED");
     REQUIRE(unresolved_footprint != nullptr);
     CHECK(unresolved_footprint->severity() == volt::Severity::Error);
@@ -1943,16 +1943,16 @@ TEST_CASE("Board validation diagnoses footprint resolution and pad geometry issu
     CHECK(unresolved_footprint->entities()[0] == volt::EntityRef::component(fixture.component));
     CHECK(unresolved_footprint->entities()[1] == volt::EntityRef::component_placement(placement));
 
-    fixture.circuit.update(fixture.component,
-                           volt::SelectPhysicalPart{volt::PhysicalPart{
-                               volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                               volt::PackageRef{"0603"},
-                               volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                               std::vector{volt::PinPadMapping{fixture.first_pin_definition, "99"},
-                                           volt::PinPadMapping{fixture.second_pin_definition, "2"}},
-                           }});
+    fixture.parts.set(fixture.circuit, fixture.component,
+                      volt::PhysicalPart{
+                          volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                          volt::PackageRef{"0603"},
+                          volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                          std::vector{volt::PinPadMapping{fixture.first_pin_definition, "99"},
+                                      volt::PinPadMapping{fixture.second_pin_definition, "2"}},
+                      });
 
-    report = volt::validate_board(board, volt::builtin_footprint_library());
+    report = volt::validate_board(fixture.parts.view_builtin(board));
     const auto *unknown_pad = find_diagnostic(report, "PCB_PAD_MAPPING_UNKNOWN_PAD");
     REQUIRE(unknown_pad != nullptr);
     CHECK(unknown_pad->severity() == volt::Severity::Error);

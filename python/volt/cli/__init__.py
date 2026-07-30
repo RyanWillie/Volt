@@ -572,7 +572,7 @@ def _open_verified_bundle(path: str | Path):
         )
     try:
         bundle = ProjectBundle.open(bundle_path)
-        graph = bundle.v2
+        graph = bundle.graph
     except Exception as error:
         raise CliError(
             f"Failed to open verified ProjectBundle {bundle_path}: {error}",

@@ -1,4 +1,5 @@
 #include <volt/pcb/board.hpp>
+#include <volt/pcb/resolution/board_resolution.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
 
 #include <volt/circuit/validation/validation.hpp>
@@ -450,10 +451,11 @@ void validate_unrouted_nets(const Board &board, const std::vector<PadResolution>
     }
 }
 
-void validate_board_drc(const Board &board, const FootprintLibrary &footprints,
+void validate_board_drc(const ResolvedBoardView &resolved,
                         const std::vector<PadResolution> &pad_resolutions,
                         DiagnosticReport &report) {
-    const auto shapes = collect_copper_shapes(board, footprints, pad_resolutions);
+    const auto &board = resolved.board();
+    const auto shapes = collect_copper_shapes(resolved, pad_resolutions);
     auto rules = RuleSet<Board>{};
     rules
         .add([](const Board &rule_board, DiagnosticReport &rule_report) {
@@ -465,8 +467,8 @@ void validate_board_drc(const Board &board, const FootprintLibrary &footprints,
         .add([](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_net_class_layers(rule_board, rule_report);
         })
-        .add([&footprints](const Board &rule_board, DiagnosticReport &rule_report) {
-            validate_capability_profile_rules(rule_board, footprints, rule_report);
+        .add([&resolved](const Board &, DiagnosticReport &rule_report) {
+            validate_capability_profile_rules(resolved, rule_report);
         })
         .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_outline_clearance(rule_board, shapes, rule_report);
@@ -477,8 +479,8 @@ void validate_board_drc(const Board &board, const FootprintLibrary &footprints,
         .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_copper_clearance(rule_board, shapes, rule_report);
         })
-        .add([&footprints](const Board &rule_board, DiagnosticReport &rule_report) {
-            validate_footprint_geometry_drc(rule_board, footprints, rule_report);
+        .add([&resolved](const Board &, DiagnosticReport &rule_report) {
+            validate_footprint_geometry_drc(resolved, rule_report);
         })
         .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_keepout_copper_shapes(rule_board, shapes, rule_report);

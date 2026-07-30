@@ -7,9 +7,10 @@ include <volt/core/ids.hpp>
 include <volt/pcb/board.hpp>
 include <volt/pcb/footprints/footprints.hpp>
 include <volt/pcb/geometry/board_geometry.hpp>
+include <volt/pcb/resolution/board_resolution.hpp>
 include <volt/pcb/routing/board_spatial_index.hpp>
 
-BoardRouter(Board &board, const FootprintLibrary &footprints)
+BoardRouter(Board &board, ResolvedBoardView resolved)
 BoardRouter(Board &board, const BoardResolution &resolution)
 [[nodiscard]] BoardRouteParameters resolve_parameters(NetId net) const
 [[nodiscard]] BoardTrackRouteResult add_track(BoardTrackRouteRequest request)

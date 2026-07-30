@@ -18,7 +18,7 @@
 
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/io/project_bundle.hpp>
-#include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/io/project_bundle_writer.hpp>
 
 #include "../io/project_bundle_v2_reports.hpp"
 
@@ -129,7 +129,7 @@ optional_string_field(const py::dict &value, const char *field, const char *cont
 }
 
 [[nodiscard]] const volt::io::ArtifactDescriptor &
-named_model(const volt::io::ProjectBundleV2 &bundle, volt::io::ArtifactKind kind,
+named_model(const volt::io::ProjectBundlePublication &bundle, volt::io::ArtifactKind kind,
             const std::string &design, const std::string &name) {
     const auto match = std::ranges::find_if(bundle.artifacts(), [&](const auto &descriptor) {
         if (descriptor.kind() != kind) {
@@ -156,7 +156,7 @@ named_model(const volt::io::ProjectBundleV2 &bundle, volt::io::ArtifactKind kind
 }
 
 [[nodiscard]] const volt::io::ArtifactDescriptor &
-compiled_board(const volt::io::ProjectBundleV2 &bundle, const std::string &design,
+compiled_board(const volt::io::ProjectBundlePublication &bundle, const std::string &design,
                const std::string &board) {
     const auto board_reference =
         artifact_ref(named_model(bundle, volt::io::ArtifactKind::BoardModel, design, board));
@@ -178,7 +178,7 @@ struct StepExportCandidate {
 };
 
 [[nodiscard]] std::vector<StepExportCandidate>
-step_export_candidates(const volt::io::ProjectBundleV2 &baseline,
+step_export_candidates(const volt::io::ProjectBundlePublication &baseline,
                        std::span<const PyCircuit *const> circuits) {
     auto result = std::vector<StepExportCandidate>{};
     for (const auto &selection : baseline.dependency_lock().selected_parts()) {
@@ -209,7 +209,7 @@ step_export_candidates(const volt::io::ProjectBundleV2 &baseline,
 }
 
 [[nodiscard]] volt::io::ExportRequest
-step_export_request(const py::dict &row, const volt::io::ProjectBundleV2 &baseline,
+step_export_request(const py::dict &row, const volt::io::ProjectBundlePublication &baseline,
                     std::span<const PyCircuit *const> circuits) {
     const auto candidates = step_export_candidates(baseline, circuits);
     const auto selector = optional_string_field(row, "part", "ProjectBundle selected STEP export");
@@ -239,9 +239,9 @@ step_export_request(const py::dict &row, const volt::io::ProjectBundleV2 &baseli
             volt::io::ExportRequestSchema{}, volt::io::StepParameters{}};
 }
 
-[[nodiscard]] volt::io::ExportRequest export_request(const py::handle &value,
-                                                     const volt::io::ProjectBundleV2 &baseline,
-                                                     std::span<const PyCircuit *const> circuits) {
+[[nodiscard]] volt::io::ExportRequest
+export_request(const py::handle &value, const volt::io::ProjectBundlePublication &baseline,
+               std::span<const PyCircuit *const> circuits) {
     const auto row = exact_dict(value, "ProjectBundle selected export");
     const auto kind = required_string(row, "kind", "ProjectBundle selected export");
     if (kind == "step") {
@@ -347,15 +347,10 @@ step_export_request(const py::dict &row, const volt::io::ProjectBundleV2 &baseli
 
 void bind_project_bundle(py::module_ &module) {
     py::enum_<volt::io::ProjectBundleSchemaVersion>(module, "ProjectBundleSchemaVersion")
-        .value("V1", volt::io::ProjectBundleSchemaVersion::V1)
         .value("V2", volt::io::ProjectBundleSchemaVersion::V2);
     py::enum_<volt::io::ProjectBundleStorageKind>(module, "ProjectBundleStorageKind")
         .value("DIRECTORY", volt::io::ProjectBundleStorageKind::Directory)
         .value("ZIP_ARCHIVE", volt::io::ProjectBundleStorageKind::ZipArchive);
-    py::enum_<volt::io::BundleIntegrityStatus>(module, "BundleIntegrityStatus")
-        .value("LEGACY_UNVERIFIED", volt::io::BundleIntegrityStatus::LegacyUnverified)
-        .value("VERIFIED_V2", volt::io::BundleIntegrityStatus::VerifiedV2);
-
     py::class_<volt::io::ArtifactId>(module, "ArtifactId")
         .def_property_readonly("kind",
                                [](const volt::io::ArtifactId &id) {
@@ -365,33 +360,32 @@ void bind_project_bundle(py::module_ &module) {
             return left == right;
         });
 
-    py::class_<volt::io::ProjectBundleV2ArtifactView>(module, "ProjectBundleArtifact")
-        .def_property_readonly("id",
-                               [](const volt::io::ProjectBundleV2ArtifactView &view) {
-                                   return view.descriptor().id();
-                               })
-        .def_property_readonly("id_json", &volt::io::ProjectBundleV2ArtifactView::id_json)
+    py::class_<volt::io::ProjectBundleArtifactView>(module, "ProjectBundleArtifact")
+        .def_property_readonly(
+            "id",
+            [](const volt::io::ProjectBundleArtifactView &view) { return view.descriptor().id(); })
+        .def_property_readonly("id_json", &volt::io::ProjectBundleArtifactView::id_json)
         .def_property_readonly("kind",
-                               [](const volt::io::ProjectBundleV2ArtifactView &view) {
+                               [](const volt::io::ProjectBundleArtifactView &view) {
                                    return std::string{
                                        volt::io::artifact_kind_name(view.descriptor().kind())};
                                })
         .def_property_readonly("role",
-                               [](const volt::io::ProjectBundleV2ArtifactView &view) {
+                               [](const volt::io::ProjectBundleArtifactView &view) {
                                    return std::string{
                                        volt::io::artifact_role_name(view.descriptor().role())};
                                })
         .def_property_readonly("path",
-                               [](const volt::io::ProjectBundleV2ArtifactView &view) {
+                               [](const volt::io::ProjectBundleArtifactView &view) {
                                    return view.descriptor().path().value();
                                })
         .def_property_readonly("content_digest",
-                               [](const volt::io::ProjectBundleV2ArtifactView &view) {
+                               [](const volt::io::ProjectBundleArtifactView &view) {
                                    return view.descriptor().content_digest().value();
                                })
         .def_property_readonly("manifest_record_json",
-                               &volt::io::ProjectBundleV2ArtifactView::manifest_record_json)
-        .def_property_readonly("bytes", [](const volt::io::ProjectBundleV2ArtifactView &view) {
+                               &volt::io::ProjectBundleArtifactView::manifest_record_json)
+        .def_property_readonly("bytes", [](const volt::io::ProjectBundleArtifactView &view) {
             return py::bytes{view.bytes()};
         });
 
@@ -454,43 +448,41 @@ void bind_project_bundle(py::module_ &module) {
         .def_property_readonly("tests", &volt::io::LoadedProject::tests)
         .def_property_readonly("selected_exports", &volt::io::LoadedProject::selected_exports);
 
-    py::class_<volt::io::ProjectBundleGraphV2View>(module, "ProjectBundleGraphV2View")
-        .def_property_readonly("project_name", &volt::io::ProjectBundleGraphV2View::project_name)
+    py::class_<volt::io::ProjectBundleGraphView>(module, "ProjectBundleGraphView")
+        .def_property_readonly("project_name", &volt::io::ProjectBundleGraphView::project_name)
         .def_property_readonly("project_version",
-                               &volt::io::ProjectBundleGraphV2View::project_version)
+                               &volt::io::ProjectBundleGraphView::project_version)
         .def_property_readonly("project_description",
-                               &volt::io::ProjectBundleGraphV2View::project_description)
+                               &volt::io::ProjectBundleGraphView::project_description)
         .def_property_readonly("build_id",
-                               [](const volt::io::ProjectBundleGraphV2View &view) {
+                               [](const volt::io::ProjectBundleGraphView &view) {
                                    return view.build_id().content_hash().value();
                                })
         .def_property_readonly("bundle_digest",
-                               [](const volt::io::ProjectBundleGraphV2View &view) {
+                               [](const volt::io::ProjectBundleGraphView &view) {
                                    return view.bundle_digest().value();
                                })
         .def_property_readonly("authoring_inputs_digest",
-                               [](const volt::io::ProjectBundleGraphV2View &view) {
+                               [](const volt::io::ProjectBundleGraphView &view) {
                                    return view.authoring_inputs_digest().value();
                                })
         .def_property_readonly("dependency_lock",
-                               [](const volt::io::ProjectBundleGraphV2View &view) {
+                               [](const volt::io::ProjectBundleGraphView &view) {
                                    return dependency_lock_dict(view.dependency_lock());
                                })
-        .def_property_readonly("artifacts", &volt::io::ProjectBundleGraphV2View::artifacts)
-        .def("artifact", &volt::io::ProjectBundleGraphV2View::artifact, py::arg("id"))
+        .def_property_readonly("artifacts", &volt::io::ProjectBundleGraphView::artifacts)
+        .def("artifact", &volt::io::ProjectBundleGraphView::artifact, py::arg("id"))
         .def_property_readonly("manifest_bytes",
-                               [](const volt::io::ProjectBundleGraphV2View &view) {
+                               [](const volt::io::ProjectBundleGraphView &view) {
                                    return py::bytes{view.manifest_bytes()};
                                })
-        .def_property_readonly("loaded_project",
-                               &volt::io::ProjectBundleGraphV2View::loaded_project);
+        .def_property_readonly("loaded_project", &volt::io::ProjectBundleGraphView::loaded_project);
 
     py::class_<volt::io::ProjectBundle>(module, "ProjectBundle")
         .def_static("open", &volt::io::ProjectBundle::open, py::arg("path"))
         .def_property_readonly("schema_version", &volt::io::ProjectBundle::schema_version)
         .def_property_readonly("storage_kind", &volt::io::ProjectBundle::storage_kind)
-        .def_property_readonly("integrity_status", &volt::io::ProjectBundle::integrity_status)
-        .def_property_readonly("v2", &volt::io::ProjectBundle::require_v2);
+        .def_property_readonly("graph", &volt::io::ProjectBundle::graph);
 
     module.def(
         "_prepare_project_bundle_board",
@@ -578,7 +570,7 @@ void bind_project_bundle(py::module_ &module) {
                                     row[2].cast<py::bytes>().cast<std::string>());
             }
 
-            auto builder = volt::io::ProjectBundleV2Builder{
+            auto builder = volt::io::ProjectBundleBuilder{
                 volt::io::ProjectIdentity{project_name, optional_string(project_version),
                                           optional_string(project_description)},
                 volt::io::ProjectRunSummary{ok, project_status(status), profile, stages},

@@ -243,11 +243,10 @@ namespace {
 
 } // namespace
 
-[[nodiscard]] DiagnosticReport validate_board(const Board &board,
-                                              const FootprintLibrary &footprints) {
+[[nodiscard]] DiagnosticReport validate_board(const ResolvedBoardView &resolved) {
+    const auto &board = resolved.board();
     auto report = DiagnosticReport{};
-    const auto resolution_footprints = queries::board_resolution_footprints(board, footprints);
-    const auto pad_resolutions = queries::resolve_pads(board, resolution_footprints);
+    const auto pad_resolutions = queries::resolve_pads(resolved);
 
     if (!board.outline().has_value()) {
         report.add(detail::board_diagnostic(DiagnosticCode{"PCB_BOARD_OUTLINE_MISSING"},
@@ -286,15 +285,14 @@ namespace {
                                                    "Component has no board placement", component));
         }
 
-        const auto has_legacy_selection =
-            volt::queries::selected_physical_part(board.circuit(), component).has_value();
+        const auto *resolved_part = resolved.part(component);
         const auto has_exact_selection =
             volt::queries::selected_library_part_ref(board.circuit(), component).has_value();
-        if (!has_legacy_selection && !has_exact_selection) {
+        if (resolved_part == nullptr && !has_exact_selection) {
             report.add(detail::board_component_diagnostic(
                 DiagnosticCode{"PCB_COMPONENT_MISSING_SELECTED_PART"},
                 "Component requires a selected physical part for board placement", component));
-        } else if (!has_legacy_selection) {
+        } else if (resolved_part == nullptr) {
             report.add(detail::board_component_diagnostic(
                 DiagnosticCode{"PCB_FOOTPRINT_UNRESOLVED"},
                 "Exact selected part requires library resolution for board geometry", component));
@@ -304,14 +302,13 @@ namespace {
     for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
         const auto &placement = board.get(placement_id);
-        const auto &selected_part =
-            volt::queries::selected_physical_part(board.circuit(), placement.component());
-        if (!selected_part.has_value()) {
+        const auto *selected_part = resolved.part(placement.component());
+        if (selected_part == nullptr) {
             continue;
         }
 
         const auto footprint_resolution =
-            resolve_footprint(selected_part.value(), resolution_footprints);
+            resolve_footprint(selected_part->physical_part(), resolved.footprints());
         for (const auto &diagnostic : footprint_resolution.diagnostics().diagnostics()) {
             report.add(Diagnostic{diagnostic.severity(), diagnostic.code(),
                                   DiagnosticCategory{diagnostic_categories::PcbBoard},
@@ -377,8 +374,8 @@ namespace {
                                   std::vector{EntityRef::net(net_id)}));
     }
 
-    detail::validate_board_visual(board, resolution_footprints, report);
-    detail::validate_board_drc(board, resolution_footprints, pad_resolutions, report);
+    detail::validate_board_visual(resolved, report);
+    detail::validate_board_drc(resolved, pad_resolutions, report);
 
     return report;
 }

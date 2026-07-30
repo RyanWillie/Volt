@@ -75,16 +75,16 @@ struct ReferenceDesignatorVisualExtent {
 }
 
 [[nodiscard]] std::optional<PlacementVisualExtent>
-placement_visual_extent(const Board &board, const FootprintLibrary &footprints,
-                        ComponentPlacementId placement_id) {
+placement_visual_extent(const ResolvedBoardView &resolved, ComponentPlacementId placement_id) {
+    const auto &board = resolved.board();
     const auto &placement = board.get(placement_id);
-    const auto &selected_part =
-        volt::queries::selected_physical_part(board.circuit(), placement.component());
-    if (!selected_part.has_value()) {
+    const auto *selected_part = resolved.part(placement.component());
+    if (selected_part == nullptr) {
         return std::nullopt;
     }
 
-    const auto footprint_resolution = resolve_footprint(selected_part.value(), footprints);
+    const auto footprint_resolution =
+        resolve_footprint(selected_part->physical_part(), resolved.footprints());
     const auto *definition = footprint_resolution.definition();
     if (definition == nullptr || definition->pad_count() == 0U) {
         return std::nullopt;
@@ -380,11 +380,12 @@ reference_label_overlay(const ReferenceDesignatorVisualExtent &extent, const Boa
 }
 
 [[nodiscard]] std::vector<PlacementVisualExtent>
-collect_placement_visual_extents(const Board &board, const FootprintLibrary &footprints) {
+collect_placement_visual_extents(const ResolvedBoardView &resolved) {
+    const auto &board = resolved.board();
     auto extents = std::vector<PlacementVisualExtent>{};
     extents.reserve(board.all<volt::ComponentPlacementId>().size());
     for (std::size_t index = 0; index < board.all<volt::ComponentPlacementId>().size(); ++index) {
-        const auto extent = placement_visual_extent(board, footprints, ComponentPlacementId{index});
+        const auto extent = placement_visual_extent(resolved, ComponentPlacementId{index});
         if (extent.has_value()) {
             extents.push_back(extent.value());
         }
@@ -402,18 +403,19 @@ collect_placement_visual_extents(const Board &board, const FootprintLibrary &foo
 }
 
 [[nodiscard]] std::vector<PadVisualGeometry>
-collect_pad_visual_geometry(const Board &board, const FootprintLibrary &footprints) {
+collect_pad_visual_geometry(const ResolvedBoardView &resolved) {
+    const auto &board = resolved.board();
     auto pads = std::vector<PadVisualGeometry>{};
     for (std::size_t placement_index = 0;
          placement_index < board.all<volt::ComponentPlacementId>().size(); ++placement_index) {
         const auto placement_id = ComponentPlacementId{placement_index};
         const auto &placement = board.get(placement_id);
-        const auto &selected_part =
-            volt::queries::selected_physical_part(board.circuit(), placement.component());
-        if (!selected_part.has_value()) {
+        const auto *selected_part = resolved.part(placement.component());
+        if (selected_part == nullptr) {
             continue;
         }
-        const auto footprint_resolution = resolve_footprint(selected_part.value(), footprints);
+        const auto footprint_resolution =
+            resolve_footprint(selected_part->physical_part(), resolved.footprints());
         const auto *definition = footprint_resolution.definition();
         if (definition == nullptr) {
             continue;
@@ -446,19 +448,20 @@ reference_designator_extent(const Board &board, const ComponentPlacement &placem
 }
 
 [[nodiscard]] std::vector<ReferenceDesignatorVisualExtent>
-collect_reference_designator_extents(const Board &board, const FootprintLibrary &footprints) {
+collect_reference_designator_extents(const ResolvedBoardView &resolved) {
+    const auto &board = resolved.board();
     auto labels = std::vector<ReferenceDesignatorVisualExtent>{};
     labels.reserve(board.all<volt::ComponentPlacementId>().size());
     for (std::size_t placement_index = 0;
          placement_index < board.all<volt::ComponentPlacementId>().size(); ++placement_index) {
         const auto placement_id = ComponentPlacementId{placement_index};
         const auto &placement = board.get(placement_id);
-        const auto &selected_part =
-            volt::queries::selected_physical_part(board.circuit(), placement.component());
-        if (!selected_part.has_value()) {
+        const auto *selected_part = resolved.part(placement.component());
+        if (selected_part == nullptr) {
             continue;
         }
-        const auto footprint_resolution = resolve_footprint(selected_part.value(), footprints);
+        const auto footprint_resolution =
+            resolve_footprint(selected_part->physical_part(), resolved.footprints());
         const auto *definition = footprint_resolution.definition();
         if (definition == nullptr) {
             continue;
@@ -561,13 +564,13 @@ void validate_reference_designator_obstructions(
 
 } // namespace
 
-void validate_board_visual(const Board &board, const FootprintLibrary &footprints,
-                           DiagnosticReport &report) {
-    const auto extents = collect_placement_visual_extents(board, footprints);
+void validate_board_visual(const ResolvedBoardView &resolved, DiagnosticReport &report) {
+    const auto &board = resolved.board();
+    const auto extents = collect_placement_visual_extents(resolved);
     const auto texts = collect_text_visual_extents(board);
-    const auto pads = collect_pad_visual_geometry(board, footprints);
-    const auto geometries = queries::project_footprint_geometries(board, footprints);
-    const auto reference_labels = collect_reference_designator_extents(board, footprints);
+    const auto pads = collect_pad_visual_geometry(resolved);
+    const auto geometries = queries::project_footprint_geometries(resolved);
+    const auto reference_labels = collect_reference_designator_extents(resolved);
     for (std::size_t lhs_index = 0; lhs_index < extents.size(); ++lhs_index) {
         for (std::size_t rhs_index = lhs_index + 1U; rhs_index < extents.size(); ++rhs_index) {
             if (extents_overlap(extents[lhs_index], extents[rhs_index])) {

@@ -585,6 +585,9 @@ void LogicalCircuitParser::read_component_definitions() {
         }
         component_def_ids_.emplace(id, component_definition);
     }
+    require(std::all_of(pin_definition_owners_.begin(), pin_definition_owners_.end(),
+                        [](const auto &owner) { return owner.has_value(); }),
+            "Pin definition does not belong to a component definition");
 }
 
 void LogicalCircuitParser::read_components() {
@@ -606,18 +609,8 @@ void LogicalCircuitParser::read_components() {
                                   ElectricalAttributeKind::DesignInput),
         });
         component_ids_.emplace(id, component_id);
-        component_reference_ids_.emplace(
-            plan_.connectivity.components.back().instance.reference().value(), component_id);
-        if (const auto it = component.find("selected_physical_part"); it != component.end()) {
-            require(component.find("selected_library_part") == component.end(),
-                    "Component cannot contain both selected-part representations");
-            plan_.selected_physical_parts.push_back(RestoredSelectedPhysicalPart{
-                component_id,
-                physical_part(*it),
-                electrical_attributes(*it, ElectricalAttributeOwner::SelectedPart,
-                                      ElectricalAttributeKind::DesignInput),
-            });
-        }
+        require(!component.contains("selected_physical_part"),
+                "Component contains removed selected_physical_part field");
         if (const auto it = component.find("selected_library_part"); it != component.end()) {
             plan_.selected_library_parts.push_back(
                 RestoredSelectedLibraryPart{component_id, library_part_ref(*it)});
@@ -872,48 +865,6 @@ void LogicalCircuitParser::read_design_intent() {
             selection_override.get<bool>(),
         });
     }
-}
-
-[[nodiscard]] PhysicalPart LogicalCircuitParser::physical_part(const nlohmann::json &object) const {
-    require(object.is_object(), "Selected physical part must be an object");
-    const auto &manufacturer_part = field(object, "manufacturer_part");
-    const auto &footprint = field(object, "footprint");
-    auto mappings = std::vector<PinPadMapping>{};
-    for (const auto &mapping : array_field(object, "pin_pad_mappings")) {
-        mappings.emplace_back(resolve(pin_def_ids_, string_field(mapping, "pin")),
-                              string_field(mapping, "pad"));
-    }
-    auto model_3d = std::optional<PartModel3D>{};
-    const auto model_it = object.find("model_3d");
-    if (model_it != object.end()) {
-        require(model_it->is_object(), "Selected physical part model_3d must be an object");
-        const auto &translation = array_field(*model_it, "translation_mm");
-        require(translation.size() == 3U,
-                "Selected physical part model_3d translation must contain three numbers");
-        model_3d = PartModel3D{
-            string_field(*model_it, "format"), string_field(*model_it, "file_name"),
-            std::array<double, 3>{translation[0].get<double>(), translation[1].get<double>(),
-                                  translation[2].get<double>()},
-            number_field(*model_it, "rotation_deg")};
-    }
-    auto alternates = std::vector<std::string>{};
-    const auto alternate_it = object.find("approved_alternate_mpns");
-    if (alternate_it != object.end()) {
-        require(alternate_it->is_array(), "Selected physical part alternates must be an array");
-        for (const auto &alternate : *alternate_it) {
-            require(alternate.is_string(), "Selected physical part alternate MPN must be a string");
-            alternates.push_back(alternate.get<std::string>());
-        }
-    }
-    return PhysicalPart{
-        ManufacturerPart{string_field(manufacturer_part, "manufacturer"),
-                         string_field(manufacturer_part, "part_number")},
-        PackageRef{string_field(object, "package")},
-        FootprintRef{string_field(footprint, "library"), string_field(footprint, "name")},
-        std::move(mappings),
-        properties(field(object, "properties")),
-        model_3d,
-        std::move(alternates)};
 }
 
 } // namespace volt::io::detail

@@ -492,15 +492,6 @@ void validate_bom_component_readiness(const Circuit &circuit, const ExactPartRes
         }
 
         const auto &selected_ref = volt::queries::selected_library_part_ref(circuit, component_id);
-        if (volt::queries::selected_physical_part(circuit, component_id).has_value() &&
-            !selected_ref.has_value()) {
-            report.add(bom_error(
-                bom_diagnostic_codes::LegacyInlineSelectedPartUnsupported,
-                "Legacy inline selected part is read-compatible but cannot drive current BOM "
-                "readiness without an exact library reference",
-                entities));
-            continue;
-        }
         if (!dnp.value_or(false) && !selected_ref.has_value()) {
             report.add(
                 bom_error(bom_diagnostic_codes::ComponentMissingSelectedPart,

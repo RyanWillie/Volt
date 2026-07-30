@@ -6,11 +6,11 @@ namespace volt {
 
 class Board;
 class FootprintLibrary;
+class ResolvedBoardView;
 
 namespace detail {
 
-void validate_capability_profile_rules(const Board &board, const FootprintLibrary &footprints,
-                                       DiagnosticReport &report);
+void validate_capability_profile_rules(const ResolvedBoardView &resolved, DiagnosticReport &report);
 
 } // namespace detail
 } // namespace volt

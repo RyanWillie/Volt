@@ -569,9 +569,11 @@
             <tr>
               <td>Footprint fields</td>
               <td>
-                A complete Volt selected physical part may carry a footprint library and
-                name. The writer emits a KiCad <code>Footprint</code> property when the
-                component has selected-part data. A bare KiCad footprint string remains
+                A Circuit carries only the exact selected <code>LibraryPartRef</code>. The
+                writer requires its caller to supply the matching immutable
+                <code>ExactPartResolver</code> and emits the resolved footprint library
+                and name as a KiCad <code>Footprint</code> property. It does not look for
+                physical truth in Circuit. A bare KiCad footprint string remains
                 incomplete selected-part data on import; it should be preserved as
                 provenance or reported as incomplete until Volt owns a footprint-only
                 assignment primitive.

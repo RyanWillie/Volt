@@ -59,16 +59,8 @@ void require_capability_profile(const Board &board,
     }
 }
 
-void require_materialization_inputs(const Board &board,
-                                    const BoardResolutionCapabilities &capabilities,
-                                    const FootprintLibrary &footprints,
-                                    const std::vector<ResolvedBoardPart> &parts) {
-    if (board.all<FootprintDefId>().size() != 0U) {
-        throw KernelLogicError{ErrorCode::InvalidState,
-                               "Explicit Board resolution does not accept cached footprints"};
-    }
-    require_capability_profile(board, capabilities);
-
+void require_resolved_view_inputs(const Board &board, const FootprintLibrary &footprints,
+                                  std::span<const ResolvedBoardPart> parts) {
     for (std::size_t index = 1; index < parts.size(); ++index) {
         if (parts[index - 1U].component().index() >= parts[index].component().index()) {
             throw KernelArgumentError{
@@ -77,16 +69,53 @@ void require_materialization_inputs(const Board &board,
         }
     }
 
+    for (const auto &part : parts) {
+        const auto component = part.component();
+        if (component.index() >= board.circuit().all<ComponentId>().size()) {
+            throw KernelLogicError{
+                ErrorCode::CrossReferenceViolation,
+                "Resolved Board part references a component outside the authoring Circuit",
+                EntityRef::component(component)};
+        }
+        const auto &instance = board.circuit().get(component);
+        if (!instance.selected_library_part_ref().has_value() ||
+            part.reference() != *instance.selected_library_part_ref()) {
+            throw KernelLogicError{
+                ErrorCode::CrossReferenceViolation,
+                "Resolved Board part reference differs from authoring Circuit selection",
+                EntityRef::component(component)};
+        }
+    }
+
+    for (std::size_t index = 0; index < board.all<FootprintDefId>().size(); ++index) {
+        const auto &definition = board.get(FootprintDefId{index});
+        const auto *resolved = footprints.find(definition.ref());
+        if (resolved != nullptr && *resolved != definition) {
+            throw KernelLogicError{
+                ErrorCode::CrossReferenceViolation,
+                "Board footprint definition differs from its exact selected closure"};
+        }
+    }
+}
+
+void require_complete_resolved_inputs(const Board &board, const FootprintLibrary &footprints,
+                                      std::span<const ResolvedBoardPart> parts) {
+    require_resolved_view_inputs(board, footprints, parts);
+
+    for (std::size_t index = 0; index < board.all<FootprintDefId>().size(); ++index) {
+        const auto &definition = board.get(FootprintDefId{index});
+        const auto *resolved = footprints.find(definition.ref());
+        if (resolved == nullptr || *resolved != definition) {
+            throw KernelLogicError{
+                ErrorCode::CrossReferenceViolation,
+                "Board footprint definition differs from its exact selected closure"};
+        }
+    }
+
     auto resolved_index = std::size_t{0};
     for (std::size_t index = 0; index < board.circuit().all<ComponentId>().size(); ++index) {
         const auto component = ComponentId{index};
         const auto &instance = board.circuit().get(component);
-        if (instance.selected_physical_part().has_value()) {
-            throw KernelLogicError{
-                ErrorCode::InvalidState,
-                "Board resolution does not accept legacy PhysicalPart selections",
-                EntityRef::component(component)};
-        }
         if (!instance.selected_library_part_ref().has_value()) {
             continue;
         }
@@ -98,12 +127,7 @@ void require_materialization_inputs(const Board &board,
         }
 
         const auto &part = parts[resolved_index];
-        if (part.reference() != *instance.selected_library_part_ref()) {
-            throw KernelLogicError{
-                ErrorCode::CrossReferenceViolation,
-                "Resolved Board part reference differs from authoring Circuit selection",
-                EntityRef::component(component)};
-        }
+        const auto &definition = board.circuit().get(instance.definition());
         const auto *footprint = footprints.find(part.physical_part().footprint());
         if (footprint == nullptr) {
             throw KernelRangeError{
@@ -112,6 +136,12 @@ void require_materialization_inputs(const Board &board,
                 EntityRef::component(component)};
         }
         for (const auto &mapping : part.physical_part().pin_pad_mappings()) {
+            if (std::ranges::find(definition.pins(), mapping.pin()) == definition.pins().end()) {
+                throw KernelLogicError{
+                    ErrorCode::CrossReferenceViolation,
+                    "Resolved Board part maps a pin outside the selected component definition",
+                    EntityRef::pin_def(mapping.pin())};
+            }
             const auto pad = footprint->pad_id(mapping.pad());
             if (!pad.has_value() || !footprint->pad(*pad).requires_pin_mapping()) {
                 throw KernelLogicError{
@@ -120,21 +150,18 @@ void require_materialization_inputs(const Board &board,
                     EntityRef::component(component)};
             }
         }
-
-        const auto expects_model_bytes = capabilities.has(BoardAssetCapability::Models3D) &&
-                                         part.physical_part().model_3d().has_value();
-        if (part.model_3d_bytes().has_value() != expects_model_bytes) {
-            throw KernelLogicError{
-                ErrorCode::CrossReferenceViolation,
-                "Resolved Board part 3D bytes do not match the requested capability closure",
-                EntityRef::component(component)};
+        for (const auto pin : definition.pins()) {
+            const auto mapped = std::ranges::any_of(
+                part.physical_part().pin_pad_mappings(),
+                [pin](const PinPadMapping &mapping) { return mapping.pin() == pin; });
+            if (!mapped) {
+                throw KernelLogicError{
+                    ErrorCode::CrossReferenceViolation,
+                    "Resolved Board part does not map every component-definition pin",
+                    EntityRef::pin_def(pin)};
+            }
         }
         ++resolved_index;
-    }
-    if (resolved_index != parts.size()) {
-        throw KernelLogicError{
-            ErrorCode::CrossReferenceViolation,
-            "Resolved Board parts contain a component outside the authoring selections"};
     }
 
     for (const auto &definition : footprints.definitions()) {
@@ -149,46 +176,23 @@ void require_materialization_inputs(const Board &board,
     }
 }
 
-[[nodiscard]] Board resolved_board_copy(const Board &source, const Circuit &circuit) {
-    auto result = Board{circuit, source.name()};
-    result.set_design_rules(source.design_rules());
-    if (source.capability_profile().has_value()) {
-        result.set_capability_profile(*source.capability_profile());
+void require_materialization_inputs(const Board &board,
+                                    const BoardResolutionCapabilities &capabilities,
+                                    const FootprintLibrary &footprints,
+                                    const std::vector<ResolvedBoardPart> &parts) {
+    require_capability_profile(board, capabilities);
+    require_complete_resolved_inputs(board, footprints, parts);
+
+    for (const auto &part : parts) {
+        const auto expects_model_bytes = capabilities.has(BoardAssetCapability::Models3D) &&
+                                         part.physical_part().model_3d().has_value();
+        if (part.model_3d_bytes().has_value() != expects_model_bytes) {
+            throw KernelLogicError{
+                ErrorCode::CrossReferenceViolation,
+                "Resolved Board part 3D bytes do not match the requested capability closure",
+                EntityRef::component(part.component())};
+        }
     }
-    for (const auto &layer : source.all<BoardLayerId>()) {
-        static_cast<void>(result.add_layer(layer));
-    }
-    if (source.layer_stack().has_value()) {
-        result.set_layer_stack(*source.layer_stack());
-    }
-    if (source.outline().has_value()) {
-        result.set_outline(*source.outline());
-    }
-    for (const auto &feature : source.all<BoardFeatureId>()) {
-        static_cast<void>(result.add_feature(feature));
-    }
-    for (const auto &placement : source.all<ComponentPlacementId>()) {
-        static_cast<void>(result.place_component(placement));
-    }
-    for (const auto &track : source.all<BoardTrackId>()) {
-        static_cast<void>(result.add_track(track));
-    }
-    for (const auto &via : source.all<BoardViaId>()) {
-        static_cast<void>(result.add_via(via));
-    }
-    for (const auto &zone : source.all<BoardZoneId>()) {
-        static_cast<void>(result.add_zone(zone));
-    }
-    for (const auto &keepout : source.all<BoardKeepoutId>()) {
-        static_cast<void>(result.add_keepout(keepout));
-    }
-    for (const auto &room : source.all<BoardRoomId>()) {
-        static_cast<void>(result.add_room(room));
-    }
-    for (const auto &text : source.all<BoardTextId>()) {
-        static_cast<void>(result.add_text(text));
-    }
-    return result;
 }
 
 } // namespace
@@ -213,10 +217,51 @@ ResolvedBoardPart::ResolvedBoardPart(ComponentId component, LibraryPartRef refer
     : component_{component}, reference_{std::move(reference)},
       physical_part_{std::move(physical_part)}, model_3d_bytes_{std::move(model_3d_bytes)} {}
 
-BoardResolution BoardResolution::materialize(const Board &board, ContentHash closure_digest,
-                                             BoardResolutionCapabilities capabilities,
-                                             FootprintLibrary footprints,
-                                             std::vector<ResolvedBoardPart> parts) {
+ResolvedBoardView::ResolvedBoardView(const Board &board, const FootprintLibrary &footprints,
+                                     std::span<const ResolvedBoardPart> parts, bool complete)
+    : board_{&board}, footprints_{footprints}, parts_{parts.begin(), parts.end()},
+      complete_{complete} {
+    require_current();
+}
+
+ResolvedBoardView ResolvedBoardView::from(const BoardResolution &resolution) {
+    return ResolvedBoardView{resolution.board(), resolution.footprints(), resolution.parts(), true};
+}
+
+void ResolvedBoardView::require_current() const {
+    if (complete_) {
+        require_complete_resolved_inputs(*board_, footprints_, parts_);
+        return;
+    }
+    require_resolved_view_inputs(*board_, footprints_, parts_);
+}
+
+const Board &ResolvedBoardView::board() const {
+    require_current();
+    return *board_;
+}
+
+const FootprintLibrary &ResolvedBoardView::footprints() const {
+    require_current();
+    return footprints_;
+}
+
+std::span<const ResolvedBoardPart> ResolvedBoardView::parts() const {
+    require_current();
+    return parts_;
+}
+
+const ResolvedBoardPart *ResolvedBoardView::part(ComponentId component) const {
+    require_current();
+    const auto match = std::ranges::find(parts_, component, &ResolvedBoardPart::component);
+    return match != parts_.end() ? &*match : nullptr;
+}
+
+BoardResolution BoardResolution::materialize_verified(const Board &board,
+                                                      ContentHash closure_digest,
+                                                      BoardResolutionCapabilities capabilities,
+                                                      FootprintLibrary footprints,
+                                                      std::vector<ResolvedBoardPart> parts) {
     require_materialization_inputs(board, capabilities, footprints, parts);
     return BoardResolution{board, std::move(closure_digest), std::move(capabilities),
                            std::move(footprints), std::move(parts)};
@@ -225,19 +270,31 @@ BoardResolution BoardResolution::materialize(const Board &board, ContentHash clo
 BoardResolution::BoardResolution(const Board &board, ContentHash closure_digest,
                                  BoardResolutionCapabilities capabilities,
                                  FootprintLibrary footprints, std::vector<ResolvedBoardPart> parts)
-    : authoring_board_{&board}, resolved_circuit_{board.circuit()},
-      resolved_board_{resolved_board_copy(board, resolved_circuit_)}, board_name_{board.name()},
-      closure_digest_{std::move(closure_digest)}, capabilities_{std::move(capabilities)},
-      footprints_{std::move(footprints)}, parts_{std::move(parts)} {
-    for (const auto &part : parts_) {
-        resolved_circuit_.update(part.component(),
-                                 SelectPhysicalPart{part.physical_part(), part.reference()});
-    }
+    : board_{&board}, board_name_{board.name()}, closure_digest_{std::move(closure_digest)},
+      capabilities_{std::move(capabilities)}, footprints_{std::move(footprints)},
+      parts_{std::move(parts)} {}
+
+const Board &BoardResolution::board() const {
+    require_materialization_inputs(*board_, capabilities_, footprints_, parts_);
+    return *board_;
 }
 
-const ResolvedBoardPart *BoardResolution::part(ComponentId component) const noexcept {
-    const auto match = std::ranges::find(parts_, component, &ResolvedBoardPart::component);
-    return match != parts_.end() && match->component() == component ? &*match : nullptr;
+const FootprintLibrary &BoardResolution::footprints() const {
+    require_materialization_inputs(*board_, capabilities_, footprints_, parts_);
+    return footprints_;
 }
+
+std::span<const ResolvedBoardPart> BoardResolution::parts() const {
+    require_materialization_inputs(*board_, capabilities_, footprints_, parts_);
+    return parts_;
+}
+
+const ResolvedBoardPart *BoardResolution::part(ComponentId component) const {
+    require_materialization_inputs(*board_, capabilities_, footprints_, parts_);
+    const auto match = std::ranges::find(parts_, component, &ResolvedBoardPart::component);
+    return match != parts_.end() ? &*match : nullptr;
+}
+
+ResolvedBoardView BoardResolution::view() const & { return ResolvedBoardView::from(*this); }
 
 } // namespace volt

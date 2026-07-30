@@ -1,4 +1,5 @@
 #include <volt/pcb/board.hpp>
+#include <volt/pcb/resolution/board_resolution.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
 
 #include <volt/circuit/validation/validation.hpp>
@@ -257,19 +258,20 @@ void append_zone_shapes(const Board &board, std::vector<BoardCopperShape> &shape
     }
 }
 
-void append_pad_shapes(const Board &board, const FootprintLibrary &footprints,
+void append_pad_shapes(const ResolvedBoardView &resolved,
                        const std::vector<PadResolution> &resolutions,
                        std::vector<BoardCopperShape> &shapes) {
+    const auto &board = resolved.board();
     for (std::size_t placement_index = 0;
          placement_index < board.all<volt::ComponentPlacementId>().size(); ++placement_index) {
         const auto placement_id = ComponentPlacementId{placement_index};
         const auto &placement = board.get(placement_id);
-        const auto &selected_part =
-            volt::queries::selected_physical_part(board.circuit(), placement.component());
-        if (!selected_part.has_value()) {
+        const auto *selected_part = resolved.part(placement.component());
+        if (selected_part == nullptr) {
             continue;
         }
-        const auto footprint_resolution = resolve_footprint(selected_part.value(), footprints);
+        const auto footprint_resolution =
+            resolve_footprint(selected_part->physical_part(), resolved.footprints());
         const auto *definition = footprint_resolution.definition();
         if (definition == nullptr) {
             continue;
@@ -317,13 +319,14 @@ void append_pad_shapes(const Board &board, const FootprintLibrary &footprints,
 }
 
 [[nodiscard]] std::vector<BoardCopperShape>
-collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
+collect_copper_shapes(const ResolvedBoardView &resolved,
                       const std::vector<PadResolution> &resolutions) {
+    const auto &board = resolved.board();
     auto shapes = std::vector<BoardCopperShape>{};
     append_track_shapes(board, shapes);
     append_via_shapes(board, shapes);
     append_zone_shapes(board, shapes);
-    append_pad_shapes(board, footprints, resolutions, shapes);
+    append_pad_shapes(resolved, resolutions, shapes);
     return shapes;
 }
 

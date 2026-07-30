@@ -120,7 +120,7 @@ import volt
 
 
 def _rect_0603(ref):
-    return volt.FootprintDefinition(
+    return volt.Footprint(
         ref,
         pads=(
             volt.FootprintPad.surface_mount(
@@ -140,7 +140,7 @@ def _rect_0603(ref):
 
 
 def _header_1x02():
-    return volt.FootprintDefinition(
+    return volt.Footprint(
         ("connectors", "PinHeader_1x02_P2.54mm"),
         pads=(
             volt.FootprintPad.through_hole(
@@ -177,7 +177,7 @@ def main():
             manufacturer="Generic",
             mpn="HDR-1x02",
             package="2.54mm-1x02",
-            footprint=volt.FootprintDefinition(
+            footprint=volt.Footprint(
                 ("test", "Header1x02"),
                 pads=_header_1x02().pads,
             ),

@@ -20,7 +20,7 @@ def test_library_public_symbol_classes_stay_on_public_import_surface():
     assert volt.SchematicBlockPinSpec is library.SchematicBlockPinSpec
     assert volt.SchematicSymbolSpec.__module__ == "volt.library"
     assert isinstance(
-        library._default_two_terminal_symbol_spec("resistor"),
+        library._default_two_terminal_symbol_spec("volt.passives:resistor"),
         library.SchematicSymbolSpec,
     )
 
@@ -278,31 +278,6 @@ def test_common_catalog_symbols_place_through_drawing_and_render():
     assert "symbol-rectangle" in svg
     assert "symbol-circle" in svg
 
-def test_legacy_common_symbol_names_still_place_and_resolve():
-    design = volt.Design("legacy-common-symbol-names")
-    schematic = design.schematic("Main")
-    placements = [
-        ("resistor", design.R("10k", ref="R1"), (20, 20)),
-        ("capacitor", design.C("100nF", ref="C1"), (70, 20)),
-        ("led", design.LED(ref="D1"), (120, 20)),
-        ("connector_1x02", design.connector_1x02(ref="J1"), (170, 20)),
-    ]
-
-    placed = [
-        schematic.place(component, at=point, symbol=symbol_name)
-        for symbol_name, component, point in placements
-    ]
-
-    projection = json.loads(schematic.to_json())
-    assert [symbol["name"] for symbol in projection["symbol_definitions"]] == [
-        symbol_name for symbol_name, _component, _point in placements
-    ]
-    assert tuple(anchor.number for anchor in placed[0].pin_anchors()) == ("1", "2")
-    assert tuple(anchor.number for anchor in placed[1].pin_anchors()) == ("1", "2")
-    assert tuple(anchor.number for anchor in placed[2].pin_anchors()) == ("1", "2")
-    assert tuple(anchor.name for anchor in placed[3].pin_anchors()) == ("+", "-")
-    assert tuple(anchor.number for anchor in placed[3].pin_anchors()) == ("1", "2")
-
 def test_schematic_placement_missing_default_symbol_reports_author_context():
     design = volt.Design("library-symbol-missing-default")
     sensor = design.define_component(
@@ -540,7 +515,7 @@ def _tie_and_mechanical_footprint():
     )
 
 
-def _library_resistor_part(name="R_0603_10K"):
+def _library_resistor_part(name="R_0603_10K", *, provenance=None):
     return volt.Part(
         name=name,
         pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
@@ -551,6 +526,7 @@ def _library_resistor_part(name="R_0603_10K"):
         manufacturer="Yageo",
         mpn="RC0603FR-0710KL",
         package="0603",
+        provenance=provenance,
         prefix="R",
     )
 
@@ -603,37 +579,31 @@ def test_library_parts_family_overrides_are_isolated_snapshots():
         "series": {"name": "RC"},
         "tags": ["default"],
     }
-    default_extensions = {"lifecycle": {"status": "active"}}
     library = volt.Library("volt.test.passives")
     r0603 = _resistor_0603_family(
         library,
         pads=default_pads,
         properties=default_properties,
-        extensions=default_extensions,
         source_version="catalog-v1",
     )
 
     default_pads[1].append("9")
     default_properties["series"]["name"] = "changed"
     default_properties["tags"].append("changed")
-    default_extensions["lifecycle"]["status"] = "changed"
 
     override_pads = {1: ["1"], 2: "2"}
     override_properties = {"tolerance": {"percent": 1}}
-    override_extensions = {"stock": {"sku": "RC0603-10K"}}
     ten_k = r0603.part(
         "10K",
         mpn="RC0603FR-0710KL",
         pads=override_pads,
         properties=override_properties,
-        extensions=override_extensions,
         source_name="catalog/R0603/10K",
         source_version="catalog-v2",
     )
 
     override_pads[1].append("9")
     override_properties["tolerance"]["percent"] = 5
-    override_extensions["stock"]["sku"] = "changed"
 
     hundred_k = r0603.part(
         "100K",
@@ -650,8 +620,6 @@ def test_library_parts_family_overrides_are_isolated_snapshots():
     assert ten_k.properties["series"]["name"] == "RC"
     assert ten_k.properties["tags"] == ("default",)
     assert ten_k.properties["tolerance"]["percent"] == 1
-    assert ten_k.extensions["lifecycle"]["status"] == "active"
-    assert ten_k.extensions["stock"]["sku"] == "RC0603-10K"
     assert ten_k.source_name == "catalog/R0603/10K"
     assert ten_k.source_version == "catalog-v2"
     assert hundred_k.name == "R_0603_100K"
@@ -762,11 +730,30 @@ def test_library_part_is_immutable_after_construction():
     assert part.name == "R_0603_10K"
 
 
+def test_library_part_typed_provenance_lowers_into_native_artifact():
+    library = volt.Library("volt.test.passives")
+    part = _library_resistor_part(
+        provenance=volt.PartProvenance(
+            datasheet="https://example.test/resistor.pdf",
+            authored_by="Volt test",
+            derived_from="vendor catalogue",
+        )
+    )
+    library.add(part)
+
+    artifact = library.build().part(part.name).artifact
+    assert artifact is not None
+    payload = json.loads(artifact.bytes)
+    assert payload["provenance"] == {
+        "datasheet": "https://example.test/resistor.pdf",
+        "authored_by": "Volt test",
+        "derived_from": "vendor catalogue",
+    }
+
+
 def test_library_part_collection_fields_are_immutable_snapshots():
     pads = {1: ["1"], 2: "2"}
     properties = {"bin": "A"}
-    physical_properties = {"assembly": {"feeder": "F1"}}
-    extensions = {"tags": ["passive"]}
     symbol_primitive = volt.SchematicSymbolSpec.line((0, 0), (20, 0))
     symbol = volt.SchematicSymbolSpec(
         "volt.test:R_0603_10K_nested",
@@ -788,15 +775,11 @@ def test_library_part_collection_fields_are_immutable_snapshots():
         mpn="RC0603FR-0710KL",
         package="0603",
         properties=properties,
-        physical_properties=physical_properties,
         prefix="R",
-        extensions=extensions,
     )
 
     pads[1].append("9")
     properties["bin"] = "B"
-    physical_properties["assembly"]["feeder"] = "F2"
-    extensions["tags"].append("changed")
     symbol_primitive["start"]["x"] = 99
     library.add(part)
 
@@ -813,26 +796,16 @@ def test_library_part_collection_fields_are_immutable_snapshots():
     def mutate_properties():
         part.properties["bin"] = "B"
 
-    def mutate_physical_properties():
-        part.physical_properties["assembly"]["feeder"] = "F2"
-
-    def mutate_extensions():
-        part.extensions["tags"][0] = "changed"
-
     def mutate_symbol_primitive():
         part.schematic_symbols[0].primitives[0]["start"]["x"] = 99
 
     assert tuple(part.pads[1]) == ("1",)
     assert part.properties["bin"] == "A"
-    assert part.physical_properties["assembly"]["feeder"] == "F1"
-    assert part.extensions["tags"] == ("passive",)
     assert part.schematic_symbols[0].primitives[0]["start"]["x"] == 0.0
 
     for mutation in (
         mutate_pads,
         mutate_properties,
-        mutate_physical_properties,
-        mutate_extensions,
         mutate_symbol_primitive,
     ):
         assert_rejects_mutation(mutation)
@@ -878,7 +851,7 @@ def test_project_instantiates_imported_part_without_manual_footprint_cache():
     assert [definition["ref"] for definition in definitions] == [
         {"library": "Resistor_SMD", "name": "R_0603_1608Metric"}
     ]
-    assert document["board"]["placements"][0]["footprint"] == "footprint_def:0"
+    assert "footprint" not in document["board"]["placements"][0]
 
 
 def test_part_pin_pad_mapping_supports_tied_pads():
@@ -1100,7 +1073,7 @@ def test_part_validation_reports_non_serializable_source_metadata():
             manufacturer="Yageo",
             mpn="NON-SERIAL",
             package="0603",
-            extensions={"factory": object()},
+            properties={"factory": object()},
         )
     )
 

@@ -303,16 +303,13 @@ py::list PyBoard::component_footprint_pads(std::size_t component) const {
     const auto &resolved_board = resolution.board();
 
     auto result = py::list{};
-    const auto &selected_part =
-        volt::queries::selected_physical_part(resolved_board.circuit(), component_handle);
-    if (!selected_part.has_value()) {
+    const auto *selected_part = resolution.part(component_handle);
+    if (selected_part == nullptr) {
         return result;
     }
 
-    const auto resolution_footprints =
-        volt::queries::board_resolution_footprints(resolved_board, resolution.footprints());
     const auto footprint_resolution =
-        volt::resolve_footprint(selected_part.value(), resolution_footprints);
+        volt::resolve_footprint(selected_part->physical_part(), resolution.footprints());
     const auto *definition = footprint_resolution.definition();
     if (definition == nullptr) {
         return result;
@@ -578,8 +575,7 @@ std::size_t PyBoard::add_text(const std::string &text, double x, double y, std::
 py::list PyBoard::resolve_pads() const {
     const auto board_resolution = resolve();
     auto result = py::list{};
-    for (const auto &resolution :
-         volt::queries::resolve_pads(board_resolution.board(), board_resolution.footprints())) {
+    for (const auto &resolution : volt::queries::resolve_pads(board_resolution.view())) {
         auto item = py::dict{};
         item["placement"] = resolution.placement().index();
         item["component"] = resolution.component().index();
@@ -599,33 +595,30 @@ py::list PyBoard::resolve_pads() const {
 
 py::list PyBoard::validate() const {
     const auto resolution = resolve();
-    return diagnostics_to_list(validate_board(resolution.board(), resolution.footprints()));
+    return diagnostics_to_list(validate_board(resolution.view()));
 }
 
 py::list PyBoard::validate_assembly(const py::dict &rotation_offsets) const {
     const auto options = cpl_projection_options_from_dict(rotation_offsets);
     const auto resolution = resolve();
-    return diagnostics_to_list(
-        volt::project_cpl(resolution.board(), resolution.footprints(), options).diagnostics());
+    return diagnostics_to_list(volt::project_cpl(resolution.view(), options).diagnostics());
 }
 
 std::string PyBoard::cpl_json(const py::dict &rotation_offsets) const {
     const auto options = cpl_projection_options_from_dict(rotation_offsets);
     const auto resolution = resolve();
-    return volt::io::write_cpl_json(
-        volt::project_cpl(resolution.board(), resolution.footprints(), options));
+    return volt::io::write_cpl_json(volt::project_cpl(resolution.view(), options));
 }
 
 std::string PyBoard::cpl_csv(const py::dict &rotation_offsets) const {
     const auto options = cpl_projection_options_from_dict(rotation_offsets);
     const auto resolution = resolve();
-    return volt::io::write_cpl_csv(
-        volt::project_cpl(resolution.board(), resolution.footprints(), options));
+    return volt::io::write_cpl_csv(volt::project_cpl(resolution.view(), options));
 }
 
 std::string PyBoard::to_json() const {
     const auto resolution = resolve();
-    return volt::io::write_pcb_board(resolution.board(), resolution.footprints());
+    return volt::io::write_pcb_board(resolution.view());
 }
 
 std::string PyBoard::to_svg(bool pad_net_overlays, bool diagnostic_overlays, bool ratsnest_edges,
@@ -637,7 +630,7 @@ std::string PyBoard::to_svg(bool pad_net_overlays, bool diagnostic_overlays, boo
         options.layer_filter = volt::BoardLayerId{layer_filter.value()};
     }
     const auto resolution = resolve();
-    return volt::io::write_pcb_placement_svg(resolution.board(), resolution.footprints(), options);
+    return volt::io::write_pcb_placement_svg(resolution.view(), options);
 }
 
 PyBoardRegistry::PyBoardRegistry(const PyCircuit &circuit) : circuit_{&circuit} {}

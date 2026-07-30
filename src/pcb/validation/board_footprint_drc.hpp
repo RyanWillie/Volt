@@ -4,7 +4,6 @@
 
 namespace volt::detail {
 
-void validate_footprint_geometry_drc(const Board &board, const FootprintLibrary &footprints,
-                                     DiagnosticReport &report);
+void validate_footprint_geometry_drc(const ResolvedBoardView &resolved, DiagnosticReport &report);
 
 } // namespace volt::detail

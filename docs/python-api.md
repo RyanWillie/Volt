@@ -198,8 +198,8 @@ validated, and serialized by the C++ kernel.
 
 Catalog helpers such as `Design.R()`, `Design.C()`, `Design.LED()`, and
 `Design.connector_1x02()` define reusable kernel component definitions lazily per design
-and instantiate concrete components through the C++ mutation API. In the current MVP,
-legacy positional component values are stored as kernel component properties. Natural
+and instantiate concrete components through the C++ mutation API. Positional display
+values are stored as kernel component properties. Natural
 keyword arguments such as `resistance`, `capacitance`, `tolerance`, `voltage_rating`, and
 net `voltage` lower plain numbers into typed kernel electrical attributes.
 
@@ -601,8 +601,8 @@ led_a += r1[2], d1["A"]
 gnd += d1["K"]
 
 sch = d.schematic("Main")
-r_sym = sch.place(r1, at=(40, 20), symbol="resistor")
-d_sym = sch.place(d1, at=(110, 30), symbol="led")
+r_sym = sch.place(r1, at=(40, 20), symbol="volt.passives:resistor")
+d_sym = sch.place(d1, at=(110, 30), symbol="volt.optos:led")
 
 vcc_port = sch.power("VCC", net=vcc, at=r_sym.pin(1).left(20))
 gnd_port = sch.ground(net=gnd, at=d_sym.pin("K").down(30))
@@ -628,9 +628,8 @@ codec forwarding methods. `sch.place()` stores a
 `SymbolInstance` over an existing `ComponentId`, with a finite `(x, y)` position and a
 kernel-owned `SymbolDefinition`. Common component helpers serialize stable namespaced
 default symbol references such as `volt.passives:resistor`, `volt.optos:led`, and
-`volt.connectors:connector_1x02`. The legacy explicit names `resistor`, `capacitor`,
-`led`, and `connector_1x02` remain accepted by `sch.place(..., symbol=...)` for older
-scripts.
+`volt.connectors:connector_1x02`. Explicit symbol selection uses those canonical
+namespaced identities.
 
 `sch.place(...)` returns a `SchematicSymbol` handle. `symbol.pin(key)` returns a
 `SchematicPinAnchor` containing the sheet coordinate, the kernel-owned logical pin, the

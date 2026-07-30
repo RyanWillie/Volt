@@ -86,7 +86,8 @@ find_offset(const std::vector<ResolvedRotationOffset> &offsets, const FootprintR
     return !volt::queries::component_dnp(circuit, component).value_or(false);
 }
 
-void append_component_diagnostics(const Board &board, DiagnosticReport &report) {
+void append_component_diagnostics(const ResolvedBoardView &resolved, DiagnosticReport &report) {
+    const auto &board = resolved.board();
     for (const auto component : sorted_components(board.circuit())) {
         if (!is_populated(board.circuit(), component)) {
             continue;
@@ -95,11 +96,10 @@ void append_component_diagnostics(const Board &board, DiagnosticReport &report) 
         const auto &instance = board.circuit().get(component);
         const auto entities = std::vector{EntityRef::component(component),
                                           EntityRef::component_def(instance.definition())};
-        const auto &selected_part =
-            volt::queries::selected_physical_part(board.circuit(), component);
+        const auto *resolved_part = resolved.part(component);
         const auto has_exact_selection =
             volt::queries::selected_library_part_ref(board.circuit(), component).has_value();
-        if (!selected_part.has_value() && !has_exact_selection) {
+        if (resolved_part == nullptr && !has_exact_selection) {
             report.add(assembly_diagnostic(
                 assembly_diagnostic_codes::ComponentMissingSelectedPart,
                 "Populated component requires a selected physical part for assembly handoff",
@@ -108,7 +108,7 @@ void append_component_diagnostics(const Board &board, DiagnosticReport &report) 
                 assembly_diagnostic_codes::PartIdentityMissing,
                 "Populated component has no manufacturer part identity for assembly handoff",
                 entities));
-        } else if (!selected_part.has_value()) {
+        } else if (resolved_part == nullptr) {
             report.add(assembly_diagnostic(
                 assembly_diagnostic_codes::PartIdentityMissing,
                 "Exact selected part requires library resolution for assembly handoff", entities));
@@ -158,15 +158,15 @@ CplRow::CplRow(ComponentPlacementId placement, ComponentId component, std::strin
 Cpl::Cpl(std::vector<CplRow> rows, DiagnosticReport diagnostics)
     : rows_{std::move(rows)}, diagnostics_{std::move(diagnostics)} {}
 
-[[nodiscard]] Cpl project_cpl(const Board &board, const FootprintLibrary &footprints) {
-    return project_cpl(board, footprints, CplProjectionOptions{});
+[[nodiscard]] Cpl project_cpl(const ResolvedBoardView &resolved) {
+    return project_cpl(resolved, CplProjectionOptions{});
 }
 
-[[nodiscard]] Cpl project_cpl(const Board &board, const FootprintLibrary &footprints,
+[[nodiscard]] Cpl project_cpl(const ResolvedBoardView &resolved,
                               const CplProjectionOptions &options) {
-    static_cast<void>(footprints);
+    const auto &board = resolved.board();
     auto diagnostics = DiagnosticReport{};
-    append_component_diagnostics(board, diagnostics);
+    append_component_diagnostics(resolved, diagnostics);
 
     const auto offsets = resolve_rotation_offsets(options);
     auto rows = std::vector<CplRow>{};
@@ -182,12 +182,12 @@ Cpl::Cpl(std::vector<CplRow> rows, DiagnosticReport diagnostics)
         auto footprint = std::optional<FootprintRef>{};
         auto part_identity = std::optional<CplPartIdentity>{};
         auto rotation_offset_deg = 0.0;
-        const auto &selected_part =
-            volt::queries::selected_physical_part(board.circuit(), placement.component());
-        if (selected_part.has_value()) {
-            footprint = selected_part->footprint();
-            part_identity = cpl_part_identity(selected_part.value());
-            if (const auto *offset = find_offset(offsets, selected_part->footprint());
+        const auto *selected_part = resolved.part(placement.component());
+        if (selected_part != nullptr) {
+            footprint = selected_part->physical_part().footprint();
+            part_identity = cpl_part_identity(selected_part->physical_part());
+            if (const auto *offset =
+                    find_offset(offsets, selected_part->physical_part().footprint());
                 offset != nullptr) {
                 if (offset->ambiguous) {
                     append_orientation_diagnostic(placement, placement_id, diagnostics);

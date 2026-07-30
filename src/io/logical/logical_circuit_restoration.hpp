@@ -102,12 +102,6 @@ struct RestoredAssemblyIntent {
     bool selection_override;
 };
 
-struct RestoredSelectedPhysicalPart {
-    ComponentId component;
-    PhysicalPart physical_part;
-    ElectricalAttributeMap electrical_attributes;
-};
-
 struct RestoredSelectedLibraryPart {
     ComponentId component;
     LibraryPartRef reference;
@@ -124,7 +118,6 @@ struct LogicalCircuitRestorationPlan {
     std::vector<RestoredAssemblyIntent> assembly_intent;
     HierarchyDefinitionRestoration hierarchy;
     std::vector<RestoredModuleInstance> module_instances;
-    std::vector<RestoredSelectedPhysicalPart> selected_physical_parts;
     std::vector<RestoredSelectedLibraryPart> selected_library_parts;
 };
 

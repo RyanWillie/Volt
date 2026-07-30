@@ -186,10 +186,10 @@ namespace volt {
 [[nodiscard]] std::optional<SymbolDefinition> default_schematic_symbol(std::string_view name) {
     using namespace default_symbol_detail;
 
-    if (name == "resistor" || name == "volt.passives:resistor") {
+    if (name == "volt.passives:resistor") {
         return resistor_symbol(name);
     }
-    if (name == "capacitor" || name == "volt.passives:capacitor") {
+    if (name == "volt.passives:capacitor") {
         return capacitor_symbol(name);
     }
     if (name == "volt.passives:capacitor_polarized") {
@@ -201,7 +201,7 @@ namespace volt {
     if (name == "volt.discretes:diode") {
         return diode_symbol(name);
     }
-    if (name == "led" || name == "volt.optos:led") {
+    if (name == "volt.optos:led") {
         return led_symbol(name);
     }
     if (name == "volt.switches:switch_spst") {
@@ -216,7 +216,7 @@ namespace volt {
     if (name == "volt.connectors:connector_1x01") {
         return connector_symbol(name, {"1"});
     }
-    if (name == "connector_1x02" || name == "volt.connectors:connector_1x02") {
+    if (name == "volt.connectors:connector_1x02") {
         return connector_symbol(name, {"+", "-"});
     }
     if (name == "volt.connectors:connector_1x03") {

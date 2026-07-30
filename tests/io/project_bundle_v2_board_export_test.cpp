@@ -30,7 +30,7 @@ TEST_CASE("ProjectBundle v2 Board exports are opt-in typed and fail before publi
     const auto path = temporary.path() / "selected.volt";
     selected.write(path);
     const auto reopened = volt::io::ProjectBundle::open(path);
-    CHECK(reopened.require_v2().loaded_project().selected_exports().size() == 2U);
+    CHECK(reopened.graph().loaded_project().selected_exports().size() == 2U);
     const auto selected_manifest = Json::parse(selected.manifest_bytes());
     CHECK(selected.build_id() == baseline.build_id());
     CHECK(selected_manifest.at("export_selection").size() == 2U);

@@ -17,7 +17,7 @@
 #include <volt/io/parts/part_library_bundle.hpp>
 #include <volt/io/pcb/compiled_board_consumers.hpp>
 #include <volt/io/project_bundle.hpp>
-#include <volt/io/project_bundle_v2_writer.hpp>
+#include <volt/io/project_bundle_writer.hpp>
 #include <volt/io/schematic/schematic_writer.hpp>
 
 #include "support/compiled_board_export_helpers.hpp"
@@ -198,8 +198,8 @@ struct SymbolVariantFixture {
                         std::move(compiled), std::move(scene)};
 }
 
-[[nodiscard]] volt::io::ProjectBundleV2Builder project_builder() {
-    return volt::io::ProjectBundleV2Builder{
+[[nodiscard]] volt::io::ProjectBundleBuilder project_builder() {
+    return volt::io::ProjectBundleBuilder{
         volt::io::ProjectIdentity{"board-fixture", std::nullopt, std::nullopt},
         volt::io::ProjectRunSummary{
             true, volt::io::ProjectStatus::Clean, "default", {"design", "board"}},
@@ -211,7 +211,7 @@ struct SymbolVariantFixture {
         volt::io::ProjectReport{R"({"summary":{"passed":0,"failed":0},"tests":[]})"}};
 }
 
-[[nodiscard]] volt::io::ProjectBundleV2Builder board_builder(const BoardFixture &fixture) {
+[[nodiscard]] volt::io::ProjectBundleBuilder board_builder(const BoardFixture &fixture) {
     auto builder = project_builder();
     builder.add_logical(volt::io::DesignKey{"main"}, *fixture.circuit, fixture.bundle);
     builder.add_board(volt::io::DesignKey{"main"}, fixture.board, fixture.compiled, fixture.scene,
@@ -237,7 +237,7 @@ TEST_CASE("ProjectBundle v2 reopens a selected part with a non-default symbol va
     CHECK(symbol->at("id").at("owner").at("value").at("key") == "symbol:VariantSymbol@vertical");
 
     const auto reopened = volt::io::ProjectBundle::open(path);
-    CHECK(reopened.require_v2().loaded_project().circuits().size() == 1U);
+    CHECK(reopened.graph().loaded_project().circuits().size() == 1U);
 }
 
 TEST_CASE("ProjectBundle v2 reopens independent multiple named Board alternatives") {
@@ -266,7 +266,7 @@ TEST_CASE("ProjectBundle v2 reopens independent multiple named Board alternative
     bundle.write(path);
 
     const auto reopened = volt::io::ProjectBundle::open(path);
-    const auto loaded = reopened.require_v2().loaded_project();
+    const auto loaded = reopened.graph().loaded_project();
     const auto boards = loaded.boards();
     const auto compiled = loaded.compiled_boards();
     const auto scenes = loaded.board_scenes();
@@ -296,7 +296,7 @@ TEST_CASE("ProjectBundle v2 pairs same-name Boards by exact typed design edge") 
     const auto path = temporary.path() / "same-name-boards.volt";
     bundle.write(path);
 
-    const auto loaded = volt::io::ProjectBundle::open(path).require_v2().loaded_project();
+    const auto loaded = volt::io::ProjectBundle::open(path).graph().loaded_project();
     const auto boards = loaded.boards();
     const auto compiled = loaded.compiled_boards();
     REQUIRE(boards.size() == 2U);
@@ -316,7 +316,7 @@ TEST_CASE("ProjectBundle v2 reopens the exact capability-gated GLB closure") {
     bundle.write(path);
 
     const auto reopened = volt::io::ProjectBundle::open(path);
-    const auto graph = reopened.require_v2();
+    const auto graph = reopened.graph();
     const auto loaded = graph.loaded_project();
     const auto scenes = loaded.board_scenes();
     REQUIRE(scenes.size() == 1U);
@@ -333,14 +333,14 @@ TEST_CASE("ProjectBundle v2 typed leases survive source destruction and owner mo
     const auto publication = board_builder(fixture).build();
     const auto temporary = TempDirectory{};
     const auto archive = temporary.path() / "lease.volt.zip";
-    publication.write(archive, volt::io::ProjectBundleV2Representation::Zip);
+    publication.write(archive, volt::io::ProjectBundleRepresentation::Zip);
 
     const auto retained = [&] {
         auto owner = volt::io::ProjectBundle::open(archive);
         auto moved = std::move(owner);
         auto reassigned = volt::io::ProjectBundle::open(archive);
         reassigned = std::move(moved);
-        const auto loaded = reassigned.require_v2().loaded_project();
+        const auto loaded = reassigned.graph().loaded_project();
         return std::tuple{loaded.boards().front(), loaded.compiled_boards().front(),
                           loaded.board_scenes().front(), loaded.diagnostics()};
     }();

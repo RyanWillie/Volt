@@ -1,6 +1,8 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "support/resolved_board_test_parts.hpp"
+
 #include <string>
 #include <vector>
 
@@ -13,6 +15,7 @@ namespace {
 
 struct PlacementFixture {
     volt::Circuit circuit;
+    volt::test::ResolvedBoardTestParts parts;
     std::vector<volt::ComponentId> components;
     volt::PinDefId first_pin_definition;
     volt::PinDefId second_pin_definition;
@@ -110,6 +113,7 @@ find_diagnostics(const volt::DiagnosticReport &report, const std::string &code) 
 make_placed_resistors(std::size_t count, volt::FootprintRef footprint = volt::FootprintRef{
                                              "passives", "R_0603_1608Metric"}) {
     auto circuit = volt::Circuit{};
+    auto parts = volt::test::ResolvedBoardTestParts{};
     const auto component_definition = circuit.define_component(volt::ComponentSpec{
         .name = "Resistor",
         .pins =
@@ -137,18 +141,30 @@ make_placed_resistors(std::size_t count, volt::FootprintRef footprint = volt::Fo
             component_definition,
             volt::ComponentInstanceSpec{
                 .reference = volt::ReferenceDesignator{"R" + std::to_string(index + 1U)}});
-        circuit.update(component, volt::SelectPhysicalPart{volt::PhysicalPart{
-                                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                      volt::PackageRef{"0603"},
-                                      footprint,
-                                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                                  volt::PinPadMapping{second_pin_definition, "2"}},
-                                  }});
+        parts.set(circuit, component,
+                  volt::PhysicalPart{
+                      volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                      volt::PackageRef{"0603"},
+                      footprint,
+                      std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                  volt::PinPadMapping{second_pin_definition, "2"}},
+                  });
         components.push_back(component);
     }
 
-    return PlacementFixture{std::move(circuit), std::move(components), first_pin_definition,
-                            second_pin_definition};
+    return PlacementFixture{std::move(circuit), std::move(parts), std::move(components),
+                            first_pin_definition, second_pin_definition};
+}
+
+[[nodiscard]] volt::ResolvedBoardView resolved(const volt::Board &board,
+                                               const volt::FootprintLibrary &footprints) {
+    return volt::ResolvedBoardView::test_only(board, footprints, {});
+}
+
+[[nodiscard]] volt::ResolvedBoardView resolved(const PlacementFixture &fixture,
+                                               const volt::Board &board,
+                                               const volt::FootprintLibrary &footprints) {
+    return fixture.parts.view(board, footprints);
 }
 
 [[nodiscard]] volt::Board make_visual_board(const PlacementFixture &fixture) {
@@ -176,7 +192,7 @@ TEST_CASE("Board validation diagnoses layer stack side order conflicts") {
         volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
     board.set_layer_stack(volt::LayerStack{{back, front}, 1.6});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
 
     const auto *order = find_diagnostic(report, "PCB_LAYER_STACK_SIDE_ORDER_CONFLICT");
     REQUIRE(order != nullptr);
@@ -193,7 +209,7 @@ TEST_CASE("Board validation checks mechanical opening extents against the outlin
     const auto clipped_hole = board.add_feature(
         volt::BoardFeature::hole("MH", volt::BoardPoint{0.5, 5.0}, 2.0, false, "mounting"));
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
 
     const auto *outside_outline = find_diagnostic(report, "PCB_BOARD_FEATURE_OUTSIDE_OUTLINE");
     REQUIRE(outside_outline != nullptr);
@@ -218,7 +234,7 @@ TEST_CASE("Board validation checks cutout edges against concave outlines") {
                     volt::BoardPoint{3.0, 9.0}},
         "access"));
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
 
     const auto *outside_outline = find_diagnostic(report, "PCB_BOARD_FEATURE_OUTSIDE_OUTLINE");
     REQUIRE(outside_outline != nullptr);
@@ -257,7 +273,7 @@ TEST_CASE("Board validation rejects zero-clearance polygon edges crossing concav
         std::vector{front},
     });
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
 
     const auto *outside_outline = find_diagnostic(report, "PCB_COPPER_OUTSIDE_OUTLINE");
     REQUIRE(outside_outline != nullptr);
@@ -280,7 +296,7 @@ TEST_CASE("Board footprint DRC reports measured assembly comfort gaps") {
     [[maybe_unused]] const auto clean = board.place_component(volt::ComponentPlacement{
         fixture.components[2], volt::BoardPoint{12.70, 10.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto report = volt::validate_board(board, library);
+    const auto report = volt::validate_board(resolved(fixture, board, library));
 
     const auto warnings = find_diagnostics(report, "PCB_COMPONENT_ASSEMBLY_CLEARANCE_WARNING");
     REQUIRE(warnings.size() == 2);
@@ -309,7 +325,7 @@ TEST_CASE("Board footprint DRC distinguishes hard package overlap failures") {
     const auto second = board.place_component(volt::ComponentPlacement{
         fixture.components[1], volt::BoardPoint{10.9, 10.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto report = volt::validate_board(board, library);
+    const auto report = volt::validate_board(resolved(fixture, board, library));
 
     const auto *body = find_diagnostic(report, "PCB_COMPONENT_BODY_OVERLAP");
     REQUIRE(body != nullptr);
@@ -338,7 +354,7 @@ TEST_CASE("Board footprint DRC reports body and courtyard board-edge clearance")
     const auto placement = board.place_component(volt::ComponentPlacement{
         fixture.components[0], volt::BoardPoint{0.6, 5.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto report = volt::validate_board(board, library);
+    const auto report = volt::validate_board(resolved(fixture, board, library));
 
     const auto edge = find_diagnostics(report, "PCB_COMPONENT_BOARD_EDGE_CLEARANCE_VIOLATION");
     REQUIRE(edge.size() == 2);
@@ -363,7 +379,8 @@ TEST_CASE("Board visual validation accepts spaced component footprint extents") 
     [[maybe_unused]] const auto second = board.place_component(volt::ComponentPlacement{
         fixture.components[1], volt::BoardPoint{15.0, 10.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report =
+        volt::validate_board(resolved(fixture, board, volt::builtin_footprint_library()));
 
     CHECK(find_diagnostic(
               report, std::string{volt::pcb_visual_diagnostic_codes::PlacementOverlap}) == nullptr);
@@ -379,7 +396,8 @@ TEST_CASE("Board visual validation treats board sides as separate placement surf
         volt::ComponentPlacement{fixture.components[1], volt::BoardPoint{10.0, 10.0},
                                  volt::BoardRotation::degrees(0.0), volt::BoardSide::Bottom});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report =
+        volt::validate_board(resolved(fixture, board, volt::builtin_footprint_library()));
 
     CHECK(find_diagnostic(
               report, std::string{volt::pcb_visual_diagnostic_codes::PlacementOverlap}) == nullptr);
@@ -395,7 +413,8 @@ TEST_CASE("Board visual validation reports overlapping placement footprint exten
     const auto third = board.place_component(volt::ComponentPlacement{
         fixture.components[2], volt::BoardPoint{14.0, 10.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report =
+        volt::validate_board(resolved(fixture, board, volt::builtin_footprint_library()));
 
     auto visual_overlaps = std::vector<const volt::Diagnostic *>{};
     for (const auto &diagnostic : report.diagnostics()) {
@@ -444,7 +463,8 @@ TEST_CASE("Board visual validation orders placement overlaps by placement pair")
     const auto third = board.place_component(volt::ComponentPlacement{
         fixture.components[2], volt::BoardPoint{11.0, 10.0}, volt::BoardRotation::degrees(0.0)});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report =
+        volt::validate_board(resolved(fixture, board, volt::builtin_footprint_library()));
 
     auto visual_overlaps = std::vector<const volt::Diagnostic *>{};
     for (const auto &diagnostic : report.diagnostics()) {
@@ -481,7 +501,8 @@ TEST_CASE("Board visual validation reports same-side board text overlaps") {
                                                        volt::BoardRotation::degrees(0.0),
                                                        volt::BoardLayerId{0}, 1.0});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report =
+        volt::validate_board(resolved(fixture, board, volt::builtin_footprint_library()));
 
     const auto overlaps =
         find_diagnostics(report, std::string{volt::pcb_visual_diagnostic_codes::LabelOverlap});
@@ -514,7 +535,8 @@ TEST_CASE("Board visual validation treats board text sides as separate visual su
         volt::BoardText{"DATE", volt::BoardPoint{5.0, 5.0}, volt::BoardRotation::degrees(0.0),
                         volt::BoardLayerId{1}, 1.0});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report =
+        volt::validate_board(resolved(fixture, board, volt::builtin_footprint_library()));
 
     CHECK(find_diagnostic(report, std::string{volt::pcb_visual_diagnostic_codes::LabelOverlap}) ==
           nullptr);
@@ -527,7 +549,8 @@ TEST_CASE("Board visual validation reports board text outside the outline") {
                                                      volt::BoardRotation::degrees(0.0),
                                                      volt::BoardLayerId{0}, 1.0});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report =
+        volt::validate_board(resolved(fixture, board, volt::builtin_footprint_library()));
 
     const auto outside =
         find_diagnostics(report, std::string{volt::pcb_visual_diagnostic_codes::LabelOutsideBoard});
@@ -555,7 +578,7 @@ TEST_CASE("Board visual validation reports board text obstructing pads and packa
                                                      volt::BoardRotation::degrees(0.0),
                                                      volt::BoardLayerId{0}, 0.5});
 
-    const auto report = volt::validate_board(board, library);
+    const auto report = volt::validate_board(resolved(fixture, board, library));
 
     const auto obstructions =
         find_diagnostics(report, std::string{volt::pcb_visual_diagnostic_codes::LabelObstruction});
@@ -586,7 +609,8 @@ TEST_CASE("Board visual validation reports bottom text over through-hole pads") 
                                                             volt::BoardRotation::degrees(0.0),
                                                             volt::BoardLayerId{1}, 0.6});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report =
+        volt::validate_board(resolved(fixture, board, volt::builtin_footprint_library()));
 
     const auto obstructions =
         find_diagnostics(report, std::string{volt::pcb_visual_diagnostic_codes::LabelObstruction});
@@ -611,7 +635,8 @@ TEST_CASE("Board visual validation reports board text obstructing board holes") 
                                                      volt::BoardRotation::degrees(0.0),
                                                      volt::BoardLayerId{0}, 0.5});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report =
+        volt::validate_board(resolved(fixture, board, volt::builtin_footprint_library()));
 
     const auto obstructions =
         find_diagnostics(report, std::string{volt::pcb_visual_diagnostic_codes::LabelObstruction});
@@ -632,7 +657,7 @@ TEST_CASE("Board visual validation reports obstructed default reference designat
     const auto second = board.place_component(volt::ComponentPlacement{
         fixture.components[1], volt::BoardPoint{10.0, 8.5}, volt::BoardRotation::degrees(0.0)});
 
-    const auto report = volt::validate_board(board, library);
+    const auto report = volt::validate_board(resolved(fixture, board, library));
 
     const auto hidden = find_diagnostics(
         report, std::string{volt::pcb_visual_diagnostic_codes::ReferenceDesignatorHidden});
@@ -652,21 +677,21 @@ TEST_CASE(
     "Board visual validation uses shared default reference geometry for pad-only footprints") {
     const auto library = mixed_package_library();
     auto fixture = make_placed_resistors(2, square_package_ref());
-    fixture.circuit.update(fixture.components[1],
-                           volt::SelectPhysicalPart{volt::PhysicalPart{
-                               volt::ManufacturerPart{"Volt", "PAD-ONLY"},
-                               volt::PackageRef{"PAD"},
-                               pad_only_ref(),
-                               std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
-                                           volt::PinPadMapping{fixture.second_pin_definition, "2"}},
-                           }});
+    fixture.parts.set(fixture.circuit, fixture.components[1],
+                      volt::PhysicalPart{
+                          volt::ManufacturerPart{"Volt", "PAD-ONLY"},
+                          volt::PackageRef{"PAD"},
+                          pad_only_ref(),
+                          std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
+                                      volt::PinPadMapping{fixture.second_pin_definition, "2"}},
+                      });
     auto board = make_visual_board(fixture);
     const auto square = board.place_component(volt::ComponentPlacement{
         fixture.components[0], volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
     const auto pad_only = board.place_component(volt::ComponentPlacement{
         fixture.components[1], volt::BoardPoint{10.0, 13.55}, volt::BoardRotation::degrees(0.0)});
 
-    const auto report = volt::validate_board(board, library);
+    const auto report = volt::validate_board(resolved(fixture, board, library));
 
     const auto hidden = find_diagnostics(
         report, std::string{volt::pcb_visual_diagnostic_codes::ReferenceDesignatorHidden});
@@ -700,7 +725,8 @@ TEST_CASE("Board visual validation detects board text crossing concave outline v
                                                      volt::BoardRotation::degrees(0.0),
                                                      volt::BoardLayerId{0}, 1.0});
 
-    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+    const auto report =
+        volt::validate_board(resolved(fixture, board, volt::builtin_footprint_library()));
 
     const auto outside =
         find_diagnostics(report, std::string{volt::pcb_visual_diagnostic_codes::LabelOutsideBoard});

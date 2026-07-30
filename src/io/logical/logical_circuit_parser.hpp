@@ -135,11 +135,6 @@ class LogicalCircuitParser {
 
     void read_module_instances();
 
-    [[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>>
-    infer_component_origins(ModuleDefId definition, const ModuleInstanceName &name) const;
-
-    [[nodiscard]] PhysicalPart physical_part(const nlohmann::json &object) const;
-
     [[nodiscard]] LibraryPartRef library_part_ref(const nlohmann::json &object) const;
 
     const nlohmann::json &document_;
@@ -148,7 +143,6 @@ class LogicalCircuitParser {
     std::map<std::string, PinDefId> pin_def_ids_;
     std::map<std::string, ComponentDefId> component_def_ids_;
     std::map<std::string, ComponentId> component_ids_;
-    std::map<std::string, ComponentId> component_reference_ids_;
     std::map<std::string, PinId> pin_ids_;
     std::map<std::string, NetId> net_ids_;
     std::map<std::string, NetClassId> net_class_ids_;

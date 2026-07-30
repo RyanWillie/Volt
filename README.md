@@ -157,7 +157,7 @@ See [docs/architecture.md](docs/architecture.md) for the architectural outline,
 [docs/authoring-api.md](docs/authoring-api.md) for the programmatic authoring
 boundary, [docs/logical-circuit-format.md](docs/logical-circuit-format.md) for the
 canonical logical circuit file format, and
-[docs/schema-versioning.md](docs/schema-versioning.md) for file compatibility policy.
+[docs/schema-versioning.md](docs/schema-versioning.md) for the current-format file policy.
 [docs/python-api.md](docs/python-api.md) documents the Python authoring boundary.
 
 For contributor workflow and milestones, see [CONTRIBUTING.md](CONTRIBUTING.md) and

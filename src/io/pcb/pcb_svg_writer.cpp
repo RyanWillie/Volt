@@ -139,41 +139,22 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     return ref.library() + ":" + ref.name();
 }
 
-[[nodiscard]] FootprintLibrary preview_footprint_library(const Board &board,
-                                                         const FootprintLibrary &footprints) {
-    auto library = FootprintLibrary{};
-    for (std::size_t index = 0; index < board.all<volt::FootprintDefId>().size(); ++index) {
-        library.add(board.get(FootprintDefId{index}));
-    }
-    for (const auto &definition : footprints.definitions()) {
-        const auto *existing = library.find(definition.ref());
-        if (existing == nullptr) {
-            library.add(definition);
-            continue;
-        }
-        if (::volt::queries::footprint_definition_conflicts(*existing, definition)) {
-            throw KernelLogicError{
-                ErrorCode::InvalidState,
-                "Board footprint definition conflicts with footprint library definition"};
-        }
-    }
-    return library;
-}
-
 [[nodiscard]] const FootprintDefinition *
-resolve_definition_for_placement(const Board &board, const ComponentPlacement &placement,
-                                 const FootprintLibrary &footprints) {
-    const auto &selected_part =
-        volt::queries::selected_physical_part(board.circuit(), placement.component());
-    if (!selected_part.has_value()) {
+resolve_definition_for_placement(const ResolvedBoardView &resolved,
+                                 const ComponentPlacement &placement) {
+    const auto *selected_part = resolved.part(placement.component());
+    if (selected_part == nullptr) {
         return nullptr;
     }
 
-    const auto cached = queries::footprint_definition_id(board, selected_part->footprint());
+    const auto &board = resolved.board();
+    const auto &footprints = resolved.footprints();
+    const auto cached =
+        queries::footprint_definition_id(board, selected_part->physical_part().footprint());
     if (cached.has_value()) {
         return &board.get(cached.value());
     }
-    return footprints.find(selected_part->footprint());
+    return footprints.find(selected_part->physical_part().footprint());
 }
 
 [[nodiscard]] bool contains_footprint_ref(const std::vector<FootprintRef> &refs,
@@ -181,12 +162,14 @@ resolve_definition_for_placement(const Board &board, const ComponentPlacement &p
     return std::find(refs.begin(), refs.end(), ref) != refs.end();
 }
 
-[[nodiscard]] std::optional<FootprintDefId> projection_footprint_definition_id_for_placement(
-    const Board &board, ComponentPlacementId placement_id, const FootprintLibrary &footprints) {
+[[nodiscard]] std::optional<FootprintDefId>
+projection_footprint_definition_id_for_placement(const ResolvedBoardView &resolved,
+                                                 ComponentPlacementId placement_id) {
+    const auto &board = resolved.board();
+    const auto &footprints = resolved.footprints();
     const auto &placement = board.get(placement_id);
-    const auto &selected_part =
-        volt::queries::selected_physical_part(board.circuit(), placement.component());
-    if (!selected_part.has_value()) {
+    const auto *selected_part = resolved.part(placement.component());
+    if (selected_part == nullptr) {
         return std::nullopt;
     }
 
@@ -198,17 +181,17 @@ resolve_definition_for_placement(const Board &board, const ComponentPlacement &p
 
     for (std::size_t index = 0; index <= placement_id.index(); ++index) {
         const auto &candidate_placement = board.get(ComponentPlacementId{index});
-        const auto &candidate_part =
-            volt::queries::selected_physical_part(board.circuit(), candidate_placement.component());
-        if (!candidate_part.has_value() ||
-            contains_footprint_ref(refs, candidate_part->footprint()) ||
-            footprints.find(candidate_part->footprint()) == nullptr) {
+        const auto *candidate_part = resolved.part(candidate_placement.component());
+        if (candidate_part == nullptr ||
+            contains_footprint_ref(refs, candidate_part->physical_part().footprint()) ||
+            footprints.find(candidate_part->physical_part().footprint()) == nullptr) {
             continue;
         }
-        refs.push_back(candidate_part->footprint());
+        refs.push_back(candidate_part->physical_part().footprint());
     }
 
-    const auto match = std::find(refs.begin(), refs.end(), selected_part->footprint());
+    const auto match =
+        std::find(refs.begin(), refs.end(), selected_part->physical_part().footprint());
     if (match == refs.end()) {
         return std::nullopt;
     }
@@ -236,8 +219,9 @@ void include_board_point(PcbSvgBounds &bounds, BoardPoint point) {
 }
 
 [[nodiscard]] PcbSvgBounds
-bounds_from_board(const Board &board, const FootprintLibrary &footprints,
+bounds_from_board(const ResolvedBoardView &resolved,
                   const std::vector<ProjectedFootprintGeometry> &footprint_geometries) {
+    const auto &board = resolved.board();
     auto bounds = bounds_from_outline(board);
     for (std::size_t index = 0; index < board.all<volt::BoardFeatureId>().size(); ++index) {
         include_feature_bounds(bounds, board.get(BoardFeatureId{index}));
@@ -282,7 +266,7 @@ bounds_from_board(const Board &board, const FootprintLibrary &footprints,
         const auto placement_id = ComponentPlacementId{index};
         const auto &placement = board.get(placement_id);
         include_board_point(bounds, placement.position());
-        const auto *definition = resolve_definition_for_placement(board, placement, footprints);
+        const auto *definition = resolve_definition_for_placement(resolved, placement);
         if (definition != nullptr) {
             include_footprint_bounds(
                 bounds, placement, *definition,
@@ -457,13 +441,14 @@ keepout_restriction_list_attr(const std::vector<BoardKeepoutRestriction> &restri
     return result;
 }
 
-void write_pad_overlays(std::ostream &out, const Board &board,
+void write_pad_overlays(std::ostream &out, const ResolvedBoardView &resolved,
                         const std::vector<PadResolution> &resolutions,
-                        const FootprintLibrary &footprints, PcbPlacementSvgOptions options) {
+                        PcbPlacementSvgOptions options) {
+    const auto &board = resolved.board();
     out << "    <g class=\"layer layer-pad-overlays\">\n";
     if (options.pad_net_overlays) {
         for (const auto &resolution : resolutions) {
-            if (!pad_resolution_selected(board, resolution, footprints, options)) {
+            if (!pad_resolution_selected(resolved, resolution, options)) {
                 continue;
             }
             const auto status = pad_resolution_status_name(resolution.status());
@@ -495,8 +480,8 @@ void write_pad_overlays(std::ostream &out, const Board &board,
     out << "    </g>\n";
 }
 
-void write_ratsnest(std::ostream &out, const Board &board, const std::vector<RatsnestEdge> &edges,
-                    const FootprintLibrary &footprints, PcbPlacementSvgOptions options) {
+void write_ratsnest(std::ostream &out, const ResolvedBoardView &resolved,
+                    const std::vector<RatsnestEdge> &edges, PcbPlacementSvgOptions options) {
     out << "    <g class=\"layer layer-ratsnest\">\n";
     auto current_net = std::optional<NetId>{};
     std::size_t net_edge_index = 0;
@@ -504,9 +489,9 @@ void write_ratsnest(std::ostream &out, const Board &board, const std::vector<Rat
         if (options.layer_filter.has_value()) {
             const auto layer = options.layer_filter.value();
             const auto from_selected = placement_pad_selected_for_layer(
-                board, footprints, edge.from().placement(), edge.from().pad(), layer);
+                resolved, edge.from().placement(), edge.from().pad(), layer);
             const auto to_selected = placement_pad_selected_for_layer(
-                board, footprints, edge.to().placement(), edge.to().pad(), layer);
+                resolved, edge.to().placement(), edge.to().pad(), layer);
             if (!from_selected || !to_selected) {
                 continue;
             }
@@ -777,19 +762,18 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
 
 namespace volt::io {
 
-void write_pcb_placement_svg(std::ostream &out, const Board &board,
-                             const FootprintLibrary &footprints, PcbPlacementSvgOptions options) {
-    const auto preview_footprints = detail::preview_footprint_library(board, footprints);
-    const auto diagnostics = validate_board(board, preview_footprints);
-    const auto footprint_geometries =
-        queries::project_footprint_geometries(board, preview_footprints);
-    auto bounds = detail::bounds_from_board(board, preview_footprints, footprint_geometries);
+void write_pcb_placement_svg(std::ostream &out, const ResolvedBoardView &resolved,
+                             PcbPlacementSvgOptions options) {
+    const auto &board = resolved.board();
+    const auto diagnostics = validate_board(resolved);
+    const auto footprint_geometries = queries::project_footprint_geometries(resolved);
+    auto bounds = detail::bounds_from_board(resolved, footprint_geometries);
     detail::include_selected_diagnostic_overlay_bounds(bounds, board, diagnostics, options);
     const auto width = detail::preview_width(bounds);
     const auto height = detail::preview_height(bounds, board, diagnostics, options);
     const auto translate_x = detail::pcb_svg_margin_mm - bounds.min_x;
     const auto translate_y = detail::pcb_svg_margin_mm - bounds.min_y;
-    const auto resolutions = queries::resolve_pads(board, preview_footprints);
+    const auto resolutions = queries::resolve_pads(resolved);
     const auto ratsnest_edges = derive_ratsnest_edges(board.circuit(), resolutions);
     const auto has_copper =
         board.all<volt::BoardTrackId>().size() != 0U || board.all<volt::BoardViaId>().size() != 0U;
@@ -837,22 +821,21 @@ void write_pcb_placement_svg(std::ostream &out, const Board &board,
         detail::write_texts(out, board, layer);
         out << "    </g>\n";
     }
-    detail::write_placements(out, board, preview_footprints, resolutions, footprint_geometries,
-                             diagnostics, options);
+    detail::write_placements(out, resolved, resolutions, footprint_geometries, diagnostics,
+                             options);
     if (options.ratsnest_edges) {
-        detail::write_ratsnest(out, board, ratsnest_edges, preview_footprints, options);
+        detail::write_ratsnest(out, resolved, ratsnest_edges, options);
     }
-    detail::write_pad_overlays(out, board, resolutions, preview_footprints, options);
+    detail::write_pad_overlays(out, resolved, resolutions, options);
     detail::write_diagnostics(out, board, diagnostics, bounds, options);
     out << "  </g>\n";
     out << "</svg>\n";
 }
 
-[[nodiscard]] std::string write_pcb_placement_svg(const Board &board,
-                                                  const FootprintLibrary &footprints,
+[[nodiscard]] std::string write_pcb_placement_svg(const ResolvedBoardView &resolved,
                                                   PcbPlacementSvgOptions options) {
     auto out = std::ostringstream{};
-    write_pcb_placement_svg(out, board, footprints, options);
+    write_pcb_placement_svg(out, resolved, options);
     return out.str();
 }
 

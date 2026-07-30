@@ -121,25 +121,8 @@ namespace volt::io::detail {
         }
     }
 
-    for (auto &selected : plan.selected_physical_parts) {
-        const auto definition = circuit.get(selected.component).definition();
-        circuit.select_physical_part(selected.component, std::move(selected.physical_part),
-                                     circuit.get(definition).pins());
-        for (const auto &[name, value] : selected.electrical_attributes.entries()) {
-            circuit.set_selected_part_attribute(
-                selected.component,
-                ElectricalAttributeSpec{name, ElectricalAttributeOwner::SelectedPart,
-                                        ElectricalAttributeKind::DesignInput, value.dimension()},
-                value);
-        }
-    }
-
     for (auto &selected : plan.selected_library_parts) {
         const auto &component = circuit.get(selected.component);
-        if (component.selected_physical_part().has_value()) {
-            throw KernelLogicError{ErrorCode::InvalidState,
-                                   "Component cannot restore two selected-part representations"};
-        }
         circuit.connectivity_.replace_component(
             selected.component,
             component.with_selected_library_part_ref(std::move(selected.reference)));

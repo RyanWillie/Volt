@@ -299,12 +299,6 @@ module_component_origins(const Circuit &circuit, ModuleInstanceId instance) {
     return std::nullopt;
 }
 
-[[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part(const Circuit &circuit,
-                                                                        ComponentId component) {
-    require_component(circuit, component);
-    return circuit.get(component).selected_physical_part();
-}
-
 [[nodiscard]] const std::optional<LibraryPartRef> &
 selected_library_part_ref(const Circuit &circuit, ComponentId component) {
     require_component(circuit, component);

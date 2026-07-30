@@ -102,7 +102,7 @@ def _passive_0603(
             markings = (
                 volt.FootprintMarking.polarity(_offset_rectangle(0.55, 0.0, 0.12, 0.60)),
             )
-    return volt.FootprintDefinition(
+    return volt.Footprint(
         ref,
         pads=(
             volt.FootprintPad.surface_mount(
@@ -128,7 +128,7 @@ def _passive_0603(
 
 
 def _two_pad_footprint(ref, *, start=(0.0, 0.0), end=(1.5, 0.0)):
-    return volt.FootprintDefinition(
+    return volt.Footprint(
         ref,
         pads=(
             volt.FootprintPad.surface_mount(
@@ -148,7 +148,7 @@ def _two_pad_footprint(ref, *, start=(0.0, 0.0), end=(1.5, 0.0)):
 
 
 def _one_pad_footprint(ref):
-    return volt.FootprintDefinition(
+    return volt.Footprint(
         ref,
         pads=(
             volt.FootprintPad.surface_mount(
@@ -163,7 +163,7 @@ def _one_pad_footprint(ref):
 
 def _rect_0603(ref):
     half_span = 0.75
-    return volt.FootprintDefinition(
+    return volt.Footprint(
         ref,
         pads=(
             volt.FootprintPad.surface_mount(
@@ -2156,7 +2156,7 @@ def test_python_board_registers_native_part_owned_footprint():
             "polygon": [[-1.0, -0.5], [-0.85, -0.5], [-1.0, -0.35]],
         },
     ]
-    assert document["board"]["placements"][0]["footprint"] == "footprint_def:0"
+    assert "footprint" not in document["board"]["placements"][0]
     assert "viewer" not in document
 
     svg = board.to_svg()
@@ -2298,10 +2298,7 @@ def test_python_board_dedupes_native_part_footprints_and_rejects_conflicts():
     document = json.loads(board.to_json())
 
     assert len(document["board"]["footprint_definitions"]) == 1
-    assert [placement["footprint"] for placement in document["board"]["placements"]] == [
-        "footprint_def:0",
-        "footprint_def:0",
-    ]
+    assert all("footprint" not in placement for placement in document["board"]["placements"])
     library.part(
         "Conflicting",
         pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],

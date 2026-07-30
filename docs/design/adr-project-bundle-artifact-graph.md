@@ -11,8 +11,8 @@ project build. Python continues to execute authoring source and orchestrate `Pro
 C++ owns the v2 manifest contract, semantic artifact construction, owner-local codecs,
 validation, and verified reopening.
 
-The manifest family remains `volt.project_result` and advances from `schema_version: 1`
-to `schema_version: 2`. A v2 bundle is not a directory of paths with optional metadata:
+The manifest family is `volt.project_result` with `schema_version: 2`. A v2 bundle is not a
+directory of paths with optional metadata:
 every declared payload has a typed role and kind, path-independent identity, exact schema
 and producer versions, a content digest, and complete dependency edges.
 
@@ -323,7 +323,7 @@ Any other kind/owner pairing rejects.
   as the output key. Paths and ordinals are never export identity.
 
 Names used as owner keys are the names validated and persisted by the owning model codec.
-Conditional v1 output names, paths, manifest order, and build-local kernel entity IDs are
+Conditional output names, paths, manifest order, and build-local kernel entity IDs are
 not stable artifact identity. A semantic model change follows that owner's identity rules:
 for example, a changed compiled provenance or component/part semantic digest creates a new
 `ArtifactId`, while a lossless re-encoding may change only the descriptor digest. Renaming
@@ -633,28 +633,17 @@ at stable addresses before constructing Schematics and Boards that borrow them. 
 shape is equivalent to:
 
 ```cpp
-enum class BundleIntegrityStatus {
-    LegacyUnverified,
-    VerifiedV2,
-};
-
-using ProjectBundleContentsView = std::variant<
-    LegacyProjectBundleV1View,
-    ProjectBundleGraphV2View>;
-
 class ProjectBundle final {
   public:
     static ProjectBundle open(const std::filesystem::path &root);
 
-    [[nodiscard]] BundleSchemaVersion schema_version() const noexcept;
-    [[nodiscard]] BundleIntegrityStatus integrity_status() const noexcept;
-    [[nodiscard]] ProjectBundleContentsView view() const;
-    [[nodiscard]] ProjectBundleGraphV2View require_v2() const;
+    [[nodiscard]] ProjectBundleSchemaVersion schema_version() const noexcept;
+    [[nodiscard]] ProjectBundleGraphView graph() const;
 };
 ```
 
 The container is not copyable; moving it must preserve the address and lifetime of loaded
-storage. Version views and their inspection handles are read-only leases over that storage.
+storage. Its graph and inspection handles are read-only leases over that storage.
 They may not expose raw copyable authoring projections or allow a `Schematic`/`Board` copy to
 escape with a dangling Circuit borrow. A handle either remains tied to the container or
 retains the immutable storage lease itself. Circuits and their borrowing Schematics or Boards
@@ -664,16 +653,13 @@ independently owned compiled value when its public type supports that operation.
 vendored definitions, and opaque bytes follow their owner codec's value-or-lease semantics.
 Exact private storage and ABI shape remain implementation details.
 
-`view()` makes version discrimination explicit. `require_v2()` returns the v2 view or throws
-the typed unavailable-in-v1 error; it never returns null.
-
 `ProjectBundle::open` returns a complete owner or throws one typed structural load error.
 It never returns an incomplete owner, callbacks into partially loaded state, or a collection
 of successfully decoded fragments.
 
 ## Validation and Open Order
 
-Opening follows this order for v2:
+Opening follows this order for the current schema:
 
 1. Open the fixed root manifest without symlink traversal, retain one immutable byte
    snapshot, and validate format and exact schema version before constructing model state.
@@ -709,58 +695,24 @@ Disposable views that are not declared are simply absent. A stale declared view 
 silently affect authoritative model loading; strict `ProjectBundle::open` rejects the
 bundle rather than exposing a partial authoritative subset.
 
-## v1/v2 Compatibility Windows
+## Current-Schema Policy
 
 ProjectBundle manifest version is separate from logical, Schematic, PCB, part, and
 component-contract schema versions.
 
-### Write window
-
-- Until the v2 writer is implemented and made public, the existing Python
-  `ProjectResult.write()` remains the only writer and emits v1.
-- At the v2 writer cutover, all new public bundle writes emit v2. No public `write_v1`
-  option or second semantic writer path is added.
-- A v2 writer writes a new empty destination and never rewrites an existing bundle.
+- Every public bundle write emits schema version `2`. There is no alternate writer mode.
+- The writer writes a new empty destination and never rewrites an existing bundle.
   A changed recorded source input, dependency lock, default artifact, or export selection
   produces a new build and/or bundle digest at a new destination.
-- V2 writing requires a structurally complete required graph, though diagnostics may contain
+- Writing requires a structurally complete required graph, though diagnostics may contain
   design errors and project tests may fail. An incomplete manually constructed result emits
-  no v2 bundle.
-
-### Read window
-
-- The first public native bundle opener supports both v1 and v2 and never executes source
-  for either version.
-- V2 receives the verified typed graph described by this ADR and reports
-  `BundleIntegrityStatus::VerifiedV2`.
-- V1 receives a distinct `LegacyProjectBundleV1View` and reports
-  `BundleIntegrityStatus::LegacyUnverified`. It exposes every actual v1 manifest artifact
-  record and decodes every declared supported logical, Schematic, and Board document. Each
-  declared record is opened containment-safely under the v1-compatible path grammar and
-  captured as immutable bytes; any unsafe path or supported-model decode failure rejects the
-  whole open.
-- The v1-compatible grammar accepts legacy UTF-8 slash-separated relative names but rejects
-  empty, `.` or `..` segments, absolute paths, backslashes, drive/UNC syntax, control bytes,
-  NULs, and symlink/reparse traversal. It does not retroactively impose v2's ASCII,
-  case-folding, trailing-dot, reserved-name, or closed-world rules.
-- Byte-duplicate v1 manifest paths reject. Distinct legacy spellings that resolve to the
-  same host file identity also reject; the adapter never aliases or merges records.
-- The v1 adapter verifies every `sha256` field that is present using v1's bare-lowercase-hex
-  spelling. Partial digest coverage never upgrades its overall integrity status. Undeclared
-  v1 files are outside its identity and are neither exposed nor executed.
-- V1 does not synthesize roles, stable artifact IDs, dependency edges, full digest coverage,
-  a dependency lock, selected closure, `CompiledBoard`, or `BoardScene`. Its PCB viewer
-  cache is not a scene. An operation requiring missing v2 meaning returns a typed
-  unavailable-in-v1 error; it must not infer, rebuild, import Python, or consult libraries.
-- Readers never upgrade or mutate either version in place. A future explicit converter
-  must write a new v2 bundle and must fail unless every required v2 meaning is supplied.
-- V1 read support remains until a separate accepted ADR inventories all callers and
-  checked-in fixtures, supplies a migration path, and authorizes removal. There is no
-  calendar- or guess-based removal window.
-
-The current v1 writer may replace its own output directory and supplies a bare hexadecimal
-digest only for part-model assets. This ADR does not retroactively claim that v1 is immutable
-or fully verified; historical v1 artifacts are treated as read-only once opened.
+  no bundle.
+- The opener accepts only schema version `2` and publishes an owner only after verifying the
+  complete graph described by this ADR.
+- Unsupported schemas reject before artifact publication. The opener never upgrades,
+  converts, imports source, consults ambient libraries, or returns a partial graph.
+- Until Volt has an external release or user contract, non-current ProjectBundle artifacts
+  must be regenerated with current Volt source.
 
 ## Historical Immutability
 
@@ -801,9 +753,8 @@ Implementation is admitted only with tests that prove:
 - v2 opens offline and preserves owner identity and Circuit/Schematic/Board lifetimes;
 - empty export selection omits every opt-in kind and each typed request adds only its
   declared export closure;
-- a source sentinel proves all v1/v2 `--bundle` inspection paths do not import or execute
-  project or library source; and
-- v1 fixtures remain explicitly legacy and never acquire inferred v2 meaning.
+- a source sentinel proves all `--bundle` inspection paths do not import or execute project
+  or library source.
 
 ## Consequences
 
@@ -821,7 +772,7 @@ Implementation is admitted only with tests that prove:
 
 ## Non-Goals
 
-- Implementing v1/v2 readers, writers, conversion, Python bindings, or CLI UX.
+- Implementing readers, writers, Python bindings, or CLI UX.
 - Implementing `CompiledBoard`, `BoardScene`, Vault, GLB generation, or asset codecs.
 - Migrating SVG, layer image, KiCad, BOM/CPL, fabrication, STEP, or whole-board GLB
   exporters.
@@ -834,6 +785,6 @@ Implementation is admitted only with tests that prove:
 ## Revisit Trigger
 
 Revisit this ADR only when a concrete artifact cannot be represented by the closed role/kind
-and dependency contract, or when measured compatibility evidence justifies removing v1
-reading. A new export format alone may add a deliberately versioned kind through a successor
-bundle schema; it does not justify an untyped kind, path, or dependency escape hatch.
+and dependency contract, or when an external release/user contract requires a broader schema
+support policy. A new export format alone may add a deliberately versioned kind through a
+successor bundle schema; it does not justify an untyped kind, path, or dependency escape hatch.

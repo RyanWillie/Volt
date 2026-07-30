@@ -71,7 +71,7 @@ the native library model and are evaluated by kernel-owned ERC.
 
 ## Footprint and pin-to-pad map
 
-`FootprintDefinition` holds a library-qualified reference, pads, and optional courtyard,
+`Footprint` holds a library-qualified reference, pads, and optional courtyard,
 body, fabrication outline, assembly outline, and semantic markings. `pads=` maps every
 stable logical pin name or number to one or more footprint pad labels.
 

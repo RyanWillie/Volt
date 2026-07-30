@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "support/resolved_board_test_parts.hpp"
+
 #include <array>
 #include <cstddef>
 #include <optional>
@@ -38,6 +40,7 @@ static_assert(!HasRouteRequestRoot<volt::Board>);
 
 struct QueryFixture {
     volt::Circuit circuit;
+    volt::test::ResolvedBoardTestParts parts;
     volt::ComponentId first_component;
     volt::ComponentId second_component;
     volt::NetId shared_net;
@@ -45,6 +48,7 @@ struct QueryFixture {
 
 [[nodiscard]] QueryFixture make_query_fixture() {
     auto circuit = volt::Circuit{};
+    auto parts = volt::test::ResolvedBoardTestParts{};
     const auto definition = circuit.define_component(volt::ComponentSpec{
         .name = "OnePad",
         .pins = {volt::PinSpec{.name = "IO", .number = "1"}},
@@ -69,9 +73,10 @@ struct QueryFixture {
         volt::FootprintRef{"tests", "OnePad"},
         std::vector{volt::PinPadMapping{pin_definition, "1"}},
     };
-    circuit.update(first_component, volt::SelectPhysicalPart{selected_part});
-    circuit.update(second_component, volt::SelectPhysicalPart{selected_part});
-    return QueryFixture{std::move(circuit), first_component, second_component, shared_net};
+    parts.set(circuit, first_component, selected_part);
+    parts.set(circuit, second_component, selected_part);
+    return QueryFixture{std::move(circuit), std::move(parts), first_component, second_component,
+                        shared_net};
 }
 
 [[nodiscard]] volt::FootprintDefinition query_footprint() {
@@ -119,7 +124,9 @@ TEST_CASE("Board queries expose deterministic lookup, resolution, geometry, and 
           "[pcb][queries]") {
     auto fixture = make_query_fixture();
     auto layout = make_query_board(fixture);
-    const auto empty_library = volt::FootprintLibrary{};
+    auto library = volt::FootprintLibrary{};
+    library.add(query_footprint());
+    const auto resolved = fixture.parts.view(layout.board, library);
     const auto entity_counts = [&layout]() {
         return std::array{
             layout.board.all<volt::BoardLayerId>().size(),
@@ -143,12 +150,8 @@ TEST_CASE("Board queries expose deterministic lookup, resolution, geometry, and 
     CHECK(volt::queries::placement_for_component(layout.board, fixture.second_component) ==
           layout.second_placement);
 
-    const auto resolution_footprints =
-        volt::queries::board_resolution_footprints(layout.board, empty_library);
-    REQUIRE(resolution_footprints.find(volt::FootprintRef{"tests", "OnePad"}) != nullptr);
-
-    const auto first_resolutions = volt::queries::resolve_pads(layout.board, empty_library);
-    const auto second_resolutions = volt::queries::resolve_pads(layout.board, empty_library);
+    const auto first_resolutions = volt::queries::resolve_pads(resolved);
+    const auto second_resolutions = volt::queries::resolve_pads(resolved);
     REQUIRE(first_resolutions.size() == 2U);
     REQUIRE(second_resolutions.size() == first_resolutions.size());
     for (std::size_t index = 0; index < first_resolutions.size(); ++index) {
@@ -164,8 +167,7 @@ TEST_CASE("Board queries expose deterministic lookup, resolution, geometry, and 
     CHECK(first_resolutions[1].placement() == layout.second_placement);
     CHECK(first_resolutions[1].net() == fixture.shared_net);
 
-    const auto geometries =
-        volt::queries::project_footprint_geometries(layout.board, empty_library);
+    const auto geometries = volt::queries::project_footprint_geometries(resolved);
     REQUIRE(geometries.size() == 2U);
     CHECK(geometries[0].placement() == layout.first_placement);
     REQUIRE(geometries[0].body().has_value());
@@ -173,8 +175,8 @@ TEST_CASE("Board queries expose deterministic lookup, resolution, geometry, and 
           std::vector{volt::BoardPoint{3.5, 4.5}, volt::BoardPoint{4.5, 4.5},
                       volt::BoardPoint{4.5, 5.5}, volt::BoardPoint{3.5, 5.5}});
 
-    const auto first_ratsnest = volt::queries::ratsnest_edges(layout.board, empty_library);
-    const auto second_ratsnest = volt::queries::ratsnest_edges(layout.board, empty_library);
+    const auto first_ratsnest = volt::queries::ratsnest_edges(resolved);
+    const auto second_ratsnest = volt::queries::ratsnest_edges(resolved);
     REQUIRE(first_ratsnest.size() == 1U);
     REQUIRE(second_ratsnest.size() == 1U);
     CHECK(first_ratsnest[0].net() == fixture.shared_net);
@@ -190,7 +192,9 @@ TEST_CASE("BoardRouter owns endpoint route sugar and rejects before mutation", "
     auto layout = make_query_board(fixture);
     const auto other_net =
         fixture.circuit.add_net(volt::NetSpec{volt::NetName{"OTHER"}, volt::NetKind::Signal});
-    auto router = volt::BoardRouter{layout.board, volt::FootprintLibrary{}};
+    auto footprints = volt::FootprintLibrary{};
+    footprints.add(query_footprint());
+    auto router = volt::BoardRouter{layout.board, fixture.parts.view(layout.board, footprints)};
     const auto endpoints = std::vector{
         volt::BoardRouteEndpoint::footprint_pad(volt::BoardPoint{4.0, 5.0}, layout.first_placement,
                                                 volt::FootprintPadId{0}),

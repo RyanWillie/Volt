@@ -13,7 +13,7 @@ def test_python_schematic_json_round_trips_as_design_document():
 
     schematic = design.schematic("Main")
     with schematic.drawing() as drawing:
-        drawing.place(r1, at=(40, 20), symbol="resistor").label_ref()
+        drawing.place(r1, at=(40, 20), symbol="volt.passives:resistor").label_ref()
     schematic.wire(vcc, [(20, 20), (40, 20)])
     schematic.label(vcc, at=(20, 16))
 
@@ -39,7 +39,7 @@ def test_python_schematic_json_load_rejects_stale_logical_ids():
     r1 = design.R(resistance=330, ref="R1")
 
     schematic = design.schematic("Main")
-    schematic.place(r1, at=(40, 20), symbol="resistor")
+    schematic.place(r1, at=(40, 20), symbol="volt.passives:resistor")
     schematic.wire(vcc, [(20, 20), (40, 20)])
 
     projection = json.loads(schematic.to_json())
@@ -59,7 +59,7 @@ def test_python_schematic_writes_svg_projection():
 
     schematic = design.schematic("Main")
     with schematic.drawing() as drawing:
-        drawing.place(r1, at=(40, 20), symbol="resistor").label_ref()
+        drawing.place(r1, at=(40, 20), symbol="volt.passives:resistor").label_ref()
     schematic.wire(vcc, [(20, 20), (40, 20)])
     schematic.label(vcc, at=(20, 16))
 
@@ -118,7 +118,7 @@ def test_python_schematic_net_labels_and_fields_preserve_text_metadata():
     r1 = design.R(resistance=330, ref="R1")
 
     schematic = design.schematic("Main")
-    placed = schematic.place(r1, at=(40, 20), symbol="resistor")
+    placed = schematic.place(r1, at=(40, 20), symbol="volt.passives:resistor")
     schematic.label(
         vcc,
         at=(20, 16),

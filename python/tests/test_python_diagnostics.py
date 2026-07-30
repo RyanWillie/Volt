@@ -114,7 +114,6 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "BOM_COMPONENT_MISSING_SELECTED_PART",
         "BOM_COMPONENT_IMPLICIT_DNP",
         "BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY",
-        "BOM_LEGACY_INLINE_SELECTED_PART_UNSUPPORTED",
     )
     assert volt.ASSEMBLY_DIAGNOSTIC_CODES == (
         "ASSEMBLY_COMPONENT_MISSING_SELECTED_PART",
@@ -243,7 +242,7 @@ def test_python_schematic_readiness_reports_detached_net_stubs():
     vcc += r1[1]
 
     schematic = design.schematic("Main")
-    schematic.place(r1, at=(40, 20), symbol="resistor")
+    schematic.place(r1, at=(40, 20), symbol="volt.passives:resistor")
     schematic.wire(vcc, [(0, 12), (10, 12)])
     schematic.label(vcc, at=(0, 10))
 
@@ -275,9 +274,9 @@ def test_python_schematic_validation_reports_quality_diagnostics():
     r1[2].mark_no_connect()
 
     schematic = design.schematic("Main")
-    first = schematic.place(r1, at=(40, 20), symbol="resistor")
-    second = schematic.place(r2, at=(80, 20), symbol="resistor")
-    third = schematic.place(r3, at=(120, 20), symbol="resistor")
+    first = schematic.place(r1, at=(40, 20), symbol="volt.passives:resistor")
+    second = schematic.place(r2, at=(80, 20), symbol="volt.passives:resistor")
+    third = schematic.place(r3, at=(120, 20), symbol="volt.passives:resistor")
     schematic.label(vcc, at=first.pin(1))
     schematic.label(vcc, at=second.pin(1))
     schematic.label(vcc, at=third.pin(1))
@@ -304,7 +303,7 @@ def test_python_schematic_readability_reports_presentation_diagnostics():
     power.label(scoped, at=(35, 5), orient="down")
     schematic.label(scoped, at=(20, 65))
     with schematic.drawing(at=(40, 20)) as drawing:
-        placed = drawing.place(r1, symbol="resistor")
+        placed = drawing.place(r1, symbol="volt.passives:resistor")
         placed.label_ref()
 
     report = schematic.validate_readability()

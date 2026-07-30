@@ -45,11 +45,10 @@ dictionary matching the kernel diagnostic entity reference.
 | `volt.Project` | Staged workflow entry point for design, schematic, PCB, diagnostics, tests, and bundle writing. |
 | `volt.ProjectStage` | Stage handle used as a build decorator and result lookup key. |
 | `volt.ProjectResult` | Output of one project run with collected models, diagnostics, tests, and artifact writing. |
-| `volt.ProjectBundle` | Move-only native owner for offline opening and complete verification of a v1 or v2 project bundle. |
-| `volt.ProjectBundleSchemaVersion` | Explicit v1/v2 manifest dispatch result. |
+| `volt.ProjectBundle` | Move-only native owner for offline opening and complete verification of the current schema 2 project bundle. |
+| `volt.ProjectBundleSchemaVersion` | Current ProjectBundle manifest schema. |
 | `volt.ProjectBundleStorageKind` | Opened directory or ZIP representation. |
-| `volt.BundleIntegrityStatus` | Truthful legacy-unverified or fully-verified-v2 trust state. |
-| `volt.ArtifactId` | Exact typed identity used for native-backed v2 artifact lookup. |
+| `volt.ArtifactId` | Exact typed identity used for native-backed artifact lookup. |
 | `volt.ManufacturingPackageResult` | Summary returned by `ProjectResult.write_manufacturing_package` after writing a deterministic manufacturing handoff package. |
 | `volt.ManufacturingPackageError` | Refusal raised when a manufacturing package would be unsafe or ambiguous to write. |
 | `volt.ExpectedDiagnostic` | Project-local declaration for one known product-intent diagnostic. |
@@ -88,6 +87,7 @@ Inspection records: `volt.TemplateNetInfo`, `volt.PortInfo`, `volt.ModuleCompone
 | `volt.PinSpec` | Data for a component pin definition. |
 | `volt.PartModel3D` | Footprint-relative 3D asset declaration for a selected physical part. |
 | `volt.Part` | Public reusable part definition with logical pins, symbols, footprint geometry, exact pad mapping, canonical electrical records, and manufacturer metadata. |
+| `volt.PartProvenance` | Typed datasheet, author, and derivation provenance lowered into native `PartProvenance`. |
 | `volt.ComponentContract` | Native-lowered stable component identity, subject definitions, feature schemas, and feature bindings. |
 | `volt.ContractFramedPin` | Named component-contract voltage frame over a pin and reference pin. |
 | `volt.ContractDirectedRelation` | Named component-contract relation from one stable pin to another. |
@@ -150,7 +150,6 @@ Inspection records: `volt.TemplateNetInfo`, `volt.PortInfo`, `volt.ModuleCompone
 | `volt.PlacedBoardComponent` | Rich handle returned by layout placement helpers. |
 | `volt.CapabilityProfile` | Ingested manufacturer capability snapshot with source and as-of provenance. |
 | `volt.Footprint` | Board-ready footprint identity and pad geometry. |
-| `volt.FootprintDefinition` | Compatibility alias for `volt.Footprint`. |
 | `volt.FootprintMarking` | Footprint-owned silkscreen, polarity, and pin-1 marking geometry. |
 | `volt.FootprintPad` | Surface-mount or through-hole pad definition. |
 | `volt.FootprintDrill` | Through-hole drill definition. |

@@ -486,9 +486,9 @@ TEST_CASE("CompiledBoard revisions keep named Boards and storage lifetimes indep
     auto moved = std::move(reopened);
     CHECK(moved.board().name().value() == "Offline");
     REQUIRE(moved.parts().size() == 1U);
-    CHECK(volt::queries::selected_physical_part(moved.board().circuit(),
-                                                moved.parts().front().component())
-              .has_value());
+    REQUIRE(moved.part(moved.parts().front().component()) != nullptr);
+    CHECK(moved.part(moved.parts().front().component())->physical_part().manufacturer_part() ==
+          moved.parts().front().physical_part().manufacturer_part());
     CHECK(moved.footprints().definitions().size() == 1U);
     REQUIRE(moved.placements().size() == 1U);
     CHECK(moved.placements().front().placement() == volt::ComponentPlacementId{0});
@@ -551,9 +551,9 @@ TEST_CASE("CompiledBoard preserves identity for an implicitly authored component
     const auto reopened = volt::io::open_compiled_board(compiled.bytes());
     CHECK(reopened.board().circuit().get(volt::ComponentDefId{0}).name() == source.spec.name);
     REQUIRE(reopened.parts().size() == 1U);
-    CHECK(volt::queries::selected_physical_part(reopened.board().circuit(),
-                                                reopened.parts().front().component())
-              .has_value());
+    REQUIRE(reopened.part(reopened.parts().front().component()) != nullptr);
+    CHECK(reopened.part(reopened.parts().front().component())->reference() ==
+          reopened.parts().front().reference());
 }
 
 TEST_CASE("CompiledBoard rejects ownership and incomplete selected closure atomically") {
@@ -850,31 +850,28 @@ TEST_CASE("CompiledBoard consumers reopen offline with deterministic identity-pr
                                                              bundle, models3d_capabilities()));
 
         const auto validation = volt::validate_board(artifact);
-        const auto legacy_validation =
-            volt::validate_board(artifact.board(), artifact.footprints());
+        const auto view_validation = volt::validate_board(artifact.view());
         CHECK(validation.source() == artifact.identity());
         CHECK(diagnostic_signature(validation.diagnostics()) ==
-              diagnostic_signature(legacy_validation));
+              diagnostic_signature(view_validation));
         CHECK(has_diagnostic(validation.diagnostics(), "PCB_RULE_AT_CAPABILITY_MINIMUM"));
         CHECK(has_diagnostic(validation.diagnostics(), "PCB_NET_UNROUTED"));
 
         const auto ratsnest = volt::compute_ratsnest(artifact);
-        const auto legacy_ratsnest =
-            volt::queries::ratsnest_edges(artifact.board(), artifact.footprints());
+        const auto view_ratsnest = volt::queries::ratsnest_edges(artifact.view());
         CHECK(ratsnest.source() == artifact.identity());
-        CHECK(ratsnest_signature(ratsnest.edges()) == ratsnest_signature(legacy_ratsnest));
+        CHECK(ratsnest_signature(ratsnest.edges()) == ratsnest_signature(view_ratsnest));
 
         const auto cpl = volt::project_cpl(artifact);
-        const auto legacy_cpl = volt::project_cpl(artifact.board(), artifact.footprints());
+        const auto view_cpl = volt::project_cpl(artifact.view());
         CHECK(cpl.source() == artifact.identity());
-        CHECK(volt::io::write_cpl_json(cpl.cpl()) == volt::io::write_cpl_json(legacy_cpl));
+        CHECK(volt::io::write_cpl_json(cpl.cpl()) == volt::io::write_cpl_json(view_cpl));
 
         const auto svg = volt::io::render_pcb_svg(artifact);
-        const auto legacy_svg =
-            volt::io::write_pcb_placement_svg(artifact.board(), artifact.footprints());
+        const auto view_svg = volt::io::write_pcb_placement_svg(artifact.view());
         CHECK(svg.source() == artifact.identity());
         CHECK_FALSE(svg.layer().has_value());
-        CHECK(svg.bytes() == legacy_svg);
+        CHECK(svg.bytes() == view_svg);
 
         const auto layer = volt::io::render_pcb_svg(
             artifact, volt::io::PcbPlacementSvgOptions{.layer_filter = volt::BoardLayerId{0}});
