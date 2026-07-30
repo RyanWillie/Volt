@@ -2,9 +2,10 @@
 
 include(CMakeFindDependencyMacro)
 
-# Volt::IO is a static library and therefore its private Zlib link requirement remains a
-# downstream link requirement. The header-only JSON dependency is build-only and does not
-# appear in the installed interface.
-find_dependency(ZLIB)
+# Volt::IO is static, so a system Zlib remains a downstream link requirement. Builds that
+# could not find a system package install Volt::InternalZlib in the SDK export instead.
+if(@VOLT_PACKAGE_NEEDS_SYSTEM_ZLIB@)
+    find_dependency(ZLIB)
+endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/VoltTargets.cmake")

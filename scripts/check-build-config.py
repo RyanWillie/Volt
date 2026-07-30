@@ -343,10 +343,23 @@ def check_package_install() -> None:
         "$<BUILD_INTERFACE:Volt::NlohmannJson>" in io_cmake,
         "The private header-only JSON dependency must stay out of the installed link interface",
     )
+    require(
+        "volt_install_library(zlibstatic InternalZlib)" in io_cmake,
+        "Fetched Zlib must be installed with the C++ SDK",
+    )
+    require(
+        "OUTPUT_NAME volt_internal_zlib" in io_cmake,
+        "The packaged fallback archive must not collide with a system libz",
+    )
+    require(
+        "$<INSTALL_INTERFACE:${VOLT_INSTALL_ZLIB_TARGET}>" in io_cmake,
+        "The installed IO target must select its packaged or system Zlib dependency",
+    )
     config_template = read("cmake/VoltConfig.cmake.in")
     require(
-        "find_dependency(ZLIB)" in config_template,
-        "The installed static IO target must resolve its Zlib link dependency",
+        "if(@VOLT_PACKAGE_NEEDS_SYSTEM_ZLIB@)" in config_template
+        and "find_dependency(ZLIB)" in config_template,
+        "The installed static IO target must resolve Zlib only when it was externally supplied",
     )
     require(
         "python scripts/check-package-install.py" in ci_workflow,
