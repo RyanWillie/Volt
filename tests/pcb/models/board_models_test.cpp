@@ -238,6 +238,12 @@ TEST_CASE("Board design rules store a canonical clearance matrix") {
     CHECK_THROWS_AS(rules.set_clearance_mm(volt::BoardClearanceKind::BoardEdge,
                                            volt::BoardClearanceKind::BoardEdge, 0.2),
                     std::invalid_argument);
+    CHECK_THROWS_AS(rules.set_clearance_mm(volt::BoardClearanceKind::MechanicalOpening,
+                                           volt::BoardClearanceKind::MechanicalOpening, 0.2),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(rules.set_clearance_mm(volt::BoardClearanceKind::BoardEdge,
+                                           volt::BoardClearanceKind::MechanicalOpening, 0.2),
+                    std::invalid_argument);
     CHECK_THROWS_AS(rules.set_clearance_mm(volt::BoardClearanceKind::Track,
                                            volt::BoardClearanceKind::Pad, -0.1),
                     std::invalid_argument);
@@ -318,6 +324,18 @@ TEST_CASE("BoardCapabilityProfile validates ingestible manufacturing limits") {
                                                      volt::BoardClearanceKind::Track, 0.25},
                         }}),
                     std::invalid_argument);
+    CHECK_THROWS_AS(
+        (volt::BoardCapabilityProfile{"Example", provenance, 0.20, 0.30, 0.60,
+                                      std::vector{volt::BoardClearancePair{
+                                          volt::BoardClearanceKind::MechanicalOpening,
+                                          volt::BoardClearanceKind::MechanicalOpening, 0.20}}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        (volt::BoardCapabilityProfile{"Example", provenance, 0.20, 0.30, 0.60,
+                                      std::vector{volt::BoardClearancePair{
+                                          volt::BoardClearanceKind::BoardEdge,
+                                          volt::BoardClearanceKind::MechanicalOpening, 0.20}}}),
+        std::invalid_argument);
     CHECK_THROWS_AS((volt::BoardCapabilityProfile{
                         "Example",
                         provenance,
@@ -377,6 +395,14 @@ TEST_CASE("BoardCapabilityProfile exposes a conservative explicit fallback") {
                                        volt::BoardClearanceKind::Track) == 0.20);
     CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Pad,
                                        volt::BoardClearanceKind::BoardEdge) == 0.30);
+    CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Track,
+                                       volt::BoardClearanceKind::MechanicalOpening) == 0.20);
+    CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Pad,
+                                       volt::BoardClearanceKind::MechanicalOpening) == 0.20);
+    CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Via,
+                                       volt::BoardClearanceKind::MechanicalOpening) == 0.20);
+    CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Zone,
+                                       volt::BoardClearanceKind::MechanicalOpening) == 0.20);
     CHECK(profile.copper_weight_refinements().empty());
     CHECK(profile.supported_copper_layer_counts().empty());
     CHECK_FALSE(profile.board_thickness_range_mm().has_value());

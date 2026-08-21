@@ -26,6 +26,140 @@
 #include <volt/core/rule_set.hpp>
 
 namespace volt::detail {
+namespace {
+
+[[nodiscard]] bool point_on_polygon_boundary(const std::vector<BoardPoint> &polygon,
+                                             BoardPoint point) {
+    std::size_t previous = polygon.size() - 1U;
+    for (std::size_t current = 0; current < polygon.size(); ++current) {
+        if (drc_point_on_segment(point, polygon[previous], polygon[current])) {
+            return true;
+        }
+        previous = current;
+    }
+    return false;
+}
+
+[[nodiscard]] bool polygon_strictly_contains_point(const std::vector<BoardPoint> &polygon,
+                                                   BoardPoint point) {
+    return polygon_contains_point(polygon, point) && !point_on_polygon_boundary(polygon, point);
+}
+
+[[nodiscard]] bool segments_properly_intersect(BoardPoint a, BoardPoint b, BoardPoint c,
+                                               BoardPoint d) noexcept {
+    const auto ab_c = board_orientation(a, b, c);
+    const auto ab_d = board_orientation(a, b, d);
+    const auto cd_a = board_orientation(c, d, a);
+    const auto cd_b = board_orientation(c, d, b);
+    return ((ab_c > board_drc_epsilon && ab_d < -board_drc_epsilon) ||
+            (ab_c < -board_drc_epsilon && ab_d > board_drc_epsilon)) &&
+           ((cd_a > board_drc_epsilon && cd_b < -board_drc_epsilon) ||
+            (cd_a < -board_drc_epsilon && cd_b > board_drc_epsilon));
+}
+
+[[nodiscard]] double polygon_signed_area_twice(const std::vector<BoardPoint> &polygon) noexcept {
+    auto result = 0.0;
+    for (std::size_t index = 0; index < polygon.size(); ++index) {
+        const auto next = (index + 1U) % polygon.size();
+        result += (polygon[index].x_mm() * polygon[next].y_mm()) -
+                  (polygon[next].x_mm() * polygon[index].y_mm());
+    }
+    return result;
+}
+
+[[nodiscard]] bool collinear_edges_share_interior_side(BoardPoint lhs_start, BoardPoint lhs_end,
+                                                       double lhs_area, BoardPoint rhs_start,
+                                                       BoardPoint rhs_end,
+                                                       double rhs_area) noexcept {
+    if (std::abs(board_orientation(lhs_start, lhs_end, rhs_start)) > board_drc_epsilon ||
+        std::abs(board_orientation(lhs_start, lhs_end, rhs_end)) > board_drc_epsilon) {
+        return false;
+    }
+    const auto lhs_dx = lhs_end.x_mm() - lhs_start.x_mm();
+    const auto lhs_dy = lhs_end.y_mm() - lhs_start.y_mm();
+    const auto projection = [use_x = std::abs(lhs_dx) >= std::abs(lhs_dy)](BoardPoint point) {
+        return use_x ? point.x_mm() : point.y_mm();
+    };
+    const auto overlap = std::min(std::max(projection(lhs_start), projection(lhs_end)),
+                                  std::max(projection(rhs_start), projection(rhs_end))) -
+                         std::max(std::min(projection(lhs_start), projection(lhs_end)),
+                                  std::min(projection(rhs_start), projection(rhs_end)));
+    if (overlap <= board_drc_epsilon) {
+        return false;
+    }
+
+    const auto rhs_dx = rhs_end.x_mm() - rhs_start.x_mm();
+    const auto rhs_dy = rhs_end.y_mm() - rhs_start.y_mm();
+    const auto lhs_winding = lhs_area > 0.0 ? 1.0 : -1.0;
+    const auto rhs_winding = rhs_area > 0.0 ? 1.0 : -1.0;
+    const auto interior_normal_dot = ((-lhs_dy * lhs_winding) * (-rhs_dy * rhs_winding)) +
+                                     ((lhs_dx * lhs_winding) * (rhs_dx * rhs_winding));
+    return interior_normal_dot > board_drc_epsilon;
+}
+
+[[nodiscard]] bool polygon_edge_enters_interior(const std::vector<BoardPoint> &source,
+                                                const std::vector<BoardPoint> &target) {
+    for (std::size_t index = 0; index < source.size(); ++index) {
+        const auto next = (index + 1U) % source.size();
+        const auto start = source[index];
+        const auto end = source[next];
+        const auto dx = end.x_mm() - start.x_mm();
+        const auto dy = end.y_mm() - start.y_mm();
+        const auto use_x = std::abs(dx) >= std::abs(dy);
+        auto parameters = std::vector{0.0, 1.0};
+        parameters.reserve(target.size() + 2U);
+        for (const auto point : target) {
+            if (!drc_point_on_segment(point, start, end)) {
+                continue;
+            }
+            parameters.push_back(std::clamp(use_x ? (point.x_mm() - start.x_mm()) / dx
+                                                  : (point.y_mm() - start.y_mm()) / dy,
+                                            0.0, 1.0));
+        }
+        std::sort(parameters.begin(), parameters.end());
+        parameters.erase(std::unique(parameters.begin(), parameters.end()), parameters.end());
+        for (std::size_t parameter = 1; parameter < parameters.size(); ++parameter) {
+            const auto midpoint = (parameters[parameter - 1U] + parameters[parameter]) / 2.0;
+            const auto point =
+                BoardPoint{start.x_mm() + (midpoint * dx), start.y_mm() + (midpoint * dy)};
+            if (polygon_strictly_contains_point(target, point)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] bool polygon_interiors_overlap(const std::vector<BoardPoint> &lhs,
+                                             const std::vector<BoardPoint> &rhs) {
+    if (std::any_of(
+            lhs.begin(), lhs.end(),
+            [&rhs](BoardPoint point) { return polygon_strictly_contains_point(rhs, point); }) ||
+        std::any_of(rhs.begin(), rhs.end(), [&lhs](BoardPoint point) {
+            return polygon_strictly_contains_point(lhs, point);
+        })) {
+        return true;
+    }
+    const auto lhs_area = polygon_signed_area_twice(lhs);
+    const auto rhs_area = polygon_signed_area_twice(rhs);
+    for (std::size_t lhs_index = 0; lhs_index < lhs.size(); ++lhs_index) {
+        const auto lhs_next = (lhs_index + 1U) % lhs.size();
+        for (std::size_t rhs_index = 0; rhs_index < rhs.size(); ++rhs_index) {
+            const auto rhs_next = (rhs_index + 1U) % rhs.size();
+            if (segments_properly_intersect(lhs[lhs_index], lhs[lhs_next], rhs[rhs_index],
+                                            rhs[rhs_next])) {
+                return true;
+            }
+            if (collinear_edges_share_interior_side(lhs[lhs_index], lhs[lhs_next], lhs_area,
+                                                    rhs[rhs_index], rhs[rhs_next], rhs_area)) {
+                return true;
+            }
+        }
+    }
+    return polygon_edge_enters_interior(lhs, rhs) || polygon_edge_enters_interior(rhs, lhs);
+}
+
+} // namespace
 
 [[nodiscard]] double shape_distance(const BoardCopperShape &lhs, const BoardCopperShape &rhs) {
     if (lhs.kind == BoardCopperShapeKind::Disc && rhs.kind == BoardCopperShapeKind::Disc) {
@@ -107,7 +241,12 @@ check_mechanical_opening_clearance(const Board &board, const BoardCopperShape &c
         shape_distance(copper, opening_shape) - copper.radius_mm - opening.radius_mm;
     result.required_clearance_mm =
         board.design_rules().clearance_mm(copper_kind, BoardClearanceKind::MechanicalOpening);
-    result.violates = result.actual_clearance_mm + board_drc_epsilon < result.required_clearance_mm;
+    const auto zero_distance_polygon_overlap =
+        copper.kind == BoardCopperShapeKind::Polygon &&
+        opening.kind == BoardCopperShapeKind::Polygon &&
+        polygon_interiors_overlap(copper.points, opening.points);
+    result.violates = zero_distance_polygon_overlap ||
+                      result.actual_clearance_mm + board_drc_epsilon < result.required_clearance_mm;
     return result;
 }
 

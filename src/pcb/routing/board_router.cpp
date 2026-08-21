@@ -680,6 +680,8 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         detail::append_unique_layer(room_layers, layer.value());
     }
 
+    // Escape rooms only override board-wide copper rules, so the current spatial index has the
+    // same effective mechanical-opening legality as each room created below.
     auto staged_index = BoardSpatialIndex{index()};
     auto declined = false;
     for (auto &candidate : candidates) {

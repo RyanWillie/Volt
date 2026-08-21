@@ -264,6 +264,22 @@ canonical_clearance_pair(BoardClearanceKind first, BoardClearanceKind second) {
     return {first, second};
 }
 
+[[nodiscard]] bool copper_clearance_kind(BoardClearanceKind kind) noexcept {
+    return kind == BoardClearanceKind::Track || kind == BoardClearanceKind::Pad ||
+           kind == BoardClearanceKind::Via || kind == BoardClearanceKind::Zone;
+}
+
+[[nodiscard]] bool supported_mechanical_clearance_pair(BoardClearanceKind first,
+                                                       BoardClearanceKind second) noexcept {
+    if (first == BoardClearanceKind::MechanicalOpening) {
+        return copper_clearance_kind(second);
+    }
+    if (second == BoardClearanceKind::MechanicalOpening) {
+        return copper_clearance_kind(first);
+    }
+    return true;
+}
+
 } // namespace
 
 void BoardDesignRules::set_clearance_mm(BoardClearanceKind first, BoardClearanceKind second,
@@ -271,6 +287,11 @@ void BoardDesignRules::set_clearance_mm(BoardClearanceKind first, BoardClearance
     if (first == BoardClearanceKind::BoardEdge && second == BoardClearanceKind::BoardEdge) {
         throw KernelArgumentError{ErrorCode::InvalidArgument,
                                   "Clearance matrix cannot pair the board edge with itself"};
+    }
+    if (!supported_mechanical_clearance_pair(first, second)) {
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
+            "Clearance matrix mechanical-opening pairs must reference one copper kind"};
     }
     if (!std::isfinite(clearance_mm) || clearance_mm < 0.0) {
         throw KernelArgumentError{ErrorCode::InvalidArgument,

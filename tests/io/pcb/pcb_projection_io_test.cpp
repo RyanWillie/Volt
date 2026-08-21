@@ -713,15 +713,19 @@ TEST_CASE("PCB projection writer and reader round-trip embedded capability profi
                {{"first", "track"}, {"second", "via"}, {"clearance_mm", 0.2}},
                {{"first", "track"}, {"second", "zone"}, {"clearance_mm", 0.2}},
                {{"first", "track"}, {"second", "board_edge"}, {"clearance_mm", 0.3}},
+               {{"first", "track"}, {"second", "mechanical_opening"}, {"clearance_mm", 0.2}},
                {{"first", "pad"}, {"second", "pad"}, {"clearance_mm", 0.2}},
                {{"first", "pad"}, {"second", "via"}, {"clearance_mm", 0.2}},
                {{"first", "pad"}, {"second", "zone"}, {"clearance_mm", 0.2}},
                {{"first", "pad"}, {"second", "board_edge"}, {"clearance_mm", 0.3}},
+               {{"first", "pad"}, {"second", "mechanical_opening"}, {"clearance_mm", 0.2}},
                {{"first", "via"}, {"second", "via"}, {"clearance_mm", 0.2}},
                {{"first", "via"}, {"second", "zone"}, {"clearance_mm", 0.2}},
                {{"first", "via"}, {"second", "board_edge"}, {"clearance_mm", 0.3}},
+               {{"first", "via"}, {"second", "mechanical_opening"}, {"clearance_mm", 0.2}},
                {{"first", "zone"}, {"second", "zone"}, {"clearance_mm", 0.2}},
-               {{"first", "zone"}, {"second", "board_edge"}, {"clearance_mm", 0.3}}}));
+               {{"first", "zone"}, {"second", "board_edge"}, {"clearance_mm", 0.3}},
+               {{"first", "zone"}, {"second", "mechanical_opening"}, {"clearance_mm", 0.2}}}));
 
     const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
     REQUIRE(restored.capability_profile().has_value());
