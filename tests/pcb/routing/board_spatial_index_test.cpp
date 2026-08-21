@@ -473,6 +473,49 @@ TEST_CASE("BoardSpatialIndex routing query rejects outline and keepout violation
     CHECK(via_keepout_result.blockers[0].keepout == keepout);
 }
 
+TEST_CASE("BoardSpatialIndex applies typed clearance to mechanical openings") {
+    auto fixture = make_board_fixture();
+    auto board = make_two_layer_board(fixture);
+    const auto front = volt::BoardLayerId{0};
+    auto rules = volt::BoardDesignRules{0.10, 0.05, 0.10, 0.20, 0.0};
+    rules.set_clearance_mm(volt::BoardClearanceKind::Track,
+                           volt::BoardClearanceKind::MechanicalOpening, 0.25);
+    board.set_design_rules(rules);
+    const auto hole = board.add_feature(
+        volt::BoardFeature::hole("MH1", volt::BoardPoint{4.0, 5.0}, 2.0, false, "mounting"));
+    const auto slot = board.add_feature(volt::BoardFeature::slot(
+        "S1", volt::BoardPoint{2.0, 10.0}, volt::BoardPoint{8.0, 10.0}, 1.0, false, "mounting"));
+    const auto cutout = board.add_feature(volt::BoardFeature::cutout(
+        "C1",
+        std::vector{volt::BoardPoint{2.0, 14.0}, volt::BoardPoint{8.0, 14.0},
+                    volt::BoardPoint{8.0, 16.0}, volt::BoardPoint{2.0, 16.0}},
+        "internal"));
+
+    const auto index = volt::BoardSpatialIndex{resolved(board)};
+    const auto hole_result = index.query_legality(track_candidate(fixture.first_net, front, 6.20));
+    const auto boundary_result =
+        index.query_legality(track_candidate(fixture.first_net, front, 6.30));
+    const auto slot_result = index.query_legality(track_candidate(fixture.first_net, front, 10.70));
+    const auto cutout_result =
+        index.query_legality(track_candidate(fixture.first_net, front, 13.80));
+
+    const auto check_blocker = [front](const volt::BoardSpatialQueryResult &result,
+                                       volt::BoardFeatureId feature) {
+        REQUIRE_FALSE(result.legal);
+        REQUIRE(result.blockers.size() == 1U);
+        CHECK(result.blockers[0].kind == volt::BoardSpatialBlockerKind::MechanicalOpening);
+        CHECK(result.blockers[0].feature == feature);
+        CHECK(result.blockers[0].layer == front);
+        CHECK(result.blockers[0].required_clearance_mm == Catch::Approx(0.25));
+        CHECK(result.blockers[0].actual_clearance_mm == Catch::Approx(0.15));
+    };
+    check_blocker(hole_result, hole);
+    check_blocker(slot_result, slot);
+    check_blocker(cutout_result, cutout);
+    CHECK(boundary_result.legal);
+    CHECK(boundary_result.blockers.empty());
+}
+
 TEST_CASE("BoardSpatialIndex DRC integration preserves brute-force clearance diagnostics") {
     auto fixture = make_board_fixture();
     auto board = make_two_layer_board(fixture);

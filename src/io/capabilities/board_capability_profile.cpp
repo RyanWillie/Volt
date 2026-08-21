@@ -251,6 +251,8 @@ read_copper_weight_refinements(const nlohmann::json &profile_json) {
         return "zone";
     case BoardClearanceKind::BoardEdge:
         return "board_edge";
+    case BoardClearanceKind::MechanicalOpening:
+        return "mechanical_opening";
     }
     throw KernelLogicError{ErrorCode::InvalidState, "Unhandled capability clearance kind"};
 }
@@ -270,6 +272,9 @@ read_copper_weight_refinements(const nlohmann::json &profile_json) {
     }
     if (value == "board_edge") {
         return BoardClearanceKind::BoardEdge;
+    }
+    if (value == "mechanical_opening") {
+        return BoardClearanceKind::MechanicalOpening;
     }
     throw KernelLogicError{ErrorCode::InvalidArgument,
                            "Unknown capability profile clearance kind: " + value};

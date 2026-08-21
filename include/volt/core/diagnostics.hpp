@@ -84,6 +84,8 @@ inline constexpr auto ViaDrillBelowMinimum = std::string_view{"PCB_VIA_DRILL_BEL
 inline constexpr auto ViaAnnularBelowMinimum = std::string_view{"PCB_VIA_ANNULAR_BELOW_MINIMUM"};
 inline constexpr auto CopperOutsideOutline = std::string_view{"PCB_COPPER_OUTSIDE_OUTLINE"};
 inline constexpr auto CopperClearanceViolation = std::string_view{"PCB_COPPER_CLEARANCE_VIOLATION"};
+inline constexpr auto MechanicalOpeningClearanceViolation =
+    std::string_view{"PCB_COPPER_MECHANICAL_OPENING_CLEARANCE_VIOLATION"};
 inline constexpr auto ComponentBodyOverlap = std::string_view{"PCB_COMPONENT_BODY_OVERLAP"};
 inline constexpr auto ComponentCourtyardOverlap =
     std::string_view{"PCB_COMPONENT_COURTYARD_OVERLAP"};
@@ -208,6 +210,7 @@ inline constexpr auto Drc = std::array{drc_diagnostic_codes::TrackWidthBelowMini
                                        drc_diagnostic_codes::ViaAnnularBelowMinimum,
                                        drc_diagnostic_codes::CopperOutsideOutline,
                                        drc_diagnostic_codes::CopperClearanceViolation,
+                                       drc_diagnostic_codes::MechanicalOpeningClearanceViolation,
                                        drc_diagnostic_codes::ComponentBodyOverlap,
                                        drc_diagnostic_codes::ComponentCourtyardOverlap,
                                        drc_diagnostic_codes::ComponentAssemblyClearanceWarning,

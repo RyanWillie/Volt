@@ -217,15 +217,23 @@ TEST_CASE("Board design rules store a canonical clearance matrix") {
           0.50);
     CHECK(rules.clearance_mm(volt::BoardClearanceKind::Via, volt::BoardClearanceKind::Zone) ==
           0.15);
+    CHECK(rules.clearance_mm(volt::BoardClearanceKind::Track,
+                             volt::BoardClearanceKind::MechanicalOpening) == 0.15);
+
+    rules.set_clearance_mm(volt::BoardClearanceKind::Track,
+                           volt::BoardClearanceKind::MechanicalOpening, 0.40);
+    CHECK(rules.clearance_mm(volt::BoardClearanceKind::MechanicalOpening,
+                             volt::BoardClearanceKind::Track) == 0.40);
 
     rules.set_clearance_mm(volt::BoardClearanceKind::Pad, volt::BoardClearanceKind::Track, 0.35);
-    REQUIRE(rules.clearance_matrix().size() == 3);
+    REQUIRE(rules.clearance_matrix().size() == 4);
     CHECK(rules.clearance_matrix()[0].first == volt::BoardClearanceKind::Track);
     CHECK(rules.clearance_matrix()[0].second == volt::BoardClearanceKind::Track);
     CHECK(rules.clearance_matrix()[1].first == volt::BoardClearanceKind::Track);
     CHECK(rules.clearance_matrix()[1].second == volt::BoardClearanceKind::Pad);
     CHECK(rules.clearance_matrix()[1].clearance_mm == 0.35);
-    CHECK(rules.clearance_matrix()[2].second == volt::BoardClearanceKind::BoardEdge);
+    CHECK(rules.clearance_matrix()[2].second == volt::BoardClearanceKind::MechanicalOpening);
+    CHECK(rules.clearance_matrix()[3].second == volt::BoardClearanceKind::BoardEdge);
 
     CHECK_THROWS_AS(rules.set_clearance_mm(volt::BoardClearanceKind::BoardEdge,
                                            volt::BoardClearanceKind::BoardEdge, 0.2),

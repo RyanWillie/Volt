@@ -10,6 +10,7 @@
 #include <volt/core/diagnostics.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
+#include <volt/pcb/routing/board_spatial_index.hpp>
 
 namespace {
 
@@ -241,6 +242,78 @@ TEST_CASE("Board validation checks cutout edges against concave outlines") {
     CHECK(outside_outline->severity() == volt::Severity::Error);
     CHECK(outside_outline->entities() ==
           std::vector{volt::EntityRef::board_feature(clipped_cutout)});
+}
+
+TEST_CASE("Board validation and routing agree on mechanical opening clearance") {
+    auto circuit = volt::Circuit{};
+    const auto net = circuit.add_net(volt::NetSpec{volt::NetName{"SIG"}, volt::NetKind::Signal});
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{40.0, 30.0}));
+    auto rules = volt::BoardDesignRules{0.10, 0.05, 0.10, 0.20, 0.0};
+    rules.set_clearance_mm(volt::BoardClearanceKind::Track,
+                           volt::BoardClearanceKind::MechanicalOpening, 0.25);
+    board.set_design_rules(rules);
+    const auto hole = board.add_feature(
+        volt::BoardFeature::hole("MH1", volt::BoardPoint{4.0, 5.0}, 2.0, false, "mounting"));
+    const auto slot = board.add_feature(volt::BoardFeature::slot(
+        "S1", volt::BoardPoint{2.0, 10.0}, volt::BoardPoint{8.0, 10.0}, 1.0, false, "mounting"));
+    const auto cutout = board.add_feature(volt::BoardFeature::cutout(
+        "C1",
+        std::vector{volt::BoardPoint{2.0, 14.0}, volt::BoardPoint{8.0, 14.0},
+                    volt::BoardPoint{8.0, 16.0}, volt::BoardPoint{2.0, 16.0}},
+        "internal"));
+    const auto hole_track = board.add_track(volt::BoardTrack{
+        net, front, std::vector{volt::BoardPoint{1.0, 6.20}, volt::BoardPoint{8.0, 6.20}}, 0.10});
+    const auto slot_track = board.add_track(volt::BoardTrack{
+        net, front, std::vector{volt::BoardPoint{1.0, 10.70}, volt::BoardPoint{8.0, 10.70}}, 0.10});
+    const auto cutout_track = board.add_track(volt::BoardTrack{
+        net, front, std::vector{volt::BoardPoint{1.0, 13.80}, volt::BoardPoint{8.0, 13.80}}, 0.10});
+    const auto view = resolved(board, volt::builtin_footprint_library());
+    const auto index = volt::BoardSpatialIndex{view};
+    const auto routing = index.query_legality(volt::BoardSpatialQueryShape{
+        volt::BoardSpatialQueryShapeKind::Segment,
+        net,
+        std::vector{front},
+        std::vector{volt::BoardPoint{1.0, 6.20}, volt::BoardPoint{8.0, 6.20}},
+        0.05,
+        volt::BoardClearanceKind::Track,
+        volt::BoardKeepoutRestriction::Copper,
+    });
+
+    const auto report = volt::validate_board(view);
+    const auto diagnostics =
+        find_diagnostics(report, "PCB_COPPER_MECHANICAL_OPENING_CLEARANCE_VIOLATION");
+
+    REQUIRE_FALSE(routing.legal);
+    REQUIRE(routing.blockers.size() == 1U);
+    REQUIRE(diagnostics.size() == 3U);
+    const auto expected_features = std::vector{hole, slot, cutout};
+    const auto expected_tracks = std::vector{hole_track, slot_track, cutout_track};
+    const auto expected_overlays =
+        std::vector{volt::DiagnosticOverlayKind::Point, volt::DiagnosticOverlayKind::Segment,
+                    volt::DiagnosticOverlayKind::Polygon};
+    for (std::size_t diagnostic_index = 0; diagnostic_index < diagnostics.size();
+         ++diagnostic_index) {
+        const auto *diagnostic = diagnostics[diagnostic_index];
+        CHECK(diagnostic->severity() == volt::Severity::Error);
+        CHECK(diagnostic->entities() ==
+              std::vector{volt::EntityRef::board_feature(expected_features[diagnostic_index]),
+                          volt::EntityRef::board_track(expected_tracks[diagnostic_index]),
+                          volt::EntityRef::net(net), volt::EntityRef::board_layer(front)});
+        REQUIRE(diagnostic->measurement().has_value());
+        CHECK(diagnostic->measurement()->required_mm == Catch::Approx(0.25));
+        CHECK(diagnostic->measurement()->actual_mm == Catch::Approx(0.15));
+        REQUIRE(diagnostic->overlays().size() == 2U);
+        CHECK(diagnostic->overlays()[0].kind() == volt::DiagnosticOverlayKind::Segment);
+        CHECK(diagnostic->overlays()[1].kind() == expected_overlays[diagnostic_index]);
+    }
+    CHECK(diagnostics.front()->measurement()->required_mm ==
+          Catch::Approx(routing.blockers.front().required_clearance_mm));
+    CHECK(diagnostics.front()->measurement()->actual_mm ==
+          Catch::Approx(routing.blockers.front().actual_clearance_mm));
 }
 
 TEST_CASE("Board validation rejects zero-clearance polygon edges crossing concave outlines") {

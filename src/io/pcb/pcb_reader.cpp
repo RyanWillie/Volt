@@ -509,6 +509,9 @@ void PcbBoardReader::read_outline(Board &board, const nlohmann::json &board_json
     if (value == "board_edge") {
         return BoardClearanceKind::BoardEdge;
     }
+    if (value == "mechanical_opening") {
+        return BoardClearanceKind::MechanicalOpening;
+    }
     throw KernelLogicError{ErrorCode::InvalidArgument, "Unknown PCB clearance kind: " + value};
 }
 

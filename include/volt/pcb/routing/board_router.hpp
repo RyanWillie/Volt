@@ -77,6 +77,8 @@ enum class BoardEscapeFailureReason {
     DisallowedLayer,
     /** Every deterministic escape candidate was rejected by the spatial index. */
     NoLegalCandidate,
+    /** A legal stub was withheld because another pad made the escape transaction decline. */
+    AtomicDecline,
 };
 
 /** Per-pad outcome of an escape/fanout attempt. */
@@ -128,9 +130,9 @@ struct BoardEscapeResult {
  *   spatial index legality query accepts each candidate primitive.
  * Invariants: legality remains a DRC concern. connect() is all-or-nothing: an unroutable request
  *   is a result value and leaves the board unchanged. escape() rejects unattemptable component
- *   requests at the boundary, then reports per-pad failures while preserving successful stubs and
- *   the escape room. Output is deterministic for a given board state because candidate ordering
- *   and effort caps are fixed.
+ *   requests at the boundary and reports per-pad failures; when an attemptable pad has no legal
+ *   candidate, it withholds the complete room-and-stub transaction. Output is deterministic for a
+ *   given board state because candidate ordering and effort caps are fixed.
  * Collaborators: mutates the Board through its public track/via APIs and mirrors each committed
  *   primitive into its own BoardSpatialIndex in the same step; resolves sizing through
  *   resolve_net_class_rules with BoardDesignRules minimums as the floor.

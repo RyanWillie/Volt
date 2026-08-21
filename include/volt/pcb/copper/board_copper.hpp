@@ -201,6 +201,7 @@ enum class BoardClearanceKind {
     Via,
     Zone,
     BoardEdge,
+    MechanicalOpening,
 };
 
 /** One unordered object-kind pair clearance entry in the board clearance matrix. */

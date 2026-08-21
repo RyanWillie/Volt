@@ -55,6 +55,62 @@ namespace volt::detail {
     return shape_distance(rhs, lhs);
 }
 
+[[nodiscard]] std::vector<BoardMechanicalOpening> collect_mechanical_openings(const Board &board) {
+    auto openings = std::vector<BoardMechanicalOpening>{};
+    const auto features = board.all<BoardFeatureId>();
+    openings.reserve(features.size());
+    for (std::size_t index = 0; index < features.size(); ++index) {
+        const auto feature_id = BoardFeatureId{index};
+        const auto &feature = board.get(feature_id);
+        switch (feature.kind()) {
+        case BoardFeatureKind::Hole:
+            openings.push_back(BoardMechanicalOpening{
+                feature_id,
+                BoardCopperShapeKind::Disc,
+                std::vector{feature.hole().center()},
+                feature.hole().drill_diameter_mm() / 2.0,
+            });
+            break;
+        case BoardFeatureKind::Slot:
+            openings.push_back(BoardMechanicalOpening{
+                feature_id,
+                BoardCopperShapeKind::Segment,
+                std::vector{feature.slot().start(), feature.slot().end()},
+                feature.slot().width_mm() / 2.0,
+            });
+            break;
+        case BoardFeatureKind::Cutout:
+            openings.push_back(BoardMechanicalOpening{
+                feature_id,
+                BoardCopperShapeKind::Polygon,
+                feature.cutout().outline(),
+                0.0,
+            });
+            break;
+        case BoardFeatureKind::Circle:
+            break;
+        }
+    }
+    return openings;
+}
+
+[[nodiscard]] BoardMechanicalClearanceCheck
+check_mechanical_opening_clearance(const Board &board, const BoardCopperShape &copper,
+                                   BoardClearanceKind copper_kind,
+                                   const BoardMechanicalOpening &opening) {
+    const auto opening_shape = BoardCopperShape{
+        opening.kind,   copper.net,        copper.layers, {},
+        opening.points, opening.radius_mm, std::nullopt,
+    };
+    auto result = BoardMechanicalClearanceCheck{};
+    result.actual_clearance_mm =
+        shape_distance(copper, opening_shape) - copper.radius_mm - opening.radius_mm;
+    result.required_clearance_mm =
+        board.design_rules().clearance_mm(copper_kind, BoardClearanceKind::MechanicalOpening);
+    result.violates = result.actual_clearance_mm + board_drc_epsilon < result.required_clearance_mm;
+    return result;
+}
+
 [[nodiscard]] std::optional<BoardLayerId> first_common_layer(const BoardCopperShape &lhs,
                                                              const BoardCopperShape &rhs) {
     for (const auto lhs_layer : lhs.layers) {
@@ -126,6 +182,25 @@ void append_unique_layer(std::vector<BoardLayerId> &layers, BoardLayerId layer) 
         vertices.push_back(to_diagnostic_point(point));
     }
     return DiagnosticOverlay::polygon(std::move(vertices), shape.primary_entities, layers);
+}
+
+[[nodiscard]] DiagnosticOverlay mechanical_opening_overlay(const BoardMechanicalOpening &opening,
+                                                           BoardLayerId layer) {
+    const auto entities = std::vector{EntityRef::board_feature(opening.feature)};
+    const auto layers = std::vector{layer};
+    if (opening.kind == BoardCopperShapeKind::Disc) {
+        return DiagnosticOverlay::point(to_diagnostic_point(opening.points[0]), entities, layers);
+    }
+    if (opening.kind == BoardCopperShapeKind::Segment) {
+        return DiagnosticOverlay::segment(to_diagnostic_point(opening.points[0]),
+                                          to_diagnostic_point(opening.points[1]), entities, layers);
+    }
+    auto vertices = std::vector<DiagnosticPoint>{};
+    vertices.reserve(opening.points.size());
+    for (const auto &point : opening.points) {
+        vertices.push_back(to_diagnostic_point(point));
+    }
+    return DiagnosticOverlay::polygon(std::move(vertices), entities, layers);
 }
 
 [[nodiscard]] std::vector<BoardLayerId> via_copper_layers(const Board &board, const BoardVia &via) {
@@ -401,6 +476,8 @@ collect_copper_shapes(const ResolvedBoardView &resolved,
         return "zone";
     case BoardClearanceKind::BoardEdge:
         return "board-edge";
+    case BoardClearanceKind::MechanicalOpening:
+        return "mechanical-opening";
     }
     return "track";
 }

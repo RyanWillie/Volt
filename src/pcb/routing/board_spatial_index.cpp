@@ -223,6 +223,7 @@ BoardSpatialIndex::BoardSpatialIndex(const Board &board,
     : state_{std::make_unique<detail::BoardSpatialIndexState>()} {
     mutable_state().board = &board;
     mutable_state().shapes = std::move(shapes);
+    mutable_state().mechanical_openings = detail::collect_mechanical_openings(board);
     mutable_state().conservative_clearance_mm = detail::maximum_required_copper_clearance(board);
     mutable_state().cell_size_mm = 1.0;
     mutable_state().geometry_snapshot = board.all<BoardLayerId>();
@@ -512,6 +513,7 @@ BoardSpatialIndex::query_legality(const detail::BoardCopperShape &candidate,
             BoardSpatialBlockerKind::CopperClearance,
             obstacle_index,
             std::nullopt,
+            std::nullopt,
             check.layer,
             check.required_clearance_mm,
             check.actual_clearance_mm,
@@ -528,6 +530,7 @@ BoardSpatialIndex::query_legality(const detail::BoardCopperShape &candidate,
                 BoardSpatialBlockerKind::BoardOutline,
                 std::nullopt,
                 std::nullopt,
+                std::nullopt,
                 candidate.layers.empty() ? std::optional<BoardLayerId>{}
                                          : std::optional<BoardLayerId>{candidate.layers.front()},
                 outline_clearance,
@@ -535,6 +538,25 @@ BoardSpatialIndex::query_legality(const detail::BoardCopperShape &candidate,
                 std::nullopt,
             });
         }
+    }
+
+    for (const auto &opening : state().mechanical_openings) {
+        const auto check = detail::check_mechanical_opening_clearance(*state().board, candidate,
+                                                                      candidate_kind, opening);
+        if (!check.violates) {
+            continue;
+        }
+        result.blockers.push_back(BoardSpatialBlocker{
+            BoardSpatialBlockerKind::MechanicalOpening,
+            std::nullopt,
+            std::nullopt,
+            opening.feature,
+            candidate.layers.empty() ? std::optional<BoardLayerId>{}
+                                     : std::optional<BoardLayerId>{candidate.layers.front()},
+            check.required_clearance_mm,
+            check.actual_clearance_mm,
+            std::nullopt,
+        });
     }
 
     for (std::size_t keepout_index = 0;
@@ -552,6 +574,7 @@ BoardSpatialIndex::query_legality(const detail::BoardCopperShape &candidate,
             BoardSpatialBlockerKind::Keepout,
             std::nullopt,
             keepout_id,
+            std::nullopt,
             layer,
             0.0,
             0.0,

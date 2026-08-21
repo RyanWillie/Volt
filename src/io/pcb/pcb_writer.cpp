@@ -357,6 +357,8 @@ void write_board_geometry(std::ostream &out, const Board &board) {
         return "zone";
     case BoardClearanceKind::BoardEdge:
         return "board_edge";
+    case BoardClearanceKind::MechanicalOpening:
+        return "mechanical_opening";
     }
     return "track";
 }

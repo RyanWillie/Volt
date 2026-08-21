@@ -1110,6 +1110,8 @@ TEST_CASE("PCB projection round-trips the clearance matrix") {
     static_cast<void>(front);
     auto rules = volt::BoardDesignRules{0.15, 0.15, 0.20, 0.45, 0.10};
     rules.set_clearance_mm(volt::BoardClearanceKind::Track, volt::BoardClearanceKind::Pad, 0.25);
+    rules.set_clearance_mm(volt::BoardClearanceKind::Track,
+                           volt::BoardClearanceKind::MechanicalOpening, 0.35);
     rules.set_clearance_mm(volt::BoardClearanceKind::Zone, volt::BoardClearanceKind::BoardEdge,
                            0.50);
     board.set_design_rules(rules);
@@ -1120,6 +1122,7 @@ TEST_CASE("PCB projection round-trips the clearance matrix") {
     CHECK(document["board"]["rules"]["clearance_matrix"] ==
           nlohmann::json::array(
               {{{"first", "track"}, {"second", "pad"}, {"clearance_mm", 0.25}},
+               {{"first", "track"}, {"second", "mechanical_opening"}, {"clearance_mm", 0.35}},
                {{"first", "zone"}, {"second", "board_edge"}, {"clearance_mm", 0.5}}}));
 
     const auto loaded = volt::io::read_pcb_board_text(fixture.circuit, text);
@@ -1127,6 +1130,8 @@ TEST_CASE("PCB projection round-trips the clearance matrix") {
                                              volt::BoardClearanceKind::Track) == 0.25);
     CHECK(loaded.design_rules().clearance_mm(volt::BoardClearanceKind::Zone,
                                              volt::BoardClearanceKind::BoardEdge) == 0.5);
+    CHECK(loaded.design_rules().clearance_mm(volt::BoardClearanceKind::Track,
+                                             volt::BoardClearanceKind::MechanicalOpening) == 0.35);
     CHECK(write_test_pcb_board(loaded, volt::builtin_footprint_library(), fixture.parts) == text);
 }
 

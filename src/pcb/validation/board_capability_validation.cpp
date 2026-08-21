@@ -30,6 +30,8 @@ namespace {
         return "zone";
     case BoardClearanceKind::BoardEdge:
         return "board-edge";
+    case BoardClearanceKind::MechanicalOpening:
+        return "mechanical-opening";
     }
     throw KernelLogicError{ErrorCode::InvalidState, "Unhandled board clearance kind"};
 }
