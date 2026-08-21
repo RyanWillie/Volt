@@ -731,6 +731,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         apply_escape_room_overrides(*board_, room);
         result.room = board_->add_room(std::move(room));
         index_.reset();
+        static_cast<void>(index());
     }
 
     for (const auto &candidate : candidates) {

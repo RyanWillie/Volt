@@ -53,7 +53,9 @@ profile_max_clearance_minimum(const BoardCapabilityProfile &profile, bool board_
     for (const auto &entry : profile.minimum_clearances()) {
         const auto touches_edge = entry.first == BoardClearanceKind::BoardEdge ||
                                   entry.second == BoardClearanceKind::BoardEdge;
-        if (touches_edge != board_edge) {
+        const auto touches_mechanical = entry.first == BoardClearanceKind::MechanicalOpening ||
+                                        entry.second == BoardClearanceKind::MechanicalOpening;
+        if (touches_mechanical || touches_edge != board_edge) {
             continue;
         }
         if (!result.has_value() || entry.clearance_mm > result.value()) {
@@ -143,6 +145,10 @@ void validate_board_rule_capability(const Board &board, const BoardCapabilityPro
     }
 
     for (const auto &entry : rules.clearance_matrix()) {
+        if (entry.first == BoardClearanceKind::MechanicalOpening ||
+            entry.second == BoardClearanceKind::MechanicalOpening) {
+            continue;
+        }
         const auto minimum = profile.minimum_clearance(entry.first, entry.second);
         if (!minimum.has_value()) {
             continue;
@@ -150,6 +156,17 @@ void validate_board_rule_capability(const Board &board, const BoardCapabilityPro
         report_capability_rule(
             report, rules.clearance_mm(entry.first, entry.second), minimum.value(),
             "Board " + capability_clearance_label(entry.first, entry.second) + " matrix entry",
+            std::vector{EntityRef::board()});
+    }
+
+    for (const auto &entry : profile.minimum_clearances()) {
+        if (entry.first != BoardClearanceKind::MechanicalOpening &&
+            entry.second != BoardClearanceKind::MechanicalOpening) {
+            continue;
+        }
+        report_capability_rule(
+            report, rules.clearance_mm(entry.first, entry.second), entry.clearance_mm,
+            "Board " + capability_clearance_label(entry.first, entry.second) + " rule",
             std::vector{EntityRef::board()});
     }
 }

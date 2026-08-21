@@ -182,6 +182,22 @@ TEST_CASE("Escape router fans out SOIC pads into deterministic room-backed stubs
         CHECK(pad.endpoint.y_mm() == Catch::Approx(pad.pad_position.y_mm()));
     }
 
+    const auto &first_pad = result.pads.front();
+    const auto first_outward =
+        first_pad.endpoint.x_mm() < first_pad.pad_position.x_mm() ? -1.0 : 1.0;
+    const auto crossing_x = first_pad.endpoint.x_mm() + (0.15 * first_outward);
+    const auto blocked = escape_router.connect(volt::BoardRouteRequest{
+        fixture.nets[1],
+        volt::BoardPoint{crossing_x, first_pad.pad_position.y_mm() - 0.1},
+        volt::BoardPoint{crossing_x, first_pad.pad_position.y_mm() + 0.1},
+        layout.front,
+        layout.front,
+    });
+    CHECK_FALSE(blocked.routed);
+    REQUIRE(blocked.blockers.size() == 1U);
+    CHECK(blocked.blockers.front().kind == volt::BoardSpatialBlockerKind::CopperClearance);
+    CHECK(blocked.blockers.front().shape_index.has_value());
+
     auto router = volt::BoardRouter{layout.board, resolved(fixture, layout.board)};
     for (const auto &pad : result.pads) {
         const auto outward = pad.endpoint.x_mm() < 20.0 ? -1.0 : 1.0;
