@@ -62,6 +62,8 @@ board_spatial_blocker_kind_name(volt::BoardSpatialBlockerKind kind) {
         return "copper_clearance";
     case volt::BoardSpatialBlockerKind::BoardOutline:
         return "board_outline";
+    case volt::BoardSpatialBlockerKind::MechanicalOpening:
+        return "mechanical_opening";
     case volt::BoardSpatialBlockerKind::Keepout:
         return "keepout";
     }
@@ -89,6 +91,7 @@ board_spatial_blocker_to_dict(const volt::BoardSpatialBlocker &blocker) {
     result["kind"] = board_spatial_blocker_kind_name(blocker.kind);
     result["shape_index"] = optional_size_to_object(blocker.shape_index);
     result["keepout"] = optional_id_to_object(blocker.keepout);
+    result["feature"] = optional_id_to_object(blocker.feature);
     result["layer"] = optional_id_to_object(blocker.layer);
     result["required_clearance_mm"] = blocker.required_clearance_mm;
     result["actual_clearance_mm"] = blocker.actual_clearance_mm;
@@ -109,6 +112,8 @@ board_escape_failure_reason_name(volt::BoardEscapeFailureReason reason) {
         return "disallowed_layer";
     case volt::BoardEscapeFailureReason::NoLegalCandidate:
         return "no_legal_candidate";
+    case volt::BoardEscapeFailureReason::AtomicDecline:
+        return "atomic_decline";
     }
     throw std::logic_error{"Unhandled board escape failure reason"};
 }

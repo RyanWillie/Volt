@@ -121,6 +121,10 @@ parse_board_keepout_restriction(const std::string &value) {
     if (value == "board_edge" || value == "board-edge" || value == "BoardEdge") {
         return volt::BoardClearanceKind::BoardEdge;
     }
+    if (value == "mechanical_opening" || value == "mechanical-opening" ||
+        value == "MechanicalOpening") {
+        return volt::BoardClearanceKind::MechanicalOpening;
+    }
     throw std::invalid_argument{"Unknown board clearance kind"};
 }
 
@@ -136,6 +140,8 @@ parse_board_keepout_restriction(const std::string &value) {
         return "zone";
     case volt::BoardClearanceKind::BoardEdge:
         return "board_edge";
+    case volt::BoardClearanceKind::MechanicalOpening:
+        return "mechanical_opening";
     }
     throw std::logic_error{"Unhandled board clearance kind"};
 }

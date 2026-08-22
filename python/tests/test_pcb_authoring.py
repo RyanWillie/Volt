@@ -1074,6 +1074,7 @@ def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
             "kind": "keepout",
             "shape_index": None,
             "keepout": keepout,
+            "feature": None,
             "layer": blocked_front,
             "required_clearance_mm": 0.0,
             "actual_clearance_mm": 0.0,
@@ -1081,6 +1082,49 @@ def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
         }
     ]
     assert json.loads(blocked_board.to_json())["board"].get("tracks", []) == []
+
+
+def test_python_assisted_connect_surfaces_mechanical_opening_blockers():
+    design = volt.Design("mechanically-blocked-assisted-connect")
+    net = design.net("ROUTE")
+    board = design.add_board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+    board.set_design_rules(copper_clearance=0.25, min_track_width=0.15)
+    slot = board.add(
+        volt.Slot(
+            start=(10.0, 0.5),
+            end=(10.0, 11.5),
+            width=1.0,
+            role="routing-barrier",
+            label="S1",
+        )
+    )
+
+    result = board.assisted_connect(
+        net,
+        start=(2.0, 6.0),
+        start_layer=front,
+        end=(18.0, 6.0),
+        end_layer=front,
+    )
+
+    assert result["routed"] is False
+    assert result["tracks"] == []
+    assert result["vias"] == []
+    assert result["blockers"] == [
+        {
+            "kind": "mechanical_opening",
+            "shape_index": None,
+            "keepout": None,
+            "feature": slot,
+            "layer": front,
+            "required_clearance_mm": 0.25,
+            "actual_clearance_mm": -0.575,
+            "room": None,
+        }
+    ]
+    assert json.loads(board.to_json())["board"].get("tracks", []) == []
 
 
 def test_python_board_authoring_assisted_connect_is_octilinear():
@@ -1184,7 +1228,7 @@ def test_python_board_authoring_escape_surfaces_kernel_result():
     failure = blocked_board.escape(blocked_r)
 
     assert failure["complete"] is False
-    assert failure["room"] == 0
+    assert failure["room"] is None
     assert failure["pads"][0]["escaped"] is False
     assert failure["pads"][0]["failure_reason"] == "no_legal_candidate"
     assert failure["pads"][0]["tracks"] == []
@@ -1193,17 +1237,19 @@ def test_python_board_authoring_escape_surfaces_kernel_result():
             "kind": "keepout",
             "shape_index": None,
             "keepout": keepout,
+            "feature": None,
             "layer": blocked_front,
             "required_clearance_mm": 0.0,
             "actual_clearance_mm": 0.0,
             "room": None,
         }
     ]
-    assert failure["pads"][1]["escaped"] is True
-    assert json.loads(blocked_board.to_json())["board"]["tracks"][0]["points"] == [
-        [10.75, 10.0],
-        [11.75, 10.0],
-    ]
+    assert failure["pads"][1]["escaped"] is False
+    assert failure["pads"][1]["failure_reason"] == "atomic_decline"
+    assert failure["pads"][1]["tracks"] == []
+    blocked_document = json.loads(blocked_board.to_json())["board"]
+    assert blocked_document.get("tracks", []) == []
+    assert blocked_document.get("rooms", []) == []
 
 
 def test_python_board_authoring_escape_surfaces_failure_reason_strings():

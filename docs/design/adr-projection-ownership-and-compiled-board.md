@@ -253,13 +253,12 @@ become cross-artifact identity.
 
 ## Atomicity, Diagnostics, And Persistence
 
-Existing operation-specific routing contracts are preserved. `BoardRouter::connect` is
-all-or-nothing: failure commits no tracks or vias. `BoardRouter::escape` is intentionally
-partial-success: it rejects an unattemptable component before per-pad mutation, then valid
-per-pad work and its escape room remain committed when another pad fails, and the typed result
-reports every per-pad outcome. Circuit-style whole-call atomicity is not imposed on operations
-whose accepted contract is partial success. Both operations retain their documented
-deterministic candidate and result ordering.
+Operation-specific routing contracts are explicit. `BoardRouter::connect` is all-or-nothing:
+failure commits no tracks or vias. `BoardRouter::escape` rejects an unattemptable component
+before mutation and reports every per-pad outcome. If an attemptable pad has no legal candidate,
+the complete room-and-stub transaction is withheld; otherwise the room and all successful stubs
+are committed together. Both operations retain their documented deterministic candidate and
+result ordering.
 
 Structural invalidity is rejected at mutation, load, selection, or compile boundaries. Bad
 design intent and physical quality remain diagnostics. Reporting references do not become

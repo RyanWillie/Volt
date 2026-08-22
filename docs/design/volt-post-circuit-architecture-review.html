@@ -862,7 +862,7 @@ volt export --bundle build/controller --output dist/controller --kind board_svg<
           </div>
         </div>
 
-        <div class="note warning"><strong>Concrete exception:</strong> <code>BoardRouter::connect</code> is intentionally atomic, while <code>escape</code> intentionally preserves successful per-pad work when another pad fails. Circuit-style whole-call atomicity therefore cannot be a universal Board rule; the operation’s documented contract and tests decide.</div>
+        <div class="note warning"><strong>Concrete routing contract:</strong> <code>BoardRouter::connect</code> is atomic, and <code>escape</code> withholds the complete room-and-stub transaction when an attemptable pad has no legal candidate. Unattemptable component requests are rejected before mutation, and the typed result retains deterministic per-pad outcomes.</div>
 
         <h3>A compression envelope, not an acceptance target</h3>
         <div class="table-wrap">
@@ -1258,7 +1258,7 @@ bundle.diagnostics</code></pre>
           <li>Public API snapshots and architecture checkers pin every accepted root/binding boundary.</li>
           <li>Lexical inventories report zero production callers of removed paths.</li>
           <li>Structural failures leave owner bytes unchanged where operations promise atomicity.</li>
-          <li>Board routing tests preserve both atomic <code>connect</code> and partial-success <code>escape</code> contracts.</li>
+          <li>Board routing tests preserve atomic <code>connect</code> and room-and-stub <code>escape</code> contracts.</li>
           <li>Logical, Schematic and Board read/write/read plus write/read/write remain deterministic.</li>
           <li>Compiled Board succeeds with an empty external footprint library and fails clearly when incomplete.</li>
           <li>Compiled provenance changes when any logical, physical, footprint or capability input changes.</li>

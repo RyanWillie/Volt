@@ -506,6 +506,28 @@ struct BoardCopperClearanceCheck {
     std::optional<BoardRoomId> room;
 };
 
+/** Normalized through-board mechanical opening used by routing and DRC. */
+struct BoardMechanicalOpening {
+    /** Canonical Board feature owning the opening. */
+    BoardFeatureId feature;
+    /** Normalized opening geometry category. */
+    BoardCopperShapeKind kind;
+    /** Shape points: hole center, slot endpoints, or cutout vertices. */
+    std::vector<BoardPoint> points;
+    /** Hole radius or slot half-width; zero for polygonal cutouts. */
+    double radius_mm = 0.0;
+};
+
+/** Exact shared copper-to-mechanical-opening clearance result. */
+struct BoardMechanicalClearanceCheck {
+    /** Whether the copper violates the required opening clearance. */
+    bool violates = false;
+    /** Measured copper-to-opening clearance in millimeters. */
+    double actual_clearance_mm = 0.0;
+    /** Required clearance from the typed board matrix. */
+    double required_clearance_mm = 0.0;
+};
+
 [[nodiscard]] double shape_distance(const BoardCopperShape &lhs, const BoardCopperShape &rhs);
 
 [[nodiscard]] std::optional<BoardLayerId> first_common_layer(const BoardCopperShape &lhs,
@@ -526,6 +548,13 @@ struct BoardCopperClearanceCheck {
 [[nodiscard]] BoardCopperClearanceCheck
 check_copper_clearance(const Board &board, const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
                        const BoardCopperShape &rhs, BoardClearanceKind rhs_kind);
+
+[[nodiscard]] std::vector<BoardMechanicalOpening> collect_mechanical_openings(const Board &board);
+
+[[nodiscard]] BoardMechanicalClearanceCheck
+check_mechanical_opening_clearance(const Board &board, const BoardCopperShape &copper,
+                                   BoardClearanceKind copper_kind,
+                                   const BoardMechanicalOpening &opening);
 
 void append_unique_layer(std::vector<BoardLayerId> &layers, BoardLayerId layer);
 

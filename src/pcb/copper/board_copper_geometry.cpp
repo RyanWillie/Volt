@@ -26,6 +26,152 @@
 #include <volt/core/rule_set.hpp>
 
 namespace volt::detail {
+namespace {
+
+[[nodiscard]] bool point_on_polygon_boundary(const std::vector<BoardPoint> &polygon,
+                                             BoardPoint point) {
+    std::size_t previous = polygon.size() - 1U;
+    for (std::size_t current = 0; current < polygon.size(); ++current) {
+        if (drc_point_on_segment(point, polygon[previous], polygon[current])) {
+            return true;
+        }
+        previous = current;
+    }
+    return false;
+}
+
+[[nodiscard]] bool polygon_strictly_contains_point(const std::vector<BoardPoint> &polygon,
+                                                   BoardPoint point) {
+    return polygon_contains_point(polygon, point) && !point_on_polygon_boundary(polygon, point);
+}
+
+[[nodiscard]] bool segments_properly_intersect(BoardPoint a, BoardPoint b, BoardPoint c,
+                                               BoardPoint d) noexcept {
+    const auto ab_c = board_orientation(a, b, c);
+    const auto ab_d = board_orientation(a, b, d);
+    const auto cd_a = board_orientation(c, d, a);
+    const auto cd_b = board_orientation(c, d, b);
+    return ((ab_c > board_drc_epsilon && ab_d < -board_drc_epsilon) ||
+            (ab_c < -board_drc_epsilon && ab_d > board_drc_epsilon)) &&
+           ((cd_a > board_drc_epsilon && cd_b < -board_drc_epsilon) ||
+            (cd_a < -board_drc_epsilon && cd_b > board_drc_epsilon));
+}
+
+[[nodiscard]] double polygon_signed_area_twice(const std::vector<BoardPoint> &polygon) noexcept {
+    auto result = 0.0;
+    for (std::size_t index = 0; index < polygon.size(); ++index) {
+        const auto next = (index + 1U) % polygon.size();
+        result += (polygon[index].x_mm() * polygon[next].y_mm()) -
+                  (polygon[next].x_mm() * polygon[index].y_mm());
+    }
+    return result;
+}
+
+[[nodiscard]] bool collinear_edges_share_interior_side(BoardPoint lhs_start, BoardPoint lhs_end,
+                                                       double lhs_area, BoardPoint rhs_start,
+                                                       BoardPoint rhs_end,
+                                                       double rhs_area) noexcept {
+    if (std::abs(board_orientation(lhs_start, lhs_end, rhs_start)) > board_drc_epsilon ||
+        std::abs(board_orientation(lhs_start, lhs_end, rhs_end)) > board_drc_epsilon) {
+        return false;
+    }
+    const auto lhs_dx = lhs_end.x_mm() - lhs_start.x_mm();
+    const auto lhs_dy = lhs_end.y_mm() - lhs_start.y_mm();
+    const auto projection = [use_x = std::abs(lhs_dx) >= std::abs(lhs_dy)](BoardPoint point) {
+        return use_x ? point.x_mm() : point.y_mm();
+    };
+    const auto overlap = std::min(std::max(projection(lhs_start), projection(lhs_end)),
+                                  std::max(projection(rhs_start), projection(rhs_end))) -
+                         std::max(std::min(projection(lhs_start), projection(lhs_end)),
+                                  std::min(projection(rhs_start), projection(rhs_end)));
+    if (overlap <= board_drc_epsilon) {
+        return false;
+    }
+
+    const auto rhs_dx = rhs_end.x_mm() - rhs_start.x_mm();
+    const auto rhs_dy = rhs_end.y_mm() - rhs_start.y_mm();
+    const auto lhs_winding = lhs_area > 0.0 ? 1.0 : -1.0;
+    const auto rhs_winding = rhs_area > 0.0 ? 1.0 : -1.0;
+    const auto interior_normal_dot = ((-lhs_dy * lhs_winding) * (-rhs_dy * rhs_winding)) +
+                                     ((lhs_dx * lhs_winding) * (rhs_dx * rhs_winding));
+    return interior_normal_dot > board_drc_epsilon;
+}
+
+[[nodiscard]] bool polygon_edge_enters_interior(const std::vector<BoardPoint> &source,
+                                                const std::vector<BoardPoint> &target) {
+    for (std::size_t index = 0; index < source.size(); ++index) {
+        const auto next = (index + 1U) % source.size();
+        const auto start = source[index];
+        const auto end = source[next];
+        const auto dx = end.x_mm() - start.x_mm();
+        const auto dy = end.y_mm() - start.y_mm();
+        const auto use_x = std::abs(dx) >= std::abs(dy);
+        auto parameters = std::vector{0.0, 1.0};
+        parameters.reserve(target.size() + 2U);
+        for (const auto point : target) {
+            if (!drc_point_on_segment(point, start, end)) {
+                continue;
+            }
+            parameters.push_back(std::clamp(use_x ? (point.x_mm() - start.x_mm()) / dx
+                                                  : (point.y_mm() - start.y_mm()) / dy,
+                                            0.0, 1.0));
+        }
+        std::sort(parameters.begin(), parameters.end());
+        parameters.erase(std::unique(parameters.begin(), parameters.end()), parameters.end());
+        for (std::size_t parameter = 1; parameter < parameters.size(); ++parameter) {
+            const auto midpoint = (parameters[parameter - 1U] + parameters[parameter]) / 2.0;
+            const auto point =
+                BoardPoint{start.x_mm() + (midpoint * dx), start.y_mm() + (midpoint * dy)};
+            if (polygon_strictly_contains_point(target, point)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] bool polygon_interiors_overlap(const std::vector<BoardPoint> &lhs,
+                                             const std::vector<BoardPoint> &rhs) {
+    if (std::any_of(
+            lhs.begin(), lhs.end(),
+            [&rhs](BoardPoint point) { return polygon_strictly_contains_point(rhs, point); }) ||
+        std::any_of(rhs.begin(), rhs.end(), [&lhs](BoardPoint point) {
+            return polygon_strictly_contains_point(lhs, point);
+        })) {
+        return true;
+    }
+    const auto lhs_area = polygon_signed_area_twice(lhs);
+    const auto rhs_area = polygon_signed_area_twice(rhs);
+    for (std::size_t lhs_index = 0; lhs_index < lhs.size(); ++lhs_index) {
+        const auto lhs_next = (lhs_index + 1U) % lhs.size();
+        for (std::size_t rhs_index = 0; rhs_index < rhs.size(); ++rhs_index) {
+            const auto rhs_next = (rhs_index + 1U) % rhs.size();
+            if (segments_properly_intersect(lhs[lhs_index], lhs[lhs_next], rhs[rhs_index],
+                                            rhs[rhs_next])) {
+                return true;
+            }
+            if (collinear_edges_share_interior_side(lhs[lhs_index], lhs[lhs_next], lhs_area,
+                                                    rhs[rhs_index], rhs[rhs_next], rhs_area)) {
+                return true;
+            }
+        }
+    }
+    return polygon_edge_enters_interior(lhs, rhs) || polygon_edge_enters_interior(rhs, lhs);
+}
+
+[[nodiscard]] BoardMechanicalClearanceCheck
+mechanical_clearance_check(const Board &board, BoardClearanceKind copper_kind,
+                           double actual_clearance_mm, bool polygon_interiors_overlap) {
+    auto result = BoardMechanicalClearanceCheck{};
+    result.actual_clearance_mm = actual_clearance_mm;
+    result.required_clearance_mm =
+        board.design_rules().clearance_mm(copper_kind, BoardClearanceKind::MechanicalOpening);
+    result.violates = polygon_interiors_overlap ||
+                      result.actual_clearance_mm + board_drc_epsilon < result.required_clearance_mm;
+    return result;
+}
+
+} // namespace
 
 [[nodiscard]] double shape_distance(const BoardCopperShape &lhs, const BoardCopperShape &rhs) {
     if (lhs.kind == BoardCopperShapeKind::Disc && rhs.kind == BoardCopperShapeKind::Disc) {
@@ -53,6 +199,88 @@ namespace volt::detail {
         return segment_polygon_distance(rhs.points[0], rhs.points[1], lhs.points);
     }
     return shape_distance(rhs, lhs);
+}
+
+[[nodiscard]] std::vector<BoardMechanicalOpening> collect_mechanical_openings(const Board &board) {
+    auto openings = std::vector<BoardMechanicalOpening>{};
+    const auto features = board.all<BoardFeatureId>();
+    openings.reserve(features.size());
+    for (std::size_t index = 0; index < features.size(); ++index) {
+        const auto feature_id = BoardFeatureId{index};
+        const auto &feature = board.get(feature_id);
+        switch (feature.kind()) {
+        case BoardFeatureKind::Hole:
+            openings.push_back(BoardMechanicalOpening{
+                feature_id,
+                BoardCopperShapeKind::Disc,
+                std::vector{feature.hole().center()},
+                feature.hole().drill_diameter_mm() / 2.0,
+            });
+            break;
+        case BoardFeatureKind::Slot:
+            openings.push_back(BoardMechanicalOpening{
+                feature_id,
+                BoardCopperShapeKind::Segment,
+                std::vector{feature.slot().start(), feature.slot().end()},
+                feature.slot().width_mm() / 2.0,
+            });
+            break;
+        case BoardFeatureKind::Cutout:
+            openings.push_back(BoardMechanicalOpening{
+                feature_id,
+                BoardCopperShapeKind::Polygon,
+                feature.cutout().outline(),
+                0.0,
+            });
+            break;
+        case BoardFeatureKind::Circle:
+            break;
+        }
+    }
+    return openings;
+}
+
+[[nodiscard]] BoardMechanicalClearanceCheck
+check_mechanical_opening_clearance(const Board &board, const BoardCopperShape &copper,
+                                   BoardClearanceKind copper_kind,
+                                   const BoardMechanicalOpening &opening) {
+    const auto opening_shape = BoardCopperShape{
+        opening.kind,   copper.net,        copper.layers, {},
+        opening.points, opening.radius_mm, std::nullopt,
+    };
+    const auto actual_clearance_mm =
+        shape_distance(copper, opening_shape) - copper.radius_mm - opening.radius_mm;
+    const auto zero_distance_polygon_overlap =
+        copper.kind == BoardCopperShapeKind::Polygon &&
+        opening.kind == BoardCopperShapeKind::Polygon &&
+        polygon_interiors_overlap(copper.points, opening.points);
+    return mechanical_clearance_check(board, copper_kind, actual_clearance_mm,
+                                      zero_distance_polygon_overlap);
+}
+
+[[nodiscard]] BoardMechanicalClearanceCheck
+check_zone_mechanical_opening_clearance(const Board &board, const BoardZone &zone,
+                                        const BoardMechanicalOpening &opening) {
+    auto actual_clearance_mm = 0.0;
+    switch (opening.kind) {
+    case BoardCopperShapeKind::Disc:
+        actual_clearance_mm =
+            point_polygon_distance(opening.points[0], zone.outline()) - opening.radius_mm;
+        break;
+    case BoardCopperShapeKind::Segment:
+        actual_clearance_mm =
+            segment_polygon_distance(opening.points[0], opening.points[1], zone.outline()) -
+            opening.radius_mm;
+        break;
+    case BoardCopperShapeKind::Polygon:
+        actual_clearance_mm = polygon_polygon_distance(zone.outline(), opening.points);
+        break;
+    }
+    const auto zero_distance_polygon_overlap =
+        opening.kind == BoardCopperShapeKind::Polygon &&
+        polygon_interiors_overlap(zone.outline(), opening.points);
+    return mechanical_clearance_check(board, BoardClearanceKind::Zone, actual_clearance_mm,
+                                      zero_distance_polygon_overlap);
 }
 
 [[nodiscard]] std::optional<BoardLayerId> first_common_layer(const BoardCopperShape &lhs,
@@ -126,6 +354,25 @@ void append_unique_layer(std::vector<BoardLayerId> &layers, BoardLayerId layer) 
         vertices.push_back(to_diagnostic_point(point));
     }
     return DiagnosticOverlay::polygon(std::move(vertices), shape.primary_entities, layers);
+}
+
+[[nodiscard]] DiagnosticOverlay mechanical_opening_overlay(const BoardMechanicalOpening &opening,
+                                                           BoardLayerId layer) {
+    const auto entities = std::vector{EntityRef::board_feature(opening.feature)};
+    const auto layers = std::vector{layer};
+    if (opening.kind == BoardCopperShapeKind::Disc) {
+        return DiagnosticOverlay::point(to_diagnostic_point(opening.points[0]), entities, layers);
+    }
+    if (opening.kind == BoardCopperShapeKind::Segment) {
+        return DiagnosticOverlay::segment(to_diagnostic_point(opening.points[0]),
+                                          to_diagnostic_point(opening.points[1]), entities, layers);
+    }
+    auto vertices = std::vector<DiagnosticPoint>{};
+    vertices.reserve(opening.points.size());
+    for (const auto &point : opening.points) {
+        vertices.push_back(to_diagnostic_point(point));
+    }
+    return DiagnosticOverlay::polygon(std::move(vertices), entities, layers);
 }
 
 [[nodiscard]] std::vector<BoardLayerId> via_copper_layers(const Board &board, const BoardVia &via) {
@@ -401,6 +648,8 @@ collect_copper_shapes(const ResolvedBoardView &resolved,
         return "zone";
     case BoardClearanceKind::BoardEdge:
         return "board-edge";
+    case BoardClearanceKind::MechanicalOpening:
+        return "mechanical-opening";
     }
     return "track";
 }

@@ -217,18 +217,32 @@ TEST_CASE("Board design rules store a canonical clearance matrix") {
           0.50);
     CHECK(rules.clearance_mm(volt::BoardClearanceKind::Via, volt::BoardClearanceKind::Zone) ==
           0.15);
+    CHECK(rules.clearance_mm(volt::BoardClearanceKind::Track,
+                             volt::BoardClearanceKind::MechanicalOpening) == 0.15);
+
+    rules.set_clearance_mm(volt::BoardClearanceKind::Track,
+                           volt::BoardClearanceKind::MechanicalOpening, 0.40);
+    CHECK(rules.clearance_mm(volt::BoardClearanceKind::MechanicalOpening,
+                             volt::BoardClearanceKind::Track) == 0.40);
 
     rules.set_clearance_mm(volt::BoardClearanceKind::Pad, volt::BoardClearanceKind::Track, 0.35);
-    REQUIRE(rules.clearance_matrix().size() == 3);
+    REQUIRE(rules.clearance_matrix().size() == 4);
     CHECK(rules.clearance_matrix()[0].first == volt::BoardClearanceKind::Track);
     CHECK(rules.clearance_matrix()[0].second == volt::BoardClearanceKind::Track);
     CHECK(rules.clearance_matrix()[1].first == volt::BoardClearanceKind::Track);
     CHECK(rules.clearance_matrix()[1].second == volt::BoardClearanceKind::Pad);
     CHECK(rules.clearance_matrix()[1].clearance_mm == 0.35);
-    CHECK(rules.clearance_matrix()[2].second == volt::BoardClearanceKind::BoardEdge);
+    CHECK(rules.clearance_matrix()[2].second == volt::BoardClearanceKind::MechanicalOpening);
+    CHECK(rules.clearance_matrix()[3].second == volt::BoardClearanceKind::BoardEdge);
 
     CHECK_THROWS_AS(rules.set_clearance_mm(volt::BoardClearanceKind::BoardEdge,
                                            volt::BoardClearanceKind::BoardEdge, 0.2),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(rules.set_clearance_mm(volt::BoardClearanceKind::MechanicalOpening,
+                                           volt::BoardClearanceKind::MechanicalOpening, 0.2),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(rules.set_clearance_mm(volt::BoardClearanceKind::BoardEdge,
+                                           volt::BoardClearanceKind::MechanicalOpening, 0.2),
                     std::invalid_argument);
     CHECK_THROWS_AS(rules.set_clearance_mm(volt::BoardClearanceKind::Track,
                                            volt::BoardClearanceKind::Pad, -0.1),
@@ -310,6 +324,18 @@ TEST_CASE("BoardCapabilityProfile validates ingestible manufacturing limits") {
                                                      volt::BoardClearanceKind::Track, 0.25},
                         }}),
                     std::invalid_argument);
+    CHECK_THROWS_AS(
+        (volt::BoardCapabilityProfile{"Example", provenance, 0.20, 0.30, 0.60,
+                                      std::vector{volt::BoardClearancePair{
+                                          volt::BoardClearanceKind::MechanicalOpening,
+                                          volt::BoardClearanceKind::MechanicalOpening, 0.20}}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        (volt::BoardCapabilityProfile{"Example", provenance, 0.20, 0.30, 0.60,
+                                      std::vector{volt::BoardClearancePair{
+                                          volt::BoardClearanceKind::BoardEdge,
+                                          volt::BoardClearanceKind::MechanicalOpening, 0.20}}}),
+        std::invalid_argument);
     CHECK_THROWS_AS((volt::BoardCapabilityProfile{
                         "Example",
                         provenance,
@@ -369,6 +395,14 @@ TEST_CASE("BoardCapabilityProfile exposes a conservative explicit fallback") {
                                        volt::BoardClearanceKind::Track) == 0.20);
     CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Pad,
                                        volt::BoardClearanceKind::BoardEdge) == 0.30);
+    CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Track,
+                                       volt::BoardClearanceKind::MechanicalOpening) == 0.20);
+    CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Pad,
+                                       volt::BoardClearanceKind::MechanicalOpening) == 0.20);
+    CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Via,
+                                       volt::BoardClearanceKind::MechanicalOpening) == 0.20);
+    CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Zone,
+                                       volt::BoardClearanceKind::MechanicalOpening) == 0.20);
     CHECK(profile.copper_weight_refinements().empty());
     CHECK(profile.supported_copper_layer_counts().empty());
     CHECK_FALSE(profile.board_thickness_range_mm().has_value());

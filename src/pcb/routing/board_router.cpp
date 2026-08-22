@@ -196,6 +196,7 @@ struct EscapePadCandidate {
     std::vector<BoardPoint> endpoints;
     std::vector<BoardPoint> room_points;
     BoardRouteParameters params;
+    std::optional<BoardSpatialQueryShape> selected_shape;
 };
 
 [[nodiscard]] BoardOutline escape_room_outline(const std::vector<BoardEscapePadResult> &pads,
@@ -674,8 +675,52 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
             escape_direction_points(result.pads[result_index].pad_position, placement.position()),
             detail::transformed_pad_body_corners(placement, pad),
             params,
+            std::nullopt,
         });
         detail::append_unique_layer(room_layers, layer.value());
+    }
+
+    // Escape rooms only override board-wide copper rules, so the current spatial index has the
+    // same effective mechanical-opening legality as each room created below.
+    auto staged_index = BoardSpatialIndex{index()};
+    auto declined = false;
+    for (auto &candidate : candidates) {
+        auto &pad = result.pads[candidate.result_index];
+        auto primary_blockers = std::optional<std::vector<BoardSpatialBlocker>>{};
+
+        for (const auto endpoint : candidate.endpoints) {
+            const auto width_mm = track_width_for_segment(
+                *board_, candidate.layer, pad.pad_position, endpoint, candidate.params);
+            const auto shape = escape_segment_shape(pad.net.value(), candidate.layer,
+                                                    pad.pad_position, endpoint, width_mm);
+            const auto legality = staged_index.query_legality(shape);
+            if (!legality.legal) {
+                if (!primary_blockers.has_value()) {
+                    primary_blockers = legality.blockers;
+                }
+                continue;
+            }
+
+            candidate.selected_shape = shape;
+            staged_index.insert(shape);
+            break;
+        }
+
+        if (!candidate.selected_shape.has_value()) {
+            pad.failure_reason = BoardEscapeFailureReason::NoLegalCandidate;
+            pad.blockers = std::move(primary_blockers).value_or(std::vector<BoardSpatialBlocker>{});
+            declined = true;
+        }
+    }
+
+    if (declined) {
+        for (const auto &candidate : candidates) {
+            if (candidate.selected_shape.has_value()) {
+                result.pads[candidate.result_index].failure_reason =
+                    BoardEscapeFailureReason::AtomicDecline;
+            }
+        }
+        return result;
     }
 
     if (!candidates.empty()) {
@@ -688,40 +733,21 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         apply_escape_room_overrides(*board_, room);
         result.room = board_->add_room(std::move(room));
         index_.reset();
+        static_cast<void>(index());
     }
 
     for (const auto &candidate : candidates) {
         auto &pad = result.pads[candidate.result_index];
-        auto primary_blockers = std::optional<std::vector<BoardSpatialBlocker>>{};
-
-        for (const auto endpoint : candidate.endpoints) {
-            const auto width_mm = track_width_for_segment(
-                *board_, candidate.layer, pad.pad_position, endpoint, candidate.params);
-            const auto shape = escape_segment_shape(pad.net.value(), candidate.layer,
-                                                    pad.pad_position, endpoint, width_mm);
-            const auto legality = index().query_legality(shape);
-            if (!legality.legal) {
-                if (!primary_blockers.has_value()) {
-                    primary_blockers = legality.blockers;
-                }
-                continue;
-            }
-
-            const auto track_id =
-                board_->add_track(BoardTrack{pad.net.value(), candidate.layer,
-                                             std::vector{pad.pad_position, endpoint}, width_mm});
-            index().insert(shape);
-            pad.endpoint = endpoint;
-            pad.escaped = true;
-            pad.failure_reason = BoardEscapeFailureReason::None;
-            pad.tracks.push_back(track_id);
-            break;
-        }
-
-        if (!pad.escaped) {
-            pad.failure_reason = BoardEscapeFailureReason::NoLegalCandidate;
-            pad.blockers = std::move(primary_blockers).value_or(std::vector<BoardSpatialBlocker>{});
-        }
+        const auto &shape = candidate.selected_shape.value();
+        const auto endpoint = shape.points[1];
+        const auto width_mm = shape.radius_mm * 2.0;
+        const auto track_id = board_->add_track(BoardTrack{
+            pad.net.value(), candidate.layer, std::vector{pad.pad_position, endpoint}, width_mm});
+        index().insert(shape);
+        pad.endpoint = endpoint;
+        pad.escaped = true;
+        pad.failure_reason = BoardEscapeFailureReason::None;
+        pad.tracks.push_back(track_id);
     }
 
     return result;

@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
@@ -320,6 +321,70 @@ TEST_CASE("Router reports blockers and leaves the board unchanged on failure", "
 
     CHECK(layout.board.all<volt::BoardTrackId>().size() == track_count_before);
     CHECK(layout.board.all<volt::BoardViaId>().size() == via_count_before);
+}
+
+TEST_CASE("Router deterministically refuses through-board mechanical barriers atomically",
+          "[pcb][router]") {
+    auto fixture = make_router_fixture();
+    auto layout = make_two_layer_board(fixture.circuit);
+    auto rules = volt::BoardDesignRules{0.15, 0.15, 0.20, 0.45, 0.25};
+    rules.set_clearance_mm(volt::BoardClearanceKind::Track,
+                           volt::BoardClearanceKind::MechanicalOpening, 0.25);
+    rules.set_clearance_mm(volt::BoardClearanceKind::Via,
+                           volt::BoardClearanceKind::MechanicalOpening, 0.25);
+    layout.board.set_design_rules(rules);
+    const auto barrier = layout.board.add_feature(
+        volt::BoardFeature::slot("S1", volt::BoardPoint{30.0, 0.5}, volt::BoardPoint{30.0, 39.5},
+                                 1.0, false, "routing-barrier"));
+    auto router = volt::BoardRouter{layout.board, resolved(layout.board)};
+    const auto same_layer_request =
+        volt::BoardRouteRequest{fixture.signal_net, volt::BoardPoint{10.0, 20.0},
+                                volt::BoardPoint{50.0, 20.0}, layout.front, layout.front};
+
+    const auto first = router.connect(same_layer_request);
+    const auto second = router.connect(same_layer_request);
+    const auto cross_layer = router.connect(
+        volt::BoardRouteRequest{fixture.signal_net, volt::BoardPoint{10.0, 20.0},
+                                volt::BoardPoint{50.0, 20.0}, layout.front, layout.back});
+
+    for (const auto *result : {&first, &second, &cross_layer}) {
+        CHECK_FALSE(result->routed);
+        CHECK(result->tracks.empty());
+        CHECK(result->vias.empty());
+        REQUIRE_FALSE(result->blockers.empty());
+        CHECK(result->blockers.front().kind == volt::BoardSpatialBlockerKind::MechanicalOpening);
+        CHECK(result->blockers.front().feature == barrier);
+    }
+    CHECK(first.blockers == second.blockers);
+    CHECK(layout.board.all<volt::BoardTrackId>().size() == 0U);
+    CHECK(layout.board.all<volt::BoardViaId>().size() == 0U);
+}
+
+TEST_CASE("Router accepts a neighbouring route outside a mechanical clearance envelope",
+          "[pcb][router]") {
+    auto fixture = make_router_fixture();
+    auto layout = make_two_layer_board(fixture.circuit);
+    auto rules = volt::BoardDesignRules{0.15, 0.15, 0.20, 0.45, 0.25};
+    rules.set_clearance_mm(volt::BoardClearanceKind::Track,
+                           volt::BoardClearanceKind::MechanicalOpening, 0.25);
+    layout.board.set_design_rules(rules);
+    static_cast<void>(layout.board.add_feature(
+        volt::BoardFeature::hole("MH1", volt::BoardPoint{25.0, 20.0}, 4.0, false, "mounting")));
+    auto router = volt::BoardRouter{layout.board, resolved(layout.board)};
+
+    const auto result = router.connect(
+        volt::BoardRouteRequest{fixture.signal_net, volt::BoardPoint{10.0, 22.4},
+                                volt::BoardPoint{40.0, 22.4}, layout.front, layout.front});
+
+    REQUIRE(result.routed);
+    REQUIRE(result.tracks.size() == 1U);
+    const auto report = volt::validate_board(resolved(layout.board));
+    CHECK(std::none_of(report.diagnostics().begin(), report.diagnostics().end(),
+                       [](const volt::Diagnostic &diagnostic) {
+                           return diagnostic.code() ==
+                                  volt::DiagnosticCode{"PCB_COPPER_MECHANICAL_OPENING_CLEARANCE_"
+                                                       "VIOLATION"};
+                       }));
 }
 
 TEST_CASE("Router rejects structurally invalid endpoint layers", "[pcb][router]") {

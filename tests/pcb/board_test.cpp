@@ -1489,6 +1489,50 @@ TEST_CASE("Board validation reports clearance matrix entries below capability") 
     CHECK(diagnostic->message().find("track-to-pad clearance") != std::string::npos);
 }
 
+TEST_CASE("Board capability keeps mechanical-opening clearance typed") {
+    auto circuit = volt::Circuit{};
+    auto net_class = volt::NetClass{volt::NetClassName{"Signal"}};
+    net_class.set_copper_clearance_mm(0.30);
+    static_cast<void>(
+        circuit.define_net_class(volt::NetClassSpec{.net_class = std::move(net_class)}));
+
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    auto capability = capability_clearances(0.20, 0.30);
+    capability.push_back(volt::BoardClearancePair{
+        volt::BoardClearanceKind::Track, volt::BoardClearanceKind::MechanicalOpening, 0.50});
+    board.set_capability_profile(make_capability_profile(std::move(capability)));
+    auto rules = volt::BoardDesignRules{0.30, 0.30, 0.40, 0.80, 0.40};
+    rules.set_clearance_mm(volt::BoardClearanceKind::Track,
+                           volt::BoardClearanceKind::MechanicalOpening, 0.50);
+    board.set_design_rules(rules);
+    auto room = volt::BoardRoom{
+        "Escape",
+        volt::BoardOutline::rectangle(volt::BoardPoint{1.0, 1.0}, volt::BoardSize{4.0, 4.0}),
+        std::vector{front},
+    };
+    room.set_copper_clearance_mm(0.30);
+    static_cast<void>(board.add_room(std::move(room)));
+
+    const auto explicit_report =
+        volt::validate_board(resolved(board, volt::builtin_footprint_library()));
+    CHECK(find_diagnostics(explicit_report, "PCB_RULE_BELOW_CAPABILITY").empty());
+    const auto explicit_warnings =
+        find_diagnostics(explicit_report, "PCB_RULE_AT_CAPABILITY_MINIMUM");
+    REQUIRE(explicit_warnings.size() == 1U);
+    CHECK(explicit_warnings.front()->message().find("mechanical-opening") != std::string::npos);
+
+    board.set_design_rules(volt::BoardDesignRules{0.30, 0.30, 0.40, 0.80, 0.40});
+    const auto fallback_report =
+        volt::validate_board(resolved(board, volt::builtin_footprint_library()));
+    const auto fallback_errors = find_diagnostics(fallback_report, "PCB_RULE_BELOW_CAPABILITY");
+    REQUIRE(fallback_errors.size() == 1U);
+    CHECK(fallback_errors.front()->message().find("mechanical-opening") != std::string::npos);
+}
+
 TEST_CASE("Board validation reports room overrides below capability") {
     auto circuit = volt::Circuit{};
     auto board = volt::Board{circuit};

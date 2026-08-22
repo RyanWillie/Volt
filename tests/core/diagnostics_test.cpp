@@ -259,6 +259,8 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
           "PCB_TRACK_WIDTH_BELOW_MINIMUM");
     CHECK(std::string{volt::drc_diagnostic_codes::CopperClearanceViolation} ==
           "PCB_COPPER_CLEARANCE_VIOLATION");
+    CHECK(std::string{volt::drc_diagnostic_codes::MechanicalOpeningClearanceViolation} ==
+          "PCB_COPPER_MECHANICAL_OPENING_CLEARANCE_VIOLATION");
     CHECK(std::string{volt::drc_diagnostic_codes::ComponentBodyOverlap} ==
           "PCB_COMPONENT_BODY_OVERLAP");
     CHECK(std::string{volt::drc_diagnostic_codes::ComponentCourtyardOverlap} ==
@@ -315,6 +317,7 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
               "PCB_VIA_ANNULAR_BELOW_MINIMUM",
               "PCB_COPPER_OUTSIDE_OUTLINE",
               "PCB_COPPER_CLEARANCE_VIOLATION",
+              "PCB_COPPER_MECHANICAL_OPENING_CLEARANCE_VIOLATION",
               "PCB_COMPONENT_BODY_OVERLAP",
               "PCB_COMPONENT_COURTYARD_OVERLAP",
               "PCB_COMPONENT_ASSEMBLY_CLEARANCE_WARNING",

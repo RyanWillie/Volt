@@ -242,6 +242,71 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
     }
 }
 
+void validate_mechanical_opening_clearance(const Board &board,
+                                           const std::vector<BoardCopperShape> &shapes,
+                                           DiagnosticReport &report) {
+    const auto openings = collect_mechanical_openings(board);
+    for (const auto &shape : shapes) {
+        for (const auto &opening : openings) {
+            const auto check = check_mechanical_opening_clearance(
+                board, shape, shape_clearance_kind(shape), opening);
+            if (!check.violates) {
+                continue;
+            }
+            for (const auto layer : shape.layers) {
+                auto entities = std::vector{EntityRef::board_feature(opening.feature)};
+                entities.insert(entities.end(), shape.primary_entities.begin(),
+                                shape.primary_entities.end());
+                entities.push_back(EntityRef::net(shape.net));
+                entities.push_back(EntityRef::board_layer(layer));
+                report.add(drc_diagnostic(
+                    drc_diagnostic_codes::MechanicalOpeningClearanceViolation,
+                    "Copper violates the required mechanical-opening clearance",
+                    std::move(entities),
+                    std::vector{shape_overlay(shape, layer),
+                                mechanical_opening_overlay(opening, layer)},
+                    DiagnosticMeasurement{check.actual_clearance_mm, check.required_clearance_mm}));
+            }
+        }
+    }
+}
+
+void validate_netless_zone_mechanical_opening_clearance(const Board &board,
+                                                        DiagnosticReport &report) {
+    const auto openings = collect_mechanical_openings(board);
+    for (std::size_t zone_index = 0; zone_index < board.all<BoardZoneId>().size(); ++zone_index) {
+        const auto zone_id = BoardZoneId{zone_index};
+        const auto &zone = board.get(zone_id);
+        if (zone.net().has_value()) {
+            continue;
+        }
+        for (const auto &opening : openings) {
+            const auto check = check_zone_mechanical_opening_clearance(board, zone, opening);
+            if (!check.violates) {
+                continue;
+            }
+            for (const auto layer : zone.layers()) {
+                auto vertices = std::vector<DiagnosticPoint>{};
+                vertices.reserve(zone.outline().size());
+                for (const auto &point : zone.outline()) {
+                    vertices.push_back(to_diagnostic_point(point));
+                }
+                const auto zone_entity = EntityRef::board_zone(zone_id);
+                report.add(drc_diagnostic(
+                    drc_diagnostic_codes::MechanicalOpeningClearanceViolation,
+                    "Copper violates the required mechanical-opening clearance",
+                    std::vector{EntityRef::board_feature(opening.feature), zone_entity,
+                                EntityRef::board_layer(layer)},
+                    std::vector{DiagnosticOverlay::polygon(std::move(vertices),
+                                                           std::vector{zone_entity},
+                                                           std::vector{layer}),
+                                mechanical_opening_overlay(opening, layer)},
+                    DiagnosticMeasurement{check.actual_clearance_mm, check.required_clearance_mm}));
+            }
+        }
+    }
+}
+
 void validate_copper_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,
                                DiagnosticReport &report) {
     const auto index = BoardSpatialIndex{board, shapes};
@@ -472,6 +537,12 @@ void validate_board_drc(const ResolvedBoardView &resolved,
         })
         .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_outline_clearance(rule_board, shapes, rule_report);
+        })
+        .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_mechanical_opening_clearance(rule_board, shapes, rule_report);
+        })
+        .add([](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_netless_zone_mechanical_opening_clearance(rule_board, rule_report);
         })
         .add([](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_netless_zone_outline_clearance(rule_board, rule_report);

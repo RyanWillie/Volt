@@ -26,6 +26,7 @@ struct BoardSpatialIndexState {
     const Board *board = nullptr;
     std::optional<std::vector<std::optional<LibraryPartRef>>> selected_part_snapshot;
     std::vector<BoardCopperShape> shapes;
+    std::vector<BoardMechanicalOpening> mechanical_openings;
     std::vector<BoardSpatialIndexBox> boxes;
     std::vector<BoardSpatialIndexCell> cells;
     double conservative_clearance_mm = 0.0;

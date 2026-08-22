@@ -182,6 +182,22 @@ TEST_CASE("Escape router fans out SOIC pads into deterministic room-backed stubs
         CHECK(pad.endpoint.y_mm() == Catch::Approx(pad.pad_position.y_mm()));
     }
 
+    const auto &first_pad = result.pads.front();
+    const auto first_outward =
+        first_pad.endpoint.x_mm() < first_pad.pad_position.x_mm() ? -1.0 : 1.0;
+    const auto crossing_x = first_pad.endpoint.x_mm() + (0.15 * first_outward);
+    const auto blocked = escape_router.connect(volt::BoardRouteRequest{
+        fixture.nets[1],
+        volt::BoardPoint{crossing_x, first_pad.pad_position.y_mm() - 0.1},
+        volt::BoardPoint{crossing_x, first_pad.pad_position.y_mm() + 0.1},
+        layout.front,
+        layout.front,
+    });
+    CHECK_FALSE(blocked.routed);
+    REQUIRE(blocked.blockers.size() == 1U);
+    CHECK(blocked.blockers.front().kind == volt::BoardSpatialBlockerKind::CopperClearance);
+    CHECK(blocked.blockers.front().shape_index.has_value());
+
     auto router = volt::BoardRouter{layout.board, resolved(fixture, layout.board)};
     for (const auto &pad : result.pads) {
         const auto outward = pad.endpoint.x_mm() < 20.0 ? -1.0 : 1.0;
@@ -318,7 +334,7 @@ TEST_CASE("Escape router selects an allowed layer for multi-layer pads", "[pcb][
     }
 }
 
-TEST_CASE("Escape router reports blocked pads without hiding partial success", "[pcb][escape]") {
+TEST_CASE("Escape router declines a mechanically blocked component atomically", "[pcb][escape]") {
     auto fixture = make_soic_fixture();
     auto layout = make_escape_board(fixture);
     const auto pad_resolutions = volt::queries::resolve_pads(resolved(fixture, layout.board));
@@ -326,33 +342,38 @@ TEST_CASE("Escape router reports blocked pads without hiding partial success", "
         std::find_if(pad_resolutions.begin(), pad_resolutions.end(),
                      [](const volt::PadResolution &pad) { return pad.pad_label() == "1"; });
     REQUIRE(pad_one != pad_resolutions.end());
-    static_cast<void>(layout.board.add_keepout(volt::BoardKeepout{
-        std::vector{
-            volt::BoardPoint{pad_one->position().x_mm() - 0.30, pad_one->position().y_mm() - 0.30},
-            volt::BoardPoint{pad_one->position().x_mm() + 0.30, pad_one->position().y_mm() - 0.30},
-            volt::BoardPoint{pad_one->position().x_mm() + 0.30, pad_one->position().y_mm() + 0.30},
-            volt::BoardPoint{pad_one->position().x_mm() - 0.30, pad_one->position().y_mm() + 0.30}},
-        std::vector{layout.front}, std::vector{volt::BoardKeepoutRestriction::Copper}}));
+    const auto hole = layout.board.add_feature(
+        volt::BoardFeature::hole("MH1", pad_one->position(), 1.0, false, "mounting"));
 
     auto router = volt::BoardRouter{layout.board, resolved(fixture, layout.board)};
     const auto result = router.escape(fixture.component);
 
     CHECK_FALSE(result.complete());
-    REQUIRE(result.room.has_value());
+    CHECK_FALSE(result.room.has_value());
     REQUIRE(result.pads.size() == 8U);
     const auto *blocked = find_pad(result, "1");
     REQUIRE(blocked != nullptr);
     CHECK_FALSE(blocked->escaped);
     CHECK(blocked->failure_reason == volt::BoardEscapeFailureReason::NoLegalCandidate);
     REQUIRE_FALSE(blocked->blockers.empty());
-    CHECK(blocked->blockers.front().kind == volt::BoardSpatialBlockerKind::Keepout);
+    CHECK(blocked->blockers.front().kind == volt::BoardSpatialBlockerKind::MechanicalOpening);
+    CHECK(blocked->blockers.front().feature == hole);
     CHECK(blocked->blockers.front().layer == layout.front);
+
+    const auto *declined = find_pad(result, "2");
+    REQUIRE(declined != nullptr);
+    CHECK_FALSE(declined->escaped);
+    CHECK(declined->failure_reason == volt::BoardEscapeFailureReason::AtomicDecline);
+    CHECK(declined->tracks.empty());
+    CHECK(declined->blockers.empty());
 
     const auto escaped_count = static_cast<std::size_t>(
         std::count_if(result.pads.begin(), result.pads.end(),
                       [](const volt::BoardEscapePadResult &pad) { return pad.escaped; }));
-    CHECK(escaped_count == 7U);
-    CHECK(layout.board.all<volt::BoardTrackId>().size() == escaped_count);
+    CHECK(escaped_count == 0U);
+    CHECK(layout.board.all<volt::BoardTrackId>().size() == 0U);
+    CHECK(layout.board.all<volt::BoardViaId>().size() == 0U);
+    CHECK(layout.board.all<volt::BoardRoomId>().size() == 0U);
 }
 
 TEST_CASE("Escape router reports per-pad unconnected pins without hiding partial success",

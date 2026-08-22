@@ -48,6 +48,7 @@ struct BoardSpatialQueryShape {
 enum class BoardSpatialBlockerKind {
     CopperClearance,
     BoardOutline,
+    MechanicalOpening,
     Keepout,
 };
 
@@ -67,6 +68,8 @@ struct BoardSpatialBlocker {
     std::optional<std::size_t> shape_index;
     /** Existing board keepout, for keepout blockers. */
     std::optional<BoardKeepoutId> keepout;
+    /** Existing through-board mechanical opening, for mechanical-opening blockers. */
+    std::optional<BoardFeatureId> feature;
     /** Board layer where the blocker applies, when layer-specific. */
     std::optional<BoardLayerId> layer;
     /** Required clearance in millimeters, for clearance-style blockers. */
@@ -83,7 +86,7 @@ struct BoardSpatialBlocker {
 
 /** Complete routing-facing answer for a transient copper candidate. */
 struct BoardSpatialQueryResult {
-    /** Whether the candidate satisfies copper, outline, and keepout rules. */
+    /** Whether the candidate satisfies copper, outline, mechanical, and keepout rules. */
     bool legal = true;
     /** Deterministically ordered blockers that made the candidate illegal. */
     std::vector<BoardSpatialBlocker> blockers;

@@ -458,6 +458,12 @@
               <td>Both copper entities, both <code>net</code> references, and the shared <code>board_layer</code>.</td>
             </tr>
             <tr>
+              <td><code>PCB_COPPER_MECHANICAL_OPENING_CLEARANCE_VIOLATION</code></td>
+              <td class="severity-error">Error</td>
+              <td>Copper does not satisfy the board-owned clearance rule for a standalone mechanical hole, slot, or cutout.</td>
+              <td>The <code>board_feature</code>, primary copper entity, optional <code>net</code>, and <code>board_layer</code>.</td>
+            </tr>
+            <tr>
               <td><code>PCB_NET_UNROUTED</code></td>
               <td class="severity-warning">Warning</td>
               <td>A routed board still has placed pads on the same logical net that are not physically connected by copper.</td>

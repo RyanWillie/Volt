@@ -22,6 +22,13 @@ drc_diagnostic(std::string_view code, std::string message, std::vector<EntityRef
 
 [[nodiscard]] DiagnosticOverlay shape_overlay(const BoardCopperShape &shape, BoardLayerId layer);
 
+[[nodiscard]] DiagnosticOverlay mechanical_opening_overlay(const BoardMechanicalOpening &opening,
+                                                           BoardLayerId layer);
+
+[[nodiscard]] BoardMechanicalClearanceCheck
+check_zone_mechanical_opening_clearance(const Board &board, const BoardZone &zone,
+                                        const BoardMechanicalOpening &opening);
+
 [[nodiscard]] std::vector<BoardLayerId> via_copper_layers(const Board &board, const BoardVia &via);
 
 [[nodiscard]] std::vector<DiagnosticOverlay> track_overlays(const BoardTrack &track,

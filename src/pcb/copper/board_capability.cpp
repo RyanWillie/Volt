@@ -38,6 +38,22 @@ canonical_clearance_pair(BoardClearanceKind first, BoardClearanceKind second) {
            (lhs.first == rhs.first && static_cast<int>(lhs.second) < static_cast<int>(rhs.second));
 }
 
+[[nodiscard]] bool copper_clearance_kind(BoardClearanceKind kind) noexcept {
+    return kind == BoardClearanceKind::Track || kind == BoardClearanceKind::Pad ||
+           kind == BoardClearanceKind::Via || kind == BoardClearanceKind::Zone;
+}
+
+[[nodiscard]] bool supported_mechanical_clearance_pair(BoardClearanceKind first,
+                                                       BoardClearanceKind second) noexcept {
+    if (first == BoardClearanceKind::MechanicalOpening) {
+        return copper_clearance_kind(second);
+    }
+    if (second == BoardClearanceKind::MechanicalOpening) {
+        return copper_clearance_kind(first);
+    }
+    return true;
+}
+
 } // namespace
 
 BoardCapabilityProfile::BoardCapabilityProfile(
@@ -83,6 +99,12 @@ BoardCapabilityProfile::BoardCapabilityProfile(
             throw KernelArgumentError{
                 ErrorCode::InvalidArgument,
                 "Board capability profile cannot pair the board edge with itself"};
+        }
+        if (!supported_mechanical_clearance_pair(entry.first, entry.second)) {
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
+                "Board capability profile mechanical-opening pairs must reference one copper "
+                "kind"};
         }
         if (!finite_non_negative(entry.clearance_mm)) {
             throw KernelArgumentError{
@@ -179,6 +201,11 @@ BoardCapabilityProfile::BoardCapabilityProfile(
             const auto clearance = high == BoardClearanceKind::BoardEdge ? 0.30 : 0.20;
             clearances.push_back(BoardClearancePair{low, high, clearance});
         }
+    }
+    for (const auto copper_kind : {BoardClearanceKind::Track, BoardClearanceKind::Pad,
+                                   BoardClearanceKind::Via, BoardClearanceKind::Zone}) {
+        clearances.push_back(
+            BoardClearancePair{copper_kind, BoardClearanceKind::MechanicalOpening, 0.20});
     }
     return BoardCapabilityProfile{
         "volt.conservative",
