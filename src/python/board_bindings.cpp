@@ -8,8 +8,155 @@
 #include <vector>
 
 namespace volt::python {
+namespace {
+
+template <typename Id> [[nodiscard]] py::tuple id_indices(const std::vector<Id> &ids) {
+    auto result = py::tuple{ids.size()};
+    for (std::size_t index = 0; index < ids.size(); ++index) {
+        result[index] = py::int_{ids[index].index()};
+    }
+    return result;
+}
+
+template <typename Id> [[nodiscard]] py::object optional_id_index(const std::optional<Id> &id) {
+    if (!id.has_value()) {
+        return py::none{};
+    }
+    return py::int_{id->index()};
+}
+
+[[nodiscard]] py::object optional_index(const std::optional<std::size_t> &index) {
+    if (!index.has_value()) {
+        return py::none{};
+    }
+    return py::int_{index.value()};
+}
+
+[[nodiscard]] py::tuple board_point(const volt::BoardPoint &point) {
+    return py::make_tuple(point.x_mm(), point.y_mm());
+}
+
+[[nodiscard]] py::tuple blockers(const std::vector<volt::BoardSpatialBlocker> &values) {
+    auto result = py::tuple{values.size()};
+    for (std::size_t index = 0; index < values.size(); ++index) {
+        result[index] = py::cast(values[index], py::return_value_policy::copy);
+    }
+    return result;
+}
+
+[[nodiscard]] py::tuple pad_results(const std::vector<volt::BoardEscapePadResult> &values) {
+    auto result = py::tuple{values.size()};
+    for (std::size_t index = 0; index < values.size(); ++index) {
+        result[index] = py::cast(values[index], py::return_value_policy::copy);
+    }
+    return result;
+}
+
+void bind_assisted_routing_results(py::module_ &module) {
+    py::enum_<volt::BoardSpatialBlockerKind>(module, "BoardSpatialBlockerKind",
+                                             "Native category for one assisted-route blocker.")
+        .value("COPPER_CLEARANCE", volt::BoardSpatialBlockerKind::CopperClearance)
+        .value("BOARD_OUTLINE", volt::BoardSpatialBlockerKind::BoardOutline)
+        .value("MECHANICAL_OPENING", volt::BoardSpatialBlockerKind::MechanicalOpening)
+        .value("KEEPOUT", volt::BoardSpatialBlockerKind::Keepout);
+
+    py::enum_<volt::BoardEscapeFailureReason>(module, "BoardEscapeFailureReason",
+                                              "Native reason one footprint pad did not escape.")
+        .value("NONE", volt::BoardEscapeFailureReason::None)
+        .value("PAD_UNCONNECTED", volt::BoardEscapeFailureReason::PadUnconnected)
+        .value("NO_COPPER_LAYER", volt::BoardEscapeFailureReason::NoCopperLayer)
+        .value("DISALLOWED_LAYER", volt::BoardEscapeFailureReason::DisallowedLayer)
+        .value("NO_LEGAL_CANDIDATE", volt::BoardEscapeFailureReason::NoLegalCandidate)
+        .value("ATOMIC_DECLINE", volt::BoardEscapeFailureReason::AtomicDecline);
+
+    py::class_<volt::BoardSpatialBlocker>(module, "BoardSpatialBlocker")
+        .def_property_readonly("kind",
+                               [](const volt::BoardSpatialBlocker &value) { return value.kind; })
+        .def_property_readonly("shape_index",
+                               [](const volt::BoardSpatialBlocker &value) {
+                                   return optional_index(value.shape_index);
+                               })
+        .def_property_readonly(
+            "keepout",
+            [](const volt::BoardSpatialBlocker &value) { return optional_id_index(value.keepout); })
+        .def_property_readonly(
+            "feature",
+            [](const volt::BoardSpatialBlocker &value) { return optional_id_index(value.feature); })
+        .def_property_readonly(
+            "layer",
+            [](const volt::BoardSpatialBlocker &value) { return optional_id_index(value.layer); })
+        .def_property_readonly(
+            "required_clearance_mm",
+            [](const volt::BoardSpatialBlocker &value) { return value.required_clearance_mm; })
+        .def_property_readonly(
+            "actual_clearance_mm",
+            [](const volt::BoardSpatialBlocker &value) { return value.actual_clearance_mm; })
+        .def_property_readonly("room", [](const volt::BoardSpatialBlocker &value) {
+            return optional_id_index(value.room);
+        });
+
+    py::class_<volt::BoardRouteResult>(module, "BoardRouteResult")
+        .def_property_readonly("routed",
+                               [](const volt::BoardRouteResult &value) { return value.routed; })
+        .def_property_readonly(
+            "tracks", [](const volt::BoardRouteResult &value) { return id_indices(value.tracks); })
+        .def_property_readonly(
+            "vias", [](const volt::BoardRouteResult &value) { return id_indices(value.vias); })
+        .def_property_readonly("blockers", [](const volt::BoardRouteResult &value) {
+            return blockers(value.blockers);
+        });
+
+    py::class_<volt::BoardEscapePadResult>(module, "BoardEscapePadResult")
+        .def_property_readonly(
+            "pad_label", [](const volt::BoardEscapePadResult &value) { return value.pad_label; })
+        .def_property_readonly(
+            "pad", [](const volt::BoardEscapePadResult &value) { return value.pad.index(); })
+        .def_property_readonly(
+            "pad_position",
+            [](const volt::BoardEscapePadResult &value) { return board_point(value.pad_position); })
+        .def_property_readonly(
+            "pin",
+            [](const volt::BoardEscapePadResult &value) { return optional_id_index(value.pin); })
+        .def_property_readonly(
+            "net",
+            [](const volt::BoardEscapePadResult &value) { return optional_id_index(value.net); })
+        .def_property_readonly(
+            "endpoint",
+            [](const volt::BoardEscapePadResult &value) { return board_point(value.endpoint); })
+        .def_property_readonly(
+            "escaped", [](const volt::BoardEscapePadResult &value) { return value.escaped; })
+        .def_property_readonly(
+            "failure_reason",
+            [](const volt::BoardEscapePadResult &value) { return value.failure_reason; })
+        .def_property_readonly(
+            "tracks",
+            [](const volt::BoardEscapePadResult &value) { return id_indices(value.tracks); })
+        .def_property_readonly(
+            "vias", [](const volt::BoardEscapePadResult &value) { return id_indices(value.vias); })
+        .def_property_readonly("blockers", [](const volt::BoardEscapePadResult &value) {
+            return blockers(value.blockers);
+        });
+
+    py::class_<volt::BoardEscapeResult>(module, "BoardEscapeResult")
+        .def_property_readonly("complete", &volt::BoardEscapeResult::complete)
+        .def_property_readonly(
+            "component",
+            [](const volt::BoardEscapeResult &value) { return value.component.index(); })
+        .def_property_readonly(
+            "placement",
+            [](const volt::BoardEscapeResult &value) { return optional_id_index(value.placement); })
+        .def_property_readonly(
+            "room",
+            [](const volt::BoardEscapeResult &value) { return optional_id_index(value.room); })
+        .def_property_readonly(
+            "pads", [](const volt::BoardEscapeResult &value) { return pad_results(value.pads); });
+}
+
+} // namespace
 
 void bind_board(pybind11::module_ &module) {
+    bind_assisted_routing_results(module);
+
     py::class_<PyBoardRegistry>(module, "BoardRegistry")
         .def(py::init<const PyCircuit &>(), py::keep_alive<1, 2>())
         .def("add", &PyBoardRegistry::add, py::arg("name"),

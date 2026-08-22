@@ -17,9 +17,11 @@ This skill is **guidance, not a gate**. The rubric below is advisory: it tells y
 "done well" looks like. Nothing here blocks authoring. Physical correctness is enforced
 separately by DRC (`board.validate()`); this skill is about the quality layered on top.
 
-You place and route **by hand** through the structured grammar. This is not auto-routing —
-there is no solver. The grammar removes hand-calculated coordinates; your judgment supplies
-the layout.
+The structured `layout.route(...)` / `layout.connect(...)` grammar is **author-directed**:
+your judgment supplies the route while anchors, waypoints, corners, bundles, and stitching
+lower immediately to canonical Board tracks and vias. Separate bounded native helpers exist
+for point-to-point obstacle avoidance (`board.assisted_connect(...)`) and component pad fanout
+(`board.escape(...)`). Neither helper is a whole-board or global autorouter.
 
 ## Preconditions
 
@@ -202,6 +204,17 @@ layout.route(nets["+5V"], layer=front, width=0.30).at(header[1]).to(u1.VCC)
 layout.route(nets["OUT"], layer=front, width=0.20).at(u1.OUT).to(rled.start)
 ```
 
+Choose the smallest truthful surface:
+
+- `layout.route(...)` and `layout.connect(...)` express the route you intend. Their anchor,
+  waypoint, corner, bundle, `layout.fanout(...)`, and stitching arithmetic is Python ergonomic
+  lowering because it immediately publishes canonical Board geometry.
+- `board.assisted_connect(...)` asks the native kernel for one bounded, obstacle-aware
+  point-to-point connection and returns a read-only `BoardRouteResult`.
+- `board.escape(...)` asks the native kernel for bounded pad fanout on one placed component
+  and returns a read-only `BoardEscapeResult` with typed per-pad outcomes.
+- Volt has no whole-board routing, route ordering, rip-up/reroute, or global autorouter.
+
 - **Width by net class** (rubric 5): power and ground wide, signal narrow; keep a class
   consistent.
 - **Octilinear by default** (rubric 4): a single `.to(pad)` auto-inserts a clean corner.
@@ -220,8 +233,9 @@ layout.route(nets["OUT"], layer=front, width=0.20).at(u1.OUT).to(rled.start)
   then stitch them together with `layout.route(gnd, layer=back)` segments. Reserve
   `layout.stitch(net, at=..., start_layer=, end_layer=)` for adding multiple stitching
   vias deterministically.
-- **Fanout from dense ICs** — `layout.fanout(anchors, layer=, direction=, distance=,
-  via_layers=)` escapes a cluster of pads outward before detailed routing.
+- **Author-directed fanout** — `layout.fanout(anchors, layer=, direction=, distance=,
+  via_layers=)` authors explicit pad stubs and optional vias before detailed routing. Use
+  `board.escape(...)` when bounded native obstacle-aware fanout is the intent.
 - **Per-layer direction** (rubric 5, advisory): if the board benefits, keep front mostly
   horizontal and back mostly vertical.
 - **Ground pour** (rubric 5): `layout.zone(layers=(back,), net=nets["GND"], at=...,

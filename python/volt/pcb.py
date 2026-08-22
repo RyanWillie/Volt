@@ -16,6 +16,12 @@ from .logical import Component, Net
 
 
 Point = tuple[float, float]
+BoardEscapeFailureReason = _volt.BoardEscapeFailureReason
+BoardEscapePadResult = _volt.BoardEscapePadResult
+BoardEscapeResult = _volt.BoardEscapeResult
+BoardRouteResult = _volt.BoardRouteResult
+BoardSpatialBlocker = _volt.BoardSpatialBlocker
+BoardSpatialBlockerKind = _volt.BoardSpatialBlockerKind
 
 
 def _point(value, context: str) -> Point:
@@ -908,12 +914,12 @@ class Board:
         start_layer: int,
         end: Point,
         end_layer: int,
-    ) -> dict:
-        """Route a net between two points using the kernel assisted-connection solver.
+    ) -> BoardRouteResult:
+        """Attempt one bounded point-to-point route using the native assisted router.
 
-        Returns the kernel solver result: a dict with a ``routed`` flag, created
-        ``tracks`` and ``vias`` ids, and failure ``blockers``. All routing geometry is
-        decided by the kernel.
+        The native kernel owns obstacle avoidance, rule resolution, legality, and the
+        all-or-nothing Board mutation. This does not route other nets or perform global
+        autorouting.
         """
         if isinstance(net, Net):
             if net._design is not self._design:
@@ -933,8 +939,12 @@ class Board:
             _layer_index(end_layer),
         )
 
-    def escape(self, component: Component | int) -> dict:
-        """Fan out a placed component using the kernel escape router."""
+    def escape(self, component: Component | int) -> BoardEscapeResult:
+        """Attempt bounded native pad fanout for one placed component.
+
+        The result reports every pad in selected-footprint order. The native kernel owns
+        candidate selection, legality, and the atomic room-and-stub Board mutation.
+        """
         if isinstance(component, Component):
             if component._design is not self._design:
                 raise ValueError("Component belongs to a different design")

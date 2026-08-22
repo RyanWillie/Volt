@@ -84,6 +84,32 @@ directional jogs, and `.to(...)` lower to kernel-owned tracks. `layout.via(...)`
 to the same via model as `board.add_via(...)`. Tracks and vias reference existing logical
 nets. Board data implements connectivity; it does not define the netlist.
 
+Choose the routing surface by intent:
+
+| Surface | Capability |
+| --- | --- |
+| `layout.route(...)` / `layout.connect(...)` | Explicit author-directed routing grammar. Anchors, waypoints, corners, bundles, fanout helpers, and stitching may do Python arithmetic because they immediately publish canonical Board tracks and vias. |
+| `board.assisted_connect(...)` | Bounded native point-to-point obstacle avoidance. It returns a read-only `BoardRouteResult` and either commits one legal route or leaves the Board unchanged. |
+| `board.escape(...)` | Bounded native pad fanout for one placed component. It returns a read-only `BoardEscapeResult` with typed `BoardEscapePadResult` values and failure enums. |
+
+C++ owns assisted-routing algorithms, legality, rule resolution, result semantics, and
+Board mutation. Volt has no whole-board or global autorouter.
+
+The typed result fields mirror the native domain directly:
+
+| Result | Read-only fields |
+| --- | --- |
+| `BoardRouteResult` | `routed`, `tracks`, `vias`, `blockers` |
+| `BoardSpatialBlocker` | `kind`, `shape_index`, `keepout`, `feature`, `layer`, `required_clearance_mm`, `actual_clearance_mm`, `room` |
+| `BoardEscapeResult` | `complete`, `component`, `placement`, `room`, `pads` |
+| `BoardEscapePadResult` | `pad_label`, `pad`, `pad_position`, `pin`, `net`, `endpoint`, `escaped`, `failure_reason`, `tracks`, `vias`, `blockers` |
+
+`BoardSpatialBlocker.kind` uses `BoardSpatialBlockerKind`; per-pad `failure_reason` uses
+`BoardEscapeFailureReason`. Blocker kinds are `COPPER_CLEARANCE`, `BOARD_OUTLINE`,
+`MECHANICAL_OPENING`, and `KEEPOUT`; escape reasons are `NONE`, `PAD_UNCONNECTED`,
+`NO_COPPER_LAYER`, `DISALLOWED_LAYER`, `NO_LEGAL_CANDIDATE`, and `ATOMIC_DECLINE`.
+Track, via, blocker, and pad sequences are immutable tuples.
+
 When a via omits `drill` or `annular`, Volt resolves that default from the net class when
 one is assigned, then floors it at the board's own minimum via rules. Structurally valid
 explicit values are left as authored so deliberate rule violations remain diagnosable through
@@ -124,7 +150,8 @@ with board.layout(grid=0.5) as layout:
 
 Use `layout.bundle(...)` when several explicit anchor pairs should be authored together.
 Each bundle item is a `(start, end)` or `(start, end, through)` tuple and lowers through
-the same `layout.connect(...)` path. Batch helpers preserve the layout cursor.
+the same `layout.connect(...)` path. Batch helpers preserve the layout cursor; they are
+authoring conveniences, not obstacle-aware assisted routing.
 
 ## Zones, keepouts, and text
 

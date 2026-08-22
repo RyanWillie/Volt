@@ -55,69 +55,6 @@ board_route_endpoints_from_list(const py::list &endpoints) {
     return result;
 }
 
-[[nodiscard]] inline std::string
-board_spatial_blocker_kind_name(volt::BoardSpatialBlockerKind kind) {
-    switch (kind) {
-    case volt::BoardSpatialBlockerKind::CopperClearance:
-        return "copper_clearance";
-    case volt::BoardSpatialBlockerKind::BoardOutline:
-        return "board_outline";
-    case volt::BoardSpatialBlockerKind::MechanicalOpening:
-        return "mechanical_opening";
-    case volt::BoardSpatialBlockerKind::Keepout:
-        return "keepout";
-    }
-    throw std::logic_error{"Unhandled board spatial blocker kind"};
-}
-
-[[nodiscard]] inline py::object optional_size_to_object(const std::optional<std::size_t> &value) {
-    if (!value.has_value()) {
-        return py::none{};
-    }
-    return py::cast(value.value());
-}
-
-template <typename Id>
-[[nodiscard]] inline py::object optional_id_to_object(const std::optional<Id> &value) {
-    if (!value.has_value()) {
-        return py::none{};
-    }
-    return py::cast(value->index());
-}
-
-[[nodiscard]] inline py::dict
-board_spatial_blocker_to_dict(const volt::BoardSpatialBlocker &blocker) {
-    auto result = py::dict{};
-    result["kind"] = board_spatial_blocker_kind_name(blocker.kind);
-    result["shape_index"] = optional_size_to_object(blocker.shape_index);
-    result["keepout"] = optional_id_to_object(blocker.keepout);
-    result["feature"] = optional_id_to_object(blocker.feature);
-    result["layer"] = optional_id_to_object(blocker.layer);
-    result["required_clearance_mm"] = blocker.required_clearance_mm;
-    result["actual_clearance_mm"] = blocker.actual_clearance_mm;
-    result["room"] = optional_id_to_object(blocker.room);
-    return result;
-}
-
-[[nodiscard]] inline std::string
-board_escape_failure_reason_name(volt::BoardEscapeFailureReason reason) {
-    switch (reason) {
-    case volt::BoardEscapeFailureReason::None:
-        return "none";
-    case volt::BoardEscapeFailureReason::PadUnconnected:
-        return "pad_unconnected";
-    case volt::BoardEscapeFailureReason::NoCopperLayer:
-        return "no_copper_layer";
-    case volt::BoardEscapeFailureReason::DisallowedLayer:
-        return "disallowed_layer";
-    case volt::BoardEscapeFailureReason::NoLegalCandidate:
-        return "no_legal_candidate";
-    case volt::BoardEscapeFailureReason::AtomicDecline:
-        return "atomic_decline";
-    }
-    throw std::logic_error{"Unhandled board escape failure reason"};
-}
-
 [[nodiscard]] inline std::string board_side_name(volt::BoardSide side) {
     switch (side) {
     case volt::BoardSide::Top:

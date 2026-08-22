@@ -754,3 +754,13 @@ helpers such as wires, labels, and renderer helpers lower into kernel-owned proj
 data. Python PCB layout helpers place footprints and route copper for existing components
 and nets. Neither surface should create, merge, split, or reconnect logical nets, and
 future projection APIs should follow the same kernel-first boundary.
+
+PCB routing has three deliberately distinct public surfaces. `layout.route(...)` and
+`layout.connect(...)` are explicit author-directed grammar: anchors, waypoints, corners,
+bundles, fanout helpers, and stitching may perform Python arithmetic when they immediately
+publish ordinary canonical Board tracks and vias. `Board.assisted_connect(...)` is bounded
+native point-to-point obstacle avoidance and returns a read-only `BoardRouteResult`.
+`Board.escape(...)` is bounded native pad fanout for one component and returns a read-only
+`BoardEscapeResult` with typed per-pad outcomes. C++ owns assisted algorithms, legality,
+rule resolution, result semantics, and Board mutation. Volt does not provide a whole-board
+or global autorouter.
