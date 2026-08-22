@@ -160,6 +160,10 @@ void write_at(std::ostream &out, BoardPoint point, double rotation_degrees = 0.0
                        [index](const PcbLayer &layer) { return layer.index == index; });
 }
 
+[[nodiscard]] bool has_bottom_copper_layer(const LayerMap &layer_map) {
+    return contains_layer(layer_map.output_layers, 31);
+}
+
 void add_layer(std::vector<PcbLayer> &layers, PcbLayer layer) {
     if (!contains_layer(layers, layer.index)) {
         layers.push_back(std::move(layer));
@@ -442,6 +446,7 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
 }
 
 [[nodiscard]] std::vector<PlacementExport> build_placement_exports(const CompiledBoard &compiled,
+                                                                   const LayerMap &layer_map,
                                                                    LossReport &loss_report) {
     const auto &board = compiled.board();
     auto exports = std::vector<PlacementExport>{};
@@ -449,6 +454,13 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
     for (const auto &frozen : compiled.placements()) {
         const auto id = frozen.placement();
         const auto &placement = board.get(id);
+        if (placement.side() == BoardSide::Bottom && !has_bottom_copper_layer(layer_map)) {
+            add_fab_critical_warning(
+                loss_report, LossKind::UnsupportedConstruct, "component_placement.side",
+                "Bottom-side component placement requires an enabled bottom copper layer mapped "
+                "to B.Cu");
+            continue;
+        }
         if (!frozen.footprint().has_value()) {
             add_fab_critical_warning(
                 loss_report, LossKind::IncompleteConstruct, "footprint",
@@ -526,9 +538,9 @@ void write_pad(std::ostream &out, const FootprintPad &pad, const PadResolution &
 }
 
 void write_component_footprints(std::ostream &out, const CompiledBoard &compiled,
-                                LossReport &loss_report) {
+                                const LayerMap &layer_map, LossReport &loss_report) {
     const auto &board = compiled.board();
-    for (const auto &placement_export : build_placement_exports(compiled, loss_report)) {
+    for (const auto &placement_export : build_placement_exports(compiled, layer_map, loss_report)) {
         const auto &placement = *placement_export.placement;
         const auto &definition = *placement_export.definition;
         const auto &component = board.circuit().get(placement.component());
@@ -802,7 +814,7 @@ namespace volt::adapters::kicad {
     detail::write_setup(out);
     detail::write_nets(out, board.circuit());
     detail::write_board_features(out, board, result.loss_report);
-    detail::write_component_footprints(out, compiled, result.loss_report);
+    detail::write_component_footprints(out, compiled, layer_map, result.loss_report);
     detail::write_tracks(out, board, layer_map, result.loss_report);
     detail::write_vias(out, board, layer_map, result.loss_report);
     detail::write_zones(out, board, layer_map, result.loss_report);

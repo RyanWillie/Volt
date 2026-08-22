@@ -455,6 +455,33 @@ TEST_CASE("KiCad PCB writer exports an asymmetric bottom-side placement") {
           std::string::npos);
 }
 
+TEST_CASE("KiCad PCB writer fails closed for a bottom placement without bottom copper") {
+    const auto fixture = make_resistor_circuit(asymmetric_test_footprint());
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"SingleSided"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_layer_stack(volt::LayerStack{{front}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
+    static_cast<void>(board.place_component(volt::ComponentPlacement{
+        fixture.component, volt::BoardPoint{20.0, 10.0}, volt::BoardRotation::degrees(30.0),
+        volt::BoardSide::Bottom, false}));
+
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::adapters::kicad::write_board(compiled);
+    const auto diagnostics = volt::adapters::kicad::fabrication_diagnostics(result.loss_report);
+
+    REQUIRE(result.loss_report.warnings().size() == 1);
+    CHECK(result.loss_report.warnings().front().construct == "component_placement.side");
+    CHECK(result.loss_report.warnings().front().fabrication_impact ==
+          volt::adapters::kicad::LossFabricationImpact::FabCritical);
+    REQUIRE(diagnostics.diagnostics().size() == 1);
+    CHECK(diagnostics.diagnostics().front().code() ==
+          volt::DiagnosticCode{"PCB_KICAD_FAB_EXPORT_LOSS"});
+    CHECK(result.text.find("(footprint \"Asymmetric_Bottom\"") == std::string::npos);
+    CHECK(result.text.find("(31 \"B.Cu\" signal)") == std::string::npos);
+}
+
 TEST_CASE("KiCad PCB writer keeps mixed top and bottom placements ordered and oriented") {
     auto fixture = make_resistor_circuit(asymmetric_test_footprint());
     const auto second_component = add_second_resistor(fixture);

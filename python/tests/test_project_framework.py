@@ -630,6 +630,9 @@ def test_project_bottom_side_placement_has_no_kicad_fabrication_loss():
                 minimum_via_annular=0.02,
             )
         )
+        front = pcb.add_layer("F.Cu", role="copper", side="top")
+        back = pcb.add_layer("B.Cu", role="copper", side="bottom")
+        pcb.set_layer_stack((front, back), thickness=1.6)
         pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
         pcb.place(source.component("J1"), at=(4, 5), locked=True)
         pcb.place(source.component("R1"), at=(10, 5), rotation=17)
