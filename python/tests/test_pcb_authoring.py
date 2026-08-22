@@ -1540,6 +1540,42 @@ def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
     assert '(layer "In1.Cu")' in with_inner_zone.text
 
 
+def test_python_board_authoring_exports_mixed_side_kicad_placements():
+    asymmetric = volt.Footprint(
+        ("test", "AsymmetricBottom"),
+        pads=(
+            volt.FootprintPad.surface_mount(
+                "1", at=(-2.0, 1.0), size=(1.2, 0.7), shape="rectangle"
+            ),
+            volt.FootprintPad.surface_mount(
+                "2", at=(1.0, -0.5), size=(0.9, 1.3), shape="oval"
+            ),
+        ),
+    )
+    design, r1, d1 = _small_resistor_led_design(
+        resistor_footprint=asymmetric,
+        led_footprint=asymmetric,
+    )
+    board = design.add_board("Control")
+    board.set_capability_profile(_delivery_profile())
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
+    board.place(r1, at=(10.0, 8.0), rotation=17.0, side="top")
+    board.place(d1, at=(30.0, 12.0), rotation=137.0, side="bottom")
+
+    export = board.to_kicad_pcb()
+
+    assert export.warnings == ()
+    assert export.text.count('(footprint "AsymmetricBottom"') == 2
+    assert '(at -2 1 343)' in export.text
+    assert '(at 2 1 223)' in export.text
+    assert '(layers "B.Cu" "B.Paste" "B.Mask")' in export.text
+    assert '(layer "B.Fab")' in export.text
+    assert export.text.count('(justify left mirror)') == 2
+
+
 def test_python_board_authoring_exports_native_fabrication_files(tmp_path, monkeypatch):
     design, r1, d1 = _small_resistor_led_design(
         resistor_footprint=_rect_0603(("test", "RectR0603")),

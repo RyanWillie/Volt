@@ -55,6 +55,17 @@ void write_at(std::ostream &out, BoardPoint point, double rotation_degrees = 0.0
     out << ')';
 }
 
+[[nodiscard]] double kicad_rotation(double board_rotation_degrees) {
+    auto result = std::fmod(-board_rotation_degrees, 360.0);
+    if (result < 0.0) {
+        result += 360.0;
+    }
+    if (std::abs(result) < 1.0e-12 || std::abs(result - 360.0) < 1.0e-12) {
+        return 0.0;
+    }
+    return result;
+}
+
 [[nodiscard]] std::string pcb_uuid(std::string_view entity, std::size_t id) {
     auto out = std::ostringstream{};
     out << "pcb/" << entity << '/' << id;
@@ -149,6 +160,10 @@ void write_at(std::ostream &out, BoardPoint point, double rotation_degrees = 0.0
                        [index](const PcbLayer &layer) { return layer.index == index; });
 }
 
+[[nodiscard]] bool has_bottom_copper_layer(const LayerMap &layer_map) {
+    return contains_layer(layer_map.output_layers, 31);
+}
+
 void add_layer(std::vector<PcbLayer> &layers, PcbLayer layer) {
     if (!contains_layer(layers, layer.index)) {
         layers.push_back(std::move(layer));
@@ -199,6 +214,12 @@ void report_layer_mapping_collision(const Board &board, BoardLayerId current, Bo
     add_layer(layer_map.output_layers, PcbLayer{37, "F.SilkS", "user"});
     add_layer(layer_map.output_layers, PcbLayer{38, "B.Mask", "user"});
     add_layer(layer_map.output_layers, PcbLayer{39, "F.Mask", "user"});
+    if (std::ranges::any_of(board.all<ComponentPlacementId>(),
+                            [](const ComponentPlacement &placement) {
+                                return placement.side() == BoardSide::Bottom;
+                            })) {
+        add_layer(layer_map.output_layers, PcbLayer{48, "B.Fab", "user"});
+    }
     add_layer(layer_map.output_layers, PcbLayer{49, "F.Fab", "user"});
     if (board.outline().has_value()) {
         add_layer(layer_map.output_layers, PcbLayer{44, "Edge.Cuts", "user"});
@@ -267,7 +288,7 @@ void report_layer_mapping_collision(const Board &board, BoardLayerId current, Bo
     return "thru_hole";
 }
 
-[[nodiscard]] std::vector<std::string> pad_layers(const FootprintPad &pad) {
+[[nodiscard]] std::vector<std::string> pad_layers(const FootprintPad &pad, BoardSide side) {
     if (pad.kind() == FootprintPadKind::ThroughHole) {
         return {"*.Cu", "*.Mask"};
     }
@@ -275,22 +296,22 @@ void report_layer_mapping_collision(const Board &board, BoardLayerId current, Bo
     auto layers = std::vector<std::string>{};
     const auto &footprint_layers = pad.layers();
     if (footprint_layers.contains(FootprintLayer::FrontCopper)) {
-        layers.push_back("F.Cu");
+        layers.push_back(side == BoardSide::Top ? "F.Cu" : "B.Cu");
     }
     if (footprint_layers.contains(FootprintLayer::FrontPaste)) {
-        layers.push_back("F.Paste");
+        layers.push_back(side == BoardSide::Top ? "F.Paste" : "B.Paste");
     }
     if (footprint_layers.contains(FootprintLayer::FrontSolderMask)) {
-        layers.push_back("F.Mask");
+        layers.push_back(side == BoardSide::Top ? "F.Mask" : "B.Mask");
     }
     if (footprint_layers.contains(FootprintLayer::BackCopper)) {
-        layers.push_back("B.Cu");
+        layers.push_back(side == BoardSide::Top ? "B.Cu" : "F.Cu");
     }
     if (footprint_layers.contains(FootprintLayer::BackPaste)) {
-        layers.push_back("B.Paste");
+        layers.push_back(side == BoardSide::Top ? "B.Paste" : "F.Paste");
     }
     if (footprint_layers.contains(FootprintLayer::BackSolderMask)) {
-        layers.push_back("B.Mask");
+        layers.push_back(side == BoardSide::Top ? "B.Mask" : "F.Mask");
     }
     return layers;
 }
@@ -309,16 +330,20 @@ void report_invalid_pad_resolution(const PadResolution &resolution, const Circui
                              message.str());
 }
 
-void write_effects(std::ostream &out, double size_mm) {
+void write_effects(std::ostream &out, double size_mm, bool mirrored) {
     out << "(effects (font (size ";
     write_number(out, size_mm);
     out << ' ';
     write_number(out, size_mm);
-    out << ")) (justify left))";
+    out << ")) (justify left";
+    if (mirrored) {
+        out << " mirror";
+    }
+    out << "))";
 }
 
 void write_property(std::ostream &out, std::string_view name, std::string_view value, double x,
-                    double y, std::string_view layer, std::string_view uuid) {
+                    double y, std::string_view layer, std::string_view uuid, bool mirrored) {
     out << "    (property " << sexpr_string(name) << ' ' << sexpr_string(value) << "\n";
     out << "      (at ";
     write_number(out, x);
@@ -328,7 +353,7 @@ void write_property(std::ostream &out, std::string_view name, std::string_view v
     out << "      (layer " << sexpr_string(layer) << ")\n";
     out << "      (uuid " << sexpr_string(uuid) << ")\n";
     out << "      ";
-    write_effects(out, 1.0);
+    write_effects(out, 1.0, mirrored);
     out << "\n";
     out << "    )\n";
 }
@@ -421,6 +446,7 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
 }
 
 [[nodiscard]] std::vector<PlacementExport> build_placement_exports(const CompiledBoard &compiled,
+                                                                   const LayerMap &layer_map,
                                                                    LossReport &loss_report) {
     const auto &board = compiled.board();
     auto exports = std::vector<PlacementExport>{};
@@ -428,13 +454,13 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
     for (const auto &frozen : compiled.placements()) {
         const auto id = frozen.placement();
         const auto &placement = board.get(id);
-        if (placement.side() != BoardSide::Top) {
+        if (placement.side() == BoardSide::Bottom && !has_bottom_copper_layer(layer_map)) {
             add_fab_critical_warning(
                 loss_report, LossKind::UnsupportedConstruct, "component_placement.side",
-                "The first KiCad PCB writer subset exports top-side component placements");
+                "Bottom-side component placement requires an enabled bottom copper layer mapped "
+                "to B.Cu");
             continue;
         }
-
         if (!frozen.footprint().has_value()) {
             add_fab_critical_warning(
                 loss_report, LossKind::IncompleteConstruct, "footprint",
@@ -469,15 +495,20 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
 }
 
 void write_pad(std::ostream &out, const FootprintPad &pad, const PadResolution &resolution,
-               const Circuit &circuit, std::string_view uuid, LossReport &loss_report) {
+               const Circuit &circuit, BoardSide side, double placement_rotation_degrees,
+               std::string_view uuid, LossReport &loss_report) {
     report_invalid_pad_resolution(resolution, circuit, loss_report);
 
     out << "    (pad " << sexpr_string(pad.label()) << ' ' << pad_kind_name(pad) << ' '
         << pad_shape_name(pad.shape()) << "\n";
     out << "      (at ";
-    write_number(out, pad.position().x_mm());
+    write_number(out, side == BoardSide::Top ? pad.position().x_mm() : -pad.position().x_mm());
     out << ' ';
     write_number(out, pad.position().y_mm());
+    if (std::abs(placement_rotation_degrees) >= 1.0e-12) {
+        out << ' ';
+        write_number(out, placement_rotation_degrees);
+    }
     out << ")\n";
     out << "      (size ";
     write_number(out, pad.size().width_mm());
@@ -490,7 +521,7 @@ void write_pad(std::ostream &out, const FootprintPad &pad, const PadResolution &
         out << ")\n";
     }
     out << "      (layers";
-    for (const auto &layer : pad_layers(pad)) {
+    for (const auto &layer : pad_layers(pad, side)) {
         out << ' ' << sexpr_string(layer);
     }
     out << ")\n";
@@ -507,35 +538,41 @@ void write_pad(std::ostream &out, const FootprintPad &pad, const PadResolution &
 }
 
 void write_component_footprints(std::ostream &out, const CompiledBoard &compiled,
-                                LossReport &loss_report) {
+                                const LayerMap &layer_map, LossReport &loss_report) {
     const auto &board = compiled.board();
-    for (const auto &placement_export : build_placement_exports(compiled, loss_report)) {
+    for (const auto &placement_export : build_placement_exports(compiled, layer_map, loss_report)) {
         const auto &placement = *placement_export.placement;
         const auto &definition = *placement_export.definition;
         const auto &component = board.circuit().get(placement.component());
         const auto &component_definition = board.circuit().get(component.definition());
+        const auto bottom = placement.side() == BoardSide::Bottom;
+        const auto footprint_layer = bottom ? "B.Cu" : "F.Cu";
+        const auto fabrication_layer = bottom ? "B.Fab" : "F.Fab";
+        const auto rotation_degrees = kicad_rotation(placement.rotation().degrees());
 
         out << "  (footprint " << sexpr_string(definition.ref().name()) << "\n";
-        out << "    (layer \"F.Cu\")\n";
+        out << "    (layer " << sexpr_string(footprint_layer) << ")\n";
         out << "    (uuid "
             << sexpr_string(
                    pcb_uuid("component-placement", placement_export.id.index(), "footprint"))
             << ")\n";
         out << "    ";
-        write_at(out, placement.position(), placement.rotation().degrees());
+        write_at(out, placement.position(), rotation_degrees);
         out << "\n";
         write_property(
-            out, "Reference", pcb_component_reference(component), 0.0, -1.5, "F.Fab",
-            pcb_uuid("component-placement", placement_export.id.index(), "property/Reference"));
+            out, "Reference", pcb_component_reference(component), 0.0, -1.5, fabrication_layer,
+            pcb_uuid("component-placement", placement_export.id.index(), "property/Reference"),
+            bottom);
         write_property(
-            out, "Value", pcb_component_value(component, component_definition), 0.0, 1.5, "F.Fab",
-            pcb_uuid("component-placement", placement_export.id.index(), "property/Value"));
+            out, "Value", pcb_component_value(component, component_definition), 0.0, 1.5,
+            fabrication_layer,
+            pcb_uuid("component-placement", placement_export.id.index(), "property/Value"), bottom);
         out << "    (attr " << (all_surface_mount(definition) ? "smd" : "through_hole") << ")\n";
         for (std::size_t pad_index = 0; pad_index < definition.pad_count(); ++pad_index) {
             const auto pad_id = FootprintPadId{pad_index};
             write_pad(
                 out, definition.pad(pad_id), placement_export.pad_resolutions.at(pad_index),
-                board.circuit(),
+                board.circuit(), placement.side(), rotation_degrees,
                 pcb_uuid("component-placement", placement_export.id.index(), "pad", pad_id.index()),
                 loss_report);
         }
@@ -712,7 +749,7 @@ void write_texts(std::ostream &out, const Board &board, const LayerMap &layer_ma
         out << "    (layer " << sexpr_string(layer->name) << ")\n";
         out << "    (uuid " << sexpr_string(pcb_uuid("board-text", index)) << ")\n";
         out << "    ";
-        write_effects(out, text.size_mm());
+        write_effects(out, text.size_mm(), false);
         out << "\n";
         out << "  )\n";
     }
@@ -777,7 +814,7 @@ namespace volt::adapters::kicad {
     detail::write_setup(out);
     detail::write_nets(out, board.circuit());
     detail::write_board_features(out, board, result.loss_report);
-    detail::write_component_footprints(out, compiled, result.loss_report);
+    detail::write_component_footprints(out, compiled, layer_map, result.loss_report);
     detail::write_tracks(out, board, layer_map, result.loss_report);
     detail::write_vias(out, board, layer_map, result.loss_report);
     detail::write_zones(out, board, layer_map, result.loss_report);

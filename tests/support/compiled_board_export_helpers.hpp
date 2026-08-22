@@ -58,8 +58,16 @@ export_fixture_part_pads(const FootprintDefinition &footprint) {
     auto result = std::vector<PartFootprintPad>{};
     result.reserve(footprint.pad_count());
     for (const auto &pad : footprint.pads()) {
-        result.emplace_back(pad.label(), pad.position().x_mm(), pad.position().y_mm(),
-                            pad.size().width_mm(), pad.size().height_mm());
+        if (pad.mechanical_role().has_value()) {
+            const auto role = *pad.mechanical_role() == FootprintPadMechanicalRole::Thermal
+                                  ? PartFootprintPadRole::Thermal
+                                  : PartFootprintPadRole::Mechanical;
+            result.emplace_back(pad.label(), pad.position().x_mm(), pad.position().y_mm(),
+                                pad.size().width_mm(), pad.size().height_mm(), role);
+        } else {
+            result.emplace_back(pad.label(), pad.position().x_mm(), pad.position().y_mm(),
+                                pad.size().width_mm(), pad.size().height_mm());
+        }
     }
     return result;
 }
