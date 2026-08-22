@@ -41,7 +41,31 @@ struct ResistorCircuit {
     volt::NetId right_net;
 };
 
-[[nodiscard]] ResistorCircuit make_resistor_circuit() {
+[[nodiscard]] volt::FootprintDefinition asymmetric_test_footprint() {
+    return volt::FootprintDefinition{
+        volt::FootprintRef{"tests", "Asymmetric_Bottom"},
+        std::vector{
+            volt::FootprintPad::surface_mount(
+                "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{-2.0, 1.0},
+                volt::FootprintSize{1.2, 0.7}, volt::FootprintLayerSet::front_smd()),
+            volt::FootprintPad::surface_mount(
+                "2", volt::FootprintPadShape::Oval, volt::FootprintPoint{1.0, -0.5},
+                volt::FootprintSize{0.9, 1.3}, volt::FootprintLayerSet::front_smd()),
+            volt::FootprintPad::through_hole(
+                "MP", volt::FootprintPadShape::Circle, volt::FootprintPoint{-0.5, -2.0},
+                volt::FootprintSize{1.4, 1.4}, volt::FootprintLayerSet::through_hole(),
+                volt::FootprintDrill{0.8, volt::FootprintPadPlating::Plated},
+                volt::FootprintPadMechanicalRole::MechanicalSupport),
+            volt::FootprintPad::through_hole(
+                "MH", volt::FootprintPadShape::Circle, volt::FootprintPoint{0.75, 2.25},
+                volt::FootprintSize{1.0, 1.0}, volt::FootprintLayerSet::mechanical_hole(),
+                volt::FootprintDrill{1.0, volt::FootprintPadPlating::NonPlated},
+                volt::FootprintPadMechanicalRole::MechanicalSupport),
+        }};
+}
+
+[[nodiscard]] ResistorCircuit
+make_resistor_circuit(volt::FootprintDefinition footprint = volt::passive_0603_footprint()) {
     auto circuit = volt::Circuit{};
     const auto first_pin_spec = volt::PinSpec{"A",
                                               "1",
@@ -79,13 +103,13 @@ struct ResistorCircuit {
         volt::NetSpec{.name = volt::NetName{"RIGHT"}, .kind = volt::NetKind::Signal});
     circuit.connect(left_net, first_pin);
     circuit.connect(right_net, second_pin);
-    const auto physical = volt::PhysicalPart{
-        volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"}, volt::PackageRef{"0603"},
-        volt::FootprintRef{"passives", "R_0603_1608Metric"},
-        std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                    volt::PinPadMapping{second_pin_definition, "2"}}};
+    const auto physical =
+        volt::PhysicalPart{volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                           volt::PackageRef{"0603"}, footprint.ref(),
+                           std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                       volt::PinPadMapping{second_pin_definition, "2"}}};
     auto library = volt::test::make_export_fixture_library(
-        {{component_spec, physical, volt::passive_0603_footprint(), volt::PartKey{"resistor"}}});
+        {{component_spec, physical, std::move(footprint), volt::PartKey{"resistor"}}});
     circuit.update(component, volt::SelectLibraryPart{library.bundle,
                                                       library.bundle.require(library.keys[0])});
 
@@ -96,6 +120,40 @@ struct ResistorCircuit {
                            second_pin_definition,
                            left_net,
                            right_net};
+}
+
+[[nodiscard]] volt::ComponentId add_second_resistor(ResistorCircuit &fixture) {
+    const auto component_definition = fixture.circuit.get(fixture.component).definition();
+    const auto component = fixture.circuit.instantiate_component(
+        component_definition,
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R2"}});
+    fixture.circuit.update(component, volt::SetComponentProperty{volt::PropertyKey{"Value"},
+                                                                 volt::PropertyValue{"330R"}});
+    fixture.circuit.update(
+        component,
+        volt::SelectLibraryPart{fixture.parts, fixture.parts.require(volt::PartKey{"resistor"})});
+    const auto first_pin =
+        volt::queries::pin_by_definition(fixture.circuit, component, fixture.first_pin_definition)
+            .value();
+    const auto second_pin =
+        volt::queries::pin_by_definition(fixture.circuit, component, fixture.second_pin_definition)
+            .value();
+    fixture.circuit.connect(fixture.left_net, first_pin);
+    fixture.circuit.connect(fixture.right_net, second_pin);
+    return component;
+}
+
+[[nodiscard]] volt::Board make_placement_board(const ResistorCircuit &fixture,
+                                               volt::BoardName name) {
+    auto board = volt::Board{fixture.circuit, std::move(name)};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
+    return board;
 }
 
 [[nodiscard]] volt::Board make_routed_board(const ResistorCircuit &fixture) {
@@ -361,6 +419,69 @@ TEST_CASE("KiCad PCB writer pins a routed multi-net golden board") {
     CHECK(result.text.find("(net 3 \"GND\")") != std::string::npos);
     CHECK(result.text.find("(layer \"F.Cu\")") != std::string::npos);
     CHECK(result.text.find("(layer \"B.Cu\")") != std::string::npos);
+}
+
+TEST_CASE("KiCad PCB writer exports an asymmetric bottom-side placement") {
+    const auto fixture = make_resistor_circuit(asymmetric_test_footprint());
+    auto board = make_placement_board(fixture, volt::BoardName{"Bottom"});
+    static_cast<void>(board.place_component(volt::ComponentPlacement{
+        fixture.component, volt::BoardPoint{20.0, 10.0}, volt::BoardRotation::degrees(30.0),
+        volt::BoardSide::Bottom, false}));
+
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::adapters::kicad::write_board(compiled);
+    const auto diagnostics = volt::adapters::kicad::fabrication_diagnostics(result.loss_report);
+
+    CHECK_FALSE(result.loss_report.has_warnings());
+    CHECK(diagnostics.diagnostics().empty());
+    CHECK(result.text == volt::adapters::kicad::write_board(compiled).text);
+    CHECK(result.text.find("(footprint \"Asymmetric_Bottom\"\n    (layer \"B.Cu\")") !=
+          std::string::npos);
+    CHECK(result.text.find("(at 20 10 30)") != std::string::npos);
+    CHECK(result.text.find("(48 \"B.Fab\" user)") != std::string::npos);
+    CHECK(result.text.find(
+              "(property \"Reference\" \"R1\"\n      (at 0 -1.5 0)\n      (layer \"B.Fab\")") !=
+          std::string::npos);
+    CHECK(count_occurrences(result.text, "(justify left mirror)") == 2);
+    CHECK(result.text.find("(pad \"1\" smd rect\n      (at 2 1 30)") != std::string::npos);
+    CHECK(result.text.find("(layers \"B.Cu\" \"B.Paste\" \"B.Mask\")") != std::string::npos);
+    CHECK(result.text.find("(net 1 \"LEFT\")") != std::string::npos);
+    CHECK(result.text.find("(pad \"2\" smd oval\n      (at -1 -0.5 30)") != std::string::npos);
+    CHECK(result.text.find("(net 2 \"RIGHT\")") != std::string::npos);
+    CHECK(result.text.find("(pad \"MP\" thru_hole circle\n      (at 0.5 -2 30)") !=
+          std::string::npos);
+    CHECK(result.text.find("(drill 0.8)\n      (layers \"*.Cu\" \"*.Mask\")") != std::string::npos);
+    CHECK(result.text.find("(pad \"MH\" np_thru_hole circle\n      (at -0.75 2.25 30)") !=
+          std::string::npos);
+}
+
+TEST_CASE("KiCad PCB writer keeps mixed top and bottom placements ordered and oriented") {
+    auto fixture = make_resistor_circuit(asymmetric_test_footprint());
+    const auto second_component = add_second_resistor(fixture);
+    auto board = make_placement_board(fixture, volt::BoardName{"Mixed"});
+    static_cast<void>(board.place_component(
+        volt::ComponentPlacement{fixture.component, volt::BoardPoint{10.0, 8.0},
+                                 volt::BoardRotation::degrees(17.0), volt::BoardSide::Top, false}));
+    static_cast<void>(board.place_component(volt::ComponentPlacement{
+        second_component, volt::BoardPoint{30.0, 12.0}, volt::BoardRotation::degrees(137.0),
+        volt::BoardSide::Bottom, false}));
+
+    const auto compiled = volt::test::compile_export_fixture(fixture.circuit, board, fixture.parts);
+    const auto result = volt::adapters::kicad::write_board(compiled);
+
+    CHECK_FALSE(result.loss_report.has_warnings());
+    CHECK(result.text == volt::adapters::kicad::write_board(compiled).text);
+    CHECK(count_occurrences(result.text, "(footprint \"Asymmetric_Bottom\"") == 2);
+    CHECK(count_occurrences(result.text, "    (layer \"F.Cu\")") == 1);
+    CHECK(count_occurrences(result.text, "    (layer \"B.Cu\")") == 1);
+    const auto top_reference = result.text.find("(property \"Reference\" \"R1\"");
+    const auto bottom_reference = result.text.find("(property \"Reference\" \"R2\"");
+    REQUIRE(top_reference != std::string::npos);
+    REQUIRE(bottom_reference != std::string::npos);
+    CHECK(top_reference < bottom_reference);
+    CHECK(result.text.find("(at -2 1 17)") != std::string::npos);
+    CHECK(result.text.find("(at 2 1 137)") != std::string::npos);
+    CHECK(result.text.find("(at 30 12 137)") != std::string::npos);
 }
 
 TEST_CASE("KiCad PCB writer reports unsupported out-of-subset board constructs") {

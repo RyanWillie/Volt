@@ -609,6 +609,45 @@ def test_project_informational_kicad_loss_does_not_fail():
     ]
 
 
+def test_project_bottom_side_placement_has_no_kicad_fabrication_loss():
+    project = volt.Project("status-led-bottom")
+
+    @project.design
+    def design():
+        return _board_ready_design("status-led-bottom")
+
+    @project.board
+    def board(context):
+        source = context.design()
+        pcb = source.add_board("Main")
+        pcb.set_capability_profile(
+            volt.CapabilityProfile(
+                name="Project bottom-side fixture",
+                source="Volt Python test fixture",
+                as_of="2026-08-22",
+                minimum_track_width=0.01,
+                minimum_via_drill=0.01,
+                minimum_via_annular=0.02,
+            )
+        )
+        pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
+        pcb.place(source.component("J1"), at=(4, 5), locked=True)
+        pcb.place(source.component("R1"), at=(10, 5), rotation=17)
+        pcb.place(source.component("D1"), at=(15, 5), rotation=137, side="bottom")
+        return pcb
+
+    result = project.run()
+
+    assert result.ok
+    assert "PCB_KICAD_FAB_EXPORT_LOSS" not in {
+        diagnostic.code for diagnostic in result.diagnostics
+    }
+    export = result.board("Main").to_kicad_pcb()
+    assert not any(warning.construct == "component_placement.side" for warning in export.warnings)
+    assert '(layer "B.Cu")' in export.text
+    assert '(at 15 5 137)' in export.text
+
+
 def test_project_fabrication_layer_kicad_text_loss_fails():
     project = volt.Project("status-led")
 

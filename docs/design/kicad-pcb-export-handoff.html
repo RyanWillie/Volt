@@ -211,7 +211,7 @@
             <tr>
               <td>Footprints, pads, placements</td>
               <td>Inline KiCad <code>footprint</code> and <code>pad</code> blocks</td>
-              <td>Top-side placements export with surface-mount, through-hole, and non-plated mechanical pads. Generated reference/value metadata is placed on fabrication layers so it does not become copper. Pad nets are taken only from Volt pad resolution.</td>
+              <td>Top- and bottom-side placements export with surface-mount, through-hole, and non-plated mechanical pads. Bottom placements mirror footprint-local geometry once, map side-specific surface-mount pad layers to the back stack, and place mirrored generated reference/value metadata on <code>B.Fab</code>. Through-hole and non-plated hole copper/mask spans remain side-independent. Pad nets are taken only from Volt pad resolution.</td>
             </tr>
             <tr>
               <td>Mounting holes</td>
