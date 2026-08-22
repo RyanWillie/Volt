@@ -1024,6 +1024,43 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     assert svg_path.read_text(encoding="utf-8") == svg
 
 
+@pytest.mark.parametrize(
+    "result_type",
+    (
+        volt.BoardRouteResult,
+        volt.BoardSpatialBlocker,
+        volt.BoardEscapeResult,
+        volt.BoardEscapePadResult,
+    ),
+)
+def test_python_assisted_routing_results_are_result_only_values(result_type):
+    assert result_type.__name__ in volt.__all__
+    assert result_type is getattr(volt._volt, result_type.__name__)
+    assert "BoardSpatialBlockerKind" in volt.__all__
+    assert "BoardEscapeFailureReason" in volt.__all__
+    assert volt.BoardSpatialBlockerKind is volt._volt.BoardSpatialBlockerKind
+    assert volt.BoardEscapeFailureReason is volt._volt.BoardEscapeFailureReason
+    with pytest.raises(TypeError):
+        result_type()
+
+
+def test_python_assisted_routing_enums_are_complete():
+    assert set(volt.BoardSpatialBlockerKind.__members__) == {
+        "COPPER_CLEARANCE",
+        "BOARD_OUTLINE",
+        "MECHANICAL_OPENING",
+        "KEEPOUT",
+    }
+    assert set(volt.BoardEscapeFailureReason.__members__) == {
+        "NONE",
+        "PAD_UNCONNECTED",
+        "NO_COPPER_LAYER",
+        "DISALLOWED_LAYER",
+        "NO_LEGAL_CANDIDATE",
+        "ATOMIC_DECLINE",
+    }
+
+
 def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
     design = volt.Design("assisted-connect")
     route = design.net("ROUTE")
@@ -1039,7 +1076,14 @@ def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
         end_layer=front,
     )
 
-    assert result == {"routed": True, "tracks": [0], "vias": [], "blockers": []}
+    assert isinstance(result, volt.BoardRouteResult)
+    assert not isinstance(result, (dict, list))
+    assert result.routed is True
+    assert result.tracks == (0,)
+    assert result.vias == ()
+    assert result.blockers == ()
+    with pytest.raises(AttributeError):
+        result.routed = False
     document = json.loads(board.to_json())
     assert document["board"]["tracks"][0]["net"] == "net:0"
     assert document["board"]["tracks"][0]["layer"] == "board_layer:0"
@@ -1066,21 +1110,41 @@ def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
         end_layer=blocked_front,
     )
 
-    assert failure["routed"] is False
-    assert failure["tracks"] == []
-    assert failure["vias"] == []
-    assert failure["blockers"] == [
-        {
-            "kind": "keepout",
-            "shape_index": None,
-            "keepout": keepout,
-            "feature": None,
-            "layer": blocked_front,
-            "required_clearance_mm": 0.0,
-            "actual_clearance_mm": 0.0,
-            "room": None,
-        }
-    ]
+    assert isinstance(failure, volt.BoardRouteResult)
+    assert failure.routed is False
+    assert failure.tracks == ()
+    assert failure.vias == ()
+    assert isinstance(failure.blockers, tuple)
+    assert len(failure.blockers) == 1
+    blocker = failure.blockers[0]
+    assert isinstance(blocker, volt.BoardSpatialBlocker)
+    assert blocker.kind == volt.BoardSpatialBlockerKind.KEEPOUT
+    assert blocker.shape_index is None
+    assert blocker.keepout == keepout
+    assert blocker.feature is None
+    assert blocker.layer == blocked_front
+    assert blocker.required_clearance_mm == 0.0
+    assert blocker.actual_clearance_mm == 0.0
+    assert blocker.room is None
+    with pytest.raises(AttributeError):
+        blocker.kind = volt.BoardSpatialBlockerKind.BOARD_OUTLINE
+
+    repeated = blocked_board.assisted_connect(
+        blocked_net,
+        start=(2.0, 6.0),
+        start_layer=blocked_front,
+        end=(18.0, 6.0),
+        end_layer=blocked_front,
+    )
+    repeated_blocker = repeated.blockers[0]
+    assert (
+        repeated.routed,
+        repeated.tracks,
+        repeated.vias,
+        repeated_blocker.kind,
+        repeated_blocker.keepout,
+        repeated_blocker.layer,
+    ) == (False, (), (), blocker.kind, blocker.keepout, blocker.layer)
     assert json.loads(blocked_board.to_json())["board"].get("tracks", []) == []
 
 
@@ -1109,30 +1173,29 @@ def test_python_assisted_connect_surfaces_mechanical_opening_blockers():
         end_layer=front,
     )
 
-    assert result["routed"] is False
-    assert result["tracks"] == []
-    assert result["vias"] == []
-    assert result["blockers"] == [
-        {
-            "kind": "mechanical_opening",
-            "shape_index": None,
-            "keepout": None,
-            "feature": slot,
-            "layer": front,
-            "required_clearance_mm": 0.25,
-            "actual_clearance_mm": -0.575,
-            "room": None,
-        }
-    ]
+    assert result.routed is False
+    assert result.tracks == ()
+    assert result.vias == ()
+    assert len(result.blockers) == 1
+    blocker = result.blockers[0]
+    assert blocker.kind == volt.BoardSpatialBlockerKind.MECHANICAL_OPENING
+    assert blocker.shape_index is None
+    assert blocker.keepout is None
+    assert blocker.feature == slot
+    assert blocker.layer == front
+    assert blocker.required_clearance_mm == 0.25
+    assert blocker.actual_clearance_mm == -0.575
+    assert blocker.room is None
     assert json.loads(board.to_json())["board"].get("tracks", []) == []
 
 
-def test_python_board_authoring_assisted_connect_is_octilinear():
+def test_python_board_authoring_assisted_connect_is_octilinear_across_layers():
     design = volt.Design("assisted-connect-octilinear-repro")
     net = design.net("N")
     board = design.add_board("B")
     front = board.add_layer("F.Cu", role="copper", side="top")
-    board.set_layer_stack((front,), thickness=1.6)
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
     board.set_rectangular_outline(origin=(0, 0), size=(20, 20))
 
     result = board.assisted_connect(
@@ -1140,10 +1203,12 @@ def test_python_board_authoring_assisted_connect_is_octilinear():
         start=(2.0, 2.0),
         start_layer=front,
         end=(12.0, 5.0),
-        end_layer=front,
+        end_layer=back,
     )
 
-    assert result["routed"] is True
+    assert result.routed is True
+    assert len(result.tracks) == 2
+    assert result.vias == (0,)
     model = json.loads(board.to_json())
     for track in model["board"]["tracks"]:
         for start, end in zip(track["points"], track["points"][1:]):
@@ -1164,38 +1229,70 @@ def test_python_board_authoring_escape_surfaces_kernel_result():
 
     result = board.escape(r1)
 
-    assert result["complete"] is True
-    assert result["component"] == r1.index
-    assert result["placement"] == 0
-    assert result["room"] == 0
-    assert result["pads"] == [
-        {
-            "pad": 0,
-            "pad_label": "1",
-            "pin": r1[1].index,
-            "net": 0,
-            "pad_position": (9.25, 10.0),
-            "endpoint": (8.25, 10.0),
-            "escaped": True,
-            "failure_reason": "none",
-            "tracks": [0],
-            "vias": [],
-            "blockers": [],
-        },
-        {
-            "pad": 1,
-            "pad_label": "2",
-            "pin": r1[2].index,
-            "net": 1,
-            "pad_position": (10.75, 10.0),
-            "endpoint": (11.75, 10.0),
-            "escaped": True,
-            "failure_reason": "none",
-            "tracks": [1],
-            "vias": [],
-            "blockers": [],
-        },
-    ]
+    assert isinstance(result, volt.BoardEscapeResult)
+    assert not isinstance(result, (dict, list))
+    assert result.complete is True
+    assert result.component == r1.index
+    assert result.placement == 0
+    assert result.room == 0
+    assert isinstance(result.pads, tuple)
+    assert len(result.pads) == 2
+    first_pad, second_pad = result.pads
+    assert isinstance(first_pad, volt.BoardEscapePadResult)
+    assert (
+        first_pad.pad,
+        first_pad.pad_label,
+        first_pad.pin,
+        first_pad.net,
+        first_pad.pad_position,
+        first_pad.endpoint,
+        first_pad.escaped,
+        first_pad.failure_reason,
+        first_pad.tracks,
+        first_pad.vias,
+        first_pad.blockers,
+    ) == (
+        0,
+        "1",
+        r1[1].index,
+        0,
+        (9.25, 10.0),
+        (8.25, 10.0),
+        True,
+        volt.BoardEscapeFailureReason.NONE,
+        (0,),
+        (),
+        (),
+    )
+    assert (
+        second_pad.pad,
+        second_pad.pad_label,
+        second_pad.pin,
+        second_pad.net,
+        second_pad.pad_position,
+        second_pad.endpoint,
+        second_pad.escaped,
+        second_pad.failure_reason,
+        second_pad.tracks,
+        second_pad.vias,
+        second_pad.blockers,
+    ) == (
+        1,
+        "2",
+        r1[2].index,
+        1,
+        (10.75, 10.0),
+        (11.75, 10.0),
+        True,
+        volt.BoardEscapeFailureReason.NONE,
+        (1,),
+        (),
+        (),
+    )
+    with pytest.raises(AttributeError):
+        result.complete = False
+    with pytest.raises(AttributeError):
+        first_pad.escaped = False
 
     first_json = board.to_json()
     assert board.to_json() == first_json
@@ -1227,32 +1324,54 @@ def test_python_board_authoring_escape_surfaces_kernel_result():
 
     failure = blocked_board.escape(blocked_r)
 
-    assert failure["complete"] is False
-    assert failure["room"] is None
-    assert failure["pads"][0]["escaped"] is False
-    assert failure["pads"][0]["failure_reason"] == "no_legal_candidate"
-    assert failure["pads"][0]["tracks"] == []
-    assert failure["pads"][0]["blockers"] == [
-        {
-            "kind": "keepout",
-            "shape_index": None,
-            "keepout": keepout,
-            "feature": None,
-            "layer": blocked_front,
-            "required_clearance_mm": 0.0,
-            "actual_clearance_mm": 0.0,
-            "room": None,
-        }
-    ]
-    assert failure["pads"][1]["escaped"] is False
-    assert failure["pads"][1]["failure_reason"] == "atomic_decline"
-    assert failure["pads"][1]["tracks"] == []
+    assert isinstance(failure, volt.BoardEscapeResult)
+    assert failure.complete is False
+    assert failure.room is None
+    failed_pad, declined_pad = failure.pads
+    assert failed_pad.escaped is False
+    assert failed_pad.failure_reason == volt.BoardEscapeFailureReason.NO_LEGAL_CANDIDATE
+    assert failed_pad.tracks == ()
+    assert len(failed_pad.blockers) == 1
+    blocker = failed_pad.blockers[0]
+    assert blocker.kind == volt.BoardSpatialBlockerKind.KEEPOUT
+    assert blocker.shape_index is None
+    assert blocker.keepout == keepout
+    assert blocker.feature is None
+    assert blocker.layer == blocked_front
+    assert blocker.required_clearance_mm == 0.0
+    assert blocker.actual_clearance_mm == 0.0
+    assert blocker.room is None
+    assert declined_pad.escaped is False
+    assert declined_pad.failure_reason == volt.BoardEscapeFailureReason.ATOMIC_DECLINE
+    assert declined_pad.tracks == ()
+
+    repeated_failure = blocked_board.escape(blocked_r)
+    repeated_failed_pad, repeated_declined_pad = repeated_failure.pads
+    assert (
+        repeated_failure.complete,
+        repeated_failure.room,
+        repeated_failed_pad.failure_reason,
+        repeated_failed_pad.tracks,
+        repeated_failed_pad.blockers[0].kind,
+        repeated_failed_pad.blockers[0].keepout,
+        repeated_declined_pad.failure_reason,
+        repeated_declined_pad.tracks,
+    ) == (
+        False,
+        None,
+        failed_pad.failure_reason,
+        failed_pad.tracks,
+        blocker.kind,
+        blocker.keepout,
+        declined_pad.failure_reason,
+        declined_pad.tracks,
+    )
     blocked_document = json.loads(blocked_board.to_json())["board"]
     assert blocked_document.get("tracks", []) == []
     assert blocked_document.get("rooms", []) == []
 
 
-def test_python_board_authoring_escape_surfaces_failure_reason_strings():
+def test_python_board_authoring_escape_surfaces_failure_reason_enums():
     unconnected = volt.Design("unconnected-escape")
     net_b = unconnected.net("B")
     unconnected_r = _exact_two_pin(
@@ -1269,9 +1388,12 @@ def test_python_board_authoring_escape_surfaces_failure_reason_strings():
 
     unconnected_result = unconnected_board.escape(unconnected_r)
 
-    assert unconnected_result["pads"][0]["failure_reason"] == "pad_unconnected"
-    assert unconnected_result["pads"][0]["tracks"] == []
-    assert unconnected_result["pads"][1]["escaped"] is True
+    assert (
+        unconnected_result.pads[0].failure_reason
+        == volt.BoardEscapeFailureReason.PAD_UNCONNECTED
+    )
+    assert unconnected_result.pads[0].tracks == ()
+    assert unconnected_result.pads[1].escaped is True
 
     no_copper = volt.Design("no-copper-escape")
     first = no_copper.net("A")
@@ -1291,9 +1413,12 @@ def test_python_board_authoring_escape_surfaces_failure_reason_strings():
 
     no_copper_result = no_copper_board.escape(no_copper_r)
 
-    assert no_copper_result["pads"][0]["escaped"] is True
-    assert no_copper_result["pads"][1]["failure_reason"] == "no_copper_layer"
-    assert no_copper_result["pads"][1]["tracks"] == []
+    assert no_copper_result.pads[0].escaped is True
+    assert (
+        no_copper_result.pads[1].failure_reason
+        == volt.BoardEscapeFailureReason.NO_COPPER_LAYER
+    )
+    assert no_copper_result.pads[1].tracks == ()
     assert json.loads(no_copper_board.to_json())["board"]["tracks"][0]["layer"] == (
         f"board_layer:{no_copper_front}"
     )
@@ -1318,9 +1443,12 @@ def test_python_board_authoring_escape_surfaces_failure_reason_strings():
 
     disallowed_result = disallowed_board.escape(disallowed_r)
 
-    assert disallowed_result["pads"][0]["escaped"] is True
-    assert disallowed_result["pads"][1]["failure_reason"] == "disallowed_layer"
-    assert disallowed_result["pads"][1]["tracks"] == []
+    assert disallowed_result.pads[0].escaped is True
+    assert (
+        disallowed_result.pads[1].failure_reason
+        == volt.BoardEscapeFailureReason.DISALLOWED_LAYER
+    )
+    assert disallowed_result.pads[1].tracks == ()
 
 
 def test_python_board_authoring_escape_rejects_unattemptable_requests():

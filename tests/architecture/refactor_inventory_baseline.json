@@ -522,6 +522,26 @@
       ],
       "native_bound_classes": [
         {
+          "cpp_type": "volt::BoardSpatialBlocker",
+          "path": "src/python/board_bindings.cpp",
+          "python_type": "BoardSpatialBlocker"
+        },
+        {
+          "cpp_type": "volt::BoardRouteResult",
+          "path": "src/python/board_bindings.cpp",
+          "python_type": "BoardRouteResult"
+        },
+        {
+          "cpp_type": "volt::BoardEscapePadResult",
+          "path": "src/python/board_bindings.cpp",
+          "python_type": "BoardEscapePadResult"
+        },
+        {
+          "cpp_type": "volt::BoardEscapeResult",
+          "path": "src/python/board_bindings.cpp",
+          "python_type": "BoardEscapeResult"
+        },
+        {
           "cpp_type": "PyBoardRegistry",
           "path": "src/python/board_bindings.cpp",
           "python_type": "BoardRegistry"
@@ -676,10 +696,16 @@
         "BOM_DIAGNOSTIC_CODES",
         "Board",
         "BoardAnchor",
+        "BoardEscapeFailureReason",
+        "BoardEscapePadResult",
+        "BoardEscapeResult",
         "BoardFanout",
         "BoardLayout",
         "BoardPadAnchor",
         "BoardRoute",
+        "BoardRouteResult",
+        "BoardSpatialBlocker",
+        "BoardSpatialBlockerKind",
         "BoardTwoPadComponent",
         "BuildContext",
         "CanonicalRecordRequirement",

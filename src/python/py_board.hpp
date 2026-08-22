@@ -5,6 +5,7 @@
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/compiled/compiled_board.hpp>
 #include <volt/pcb/resolution/board_resolution.hpp>
+#include <volt/pcb/routing/board_router.hpp>
 
 #include <cstddef>
 #include <map>
@@ -104,11 +105,12 @@ class PyBoard {
                                       std::optional<double> drill_diameter_mm,
                                       std::optional<double> annular_diameter_mm);
 
-    [[nodiscard]] py::dict assisted_connect(std::size_t net, double start_x, double start_y,
-                                            std::size_t start_layer, double end_x, double end_y,
-                                            std::size_t end_layer);
+    [[nodiscard]] volt::BoardRouteResult assisted_connect(std::size_t net, double start_x,
+                                                          double start_y, std::size_t start_layer,
+                                                          double end_x, double end_y,
+                                                          std::size_t end_layer);
 
-    [[nodiscard]] py::dict escape(std::size_t component);
+    [[nodiscard]] volt::BoardEscapeResult escape(std::size_t component);
 
     [[nodiscard]] std::size_t add_zone(std::optional<std::size_t> net,
                                        const std::vector<std::size_t> &layers,

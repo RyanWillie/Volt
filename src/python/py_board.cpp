@@ -406,78 +406,20 @@ std::size_t PyBoard::add_via(std::size_t net, double x, double y, std::size_t st
         .index();
 }
 
-py::dict PyBoard::assisted_connect(std::size_t net, double start_x, double start_y,
-                                   std::size_t start_layer, double end_x, double end_y,
-                                   std::size_t end_layer) {
+volt::BoardRouteResult PyBoard::assisted_connect(std::size_t net, double start_x, double start_y,
+                                                 std::size_t start_layer, double end_x,
+                                                 double end_y, std::size_t end_layer) {
     const auto resolution = resolve();
     auto router = volt::BoardRouter{board_, resolution};
-    const auto result = router.connect(volt::BoardRouteRequest{
+    return router.connect(volt::BoardRouteRequest{
         net_id(net), volt::BoardPoint{start_x, start_y}, volt::BoardPoint{end_x, end_y},
         volt::BoardLayerId{start_layer}, volt::BoardLayerId{end_layer}});
-
-    auto tracks = py::list{};
-    for (const auto track : result.tracks) {
-        tracks.append(track.index());
-    }
-    auto vias = py::list{};
-    for (const auto via : result.vias) {
-        vias.append(via.index());
-    }
-    auto blockers = py::list{};
-    for (const auto &blocker : result.blockers) {
-        blockers.append(board_spatial_blocker_to_dict(blocker));
-    }
-
-    auto lowered = py::dict{};
-    lowered["routed"] = result.routed;
-    lowered["tracks"] = std::move(tracks);
-    lowered["vias"] = std::move(vias);
-    lowered["blockers"] = std::move(blockers);
-    return lowered;
 }
 
-py::dict PyBoard::escape(std::size_t component) {
+volt::BoardEscapeResult PyBoard::escape(std::size_t component) {
     const auto resolution = resolve();
     auto router = volt::BoardRouter{board_, resolution};
-    const auto result = router.escape(component_id(component));
-
-    auto pads = py::list{};
-    for (const auto &pad : result.pads) {
-        auto tracks = py::list{};
-        for (const auto track : pad.tracks) {
-            tracks.append(track.index());
-        }
-        auto vias = py::list{};
-        for (const auto via : pad.vias) {
-            vias.append(via.index());
-        }
-        auto blockers = py::list{};
-        for (const auto &blocker : pad.blockers) {
-            blockers.append(board_spatial_blocker_to_dict(blocker));
-        }
-
-        auto item = py::dict{};
-        item["pad"] = pad.pad.index();
-        item["pad_label"] = pad.pad_label;
-        item["pin"] = optional_id_to_object(pad.pin);
-        item["net"] = optional_id_to_object(pad.net);
-        item["pad_position"] = py::make_tuple(pad.pad_position.x_mm(), pad.pad_position.y_mm());
-        item["endpoint"] = py::make_tuple(pad.endpoint.x_mm(), pad.endpoint.y_mm());
-        item["escaped"] = pad.escaped;
-        item["failure_reason"] = board_escape_failure_reason_name(pad.failure_reason);
-        item["tracks"] = std::move(tracks);
-        item["vias"] = std::move(vias);
-        item["blockers"] = std::move(blockers);
-        pads.append(std::move(item));
-    }
-
-    auto lowered = py::dict{};
-    lowered["complete"] = result.complete();
-    lowered["component"] = result.component.index();
-    lowered["placement"] = optional_id_to_object(result.placement);
-    lowered["room"] = optional_id_to_object(result.room);
-    lowered["pads"] = std::move(pads);
-    return lowered;
+    return router.escape(component_id(component));
 }
 
 std::size_t PyBoard::add_zone(std::optional<std::size_t> net,
