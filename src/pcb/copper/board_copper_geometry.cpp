@@ -159,6 +159,18 @@ namespace {
     return polygon_edge_enters_interior(lhs, rhs) || polygon_edge_enters_interior(rhs, lhs);
 }
 
+[[nodiscard]] BoardMechanicalClearanceCheck
+mechanical_clearance_check(const Board &board, BoardClearanceKind copper_kind,
+                           double actual_clearance_mm, bool polygon_interiors_overlap) {
+    auto result = BoardMechanicalClearanceCheck{};
+    result.actual_clearance_mm = actual_clearance_mm;
+    result.required_clearance_mm =
+        board.design_rules().clearance_mm(copper_kind, BoardClearanceKind::MechanicalOpening);
+    result.violates = polygon_interiors_overlap ||
+                      result.actual_clearance_mm + board_drc_epsilon < result.required_clearance_mm;
+    return result;
+}
+
 } // namespace
 
 [[nodiscard]] double shape_distance(const BoardCopperShape &lhs, const BoardCopperShape &rhs) {
@@ -236,18 +248,39 @@ check_mechanical_opening_clearance(const Board &board, const BoardCopperShape &c
         opening.kind,   copper.net,        copper.layers, {},
         opening.points, opening.radius_mm, std::nullopt,
     };
-    auto result = BoardMechanicalClearanceCheck{};
-    result.actual_clearance_mm =
+    const auto actual_clearance_mm =
         shape_distance(copper, opening_shape) - copper.radius_mm - opening.radius_mm;
-    result.required_clearance_mm =
-        board.design_rules().clearance_mm(copper_kind, BoardClearanceKind::MechanicalOpening);
     const auto zero_distance_polygon_overlap =
         copper.kind == BoardCopperShapeKind::Polygon &&
         opening.kind == BoardCopperShapeKind::Polygon &&
         polygon_interiors_overlap(copper.points, opening.points);
-    result.violates = zero_distance_polygon_overlap ||
-                      result.actual_clearance_mm + board_drc_epsilon < result.required_clearance_mm;
-    return result;
+    return mechanical_clearance_check(board, copper_kind, actual_clearance_mm,
+                                      zero_distance_polygon_overlap);
+}
+
+[[nodiscard]] BoardMechanicalClearanceCheck
+check_zone_mechanical_opening_clearance(const Board &board, const BoardZone &zone,
+                                        const BoardMechanicalOpening &opening) {
+    auto actual_clearance_mm = 0.0;
+    switch (opening.kind) {
+    case BoardCopperShapeKind::Disc:
+        actual_clearance_mm =
+            point_polygon_distance(opening.points[0], zone.outline()) - opening.radius_mm;
+        break;
+    case BoardCopperShapeKind::Segment:
+        actual_clearance_mm =
+            segment_polygon_distance(opening.points[0], opening.points[1], zone.outline()) -
+            opening.radius_mm;
+        break;
+    case BoardCopperShapeKind::Polygon:
+        actual_clearance_mm = polygon_polygon_distance(zone.outline(), opening.points);
+        break;
+    }
+    const auto zero_distance_polygon_overlap =
+        opening.kind == BoardCopperShapeKind::Polygon &&
+        polygon_interiors_overlap(zone.outline(), opening.points);
+    return mechanical_clearance_check(board, BoardClearanceKind::Zone, actual_clearance_mm,
+                                      zero_distance_polygon_overlap);
 }
 
 [[nodiscard]] std::optional<BoardLayerId> first_common_layer(const BoardCopperShape &lhs,

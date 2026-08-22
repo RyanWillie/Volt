@@ -445,6 +445,40 @@ TEST_CASE("Zero-clearance concave polygons detect interior intervals between bou
     CHECK(diagnostics.front()->measurement() == volt::DiagnosticMeasurement{0.0, 0.0});
 }
 
+TEST_CASE("Board validation checks netless zones against mechanical openings") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    auto rules = volt::BoardDesignRules{0.10, 0.05, 0.10, 0.20, 0.0};
+    rules.set_clearance_mm(volt::BoardClearanceKind::Zone,
+                           volt::BoardClearanceKind::MechanicalOpening, 0.0);
+    board.set_design_rules(rules);
+    const auto cutout = board.add_feature(volt::BoardFeature::cutout(
+        "C1",
+        std::vector{volt::BoardPoint{8.0, 8.0}, volt::BoardPoint{12.0, 8.0},
+                    volt::BoardPoint{12.0, 12.0}, volt::BoardPoint{8.0, 12.0}},
+        "internal"));
+    const auto zone = board.add_zone(
+        volt::BoardZone{std::vector{volt::BoardPoint{7.0, 7.0}, volt::BoardPoint{13.0, 7.0},
+                                    volt::BoardPoint{13.0, 13.0}, volt::BoardPoint{7.0, 13.0}},
+                        std::vector{front}});
+    const auto report = volt::validate_board(resolved(board, volt::builtin_footprint_library()));
+    const auto diagnostics =
+        find_diagnostics(report, "PCB_COPPER_MECHANICAL_OPENING_CLEARANCE_VIOLATION");
+
+    REQUIRE(diagnostics.size() == 1U);
+    CHECK(diagnostics.front()->entities() == std::vector{volt::EntityRef::board_feature(cutout),
+                                                         volt::EntityRef::board_zone(zone),
+                                                         volt::EntityRef::board_layer(front)});
+    CHECK(diagnostics.front()->measurement() == volt::DiagnosticMeasurement{0.0, 0.0});
+    REQUIRE(diagnostics.front()->overlays().size() == 2U);
+    CHECK(diagnostics.front()->overlays()[0].kind() == volt::DiagnosticOverlayKind::Polygon);
+    CHECK(diagnostics.front()->overlays()[1].kind() == volt::DiagnosticOverlayKind::Polygon);
+}
+
 TEST_CASE("Board validation rejects zero-clearance polygon edges crossing concave outlines") {
     auto circuit = volt::Circuit{};
     auto board = volt::Board{circuit};
