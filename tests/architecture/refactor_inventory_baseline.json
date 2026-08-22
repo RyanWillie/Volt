@@ -72,9 +72,9 @@
         "sha256": "fe79078cb047030e1ed0a27cd2d21ae59f5d33694a99ed5ce55528c23e13127f"
       },
       {
-        "byte_count": 3013,
+        "byte_count": 3016,
         "path": "tests/fixtures/kicad_flat_resistor.kicad_pcb",
-        "sha256": "c13f8806ffc208087762a6bd2826d84b0bdaa66a4a3c3b6e37ac66884f380e2b"
+        "sha256": "31a350be53978bb256bb248671d19a5dbfd6ef6156fc91a8646578e121d75d3e"
       },
       {
         "byte_count": 2574,

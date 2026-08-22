@@ -645,7 +645,7 @@ def test_project_bottom_side_placement_has_no_kicad_fabrication_loss():
     export = result.board("Main").to_kicad_pcb()
     assert not any(warning.construct == "component_placement.side" for warning in export.warnings)
     assert '(layer "B.Cu")' in export.text
-    assert '(at 15 5 137)' in export.text
+    assert '(at 15 5 223)' in export.text
 
 
 def test_project_fabrication_layer_kicad_text_loss_fails():

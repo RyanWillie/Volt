@@ -55,6 +55,17 @@ void write_at(std::ostream &out, BoardPoint point, double rotation_degrees = 0.0
     out << ')';
 }
 
+[[nodiscard]] double kicad_rotation(double board_rotation_degrees) {
+    auto result = std::fmod(-board_rotation_degrees, 360.0);
+    if (result < 0.0) {
+        result += 360.0;
+    }
+    if (std::abs(result) < 1.0e-12 || std::abs(result - 360.0) < 1.0e-12) {
+        return 0.0;
+    }
+    return result;
+}
+
 [[nodiscard]] std::string pcb_uuid(std::string_view entity, std::size_t id) {
     auto out = std::ostringstream{};
     out << "pcb/" << entity << '/' << id;
@@ -525,6 +536,7 @@ void write_component_footprints(std::ostream &out, const CompiledBoard &compiled
         const auto bottom = placement.side() == BoardSide::Bottom;
         const auto footprint_layer = bottom ? "B.Cu" : "F.Cu";
         const auto fabrication_layer = bottom ? "B.Fab" : "F.Fab";
+        const auto rotation_degrees = kicad_rotation(placement.rotation().degrees());
 
         out << "  (footprint " << sexpr_string(definition.ref().name()) << "\n";
         out << "    (layer " << sexpr_string(footprint_layer) << ")\n";
@@ -533,7 +545,7 @@ void write_component_footprints(std::ostream &out, const CompiledBoard &compiled
                    pcb_uuid("component-placement", placement_export.id.index(), "footprint"))
             << ")\n";
         out << "    ";
-        write_at(out, placement.position(), placement.rotation().degrees());
+        write_at(out, placement.position(), rotation_degrees);
         out << "\n";
         write_property(
             out, "Reference", pcb_component_reference(component), 0.0, -1.5, fabrication_layer,
@@ -548,7 +560,7 @@ void write_component_footprints(std::ostream &out, const CompiledBoard &compiled
             const auto pad_id = FootprintPadId{pad_index};
             write_pad(
                 out, definition.pad(pad_id), placement_export.pad_resolutions.at(pad_index),
-                board.circuit(), placement.side(), placement.rotation().degrees(),
+                board.circuit(), placement.side(), rotation_degrees,
                 pcb_uuid("component-placement", placement_export.id.index(), "pad", pad_id.index()),
                 loss_report);
         }

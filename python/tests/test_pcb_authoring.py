@@ -1569,8 +1569,8 @@ def test_python_board_authoring_exports_mixed_side_kicad_placements():
 
     assert export.warnings == ()
     assert export.text.count('(footprint "AsymmetricBottom"') == 2
-    assert '(at -2 1 17)' in export.text
-    assert '(at 2 1 137)' in export.text
+    assert '(at -2 1 343)' in export.text
+    assert '(at 2 1 223)' in export.text
     assert '(layers "B.Cu" "B.Paste" "B.Mask")' in export.text
     assert '(layer "B.Fab")' in export.text
     assert export.text.count('(justify left mirror)') == 2

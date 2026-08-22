@@ -437,21 +437,21 @@ TEST_CASE("KiCad PCB writer exports an asymmetric bottom-side placement") {
     CHECK(result.text == volt::adapters::kicad::write_board(compiled).text);
     CHECK(result.text.find("(footprint \"Asymmetric_Bottom\"\n    (layer \"B.Cu\")") !=
           std::string::npos);
-    CHECK(result.text.find("(at 20 10 30)") != std::string::npos);
+    CHECK(result.text.find("(at 20 10 330)") != std::string::npos);
     CHECK(result.text.find("(48 \"B.Fab\" user)") != std::string::npos);
     CHECK(result.text.find(
               "(property \"Reference\" \"R1\"\n      (at 0 -1.5 0)\n      (layer \"B.Fab\")") !=
           std::string::npos);
     CHECK(count_occurrences(result.text, "(justify left mirror)") == 2);
-    CHECK(result.text.find("(pad \"1\" smd rect\n      (at 2 1 30)") != std::string::npos);
+    CHECK(result.text.find("(pad \"1\" smd rect\n      (at 2 1 330)") != std::string::npos);
     CHECK(result.text.find("(layers \"B.Cu\" \"B.Paste\" \"B.Mask\")") != std::string::npos);
     CHECK(result.text.find("(net 1 \"LEFT\")") != std::string::npos);
-    CHECK(result.text.find("(pad \"2\" smd oval\n      (at -1 -0.5 30)") != std::string::npos);
+    CHECK(result.text.find("(pad \"2\" smd oval\n      (at -1 -0.5 330)") != std::string::npos);
     CHECK(result.text.find("(net 2 \"RIGHT\")") != std::string::npos);
-    CHECK(result.text.find("(pad \"MP\" thru_hole circle\n      (at 0.5 -2 30)") !=
+    CHECK(result.text.find("(pad \"MP\" thru_hole circle\n      (at 0.5 -2 330)") !=
           std::string::npos);
     CHECK(result.text.find("(drill 0.8)\n      (layers \"*.Cu\" \"*.Mask\")") != std::string::npos);
-    CHECK(result.text.find("(pad \"MH\" np_thru_hole circle\n      (at -0.75 2.25 30)") !=
+    CHECK(result.text.find("(pad \"MH\" np_thru_hole circle\n      (at -0.75 2.25 330)") !=
           std::string::npos);
 }
 
@@ -479,9 +479,9 @@ TEST_CASE("KiCad PCB writer keeps mixed top and bottom placements ordered and or
     REQUIRE(top_reference != std::string::npos);
     REQUIRE(bottom_reference != std::string::npos);
     CHECK(top_reference < bottom_reference);
-    CHECK(result.text.find("(at -2 1 17)") != std::string::npos);
-    CHECK(result.text.find("(at 2 1 137)") != std::string::npos);
-    CHECK(result.text.find("(at 30 12 137)") != std::string::npos);
+    CHECK(result.text.find("(at -2 1 343)") != std::string::npos);
+    CHECK(result.text.find("(at 2 1 223)") != std::string::npos);
+    CHECK(result.text.find("(at 30 12 223)") != std::string::npos);
 }
 
 TEST_CASE("KiCad PCB writer reports unsupported out-of-subset board constructs") {
