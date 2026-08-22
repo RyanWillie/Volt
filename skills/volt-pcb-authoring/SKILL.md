@@ -18,7 +18,7 @@ This skill covers board structure definition and the manufacturing handoff. For 
 | `design.add_board(name)` | `board.place(component, at=, ...)` |
 | `add_layer`, `set_layer_stack` | `board.add_track`, `board.add_via` |
 | `set_design_rules`, `set_capability_profile` | `board.layout(...)` session |
-| `set_rectangular_outline`, `board.add(volt.Hole(...))` | `board.escape(...)`, `board.assisted_connect(...)` |
+| `set_rectangular_outline`, `board.add(volt.Hole(...))` | bounded native `board.escape(...)`, `board.assisted_connect(...)` |
 | `result.write_manufacturing_package(...)` | `board.add_zone(...)`, `board.add_room(...)` |
 | Manufacturing-package and KiCad export review | `board.resolve_pads()`, routing DRC |
 

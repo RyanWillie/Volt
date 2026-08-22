@@ -35,8 +35,8 @@ Source: `python/volt/pcb.py`
 | `place(self, component: Component \| int, *, at: Point, rotation: float = 0.0, side: str = 'top', locked: bool = False) -> int` | Place a component footprint on the board and return the placement index. |
 | `add_track(self, net: Net \| int, *, layer: int, points: Iterable[Point], width: float) -> int` | Add a routed track segment sequence for a logical net. |
 | `add_via(self, net: Net \| int, *, at: Point, start_layer: int, end_layer: int, drill: float \| None = None, annular: float \| None = None) -> int` | Add a via connecting a net between two board layers. |
-| `assisted_connect(self, net: Net \| int, *, start: Point, start_layer: int, end: Point, end_layer: int) -> dict` | Route a net between two points using the kernel assisted-connection solver. |
-| `escape(self, component: Component \| int) -> dict` | Fan out a placed component using the kernel escape router. |
+| `assisted_connect(self, net: Net \| int, *, start: Point, start_layer: int, end: Point, end_layer: int) -> BoardRouteResult` | Attempt one bounded point-to-point route using the native assisted router. |
+| `escape(self, component: Component \| int) -> BoardEscapeResult` | Attempt bounded native pad fanout for one placed component. |
 | `add_zone(self, *, outline: Iterable[Point], layers: Iterable[int], net: Net \| int \| None = None, fill: str = 'solid', priority: int = 0) -> int` | Add a copper zone, optionally bound to a logical net. |
 | `add_room(self, name: str, *, outline: Iterable[Point], layers: Iterable[int], clearance: float \| None = None, track_width: float \| None = None, priority: int = 0) -> int` | Add a named board room with optional local routing rule overrides. |
 | `add_keepout(self, *, outline: Iterable[Point], layers: Iterable[int], restrictions: Iterable[str]) -> int` | Add a keepout region with layer and feature restrictions. |
@@ -82,6 +82,36 @@ Source: `python/volt/_pcb_layout.py`
 | `tox(self, anchor_or_x) -> BoardAnchor` | Return an anchor at this y coordinate and the target x coordinate. |
 | `toy(self, anchor_or_y) -> BoardAnchor` | Return an anchor at this x coordinate and the target y coordinate. |
 | `__iter__(self)` | Iterate over the ``(x, y)`` coordinate values. |
+
+## `volt.BoardEscapeFailureReason`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+BoardEscapeFailureReason = _volt.BoardEscapeFailureReason
+```
+
+## `volt.BoardEscapePadResult`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+BoardEscapePadResult = _volt.BoardEscapePadResult
+```
+
+## `volt.BoardEscapeResult`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+BoardEscapeResult = _volt.BoardEscapeResult
+```
 
 ## `volt.BoardFanout`
 
@@ -169,6 +199,36 @@ Source: `python/volt/_pcb_layout.py`
 | `right(self, distance: float) -> BoardRoute` | Route right by a relative distance. |
 | `up(self, distance: float) -> BoardRoute` | Route up by a relative distance. |
 | `down(self, distance: float) -> BoardRoute` | Route down by a relative distance. |
+
+## `volt.BoardRouteResult`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+BoardRouteResult = _volt.BoardRouteResult
+```
+
+## `volt.BoardSpatialBlocker`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+BoardSpatialBlocker = _volt.BoardSpatialBlocker
+```
+
+## `volt.BoardSpatialBlockerKind`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+BoardSpatialBlockerKind = _volt.BoardSpatialBlockerKind
+```
 
 ## `volt.BoardTwoPadComponent`
 
