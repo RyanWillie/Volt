@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 
 #include <algorithm>
 #include <cstdint>
@@ -14,8 +15,10 @@
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/core/errors.hpp>
+#include <volt/electrical/passive_model.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
 #include <volt/io/parts/part_library_bundle.hpp>
+#include <volt/io/project_bundle_writer.hpp>
 
 namespace {
 
@@ -96,6 +99,25 @@ part(const volt::ComponentDefinition &component, std::string key, std::string ma
             volt::PartModel3DReference{"glb", "led.glb", digest, {0.0, 0.0, 0.0}, 0.0},
         },
     };
+}
+
+[[nodiscard]] volt::PartDefinition with_electrical_model(const volt::ComponentDefinition &component,
+                                                         const volt::PartDefinition &original) {
+    auto builder = volt::PartElectricalModelBuilder{component};
+    const auto a = builder.terminal(volt::ModelTerminalKey{"a"}, volt::PinKey{"A"});
+    const auto k = builder.terminal(volt::ModelTerminalKey{"k"}, volt::PinKey{"K"});
+    builder.add<volt::ResistanceElement>(
+        volt::ModelElementKey{"body"}, a, k,
+        volt::ModelParameter{volt::Quantity{volt::UnitDimension::Resistance, 330.0}});
+    return volt::PartDefinition{component,
+                                original.identity(),
+                                original.electrical_records(),
+                                original.pin_terminal_mappings(),
+                                original.terminal_dispositions(),
+                                original.provenance(),
+                                original.schematic_assets(),
+                                original.orderable_part(),
+                                builder.build()};
 }
 
 [[nodiscard]] std::string asset_map_key(const volt::PartAssetReference &reference) {
@@ -354,7 +376,7 @@ TEST_CASE("Selected PartLibraryBundle builds byte-identically and reopens fully 
     CHECK(std::string{first.bytes()} == std::string{second.bytes()});
     CHECK(first.digest() == second.digest());
     CHECK(first.digest().value() ==
-          "sha256:0e741bd774e939dccfb3fcda131b1f39f388310b324ef3728fd3967f22ce1848");
+          "sha256:436229943ded5446aa0863ee0e4e911d111c8d725b51f89db06cfc4651e3878c");
     CHECK(std::ranges::is_sorted(first.entries(), {}, &volt::io::PartLibraryBundleEntry::path));
     CHECK(first.library().components().size() == 2U);
     CHECK(first.library().parts().size() == 2U);
@@ -403,6 +425,99 @@ TEST_CASE("Selected PartLibraryBundle builds byte-identically and reopens fully 
             std::ranges::find(reopened.entries(), role, &volt::io::PartLibraryBundleEntry::role) !=
             reopened.entries().end());
     }
+}
+
+TEST_CASE("PartLibraryBundle rejects selected electrical models before resolving assets") {
+    const auto fixture = component();
+    const auto modeled =
+        with_electrical_model(fixture.definition, part(fixture.definition, "modeled", "Volt"));
+    auto builder = volt::PartLibraryBuilder{
+        volt::PartLibraryIdentity{"test.parts", "1", volt::PartLibrarySchemaVersion::V1}};
+    builder.add_component(fixture.spec).add_part(modeled);
+    const auto selected = std::vector{volt::PartKey{"modeled"}};
+    const auto unavailable_assets = MemoryAssetResolver{};
+
+    CHECK_THROWS_WITH(volt::io::PartLibraryBundle::build(builder, selected, unavailable_assets),
+                      "PartLibraryBundle v2 cannot preserve a selected Part electrical model");
+    CHECK_THROWS_WITH(volt::io::PartLibraryBundle::build_with_component_roots(builder, selected, {},
+                                                                              unavailable_assets),
+                      "PartLibraryBundle v2 cannot preserve a selected Part electrical model");
+    check_kernel_error(
+        [&] {
+            static_cast<void>(
+                volt::io::PartLibraryBundle::build(builder, selected, unavailable_assets));
+        },
+        volt::ErrorCode::InvalidState);
+}
+
+TEST_CASE("PartLibraryBundle can omit an unselected electrical model without changing it") {
+    const auto fixture = component();
+    const auto modeled =
+        with_electrical_model(fixture.definition, part(fixture.definition, "modeled", "Volt"));
+    const auto absent = part(fixture.definition, "absent", "Volt");
+    auto builder = volt::PartLibraryBuilder{
+        volt::PartLibraryIdentity{"test.parts", "1", volt::PartLibrarySchemaVersion::V1}};
+    builder.add_component(fixture.spec).add_part(modeled).add_part(absent);
+    auto resolver = MemoryAssetResolver{};
+    resolver.add(modeled);
+    resolver.add(absent);
+
+    const auto in_memory_library = builder.build(resolver);
+    const auto reference = in_memory_library.require(volt::PartKey{"modeled"});
+    CHECK(in_memory_library.resolve(reference).content_identity() == modeled.content_identity());
+    REQUIRE(in_memory_library.resolve(reference).electrical_model().has_value());
+    CHECK(in_memory_library.resolve(reference).electrical_model()->elements().size() == 1U);
+
+    const auto bundle =
+        volt::io::PartLibraryBundle::build(builder, std::vector{volt::PartKey{"absent"}}, resolver);
+    const auto reopened = volt::io::PartLibraryBundle::open(bundle.bytes());
+    REQUIRE(reopened.library().parts().size() == 1U);
+    const auto &retained = reopened.resolve(reopened.require(volt::PartKey{"absent"}));
+    CHECK(retained.content_identity() == absent.content_identity());
+    CHECK_FALSE(retained.electrical_model().has_value());
+    CHECK(in_memory_library.resolve(reference).content_identity() == modeled.content_identity());
+    CHECK(in_memory_library.resolve(reference).electrical_model().has_value());
+}
+
+TEST_CASE(
+    "Logical-only ProjectBundle rejects a model-bearing selected closure before publication") {
+    const auto fixture = component();
+    const auto modeled =
+        with_electrical_model(fixture.definition, part(fixture.definition, "modeled", "Volt"));
+    auto library_builder = volt::PartLibraryBuilder{
+        volt::PartLibraryIdentity{"test.parts", "1", volt::PartLibrarySchemaVersion::V1}};
+    library_builder.add_component(fixture.spec).add_part(modeled);
+    auto resolver = MemoryAssetResolver{};
+    resolver.add(modeled);
+    const auto library = library_builder.build(resolver);
+    const auto key = volt::PartKey{"modeled"};
+    auto circuit = volt::Circuit{};
+    const auto definition = circuit.define_component(fixture.spec);
+    const auto instance = circuit.instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
+    circuit.update(instance, volt::SelectLibraryPart{library, library.require(key)});
+
+    const auto publish = [&] {
+        const auto closure =
+            volt::io::PartLibraryBundle::build(library_builder, std::vector{key}, resolver);
+        auto project = volt::io::ProjectBundleBuilder{
+            volt::io::ProjectIdentity{"electrical-model", std::nullopt, std::nullopt},
+            volt::io::ProjectRunSummary{
+                true, volt::io::ProjectStatus::Clean, "default", {"design"}},
+            volt::io::LogicalInputName{"project.py"},
+            {volt::io::AuthoringInput{volt::io::AuthoringInputKind::ProjectSource,
+                                      volt::io::LogicalInputName{"project.py"}, "project source"}},
+            volt::io::ProjectReport{
+                R"({"status":"clean","summary":{"errors":0,"warnings":0,"infos":0},"diagnostics":[],"expected":[],"unexpected":[],"missing_expected":[]})"},
+            volt::io::ProjectReport{R"({"summary":{"passed":0,"failed":0},"tests":[]})"}};
+        project.add_logical(volt::io::DesignKey{"main"}, circuit, closure);
+        return project.build();
+    };
+
+    CHECK_THROWS_WITH(publish(),
+                      "PartLibraryBundle v2 cannot preserve a selected Part electrical model");
+    CHECK(circuit.get(instance).selected_library_part_ref()->part_digest() ==
+          modeled.content_identity());
 }
 
 TEST_CASE("PartLibraryBundle closure is explicit and empty closure is valid") {

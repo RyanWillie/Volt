@@ -578,6 +578,73 @@ default. The kernel receives a dimensioned quantity either way.
 Python exceptions remain appropriate for rejected structural mutations or invalid typed
 values. ERC and design-quality issues remain kernel-produced diagnostics.
 
+## Native Exact-Part Passive Models
+
+`<volt/electrical/passive_model.hpp>` provides the native E1 surface from the
+accepted [electrical-model contract](design/adr-part-electrical-model.md). An exact
+`PartDefinition` optionally owns an immutable `PartElectricalModel`; its final constructor
+argument accepts the model and `electrical_model()` returns the optional value. A missing
+model stays absent. Component identity and the Circuit API are unchanged.
+
+Given an immutable component with contract `PinKey`s `A` and `B`, the same closed typed
+builder creates a plain resistor or a composite capacitor:
+
+```cpp
+PartElectricalModelBuilder resistor{component};
+const auto a = resistor.terminal(ModelTerminalKey{"a"}, PinKey{"A"});
+const auto b = resistor.terminal(ModelTerminalKey{"b"}, PinKey{"B"});
+resistor.add<ResistanceElement>(ModelElementKey{"body"}, a, b,
+    ModelParameter{Quantity{UnitDimension::Resistance, 330.0},
+                   Tolerance::percent(0.01)});
+const PartElectricalModel resistance_model = resistor.build();
+
+PartElectricalModelBuilder capacitor{component};
+const auto p = capacitor.terminal(ModelTerminalKey{"p"}, PinKey{"A"});
+const auto n = capacitor.terminal(ModelTerminalKey{"n"}, PinKey{"B"});
+const auto x = capacitor.internal_node(ModelInternalNodeKey{"after_esr"});
+const auto y = capacitor.internal_node(ModelInternalNodeKey{"after_esl"});
+capacitor.add<ResistanceElement>(ModelElementKey{"esr"}, p, x,
+    ModelParameter{Quantity{UnitDimension::Resistance, 0.08}});
+capacitor.add<InductanceElement>(ModelElementKey{"esl"}, x, y,
+    ModelParameter{Quantity{UnitDimension::Inductance, 1.0e-9}});
+capacitor.add<CapacitanceElement>(ModelElementKey{"storage"}, y, n,
+    ModelParameter{Quantity{UnitDimension::Capacitance, 10.0e-6},
+                   Tolerance::percent(0.20)});
+const PartElectricalModel capacitance_model = capacitor.build();
+```
+
+`add<Element>` accepts only `ResistanceElement`, `CapacitanceElement`, or
+`InductanceElement`. Handles belong to one builder; even identically named foreign handles
+reject. Final models contain portable `ModelEndpoint` keys and own their values independently
+of builder and component lifetimes. The public `PartElectricalModel` constructor also validates
+complete portable terminal, internal-node, and element collections. Every contract pin is
+bound once and every declared node is used. Disconnected but used networks remain valid.
+
+Parameters use existing SI `Quantity`, optional `Tolerance`, and sorted unique `ContentHash`
+evidence. Tolerance is normalized to absolute deviations; `bounds()` derives a finite
+`QuantityRange` only when tolerance was supplied. Unspecified tolerance and explicit zero
+are distinct. R and its bounds may be zero (the ideal voltage constraint); C/L and their
+bounds must be positive. Wrong dimensions, nonfinite values, invalid bounds, and overflow
+reject; signed zero normalizes to positive zero. Nominal laws and parameter evidence do
+not become operating guarantees or V/I ratings.
+
+Exact Part semantic identity is now version **2**, including explicit model absence or all
+canonical model content. Declaration and evidence order are nonsemantic; keys, orientation,
+normalized parameters, tolerance presence, and evidence content affect identity. The wire
+formats remain `volt.part` **v5**, PartLibraryBundle **v2**, and ProjectBundle **v2** in E1.
+Direct Part serialization (including byte hashing) and selected library-bundle construction
+explicitly reject model-bearing Parts until E2 supplies lossless transport. Compiled-board
+and project closure construction require those verified library bundles, so they cannot
+silently omit a selected model. Bare logical documents still preserve exact Part references
+without claiming to contain Part definitions. Existing model-absent fixtures use refreshed
+Part/library digests; no compatibility reader is added.
+
+Native in-memory libraries retain models and verify referenced model evidence through their
+existing asset resolver. E2 owns artifact transport; E3 owns public Python authoring. Existing
+occurrence R/C/L, nominal/tolerance attributes, and display text keep their current meaning
+and never seed or override model parameters. Canonical `ElectricalRecordSet` remains
+Voltage/Current-only. No solver, analysis request, or new ERC policy is introduced.
+
 ## Future Simulation Boundary
 
 Volt should be simulation-ready, not simulation-specific.

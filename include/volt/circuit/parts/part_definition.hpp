@@ -12,6 +12,7 @@
 #include <volt/circuit/parts/parts.hpp>
 #include <volt/core/content_hash.hpp>
 #include <volt/core/diagnostics.hpp>
+#include <volt/electrical/passive_model.hpp>
 
 namespace volt {
 
@@ -442,7 +443,8 @@ class PartDefinition {
                    std::vector<DisposedPackageTerminal> terminal_dispositions,
                    PartProvenance provenance,
                    std::vector<PartSchematicAssetReference> schematic_assets,
-                   OrderablePart orderable_part);
+                   OrderablePart orderable_part,
+                   std::optional<PartElectricalModel> electrical_model = std::nullopt);
 
     /** Return stable human part identity. */
     [[nodiscard]] const PartIdentity &identity() const noexcept { return identity_; }
@@ -455,6 +457,11 @@ class PartDefinition {
     /** Return canonical P1 Voltage and Current records for this exact implementation. */
     [[nodiscard]] const ElectricalRecordSet &electrical_records() const noexcept {
         return electrical_records_;
+    }
+
+    /** Return the optional intrinsic passive model; absence does not imply ideal behavior. */
+    [[nodiscard]] const std::optional<PartElectricalModel> &electrical_model() const noexcept {
+        return electrical_model_;
     }
 
     /** Return normalized logical PinKey to package-terminal mappings. */
@@ -496,6 +503,7 @@ class PartDefinition {
     PartProvenance provenance_;
     std::vector<PartSchematicAssetReference> schematic_assets_;
     OrderablePart orderable_part_;
+    std::optional<PartElectricalModel> electrical_model_;
     ContentHash content_identity_;
 };
 

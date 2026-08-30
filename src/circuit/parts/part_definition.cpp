@@ -118,6 +118,64 @@ void append_electrical_records(std::ostringstream &out, const ElectricalRecordSe
     }
 }
 
+void append_model_endpoint(std::ostringstream &out, const ModelEndpoint &endpoint) {
+    std::visit(
+        [&](const auto &key) {
+            using Key = std::decay_t<decltype(key)>;
+            append_string(out, std::is_same_v<Key, ModelTerminalKey> ? "terminal" : "internal");
+            append_string(out, key.value());
+        },
+        endpoint);
+}
+
+void append_electrical_model(std::ostringstream &out,
+                             const std::optional<PartElectricalModel> &model) {
+    append_string(out, model.has_value() ? "electrical-model" : "no-electrical-model");
+    if (!model.has_value()) {
+        return;
+    }
+    append_string(out, model->implemented_component().value());
+    append_string(out, std::to_string(model->terminals().size()));
+    for (const auto &terminal : model->terminals()) {
+        append_string(out, terminal.key().value());
+        append_string(out, terminal.pin().value());
+    }
+    append_string(out, std::to_string(model->internal_nodes().size()));
+    for (const auto &node : model->internal_nodes()) {
+        append_string(out, node.key().value());
+    }
+    append_string(out, std::to_string(model->elements().size()));
+    for (const auto &element : model->elements()) {
+        std::visit(
+            [&](const auto &value) {
+                using Element = std::decay_t<decltype(value)>;
+                if constexpr (std::is_same_v<Element, ResistanceElement>) {
+                    append_string(out, "resistance");
+                } else if constexpr (std::is_same_v<Element, CapacitanceElement>) {
+                    append_string(out, "capacitance");
+                } else {
+                    append_string(out, "inductance");
+                }
+                append_string(out, value.key().value());
+                append_model_endpoint(out, value.from());
+                append_model_endpoint(out, value.to());
+                const auto &parameter = value.parameter();
+                append_quantity(out, parameter.nominal());
+                append_string(out,
+                              parameter.tolerance().has_value() ? "tolerance" : "no-tolerance");
+                if (parameter.tolerance().has_value()) {
+                    append_quantity(out, parameter.tolerance()->minus());
+                    append_quantity(out, parameter.tolerance()->plus());
+                }
+                append_string(out, std::to_string(parameter.evidence().size()));
+                for (const auto &evidence : parameter.evidence()) {
+                    append_string(out, evidence.value());
+                }
+            },
+            element);
+    }
+}
+
 void append_polygon(std::ostringstream &out, const std::optional<PartFootprintPolygon> &polygon) {
     append_string(out, polygon.has_value() ? "polygon" : "no-polygon");
     if (!polygon.has_value()) {
@@ -133,12 +191,13 @@ void append_polygon(std::ostringstream &out, const std::optional<PartFootprintPo
 [[nodiscard]] ContentHash part_content_identity(const PartDefinition &part) {
     auto out = std::ostringstream{};
     append_string(out, "volt.part-definition");
-    append_string(out, "1");
+    append_string(out, "2");
     append_string(out, part.identity().namespace_name());
     append_string(out, part.identity().name());
     append_string(out, part.identity().version());
     append_string(out, part.implemented_component().value());
     append_electrical_records(out, part.electrical_records());
+    append_electrical_model(out, part.electrical_model());
 
     append_string(out, std::to_string(part.pin_terminal_mappings().size()));
     for (const auto &mapping : part.pin_terminal_mappings()) {
@@ -540,13 +599,19 @@ PartDefinition::PartDefinition(const ComponentDefinition &component, PartIdentit
                                std::vector<DisposedPackageTerminal> terminal_dispositions,
                                PartProvenance provenance,
                                std::vector<PartSchematicAssetReference> schematic_assets,
-                               OrderablePart orderable_part)
+                               OrderablePart orderable_part,
+                               std::optional<PartElectricalModel> electrical_model)
     : identity_{std::move(identity)}, implemented_component_{component.content_identity()},
       electrical_records_{std::move(electrical_records)},
       pin_terminal_mappings_{std::move(pin_terminal_mappings)},
       terminal_dispositions_{std::move(terminal_dispositions)}, provenance_{std::move(provenance)},
       schematic_assets_{std::move(schematic_assets)}, orderable_part_{std::move(orderable_part)},
-      content_identity_{sha256_content_hash("")} {
+      electrical_model_{std::move(electrical_model)}, content_identity_{sha256_content_hash("")} {
+    if (electrical_model_.has_value() &&
+        electrical_model_->implemented_component() != implemented_component_) {
+        throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
+                                  "Exact part electrical model implements a different component"};
+    }
     std::ranges::sort(pin_terminal_mappings_, {}, &PinPackageTerminalMapping::pin);
     if (std::adjacent_find(pin_terminal_mappings_.begin(), pin_terminal_mappings_.end(),
                            [](const auto &lhs, const auto &rhs) {

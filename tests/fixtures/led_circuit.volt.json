@@ -17,11 +17,11 @@
     { "id": "component_def:2", "name": "LED", "source": { "namespace": "volt.optos", "name": "led_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.optos:led", "variant": "default" }], "pins": ["pin_def:4", "pin_def:5"], "properties": {} }
   ],
   "components": [
-    { "id": "component:0", "definition": "component_def:0", "reference": "J1", "properties": {}, "selected_library_part": { "library_namespace": "test.export", "library_version": "1", "part_key": "header", "library_digest": "sha256:c1b6e2a2e6f1ee9cd7dd9c92fce65a066973812b068b941a47dab228720fbf87", "part_digest": "sha256:39559ab85f1debd85b1f33766b59a450c714b93b0e7b2af8a8f1d11486f25a38" } },
+    { "id": "component:0", "definition": "component_def:0", "reference": "J1", "properties": {}, "selected_library_part": { "library_namespace": "test.export", "library_version": "1", "part_key": "header", "library_digest": "sha256:024055f8753627aa4dc2791cd30cc70990a24c4166eeea7920065c2cb133429a", "part_digest": "sha256:17c94639d51e7fe7e48279af9129d4a8603ed7d8d7f557f8f9d176530d192774" } },
     { "id": "component:1", "definition": "component_def:1", "reference": "R1", "properties": {
         "value": { "type": "string", "value": "330 ohm" }
-      }, "selected_library_part": { "library_namespace": "test.export", "library_version": "1", "part_key": "resistor", "library_digest": "sha256:c1b6e2a2e6f1ee9cd7dd9c92fce65a066973812b068b941a47dab228720fbf87", "part_digest": "sha256:3042d59f89dec9e9a5db85b1f2de9ed965ca557fafd6515fbcdc2b80df6d4df3" } },
-    { "id": "component:2", "definition": "component_def:2", "reference": "D1", "properties": {}, "selected_library_part": { "library_namespace": "test.export", "library_version": "1", "part_key": "led", "library_digest": "sha256:c1b6e2a2e6f1ee9cd7dd9c92fce65a066973812b068b941a47dab228720fbf87", "part_digest": "sha256:92d741f75c350f9a84101455268a7349fc0496d41ae9d3c408d31c257b57ea72" } }
+      }, "selected_library_part": { "library_namespace": "test.export", "library_version": "1", "part_key": "resistor", "library_digest": "sha256:024055f8753627aa4dc2791cd30cc70990a24c4166eeea7920065c2cb133429a", "part_digest": "sha256:f91b972c5662138a1322a8a3531a7e69a42a7e068006ee9448d662cb4aab96a6" } },
+    { "id": "component:2", "definition": "component_def:2", "reference": "D1", "properties": {}, "selected_library_part": { "library_namespace": "test.export", "library_version": "1", "part_key": "led", "library_digest": "sha256:024055f8753627aa4dc2791cd30cc70990a24c4166eeea7920065c2cb133429a", "part_digest": "sha256:ee7e7aace6408a5dc475b30c92c64f7bc092cbf9f837e909b7108186236c9ffe" } }
   ],
   "pins": [
     { "id": "pin:0", "component": "component:0", "definition": "pin_def:0" },

@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <map>
 #include <optional>
 #include <string>
@@ -27,10 +28,10 @@ constexpr std::string_view asset_bytes = "native-part-library-asset";
                                            });
 }
 
-[[nodiscard]] volt::PartDefinition part(const volt::ComponentDefinition &definition,
-                                        std::string key, std::string manufacturer,
-                                        std::string package = "0603",
-                                        std::string namespace_name = "test.parts") {
+[[nodiscard]] volt::PartDefinition
+part(const volt::ComponentDefinition &definition, std::string key, std::string manufacturer,
+     std::string package = "0603", std::string namespace_name = "test.parts",
+     std::optional<volt::PartElectricalModel> model = std::nullopt) {
     const auto asset_digest = volt::sha256_content_hash(asset_bytes);
     return volt::PartDefinition{
         definition,
@@ -60,6 +61,7 @@ constexpr std::string_view asset_bytes = "native-part-library-asset";
             {},
             volt::PartModel3DReference{"glb", "led.glb", asset_digest, {0.0, 0.0, 0.0}, 0.0},
         },
+        std::move(model),
     };
 }
 
@@ -336,4 +338,60 @@ TEST_CASE("Part library build requires explicit complete asset resolution") {
     complete.add(exact, std::string{asset_bytes});
     const auto library = builder.build(complete);
     CHECK(library.parts().size() == 1U);
+}
+
+TEST_CASE("Part library verifies each unique passive model evidence asset") {
+    const auto definition = component();
+    const auto first_bytes = std::string{"first model evidence"};
+    const auto second_bytes = std::string{"second model evidence"};
+    const auto first_digest = volt::sha256_content_hash(first_bytes);
+    const auto second_digest = volt::sha256_content_hash(second_bytes);
+    auto model = volt::PartElectricalModelBuilder{definition};
+    const auto a = model.terminal(volt::ModelTerminalKey{"a"}, volt::PinKey{"A"});
+    const auto k = model.terminal(volt::ModelTerminalKey{"k"}, volt::PinKey{"K"});
+    model.add<volt::ResistanceElement>(
+        volt::ModelElementKey{"first"}, a, k,
+        volt::ModelParameter{volt::Quantity{volt::UnitDimension::Resistance, 100.0},
+                             std::nullopt,
+                             {second_digest, first_digest, first_digest}});
+    model.add<volt::ResistanceElement>(
+        volt::ModelElementKey{"second"}, a, k,
+        volt::ModelParameter{
+            volt::Quantity{volt::UnitDimension::Resistance, 200.0}, std::nullopt, {first_digest}});
+    const auto without_model = part(definition, "vendor/PASSIVE", "Vendor");
+    const auto exact =
+        part(definition, "vendor/PASSIVE", "Vendor", "0603", "test.parts", model.build());
+    const auto references = volt::part_asset_references(exact);
+    CHECK(references.size() == volt::part_asset_references(without_model).size() + 2U);
+    CHECK(std::ranges::count_if(references, [&](const auto &reference) {
+              return reference.kind() == volt::PartAssetKind::Evidence &&
+                     reference.digest() == first_digest &&
+                     reference.key() == "evidence:" + first_digest.value();
+          }) == 1);
+    CHECK(std::ranges::count_if(references, [&](const auto &reference) {
+              return reference.kind() == volt::PartAssetKind::Evidence &&
+                     reference.digest() == second_digest &&
+                     reference.key() == "evidence:" + second_digest.value();
+          }) == 1);
+
+    auto resolver = MemoryAssetResolver{};
+    resolver.add(without_model, std::string{asset_bytes});
+    check_kernel_error([&] { static_cast<void>(build_library(definition, {exact}, resolver)); },
+                       volt::ErrorCode::UnknownEntity);
+    resolver.add(volt::PartAssetReference{volt::PartAssetKind::Evidence,
+                                          "evidence:" + first_digest.value(), first_digest},
+                 first_bytes);
+    check_kernel_error([&] { static_cast<void>(build_library(definition, {exact}, resolver)); },
+                       volt::ErrorCode::UnknownEntity);
+    const auto second_reference = volt::PartAssetReference{
+        volt::PartAssetKind::Evidence, "evidence:" + second_digest.value(), second_digest};
+    resolver.add(second_reference, "corrupt evidence");
+    check_kernel_error([&] { static_cast<void>(build_library(definition, {exact}, resolver)); },
+                       volt::ErrorCode::CrossReferenceViolation);
+    resolver.add(second_reference, second_bytes);
+    const auto library = build_library(definition, {exact}, resolver);
+    const auto &resolved = library.resolve(library.require(volt::PartKey{"vendor/PASSIVE"}));
+    CHECK(resolved.content_identity() == exact.content_identity());
+    REQUIRE(resolved.electrical_model().has_value());
+    CHECK(resolved.electrical_model()->elements().size() == 2U);
 }

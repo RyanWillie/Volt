@@ -1,8 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 
 #include <algorithm>
 #include <fstream>
 #include <iterator>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -12,6 +14,8 @@
 
 #include <volt/circuit/parts/part_definition.hpp>
 #include <volt/core/electrical_attributes.hpp>
+#include <volt/core/errors.hpp>
+#include <volt/electrical/passive_model.hpp>
 #include <volt/io/parts/part_definition_reader.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
 
@@ -106,6 +110,49 @@ TEST_CASE("Part definition v5 writer emits one exact component and two physical 
     CHECK(document["orderable_part"].find("pin_pad_mappings") == document["orderable_part"].end());
     CHECK(document["schematic_assets"][0]["hash"] == hash('a').value());
     CHECK(volt::io::part_definition_content_hash(part).value().starts_with("sha256:"));
+    CHECK_FALSE(part.electrical_model().has_value());
+}
+
+TEST_CASE("Part definition v5 rejects electrical models before writing any artifact bytes") {
+    const auto component = regulator_component();
+    const auto original = current_part(component);
+    auto model_builder = volt::PartElectricalModelBuilder{component};
+    const auto ground =
+        model_builder.terminal(volt::ModelTerminalKey{"ground"}, volt::PinKey{"GND"});
+    const auto output =
+        model_builder.terminal(volt::ModelTerminalKey{"output"}, volt::PinKey{"VO"});
+    const auto input = model_builder.terminal(volt::ModelTerminalKey{"input"}, volt::PinKey{"VI"});
+    model_builder.add<volt::ResistanceElement>(
+        volt::ModelElementKey{"output_load"}, output, ground,
+        volt::ModelParameter{volt::Quantity{volt::UnitDimension::Resistance, 1000.0}});
+    model_builder.add<volt::ResistanceElement>(
+        volt::ModelElementKey{"input_load"}, input, ground,
+        volt::ModelParameter{volt::Quantity{volt::UnitDimension::Resistance, 2000.0}});
+    const auto part = volt::PartDefinition{component,
+                                           original.identity(),
+                                           original.electrical_records(),
+                                           original.pin_terminal_mappings(),
+                                           original.terminal_dispositions(),
+                                           original.provenance(),
+                                           original.schematic_assets(),
+                                           original.orderable_part(),
+                                           model_builder.build()};
+    REQUIRE(part.electrical_model().has_value());
+
+    auto stream = std::ostringstream{};
+    stream << "existing bytes";
+    try {
+        volt::io::write_part_definition(stream, part);
+        FAIL("Expected the unsupported electrical model to reject");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::InvalidState);
+        CHECK(std::string{error.what()}.contains("cannot preserve an electrical model"));
+    }
+    CHECK(stream.str() == "existing bytes");
+    CHECK_THROWS_WITH(volt::io::write_part_definition(part),
+                      "Part definition v5 cannot preserve an electrical model");
+    CHECK_THROWS_WITH(volt::io::part_definition_content_hash(part),
+                      "Part definition v5 cannot preserve an electrical model");
 }
 
 TEST_CASE("Golden v5 part fixture round-trips byte-identically against the supplied component") {
@@ -117,6 +164,8 @@ TEST_CASE("Golden v5 part fixture round-trips byte-identically against the suppl
 
     CHECK(first_write == fixture);
     CHECK(volt::io::write_part_definition(second) == fixture);
+    CHECK_FALSE(first.electrical_model().has_value());
+    CHECK_FALSE(second.electrical_model().has_value());
 }
 
 TEST_CASE("Part definition v5 reader rejects component and content identity mismatches") {
