@@ -449,6 +449,17 @@ The lock has these semantics:
 
 ## Required Default Graph
 
+The proposed [E0 Part electrical-model contract](adr-part-electrical-model.md) narrowly
+amends the selected-Part closure above and the dependency table below on maintainer
+acceptance: a selected Part's inline optional model and every referenced model or canonical
+V/I evidence asset must survive logical-only as well as Board-bearing bundles. The selected
+Part has direct dependency edges to those evidence assets, with native byte/hash/closure
+verification on both write and reopen. This does not include unrelated attachments, unused
+GLB or unselected STEP. Current ProjectBundle v2 does not yet carry that evidence closure;
+E2 must update the affected typed artifact kinds, schemas, writer, reader and fixtures
+together, retaining only the new current contract. No model is copied onto instances and
+no source or cache lookup may substitute for missing vendored bytes.
+
 `ExportSelection{}` is the default. A v2 bundle contains authoritative native models plus
 the required inspection views and reports needed for offline inspection and Vault:
 

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="The proposed Volt E0 contract: exact Part-owned RLC models, deterministic persistence, explicit testbenches and read-only compilation. No solver required for the first milestone.">
+  <meta name="color-scheme" content="light">
+  <title>Volt E0 — Define the Part. Preserve the meaning.</title>
+  <style>
+    :root { --ink:#182b31; --muted:#4e666c; --paper:#f6f5ef; --line:#cbd7d5; --teal:#006b65; --pale:#e3efeb; --amber:#855110; --white:#fffef9; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:17px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    a { color:var(--teal); text-underline-offset:3px; }
+    a:focus-visible { outline:3px solid var(--amber); outline-offset:4px; }
+    main { max-width:1060px; margin:auto; padding:36px 28px 72px; }
+    .eyebrow { font:700 12px/1.4 ui-monospace,monospace; text-transform:uppercase; letter-spacing:.11em; color:var(--teal); }
+    h1 { font-size:clamp(38px,6vw,64px); line-height:1.05; letter-spacing:-.045em; max-width:850px; margin:20px 0; }
+    h2 { font-size:30px; line-height:1.2; letter-spacing:-.025em; margin:0 0 20px; }
+    h3 { font-size:19px; line-height:1.35; margin:0 0 10px; }
+    p { margin:0 0 16px; max-width:83ch; }
+    .lead { font-size:21px; max-width:760px; }
+    .status { border-left:4px solid var(--amber); padding:12px 18px; background:#f4ecdb; font-size:15px; margin:26px 0; }
+    nav { display:flex; flex-wrap:wrap; gap:10px 23px; padding:16px 0; border-block:1px solid var(--line); font-size:14px; }
+    section { padding:38px 0 8px; border-bottom:1px solid var(--line); }
+    section:last-of-type { border:0; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; }
+    .card { background:var(--white); border:1px solid var(--line); padding:22px; }
+    .card p:last-child { margin-bottom:0; }
+    .small { font-size:14px; color:var(--muted); }
+    code { font: .88em/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; overflow-wrap:anywhere; }
+    pre { background:#19343b; color:#f0f8f4; padding:20px; overflow:auto; font-size:14px; line-height:1.6; border-radius:4px; }
+    pre code { font-size:inherit; overflow-wrap:normal; }
+    .scroll { overflow:auto; margin:18px 0 24px; }
+    table { border-collapse:collapse; width:100%; font-size:15px; }
+    th,td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { background:var(--pale); font-size:13px; }
+    .flow { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:26px 0; }
+    .flow div { padding:18px; border-top:4px solid var(--teal); background:var(--pale); }
+    .flow strong,.flow span { display:block; }
+    .flow span { font-size:14px; margin-top:8px; }
+    .circuit { padding:28px 14px; background:var(--white); border:1px solid var(--line); text-align:center; font-family:ui-monospace,monospace; overflow:auto; white-space:nowrap; }
+    .circuit b { display:inline-block; border:2px solid var(--teal); padding:9px 13px; color:var(--teal); }
+    .callout { padding:20px 24px; background:var(--pale); margin:22px 0; }
+    .equation { font-family:ui-monospace,monospace; font-size:20px; color:var(--teal); margin:15px 0; }
+    ol,ul { padding-left:23px; }
+    li { margin-bottom:9px; }
+    footer { border-top:1px solid var(--line); padding-top:22px; margin-top:30px; font-size:14px; color:var(--muted); }
+    @media(max-width:680px) { main { padding:24px 18px 50px; } .grid,.flow { grid-template-columns:1fr; } h2 { font-size:27px; } .lead { font-size:19px; } th,td { padding:10px; } }
+    @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+    @media print { body { background:white; font-size:11pt; } main { max-width:none; padding:0; } nav { display:none; } .card,pre,.flow div { break-inside:avoid; } pre { white-space:pre-wrap; background:#eee; color:#111; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Volt · Electrical E0 · Contract review</div>
+    <h1>Define the Part.<br>Preserve the meaning.</h1>
+    <p class="lead">An exact Part owns its electrical model. A Circuit connects its terminals. An explicit analysis asks a question. The first milestone stops before solving.</p>
+    <div class="status"><strong>Proposed, not yet accepted or implemented.</strong> This page explains the <a href="https://github.com/RyanWillie/Volt/blob/feat/252-electrical-model-contract/docs/design/adr-part-electrical-model.md">normative ADR proposal</a> for <a href="https://github.com/RyanWillie/Volt/issues/252">#252</a>. Maintainer review and merge are the gate. API sketches below are proposals; tutorial values are illustrative.</div>
+    <nav aria-label="On this page"><a href="#ownership">Ownership</a><a href="#authoring">Authoring</a><a href="#values">Values &amp; limits</a><a href="#identity">Identity &amp; bundles</a><a href="#compile">Compilation</a><a href="#delivery">Delivery gates</a></nav>
+  </header>
+
+  <section id="ownership">
+    <div class="eyebrow">01 / One owner for each fact</div>
+    <h2>A model is not a new kind of Circuit component.</h2>
+    <div class="flow">
+      <div><strong>Component contract</strong><span>Immutable logical PinKeys, such as A and B.</span></div>
+      <div><strong>Exact Part</strong><span>One optional immutable R/C/L network, plus physical identity and existing V/I claims.</span></div>
+      <div><strong>Circuit instance</strong><span>One exact selection. Existing pins and logical net membership.</span></div>
+      <div><strong>Native analysis</strong><span>Separate stimulus and reference. Read-only compilation, then later execution.</span></div>
+    </div>
+    <p>C++ owns all of this meaning, validation and persistence. Python supplies concise syntax. There is no <code>ResistorComponent</code> hierarchy, no new Circuit root methods, and no Python-only equation evaluator.</p>
+    <p>Existing <code>Quantity</code>, dimensions, tolerances and ranges already provide the foundation. Resistance, capacitance and inductance become proper model elements. Frequency and Time remain quantities and analysis coordinates.</p>
+  </section>
+
+  <section id="authoring">
+    <div class="eyebrow">02 / One small composition interface</div>
+    <h2>A real capacitor can contain three ideal laws.</h2>
+    <div class="circuit" role="img" aria-label="A connects through ESR resistance, internal node x, ESL inductance, internal node y and capacitance to B">A ─ <b>ESR</b> ─ x ─ <b>ESL</b> ─ y ─ <b>C</b> ─ B</div>
+    <p class="small">One physical Part. Three elements. Two private internal nodes. A second instance gets its own x and y.</p>
+    <pre><code># Proposed Python bindings; native meaning and validation.
+cb = ElectricalModelBuilder(component)
+p = cb.terminal("p", PinKey("A"))
+n = cb.terminal("n", PinKey("B"))
+x = cb.internal_node("after_esr")
+y = cb.internal_node("after_esl")
+cb.add(ResistanceElement("esr", p, x, ModelParameter(ohms(0.08))))
+cb.add(InductanceElement("esl", x, y, ModelParameter(henries(1e-9))))
+cb.add(CapacitanceElement("storage", y, n,
+    ModelParameter(farads(10e-6), tolerance=Tolerance.percent(0.20))))
+capacitor = Part(**complete_capacitor_fields, electrical_model=cb.build())</code></pre>
+    <p class="small"><code>complete_capacitor_fields</code> means the existing complete exact identity, PinSpecs, ComponentContract, footprint and physical mappings. The helpers return the existing native Quantity type. They do not introduce a second units framework.</p>
+    <div class="grid">
+      <article class="card"><h3>Plain resistor</h3><p>Bind A and B; add one resistance element with <code>ohms(330)</code> and <code>Tolerance.percent(0.01)</code>. The nominal is 330 Ω; the bounds are 326.7–333.3 Ω. No special product class.</p></article>
+      <article class="card"><h3>Three-terminal network</h3><p>Two resistances connect A→COM and B→COM. Terminal currents are <code>i₁</code>, <code>i₂</code> and <code>−i₁−i₂</code>. A terminal may have several incident branches; its current is their signed sum.</p></article>
+    </div>
+    <pre><code>// Proposed C++ element construction; existing Quantity foundation.
+rb.add(ResistanceElement{ModelElementKey{"body"}, a, b,
+    ModelParameter{Quantity{UnitDimension::Resistance, 330.0},
+                   Tolerance::percent(0.01), {}}});
+const ElectricalModel model = rb.build();</code></pre>
+    <p>The builder binds every contract pin exactly once, rejects foreign handles and dangling endpoints, then freezes an immutable model. The first vocabulary requires every declared terminal/node to participate in an element. Unused logical pins and partial IC behaviour remain unsupported; omission never means “open circuit.” Disconnected resistor-array subnetworks are valid.</p>
+    <pre><code># Existing instance/connection pattern after the proposed model is attached.
+library.add(capacitor)
+c1 = design.instantiate(capacitor, ref="C1")
+input_net.connect(c1["A"])
+return_net.connect(c1["B"])</code></pre>
+  </section>
+
+  <section id="values">
+    <div class="eyebrow">03 / Laws are not ratings</div>
+    <h2>Nominal values have one authoritative home.</h2>
+    <p>Each element stores one known nominal quantity, an optional tolerance and immutable evidence references. The whole tolerance interval must be finite and valid. No tolerance means uncertainty is unspecified; it does not mean perfect precision.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Element</th><th>Oriented law</th><th>Value domain</th></tr></thead>
+      <tbody>
+        <tr><td>Resistance</td><td><code>v − R i = 0</code></td><td>R ≥ 0. Zero means an exact voltage constraint, never division by zero.</td></tr>
+        <tr><td>Capacitance</td><td><code>i − C dv/dt = 0</code></td><td>C &gt; 0. Zero is rejected.</td></tr>
+        <tr><td>Inductance</td><td><code>v − L di/dt = 0</code></td><td>L &gt; 0. Zero is rejected.</td></tr>
+      </tbody>
+    </table></div>
+    <p>For endpoints from→to, voltage is V(from)−V(to), and current is positive from→to. No epsilon clamp, invented leakage or automatic net merge makes a difficult circuit “work.” To omit a series parasitic, connect the remaining elements at the intended common endpoint.</p>
+    <div class="grid">
+      <article class="card"><h3>Keep existing V/I claims</h3><p>AcceptedRange, ProvidedRange, characteristics, limits and current requirements/capabilities retain their existing meaning. A capacitor voltage rating does not clamp its equation. A regulator guarantee is not an ideal source.</p></article>
+      <article class="card"><h3>Do not duplicate Part truth</h3><p>MPN, category, display values and old instance attributes never seed or override a model. Existing values retain their current owner; source migration must deliberately distinguish intrinsic model truth, independent intent and text.</p></article>
+    </div>
+    <p class="small">No new canonical Power, Temperature, derating, internal-element rating or frequency-dependent law semantics are accepted here. Evidence may explain model fidelity without becoming executable applicability logic.</p>
+  </section>
+
+  <section id="identity">
+    <div class="eyebrow">04 / Meaning survives without source</div>
+    <h2>Save the exact model once, then resolve it.</h2>
+    <ol>
+      <li><strong>Part identity includes the model.</strong> Presence/absence, bindings, typed elements, ordered endpoints, local keys, normalized values, tolerances and evidence all participate.</li>
+      <li><strong>Canonical order is deterministic.</strong> Reordering declarations or using equivalent normalized units does not change identity. Reversing a branch changes its observation convention and identity. Absence is distinct from an empty/default model.</li>
+      <li><strong>Instances keep exact references.</strong> Multiple occurrences resolve one Part; each does not store a divergent model copy.</li>
+      <li><strong>Both bundles preserve closure.</strong> PartLibraryBundle and ProjectBundle carry the complete Part model plus referenced model and canonical V/I evidence. A logical-only project needs no Board.</li>
+      <li><strong>Native reopening uses vendored bytes only.</strong> No Python source, ambient library, network or cache supplies missing truth. Declared evidence with missing bytes is a structural closure failure.</li>
+    </ol>
+    <div class="callout"><strong>Current-only migration.</strong> E1 must reject writes that cannot preserve a model. E2 updates affected schemas, readers, writers and fixtures together. Old artifacts are regenerated. E0 changes no product schema today.</div>
+    <p class="small">The existing ProjectBundle closure does not yet carry all this evidence. The ADR explicitly amends that boundary; this page does not claim it already works.</p>
+  </section>
+
+  <section id="compile">
+    <div class="eyebrow">05 / Equations first, execution later</div>
+    <h2>A complete compilation is not a promised solution.</h2>
+    <p>The compiler reads Circuit topology, the explicit exact-Part resolver and a separate native DC request. It emits typed nodes, oriented branches, R/C/L laws, independent-source constraints, KCL, storage and stable origins. It owns the result without modifying any input.</p>
+    <div class="grid">
+      <article class="card"><h3>Testbench owns the question</h3><p>Explicit DC voltage/current sources, reference net and probes. A source across an unmodeled supply does not clear missing coverage. Whole-occurrence exclusions or replacements must be explicit, reasoned and reported; completeness applies only to that stated analysis boundary.</p></article>
+      <article class="card"><h3>Compiler owns the mapping</h3><p>PinKey→instance pin→logical net, including hierarchical PortBindings. Internal nodes are private per instance. Unconnected pins get distinct derived nodes. No names, pads, ground labels or schematic wires create connectivity.</p></article>
+    </div>
+    <p class="equation">KCL: +i leaves “from”; −i leaves “to”.</p>
+    <p>DC sets storage derivatives to zero: C imposes i=0; L imposes v=0. The compiled model still retains the original positive C/L values and storage laws. A capacitor across an ideal voltage source does not add an independent state merely because it is a capacitor.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Case</th><th>Truthful outcome</th></tr></thead>
+      <tbody>
+        <tr><td>Absent Part model</td><td>Valid authoring data; incomplete required analysis coverage.</td></tr>
+        <tr><td>Floating resistor island</td><td>Unfixed common-mode voltage; not automatically a contradiction.</td></tr>
+        <tr><td>Parallel unequal voltage sources</td><td>Inconsistent ideal constraints.</td></tr>
+        <tr><td>Parallel equal sources or ideal inductors in DC</td><td>Individual branch currents can be nonunique.</td></tr>
+        <tr><td>Wrong units, foreign identities or corrupt closure</td><td>Reject at the owning native boundary, not a harmless warning.</td></tr>
+      </tbody>
+    </table></div>
+    <p>Ordinary check/build/manufacturing never launches a solver. Numerical algorithms, SPICE lowering and results come later, consuming this same meaning and reporting limitations without changing Part or Circuit truth.</p>
+  </section>
+
+  <section id="delivery">
+    <div class="eyebrow">06 / Finite implementation gates</div>
+    <h2>The first useful milestone requires no solver.</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Issue</th><th>Proof it owns</th></tr></thead>
+      <tbody>
+        <tr><td><a href="https://github.com/RyanWillie/Volt/issues/361">E1 · #361</a></td><td>Native typed elements, immutable model, value/reference failures, exact identity and explicit refusal of lossy transport.</td></tr>
+        <tr><td><a href="https://github.com/RyanWillie/Volt/issues/362">E2 · #362</a></td><td>Deterministic Part/library/project round trips, complete evidence, corruption rejection and source-free reopening.</td></tr>
+        <tr><td><a href="https://github.com/RyanWillie/Volt/issues/363">E3 · #363</a></td><td>Runnable C++/Python authoring, selection, connectivity and inspection parity. <strong>First milestone complete.</strong></td></tr>
+        <tr><td><a href="https://github.com/RyanWillie/Volt/issues/253">S1 · #253</a></td><td>Separate typed DC request, explicit participation and truthful readiness.</td></tr>
+        <tr><td><a href="https://github.com/RyanWillie/Volt/issues/254">S2 · #254</a></td><td>Read-only equations, hierarchy and private-node mapping, storage, provenance and unchanged inputs.</td></tr>
+      </tbody>
+    </table></div>
+    <p>The normative ADR supplies the finite acceptance matrix. GitHub issues and native blockers retain work state; this page does not mark any later issue ready. Arbitrary IC behaviour, nonlinear vocabulary, transient/AC execution and broader solvers remain outside this contract.</p>
+  </section>
+  <footer>Review baseline: b40bb0e · 30 August 2026 · Companion to the proposed E0 ADR.<br><a href="https://github.com/RyanWillie/Volt/issues/252">Contract gate #252</a> · <a href="https://github.com/RyanWillie/Volt/issues/250">Program #250</a> · <a href="https://ryan-explainer-shelf.ryanwillie.chatgpt.site/volt/electrical-simulation-primer">Electrical simulation primer</a></footer>
+</main>
+</body>
+</html>
