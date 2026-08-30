@@ -20,7 +20,7 @@ ContentHash evidence(char digit) { return ContentHash{"sha256:" + std::string(64
 
 ComponentDefinition component(std::vector<std::string> pins = {"A", "B"}) {
     Circuit circuit;
-    ComponentSpec spec{.name = "Passive contract"};
+    ComponentSpec spec{.name = "Passive contract", .pins = {}};
     ComponentContractSpec contract{.key = ComponentKey{"test.passive"}, .pin_keys = {}};
     for (const auto &pin : pins) {
         spec.pins.push_back(PinSpec{.name = pin, .number = pin});
