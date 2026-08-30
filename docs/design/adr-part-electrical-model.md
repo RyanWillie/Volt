@@ -60,8 +60,10 @@ Absolute and percent tolerances may be asymmetric. Normalize either to absolute 
 deviations in the nominal dimension, retaining the nominal; use `QuantityRange` to derive
 the inclusive bounds. Percent input uses a ratio (`0.01` means 1%). No tolerance means
 **unspecified uncertainty**, not zero uncertainty; explicit zero tolerance remains distinct.
-The nominal, deviations and derived bounds must be finite and in the element's permitted
-domain. Derived bounds are not a second serialized value. Tolerance/evidence describe the
+The nominal, deviations and derived bounds must be finite. Deviations must be nonnegative;
+only the nominal and derived bounds must lie in the element's permitted domain. Zero or
+one-sided zero deviations are therefore valid for positive C/L. Derived bounds are not a
+second serialized value. Tolerance/evidence describe the
 parameter; nominal compilation does not claim corner, worst-case, or statistical analysis.
 
 | Element | Law for `v = V(from) - V(to)`, `i` from `from` to `to` | Allowed parameter and tolerance bounds |
@@ -175,7 +177,9 @@ order are semantic. Unit aliases producing the same normalized finite SI value a
 this is exact canonical-value equality, not approximate physical equality. C++ and Python
 must use the same native unit normalization and float serialization. No unit spelling,
 builder token, insertion order, host path, timestamp, solver result or runtime ID enters
-the digest. Equivalent percent/absolute tolerances canonicalize identically; absent and
+the digest. Percent/absolute tolerances with exactly equal normalized deviations canonicalize
+identically; mathematically equal spellings that round to different finite doubles are not
+silently approximately merged. Absent and
 explicit zero tolerance do not. Evidence content is immutable and hash-addressed; changing
 evidence changes the Part identity that makes that claim.
 
@@ -186,7 +190,9 @@ model is serialized; several selected instances resolve the same immutable Part.
 
 The E2 contract is:
 
-1. Serialize the complete optional model inline in the exact Part artifact. Persist its
+1. Serialize the complete optional model inline in the exact Part artifact. In the new
+   current Part schema, `electrical_model` is a mandatory field: `null` means absent and an
+   object means present; a missing field rejects. Persist its
    normalized quantities, tolerance state and evidence references; do not serialize derived
    bounds, builder tokens, compiled equations or backend text.
 2. PartLibraryBundle dependencies include the implemented component and every immutable

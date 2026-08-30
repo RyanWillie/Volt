@@ -57,7 +57,7 @@
     <div class="eyebrow">Volt · Electrical E0 · Contract review</div>
     <h1>Define the Part.<br>Preserve the meaning.</h1>
     <p class="lead">An exact Part owns its electrical model. A Circuit connects its terminals. An explicit analysis asks a question. The first milestone stops before solving.</p>
-    <div class="status"><strong>Proposed, not yet accepted or implemented.</strong> This page explains the <a href="https://github.com/RyanWillie/Volt/blob/feat/252-electrical-model-contract/docs/design/adr-part-electrical-model.md">normative ADR proposal</a> for <a href="https://github.com/RyanWillie/Volt/issues/252">#252</a>. Maintainer review and merge are the gate. API sketches below are proposals; tutorial values are illustrative.</div>
+    <div class="status"><strong>Proposed, not yet accepted or implemented.</strong> This page explains the <a href="https://github.com/RyanWillie/Volt/pull/369/files">normative ADR proposal in PR #369</a> for <a href="https://github.com/RyanWillie/Volt/issues/252">#252</a>. Maintainer review and merge are the gate. API sketches below are proposals; tutorial values are illustrative.</div>
     <nav aria-label="On this page"><a href="#ownership">Ownership</a><a href="#authoring">Authoring</a><a href="#values">Values &amp; limits</a><a href="#identity">Identity &amp; bundles</a><a href="#compile">Compilation</a><a href="#delivery">Delivery gates</a></nav>
   </header>
 
@@ -111,7 +111,7 @@ return_net.connect(c1["B"])</code></pre>
   <section id="values">
     <div class="eyebrow">03 / Laws are not ratings</div>
     <h2>Nominal values have one authoritative home.</h2>
-    <p>Each element stores one known nominal quantity, an optional tolerance and immutable evidence references. The whole tolerance interval must be finite and valid. No tolerance means uncertainty is unspecified; it does not mean perfect precision.</p>
+    <p>Each element stores one known nominal quantity, an optional tolerance and immutable evidence references. The nominal and whole tolerance interval must be finite and valid; tolerance deviations are finite and nonnegative, including explicit zero. No tolerance means uncertainty is unspecified; it does not mean perfect precision.</p>
     <div class="scroll"><table>
       <thead><tr><th>Element</th><th>Oriented law</th><th>Value domain</th></tr></thead>
       <tbody>
