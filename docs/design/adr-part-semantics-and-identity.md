@@ -4,6 +4,24 @@ Status: accepted
 
 Issue: [#291](https://github.com/RyanWillie/Volt/issues/291)
 
+### Focused E0 amendment pending acceptance
+
+The [Part electrical-model ADR](adr-part-electrical-model.md), proposed in
+[#252](https://github.com/RyanWillie/Volt/issues/252), defines a narrow extension to this
+accepted decision. On maintainer acceptance it adds one optional immutable R/C/L model to
+the exact `PartDefinition` ownership and semantic digest described below, and admits typed
+Frequency/Time quantities only as analysis/source coordinates. Model parameters are not
+additional observables in canonical Voltage/Current records; existing V/I meanings,
+conditions, guarantees, limits and aggregation remain unchanged.
+
+That extension replaces only the R/C/L-model and bounded read-only compiler/testbench
+portions of the exclusions below. It does not accept a simulation engine, backend
+implementation, canonical Power/Temperature/rating semantics, arbitrary formulas, or
+intrinsic instance overrides. Model presence, graph, parameters, tolerance and evidence
+enter exact Part identity and selected closure under the new ADR's current-only transport
+contract. Until accepted/implemented, the new API and transport are proposals, not current
+product capabilities.
+
 ## Decision
 
 Volt v1 uses exactly three primary concepts for reusable component and exact-part

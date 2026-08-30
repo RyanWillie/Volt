@@ -39,6 +39,10 @@ into a Markdown document under `docs/` rather than editing the exported HTML.
 
 ## Design notes and explorations
 
+- [`adr-part-electrical-model.md`](adr-part-electrical-model.md) — proposed E0 contract for
+  exact-Part R/C/L composition, current-only persistence, typed DC testbench and read-only
+  compilation; [single-page companion](part-electrical-model-contract.html)
+
 - `circuit-aggregate-api.html` — single-page review companion for the accepted Circuit API
   ADR and migration roadmap
 - `circuit-semantic-parity.html` — final evidence matrix for Circuit API redesign parity,
