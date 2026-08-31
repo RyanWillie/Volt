@@ -1,4 +1,4 @@
-# ADR: ProjectBundle v2 Artifact Graph and Dependency Lock
+# ADR: ProjectBundle v3 Artifact Graph and Dependency Lock
 
 Status: accepted
 
@@ -6,12 +6,12 @@ Issue: [#293](https://github.com/RyanWillie/Volt/issues/293)
 
 ## Decision
 
-`ProjectBundle` v2 is Volt's immutable, native, typed artifact graph for one completed
+`ProjectBundle` v3 is Volt's immutable, native, typed artifact graph for one completed
 project build. Python continues to execute authoring source and orchestrate `Project`.
-C++ owns the v2 manifest contract, semantic artifact construction, owner-local codecs,
+C++ owns the v3 manifest contract, semantic artifact construction, owner-local codecs,
 validation, and verified reopening.
 
-The manifest family is `volt.project_result` with `schema_version: 2`. A v2 bundle is not a
+The manifest family is `volt.project_result` with `schema_version: 3`. A v3 bundle is not a
 directory of paths with optional metadata:
 every declared payload has a typed role and kind, path-independent identity, exact schema
 and producer versions, a content digest, and complete dependency edges.
@@ -45,7 +45,7 @@ normal traversal or mutation handles for kernel entities.
 
 The accepted native vocabulary is equivalent to the following shape. Exact container
 types may follow local C++ conventions, but the fields and closed vocabularies are part of
-schema v2:
+schema v3:
 
 ```cpp
 enum class ArtifactRole {
@@ -69,6 +69,7 @@ enum class ArtifactKind {
     FootprintDefinition,
     BoardScene,
     GlbAsset,
+    EvidenceAsset,
     Diagnostics,
     ProjectTests,
     SchematicSvg,
@@ -197,7 +198,7 @@ struct ProjectRunSummary {
     std::vector<ProjectStageKey> stages;
 };
 
-struct ProjectBundleManifestV2 {
+struct ProjectBundleManifestV3 {
     ProjectIdentity project;              // name, version, description
     ProjectRunSummary run;                // ok, status, profile, executed stage keys
     AuthoringInputs authoring_inputs;
@@ -208,7 +209,7 @@ struct ProjectBundleManifestV2 {
     std::vector<ArtifactDescriptor> artifacts;
 };
 
-struct BuildArtifactIdentityV2 {
+struct BuildArtifactIdentityV3 {
     ArtifactId id;
     ArtifactRole role;
     ArtifactKind kind;
@@ -220,19 +221,19 @@ struct BuildArtifactIdentityV2 {
     ProducerVersion producer_version;
 };
 
-struct BuildIdentityV2 {
+struct BuildIdentityV3 {
     FormatName format;
     SchemaVersion schema_version;
     ProjectIdentity project;
     ContentHash authoring_inputs_digest;
     DependencyLock dependency_lock;
-    std::vector<BuildArtifactIdentityV2> artifacts;
+    std::vector<BuildArtifactIdentityV3> artifacts;
 };
 ```
 
 The serialized root field order is `format`, `schema_version`, then the fields shown above.
 The first two carry the fixed literals `format: "volt.project_result"` and
-`schema_version: 2`. Every field is required; duplicate, missing, or unknown root fields
+`schema_version: 3`. Every field is required; duplicate, missing, or unknown root fields
 reject. `ProjectIdentity` is exactly `name`, nullable `version`, and nullable `description`
 in that field order. `ProjectRunSummary` is exactly `ok`, the closed status
 `clean | expected-diagnostics | failed`, profile name, and the unique executed stage keys
@@ -240,7 +241,7 @@ in the shown field order and fixed Project execution order.
 It does not become EDA state. Its `ok` and status must equal the required diagnostics and
 project-tests reports; disagreement rejects.
 
-Every object and tagged variant in a v2 manifest is closed, not only the root. Missing,
+Every object and tagged variant in a v3 manifest is closed, not only the root. Missing,
 duplicate, or unknown fields at any depth reject; readers must not preserve or ignore
 extension members. A variant requires exactly its discriminant and that alternative's exact
 payload.
@@ -259,20 +260,20 @@ array with the digest field omitted. Library inputs are excluded because the dep
 covers them. Source records, but not source bytes, are bundled; inspection recomputes this
 digest and never resolves a logical name or executes source. This is not an import tracer or
 an arbitrary `ProjectResource` serializer; registration mechanics remain Project-owned and
-outside this ADR. A v2 writer must fail only when its configured entrypoint or an explicitly
+outside this ADR. A v3 writer must fail only when its configured entrypoint or an explicitly
 registered record cannot be deterministically named and hashed.
 
 `ArtifactRole` states lifecycle; `ArtifactKind` states the typed payload. The mapping is
 fixed:
 
-| Role | v2 kinds |
+| Role | v3 kinds |
 | --- | --- |
 | `model` | `LogicalModel`, `SchematicModel`, `BoardModel`, `CompiledBoard`, `ComponentDefinition`, `PartDefinition`, `SymbolDefinition`, `FootprintDefinition` |
 | `view` | `BoardScene` |
 | `render` | `SchematicSvg`, `BoardSvg`, `BoardLayerImage`, `WholeBoardGlb` |
 | `report` | `Diagnostics`, `ProjectTests`, `Bom`, `Cpl` |
 | `adapter` | `KicadPcb` |
-| `asset` | `GlbAsset`, `StepAsset` |
+| `asset` | `GlbAsset`, `EvidenceAsset`, `StepAsset` |
 | `delivery` | `FabricationPackage` |
 
 Adding a role or kind is a ProjectBundle schema change. Media type and artifact schema
@@ -291,7 +292,7 @@ entity ID.
 Kind selects exactly one owner alternative: logical, Schematic, Board, compiled Board, and
 scene kinds use their correspondingly named identity; component, part, and
 symbol/footprint kinds use `LibraryComponentRef`, `LibraryPartRef`, and
-`LibraryAttachmentRef`; `GlbAsset` uses `LibraryAssetRef`; diagnostics/tests use
+`LibraryAttachmentRef`; `GlbAsset` and `EvidenceAsset` use `LibraryAssetRef`; diagnostics/tests use
 `ProjectSingletonIdentity{Primary}`; and every opt-in kind uses `ExportArtifactIdentity`.
 Any other kind/owner pairing rejects.
 
@@ -313,7 +314,7 @@ Any other kind/owner pairing rejects.
   as library namespace, human version, attachment kind, stable key, library-bundle digest,
   and owner semantic or content digest. Thus every required definition kind has a complete
   origin-bearing ID.
-- Default-graph GLB assets use `LibraryAssetRef`, ordered as library namespace, human version,
+- Default-graph GLB and evidence assets use `LibraryAssetRef`, ordered as library namespace, human version,
   media kind, library-bundle digest, and canonical content digest. The descriptor digest must
   equal that content digest; byte-identical assets from different library origins remain
   distinct provenance records.
@@ -346,9 +347,9 @@ Every digest uses Volt's canonical `ContentHash` spelling:
 - Each dependency edge repeats the target artifact ID and expected content digest. An ID
   match with a different digest is stale or mixed input and rejects.
 - `BuildId` is a typed `ContentHash`: the SHA-256 digest of the canonical
-  `BuildIdentityV2` object in the exact shown field order. Its format/schema literals match
-  the v2 manifest, `authoring_inputs_digest` is `AuthoringInputs.digest`, and `artifacts` is
-  the sorted `BuildArtifactIdentityV2` projection of required-default descriptors only. The
+  `BuildIdentityV3` object in the exact shown field order. Its format/schema literals match
+  the v3 manifest, `authoring_inputs_digest` is `AuthoringInputs.digest`, and `artifacts` is
+  the sorted `BuildArtifactIdentityV3` projection of required-default descriptors only. The
   projection intentionally excludes paths, export requests/artifacts, `build_id`,
   `bundle_digest`, and every descriptor's `producer.build` field to avoid self-reference.
 - Required default payload bytes and descriptors are finalized before `BuildId` and must not
@@ -358,7 +359,7 @@ Every digest uses Volt's canonical `ContentHash` spelling:
   to the manifest `BuildId` content hash. A vendored library artifact, including a copied
   `StepAsset`, has `producer.build` equal to the exact `library_bundle_digest` in its
   origin-bearing ID and locked library record; there is no other producer-build escape.
-- `bundle_digest` hashes the canonical v2 manifest semantics with only the
+- `bundle_digest` hashes the canonical v3 manifest semantics with only the
   `bundle_digest` field omitted. It therefore covers paths, export selection, producer
   records, the lock, the graph, and, transitively, every artifact content digest.
 
@@ -387,7 +388,7 @@ authenticity.
 
 ## Dependency Lock
 
-The v2 dependency lock is an exact offline record of consumed part-library origins and
+The v3 dependency lock is an exact offline record of consumed part-library origins and
 selected parts, not a second closure graph, version request, resolver cache, registry
 protocol, or generic package manager. Its native shape is equivalent to:
 
@@ -422,7 +423,7 @@ The lock has these semantics:
   a bundle structural failure; DNP does not require a selection. Any persisted non-empty
   reference, including one on a DNP or unplaced instance, remains exact selected-part truth
   and must satisfy the resolution and lock rule above. An ordinary model may retain an
-  unresolved reference, but it cannot enter a completed self-contained v2 bundle.
+  unresolved reference, but it cannot enter a completed self-contained v3 bundle.
 - The library table admits every immutable `PartLibraryBundle` origin named by a reachable
   vendored artifact or by a `LibraryAssetRef` persisted in a reachable definition. A part
   may depend on a component contract or asset from another admitted library; cross-library
@@ -432,7 +433,8 @@ The lock has these semantics:
 - Artifact dependency edges are the sole closure topology. Closure roots are the union of
   external component definitions referenced directly by logical models and locked selected
   part artifacts. Their exact transitive graph contains referenced component contracts,
-  default or explicit-override symbols, footprints, and only the GLB assets actually consumed
+  default or explicit-override symbols, footprints, every selected Part model or canonical
+  V/I evidence asset, and only the GLB assets actually consumed
   by at least one `CompiledBoard` under its declared `models3d` capability. Shared members
   with the same origin-bearing ID are stored once. Missing or unrelated vendored closure
   members reject.
@@ -449,18 +451,25 @@ The lock has these semantics:
 
 ## Required Default Graph
 
-The proposed [E0 Part electrical-model contract](adr-part-electrical-model.md) narrowly
-amends the selected-Part closure above and the dependency table below on maintainer
-acceptance: a selected Part's inline optional model and every referenced model or canonical
-V/I evidence asset must survive logical-only as well as Board-bearing bundles. The selected
+The accepted [Part electrical-model contract](adr-part-electrical-model.md) extends the
+selected-Part closure: a selected Part's inline optional model and every referenced model
+or canonical V/I evidence asset survive logical-only and Board-bearing bundles. The selected
 Part has direct dependency edges to those evidence assets, with native byte/hash/closure
-verification on both write and reopen. This does not include unrelated attachments, unused
-GLB or unselected STEP. Current ProjectBundle v2 does not yet carry that evidence closure;
-E2 must update the affected typed artifact kinds, schemas, writer, reader and fixtures
-together, retaining only the new current contract. No model is copied onto instances and
-no source or cache lookup may substitute for missing vendored bytes.
+verification on write and reopen. Evidence uses `EvidenceAsset` with the existing
+origin-bearing `LibraryAssetRef`, media kind `evidence`, schema `volt.evidence` version 1,
+and media type `application/octet-stream`. Shared evidence is stored once per library origin
+and content digest. Evidence has no outgoing dependencies.
 
-`ExportSelection{}` is the default. A v2 bundle contains authoritative native models plus
+E2 advances ProjectBundle from v2 to v3 because the closed artifact and asset vocabularies
+now include evidence. Part artifacts advance from v5 to v6 for their mandatory nullable
+`electrical_model` field. PartLibraryBundle remains v2: its existing Evidence role and exact
+edge contract already represent these assets. Part semantic identity remains E1 version 2;
+Component, library semantic identity, logical, CompiledBoard, and V/I formats are unchanged.
+Old artifacts must be regenerated. No model is copied onto instances and no source or cache
+lookup may substitute for missing vendored bytes. Unrelated attachments, unused GLB and
+unselected STEP remain excluded.
+
+`ExportSelection{}` is the default. A v3 bundle contains authoritative native models plus
 the required inspection views and reports needed for offline inspection and Vault:
 
 - at least one logical model, and every logical model produced by the project build;
@@ -469,14 +478,14 @@ the required inspection views and reports needed for offline inspection and Vaul
 - exactly one `CompiledBoard` for every named authoring Board;
 - exactly one compact `BoardScene` for every `CompiledBoard`;
 - exactly one project diagnostics report and one project-tests report;
-- the exact reachable component/part/symbol/footprint closure rooted at logical
+- the exact reachable component/part/symbol/footprint/evidence closure rooted at logical
   external-component references and selected parts; and
 - the exact union of GLB assets consumed by the `CompiledBoard` values under their declared
   `models3d` capabilities.
 
 A project may produce no Schematic or no Board. In that case the corresponding set is
 empty; the loader must not invent one. A project result with a Board that did not produce
-its one complete compiled result and scene is not writable as v2. Historical revisions live
+its one complete compiled result and scene is not writable as v3. Historical revisions live
 in separate immutable ProjectBundles, not beside the current result in one build. Each
 scene's GLB references must be a subset of its own `CompiledBoard`'s consumed GLB closure;
 without `models3d`, that set and the scene's GLB references are empty. Multiple Boards
@@ -488,7 +497,7 @@ The required graph relationships are:
 | Artifact | Required direct dependencies |
 | --- | --- |
 | component definition | its default symbol definition |
-| selected part definition | its exact component definition, footprint, explicit symbol override if present, and the GLB attachments from that part consumed by any `CompiledBoard` in this graph |
+| selected part definition | its exact component definition, footprint, explicit symbol override if present, all referenced model and canonical V/I evidence, and the GLB attachments from that part consumed by any `CompiledBoard` in this graph |
 | logical model | every external component definition and selected part definition referenced by its instances |
 | Schematic | its one logical model |
 | authoring Board | its one logical model |
@@ -632,7 +641,7 @@ and never mutates an earlier bundle.
   owned immutable bytes, or an operating-system snapshot primitive with equivalent
   immutability. Hashing, decoding, and later asset serving all use that same snapshot; a bare
   retained file handle is insufficient.
-- A v2 root contains only `manifest.volt.json`, declared regular artifact files, and their
+- A v3 root contains only `manifest.volt.json`, declared regular artifact files, and their
   parent directories. Any undeclared file, symbolic link, junction, or reparse point rejects.
 
 Any unsafe, aliased, escaping, missing, or non-regular path is a structural load failure.
@@ -711,14 +720,14 @@ bundle rather than exposing a partial authoritative subset.
 ProjectBundle manifest version is separate from logical, Schematic, PCB, part, and
 component-contract schema versions.
 
-- Every public bundle write emits schema version `2`. There is no alternate writer mode.
+- Every public bundle write emits schema version `3`. There is no alternate writer mode.
 - The writer writes a new empty destination and never rewrites an existing bundle.
   A changed recorded source input, dependency lock, default artifact, or export selection
   produces a new build and/or bundle digest at a new destination.
 - Writing requires a structurally complete required graph, though diagnostics may contain
   design errors and project tests may fail. An incomplete manually constructed result emits
   no bundle.
-- The opener accepts only schema version `2` and publishes an owner only after verifying the
+- The opener accepts only schema version `3` and publishes an owner only after verifying the
   complete graph described by this ADR.
 - Unsupported schemas reject before artifact publication. The opener never upgrades,
   converts, imports source, consults ambient libraries, or returns a partial graph.
@@ -727,7 +736,7 @@ component-contract schema versions.
 
 ## Historical Immutability
 
-All v2 artifacts are immutable historical build outputs. A change to a recorded source or
+All v3 artifacts are immutable historical build outputs. A change to a recorded source or
 declared input changes `AuthoringInputs.digest`; a dependency change changes the lock; and a
 selected part, compiled input, scene, or export-selection change creates new content.
 Those changes produce new build and/or bundle digests. They never refresh a file, edge, lock
@@ -750,7 +759,7 @@ Implementation is admitted only with tests that prove:
   byte digests and validate against their exact graph edges;
 - an absent exact-part selection contributes no lock row or closure root and remains absent
   after reopen; DNP or unplaced status alone remains non-structural, while a non-empty
-  unresolved selection prevents v2 writing;
+  unresolved selection prevents v3 writing;
 - a `CompiledBoard` without `models3d` contributes no GLB assets or scene GLB references,
   while one with `models3d` contributes exactly its consumed GLB closure and each scene
   references only its own compiled subset;
@@ -761,7 +770,7 @@ Implementation is admitted only with tests that prove:
 - missing bytes, byte tampering, stale edge digests, mixed project builds, missing closure,
   missing compiled results or scenes for named Boards, mismatched content-addressed asset IDs,
   bad compiled provenance, and bad GLB references reject before exposure;
-- v2 opens offline and preserves owner identity and Circuit/Schematic/Board lifetimes;
+- v3 opens offline and preserves owner identity and Circuit/Schematic/Board lifetimes;
 - empty export selection omits every opt-in kind and each typed request adds only its
   declared export closure;
 - a source sentinel proves all `--bundle` inspection paths do not import or execute project
@@ -769,7 +778,7 @@ Implementation is admitted only with tests that prove:
 
 ## Consequences
 
-- The v2 default is larger than a models-only bundle because it is complete for native
+- The v3 default is larger than a models-only bundle because it is complete for native
   offline inspection and retains the Vault closure for every named Board's compiled result,
   but it excludes reproducible delivery copies by default.
 - Every producer must declare precise codecs, inputs, and digests; stale caches cannot be

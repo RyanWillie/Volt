@@ -142,6 +142,12 @@ if(VOLT_BUILD_TESTS)
             "PYTHONPATH=path_list_prepend:${PROJECT_SOURCE_DIR}"
             "PYTHONPATH=path_list_prepend:${PROJECT_BINARY_DIR}/python"
         )
+        if(test_name STREQUAL "test_electrical_model_transport")
+            list(
+                APPEND test_environment
+                "VOLT_PART_MODEL_TRANSPORT_FIXTURE=set:$<TARGET_FILE:volt_part_model_transport_fixture>"
+            )
+        endif()
 
         add_test(
             NAME python.${test_name}

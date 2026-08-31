@@ -680,7 +680,7 @@ class ProjectResult:
             extra_diagnostics=(),
             logical_inputs=logical_inputs,
         )
-        return _volt._write_project_bundle_v2(
+        return _volt._write_project_bundle_v3(
             str(Path(path)),
             self.project.name,
             self.project.version,

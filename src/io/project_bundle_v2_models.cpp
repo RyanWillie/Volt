@@ -33,6 +33,7 @@
 #include <volt/library/part_library.hpp>
 #include <volt/pcb/compiled/board_consumers.hpp>
 
+#include "parts/part_evidence.hpp"
 #include "project_bundle_v2_contract.hpp"
 
 namespace volt::io::v2_open {
@@ -134,6 +135,11 @@ void decode_library_artifacts(ProjectBundleStorage &storage, LibraryDecoded &dec
                 fail(ProjectBundleOpenErrorCode::ModelDecodeFailure,
                      "footprint definition decode failed: " + std::string{error.what()});
             }
+        } else if (artifact.descriptor.kind() == ArtifactKind::EvidenceAsset) {
+            const auto &owner = std::get<LibraryAssetRef>(artifact.descriptor.id().owner());
+            require(owner.content_digest == artifact.descriptor.content_digest(),
+                    ProjectBundleOpenErrorCode::OwnershipViolation,
+                    "evidence content identity disagrees with its owner");
         } else if (artifact.descriptor.kind() == ArtifactKind::GlbAsset) {
             require(artifact.bytes.size() >= 12U && artifact.bytes.substr(0U, 4U) == "glTF" &&
                         static_cast<unsigned char>(artifact.bytes[4]) == 2U &&
@@ -207,7 +213,7 @@ void decode_project_models(ProjectBundleStorage &storage) {
         }
     }
     require(!storage.v2_circuits.empty(), ProjectBundleOpenErrorCode::MissingEntry,
-            "v2 graph has no logical root");
+            "v3 graph has no logical root");
     std::ranges::sort(storage.v2_circuits, {},
                       [](const auto &value) { return value.design.value(); });
 
@@ -331,7 +337,7 @@ void require_exact_dependencies(const ArtifactDescriptor &artifact,
 [[nodiscard]] bool is_library_artifact(ArtifactKind kind) {
     return kind == ArtifactKind::ComponentDefinition || kind == ArtifactKind::PartDefinition ||
            kind == ArtifactKind::SymbolDefinition || kind == ArtifactKind::FootprintDefinition ||
-           kind == ArtifactKind::GlbAsset;
+           kind == ArtifactKind::GlbAsset || kind == ArtifactKind::EvidenceAsset;
 }
 
 void verify_library_reachability(const ProjectBundleStorage &storage,
@@ -375,6 +381,9 @@ void verify_owner_graph(ProjectBundleStorage &storage, const LibraryDecoded &dec
     for (const auto &artifact : storage.v2_artifacts) {
         const auto &descriptor_value = artifact.descriptor;
         switch (descriptor_value.kind()) {
+        case ArtifactKind::EvidenceAsset:
+            require_exact_dependencies(descriptor_value, {}, "evidence asset");
+            break;
         case ArtifactKind::SchematicModel: {
             const auto &owner = std::get<SchematicArtifactIdentity>(descriptor_value.id().owner());
             require_exact_dependencies(
@@ -505,6 +514,17 @@ void verify_owner_graph(ProjectBundleStorage &storage, const LibraryDecoded &dec
                         }
                     }
                 }
+            }
+            for (const auto &digest : detail::part_evidence_digests(part)) {
+                const auto evidence_id = ArtifactId{
+                    ArtifactKind::EvidenceAsset,
+                    LibraryAssetRef{owner.library_namespace(), owner.library_version(),
+                                    LibraryAssetKind::Evidence, owner.library_digest(), digest}};
+                const auto evidence_key = detail::project_bundle_v2_artifact_key(evidence_id);
+                require(index.contains(evidence_key),
+                        ProjectBundleOpenErrorCode::OwnershipViolation,
+                        "selected Part evidence is not vendored");
+                expected.insert(evidence_key);
             }
             require_exact_dependencies(descriptor_value, expected, "part definition");
             break;
@@ -895,7 +915,7 @@ void verify_exports(ProjectBundleStorage &storage, const LibraryDecoded &library
         case ExportKind::Fabrication:
         case ExportKind::WholeBoardGlb:
             fail(ProjectBundleOpenErrorCode::UnsupportedFormat,
-                 "unsupported v2 producer export reached output verification");
+                 "unsupported v3 producer export reached output verification");
         }
         const auto expected_id =
             ArtifactId{output_kind, ExportArtifactIdentity{digest, std::move(output_key)}};

@@ -456,6 +456,23 @@ TEST_CASE("ProjectBundle v2 open fails closed for digest path lock and exact edg
     const auto original = fixture.builder().build();
     const auto temporary = TempDirectory{};
 
+    SECTION("only the current project schema is accepted") {
+        const auto root = temporary.path() / "schema.volt";
+        original.write(root);
+        const auto baseline = OrderedJson::parse(read_bytes(root / "manifest.volt.json"));
+        for (const auto version : {1, 2, 4}) {
+            auto manifest = baseline;
+            manifest["schema_version"] = version;
+            reseal_manifest(root, manifest);
+            try {
+                static_cast<void>(volt::io::ProjectBundle::open(root));
+                FAIL("Expected a non-current project schema to reject");
+            } catch (const volt::io::ProjectBundleOpenError &error) {
+                CHECK(error.code() == volt::io::ProjectBundleOpenErrorCode::UnsupportedSchema);
+            }
+        }
+    }
+
     SECTION("payload digest") {
         const auto root = temporary.path() / "payload.volt";
         original.write(root);

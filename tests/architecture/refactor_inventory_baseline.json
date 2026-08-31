@@ -2,9 +2,9 @@
   "goldens": {
     "byte": [
       {
-        "byte_count": 4733,
+        "byte_count": 4761,
         "path": "tests/fixtures/ap1117.part.volt.json",
-        "sha256": "5df866493d6e64ae3e5f17c977ed401f7c3796fc497689c2b1f5551c2dec0917"
+        "sha256": "e605ef4913e88b5f516903e80c39584b05fca535d6932342eb34bbd0ef8f6796"
       },
       {
         "byte_count": 1828,
@@ -132,7 +132,7 @@
       },
       {
         "path": "tests/fixtures/ap1117.part.volt.json",
-        "sha256": "5df866493d6e64ae3e5f17c977ed401f7c3796fc497689c2b1f5551c2dec0917",
+        "sha256": "e605ef4913e88b5f516903e80c39584b05fca535d6932342eb34bbd0ef8f6796",
         "top_level_counts": {
           "electrical_records": 5,
           "identity": 3,
@@ -144,6 +144,7 @@
         },
         "top_level_keys": [
           "content_identity",
+          "electrical_model",
           "electrical_records",
           "format",
           "identity",
@@ -157,9 +158,10 @@
         ],
         "top_level_scalars": {
           "content_identity": "sha256:9a86a87fa8816b39f9c01d9f0b3143539db8b37845c3e1cf8794417142c210bf",
+          "electrical_model": null,
           "format": "volt.part",
           "implements": "sha256:758419641e5722ee2741e509eddd05758105f2445e5762635d847c8580d6fd3c",
-          "version": 5
+          "version": 6
         }
       },
       {
@@ -356,7 +358,7 @@
     "canonical_artifacts": {
       "current_writer_ownership": {
         "entrypoint": "ProjectResult.write",
-        "native_binding": "_volt._write_project_bundle_v2",
+        "native_binding": "_volt._write_project_bundle_v3",
         "native_board_preparation": "_volt._prepare_project_bundle_board",
         "retired_python_artifact_record": false
       },
@@ -370,6 +372,7 @@
         "component_definition",
         "cpl",
         "diagnostics",
+        "evidence_asset",
         "fabrication_package",
         "footprint_definition",
         "glb_asset",
@@ -406,7 +409,7 @@
         "part_library_bundle_and_offline_reopen": [
           "python/tests/test_issue_319_architecture_fixture.py"
         ],
-        "project_bundle_schema_2": [
+        "project_bundle_schema_3": [
           "python/tests/test_issue_319_architecture_fixture.py",
           "python/tests/test_cli_project_workflow.py"
         ],
@@ -466,7 +469,7 @@
         "supported_python_authoring_owners": [
           "python/volt/design.py: typed component and exact Part lowering",
           "python/volt/library.py: exact PartLibraryBundle selection",
-          "python/volt/project.py: Project orchestration and one native schema 2 publication",
+          "python/volt/project.py: Project orchestration and one native schema 3 publication",
           "python/volt/project_bundle.py: verified current-schema reopen",
           "python/volt/cli/__init__.py: canonical CLI orchestration"
         ],

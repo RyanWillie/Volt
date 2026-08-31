@@ -390,7 +390,7 @@ only the current canonical version and reject every other version before constru
 partial state. Old artifacts must be regenerated from current source; production retains no
 old-format reader or converter.
 
-The current `volt.part` artifact is v5. Its reader and writer implement only that canonical
+The current `volt.part` artifact is v6. Its reader and writer implement only that canonical
 contract.
 
 ## Error And Diagnostic Contract

@@ -1,8 +1,13 @@
 #include <volt/io/parts/part_definition_writer.hpp>
 
+#include <cstddef>
+#include <optional>
 #include <sstream>
+#include <type_traits>
+#include <variant>
 
 #include <volt/core/errors.hpp>
+#include <volt/electrical/passive_model.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/parts/electrical_records_io.hpp>
 
@@ -32,6 +37,112 @@ void write_embedded_electrical_records(std::ostream &out, const ElectricalRecord
         out << character;
     }
     out << ",\n";
+}
+
+std::string_view model_dimension_name(UnitDimension dimension) {
+    switch (dimension) {
+    case UnitDimension::Resistance:
+        return "resistance";
+    case UnitDimension::Capacitance:
+        return "capacitance";
+    case UnitDimension::Inductance:
+        return "inductance";
+    default:
+        throw KernelLogicError{ErrorCode::InvalidState, "Invalid electrical-model dimension"};
+    }
+}
+
+void write_model_quantity(std::ostream &out, const Quantity &quantity) {
+    out << "{ \"dimension\": " << detail::json_string(model_dimension_name(quantity.dimension()))
+        << ", \"value\": ";
+    detail::write_json_number(out, quantity.value());
+    out << " }";
+}
+
+void write_model_parameter(std::ostream &out, const ModelParameter &parameter) {
+    out << "{ \"nominal\": ";
+    write_model_quantity(out, parameter.nominal());
+    out << ", \"tolerance\": ";
+    if (parameter.tolerance()) {
+        out << "{ \"minus\": ";
+        write_model_quantity(out, parameter.tolerance()->minus());
+        out << ", \"plus\": ";
+        write_model_quantity(out, parameter.tolerance()->plus());
+        out << " }";
+    } else {
+        out << "null";
+    }
+    out << ", \"evidence\": [";
+    for (std::size_t index = 0; index < parameter.evidence().size(); ++index) {
+        if (index != 0U) {
+            out << ", ";
+        }
+        out << detail::json_string(parameter.evidence()[index].value());
+    }
+    out << "] }";
+}
+
+void write_model_endpoint(std::ostream &out, const ModelEndpoint &endpoint) {
+    const auto kind =
+        std::holds_alternative<ModelTerminalKey>(endpoint) ? "terminal" : "internal_node";
+    out << "{ \"kind\": " << detail::json_string(kind) << ", \"key\": ";
+    std::visit([&](const auto &key) { out << detail::json_string(key.value()); }, endpoint);
+    out << " }";
+}
+
+void write_model_element(std::ostream &out, const ModelElement &element) {
+    std::visit(
+        [&](const auto &value) {
+            using Element = std::decay_t<decltype(value)>;
+            constexpr auto kind = [] {
+                if constexpr (std::is_same_v<Element, ResistanceElement>) {
+                    return "resistance";
+                } else if constexpr (std::is_same_v<Element, CapacitanceElement>) {
+                    return "capacitance";
+                } else {
+                    static_assert(std::is_same_v<Element, InductanceElement>);
+                    return "inductance";
+                }
+            }();
+            out << "      { \"kind\": " << detail::json_string(kind)
+                << ", \"key\": " << detail::json_string(value.key().value()) << ", \"from\": ";
+            write_model_endpoint(out, value.from());
+            out << ", \"to\": ";
+            write_model_endpoint(out, value.to());
+            out << ", \"parameter\": ";
+            write_model_parameter(out, value.parameter());
+            out << " }";
+        },
+        element);
+}
+
+void write_electrical_model(std::ostream &out, const std::optional<PartElectricalModel> &model) {
+    out << "  \"electrical_model\": ";
+    if (!model) {
+        out << "null,\n";
+        return;
+    }
+    out << "{\n    \"implements\": " << detail::json_string(model->implemented_component().value())
+        << ",\n";
+    out << "    \"terminals\": [\n";
+    for (std::size_t index = 0; index < model->terminals().size(); ++index) {
+        const auto &terminal = model->terminals()[index];
+        out << "      { \"key\": " << detail::json_string(terminal.key().value())
+            << ", \"pin_key\": " << detail::json_string(terminal.pin().value()) << " }";
+        out << (index + 1U == model->terminals().size() ? "\n" : ",\n");
+    }
+    out << "    ],\n    \"internal_nodes\": [\n";
+    for (std::size_t index = 0; index < model->internal_nodes().size(); ++index) {
+        out << "      { \"key\": "
+            << detail::json_string(model->internal_nodes()[index].key().value()) << " }";
+        out << (index + 1U == model->internal_nodes().size() ? "\n" : ",\n");
+    }
+    out << "    ],\n    \"elements\": [\n";
+    for (std::size_t index = 0; index < model->elements().size(); ++index) {
+        write_model_element(out, model->elements()[index]);
+        out << (index + 1U == model->elements().size() ? "\n" : ",\n");
+    }
+    out << "    ]\n  },\n";
 }
 
 void write_pin_terminal_mappings(std::ostream &out, const PartDefinition &part) {
@@ -290,10 +401,6 @@ void write_orderable_part(std::ostream &out, const OrderablePart &part) {
 } // namespace
 
 void write_part_definition(std::ostream &out, const PartDefinition &part) {
-    if (part.electrical_model().has_value()) {
-        throw KernelLogicError{ErrorCode::InvalidState,
-                               "Part definition v5 cannot preserve an electrical model"};
-    }
     out << "{\n";
     out << "  \"format\": " << detail::json_string(part_definition_format_name()) << ",\n";
     out << "  \"version\": " << part_definition_format_version() << ",\n";
@@ -303,6 +410,7 @@ void write_part_definition(std::ostream &out, const PartDefinition &part) {
         << ",\n";
     write_identity(out, part.identity());
     write_embedded_electrical_records(out, part.electrical_records());
+    write_electrical_model(out, part.electrical_model());
     write_pin_terminal_mappings(out, part);
     write_terminal_dispositions(out, part);
     write_provenance(out, part.provenance());

@@ -187,6 +187,45 @@ def test_library_part_build_and_instantiation_use_one_native_exact_route():
     assert tuple(result.diagnostics) == tuple(custom_result.diagnostics)
 
 
+def test_native_part_lowering_preserves_explicit_model_absence():
+    from volt.library_result import _part_artifact_payload
+
+    library = volt.Library("test.model-absence", version="1")
+    part = _led_part(library)
+    payload = _part_artifact_payload(part)
+
+    assert payload["electrical_model"] is None
+    assert part._to_dict()["electrical_model"] is None
+    snapshot = volt._volt.PartLibrarySnapshot(library.namespace, library.version, [payload])
+    document = json.loads(snapshot.part_result(part.name)["bytes"])
+    assert document["electrical_model"] is None
+
+
+@pytest.mark.parametrize("model", [{}, {"elements": []}, False, 0, "model", []])
+def test_native_part_lowering_rejects_model_payload_instead_of_dropping_it(model):
+    from volt.library_result import _part_artifact_payload
+
+    library = volt.Library("test.model-rejection", version="1")
+    part = _led_part(library)
+    payload = _part_artifact_payload(part)
+    payload["electrical_model"] = model
+
+    with pytest.raises(ValueError, match="electrical model authoring is not supported"):
+        volt._volt.PartLibrarySnapshot(library.namespace, library.version, [payload])
+
+
+def test_native_part_lowering_rejects_missing_model_state():
+    from volt.library_result import _part_artifact_payload
+
+    library = volt.Library("test.model-rejection", version="1")
+    part = _led_part(library)
+    payload = _part_artifact_payload(part)
+    del payload["electrical_model"]
+
+    with pytest.raises(ValueError, match="missing field: electrical_model"):
+        volt._volt.PartLibrarySnapshot(library.namespace, library.version, [payload])
+
+
 def test_rejected_authored_definition_after_external_selection_is_atomic():
     library = volt.Library("test.atomic", version="1")
     part = _led_part(library)

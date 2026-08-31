@@ -20,7 +20,7 @@ namespace volt::io {
 
 /** Persisted current ProjectBundle wire-schema tag; it is not a reader dispatch choice. */
 enum class ProjectBundleSchemaVersion : std::uint32_t {
-    V2 = 2,
+    V3 = 3,
 };
 
 /** Supported native ProjectBundle producer contract. */
@@ -28,7 +28,7 @@ enum class ProjectBundleProducerVersion : std::uint32_t {
     V1 = 1,
 };
 
-/** Closed lifecycle roles admitted by ProjectBundle v2. */
+/** Closed lifecycle roles admitted by ProjectBundle v3. */
 enum class ArtifactRole {
     Model,
     View,
@@ -39,7 +39,7 @@ enum class ArtifactRole {
     Delivery,
 };
 
-/** Closed payload kinds admitted by ProjectBundle v2. */
+/** Closed payload kinds admitted by ProjectBundle v3. */
 enum class ArtifactKind {
     LogicalModel,
     SchematicModel,
@@ -62,6 +62,7 @@ enum class ArtifactKind {
     FabricationPackage,
     StepAsset,
     WholeBoardGlb,
+    EvidenceAsset,
 };
 
 /** Stable non-empty project-local logical design key. */
@@ -261,9 +262,10 @@ struct LibraryAttachmentRef {
 enum class LibraryAssetKind {
     Glb,
     Step,
+    Evidence,
 };
 
-/** Exact origin-bearing GLB or STEP identity. */
+/** Exact origin-bearing GLB, STEP, or evidence identity. */
 struct LibraryAssetRef {
     /** Exact source library namespace. */
     std::string library_namespace;
@@ -664,7 +666,7 @@ class ProjectBundlePublication final {
 };
 
 /**
- * Owner-shaped native v2 graph builder.
+ * Owner-shaped native v3 graph builder.
  *
  * Callers append complete owner artifacts. The builder derives artifact identity, closure, direct
  * edges, paths, digests, dependency lock, and export outputs; callers cannot supply a manifest or

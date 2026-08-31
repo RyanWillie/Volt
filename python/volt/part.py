@@ -585,6 +585,7 @@ class Part:
             "properties": _mutable_value(self.properties),
             "contract": None if self.contract is None else self.contract._to_dict(),
             "electrical_records": [record._to_dict() for record in self.electrical_records],
+            "electrical_model": None,
             "voltage_rating": self._voltage_rating_input,
             "provenance": self.provenance._to_dict(),
             "model_3d": None if self.model_3d is None else self.model_3d._to_dict(),

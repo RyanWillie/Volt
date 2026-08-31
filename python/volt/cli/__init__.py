@@ -379,7 +379,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "Open a verified ProjectBundle and copy only its typed selected-export artifacts."
         ),
     )
-    export_parser.add_argument("--bundle", type=Path, help="Verified v2 ProjectBundle.")
+    export_parser.add_argument("--bundle", type=Path, help="Verified v3 ProjectBundle.")
     export_parser.add_argument("--output", type=Path, help="New empty output directory.")
     export_parser.add_argument(
         "--kind",
@@ -399,7 +399,7 @@ def _build_parser() -> argparse.ArgumentParser:
     inspect_parser = subparsers.add_parser(
         "inspect",
         help="inspect a verified ProjectBundle without executing source",
-        description="Open and inspect one Q3-verified v2 ProjectBundle.",
+        description="Open and inspect one Q3-verified v3 ProjectBundle.",
     )
     inspect_parser.add_argument("--bundle", required=True, type=Path)
     inspect_parser.add_argument(

@@ -59,12 +59,14 @@ add_executable(
     io/logical/logical_circuit_round_trip_test.cpp
     io/logical/logical_circuit_writer_test.cpp
     io/parts/part_definition_io_test.cpp
+    io/parts/part_electrical_model_io_test.cpp
     io/parts/electrical_records_io_test.cpp
     io/pcb/pcb_fabrication_writer_test.cpp
     io/pcb/pcb_projection_io_test.cpp
     io/pcb/pcb_svg_writer_test.cpp
     io/pcb/compiled_board_test.cpp
     io/project_bundle_source_test.cpp
+    io/project_bundle_electrical_model_closure_test.cpp
     io/project_bundle_v2_board_export_rejection_test.cpp
     io/project_bundle_v2_board_export_tamper_test.cpp
     io/project_bundle_v2_board_export_test.cpp
@@ -206,6 +208,15 @@ volt_apply_sanitizers(volt_io_project_bundle_link_contract)
 volt_apply_coverage(volt_io_project_bundle_link_contract)
 add_test(NAME io_project_bundle_link_contract COMMAND volt_io_project_bundle_link_contract)
 set_tests_properties(io_project_bundle_link_contract PROPERTIES LABELS cpp)
+
+if(VOLT_BUILD_PYTHON)
+    add_executable(volt_part_model_transport_fixture support/part_model_transport_fixture.cpp)
+    target_link_libraries(volt_part_model_transport_fixture PRIVATE Volt::IO)
+    target_compile_features(volt_part_model_transport_fixture PRIVATE cxx_std_23)
+    volt_apply_project_warnings(volt_part_model_transport_fixture PRIVATE)
+    volt_apply_sanitizers(volt_part_model_transport_fixture)
+    volt_apply_coverage(volt_part_model_transport_fixture)
+endif()
 
 add_executable(
     volt_kicad_compiled_board_link_contract

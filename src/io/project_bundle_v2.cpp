@@ -16,7 +16,7 @@ open_verified(const detail::BundleSource &source, detail::CapturedEntry manifest
     const auto manifest_identity = manifest_capture.identity;
 
     auto storage = std::make_shared<detail::ProjectBundleStorage>();
-    storage->schema = ProjectBundleSchemaVersion::V2;
+    storage->schema = ProjectBundleSchemaVersion::V3;
     storage->storage_kind = source.kind();
     storage->project_name = manifest.project.name;
     storage->project_version = manifest.project.version;
