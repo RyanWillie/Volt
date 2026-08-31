@@ -32,11 +32,13 @@ add_executable(
     circuit/constraints/net_classes_test.cpp
     circuit/electrical/electrical_model_test.cpp
     circuit/electrical/electrical_records_test.cpp
+    circuit/electrical/passive_model_test.cpp
     circuit/hierarchy/hierarchy_model_test.cpp
     circuit/hierarchy/hierarchy_test.cpp
     circuit/intent/design_intent_test.cpp
     circuit/led_circuit_test.cpp
     circuit/parts/part_definition_test.cpp
+    circuit/parts/part_electrical_model_test.cpp
     circuit/parts/parts_test.cpp
     circuit/validation/validation_power_intent_test.cpp
     circuit/validation/validation_signal_domain_test.cpp

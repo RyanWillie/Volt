@@ -693,6 +693,9 @@ PartLibraryBundle PartLibraryBundle::build_with_component_roots(
         require_bundle(match != builder.parts().end(),
                        "PartLibraryBundle selected part key does not exist",
                        ErrorCode::UnknownEntity);
+        require_bundle(!match->electrical_model().has_value(),
+                       "PartLibraryBundle v2 cannot preserve a selected Part electrical model",
+                       ErrorCode::InvalidState);
         selected_definitions.push_back(*match);
     }
 

@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string_view>
 #include <utility>
+#include <variant>
 
 #include <volt/core/errors.hpp>
 
@@ -122,6 +123,22 @@ std::vector<PartAssetReference> part_asset_references(const PartDefinition &part
         const auto &model = *part.orderable_part().model_3d();
         result.emplace_back(PartAssetKind::Model3D,
                             "model:" + model.format() + "/" + model.file_name(), model.hash());
+    }
+    if (part.electrical_model().has_value()) {
+        auto evidence = std::vector<ContentHash>{};
+        for (const auto &element : part.electrical_model()->elements()) {
+            std::visit(
+                [&](const auto &value) {
+                    const auto &references = value.parameter().evidence();
+                    evidence.insert(evidence.end(), references.begin(), references.end());
+                },
+                element);
+        }
+        std::ranges::sort(evidence, {}, &ContentHash::value);
+        evidence.erase(std::unique(evidence.begin(), evidence.end()), evidence.end());
+        for (const auto &digest : evidence) {
+            result.emplace_back(PartAssetKind::Evidence, "evidence:" + digest.value(), digest);
+        }
     }
     return result;
 }

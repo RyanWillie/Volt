@@ -29,6 +29,7 @@
 #include <volt/core/quantities.hpp>
 #include <volt/core/rule_set.hpp>
 #include <volt/core/version.hpp>
+#include <volt/electrical/passive_model.hpp>
 #include <volt/io/assembly/cpl_writer.hpp>
 #include <volt/io/bom/bom_writer.hpp>
 #include <volt/io/capabilities/board_capability_profile.hpp>

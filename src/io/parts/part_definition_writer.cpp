@@ -290,6 +290,10 @@ void write_orderable_part(std::ostream &out, const OrderablePart &part) {
 } // namespace
 
 void write_part_definition(std::ostream &out, const PartDefinition &part) {
+    if (part.electrical_model().has_value()) {
+        throw KernelLogicError{ErrorCode::InvalidState,
+                               "Part definition v5 cannot preserve an electrical model"};
+    }
     out << "{\n";
     out << "  \"format\": " << detail::json_string(part_definition_format_name()) << ",\n";
     out << "  \"version\": " << part_definition_format_version() << ",\n";

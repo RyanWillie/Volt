@@ -1,7 +1,7 @@
 {
   "format": "volt.part",
   "version": 5,
-  "content_identity": "sha256:ee0a323046ba0966ce55be811d1ee289c5f74b875ca2bfa271a592542f212f67",
+  "content_identity": "sha256:9a86a87fa8816b39f9c01d9f0b3143539db8b37845c3e1cf8794417142c210bf",
   "implements": "sha256:758419641e5722ee2741e509eddd05758105f2445e5762635d847c8580d6fd3c",
   "identity": {
     "namespace": "volt.power",
