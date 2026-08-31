@@ -131,8 +131,7 @@ ModelParameter model_parameter(const Json &object) {
         require(reference.is_string(), "Electrical-model evidence must be a content hash");
         evidence.emplace_back(reference.get<std::string>());
     }
-    return ModelParameter{model_quantity(field(object, "nominal")), std::move(tolerance),
-                          std::move(evidence)};
+    return ModelParameter{model_quantity(field(object, "nominal")), tolerance, std::move(evidence)};
 }
 
 ModelEndpoint model_endpoint(const Json &object) {

@@ -1105,6 +1105,7 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
                         : nullptr);
                 expected_dependencies.push_back(id);
             }
+            // Model evidence is already present through Part asset references above.
             for (const auto &dependency : entry.dependencies()) {
                 const auto &dependency_entry = entry_by_id(entries_by_id, dependency);
                 if (is_optional_attachment_role(dependency_entry.role()) &&

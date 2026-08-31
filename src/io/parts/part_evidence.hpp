@@ -7,6 +7,7 @@
 
 namespace volt::io::detail {
 
+// Model evidence comes from Part asset references; canonical V/I records add their own evidence.
 [[nodiscard]] inline std::vector<ContentHash> part_evidence_digests(const PartDefinition &part) {
     auto result = std::vector<ContentHash>{};
     for (const auto &asset : part_asset_references(part)) {
