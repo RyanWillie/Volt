@@ -22,12 +22,13 @@ authoring, PCB layout authoring, and staged project runs:
   routing over kernel-owned board state
 - serialize deterministic PCB projection files
 - define reusable `Part` objects in buildable `Library` collections
+- author optional immutable ideal R/C/L models on exact Parts through native builders
 - validate library parts for board readiness, pad mapping, footprint geometry, and
   serializability
 - run staged projects with default diagnostics, product-intent tests, and bundle output
 - export deterministic manufacturing packages from project results
 
-Richer ERC, a simulation foundation, and deeper PCB flows remain planned layers. The
+Richer ERC, electrical analysis/solving, and deeper PCB flows remain planned layers. The
 Python API should not introduce semantics that those future kernel layers cannot load,
 validate, serialize, or inspect.
 
@@ -68,6 +69,11 @@ unit guessing: helpers must lower values into kernel-owned quantities, ratings, 
 specs, or constraints before they affect ERC or persistence. Explicit unit objects or
 string parsers can still exist for uncommon units and importers, but they should not be
 required for ordinary authoring.
+
+These contextual number defaults describe existing occurrence intent and net attributes.
+Intrinsic exact-Part model parameters use explicit native `Quantity` values, as described
+in the Part Electrical Models section below. Occurrence attributes and display
+strings never infer or override an exact Part's model.
 
 ## Binding Boundary
 
@@ -519,6 +525,96 @@ The kernel rejects structurally invalid mappings, including missing or unknown l
 duplicate physical pads, and incomplete footprint assets. A logical pin may map to more than
 one physical pad when the selected package exposes tied lands, such as a tabbed regulator
 package. `voltage_rating` lowers into a canonical typed `Voltage` limit in the exact Part.
+
+## Part Electrical Models
+
+An exact `Part` accepts `electrical_model=None` or an immutable native
+`PartElectricalModel`. The same generic Part path supports a resistor, ideal capacitor,
+ideal inductor, or a network of passive elements inside one physical Part. The
+[runnable Python and C++ example](https://github.com/RyanWillie/Volt/tree/main/samples/electrical_part_models) covers all four
+and source-free reopening; the [single-page guide](design/part-electrical-model-authoring.html)
+explains the ownership and fidelity boundary.
+
+This complete Python example attaches an illustrative 330-ohm model through current exact
+Part authoring and selects it in a logical Design:
+
+```python
+# part-electrical-model-doc-example
+import volt
+
+library = volt.Library("example.passives", version="1")
+fields = dict(
+    pins=(volt.PinSpec("A", 1), volt.PinSpec("B", 2)),
+    contract=volt.ComponentContract("example.passives/R330@1", ("A", "B")),
+    footprint=volt.Footprint(
+        ("example.passives", "illustrative-2"),
+        pads=(
+            volt.FootprintPad.surface_mount("1", at=(-0.5, 0), size=(0.5, 0.5)),
+            volt.FootprintPad.surface_mount("2", at=(0.5, 0), size=(0.5, 0.5)),
+        ),
+    ),
+    pads={"A": "1", "B": "2"},
+    manufacturer="Illustrative example", mpn="R330", package="ILLUSTRATIVE-2",
+)
+builder = library.electrical_model_builder("R330", **fields)
+a = builder.terminal("a", "A")
+b = builder.terminal("b", "B")
+builder.resistance(
+    "body", a, b,
+    volt.ModelParameter(volt.ohms(330), tolerance=volt.Tolerance.percent(0.01)),
+)
+part = library.part("R330", **fields, electrical_model=builder.build())
+assert library.build().ok
+design = volt.Design("resistor")
+r1 = design.instantiate(part, ref="R1")
+positive, negative = design.net("positive"), design.net("negative")
+positive += r1["A"]
+negative += r1["B"]
+```
+
+`Library.electrical_model_builder(name, **fields)` snapshots the component through the
+same native exact-Part lowering used by `Library.part`; it does not register a Part. Reuse
+the identical component fields for attachment. The native `PartDefinition` constructor
+rejects a model made against a different component identity, even when pin labels match.
+Complete the library before instantiating its Parts, because selection retains an immutable
+library closure.
+
+`terminal(key, pin_key)` binds exactly one contract pin; `internal_node(key)` declares a
+private model node. `resistance`, `capacitance`, and `inductance` each take a stable element
+key, two handles from that builder, and one `ModelParameter`. Finalization requires every
+contract pin to have exactly one terminal and every terminal/internal node to be used.
+Keys and endpoint orientation are semantic; declaration order is not. Internal nodes never
+become Circuit pins or nets. Later builder changes cannot alter a finalized model.
+
+`ModelParameter(nominal, tolerance=None, evidence=())` requires a native `Quantity`.
+`ohms`, `farads`, `henries`, `hertz`, and `seconds` construct native SI quantities; they
+do not define Python arithmetic or a parallel unit system. Resistance must be finite and
+nonnegative; capacitance and inductance must be finite and positive. Bare numbers, wrong
+dimensions, invalid tolerance bounds, duplicate terminals, and foreign builder handles
+raise native construction errors. Zero ohms is valid; zero C/L rejects.
+
+`Tolerance.percent(0.01)` means 1%, with optional asymmetric minus/plus ratios. Native
+normalization stores absolute deviations in the nominal dimension. `None` means unspecified
+uncertainty; `Tolerance.percent(0)` explicitly asserts zero deviation. These states remain
+distinct in identity and transport. Parameters are ideal laws, not ratings or guarantees.
+Existing canonical Voltage/Current records remain separate and unchanged.
+
+For evidence, pass native `content_hash(bytes)` references to `ModelParameter.evidence`
+and attach those exact bytes through `Part(evidence_assets=(... ,))`. The existing native
+Evidence envelopes validate and vendor both model and canonical V/I references. Supplied
+evidence must resolve when building a self-contained bundle. Omitting evidence leaves a valid
+nominal model without a substantiated provenance claim. Unsourced example values are explicitly illustrative.
+
+`LibraryResult.bundle_bytes` writes the current PartLibraryBundle v2. `ProjectResult.write`
+writes ProjectBundle v3, including selected Part v6 artifacts and all required evidence,
+even with only a design stage. `ProjectBundle.open` verifies and reopens that closure without
+source imports, original libraries, network or caches. Its graph exposes the unchanged
+canonical Part artifact bytes. An omitted model remains `None`/`null`; no model is inferred
+from occurrence-owned resistance/capacitance/inductance attributes, `value`, MPN or metadata.
+
+Supported fidelity is ideal passive linear R/C/L composition only. An unmodeled LED or IC
+remains unsupported behavior, and adding a resistor model does not make the whole design
+simulation-complete. This surface performs no analysis or solving during normal builds.
 
 ## Module Definitions
 

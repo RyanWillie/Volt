@@ -184,6 +184,33 @@ Serialization should read and write `Circuit`, not authoring facade internals. A
 objects may be recreated from loaded circuits only as lookup conveniences over the loaded
 kernel model.
 
+### Exact-Part passive models
+
+`PartElectricalModelBuilder` is a separate native builder over an owned immutable
+`ComponentDefinition` snapshot. `terminal(ModelTerminalKey, PinKey)` and
+`internal_node(ModelInternalNodeKey)` return handles owned by that builder.
+`add<ResistanceElement>`, `add<CapacitanceElement>`, and `add<InductanceElement>` take
+those handles plus a `ModelParameter`; `build()` returns an immutable portable value.
+The optional final `PartDefinition` constructor argument attaches that value after checking
+the implemented component identity. Selection and connectivity keep their existing typed
+`Circuit` APIs.
+
+The [runnable native example](../samples/electrical_part_models/main.cpp) defines local exact
+Parts for R, ideal C/L, and C+ESR+ESL through this one interface, then selects them, connects
+their contract pins, saves current library/project bundles and reopens through native readers.
+Its private composite nodes do not add Circuit components or nets. The
+[Python counterpart](../samples/electrical_part_models/main.py) lowers concise syntax to
+the same native owners; see the [run instructions](https://github.com/RyanWillie/Volt/tree/main/samples/electrical_part_models)
+and [single-page fidelity guide](design/part-electrical-model-authoring.html).
+
+Model nominal quantities, uncertainty, evidence, canonicalization, identity and serialization
+belong to the native model. Values are finite, R is nonnegative and C/L are positive;
+unspecified tolerance differs from explicit zero tolerance. Model absence remains absence.
+Existing occurrence-owned R/C/L attributes or display strings never seed or override intrinsic
+Part parameters. This milestone supports ideal passive linear definitions and source-free
+inspection; it introduces no solver, analysis request, nonlinear device, or universal equation
+framework. Parameters and illustrative example data are not physical ratings or guarantees.
+
 ## First MVP Surface
 
 A minimal useful authoring layer can be built from existing kernel APIs:

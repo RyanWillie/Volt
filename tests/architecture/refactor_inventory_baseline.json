@@ -565,6 +565,96 @@
           "python_type": "Circuit"
         },
         {
+          "cpp_type": "Quantity",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "Quantity"
+        },
+        {
+          "cpp_type": "Tolerance",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "Tolerance"
+        },
+        {
+          "cpp_type": "QuantityRange",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "QuantityRange"
+        },
+        {
+          "cpp_type": "ContentHash",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "ContentHash"
+        },
+        {
+          "cpp_type": "PinKey",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "PinKey"
+        },
+        {
+          "cpp_type": "ModelTerminalKey",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "ModelTerminalKey"
+        },
+        {
+          "cpp_type": "ModelInternalNodeKey",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "ModelInternalNodeKey"
+        },
+        {
+          "cpp_type": "ModelElementKey",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "ModelElementKey"
+        },
+        {
+          "cpp_type": "ModelTerminal",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "ModelTerminal"
+        },
+        {
+          "cpp_type": "ModelInternalNode",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "ModelInternalNode"
+        },
+        {
+          "cpp_type": "ModelParameter",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "ModelParameter"
+        },
+        {
+          "cpp_type": "ResistanceElement",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "ResistanceElement"
+        },
+        {
+          "cpp_type": "CapacitanceElement",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "CapacitanceElement"
+        },
+        {
+          "cpp_type": "InductanceElement",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "InductanceElement"
+        },
+        {
+          "cpp_type": "PartElectricalModel",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "PartElectricalModel"
+        },
+        {
+          "cpp_type": "PartElectricalModelBuilder::TerminalHandle",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "ModelTerminalHandle"
+        },
+        {
+          "cpp_type": "PartElectricalModelBuilder::InternalNodeHandle",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "ModelInternalNodeHandle"
+        },
+        {
+          "cpp_type": "PartElectricalModelBuilder",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "PartElectricalModelBuilder"
+        },
+        {
           "cpp_type": "volt::io::ArtifactId",
           "path": "src/python/project_bundle_bindings.cpp",
           "python_type": "ArtifactId"
@@ -713,11 +803,13 @@
         "BuildContext",
         "CanonicalRecordRequirement",
         "CapabilityProfile",
+        "CapacitanceElement",
         "Circle",
         "CompiledBoardIdentity",
         "Component",
         "ComponentContract",
         "ComponentDefinition",
+        "ContentHash",
         "ContractDirectedRelation",
         "ContractFramedPin",
         "ContractSupplyDomain",
@@ -749,6 +841,7 @@
         "FootprintMarking",
         "FootprintPad",
         "Hole",
+        "InductanceElement",
         "InvalidArgumentError",
         "InvalidStateError",
         "KiCadLossWarning",
@@ -762,6 +855,14 @@
         "ManufacturingPackageError",
         "ManufacturingPackageResult",
         "MechanicalKeepout",
+        "ModelElementKey",
+        "ModelInternalNode",
+        "ModelInternalNodeHandle",
+        "ModelInternalNodeKey",
+        "ModelParameter",
+        "ModelTerminal",
+        "ModelTerminalHandle",
+        "ModelTerminalKey",
         "ModuleComponent",
         "ModuleComponentInfo",
         "ModuleComponentOriginInfo",
@@ -781,10 +882,13 @@
         "PCB_VISUAL_DIAGNOSTIC_CODES",
         "PadResolution",
         "Part",
+        "PartElectricalModel",
+        "PartElectricalModelBuilder",
         "PartModel3D",
         "PartProvenance",
         "Pin",
         "PinGroup",
+        "PinKey",
         "PinSpec",
         "PlacedBoardComponent",
         "PlacedSchematicElement",
@@ -801,6 +905,9 @@
         "ProjectStage",
         "ProjectTestDefinition",
         "ProjectTestResult",
+        "Quantity",
+        "QuantityRange",
+        "ResistanceElement",
         "Schematic",
         "SchematicAnchor",
         "SchematicBlockPinSpec",
@@ -826,8 +933,17 @@
         "StageResult",
         "TemplateNetInfo",
         "Text",
+        "Tolerance",
+        "ToleranceMode",
+        "UnitDimension",
         "UnknownEntityError",
-        "VoltError"
+        "VoltError",
+        "content_hash",
+        "farads",
+        "henries",
+        "hertz",
+        "ohms",
+        "seconds"
       ]
     }
   },

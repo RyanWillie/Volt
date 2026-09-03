@@ -236,7 +236,11 @@ def _validate_part(part: Part) -> tuple[_PartValidationFacts, tuple[LibraryDiagn
 
     serializable = True
     try:
-        json.dumps(part._to_dict(), sort_keys=True)
+        metadata = part._to_dict()
+        # This immutable native value has its own kernel writer. Only the
+        # authoring metadata needs the Python JSON-compatibility preflight.
+        del metadata["electrical_model"]
+        json.dumps(metadata, sort_keys=True)
     except (TypeError, ValueError) as error:
         serializable = False
         diagnostics.append(
@@ -288,7 +292,7 @@ def _part_artifact_payload(part: Part) -> dict[str, object]:
         "electrical_records": [
             record._to_dict() for record in part.electrical_records
         ],
-        "electrical_model": None,
+        "electrical_model": part.electrical_model,
         "voltage_rating": part._voltage_rating_input,
         "provenance": _part_provenance_payload(part),
         "symbols": _part_symbol_refs(part),
@@ -321,7 +325,14 @@ def _part_artifact_payload(part: Part) -> dict[str, object]:
 
 
 def _part_asset_payloads(part: Part, payload: dict[str, object]) -> list[dict[str, object]]:
-    assets: list[dict[str, object]] = []
+    assets: list[dict[str, object]] = [
+        {
+            "kind": "evidence",
+            "key": "evidence:" + str(_volt.content_hash(data)),
+            "bytes": data,
+        }
+        for data in part.evidence_assets
+    ]
     for symbol, symbol_ref in zip(part.schematic_symbols, payload["symbols"], strict=True):
         assets.append(
             {

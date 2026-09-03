@@ -1,6 +1,7 @@
 #include "binding_diagnostic_conversions.hpp"
 #include "board_bindings.hpp"
 #include "circuit_bindings.hpp"
+#include "electrical_model_bindings.hpp"
 #include "project_bundle_bindings.hpp"
 #include "schematic_bindings.hpp"
 
@@ -147,6 +148,7 @@ void register_kernel_error_translator(py::module_ &module) {
 PYBIND11_MODULE(_volt, module) {
     module.doc() = "Private Volt kernel bindings used by the Python authoring facade.";
     register_kernel_error_translator(module);
+    volt::python::bind_electrical_model(module);
     volt::python::bind_circuit(module);
     volt::python::bind_schematic(module);
     volt::python::bind_board(module);

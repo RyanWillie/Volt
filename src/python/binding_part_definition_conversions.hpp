@@ -874,9 +874,12 @@ struct LoweredPartDefinition {
     if (!dict.contains("electrical_model")) {
         throw std::invalid_argument{"Part artifact payload missing field: electrical_model"};
     }
+    auto electrical_model = std::optional<volt::PartElectricalModel>{};
     if (!dict["electrical_model"].is_none()) {
-        throw std::invalid_argument{
-            "Part electrical model authoring is not supported by this lowering boundary"};
+        if (!py::isinstance<volt::PartElectricalModel>(dict["electrical_model"])) {
+            throw py::type_error{"Part electrical_model must be a native PartElectricalModel"};
+        }
+        electrical_model = py::cast<volt::PartElectricalModel>(dict["electrical_model"]);
     }
     auto component_spec = component_spec_from_part_dict(dict);
     auto circuit = volt::Circuit{};
@@ -904,7 +907,8 @@ struct LoweredPartDefinition {
                              optional_part_string_field(provenance, "authored_by", ""),
                              optional_part_string_field(provenance, "derived_from", "")},
         assets,
-        orderable_part_from_dict(required_dict_field(dict, "orderable_part"))};
+        orderable_part_from_dict(required_dict_field(dict, "orderable_part")),
+        std::move(electrical_model)};
     return LoweredPartDefinition{std::move(component_spec), component, std::move(part)};
 }
 
