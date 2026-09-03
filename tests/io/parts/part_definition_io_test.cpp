@@ -92,14 +92,14 @@ bool has_diagnostic(const volt::DiagnosticReport &report, std::string_view code)
 
 } // namespace
 
-TEST_CASE("Part definition v5 writer emits one exact component and two physical mapping seams") {
+TEST_CASE("Part definition v6 writer emits one exact component and two physical mapping seams") {
     const auto component = regulator_component();
     const auto part = current_part(component);
     const auto bytes = volt::io::write_part_definition(part);
     const auto document = nlohmann::json::parse(bytes);
 
     CHECK(document["format"] == "volt.part");
-    CHECK(document["version"] == 5);
+    CHECK(document["version"] == 6);
     CHECK(document["implements"] == component.content_identity().value());
     CHECK(document["content_identity"] == part.content_identity().value());
     CHECK(document["electrical_records"]["records"].size() == 2U);
@@ -113,7 +113,7 @@ TEST_CASE("Part definition v5 writer emits one exact component and two physical 
     CHECK_FALSE(part.electrical_model().has_value());
 }
 
-TEST_CASE("Part definition v5 rejects electrical models before writing any artifact bytes") {
+TEST_CASE("Part definition v6 preserves a three-terminal model alongside voltage records") {
     const auto component = regulator_component();
     const auto original = current_part(component);
     auto model_builder = volt::PartElectricalModelBuilder{component};
@@ -139,23 +139,19 @@ TEST_CASE("Part definition v5 rejects electrical models before writing any artif
                                            model_builder.build()};
     REQUIRE(part.electrical_model().has_value());
 
-    auto stream = std::ostringstream{};
-    stream << "existing bytes";
-    try {
-        volt::io::write_part_definition(stream, part);
-        FAIL("Expected the unsupported electrical model to reject");
-    } catch (const volt::KernelError &error) {
-        CHECK(error.code() == volt::ErrorCode::InvalidState);
-        CHECK(std::string{error.what()}.contains("cannot preserve an electrical model"));
-    }
-    CHECK(stream.str() == "existing bytes");
-    CHECK_THROWS_WITH(volt::io::write_part_definition(part),
-                      "Part definition v5 cannot preserve an electrical model");
-    CHECK_THROWS_WITH(volt::io::part_definition_content_hash(part),
-                      "Part definition v5 cannot preserve an electrical model");
+    const auto bytes = volt::io::write_part_definition(part);
+    auto stream = std::istringstream{bytes};
+    const auto reopened = volt::io::read_part_definition(stream, component);
+    REQUIRE(reopened.electrical_model().has_value());
+    CHECK(reopened.electrical_model()->terminals().size() == 3U);
+    CHECK(reopened.electrical_model()->elements().size() == 2U);
+    CHECK(reopened.content_identity() == part.content_identity());
+    CHECK(volt::io::write_part_definition(reopened) == bytes);
+    CHECK(nlohmann::json::parse(bytes)["electrical_records"] ==
+          nlohmann::json::parse(volt::io::write_part_definition(original))["electrical_records"]);
 }
 
-TEST_CASE("Golden v5 part fixture round-trips byte-identically against the supplied component") {
+TEST_CASE("Golden v6 part fixture round-trips byte-identically against the supplied component") {
     const auto component = regulator_component();
     const auto fixture = read_fixture("ap1117.part.volt.json");
     const auto first = volt::io::read_part_definition_text(fixture, component);
@@ -166,9 +162,10 @@ TEST_CASE("Golden v5 part fixture round-trips byte-identically against the suppl
     CHECK(volt::io::write_part_definition(second) == fixture);
     CHECK_FALSE(first.electrical_model().has_value());
     CHECK_FALSE(second.electrical_model().has_value());
+    CHECK(nlohmann::json::parse(first_write)["electrical_model"].is_null());
 }
 
-TEST_CASE("Part definition v5 reader rejects component and content identity mismatches") {
+TEST_CASE("Part definition v6 reader rejects component and content identity mismatches") {
     const auto component = regulator_component();
     const auto bytes = volt::io::write_part_definition(current_part(component));
     const auto document = nlohmann::json::parse(bytes);
@@ -185,7 +182,7 @@ TEST_CASE("Part definition v5 reader rejects component and content identity mism
     check_current_part_is_rejected(std::move(forged_content), component);
 }
 
-TEST_CASE("Part definition v5 reader requires current provenance and schematic asset fields") {
+TEST_CASE("Part definition v6 reader requires current provenance and schematic asset fields") {
     const auto component = regulator_component();
     const auto document =
         nlohmann::json::parse(volt::io::write_part_definition(current_part(component)));
@@ -207,10 +204,10 @@ TEST_CASE("Part definition v5 reader requires current provenance and schematic a
     check_current_part_is_rejected(std::move(unknown_field), component);
 }
 
-TEST_CASE("Part definition v5 reader rejects duplicate object keys before schema validation") {
+TEST_CASE("Part definition v6 reader rejects duplicate object keys before schema validation") {
     const auto component = regulator_component();
     auto document = volt::io::write_part_definition(current_part(component));
-    const auto current_version = document.find("\"version\": 5");
+    const auto current_version = document.find("\"version\": 6");
     REQUIRE(current_version != std::string::npos);
     document.insert(current_version, "\"version\": 4,\n  ");
 
@@ -218,7 +215,7 @@ TEST_CASE("Part definition v5 reader rejects duplicate object keys before schema
                     volt::KernelLogicError);
 }
 
-TEST_CASE("Part definition v5 reader rejects incomplete dangling and duplicate ownership") {
+TEST_CASE("Part definition v6 reader rejects incomplete dangling and duplicate ownership") {
     const auto component = regulator_component();
     const auto document =
         nlohmann::json::parse(volt::io::write_part_definition(current_part(component)));
@@ -244,7 +241,7 @@ TEST_CASE("Part definition v5 reader rejects incomplete dangling and duplicate o
     check_current_part_is_rejected(std::move(duplicate_pad), component);
 }
 
-TEST_CASE("Part definition v5 requires explicit non-electrical terminal dispositions") {
+TEST_CASE("Part definition v6 requires explicit non-electrical terminal dispositions") {
     const auto component = regulator_component();
     const auto part = current_part(component);
     auto document = nlohmann::json::parse(volt::io::write_part_definition(part));

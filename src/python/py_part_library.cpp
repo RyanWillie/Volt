@@ -6,6 +6,7 @@
 #include <map>
 #include <optional>
 #include <ranges>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -370,8 +371,38 @@ py::dict PyPartLibraryBundle::part_result(const std::string &part_key) const {
 py::list PyPartLibraryBundle::part_assets(const std::string &part_key) const {
     const auto reference = bundle_.require(volt::PartKey{part_key});
     const auto &part = bundle_.resolve(reference);
+    auto assets = volt::part_asset_references(part);
+    auto remaining_evidence = std::set<std::string>{};
+    for (const auto &record : part.electrical_records().records()) {
+        for (const auto &evidence : record.evidence()) {
+            remaining_evidence.insert(evidence.value());
+        }
+    }
+    for (const auto &asset : assets) {
+        if (asset.kind() == volt::PartAssetKind::Evidence) {
+            remaining_evidence.erase(asset.digest().value());
+        }
+    }
+    if (!remaining_evidence.empty()) {
+        const auto entries = bundle_.entries();
+        const auto owner = std::ranges::find_if(entries, [&](const auto &entry) {
+            return entry.role() == volt::io::PartLibraryBundleEntryRole::PartDefinition &&
+                   entry.semantic_identity() == std::optional{part.content_identity()};
+        });
+        // The native opener has verified this exact Part and every referenced evidence edge.
+        for (const auto &entry : entries) {
+            if (entry.role() == volt::io::PartLibraryBundleEntryRole::Evidence &&
+                remaining_evidence.contains(entry.digest().value()) &&
+                std::ranges::find(owner->dependencies(), entry.id()) !=
+                    owner->dependencies().end()) {
+                assets.emplace_back(volt::PartAssetKind::Evidence, *entry.source_key(),
+                                    entry.digest());
+                remaining_evidence.erase(entry.digest().value());
+            }
+        }
+    }
     auto result = py::list{};
-    for (const auto &asset : volt::part_asset_references(part)) {
+    for (const auto &asset : assets) {
         const auto bytes = bundle_.asset(asset);
         if (!bytes.has_value()) {
             throw volt::KernelLogicError{volt::ErrorCode::UnknownEntity,

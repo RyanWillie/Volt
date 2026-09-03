@@ -121,7 +121,7 @@ TEST_CASE("ProjectBundle v2 publication is atomic immutable and representation s
     bundle.write(directory);
     const auto original = snapshot(directory);
     const auto reopened_directory = volt::io::ProjectBundle::open(directory);
-    CHECK(reopened_directory.schema_version() == volt::io::ProjectBundleSchemaVersion::V2);
+    CHECK(reopened_directory.schema_version() == volt::io::ProjectBundleSchemaVersion::V3);
     const auto directory_view = reopened_directory.graph();
     CHECK(directory_view.build_id() == bundle.build_id());
     CHECK(directory_view.bundle_digest() == bundle.bundle_digest());

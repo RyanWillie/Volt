@@ -21,7 +21,7 @@ namespace volt::io::v2_open {
 [[nodiscard]] std::string canonical_dependency_lock(const DependencyLock &lock);
 
 [[noreturn]] void fail(ProjectBundleOpenErrorCode code, std::string message) {
-    throw ProjectBundleOpenError{code, "ProjectBundle v2: " + std::move(message)};
+    throw ProjectBundleOpenError{code, "ProjectBundle v3: " + std::move(message)};
 }
 
 void require(bool condition, ProjectBundleOpenErrorCode code, std::string message) {
@@ -157,6 +157,7 @@ nullable_string_field(const Json &object, std::string_view key, std::string_view
         std::pair{"fabrication_package", ArtifactKind::FabricationPackage},
         std::pair{"step_asset", ArtifactKind::StepAsset},
         std::pair{"whole_board_glb", ArtifactKind::WholeBoardGlb},
+        std::pair{"evidence_asset", ArtifactKind::EvidenceAsset},
     };
     const auto match = std::ranges::find(values, value, &decltype(values)::value_type::first);
     if (match == values.end()) {
@@ -205,6 +206,9 @@ nullable_string_field(const Json &object, std::string_view key, std::string_view
     }
     if (value == "step") {
         return LibraryAssetKind::Step;
+    }
+    if (value == "evidence") {
+        return LibraryAssetKind::Evidence;
     }
     fail(ProjectBundleOpenErrorCode::UnsupportedFormat,
          "library asset kind is unknown: " + std::string{value});
@@ -612,7 +616,7 @@ void require_export_shape(const ExportRequest &request) {
     case ExportKind::Fabrication:
     case ExportKind::WholeBoardGlb:
         fail(ProjectBundleOpenErrorCode::UnsupportedFormat,
-             "export kind cannot be emitted by the v2 producer contract");
+             "export kind cannot be emitted by the v3 producer contract");
     }
 }
 
@@ -676,10 +680,10 @@ void require_export_shape(const ExportRequest &request) {
                  "manifest");
     require(string_field(root, "format", "manifest") == detail::project_bundle_v2_format,
             ProjectBundleOpenErrorCode::UnsupportedFormat, "manifest format is unsupported");
-    require(u32_field(root, "schema_version", "manifest") == 2U,
+    require(u32_field(root, "schema_version", "manifest") == 3U,
             ProjectBundleOpenErrorCode::UnsupportedSchema, "manifest schema is unsupported");
     require(canonical(root) == bytes, ProjectBundleOpenErrorCode::MalformedManifest,
-            "manifest bytes are not the canonical v2 representation");
+            "manifest bytes are not the canonical v3 representation");
 
     const auto &project = field(root, "project", "manifest");
     require_keys(project, {"name", "version", "description"}, "project");
@@ -813,7 +817,7 @@ void verify_build_and_bundle_digests(const ParsedManifest &manifest) {
     const auto &project = manifest.root.at("project");
     const auto build_identity =
         Json{{"format", detail::project_bundle_v2_format},
-             {"schema_version", 2},
+             {"schema_version", 3},
              {"project", project},
              {"authoring_inputs_digest", manifest.authoring_digest.value()},
              {"dependency_lock", canonical_dependency_lock_json(manifest.lock)},

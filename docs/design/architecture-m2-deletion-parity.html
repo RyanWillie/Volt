@@ -74,8 +74,8 @@
     <table>
       <thead><tr><th>Surface</th><th>Current zero state</th><th>Evidence</th></tr></thead>
       <tbody>
-        <tr><td>ProjectBundle readers and public views</td><td>Schema 2 only</td><td><code>ProjectBundle::open</code> publishes one verified <code>graph()</code></td></tr>
-        <tr><td>Part definition reader</td><td>Current v5 only</td><td>No converter or alternate parser</td></tr>
+        <tr><td>ProjectBundle readers and public views</td><td>Schema 3 only</td><td><code>ProjectBundle::open</code> publishes one verified <code>graph()</code></td></tr>
+        <tr><td>Part definition reader</td><td>Current v6 only</td><td>No converter or alternate parser</td></tr>
         <tr><td>PCB reader</td><td>Current canonical document only</td><td>Removed viewer-cache fields reject</td></tr>
         <tr><td>Logical selected-part storage</td><td>Exact <code>LibraryPartRef</code> only</td><td>Inline physical fields reject; origins are explicit</td></tr>
         <tr><td>PartLibraryBundle</td><td>Schema 2 for every valid closure shape</td><td>No content-shape schema switch</td></tr>
@@ -91,7 +91,7 @@
       <li><code>PartLibraryBundle</code> owns immutable definitions, physical records, and content-addressed assets.</li>
       <li><code>BoardResolution</code> owns authoring-time resolved physical truth; <code>CompiledBoard</code> owns the immutable historical result.</li>
       <li>PCB, BOM, CPL, routing, rendering, KiCad, fabrication, Python Board, and ProjectBundle consumers receive that resolved context explicitly.</li>
-      <li><code>ProjectResult.write</code> invokes the native ProjectBundle schema 2 writer; there is no second artifact writer.</li>
+      <li><code>ProjectResult.write</code> invokes the native ProjectBundle schema 3 writer; there is no second artifact writer.</li>
       <li>The supported CLI executes source only through <code>check</code> and <code>build</code>; <code>inspect</code>, <code>diff</code>, and <code>export</code> consume verified bundles.</li>
     </ul>
   </section>

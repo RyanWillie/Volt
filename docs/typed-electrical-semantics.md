@@ -101,7 +101,7 @@ where these facts exist. The kernel can inspect, serialize, and validate them di
 The canonical record substrate is intentionally separate from the named electrical
 attribute maps. Component contracts bind required shapes to stable subjects, and exact
 `PartDefinition` values bind the actual records and physical implementation to one
-component content identity. The current `volt.part` v5 writer and reader persist that truth;
+component content identity. The current `volt.part` v6 writer and reader persist that truth;
 non-current part schemas are rejected and must be regenerated.
 
 ## Quantities And Attributes
@@ -543,7 +543,7 @@ Loading malformed typed fields is a structural format error. Loading a well-form
 bad design should succeed and allow validation to report diagnostics.
 
 Canonical Voltage/Current records additionally round-trip through the standalone
-`volt.electrical_records` v1 native codec. That P1 codec is embedded by the `volt.part` v5
+`volt.electrical_records` v1 native codec. That P1 codec is embedded by the `volt.part` v6
 writer but remains independently usable; neither format is a package or registry format.
 
 ## Python Authoring
@@ -630,20 +630,34 @@ not become operating guarantees or V/I ratings.
 
 Exact Part semantic identity is now version **2**, including explicit model absence or all
 canonical model content. Declaration and evidence order are nonsemantic; keys, orientation,
-normalized parameters, tolerance presence, and evidence content affect identity. The wire
-formats remain `volt.part` **v5**, PartLibraryBundle **v2**, and ProjectBundle **v2** in E1.
-Direct Part serialization (including byte hashing) and selected library-bundle construction
-explicitly reject model-bearing Parts until E2 supplies lossless transport. Compiled-board
-and project closure construction require those verified library bundles, so they cannot
-silently omit a selected model. Bare logical documents still preserve exact Part references
-without claiming to contain Part definitions. Existing model-absent fixtures use refreshed
-Part/library digests; no compatibility reader is added.
+normalized parameters, tolerance presence, and evidence content affect identity. The current wire
+formats are `volt.part` **v6**, PartLibraryBundle **v2**, and ProjectBundle **v3**. The Part
+artifact requires `electrical_model`: `null` preserves absence, an object preserves the
+complete model, and omission rejects. Model objects retain the implemented component digest,
+typed keys, PinKey bindings, ordered endpoints, SI nominal quantities, optional absolute
+minus/plus tolerance deviations, and evidence content hashes. Derived bounds and runtime or
+builder state are not serialized. Native readers reuse E1 construction validation.
 
-Native in-memory libraries retain models and verify referenced model evidence through their
-existing asset resolver. E2 owns artifact transport; E3 owns public Python authoring. Existing
-occurrence R/C/L, nominal/tolerance attributes, and display text keep their current meaning
-and never seed or override model parameters. Canonical `ElectricalRecordSet` remains
-Voltage/Current-only. No solver, analysis request, or new ERC policy is introduced.
+PartLibraryBundle preserves exact component and model evidence dependencies using its
+existing Evidence role. ProjectBundle v3 adds `EvidenceAsset`, identified by the existing
+library origin and content digest, and vendors all model and canonical V/I evidence claimed
+by each selected Part. This works without a Board and deduplicates evidence shared within a
+library origin. Unrelated documents, unconsumed GLB and unselected STEP remain excluded.
+Native reopening verifies bytes, semantic identities, and exact dependency edges using only
+the vendored closure. Removing source Python or the original library cannot change a model.
+Multiple occurrences resolve one immutable Part; logical documents carry exact references,
+not model copies.
+
+Only current artifact schemas are supported. The Part wire version changes for the new
+mandatory field, and the ProjectBundle schema changes for the new closed artifact kind.
+PartLibraryBundle's envelope and Part/Component/library semantic identities retain their
+existing versions; serialized-byte, library-bundle and project digests change with their
+new content. Old artifacts are regenerated, with no compatibility reader or converter.
+
+E3 owns public Python model authoring. Existing artifact bindings can inspect native model
+bytes; existing occurrence R/C/L, nominal/tolerance attributes, and display text keep their
+current meaning and never seed or override model parameters. Canonical `ElectricalRecordSet`
+remains Voltage/Current-only. No solver, analysis request, or new ERC policy is introduced.
 
 ## Future Simulation Boundary
 

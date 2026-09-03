@@ -22,7 +22,7 @@ def test_project_bundle_v2_python_view_matches_verified_native_graph(tmp_path):
     manifest = json.loads((path / "manifest.volt.json").read_text(encoding="utf-8"))
 
     bundle = volt.ProjectBundle.open(path)
-    assert bundle.schema_version == volt.ProjectBundleSchemaVersion.V2
+    assert bundle.schema_version == volt.ProjectBundleSchemaVersion.V3
     assert bundle.storage_kind == volt.ProjectBundleStorageKind.DIRECTORY
     graph = bundle.graph
     assert graph.project_name == "reopen"

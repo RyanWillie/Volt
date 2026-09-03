@@ -34,6 +34,7 @@
 #include <volt/io/schematic/schematic_svg_writer.hpp>
 #include <volt/io/schematic/schematic_writer.hpp>
 
+#include "parts/part_evidence.hpp"
 #include "project_bundle_v2_contract.hpp"
 #include "project_bundle_v2_reports.hpp"
 
@@ -48,7 +49,7 @@ constexpr std::uint32_t producer_version = 1;
 constexpr std::string_view manifest_path = "manifest.volt.json";
 
 [[noreturn]] void reject(std::string message, ErrorCode code = ErrorCode::CrossReferenceViolation) {
-    throw KernelLogicError{code, "ProjectBundle v2: " + std::move(message)};
+    throw KernelLogicError{code, "ProjectBundle v3: " + std::move(message)};
 }
 
 void require(bool condition, std::string message,
@@ -106,6 +107,8 @@ void require(bool condition, std::string message,
         return "glb";
     case LibraryAssetKind::Step:
         return "step";
+    case LibraryAssetKind::Evidence:
+        return "evidence";
     }
     reject("library asset kind is unsupported", ErrorCode::InvalidArgument);
 }
@@ -401,6 +404,8 @@ void require(bool condition, std::string message,
         return ".glb";
     case ArtifactKind::StepAsset:
         return ".step";
+    case ArtifactKind::EvidenceAsset:
+        return ".bin";
     case ArtifactKind::SchematicSvg:
     case ArtifactKind::BoardSvg:
     case ArtifactKind::BoardLayerImage:
@@ -446,6 +451,7 @@ void require(bool condition, std::string message,
         return ArtifactRole::Adapter;
     case ArtifactKind::GlbAsset:
     case ArtifactKind::StepAsset:
+    case ArtifactKind::EvidenceAsset:
         return ArtifactRole::Asset;
     case ArtifactKind::FabricationPackage:
         return ArtifactRole::Delivery;
@@ -476,7 +482,7 @@ struct SchemaInfo {
                 static_cast<std::uint32_t>(logical_circuit_format_version()),
                 "application/vnd.volt.logical+json"};
     case ArtifactKind::PartDefinition:
-        return {"volt.part-definition", 5, "application/vnd.volt.part+json"};
+        return {"volt.part-definition", 6, "application/vnd.volt.part+json"};
     case ArtifactKind::SymbolDefinition:
         return {std::string{symbol_definition_format_name()},
                 static_cast<std::uint32_t>(symbol_definition_format_version()),
@@ -506,6 +512,8 @@ struct SchemaInfo {
         return {"volt.fabrication-package", 1, "application/zip"};
     case ArtifactKind::StepAsset:
         return {"step", 1, "model/step"};
+    case ArtifactKind::EvidenceAsset:
+        return {"volt.evidence", 1, "application/octet-stream"};
     }
     reject("artifact schema mapping is unsupported");
 }
@@ -518,6 +526,7 @@ struct SchemaInfo {
     case ArtifactKind::FootprintDefinition:
     case ArtifactKind::GlbAsset:
     case ArtifactKind::StepAsset:
+    case ArtifactKind::EvidenceAsset:
         return "volt.part-library-bundle";
     default:
         return std::string{producer_name};
@@ -821,6 +830,8 @@ std::string_view artifact_kind_name(ArtifactKind kind) {
         return "step_asset";
     case ArtifactKind::WholeBoardGlb:
         return "whole_board_glb";
+    case ArtifactKind::EvidenceAsset:
+        return "evidence_asset";
     }
     reject("artifact kind is unsupported", ErrorCode::InvalidArgument);
 }
@@ -875,7 +886,9 @@ ArtifactId::ArtifactId(ArtifactKind kind, ArtifactOwnerIdentity owner)
                         (kind_ == ArtifactKind::FootprintDefinition &&
                          value.kind == LibraryAttachmentKind::Footprint));
             } else if constexpr (std::same_as<Owner, LibraryAssetRef>) {
-                return kind_ == ArtifactKind::GlbAsset && value.kind == LibraryAssetKind::Glb &&
+                return ((kind_ == ArtifactKind::GlbAsset && value.kind == LibraryAssetKind::Glb) ||
+                        (kind_ == ArtifactKind::EvidenceAsset &&
+                         value.kind == LibraryAssetKind::Evidence)) &&
                        !value.library_namespace.empty() && !value.library_version.empty();
             } else {
                 if (kind_ == ArtifactKind::BoardLayerImage) {
@@ -1418,6 +1431,37 @@ ArtifactRef ProjectArtifactGraph::add_part(const PartLibraryBundle &bundle,
             dependencies.push_back(reference->second);
         }
     }
+    const auto part_entry = std::ranges::find(bundle.entries(), "part:" + part.identity().name(),
+                                              &PartLibraryBundleEntry::id);
+    require(part_entry != bundle.entries().end(), "selected part entry is missing",
+            ErrorCode::UnknownEntity);
+    for (const auto &digest : detail::part_evidence_digests(part)) {
+        const auto evidence = std::ranges::find_if(bundle.entries(), [&](const auto &entry) {
+            return entry.role() == PartLibraryBundleEntryRole::Evidence &&
+                   entry.digest() == digest &&
+                   std::ranges::find(part_entry->dependencies(), entry.id()) !=
+                       part_entry->dependencies().end();
+        });
+        require(evidence != bundle.entries().end(), "selected Part evidence is missing",
+                ErrorCode::UnknownEntity);
+        const auto asset =
+            PartAssetReference{PartAssetKind::Evidence, *evidence->source_key(), digest};
+        const auto evidence_id =
+            ArtifactId{ArtifactKind::EvidenceAsset,
+                       library_asset_ref(bundle, asset, LibraryAssetKind::Evidence)};
+        const auto evidence_key = artifact_key(evidence_id);
+        auto existing = artifacts_.find(evidence_key);
+        if (existing == artifacts_.end()) {
+            const auto bytes = bundle.asset(asset);
+            require(bytes.has_value() && sha256_content_hash(*bytes) == digest,
+                    "selected Part evidence bytes are missing or stale",
+                    ErrorCode::CrossReferenceViolation);
+            dependencies.push_back(ref_for(
+                add_artifact(evidence_id, std::string{*bytes}, {}, bundle.library_digest())));
+        } else {
+            dependencies.push_back(ref_for(existing->second));
+        }
+    }
     const auto bytes = bundle.part_document(selected.part_key());
     require(bytes.has_value(), "selected part bytes are missing", ErrorCode::UnknownEntity);
     const auto &added =
@@ -1954,7 +1998,7 @@ void ProjectArtifactGraph::validate() {
               project.description.has_value() ? Json(*project.description) : Json(nullptr)}};
     const auto build_identity =
         Json{{"format", format_name},
-             {"schema_version", 2},
+             {"schema_version", 3},
              {"project", project_json},
              {"authoring_inputs_digest", validated.authoring_digest.value()},
              {"dependency_lock", dependency_lock_value},
@@ -2012,7 +2056,7 @@ void ProjectArtifactGraph::validate() {
     }
     auto manifest_core =
         Json{{"format", format_name},
-             {"schema_version", 2},
+             {"schema_version", 3},
              {"project", project_json},
              {"run", Json{{"ok", run.ok},
                           {"status", status_name(run.status)},

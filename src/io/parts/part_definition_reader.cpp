@@ -17,6 +17,7 @@
 #include <nlohmann/json.hpp>
 
 #include <volt/core/errors.hpp>
+#include <volt/electrical/passive_model.hpp>
 #include <volt/io/parts/electrical_records_io.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
 
@@ -95,6 +96,102 @@ PartProvenance provenance(const Json &document) {
     require_fields(value, {"datasheet", "authored_by", "derived_from"}, "Part provenance");
     return PartProvenance{string_field(value, "datasheet"), string_field(value, "authored_by"),
                           string_field(value, "derived_from")};
+}
+
+UnitDimension model_dimension(const std::string &value) {
+    if (value == "resistance") {
+        return UnitDimension::Resistance;
+    }
+    if (value == "capacitance") {
+        return UnitDimension::Capacitance;
+    }
+    if (value == "inductance") {
+        return UnitDimension::Inductance;
+    }
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid electrical-model dimension"};
+}
+
+Quantity model_quantity(const Json &object) {
+    require_fields(object, {"dimension", "value"}, "Electrical-model quantity");
+    return Quantity{model_dimension(string_field(object, "dimension")),
+                    number_field(object, "value")};
+}
+
+ModelParameter model_parameter(const Json &object) {
+    require_fields(object, {"nominal", "tolerance", "evidence"}, "Electrical-model parameter");
+    auto tolerance = std::optional<Tolerance>{};
+    const auto &value = field(object, "tolerance");
+    if (!value.is_null()) {
+        require_fields(value, {"minus", "plus"}, "Electrical-model tolerance");
+        tolerance = Tolerance::absolute(model_quantity(field(value, "minus")),
+                                        model_quantity(field(value, "plus")));
+    }
+    auto evidence = std::vector<ContentHash>{};
+    for (const auto &reference : array_field(object, "evidence")) {
+        require(reference.is_string(), "Electrical-model evidence must be a content hash");
+        evidence.emplace_back(reference.get<std::string>());
+    }
+    return ModelParameter{model_quantity(field(object, "nominal")), tolerance, std::move(evidence)};
+}
+
+ModelEndpoint model_endpoint(const Json &object) {
+    require_fields(object, {"kind", "key"}, "Electrical-model endpoint");
+    const auto kind = string_field(object, "kind");
+    if (kind == "terminal") {
+        return ModelTerminalKey{string_field(object, "key")};
+    }
+    if (kind == "internal_node") {
+        return ModelInternalNodeKey{string_field(object, "key")};
+    }
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid electrical-model endpoint kind"};
+}
+
+ModelElement model_element(const Json &object) {
+    require_fields(object, {"kind", "key", "from", "to", "parameter"}, "Electrical-model element");
+    const auto kind = string_field(object, "kind");
+    const auto key = ModelElementKey{string_field(object, "key")};
+    const auto from = model_endpoint(field(object, "from"));
+    const auto to = model_endpoint(field(object, "to"));
+    const auto parameter = model_parameter(field(object, "parameter"));
+    if (kind == "resistance") {
+        return ResistanceElement{key, from, to, parameter};
+    }
+    if (kind == "capacitance") {
+        return CapacitanceElement{key, from, to, parameter};
+    }
+    if (kind == "inductance") {
+        return InductanceElement{key, from, to, parameter};
+    }
+    throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid electrical-model element kind"};
+}
+
+std::optional<PartElectricalModel> electrical_model(const Json &document,
+                                                    const ComponentDefinition &component) {
+    const auto &object = field(document, "electrical_model");
+    if (object.is_null()) {
+        return std::nullopt;
+    }
+    require_fields(object, {"implements", "terminals", "internal_nodes", "elements"},
+                   "Part electrical model");
+    require(string_field(object, "implements") == component.content_identity().value(),
+            "Electrical-model component digest mismatch");
+    auto terminals = std::vector<ModelTerminal>{};
+    for (const auto &terminal : array_field(object, "terminals")) {
+        require_fields(terminal, {"key", "pin_key"}, "Electrical-model terminal");
+        terminals.emplace_back(ModelTerminalKey{string_field(terminal, "key")},
+                               PinKey{string_field(terminal, "pin_key")});
+    }
+    auto nodes = std::vector<ModelInternalNode>{};
+    for (const auto &node : array_field(object, "internal_nodes")) {
+        require_fields(node, {"key"}, "Electrical-model internal node");
+        nodes.emplace_back(ModelInternalNodeKey{string_field(node, "key")});
+    }
+    auto elements = std::vector<ModelElement>{};
+    for (const auto &element : array_field(object, "elements")) {
+        elements.push_back(model_element(element));
+    }
+    return PartElectricalModel{component, std::move(terminals), std::move(nodes),
+                               std::move(elements)};
 }
 
 std::optional<PartFootprintPadRole> part_footprint_pad_role(const Json &object,
@@ -213,7 +310,7 @@ std::vector<std::string> approved_alternates(const Json &object) {
     return alternates;
 }
 
-OrderablePart orderable_part_v5(const Json &object) {
+OrderablePart orderable_part(const Json &object) {
     require_fields(object,
                    {"manufacturer", "mpn", "package", "footprint", "terminal_pad_mappings",
                     "approved_alternate_mpns", "model_3d"},
@@ -251,7 +348,7 @@ OrderablePart orderable_part_v5(const Json &object) {
         part_footprint_markings(footprint)};
 }
 
-std::vector<PinPackageTerminalMapping> pin_terminal_mappings_v5(const Json &document) {
+std::vector<PinPackageTerminalMapping> pin_terminal_mappings(const Json &document) {
     auto mappings = std::vector<PinPackageTerminalMapping>{};
     for (const auto &mapping : array_field(document, "pin_terminal_mappings")) {
         require_fields(mapping, {"pin_key", "terminals"}, "Pin-terminal mapping");
@@ -273,7 +370,7 @@ PackageTerminalDisposition terminal_disposition(const std::string &value) {
     throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid package terminal disposition"};
 }
 
-std::vector<DisposedPackageTerminal> terminal_dispositions_v5(const Json &document) {
+std::vector<DisposedPackageTerminal> terminal_dispositions(const Json &document) {
     auto dispositions = std::vector<DisposedPackageTerminal>{};
     for (const auto &value : array_field(document, "terminal_dispositions")) {
         require_fields(value, {"terminal", "disposition"}, "Terminal disposition");
@@ -283,7 +380,7 @@ std::vector<DisposedPackageTerminal> terminal_dispositions_v5(const Json &docume
     return dispositions;
 }
 
-std::vector<PartSchematicAssetReference> schematic_assets_v5(const Json &document) {
+std::vector<PartSchematicAssetReference> schematic_assets(const Json &document) {
     auto assets = std::vector<PartSchematicAssetReference>{};
     for (const auto &asset : array_field(document, "schematic_assets")) {
         require_fields(asset, {"name", "variant", "hash"}, "Schematic asset");
@@ -293,12 +390,12 @@ std::vector<PartSchematicAssetReference> schematic_assets_v5(const Json &documen
     return assets;
 }
 
-PartDefinition read_v5_document(const Json &document, const ComponentDefinition &component) {
+PartDefinition read_document(const Json &document, const ComponentDefinition &component) {
     require_format_version(document, part_definition_format_version());
     require_fields(document,
                    {"format", "version", "content_identity", "implements", "identity",
-                    "electrical_records", "pin_terminal_mappings", "terminal_dispositions",
-                    "provenance", "schematic_assets", "orderable_part"},
+                    "electrical_records", "electrical_model", "pin_terminal_mappings",
+                    "terminal_dispositions", "provenance", "schematic_assets", "orderable_part"},
                    "Part definition");
     require(string_field(document, "implements") == component.content_identity().value(),
             "Part definition component digest mismatch");
@@ -306,11 +403,12 @@ PartDefinition read_v5_document(const Json &document, const ComponentDefinition 
         component,
         identity(field(document, "identity")),
         read_electrical_records_text(field(document, "electrical_records").dump()),
-        pin_terminal_mappings_v5(document),
-        terminal_dispositions_v5(document),
+        pin_terminal_mappings(document),
+        terminal_dispositions(document),
         provenance(document),
-        schematic_assets_v5(document),
-        orderable_part_v5(field(document, "orderable_part")),
+        schematic_assets(document),
+        orderable_part(field(document, "orderable_part")),
+        electrical_model(document, component),
     };
     require(string_field(document, "content_identity") == part.content_identity().value(),
             "Part definition content identity mismatch");
@@ -344,7 +442,7 @@ Json parse_document(std::string_view text) {
 
 PartDefinition read_part_definition_text(std::string_view text,
                                          const ComponentDefinition &component) {
-    return read_v5_document(parse_document(text), component);
+    return read_document(parse_document(text), component);
 }
 
 PartDefinition read_part_definition(std::istream &input, const ComponentDefinition &component) {

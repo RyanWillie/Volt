@@ -319,11 +319,11 @@ def current_project_writer_ownership(project_source: str) -> dict[str, object]:
     native_calls = [
         call
         for call, name in zip(calls, call_names)
-        if name == "_volt._write_project_bundle_v2"
+        if name == "_volt._write_project_bundle_v3"
     ]
     require(
         len(native_calls) == 1,
-        "ProjectResult selected-export helper must call the native typed v2 writer exactly once",
+        "ProjectResult selected-export helper must call the native typed v3 writer exactly once",
     )
     native_call = native_calls[0]
     require(
@@ -331,17 +331,17 @@ def current_project_writer_ownership(project_source: str) -> dict[str, object]:
             isinstance(statement, ast.Return) and statement.value is native_call
             for statement in selected_write_method.body
         ),
-        "ProjectResult selected-export helper must return the native typed v2 writer directly",
+        "ProjectResult selected-export helper must return the native typed v3 writer directly",
     )
     all_native_calls = [
         node
         for node in ast.walk(project_result)
         if isinstance(node, ast.Call)
-        and qualified_python_name(node.func) == "_volt._write_project_bundle_v2"
+        and qualified_python_name(node.func) == "_volt._write_project_bundle_v3"
     ]
     require(
         len(all_native_calls) == 1,
-        "ProjectResult must have exactly one native typed v2 publication call",
+        "ProjectResult must have exactly one native typed v3 publication call",
     )
     board_preparation_calls = [
         call
@@ -355,7 +355,7 @@ def current_project_writer_ownership(project_source: str) -> dict[str, object]:
     )
     require(
         board_preparation_calls[0] in set(ast.walk(native_call)),
-        "native Board artifacts must flow directly into the native v2 writer",
+        "native Board artifacts must flow directly into the native v3 writer",
     )
 
     allowed_calls = {
@@ -367,7 +367,7 @@ def current_project_writer_ownership(project_source: str) -> dict[str, object]:
         "_project_authoring_inputs",
         "_tests_payload",
         "_volt._prepare_project_bundle_board",
-        "_volt._write_project_bundle_v2",
+        "_volt._write_project_bundle_v3",
         "str",
     }
     unexpected_calls = sorted(
@@ -393,7 +393,7 @@ def current_project_writer_ownership(project_source: str) -> dict[str, object]:
     require(
         all(node in native_nodes for node in path_uses),
         "ProjectResult selected-export helper may pass its destination only to the native "
-        "typed v2 writer",
+        "typed v3 writer",
     )
 
     retired_definitions = [
@@ -417,7 +417,7 @@ def current_project_writer_ownership(project_source: str) -> dict[str, object]:
         "entrypoint": "ProjectResult.write",
         "retired_python_artifact_record": False,
         "native_board_preparation": "_volt._prepare_project_bundle_board",
-        "native_binding": "_volt._write_project_bundle_v2",
+        "native_binding": "_volt._write_project_bundle_v3",
     }
 
 
@@ -606,7 +606,7 @@ def current_format_inventory() -> dict[str, object]:
             "supported_python_authoring_owners": [
                 "python/volt/design.py: typed component and exact Part lowering",
                 "python/volt/library.py: exact PartLibraryBundle selection",
-                "python/volt/project.py: Project orchestration and one native schema 2 publication",
+                "python/volt/project.py: Project orchestration and one native schema 3 publication",
                 "python/volt/project_bundle.py: verified current-schema reopen",
                 "python/volt/cli/__init__.py: canonical CLI orchestration",
             ],
@@ -630,7 +630,7 @@ def current_format_inventory() -> dict[str, object]:
             "immutable_compiled_board": [
                 "python/tests/test_issue_319_architecture_fixture.py"
             ],
-            "project_bundle_schema_2": [
+            "project_bundle_schema_3": [
                 "python/tests/test_issue_319_architecture_fixture.py",
                 "python/tests/test_cli_project_workflow.py",
             ],
@@ -1001,23 +1001,23 @@ def run_self_tests() -> int:
     require(
         ownership["native_board_preparation"] == "_volt._prepare_project_bundle_board"
         and ownership["retired_python_artifact_record"] is False,
-        "current writer evidence must retain native schema 2 ownership and reject a second writer",
+        "current writer evidence must retain native schema 3 ownership and reject a second writer",
     )
 
     bypassed_project = project_source.replace(
-        "_volt._write_project_bundle_v2(",
+        "_volt._write_project_bundle_v3(",
         "self.write_artifacts(",
         1,
     )
     require_writer_ownership_rejection(
         bypassed_project,
-        "the ownership gate must reject bypassing the native v2 route",
+        "the ownership gate must reject bypassing the native v3 route",
     )
 
     restored_flat_writer = project_source.replace(
-        "        return _volt._write_project_bundle_v2(",
+        "        return _volt._write_project_bundle_v3(",
         "        self.write_artifacts(path)\n"
-        "        return _volt._write_project_bundle_v2(",
+        "        return _volt._write_project_bundle_v3(",
         1,
     )
     require_writer_ownership_rejection(
@@ -1026,9 +1026,9 @@ def run_self_tests() -> int:
     )
 
     restored_artifact_record = project_source.replace(
-        "        return _volt._write_project_bundle_v2(",
+        "        return _volt._write_project_bundle_v3(",
         '        _artifact_record("logical")\n'
-        "        return _volt._write_project_bundle_v2(",
+        "        return _volt._write_project_bundle_v3(",
         1,
     )
     require_writer_ownership_rejection(

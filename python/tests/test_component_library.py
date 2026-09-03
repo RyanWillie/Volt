@@ -109,7 +109,7 @@ def test_library_part_build_emits_kernel_owned_artifact_without_role_sugar():
     assert volt._volt.content_hash(artifact.bytes) == artifact.sha256
     assert artifact.bytes == library.build().part("AP1117-15").artifact.bytes
     assert document["format"] == "volt.part"
-    assert document["version"] == 5
+    assert document["version"] == 6
     assert document["identity"] == {
         "namespace": "volt.test",
         "name": "AP1117-15",

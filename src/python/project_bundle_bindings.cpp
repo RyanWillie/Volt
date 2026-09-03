@@ -347,7 +347,7 @@ export_request(const py::handle &value, const volt::io::ProjectBundlePublication
 
 void bind_project_bundle(py::module_ &module) {
     py::enum_<volt::io::ProjectBundleSchemaVersion>(module, "ProjectBundleSchemaVersion")
-        .value("V2", volt::io::ProjectBundleSchemaVersion::V2);
+        .value("V3", volt::io::ProjectBundleSchemaVersion::V3);
     py::enum_<volt::io::ProjectBundleStorageKind>(module, "ProjectBundleStorageKind")
         .value("DIRECTORY", volt::io::ProjectBundleStorageKind::Directory)
         .value("ZIP_ARCHIVE", volt::io::ProjectBundleStorageKind::ZipArchive);
@@ -546,7 +546,7 @@ void bind_project_bundle(py::module_ &module) {
         py::arg("logicals"), py::arg("subjects"));
 
     module.def(
-        "_write_project_bundle_v2",
+        "_write_project_bundle_v3",
         [](const std::string &destination, const std::string &project_name,
            const py::object &project_version, const py::object &project_description, bool ok,
            const std::string &status, const std::string &profile,

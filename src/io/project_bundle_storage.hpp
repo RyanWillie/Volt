@@ -55,7 +55,7 @@ class ProjectBundleStorage final {
         std::unique_ptr<BoardScene> model;
     };
 
-    ProjectBundleSchemaVersion schema = ProjectBundleSchemaVersion::V2;
+    ProjectBundleSchemaVersion schema = ProjectBundleSchemaVersion::V3;
     ProjectBundleStorageKind storage_kind = ProjectBundleStorageKind::Directory;
     std::string project_name;
     std::optional<std::string> project_version;

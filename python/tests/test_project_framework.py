@@ -793,7 +793,7 @@ def test_project_result_write_emits_deterministic_bundle_across_working_roots(
     assert first_bytes == second_bytes
     manifest = json.loads(first_bytes["manifest.volt.json"])
     assert manifest["format"] == "volt.project_result"
-    assert manifest["schema_version"] == 2
+    assert manifest["schema_version"] == 3
     assert manifest["project"] == {
         "description": "LED module",
         "name": "status-led",

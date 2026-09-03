@@ -24,6 +24,8 @@
 #include <volt/io/parts/part_definition_reader.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
 
+#include "part_evidence.hpp"
+
 namespace volt::io {
 namespace {
 
@@ -693,9 +695,6 @@ PartLibraryBundle PartLibraryBundle::build_with_component_roots(
         require_bundle(match != builder.parts().end(),
                        "PartLibraryBundle selected part key does not exist",
                        ErrorCode::UnknownEntity);
-        require_bundle(!match->electrical_model().has_value(),
-                       "PartLibraryBundle v2 cannot preserve a selected Part electrical model",
-                       ErrorCode::InvalidState);
         selected_definitions.push_back(*match);
     }
 
@@ -871,28 +870,32 @@ PartLibraryBundle PartLibraryBundle::build_with_component_roots(
                 dependencies.push_back(resolve_asset(reference));
             }
         }
+        auto attachment_ids = std::set<std::string>{};
         for (const auto &attachment : attachments) {
             if (attachment.part() == PartKey{part.identity().name()}) {
-                dependencies.push_back(resolve_asset(attachment.reference()));
+                const auto id = resolve_asset(attachment.reference());
+                require_bundle(attachment_ids.insert(id).second,
+                               "PartLibraryBundle part attachment is duplicated",
+                               ErrorCode::DuplicateName);
+                if (std::ranges::find(dependencies, id) == dependencies.end()) {
+                    dependencies.push_back(id);
+                }
             }
         }
         std::ranges::sort(dependencies);
         require_bundle(std::ranges::adjacent_find(dependencies) == dependencies.end(),
                        "PartLibraryBundle part dependency edge is duplicated",
                        ErrorCode::DuplicateName);
-        for (const auto &record : part.electrical_records().records()) {
-            for (const auto &evidence : record.evidence()) {
-                const auto present = std::ranges::any_of(dependencies, [&](const auto &id) {
-                    const auto asset = resolved_assets.find(id);
-                    return asset != resolved_assets.end() &&
-                           asset->second.reference.kind() == PartAssetKind::Evidence &&
-                           asset->second.reference.digest() == evidence;
-                });
-                require_bundle(
-                    present,
-                    "PartLibraryBundle electrical evidence is missing from the exact closure",
-                    ErrorCode::CrossReferenceViolation);
-            }
+        for (const auto &evidence : detail::part_evidence_digests(part)) {
+            const auto present = std::ranges::any_of(dependencies, [&](const auto &id) {
+                const auto asset = resolved_assets.find(id);
+                return asset != resolved_assets.end() &&
+                       asset->second.reference.kind() == PartAssetKind::Evidence &&
+                       asset->second.reference.digest() == evidence;
+            });
+            require_bundle(
+                present, "PartLibraryBundle electrical evidence is missing from the exact closure",
+                ErrorCode::CrossReferenceViolation);
         }
         part_dependencies.emplace(part.identity().name(), std::move(dependencies));
     }
@@ -1102,25 +1105,26 @@ PartLibraryBundle PartLibraryBundle::open(std::string_view bytes) {
                         : nullptr);
                 expected_dependencies.push_back(id);
             }
+            // Model evidence is already present through Part asset references above.
             for (const auto &dependency : entry.dependencies()) {
                 const auto &dependency_entry = entry_by_id(entries_by_id, dependency);
-                if (is_optional_attachment_role(dependency_entry.role())) {
+                if (is_optional_attachment_role(dependency_entry.role()) &&
+                    std::ranges::find(expected_dependencies, dependency) ==
+                        expected_dependencies.end()) {
                     expected_dependencies.push_back(dependency);
                 }
             }
-            for (const auto &record : part.electrical_records().records()) {
-                for (const auto &evidence : record.evidence()) {
-                    const auto present =
-                        std::ranges::any_of(entry.dependencies(), [&](const auto &dependency) {
-                            const auto &candidate = entry_by_id(entries_by_id, dependency);
-                            return candidate.role() == PartLibraryBundleEntryRole::Evidence &&
-                                   candidate.digest() == evidence;
-                        });
-                    require_bundle(
-                        present,
-                        "PartLibraryBundle electrical evidence is missing from the exact closure",
-                        ErrorCode::CrossReferenceViolation);
-                }
+            for (const auto &evidence : detail::part_evidence_digests(part)) {
+                const auto present =
+                    std::ranges::any_of(entry.dependencies(), [&](const auto &dependency) {
+                        const auto &candidate = entry_by_id(entries_by_id, dependency);
+                        return candidate.role() == PartLibraryBundleEntryRole::Evidence &&
+                               candidate.digest() == evidence;
+                    });
+                require_bundle(
+                    present,
+                    "PartLibraryBundle electrical evidence is missing from the exact closure",
+                    ErrorCode::CrossReferenceViolation);
             }
             std::ranges::sort(expected_dependencies);
             require_bundle(

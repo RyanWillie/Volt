@@ -871,6 +871,13 @@ struct LoweredPartDefinition {
 };
 
 [[nodiscard]] inline LoweredPartDefinition lower_part_definition_from_dict(const py::dict &dict) {
+    if (!dict.contains("electrical_model")) {
+        throw std::invalid_argument{"Part artifact payload missing field: electrical_model"};
+    }
+    if (!dict["electrical_model"].is_none()) {
+        throw std::invalid_argument{
+            "Part electrical model authoring is not supported by this lowering boundary"};
+    }
     auto component_spec = component_spec_from_part_dict(dict);
     auto circuit = volt::Circuit{};
     const auto component_id = circuit.define_component(component_spec);

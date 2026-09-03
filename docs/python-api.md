@@ -291,17 +291,18 @@ visual net coverage and selected physical parts for placed PCB components.
 Later stages always receive a `volt.BuildContext`, even for the common single-design case;
 use `context.design()` to reach that design and `context.resource(...)` for explicit
 authoring resources.
-`result.write(path)` writes a deterministic, immutable ProjectBundle v2 directory through
+`result.write(path)` writes a deterministic, immutable ProjectBundle v3 directory through
 the native typed graph builder. Its required default graph contains every logical model and
 Schematic, every named authoring Board with exactly one matching `CompiledBoard` and compact
 `BoardScene`, project diagnostics and tests, and the exact reachable selected
-component/part/symbol/footprint closure. `profile="viewer"` additionally admits only the
+component/part/symbol/footprint closure, including all referenced selected-Part model and
+canonical V/I evidence even when there is no Board. `profile="viewer"` additionally admits only the
 exact GLB assets consumed by each compiled Board; the default profile has no `models3d`
 closure. SVG, KiCad, BOM, CPL, fabrication, STEP, and whole-board GLB copies are opt-in
 exports and are not emitted by the Python path's empty default export selection. The closed
 typed C++ `ExportSelection` API is the explicit opt-in surface for supported exports.
 
-The output path must be new or an existing empty directory. A successful v2 write is
+The output path must be new or an existing empty directory. A successful v3 write is
 all-or-nothing, and any later write to the same non-empty destination rejects rather than
 rewriting historical output. Project Board artifacts use deterministic project-design then
 BoardName byte ordering. Use composite selectors such as `product:Compact` whenever more
@@ -322,7 +323,7 @@ volt export --bundle build/controller.volt --output dist/controller --json
 ```
 
 `check` and `build` each execute the declared `volt.toml` entrypoint exactly once in an
-isolated subprocess. `build` writes and reopens one verified v2 ProjectBundle. A project
+isolated subprocess. `build` writes and reopens one verified v3 ProjectBundle. A project
 with failed diagnostics or product tests returns exit 1, but its structurally valid bundle
 is still persisted with the exact diagnostics and test evidence. The result reports
 structural validity, target readiness, and overall test/diagnostic outcome separately.

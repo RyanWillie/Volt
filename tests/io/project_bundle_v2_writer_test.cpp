@@ -114,7 +114,7 @@ TEST_CASE("ProjectBundle v2 writer is deterministic and identity sensitive") {
           "project_source");
 
     const auto manifest = Json::parse(first.manifest_bytes());
-    CHECK(manifest.at("schema_version") == 2);
+    CHECK(manifest.at("schema_version") == 3);
     CHECK(manifest.at("export_selection").empty());
     CHECK(manifest.at("artifacts").size() == 3U);
     CHECK(descriptor(first, volt::io::ArtifactKind::LogicalModel).dependencies().empty());

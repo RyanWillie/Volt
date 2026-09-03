@@ -18,7 +18,6 @@
 #include <volt/electrical/passive_model.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
 #include <volt/io/parts/part_library_bundle.hpp>
-#include <volt/io/project_bundle_writer.hpp>
 
 namespace {
 
@@ -101,14 +100,17 @@ part(const volt::ComponentDefinition &component, std::string key, std::string ma
     };
 }
 
-[[nodiscard]] volt::PartDefinition with_electrical_model(const volt::ComponentDefinition &component,
-                                                         const volt::PartDefinition &original) {
+[[nodiscard]] volt::PartDefinition
+with_electrical_model(const volt::ComponentDefinition &component,
+                      const volt::PartDefinition &original,
+                      std::vector<volt::ContentHash> evidence = {}) {
     auto builder = volt::PartElectricalModelBuilder{component};
     const auto a = builder.terminal(volt::ModelTerminalKey{"a"}, volt::PinKey{"A"});
     const auto k = builder.terminal(volt::ModelTerminalKey{"k"}, volt::PinKey{"K"});
     builder.add<volt::ResistanceElement>(
         volt::ModelElementKey{"body"}, a, k,
-        volt::ModelParameter{volt::Quantity{volt::UnitDimension::Resistance, 330.0}});
+        volt::ModelParameter{volt::Quantity{volt::UnitDimension::Resistance, 330.0},
+                             volt::Tolerance::percent(0.05), std::move(evidence)});
     return volt::PartDefinition{component,
                                 original.identity(),
                                 original.electrical_records(),
@@ -376,7 +378,7 @@ TEST_CASE("Selected PartLibraryBundle builds byte-identically and reopens fully 
     CHECK(std::string{first.bytes()} == std::string{second.bytes()});
     CHECK(first.digest() == second.digest());
     CHECK(first.digest().value() ==
-          "sha256:436229943ded5446aa0863ee0e4e911d111c8d725b51f89db06cfc4651e3878c");
+          "sha256:1fc06b74a04995c6e254a2c36289441bfbcdb997a561c7fdeb21c3b4cc118808");
     CHECK(std::ranges::is_sorted(first.entries(), {}, &volt::io::PartLibraryBundleEntry::path));
     CHECK(first.library().components().size() == 2U);
     CHECK(first.library().parts().size() == 2U);
@@ -427,27 +429,79 @@ TEST_CASE("Selected PartLibraryBundle builds byte-identically and reopens fully 
     }
 }
 
-TEST_CASE("PartLibraryBundle rejects selected electrical models before resolving assets") {
+TEST_CASE(
+    "PartLibraryBundle preserves selected model and shared canonical claim evidence offline") {
+    const auto authored = [] {
+        const auto fixture = component();
+        const auto evidence = volt::sha256_content_hash("evidence-bytes");
+        const auto modeled = with_electrical_model(
+            fixture.definition, part(fixture.definition, "modeled", "Volt", true), {evidence});
+        auto builder = volt::PartLibraryBuilder{
+            volt::PartLibraryIdentity{"test.parts", "1", volt::PartLibrarySchemaVersion::V1}};
+        builder.add_component(fixture.spec).add_part(modeled);
+        auto resolver = MemoryAssetResolver{};
+        resolver.add(modeled);
+        const auto reference = volt::PartAssetReference{volt::PartAssetKind::Evidence,
+                                                        "evidence:" + evidence.value(), evidence};
+        resolver.add(reference, "evidence-bytes");
+        const auto bundle = volt::io::PartLibraryBundle::build(
+            builder, std::vector{volt::PartKey{"modeled"}}, resolver,
+            std::vector{
+                volt::io::PartLibraryBundleAttachment{volt::PartKey{"modeled"}, reference}});
+        return std::pair{std::string{bundle.bytes()}, modeled.content_identity()};
+    }();
+    const auto reopened = volt::io::PartLibraryBundle::open(authored.first);
+    const auto &part = reopened.resolve(reopened.require(volt::PartKey{"modeled"}));
+    CHECK(part.content_identity() == authored.second);
+    REQUIRE(part.electrical_model().has_value());
+    const auto &element =
+        std::get<volt::ResistanceElement>(part.electrical_model()->elements().front());
+    CHECK(element.parameter().nominal().value() == 330.0);
+    REQUIRE(element.parameter().tolerance().has_value());
+    CHECK(element.parameter().evidence() == part.electrical_records().records().front().evidence());
+    CHECK(std::ranges::count(reopened.entries(), volt::io::PartLibraryBundleEntryRole::Evidence,
+                             &volt::io::PartLibraryBundleEntry::role) == 1);
+    const auto evidence = volt::sha256_content_hash("evidence-bytes");
+    CHECK(reopened.asset(volt::PartAssetReference{volt::PartAssetKind::Evidence,
+                                                  "evidence:" + evidence.value(), evidence}) ==
+          std::optional<std::string_view>{"evidence-bytes"});
+
+    SECTION("missing model evidence edge rejects even when claim and archive are resealed") {
+        auto archive = decode_test_archive(authored.first);
+        auto &part_entry = entry_with_role(archive, "part_definition");
+        const auto evidence_id = entry_with_role(archive, "evidence").at("id");
+        auto &dependencies = part_entry.at("dependencies");
+        std::erase(dependencies.get_ref<nlohmann::json::array_t &>(), evidence_id);
+        refresh_content_digest(archive);
+        check_reopen_rejected(encode_test_archive(archive));
+    }
+}
+
+TEST_CASE("PartLibraryBundle rejects missing or tampered model evidence before publishing") {
     const auto fixture = component();
-    const auto modeled =
-        with_electrical_model(fixture.definition, part(fixture.definition, "modeled", "Volt"));
+    const auto digest = volt::sha256_content_hash("model-evidence");
+    const auto modeled = with_electrical_model(
+        fixture.definition, part(fixture.definition, "modeled", "Volt"), {digest});
     auto builder = volt::PartLibraryBuilder{
         volt::PartLibraryIdentity{"test.parts", "1", volt::PartLibrarySchemaVersion::V1}};
     builder.add_component(fixture.spec).add_part(modeled);
+    auto resolver = MemoryAssetResolver{};
+    for (const auto &reference : volt::part_asset_references(modeled)) {
+        if (reference.kind() == volt::PartAssetKind::Footprint) {
+            resolver.add(reference,
+                         footprint_bytes(modeled.orderable_part().footprint().footprint()));
+        } else if (reference.kind() != volt::PartAssetKind::Evidence) {
+            resolver.add(reference, std::string{exact_asset_bytes});
+        }
+    }
     const auto selected = std::vector{volt::PartKey{"modeled"}};
-    const auto unavailable_assets = MemoryAssetResolver{};
-
-    CHECK_THROWS_WITH(volt::io::PartLibraryBundle::build(builder, selected, unavailable_assets),
-                      "PartLibraryBundle v2 cannot preserve a selected Part electrical model");
-    CHECK_THROWS_WITH(volt::io::PartLibraryBundle::build_with_component_roots(builder, selected, {},
-                                                                              unavailable_assets),
-                      "PartLibraryBundle v2 cannot preserve a selected Part electrical model");
-    check_kernel_error(
-        [&] {
-            static_cast<void>(
-                volt::io::PartLibraryBundle::build(builder, selected, unavailable_assets));
-        },
-        volt::ErrorCode::InvalidState);
+    CHECK_THROWS_AS(volt::io::PartLibraryBundle::build(builder, selected, resolver),
+                    volt::KernelError);
+    resolver.add(volt::PartAssetReference{volt::PartAssetKind::Evidence,
+                                          "evidence:" + digest.value(), digest},
+                 "tampered");
+    CHECK_THROWS_AS(volt::io::PartLibraryBundle::build(builder, selected, resolver),
+                    volt::KernelError);
 }
 
 TEST_CASE("PartLibraryBundle can omit an unselected electrical model without changing it") {
@@ -477,47 +531,6 @@ TEST_CASE("PartLibraryBundle can omit an unselected electrical model without cha
     CHECK_FALSE(retained.electrical_model().has_value());
     CHECK(in_memory_library.resolve(reference).content_identity() == modeled.content_identity());
     CHECK(in_memory_library.resolve(reference).electrical_model().has_value());
-}
-
-TEST_CASE(
-    "Logical-only ProjectBundle rejects a model-bearing selected closure before publication") {
-    const auto fixture = component();
-    const auto modeled =
-        with_electrical_model(fixture.definition, part(fixture.definition, "modeled", "Volt"));
-    auto library_builder = volt::PartLibraryBuilder{
-        volt::PartLibraryIdentity{"test.parts", "1", volt::PartLibrarySchemaVersion::V1}};
-    library_builder.add_component(fixture.spec).add_part(modeled);
-    auto resolver = MemoryAssetResolver{};
-    resolver.add(modeled);
-    const auto library = library_builder.build(resolver);
-    const auto key = volt::PartKey{"modeled"};
-    auto circuit = volt::Circuit{};
-    const auto definition = circuit.define_component(fixture.spec);
-    const auto instance = circuit.instantiate_component(
-        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
-    circuit.update(instance, volt::SelectLibraryPart{library, library.require(key)});
-
-    const auto publish = [&] {
-        const auto closure =
-            volt::io::PartLibraryBundle::build(library_builder, std::vector{key}, resolver);
-        auto project = volt::io::ProjectBundleBuilder{
-            volt::io::ProjectIdentity{"electrical-model", std::nullopt, std::nullopt},
-            volt::io::ProjectRunSummary{
-                true, volt::io::ProjectStatus::Clean, "default", {"design"}},
-            volt::io::LogicalInputName{"project.py"},
-            {volt::io::AuthoringInput{volt::io::AuthoringInputKind::ProjectSource,
-                                      volt::io::LogicalInputName{"project.py"}, "project source"}},
-            volt::io::ProjectReport{
-                R"({"status":"clean","summary":{"errors":0,"warnings":0,"infos":0},"diagnostics":[],"expected":[],"unexpected":[],"missing_expected":[]})"},
-            volt::io::ProjectReport{R"({"summary":{"passed":0,"failed":0},"tests":[]})"}};
-        project.add_logical(volt::io::DesignKey{"main"}, circuit, closure);
-        return project.build();
-    };
-
-    CHECK_THROWS_WITH(publish(),
-                      "PartLibraryBundle v2 cannot preserve a selected Part electrical model");
-    CHECK(circuit.get(instance).selected_library_part_ref()->part_digest() ==
-          modeled.content_identity());
 }
 
 TEST_CASE("PartLibraryBundle closure is explicit and empty closure is valid") {

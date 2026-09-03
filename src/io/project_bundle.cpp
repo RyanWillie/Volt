@@ -30,7 +30,7 @@ void require_current_schema(std::string_view bytes) {
                                          "ProjectBundle manifest schema_version is invalid"};
         }
         const auto schema = root.at("schema_version").get<std::uint32_t>();
-        if (schema != static_cast<std::uint32_t>(ProjectBundleSchemaVersion::V2)) {
+        if (schema != static_cast<std::uint32_t>(ProjectBundleSchemaVersion::V3)) {
             throw ProjectBundleOpenError{ProjectBundleOpenErrorCode::UnsupportedSchema,
                                          "ProjectBundle manifest schema is unsupported: " +
                                              std::to_string(schema)};
