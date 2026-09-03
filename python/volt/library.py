@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
+from . import _volt
 from ._immutable import _freeze_value, _mutable_value
 from ._library_symbol_builders import (
     _default_two_terminal_symbol_spec,
@@ -21,6 +22,9 @@ from ._library_symbol_builders import (
 )
 from ._footprint import FootprintInput
 from ._utils import _coordinate, _number, _positive_coordinate
+
+if TYPE_CHECKING:
+    from .electrical import PartElectricalModelBuilder
 
 PinPadValue = str | tuple[str, ...] | list[str]
 
@@ -534,6 +538,22 @@ class Library:
         from .part import Part
 
         return self.add(Part(name=name, **kwargs))
+
+    def electrical_model_builder(
+        self, name: str, **part_fields
+    ) -> PartElectricalModelBuilder:
+        """Begin a native model using the same fields as the eventual exact Part.
+
+        This does not register a Part. Reuse these fields with ``part()`` and pass
+        the finalized model as ``electrical_model``; native construction checks
+        that both definitions implement the identical component.
+        """
+        from .library_result import _part_artifact_payload
+        from .part import Part
+
+        declaration = Part(name=name, **part_fields)
+        declaration._bind_library(self)
+        return _volt.PartElectricalModelBuilder(_part_artifact_payload(declaration))
 
     def __getitem__(self, name: str) -> Part:
         """Return a registered public part by name."""

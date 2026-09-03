@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Define exact Parts with native ideal R/C/L models, compose private nodes, and reopen a self-contained Volt project without its authoring source.">
+  <title>One Part, several passive elements · Volt</title>
+  <style>
+    :root { color-scheme: light; --ink:#162c39; --muted:#52616a; --paper:#f7f4ed; --line:#d3d9d5; --accent:#a8401d; --soft:#e5ece6; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:18px/1.6 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { width:min(1080px,100% - 48px); margin:auto; padding:56px 0 70px; }
+    a { color:var(--accent); text-underline-offset:4px; }
+    a:hover { text-decoration-thickness:2px; }
+    .eyebrow { font-size:12px; font-weight:750; letter-spacing:.13em; text-transform:uppercase; color:var(--accent); }
+    header { display:grid; grid-template-columns:1fr 210px; gap:40px; padding-bottom:38px; border-bottom:1px solid var(--line); }
+    h1 { font-size:clamp(38px,6vw,66px); line-height:1.04; letter-spacing:-.045em; max-width:720px; margin:19px 0 24px; }
+    h2 { font-size:27px; line-height:1.2; letter-spacing:-.025em; margin:0 0 18px; }
+    h3 { font-size:18px; margin:0 0 8px; }
+    p { margin:0 0 17px; }
+    .lede { max-width:710px; font-size:22px; line-height:1.5; }
+    aside { align-self:end; border-top:3px solid var(--accent); padding-top:12px; font-size:14px; color:var(--muted); }
+    aside strong { color:var(--ink); display:block; margin-bottom:5px; }
+    section { display:grid; grid-template-columns:62px 1fr; gap:24px; padding:38px 0; border-bottom:1px solid var(--line); }
+    .number { font:500 16px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; color:var(--accent); padding-top:4px; }
+    .columns { display:grid; grid-template-columns:1fr 1fr; gap:34px; }
+    .caption { color:var(--muted); font-size:14px; }
+    .note { padding:18px 22px; background:var(--soft); font-size:16px; }
+    code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.87em; }
+    pre { margin:19px 0; padding:22px; overflow:auto; border:1px solid var(--line); background:#fffdfa; font-size:14px; line-height:1.65; tab-size:4; }
+    pre code { font-size:inherit; }
+    svg { display:block; width:100%; height:auto; margin:20px 0 10px; }
+    .flow { display:flex; gap:10px; align-items:stretch; margin:24px 0; }
+    .flow div { flex:1; padding:14px; background:var(--soft); font-size:14px; }
+    .flow b { display:block; margin-bottom:5px; font-size:16px; }
+    .flow span { display:flex; align-items:center; color:var(--accent); }
+    table { border-collapse:collapse; width:100%; font-size:16px; margin:20px 0; }
+    th { text-align:left; font-size:12px; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); }
+    th,td { vertical-align:top; padding:12px 16px 12px 0; border-bottom:1px solid var(--line); }
+    td:first-child { width:29%; font-weight:650; }
+    .links { display:flex; gap:24px; flex-wrap:wrap; font-size:16px; margin-top:22px; }
+    footer { font-size:14px; color:var(--muted); padding-top:24px; }
+    @media(max-width:760px) { main { width:calc(100% - 32px); padding-top:30px; } header,.columns { grid-template-columns:1fr; gap:22px; } aside { max-width:420px; } section { grid-template-columns:30px 1fr; gap:14px; padding:29px 0; } .flow { flex-direction:column; } .flow span { display:none; } h2 { font-size:24px; } pre { padding:14px; font-size:12px; } }
+    @media print { body { background:white; font-size:11pt; } main { width:100%; padding:0; } section { break-inside:avoid; padding:20px 0; } header { padding-bottom:20px; } h1 { font-size:34pt; } pre { white-space:pre-wrap; } a { color:inherit; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <div class="eyebrow">Volt / Electrical E3 / Authoring and persistence</div>
+      <h1>One Part.<br>Several passive elements.</h1>
+      <p class="lede">Put an ideal electrical model on your own exact Part. Compose R, C and L inside it, select it in a circuit, then reopen the saved project with every parameter intact.</p>
+    </div>
+    <aside><strong>The milestone ends here</strong>Define → select → connect → save → reopen → inspect.<br>No Board or solver is needed.</aside>
+  </header>
+
+  <section>
+    <div class="number">01</div>
+    <div>
+      <h2>The Part owns its behavior</h2>
+      <div class="columns">
+        <p>A component contract defines stable pins. An exact Part implements that contract and optionally owns an immutable <code>PartElectricalModel</code>. An occurrence selects the Part and connects its pins to Circuit nets.</p>
+        <p>The C++ kernel owns the model, units, validation, identity and saved bytes. Python supplies concise construction syntax. You use the ordinary <code>Part</code> interface for a resistor, capacitor, inductor or passive network.</p>
+      </div>
+      <div class="flow" aria-label="Ownership and authoring flow">
+        <div><b>Contract</b>PinKeys A and B</div><span aria-hidden="true">→</span>
+        <div><b>Exact Part</b>One immutable model</div><span aria-hidden="true">→</span>
+        <div><b>Occurrence</b>Exact selected identity</div><span aria-hidden="true">→</span>
+        <div><b>Circuit</b>External pin connections</div>
+      </div>
+      <p class="note">A model parameter is the intrinsic ideal value. Existing occurrence attributes and display text retain their own meaning; they never populate or override this model.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="number">02</div>
+    <div>
+      <h2>Begin with a single element</h2>
+      <p>Prepare the normal exact-Part <code>fields</code> once: pins, component contract, footprint, mappings and illustrative identity. The builder snapshots that same component without registering a Part.</p>
+      <pre><code>builder = library.electrical_model_builder("R330", **fields)
+a = builder.terminal("a", "A")
+b = builder.terminal("b", "B")
+builder.resistance(
+    "body", a, b,
+    volt.ModelParameter(volt.ohms(330), volt.Tolerance.percent(0.01)),
+)
+part = library.part("R330", **fields, electrical_model=builder.build())</code></pre>
+      <p class="caption">This excerpt uses the complete <code>fields</code> in the <a href="../python-api.md#part-electrical-models">runnable API example</a>. The <a href="../../samples/electrical_part_models/main.py">full sample</a> also authors ideal C and L with <code>capacitance</code> and <code>inductance</code>.</p>
+      <p>Every parameter takes a native <code>Quantity</code>. <code>ohms(330)</code>, <code>farads(100e-9)</code> and <code>henries(10e-6)</code> construct native SI values. Bare numbers are rejected at the model parameter boundary.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="number">03</div>
+    <div>
+      <h2>Add private nodes to compose a model</h2>
+      <p>A capacitor with series resistance and inductance remains one exact Part and one Circuit occurrence. Its internal nodes belong only to the model.</p>
+      <svg viewBox="0 0 930 200" role="img" aria-labelledby="circuit-title circuit-desc">
+        <title id="circuit-title">One Part containing ESR, ESL and capacitance in series</title>
+        <desc id="circuit-desc">External pin A connects through a 0.08 ohm resistance to the private node after_esr, through 1 nanohenry inductance to the private node after_esl, through 10 microfarad capacitance to external pin B.</desc>
+        <rect x="16" y="15" width="898" height="160" rx="8" fill="#e5ece6" stroke="#bdcac1"/>
+        <text x="37" y="44" font-family="system-ui,sans-serif" font-size="13" fill="#52616a">ONE EXACT PART · C-ESR-ESL</text>
+        <g fill="none" stroke="#162c39" stroke-width="3">
+          <path d="M65 103H154M246 103H330M330 103H375 M499 103H560 M560 103H658 M682 103H854"/>
+          <rect x="154" y="85" width="92" height="36" fill="#f7f4ed"/>
+          <path d="M375 103c0-36 31-36 31 0c0-36 31-36 31 0c0-36 31-36 31 0c0-36 31-36 31 0"/>
+          <path d="M658 75V131 M682 75V131"/>
+        </g>
+        <g fill="#a8401d"><circle cx="65" cy="103" r="6"/><circle cx="854" cy="103" r="6"/></g>
+        <g fill="#162c39"><circle cx="330" cy="103" r="5"/><circle cx="560" cy="103" r="5"/></g>
+        <g text-anchor="middle" font-family="system-ui,sans-serif" fill="#162c39">
+          <text x="65" y="78" font-size="18" font-weight="650">A</text><text x="854" y="78" font-size="18" font-weight="650">B</text>
+          <text x="200" y="73" font-size="15">ESR · 0.08 Ω</text><text x="437" y="73" font-size="15">ESL · 1 nH</text><text x="670" y="61" font-size="15">C · 10 µF</text>
+          <text x="330" y="151" font-size="13">after_esr</text><text x="560" y="151" font-size="13">after_esl</text>
+        </g>
+      </svg>
+      <pre><code>x = builder.internal_node("after_esr")
+y = builder.internal_node("after_esl")
+builder.resistance("esr", a, x, volt.ModelParameter(volt.ohms(0.08)))
+builder.inductance("esl", x, y, volt.ModelParameter(volt.henries(1e-9)))
+builder.capacitance("storage", y, b,
+    volt.ModelParameter(volt.farads(10e-6), volt.Tolerance.percent(0.2)))</code></pre>
+      <p class="caption">Use a fresh builder for this composite. Each pin gets exactly one terminal; every declared node must be used. Handles from another builder reject. Keys and endpoint direction are part of exact identity.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="number">04</div>
+    <div>
+      <h2>Save the Part, then remove the source</h2>
+      <p>Complete the local library, select its Parts with <code>Design.instantiate</code>, and connect their contract pins with ordinary net operations. A Project with only a design stage can write the complete artifact closure.</p>
+      <pre><code>library_result = library.build()
+Path("library.voltlib").write_bytes(library_result.bundle_bytes)
+project.run().write("project.volt")
+
+# In a fresh process, after removing the author source and original library:
+bundle = volt.ProjectBundle.open("project.volt")
+artifacts = bundle.graph.artifacts</code></pre>
+      <p>The native reader verifies the vendored exact Parts, component definitions and referenced evidence before exposing the graph. The sample compares canonical Part bytes, model keys, values, tolerance state and evidence after reopening. No author module is imported.</p>
+      <p class="note">Evidence supports a claim; it is not the parameter itself. Attach its exact bytes via <code>evidence_assets</code> and reference <code>content_hash(bytes)</code> from the parameter. Both model and canonical Voltage/Current evidence travel with a selected Part.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="number">05</div>
+    <div>
+      <h2>Read the limits with the model</h2>
+      <table>
+        <thead><tr><th>Input or claim</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>R ≥ 0; C and L &gt; 0</td><td>Finite nominal values and tolerance bounds are required. Zero ohms is valid. Zero C/L, wrong dimensions and nonfinite values reject.</td></tr>
+          <tr><td>No tolerance</td><td>Uncertainty is unspecified. This differs from explicitly zero tolerance in both identity and saved bytes.</td></tr>
+          <tr><td>20% tolerance</td><td><code>Tolerance.percent(0.2)</code> normalizes to absolute deviations. It does not request corner, statistical or worst-case analysis.</td></tr>
+          <tr><td>No model</td><td>Behavior is unknown. An unmodeled LED or IC stays unsupported; it does not become an open circuit or acquire an inferred model.</td></tr>
+          <tr><td>Passive model</td><td>Ideal linear R/C/L only. It does not model nonlinear behavior, temperature effects or arbitrary ICs, and does not certify the whole design as simulation-complete.</td></tr>
+          <tr><td>Nominal parameter</td><td>An ideal law, separate from physical ratings and canonical V/I claims. None of this sample's values or physical definitions are manufacturer guarantees.</td></tr>
+        </tbody>
+      </table>
+      <p>The completed capability is durable Part definition and inspection. Analysis requests, electrical compilation and numerical solving are separate later work. Ordinary build, check and manufacturing do not run simulation.</p>
+      <div class="links">
+        <a href="../../samples/electrical_part_models/README.md">Run both examples</a>
+        <a href="../../samples/electrical_part_models/main.cpp">C++ source</a>
+        <a href="../../samples/electrical_part_models/main.py">Python source</a>
+        <a href="adr-part-electrical-model.md">Native model contract</a>
+      </div>
+    </div>
+  </section>
+  <footer>Volt electrical-model authoring · Current artifact contracts: Part v6, PartLibraryBundle v2, ProjectBundle v3. All numeric values and physical Part definitions on this page are illustrative.</footer>
+</main>
+</body>
+</html>

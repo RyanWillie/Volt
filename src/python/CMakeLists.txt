@@ -30,6 +30,8 @@ set(
     _utils.py
     design.py
     diagnostics.py
+    electrical.py
+    electrical.pyi
     cli/__init__.py
     cli/__main__.py
     cli/_project_worker.py
@@ -42,6 +44,7 @@ set(
     project.py
     project_bundle.py
     project_checks.py
+    py.typed
     schematic.py
 )
 foreach(package_file IN LISTS VOLT_PYTHON_PACKAGE_FILES)
@@ -57,6 +60,7 @@ pybind11_add_module(
     bindings.cpp
     board_bindings.cpp
     circuit_bindings.cpp
+    electrical_model_bindings.cpp
     py_board.cpp
     py_circuit.cpp
     py_circuit_logical.cpp
@@ -146,6 +150,12 @@ if(VOLT_BUILD_TESTS)
             list(
                 APPEND test_environment
                 "VOLT_PART_MODEL_TRANSPORT_FIXTURE=set:$<TARGET_FILE:volt_part_model_transport_fixture>"
+            )
+        endif()
+        if(test_name STREQUAL "test_electrical_model_authoring")
+            list(
+                APPEND test_environment
+                "VOLT_PART_MODEL_AUTHORING_FIXTURE=set:$<TARGET_FILE:volt_part_model_authoring_fixture>"
             )
         endif()
 

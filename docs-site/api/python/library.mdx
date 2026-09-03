@@ -4,6 +4,266 @@ description: Generated reference for library, component, pin, and schematic symb
 ---
 This page is generated from the public Python source. Add or improve docstrings in `python/volt` to improve the reference.
 
+## `volt.CapacitanceElement`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+CapacitanceElement = _volt.CapacitanceElement
+```
+
+## `volt.ContentHash`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+ContentHash = _volt.ContentHash
+```
+
+## `volt.InductanceElement`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+InductanceElement = _volt.InductanceElement
+```
+
+## `volt.ModelElementKey`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+ModelElementKey = _volt.ModelElementKey
+```
+
+## `volt.ModelInternalNode`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+ModelInternalNode = _volt.ModelInternalNode
+```
+
+## `volt.ModelInternalNodeHandle`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+ModelInternalNodeHandle = _volt.ModelInternalNodeHandle
+```
+
+## `volt.ModelInternalNodeKey`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+ModelInternalNodeKey = _volt.ModelInternalNodeKey
+```
+
+## `volt.ModelParameter`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+ModelParameter = _volt.ModelParameter
+```
+
+## `volt.ModelTerminal`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+ModelTerminal = _volt.ModelTerminal
+```
+
+## `volt.ModelTerminalHandle`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+ModelTerminalHandle = _volt.ModelTerminalHandle
+```
+
+## `volt.ModelTerminalKey`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+ModelTerminalKey = _volt.ModelTerminalKey
+```
+
+## `volt.PartElectricalModel`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+PartElectricalModel = _volt.PartElectricalModel
+```
+
+## `volt.PartElectricalModelBuilder`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+PartElectricalModelBuilder = _volt.PartElectricalModelBuilder
+```
+
+## `volt.PinKey`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+PinKey = _volt.PinKey
+```
+
+## `volt.Quantity`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+Quantity = _volt.Quantity
+```
+
+## `volt.QuantityRange`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+QuantityRange = _volt.QuantityRange
+```
+
+## `volt.ResistanceElement`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+ResistanceElement = _volt.ResistanceElement
+```
+
+## `volt.Tolerance`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+Tolerance = _volt.Tolerance
+```
+
+## `volt.ToleranceMode`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+ToleranceMode = _volt.ToleranceMode
+```
+
+## `volt.UnitDimension`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+UnitDimension = _volt.UnitDimension
+```
+
+## `volt.content_hash`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+content_hash = _volt.content_hash
+```
+
+## `volt.farads`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+farads = _volt.farads
+```
+
+## `volt.henries`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+henries = _volt.henries
+```
+
+## `volt.hertz`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+hertz = _volt.hertz
+```
+
+## `volt.ohms`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+ohms = _volt.ohms
+```
+
+## `volt.seconds`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/electrical.py`
+
+```python
+seconds = _volt.seconds
+```
+
 ## `volt.ComponentContract`
 
 Complete portable component identity and feature-binding contract.
@@ -204,6 +464,7 @@ Source: `python/volt/library.py`
 | `build(self) -> LibraryResult` | Validate this library's public parts and return a deterministic result. |
 | `part_family(self, **defaults) -> _PartFamily` | Create a helper that registers parts using shared defaults. |
 | `part(self, name: str, **kwargs) -> Part` | Create and register a public part in this library. |
+| `electrical_model_builder(self, name: str, **part_fields) -> PartElectricalModelBuilder` | Begin a native model using the same fields as the eventual exact Part. |
 | `__getitem__(self, name: str) -> Part` | Return a registered public part by name. |
 
 ## `volt.LibraryDiagnostic`

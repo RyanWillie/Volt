@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable
 
+from . import _volt
 from ._footprint import Footprint, FootprintInput, footprint_ref
 from ._immutable import _freeze_value, _mutable_value
 from .library import (
@@ -17,6 +18,7 @@ from .library import (
 )
 
 if TYPE_CHECKING:
+    from .electrical import PartElectricalModel
     from .library import Library
 
 
@@ -493,6 +495,8 @@ class Part:
         voltage_rating: float | None = None,
         contract: ComponentContract | None = None,
         electrical_records: Iterable[ElectricalRecord] = (),
+        electrical_model: PartElectricalModel | None = None,
+        evidence_assets: Iterable[bytes] = (),
         provenance: PartProvenance | None = None,
         model_3d: PartModel3D | None = None,
         approved_alternate_mpns: Iterable[str] = (),
@@ -520,6 +524,13 @@ class Part:
             raise TypeError("Part electrical_records must contain ElectricalRecord instances")
         if voltage_rating is not None and records:
             raise TypeError("Part accepts either voltage_rating shorthand or electrical_records")
+        if electrical_model is not None and not isinstance(
+            electrical_model, _volt.PartElectricalModel
+        ):
+            raise TypeError("Part electrical_model must be a native PartElectricalModel")
+        evidence = tuple(evidence_assets)
+        if any(not isinstance(asset, bytes) for asset in evidence):
+            raise TypeError("Part evidence_assets must contain immutable bytes")
 
         logical_properties = dict(properties or {})
         if value is not None:
@@ -540,6 +551,8 @@ class Part:
         self.properties = _freeze_value(logical_properties)
         self.contract = contract
         self.electrical_records = records
+        self.electrical_model = electrical_model
+        self.evidence_assets = evidence
         self.provenance = provenance or PartProvenance()
         self._voltage_rating_input = (
             None if voltage_rating is None else float(voltage_rating)
@@ -585,7 +598,7 @@ class Part:
             "properties": _mutable_value(self.properties),
             "contract": None if self.contract is None else self.contract._to_dict(),
             "electrical_records": [record._to_dict() for record in self.electrical_records],
-            "electrical_model": None,
+            "electrical_model": self.electrical_model,
             "voltage_rating": self._voltage_rating_input,
             "provenance": self.provenance._to_dict(),
             "model_3d": None if self.model_3d is None else self.model_3d._to_dict(),
