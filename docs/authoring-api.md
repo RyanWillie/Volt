@@ -200,7 +200,10 @@ Parts for R, ideal C/L, and C+ESR+ESL through this one interface, then selects t
 their contract pins, saves current library/project bundles and reopens through native readers.
 Its private composite nodes do not add Circuit components or nets. The
 [Python counterpart](../samples/electrical_part_models/main.py) lowers concise syntax to
-the same native owners; see the [run instructions](https://github.com/RyanWillie/Volt/tree/main/samples/electrical_part_models)
+the same native owners. `Library.component(...)` authors reusable component fields once;
+`PartElectricalModelBuilder(component)` and `Library.part(component=...)` share that typed
+value. Python uses one `add(ElementType, ...)` operation over the closed R/C/L types and
+builder-owned handles. See the [run instructions](https://github.com/RyanWillie/Volt/tree/main/samples/electrical_part_models)
 and [single-page fidelity guide](design/part-electrical-model-authoring.html).
 
 Model nominal quantities, uncertainty, evidence, canonicalization, identity and serialization

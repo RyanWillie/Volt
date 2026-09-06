@@ -10,6 +10,7 @@ from . import _volt
 from ._footprint import Footprint, FootprintInput, footprint_ref
 from ._immutable import _freeze_value, _mutable_value
 from .library import (
+    PartComponentDefinition,
     PartModel3D,
     PinPadValue,
     PinSpec,
@@ -483,7 +484,8 @@ class Part:
         self,
         *,
         name: str,
-        pins: Iterable[PinSpec],
+        pins: Iterable[PinSpec] | None = None,
+        component: PartComponentDefinition | None = None,
         symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
         footprint: FootprintInput | None = None,
         pads: dict[int | str, PinPadValue] | None = None,
@@ -512,6 +514,17 @@ class Part:
             raise TypeError("Part prefix must be a string")
         if not prefix:
             raise ValueError("Part prefix must not be empty")
+        if component is not None:
+            if not isinstance(component, PartComponentDefinition):
+                raise TypeError("Part component must be a PartComponentDefinition")
+            if any(field is not None for field in (pins, symbol, properties, contract, value)):
+                raise TypeError("Part component replaces pins, symbol, properties, contract and value")
+            pins = component.pins
+            symbol = component.schematic_symbols
+            properties = _mutable_value(component.properties)
+            contract = component.contract
+        elif pins is None:
+            raise TypeError("Part requires pins or a PartComponentDefinition")
         normalized_pins = tuple(pins)
         alternate_mpns = tuple(str(mpn) for mpn in approved_alternate_mpns)
 
@@ -537,6 +550,7 @@ class Part:
             logical_properties["value"] = value
 
         self.name = name
+        self.component = component
         self.pins = normalized_pins
         for pin in self.pins:
             if not isinstance(pin, PinSpec):

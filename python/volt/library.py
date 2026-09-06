@@ -24,7 +24,7 @@ from ._footprint import FootprintInput
 from ._utils import _coordinate, _number, _positive_coordinate
 
 if TYPE_CHECKING:
-    from .electrical import PartElectricalModelBuilder
+    from .part import ComponentContract
 
 PinPadValue = str | tuple[str, ...] | list[str]
 
@@ -481,6 +481,45 @@ class SchematicSymbolSpec:
         return primitive
 
 
+class PartComponentDefinition(_volt._PartComponentDefinition):
+    """Reusable native component definition, independent of an exact physical Part."""
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if getattr(self, "_frozen", False):
+            raise AttributeError("Library component definitions are immutable")
+        super().__setattr__(name, value)
+
+    def __init__(
+        self, name: str, *, namespace: str, version: str,
+        pins: Iterable[PinSpec],
+        symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
+        properties: dict | None = None,
+        contract: ComponentContract | None = None,
+        source_name: str | None = None,
+    ) -> None:
+        from .part import ComponentContract
+        from .library_result import _symbol_refs
+
+        self.name = name
+        self.pins = tuple(pins)
+        if any(not isinstance(pin, PinSpec) for pin in self.pins):
+            raise TypeError("Component pins must be PinSpec instances")
+        if contract is not None and not isinstance(contract, ComponentContract):
+            raise TypeError("Component contract must be a ComponentContract")
+        self.schematic_symbols = _normalize_schematic_symbols(symbol)
+        self.properties = _freeze_value(dict(properties or {}))
+        self.contract = contract
+        super().__init__({
+            "identity": {"namespace": namespace, "name": source_name or name, "version": version},
+            "component_name": name,
+            "component_properties": _mutable_value(self.properties),
+            "pins": [pin._to_dict() for pin in self.pins],
+            "symbols": _symbol_refs(self.schematic_symbols),
+            "contract": None if contract is None else contract._to_dict(),
+        })
+        self._frozen = True
+
+
 class Library:
     """Collection of reusable Python-authored exact parts."""
 
@@ -539,21 +578,20 @@ class Library:
 
         return self.add(Part(name=name, **kwargs))
 
-    def electrical_model_builder(
-        self, name: str, **part_fields
-    ) -> PartElectricalModelBuilder:
-        """Begin a native model using the same fields as the eventual exact Part.
-
-        This does not register a Part. Reuse these fields with ``part()`` and pass
-        the finalized model as ``electrical_model``; native construction checks
-        that both definitions implement the identical component.
-        """
-        from .library_result import _part_artifact_payload
-        from .part import Part
-
-        declaration = Part(name=name, **part_fields)
-        declaration._bind_library(self)
-        return _volt.PartElectricalModelBuilder(_part_artifact_payload(declaration))
+    def component(
+        self, name: str, *, pins: Iterable[PinSpec],
+        symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
+        properties: dict | None = None,
+        contract: ComponentContract | None = None,
+        source_name: str | None = None,
+        source_version: str | None = None,
+    ) -> PartComponentDefinition:
+        """Define a native component once for model builders and implementing Parts."""
+        return PartComponentDefinition(
+            name, namespace=self.namespace, version=source_version or self.version,
+            pins=pins, symbol=symbol, properties=properties, contract=contract,
+            source_name=source_name,
+        )
 
     def __getitem__(self, name: str) -> Part:
         """Return a registered public part by name."""
@@ -586,7 +624,11 @@ class _PartFamily:
 
         overrides = dict(overrides)
         explicit_name = overrides.pop("name", None)
-        if "value" not in overrides:
+        if (
+            "value" not in overrides
+            and self._defaults.get("component") is None
+            and overrides.get("component") is None
+        ):
             overrides["value"] = key
 
         payload = _merge_part_family_payload(

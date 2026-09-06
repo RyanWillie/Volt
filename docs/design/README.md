@@ -37,11 +37,11 @@ into a Markdown document under `docs/` rather than editing the exported HTML.
   — approved owner-aligned Schematic/Board, `CompiledBoard`, artifact graph, bundle and
   project-tooling direction; focused ADRs freeze exact implementation contracts
 
-## Design notes and explorations
-
-- [`adr-part-electrical-model.md`](adr-part-electrical-model.md) — proposed E0 contract for
+- [`adr-part-electrical-model.md`](adr-part-electrical-model.md) — accepted and amended contract for
   exact-Part R/C/L composition, current-only persistence, typed DC testbench and read-only
   compilation; [single-page companion](part-electrical-model-contract.html)
+
+## Design notes and explorations
 
 - `circuit-aggregate-api.html` — single-page review companion for the accepted Circuit API
   ADR and migration roadmap

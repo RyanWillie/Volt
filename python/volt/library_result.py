@@ -286,6 +286,7 @@ def _part_artifact_payload(part: Part) -> dict[str, object]:
             "version": part.source_version or part.library.version,
         },
         "component_name": part.name,
+        "component": part.component,
         "component_properties": dict(part.properties),
         "pins": [pin._to_dict() for pin in part.pins],
         "contract": None if part.contract is None else part.contract._to_dict(),
@@ -370,6 +371,10 @@ def _part_provenance_payload(part: Part) -> dict[str, object]:
 
 
 def _part_symbol_refs(part: Part) -> list[dict[str, object]]:
+    return _symbol_refs(part.schematic_symbols)
+
+
+def _symbol_refs(symbols) -> list[dict[str, object]]:
     return [
         {
             "name": symbol.name,
@@ -380,7 +385,7 @@ def _part_symbol_refs(part: Part) -> list[dict[str, object]]:
                 for pin in symbol.pins
             ],
         }
-        for symbol in part.schematic_symbols
+        for symbol in symbols
     ]
 
 

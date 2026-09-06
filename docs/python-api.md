@@ -543,9 +543,11 @@ Part authoring and selects it in a logical Design:
 import volt
 
 library = volt.Library("example.passives", version="1")
-fields = dict(
-    pins=(volt.PinSpec("A", 1), volt.PinSpec("B", 2)),
+component = library.component(
+    "R330", pins=(volt.PinSpec("A", 1), volt.PinSpec("B", 2)),
     contract=volt.ComponentContract("example.passives/R330@1", ("A", "B")),
+)
+fields = dict(
     footprint=volt.Footprint(
         ("example.passives", "illustrative-2"),
         pads=(
@@ -556,14 +558,14 @@ fields = dict(
     pads={"A": "1", "B": "2"},
     manufacturer="Illustrative example", mpn="R330", package="ILLUSTRATIVE-2",
 )
-builder = library.electrical_model_builder("R330", **fields)
+builder = volt.PartElectricalModelBuilder(component)
 a = builder.terminal("a", "A")
 b = builder.terminal("b", "B")
-builder.resistance(
+builder.add(volt.ResistanceElement,
     "body", a, b,
     volt.ModelParameter(volt.ohms(330), tolerance=volt.Tolerance.percent(0.01)),
 )
-part = library.part("R330", **fields, electrical_model=builder.build())
+part = library.part("R330", component=component, **fields, electrical_model=builder.build())
 assert library.build().ok
 design = volt.Design("resistor")
 r1 = design.instantiate(part, ref="R1")
@@ -572,16 +574,19 @@ positive += r1["A"]
 negative += r1["B"]
 ```
 
-`Library.electrical_model_builder(name, **fields)` snapshots the component through the
-same native exact-Part lowering used by `Library.part`; it does not register a Part. Reuse
-the identical component fields for attachment. The native `PartDefinition` constructor
-rejects a model made against a different component identity, even when pin labels match.
+`Library.component(...)` creates a reusable `PartComponentDefinition` with an owning native
+component definition. Pass it directly to `PartElectricalModelBuilder(component)` and to
+`Library.part(..., component=component)`. Pins, symbols, properties and contract are declared
+once on the component; physical identity and mappings belong to each implementing Part.
+The native `PartDefinition` constructor rejects a model made against a different component
+identity, even when pin labels match.
 Complete the library before instantiating its Parts, because selection retains an immutable
 library closure.
 
 `terminal(key, pin_key)` binds exactly one contract pin; `internal_node(key)` declares a
-private model node. `resistance`, `capacitance`, and `inductance` each take a stable element
-key, two handles from that builder, and one `ModelParameter`. Finalization requires every
+private model node. `add(element_type, key, from_, to, parameter)` accepts exactly the native
+`ResistanceElement`, `CapacitanceElement` or `InductanceElement` class, a stable key, two
+handles from that builder, and one `ModelParameter`. Finalization requires every
 contract pin to have exactly one terminal and every terminal/internal node to be used.
 Keys and endpoint orientation are semantic; declaration order is not. Internal nodes never
 become Circuit pins or nets. Later builder changes cannot alter a finalized model.

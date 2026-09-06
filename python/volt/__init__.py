@@ -55,6 +55,7 @@ from .diagnostics import (
 )
 from .library import (
     Library,
+    PartComponentDefinition,
     PartModel3D,
     PinSpec,
     SchematicBlockPinSpec,
@@ -260,6 +261,7 @@ __all__ = [
     "ExpectedDiagnostic",
     "ExpectedDiagnosticResult",
     "Library",
+    "PartComponentDefinition",
     "LibraryDiagnostic",
     "LibraryDiagnostics",
     "LibraryPartArtifact",

@@ -33,12 +33,9 @@ rm "$example_dir/source/main.py" "$example_dir/output/library.voltlib"
 python "$example_dir/reopen.py" "$example_dir/output"
 ```
 
-`main.py` uses `Library.electrical_model_builder` to snapshot each normal exact-Part definition,
-then `Library.part(..., electrical_model=builder.build())` attaches the native immutable result.
-It writes a current PartLibraryBundle and ProjectBundle plus `expected.json`, an artifact
-expectation file. The independent `reopen.py` imports only `volt` and standard-library modules;
-it does not import the author or read the original library. Native `ProjectBundle.open` verifies
-the saved graph before the script compares unchanged Part bytes, values, tolerance and evidence.
+`main.py` declares each logical component once with `Library.component`, passes it to
+`PartElectricalModelBuilder`, and reuses it in `Library.part(component=...)`. One native
+`add(ElementType, ...)` operation authors all three closed R/C/L kinds with owned handles.
 
 Both model and canonical Voltage/Current evidence are vendored in this Python example.
 The reader also checks model absence and that the logical design still has five occurrences,

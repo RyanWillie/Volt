@@ -63,9 +63,16 @@ def _fields():
     )
 
 
+def _component(library, **overrides):
+    fields = _fields()
+    component_fields = {key: fields[key] for key in ("pins", "contract", "source_name")}
+    component_fields.update(overrides)
+    return library.component("Passive authoring proof", **component_fields)
+
+
 def _builder():
     library = volt.Library("test.authoring", version="1")
-    return library.electrical_model_builder("Passive authoring proof", **_fields())
+    return volt.PartElectricalModelBuilder(_component(library))
 
 
 def _model(builder, variant="resistor", *, equivalent=False):
@@ -81,26 +88,26 @@ def _model(builder, variant="resistor", *, equivalent=False):
             if equivalent
             else volt.Tolerance.percent(0.1, 0.2)
         )
-        builder.capacitance(
+        builder.add(volt.CapacitanceElement,
             "storage", y, b,
             volt.ModelParameter(volt.farads(10e-6), tolerance, evidence),
         )
-        builder.inductance(
+        builder.add(volt.InductanceElement,
             "esl", x, y,
             volt.ModelParameter(volt.henries(1e-9), volt.Tolerance.percent(-0.0)),
         )
-        builder.resistance(
+        builder.add(volt.ResistanceElement,
             "esr", a, x, volt.ModelParameter(volt.ohms(0.08), evidence=evidence)
         )
     elif variant == "capacitor":
-        builder.capacitance(
+        builder.add(volt.CapacitanceElement,
             "body", a, b,
             volt.ModelParameter(
                 volt.farads(2e-6), volt.Tolerance.percent(0.0, 0.2), evidence
             ),
         )
     elif variant == "inductor":
-        builder.inductance(
+        builder.add(volt.InductanceElement,
             "body", a, b, volt.ModelParameter(volt.henries(3e-3), evidence=evidence)
         )
     else:
@@ -119,7 +126,7 @@ def _model(builder, variant="resistor", *, equivalent=False):
             if equivalent
             else volt.ohms(nominal)
         )
-        builder.resistance(
+        builder.add(volt.ResistanceElement,
             "renamed" if variant == "renamed" else "body",
             b if variant == "reversed" else a,
             a if variant == "reversed" else b,
@@ -135,11 +142,13 @@ def _model(builder, variant="resistor", *, equivalent=False):
 def _authored(variant="resistor", *, equivalent=False):
     library = volt.Library("test.authoring", version="1")
     fields = _fields()
+    component = _component(library)
+    del fields["pins"], fields["contract"]
     model = None
     if variant != "absent":
-        builder = library.electrical_model_builder("Passive authoring proof", **fields)
+        builder = volt.PartElectricalModelBuilder(component)
         model = _model(builder, variant, equivalent=equivalent)
-    part = library.part("Passive authoring proof", **fields, electrical_model=model)
+    part = library.part("Passive authoring proof", component=component, **fields, electrical_model=model)
     return library, part, library.build()
 
 
@@ -211,16 +220,16 @@ def _invalid_case(case):
     foreign = _builder()
     foreign_a = foreign.terminal("a", "A")
     if case == "wrong_dimension":
-        builder.resistance(
+        builder.add(volt.ResistanceElement,
             "body", a, b,
             volt.ModelParameter(volt.Quantity(volt.UnitDimension.VOLTAGE, 1.0)),
         )
     elif case == "negative_r":
-        builder.resistance("body", a, b, volt.ModelParameter(volt.ohms(-1.0)))
+        builder.add(volt.ResistanceElement, "body", a, b, volt.ModelParameter(volt.ohms(-1.0)))
     elif case == "zero_c":
-        builder.capacitance("body", a, b, volt.ModelParameter(volt.farads(0.0)))
+        builder.add(volt.CapacitanceElement, "body", a, b, volt.ModelParameter(volt.farads(0.0)))
     elif case == "zero_l":
-        builder.inductance("body", a, b, volt.ModelParameter(volt.henries(0.0)))
+        builder.add(volt.InductanceElement, "body", a, b, volt.ModelParameter(volt.henries(0.0)))
     elif case == "nan":
         volt.Quantity(volt.UnitDimension.RESISTANCE, math.nan)
     elif case == "infinity":
@@ -233,12 +242,12 @@ def _invalid_case(case):
     elif case == "overflow":
         volt.ModelParameter(volt.ohms(sys.float_info.max), volt.Tolerance.percent(0.0, 1.0))
     elif case == "bounds":
-        builder.resistance(
+        builder.add(volt.ResistanceElement,
             "body", a, b,
             volt.ModelParameter(volt.ohms(1.0), volt.Tolerance.percent(1.01, 0.0)),
         )
     elif case == "foreign_handle":
-        builder.resistance("body", foreign_a, b, parameter)
+        builder.add(volt.ResistanceElement, "body", foreign_a, b, parameter)
     elif case == "duplicate_terminal":
         builder.terminal("a", "B")
     elif case == "duplicate_pin":
@@ -246,18 +255,18 @@ def _invalid_case(case):
     elif case == "foreign_pin":
         builder.terminal("other", "C")
     elif case == "same_endpoint":
-        builder.resistance("body", a, a, parameter)
+        builder.add(volt.ResistanceElement, "body", a, a, parameter)
     elif case == "duplicate_element":
-        builder.resistance("body", a, b, parameter)
-        builder.resistance("body", a, b, parameter)
+        builder.add(volt.ResistanceElement, "body", a, b, parameter)
+        builder.add(volt.ResistanceElement, "body", a, b, parameter)
     elif case == "missing_terminal":
         incomplete = _builder()
         one = incomplete.terminal("a", "A")
         node = incomplete.internal_node("x")
-        incomplete.resistance("body", one, node, parameter)
+        incomplete.add(volt.ResistanceElement, "body", one, node, parameter)
         incomplete.build()
     elif case == "unused_node":
-        builder.resistance("body", a, b, parameter)
+        builder.add(volt.ResistanceElement, "body", a, b, parameter)
         builder.internal_node("unused")
         builder.build()
     else:
@@ -293,7 +302,7 @@ def test_parameters_require_native_dimensioned_quantities(value):
     a = builder.terminal("a", "A")
     b = builder.terminal("b", "B")
     with pytest.raises(TypeError):
-        builder.resistance("body", a, b, value)
+        builder.add(volt.ResistanceElement, "body", a, b, value)
 
 
 @pytest.mark.parametrize("value", ({}, {"elements": []}, False, 0, "model", []))
@@ -314,7 +323,7 @@ def test_builder_requires_owned_handles_and_canonical_evidence_references():
     builder = _builder()
     a, b = builder.terminal("a", "A"), builder.terminal("b", "B")
     with pytest.raises(TypeError):
-        builder.resistance("body", a.key, b.key, volt.ModelParameter(volt.ohms(1.0)))
+        builder.add(volt.ResistanceElement, "body", a.key, b.key, volt.ModelParameter(volt.ohms(1.0)))
     for key_type in (volt.ModelTerminalKey, volt.ModelInternalNodeKey, volt.ModelElementKey):
         with pytest.raises(volt.InvalidArgumentError):
             key_type("")
@@ -328,7 +337,7 @@ def test_builder_requires_owned_handles_and_canonical_evidence_references():
     with pytest.raises(TypeError):
         builder.internal_node(volt.ModelTerminalKey("wrong-kind"))
     with pytest.raises(TypeError):
-        builder.resistance(volt.ModelTerminalKey("wrong-kind"), a, b, parameter)
+        builder.add(volt.ResistanceElement, volt.ModelTerminalKey("wrong-kind"), a, b, parameter)
 
 
 @pytest.mark.parametrize(
@@ -382,12 +391,12 @@ def test_all_si_helpers_reject_nonfinite_quantities(value):
             helper(value)
 
 
-@pytest.mark.parametrize("method,helper", (("capacitance", "farads"), ("inductance", "henries")))
-def test_positive_storage_values_allow_zero_deviations_but_not_zero_bounds(method, helper):
+@pytest.mark.parametrize("element_type,helper", ((volt.CapacitanceElement, "farads"), (volt.InductanceElement, "henries")))
+def test_positive_storage_values_allow_zero_deviations_but_not_zero_bounds(element_type, helper):
     for minus, plus in ((0.0, 0.0), (0.0, 0.2), (0.2, 0.0)):
         builder = _builder()
         a, b = builder.terminal("a", "A"), builder.terminal("b", "B")
-        getattr(builder, method)("body", a, b, volt.ModelParameter(
+        builder.add(element_type, "body", a, b, volt.ModelParameter(
             getattr(volt, helper)(1.0), volt.Tolerance.percent(minus, plus)
         ))
         assert len(builder.build().elements) == 1
@@ -395,7 +404,7 @@ def test_positive_storage_values_allow_zero_deviations_but_not_zero_bounds(metho
         builder = _builder()
         a, b = builder.terminal("a", "A"), builder.terminal("b", "B")
         with pytest.raises(volt.InvalidArgumentError):
-            getattr(builder, method)(
+            builder.add(element_type,
                 "body", a, b, volt.ModelParameter(getattr(volt, helper)(nominal), tolerance)
             )
 
@@ -431,8 +440,8 @@ def test_identical_spelling_in_distinct_key_types_does_not_join_nodes():
     a = builder.terminal(volt.ModelTerminalKey("shared"), "A")
     b = builder.terminal("b", "B")
     x = builder.internal_node(volt.ModelInternalNodeKey("shared"))
-    builder.resistance(volt.ModelElementKey("shared"), a, x, volt.ModelParameter(volt.ohms(1.0)))
-    builder.resistance("xb", x, b, volt.ModelParameter(volt.ohms(1.0)))
+    builder.add(volt.ResistanceElement, volt.ModelElementKey("shared"), a, x, volt.ModelParameter(volt.ohms(1.0)))
+    builder.add(volt.ResistanceElement, "xb", x, b, volt.ModelParameter(volt.ohms(1.0)))
     element = builder.build().elements[0]
     assert str(element.from_) == str(element.to) == "shared"
     assert type(element.from_) is volt.ModelTerminalKey
@@ -443,7 +452,7 @@ def test_identical_spelling_in_distinct_key_types_does_not_join_nodes():
 def test_builder_and_value_ownership_survives_collection_gc_and_later_mutation():
     builder = _builder()
     a, b = builder.terminal("a", "A"), builder.terminal("b", "B")
-    builder.resistance(
+    builder.add(volt.ResistanceElement,
         "body", a, b,
         volt.ModelParameter(volt.ohms(200.0), volt.Tolerance.percent(0.01), [_digest(EVIDENCE_A)]),
     )
@@ -453,7 +462,7 @@ def test_builder_and_value_ownership_survives_collection_gc_and_later_mutation()
     tolerance = element.parameter.tolerance
     evidence = element.parameter.evidence[0]
     terminal_key, element_key, endpoint = terminal.key, element.key, element.from_
-    builder.capacitance("later", a, b, volt.ModelParameter(volt.farads(1e-9)))
+    builder.add(volt.CapacitanceElement, "later", a, b, volt.ModelParameter(volt.farads(1e-9)))
     assert len(builder.build().elements) == 2
     assert len(model.elements) == 1
     returned = model.elements
@@ -481,7 +490,7 @@ def test_stale_and_foreign_private_handles_remain_foreign_after_gc():
         next_builder.internal_node("x")
         for from_, to in ((stale, b), (a, stale_node)):
             with pytest.raises(volt.CrossReferenceError) as error:
-                next_builder.resistance("body", from_, to, volt.ModelParameter(volt.ohms(1.0)))
+                next_builder.add(volt.ResistanceElement, "body", from_, to, volt.ModelParameter(volt.ohms(1.0)))
             assert error.value.code == "CrossReferenceViolation"
     assert str(stale.key) == "a"
     assert str(stale_node.key) == "x"
@@ -548,7 +557,77 @@ def test_library_bundle_requires_evidence_closure_for_authored_model():
     fields = _fields()
     fields["evidence_assets"] = ()
     library = volt.Library("test.authoring", version="1")
-    builder = library.electrical_model_builder("Passive authoring proof", **fields)
-    library.part("Passive authoring proof", **fields, electrical_model=_model(builder))
+    component = _component(library)
+    del fields["pins"], fields["contract"]
+    builder = volt.PartElectricalModelBuilder(component)
+    library.part("Passive authoring proof", component=component, **fields, electrical_model=_model(builder))
     with pytest.raises((ValueError, RuntimeError), match="[Ee]vidence|asset"):
         library.build().bundle_bytes
+
+
+def test_typed_component_is_reusable_without_physical_part_setup():
+    library = volt.Library("test.authoring", version="1")
+    component = _component(library, properties={"value": "display only"})
+    assert library.parts == ()
+    model = _model(volt.PartElectricalModelBuilder(component))
+    assert model.implemented_component == component.content_identity
+    fields = _fields()
+    del fields["pins"], fields["contract"], fields["source_name"]
+    family = library.part_family(component=component, **fields, electrical_model=model)
+    for name in ("First", "Second"):
+        family.part(name, name=name)
+    result = library.build()
+    assert result.ok
+    assert result.part("First").component_sha256 == result.part("Second").component_sha256
+    design = volt.Design("component reuse")
+    design.instantiate(library["First"], ref="R1")
+    definition = json.loads(design.to_json())["component_definitions"][0]
+    assert definition["properties"]["value"] == {"type": "string", "value": "display only"}
+    del component, library
+    gc.collect()
+    assert model.elements[0].parameter.nominal == volt.ohms(200)
+
+
+@pytest.mark.parametrize("field,value", (
+    ("pins", (volt.PinSpec("X", 1),)), ("symbol", ()),
+    ("properties", {}), ("contract", volt.ComponentContract("other", ("A", "B"))),
+    ("value", "47k"),
+))
+def test_component_fields_cannot_be_redeclared_on_part(field, value):
+    component = _component(volt.Library("test.authoring", version="1"))
+    with pytest.raises(TypeError, match="component replaces"):
+        volt.Part(name="Exact", component=component, **{field: value})
+
+
+def test_component_snapshot_is_immutable_and_builder_requires_typed_input():
+    properties = {"value": "original"}
+    library = volt.Library("test.authoring", version="1")
+    component = _component(library, properties=properties)
+    properties["value"] = "changed"
+    assert component.properties["value"] == "original"
+    with pytest.raises(AttributeError):
+        component.pins = ()
+    with pytest.raises(TypeError):
+        component.properties["value"] = "changed"
+    for value in ({}, {"pins": []}, None, library, volt.Part(name="P", pins=component.pins)):
+        with pytest.raises(TypeError):
+            volt.PartElectricalModelBuilder(value)
+    assert not hasattr(library, "electrical_model_builder")
+
+
+def test_generic_add_accepts_only_exact_native_element_classes_without_mutation():
+    builder = _builder()
+    a, b = builder.terminal("a", "A"), builder.terminal("b", "B")
+    parameter = volt.ModelParameter(volt.ohms(1))
+
+    class DerivedResistance(volt.ResistanceElement):
+        pass
+
+    element = volt.ResistanceElement("body", a.key, b.key, parameter)
+    for value in ("resistance", object, volt.ModelParameter, DerivedResistance, element, None):
+        with pytest.raises(TypeError, match="Element type must be"):
+            builder.add(value, "body", a, b, parameter)
+    assert builder.add(volt.ResistanceElement, "body", a, b, parameter) is builder
+    assert len(builder.build().elements) == 1
+    for old in ("resistance", "capacitance", "inductance"):
+        assert not hasattr(builder, old)

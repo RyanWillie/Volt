@@ -115,15 +115,17 @@ Inspection records: `volt.TemplateNetInfo`, `volt.PortInfo`, `volt.ModuleCompone
 
 ## Native Part electrical models
 
-Use `Library.electrical_model_builder(name, **part_fields)` to snapshot a normal exact-Part
-component, then attach `builder.build()` with `Library.part(..., electrical_model=model)`.
-The builder's `resistance`, `capacitance`, and `inductance` methods compose ideal passive
-linear elements over terminals and private nodes. These are native values and operations;
-Python does not own model validation, unit conversion, identity or serialization.
+Declare component fields once with `Library.component(...)`, pass the returned
+`PartComponentDefinition` to `PartElectricalModelBuilder(component)`, then attach its finalized
+model with `Library.part(..., component=component, electrical_model=model)`.
+The single `add(element_type, key, from_, to, parameter)` operation accepts exactly the
+native R/C/L element classes and builder-owned handles. Python does not own model
+validation, unit conversion, identity or serialization.
 
 | Export | Purpose |
 | --- | --- |
-| `volt.PartElectricalModelBuilder` | Native append-only builder with `terminal`, `internal_node`, typed element methods and immutable `build`. |
+| `volt.PartComponentDefinition` | Reusable owning native component definition for model authoring and exact Parts. |
+| `volt.PartElectricalModelBuilder` | Native append-only builder with `terminal`, `internal_node`, generic typed `add` and immutable `build`. |
 | `volt.PartElectricalModel` | Complete immutable model for one exact component identity, with terminal, internal-node and element inspection. |
 | `volt.ModelParameter` | Native nominal Quantity, optional normalized tolerance and immutable evidence hashes. |
 | `volt.ResistanceElement` | Oriented ideal resistance with finite nonnegative value and bounds, including zero ohms. |

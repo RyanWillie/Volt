@@ -74,20 +74,6 @@ template <typename Element> void bind_element(py::class_<Element> binding) {
         .def_property_readonly("parameter", &Element::parameter, py::return_value_policy::copy);
 }
 
-template <typename Element>
-void bind_builder_element(py::class_<PartElectricalModelBuilder> &binding, const char *name) {
-    binding.def(
-        name,
-        [](PartElectricalModelBuilder &builder, KeyInput<ModelElementKey> key,
-           const py::handle &from, const py::handle &to,
-           ModelParameter parameter) -> PartElectricalModelBuilder & {
-            return builder.add<Element>(key_value(std::move(key)), builder_endpoint(from),
-                                        builder_endpoint(to), std::move(parameter));
-        },
-        py::arg("key"), py::arg("from_"), py::arg("to"), py::arg("parameter"),
-        py::return_value_policy::reference_internal);
-}
-
 void bind_quantities(py::module_ &module) {
     py::enum_<UnitDimension>(module, "UnitDimension")
         .value("RESISTANCE", UnitDimension::Resistance)
@@ -211,32 +197,58 @@ void bind_electrical_model(py::module_ &module) {
                                py::return_value_policy::copy)
         .def("belongs_to", &PartElectricalModelBuilder::InternalNodeHandle::belongs_to,
              py::arg("builder"));
-    auto builder =
-        py::class_<PartElectricalModelBuilder>(module, "PartElectricalModelBuilder")
-            .def(py::init([](const py::dict &payload) {
-                     auto circuit = Circuit{};
-                     const auto id =
-                         circuit.define_component(component_spec_from_part_dict(payload));
-                     return std::make_unique<PartElectricalModelBuilder>(circuit.get(id));
-                 }),
-                 py::arg("component_payload"))
-            .def(
-                "terminal",
-                [](PartElectricalModelBuilder &value, KeyInput<ModelTerminalKey> key,
-                   KeyInput<PinKey> pin) {
-                    return value.terminal(key_value(std::move(key)), key_value(std::move(pin)));
-                },
-                py::arg("key"), py::arg("pin"))
-            .def(
-                "internal_node",
-                [](PartElectricalModelBuilder &value, KeyInput<ModelInternalNodeKey> key) {
-                    return value.internal_node(key_value(std::move(key)));
-                },
-                py::arg("key"))
-            .def("build", &PartElectricalModelBuilder::build);
-    bind_builder_element<ResistanceElement>(builder, "resistance");
-    bind_builder_element<CapacitanceElement>(builder, "capacitance");
-    bind_builder_element<InductanceElement>(builder, "inductance");
+    py::class_<PyPartComponentDefinition>(module, "_PartComponentDefinition")
+        .def(py::init([](const py::dict &payload) {
+            return PyPartComponentDefinition{component_spec_from_part_dict(payload)};
+        }))
+        .def_property_readonly("content_identity", [](const PyPartComponentDefinition &value) {
+            return value.definition().content_identity();
+        });
+
+    py::class_<PartElectricalModelBuilder>(module, "PartElectricalModelBuilder")
+        .def(py::init([](const PyPartComponentDefinition &component) {
+                 return std::make_unique<PartElectricalModelBuilder>(component.definition());
+             }),
+             py::arg("component"))
+        .def(
+            "terminal",
+            [](PartElectricalModelBuilder &value, KeyInput<ModelTerminalKey> key,
+               KeyInput<PinKey> pin) {
+                return value.terminal(key_value(std::move(key)), key_value(std::move(pin)));
+            },
+            py::arg("key"), py::arg("pin"))
+        .def(
+            "internal_node",
+            [](PartElectricalModelBuilder &value, KeyInput<ModelInternalNodeKey> key) {
+                return value.internal_node(key_value(std::move(key)));
+            },
+            py::arg("key"))
+        .def(
+            "add",
+            [](PartElectricalModelBuilder &builder, const py::handle &element_type,
+               KeyInput<ModelElementKey> key, const py::handle &from, const py::handle &to,
+               ModelParameter parameter) -> PartElectricalModelBuilder & {
+                if (element_type.is(py::type::of<ResistanceElement>())) {
+                    return builder.add<ResistanceElement>(
+                        key_value(std::move(key)), builder_endpoint(from), builder_endpoint(to),
+                        std::move(parameter));
+                }
+                if (element_type.is(py::type::of<CapacitanceElement>())) {
+                    return builder.add<CapacitanceElement>(
+                        key_value(std::move(key)), builder_endpoint(from), builder_endpoint(to),
+                        std::move(parameter));
+                }
+                if (element_type.is(py::type::of<InductanceElement>())) {
+                    return builder.add<InductanceElement>(
+                        key_value(std::move(key)), builder_endpoint(from), builder_endpoint(to),
+                        std::move(parameter));
+                }
+                throw py::type_error{"Element type must be ResistanceElement, CapacitanceElement "
+                                     "or InductanceElement"};
+            },
+            py::arg("element_type"), py::arg("key"), py::arg("from_"), py::arg("to"),
+            py::arg("parameter"), py::return_value_policy::reference_internal)
+        .def("build", &PartElectricalModelBuilder::build);
 }
 
 } // namespace volt::python

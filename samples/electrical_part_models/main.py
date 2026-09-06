@@ -22,12 +22,16 @@ def build_library():
     )
     evidence = (volt.content_hash(EVIDENCE),)
 
-    def fields(name):
-        return dict(
-            pins=(volt.PinSpec("A", 1), volt.PinSpec("B", 2)),
+    def component(name):
+        return library.component(
+            name, pins=(volt.PinSpec("A", 1), volt.PinSpec("B", 2)),
             contract=volt.ComponentContract(
                 f"volt.samples.electrical_models/{name}@1", ("A", "B")
             ),
+        )
+
+    def fields(name):
+        return dict(
             footprint=footprint,
             pads={"A": "1", "B": "2"},
             manufacturer="Volt illustrative examples",
@@ -38,33 +42,34 @@ def build_library():
             ),
         )
 
-    resistor_fields = fields("R330")
-    rb = library.electrical_model_builder("R330", **resistor_fields)
+    resistor_component = component("R330")
+    rb = volt.PartElectricalModelBuilder(resistor_component)
     a, b = rb.terminal("a", "A"), rb.terminal("b", "B")
-    rb.resistance(
+    rb.add(volt.ResistanceElement,
         "body", a, b,
         volt.ModelParameter(volt.ohms(330), volt.Tolerance.percent(0.01), evidence),
     )
     library.part(
-        "R330", **resistor_fields,
+        "R330", component=resistor_component, **fields("R330"),
         electrical_model=rb.build(), evidence_assets=(EVIDENCE,),
     )
 
-    capacitor_fields = fields("C-ideal")
-    cb = library.electrical_model_builder("C-ideal", **capacitor_fields)
+    capacitor_component = component("C-ideal")
+    cb = volt.PartElectricalModelBuilder(capacitor_component)
     a, b = cb.terminal("a", "A"), cb.terminal("b", "B")
-    cb.capacitance("storage", a, b, volt.ModelParameter(volt.farads(100e-9)))
-    library.part("C-ideal", **capacitor_fields, electrical_model=cb.build())
+    cb.add(volt.CapacitanceElement, "storage", a, b, volt.ModelParameter(volt.farads(100e-9)))
+    library.part("C-ideal", component=capacitor_component, **fields("C-ideal"), electrical_model=cb.build())
 
-    inductor_fields = fields("L-ideal")
-    lb = library.electrical_model_builder("L-ideal", **inductor_fields)
+    inductor_component = component("L-ideal")
+    lb = volt.PartElectricalModelBuilder(inductor_component)
     a, b = lb.terminal("a", "A"), lb.terminal("b", "B")
-    lb.inductance(
+    lb.add(volt.InductanceElement,
         "storage", a, b,
         volt.ModelParameter(volt.henries(10e-6), volt.Tolerance.percent(0)),
     )
-    library.part("L-ideal", **inductor_fields, electrical_model=lb.build())
+    library.part("L-ideal", component=inductor_component, **fields("L-ideal"), electrical_model=lb.build())
 
+    composite_component = component("C-ESR-ESL")
     composite_fields = fields("C-ESR-ESL")
     composite_fields["electrical_records"] = (
         volt.ElectricalRecord(
@@ -73,20 +78,20 @@ def build_library():
             evidence=(str(evidence[0]), str(volt.content_hash(VI_EVIDENCE))),
         ),
     )
-    xb = library.electrical_model_builder("C-ESR-ESL", **composite_fields)
+    xb = volt.PartElectricalModelBuilder(composite_component)
     a, b = xb.terminal("a", "A"), xb.terminal("b", "B")
     x, y = xb.internal_node("after_esr"), xb.internal_node("after_esl")
-    xb.resistance("esr", a, x, volt.ModelParameter(volt.ohms(0.08)))
-    xb.inductance("esl", x, y, volt.ModelParameter(volt.henries(1e-9)))
-    xb.capacitance(
+    xb.add(volt.ResistanceElement, "esr", a, x, volt.ModelParameter(volt.ohms(0.08)))
+    xb.add(volt.InductanceElement, "esl", x, y, volt.ModelParameter(volt.henries(1e-9)))
+    xb.add(volt.CapacitanceElement,
         "storage", y, b,
         volt.ModelParameter(volt.farads(10e-6), volt.Tolerance.percent(0.2), evidence),
     )
     library.part(
-        "C-ESR-ESL", **composite_fields, electrical_model=xb.build(),
+        "C-ESR-ESL", component=composite_component, **composite_fields, electrical_model=xb.build(),
         evidence_assets=(EVIDENCE, VI_EVIDENCE),
     )
-    library.part("unmodeled", **fields("unmodeled"))
+    library.part("unmodeled", component=component("unmodeled"), **fields("unmodeled"))
     return library
 
 

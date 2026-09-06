@@ -1,20 +1,39 @@
 # ADR: Minimal Part Electrical Model and Read-Only Compilation
 
-Status: proposed for maintainer acceptance in [#252](https://github.com/RyanWillie/Volt/issues/252).
-Merge/maintainer review is the acceptance gate; this document does not declare itself accepted.
+Status: accepted via [PR #369](https://github.com/RyanWillie/Volt/pull/369), merged
+2026-08-30. Amended 2026-09-06 following the maintainer-approved roadmap review.
 
-Program: [#250](https://github.com/RyanWillie/Volt/issues/250). Inspected baseline:
-`b40bb0e9daec1f76067ab6c0d5744c34c4365cb3` (2026-08-30).
+Program: [#250](https://github.com/RyanWillie/Volt/issues/250). The
+[single-page companion](part-electrical-model-contract.html) explains this normative contract.
+E1 native models and E2 persistence are implemented; E3 authoring is delivered through
+[PR #372](https://github.com/RyanWillie/Volt/pull/372). S1–S3 and later execution capabilities
+remain planned. Their illustrative signatures below are not current callable APIs.
 
-This ADR is the proposed normative contract. The
-[single-page companion](part-electrical-model-contract.html) explains it; the private
-[primer](https://ryan-explainer-shelf.ryanwillie.chatgpt.site/volt/electrical-simulation-primer)
-is background, not an additional requirement. All new API names below are **proposed
-sketches, not callable current APIs**. This change contains no product implementation.
+### Dated amendment — 2026-09-06
+
+- E3 uses one reusable native component authoring value and one generic typed element
+  insertion operation. Component fields are authored once and shared by the model builder
+  and implementing Part; a provisional Part or public dictionary-taking model constructor
+  is not the authoring boundary.
+- S1 owns request-local structural validation, exact-input binding and participation/coverage.
+  S2 owns model expansion, hierarchical continuity, resolved topology and compilation findings.
+  S3 owns numerical formulation, rank/solvability, conditioning, residuals and truthful outcomes.
+  Shared native preparation must not become competing net-resolution or readiness engines.
+- S2 preserves a small typed resolved graph with laws, parameters and origin mappings.
+  Backends may eliminate numerical coordinates only while preserving or reconstructing
+  observations, signs and provenance; canonical branches do not prescribe matrix unknowns.
+- S3 includes an early analytical and pinned-SPICE reference corpus. S5 reuses this proof
+  for the full public adapter; no separate setup issue or current adapter is implied.
+- Linear AC and linear transient are independently refinable after the shared S4 execution
+  contracts. AC before transient is a scheduling preference, not a technical dependency.
+  Nonlinear extensions remain later explicit refinement under #366.
+
+This amendment changes authoring guidance and future service responsibilities, not the
+implemented native model, value domains, identity, Circuit boundary or artifact formats.
 
 ## Decision and boundary
 
-An exact immutable `PartDefinition` may own one immutable `ElectricalModel`, composed from
+An exact immutable `PartDefinition` may own one immutable `PartElectricalModel`, composed from
 typed resistance, capacitance and inductance elements. A `ComponentDefinition` supplies the
 logical `PinKey` contract; a `ComponentInstance` supplies occurrence identity, exact selected
 `LibraryPartRef`, and Circuit-owned connectivity. No specialised product hierarchy or new
@@ -82,7 +101,7 @@ frequency/time-dependent parameters and initial conditions are outside this cont
 
 ### Terminals, private nodes and composition
 
-The proposed native vocabulary is closed:
+The native vocabulary is closed:
 
 ```text
 ModelTerminalKey, ModelInternalNodeKey, ModelElementKey    distinct stable key types
@@ -91,7 +110,7 @@ ModelInternalNode { key }
 ModelEndpoint = ModelTerminalKey | ModelInternalNodeKey
 Element = ResistanceElement | CapacitanceElement | InductanceElement
 Element { key, from, to, nominal_parameter }
-ElectricalModel { implemented_component_digest, terminals, internal_nodes, elements }
+PartElectricalModel { implemented_component_digest, terminals, internal_nodes, elements }
 ```
 
 An authoring builder is created against one immutable `ComponentDefinition`. It returns
@@ -212,7 +231,8 @@ The E2 contract is:
    invalid values, mismatched hashes/relationships and missing required closure members
    before publishing partial state. A recognized Part with an absent model stays absent.
 
-At the inspected baseline `volt.part` is v5, and PartLibraryBundle/ProjectBundle are v2.
+At the original E0 baseline `volt.part` was v5, and PartLibraryBundle/ProjectBundle were v2.
+E2 now implements Part v6, ProjectBundle v3 and unchanged PartLibraryBundle v2.
 E1 updates semantic identity immediately and explicitly rejects every write path unable to
 preserve a model-bearing Part until E2 supplies transport. E2 advances affected wire/schema
 and semantic versions, writers, readers, bindings, fixture producers and goldens atomically.
@@ -297,20 +317,27 @@ input identity. Reusing one Part twice must yield disjoint internal nodes and br
 sharing only Circuit-connected external nets. An element's distinct model endpoints may
 map to the same electrical node; that is valid Circuit design, not corrupt model data.
 
-The minimal immutable compiled representation is a closed incidence/law description:
+The minimal immutable compiled representation is a typed resolved graph with closed laws
+and provenance. Conservation is derived from its connectivity; authors do not maintain a
+second equation copy. It is not a matrix or a prescribed numerical formulation:
 
 | Record | Required content |
 | --- | --- |
 | Node | Stable compiled identity, logical-net members or occurrence-local origin |
-| Branch | Stable element/source origin, ordered node endpoints, oriented current unknown |
-| R/C/L law | Exact variant and nominal SI parameter; references to branch/node unknowns |
+| Branch | Stable element/source origin, ordered node endpoints, oriented current observation |
+| R/C/L law | Exact variant and nominal SI parameter; references to resolved branches/nodes |
 | Source law | Independent Voltage/Current constraint and testbench source origin |
 | Conservation | Signed branch incidence and KCL at each node; reference-potential constraint |
 | Storage | Capacitor voltage/charge `q=Cv`; inductor current/flux `phi=Li`, with derivative law |
 | Provenance | Input identities, exact selection, model/element keys, uncertainty/evidence and coverage |
 
-Node potentials and branch currents are unknowns. Charge/flux may be derived storage
-coordinates; implementations need not introduce redundant independent unknowns. For every
+Node potentials and branch currents define observable quantities, not mandatory independent
+matrix coordinates. S3 or another backend may derive an efficient formulation and eliminate
+coordinates only with a deterministic reconstruction to requested and mandatory observations,
+including their orientation and origin. For example, a resistor current may be reconstructed
+from its law; a DC capacitor current remains reportable as zero. Elimination must not erase
+an ideal branch current or arbitrarily choose a nonunique current. Charge/flux may be derived
+storage coordinates; implementations need not introduce redundant independent unknowns. For every
 branch, KCL receives `+i` at `from`, `-i` at `to`; coincident endpoints cancel in incidence
 but the branch and its law/provenance remain. Reference potential fixes the gauge at the
 explicit reference continuity group. Redundant KCL equations may be identified for
@@ -327,9 +354,10 @@ SPICE consumers derive from these same records, with origin-preserving lowering 
 unsupported status.
 
 Floating islands, inconsistent ideal constraints, nonunique currents and relevant open or
-shorted connectivity are design/analysis findings, not mutation errors. S1/S2 must detect
-the stated concrete topology/source cases without promising a complete rank test. A later
-numerical consumer remains responsible for truthful singular/inconsistent outcomes:
+shorted connectivity are design/analysis findings, not mutation errors. S1 validates request-local references and coverage without a second topology engine. S2
+owns the stated concrete resolved-topology/source findings without promising a complete rank
+test. S3 owns matrix solvability, conditioning, residuals and truthful singular/inconsistent
+outcomes:
 
 - an isolated resistor pair has an unfixed voltage gauge;
 - a capacitor-only DC path cannot provide a resistive reference path;
@@ -344,115 +372,60 @@ solver state. Inspection/serialization snapshots retain source identity and stor
 consumer's numerical results are separate objects keyed to that identity. Board, Schematic,
 Circuit and Part hashes/bytes remain unchanged by compile/solve.
 
-## 6. Worked authoring sketches
+## 6. Native and Python authoring
 
-These examples use **proposed** builder/attachment/inspection signatures. They intentionally
-do not compile on the baseline. Fixture inputs named below stand for complete current exact
-component/physical definitions and explicit library snapshots; they are not new convenience
-APIs or unspecified manufacturer claims. Values are illustrative.
-
-### C++: one interface for a resistor and a composite capacitor
+The [complete C++ and Python examples](https://github.com/RyanWillie/Volt/tree/main/samples/electrical_part_models)
+exercise authoring, exact selection, connectivity, save, source-free reopen and inspection.
+Values are illustrative, not manufacturer guarantees. C++ uses the native typed builder:
 
 ```cpp
-// Proposed E1 vocabulary; component has contract PinKeys A and B.
-ElectricalModelBuilder rb{component};
-const auto a = rb.terminal(ModelTerminalKey{"a"}, PinKey{"A"});
-const auto b = rb.terminal(ModelTerminalKey{"b"}, PinKey{"B"});
-rb.add(ResistanceElement{ModelElementKey{"body"}, a, b,
+PartElectricalModelBuilder builder{component};
+const auto a = builder.terminal(ModelTerminalKey{"a"}, PinKey{"A"});
+const auto b = builder.terminal(ModelTerminalKey{"b"}, PinKey{"B"});
+builder.add<ResistanceElement>(ModelElementKey{"body"}, a, b,
     ModelParameter{Quantity{UnitDimension::Resistance, 330.0},
-                   Tolerance::percent(0.01), {}}});
-const ElectricalModel resistor_model = rb.build();
-
-ElectricalModelBuilder cb{component};
-const auto p = cb.terminal(ModelTerminalKey{"p"}, PinKey{"A"});
-const auto n = cb.terminal(ModelTerminalKey{"n"}, PinKey{"B"});
-const auto x = cb.internal_node(ModelInternalNodeKey{"after_esr"});
-const auto y = cb.internal_node(ModelInternalNodeKey{"after_esl"});
-cb.add(ResistanceElement{ModelElementKey{"esr"}, p, x,
-    ModelParameter{Quantity{UnitDimension::Resistance, 0.08}, std::nullopt, {}}});
-cb.add(InductanceElement{ModelElementKey{"esl"}, x, y,
-    ModelParameter{Quantity{UnitDimension::Inductance, 1.0e-9}, std::nullopt, {}}});
-cb.add(CapacitanceElement{ModelElementKey{"storage"}, y, n,
-    ModelParameter{Quantity{UnitDimension::Capacitance, 10.0e-6},
-                   Tolerance::percent(0.20), {}}});
-const ElectricalModel capacitor_model = cb.build();
-
-// Existing exact-Part constructor inputs, plus the proposed optional final model input.
-const PartDefinition resistor{component, resistor_identity, records, pin_mapping,
-    dispositions, provenance, symbols, resistor_orderable, resistor_model};
-const PartDefinition capacitor{component, capacitor_identity, records, pin_mapping,
-    dispositions, provenance, symbols, capacitor_orderable, capacitor_model};
+                   Tolerance::percent(0.01), {}});
+const PartElectricalModel model = builder.build();
 ```
 
-The composite path is `A -> ESR -> x -> ESL -> y -> C -> B`. It is one physical Part with
-three model elements, not three Circuit components. A pure capacitor/inductor uses the same
-two terminals and one C/L element. Attaching either model to a different component digest
-rejects, even if its pin display names happen to match.
-
-```cpp
-// Existing typed selection/read pattern; exact library contains the authored resistor.
-const auto selected = library.require(PartKey{"R330-demo"});
-circuit.update(instance_id, SelectLibraryPart{library, selected});
-const auto &instance = circuit.get(instance_id);
-const auto &exact_part = library.resolve(*instance.selected_library_part_ref());
-// Proposed Part getter; does not copy the model into Circuit.
-const auto &model = exact_part.electrical_model();
-```
-
-`instance_id` is an existing occurrence of `component`, with its existing instance pin IDs
-connected through normal `Circuit::connect` operations. The resolver supplied for selection
-must validate the exact component relationship; this sketch does not introduce unchecked
-reference selection.
-
-### Python: native model values beneath concise authoring
+Python declares component fields once. `PartComponentDefinition` owns the complete native input
+and normalized definition; `PartElectricalModelBuilder` accepts that typed value directly:
 
 ```python
-# Proposed E3 vocabulary; all model objects below are native bindings.
-rb = ElectricalModelBuilder(component)
-a = rb.terminal("a", PinKey("A"))
-b = rb.terminal("b", PinKey("B"))
-rb.add(ResistanceElement("body", a, b,
-    ModelParameter(ohms(330), tolerance=Tolerance.percent(0.01))))
-resistor_model = rb.build()
-
-cb = ElectricalModelBuilder(component)
-p = cb.terminal("p", PinKey("A"))
-n = cb.terminal("n", PinKey("B"))
-x = cb.internal_node("after_esr")
-y = cb.internal_node("after_esl")
-cb.add(ResistanceElement("esr", p, x, ModelParameter(ohms(0.08))))
-cb.add(InductanceElement("esl", x, y, ModelParameter(henries(1e-9))))
-cb.add(CapacitanceElement("storage", y, n,
-    ModelParameter(farads(10e-6), tolerance=Tolerance.percent(0.20))))
-
-# complete_* contains existing exact Part identity, PinSpecs, physical mappings,
-# footprint and ComponentContract data; no duplicate nominal-value field.
-resistor = Part(**complete_resistor_fields, electrical_model=resistor_model)
-capacitor = Part(**complete_capacitor_fields, electrical_model=cb.build())
-library.add(resistor)
-library.add(capacitor)
-r1 = design.instantiate(resistor, ref="R1")
-input_net.connect(r1["A"])
-return_net.connect(r1["B"])
+component = library.component(
+    "R330", pins=(volt.PinSpec("A", 1), volt.PinSpec("B", 2)),
+    contract=volt.ComponentContract("example/R330@1", ("A", "B")),
+)
+builder = volt.PartElectricalModelBuilder(component)
+a = builder.terminal("a", "A")
+b = builder.terminal("b", "B")
+builder.add(volt.ResistanceElement, "body", a, b,
+    volt.ModelParameter(volt.ohms(330), volt.Tolerance.percent(0.01)))
+part = library.part("R330", component=component,
+    electrical_model=builder.build(), **physical_fields)
 ```
 
-The new `electrical_model` argument lowers directly to the native exact-Part constructor.
-String-to-typed-key conversion is syntax only; Python does not implement the laws or a
-parallel validator. The proposed SI helpers are native `Quantity` construction conveniences,
-not unit objects or Python arithmetic semantics. Selection and connection follow the current
-`Design.instantiate` and `Net.connect` pattern; E3 must make the complete sketch runnable
-and test lifetime safety.
+`physical_fields` denotes the footprint, mappings and exact manufacturer identity shown in
+the [runnable API example](../python-api.md#part-electrical-models). It contains no repeated
+component declaration. Component properties, including display value, are declared on the
+component. One component may be reused for multiple exact Parts and model builders.
+The single `add` accepts exactly the native `ResistanceElement`, `CapacitanceElement` or
+`InductanceElement` class and builder-owned endpoint handles. Portable element values are
+inspection/transport values; they do not bypass handle ownership during insertion.
 
-The persistence/inspection example required in E2/E3 is the following exact sequence, using
-the current bundle APIs rather than inventing a second loader:
+For a composite capacitor the same operation adds R from `a` to private `after_esr`, L from
+`after_esr` to private `after_esl`, then C from `after_esl` to `b`. This is one physical Part,
+not three Circuit components. Native Part construction checks the implemented component
+digest, even when foreign components have the same pin display names.
+
+String-to-typed-key conversion is syntax only. Quantities, laws, normalization, validation,
+identity and persistence remain native. Existing `Design.instantiate` and `Net.connect`
+select exact Parts and connect their logical pins. The complete examples prove this sequence:
 
 ```text
-author these exact Parts in an example-local library
-select R1 and C1; connect their contract pins in a logical-only project
-write the PartLibraryBundle and self-contained ProjectBundle
-remove authoring-source and source-library access from the load environment
-native reopen -> logical instance -> LibraryPartRef -> verified vendored Part
-inspect electrical_model -> same keys, normalized values, tolerance and evidence
+author exact Parts -> select and connect -> write library and logical-only project
+remove authoring-source and source-library access -> native reopen verified closure
+inspect the same model keys, normalized values, tolerances and evidence
 ```
 
 ### Multi-terminal proof and deliberate failures
@@ -483,7 +456,7 @@ existing slices; it does not change scopes, dispatch them, or mark any later iss
 
 | ID | Accepted requirement and finite proof | Owning issue |
 | --- | --- | --- |
-| E0-1 | Proposed normative ADR, sketches and companion agree; explicit amendments preserve V/I and Circuit boundaries | [#252](https://github.com/RyanWillie/Volt/issues/252) |
+| E0-1 | Accepted normative ADR, authoring examples and companion agree; explicit amendments preserve V/I and Circuit boundaries | [#252](https://github.com/RyanWillie/Volt/issues/252) |
 | M-1 | Native R/C/L dimensions, finite/domain/tolerance tests including R=0, C/L=0, wrong units and overflow | [#361](https://github.com/RyanWillie/Volt/issues/361) |
 | M-2 | Resistor, ideal C/L, C+ESR+ESL and three-terminal network; foreign handles, missing pins and duplicate keys reject; immutable lifetimes | [#361](https://github.com/RyanWillie/Volt/issues/361) |
 | M-3 | Optional model affects semantic identity; absent remains absent; transport incapable of preserving it rejects | [#361](https://github.com/RyanWillie/Volt/issues/361) |
@@ -492,15 +465,47 @@ existing slices; it does not change scopes, dispatch them, or mark any later iss
 | P-3 | Current-only writer/reader/schema/fixture migration, no old reader or silently lost supported field | [#362](https://github.com/RyanWillie/Volt/issues/362) |
 | A-1 | Runnable concise C++/Python resistor, ideal C/L and composite example; select/connect/save/reopen/inspect, native error/lifetime/hash/byte parity | [#363](https://github.com/RyanWillie/Volt/issues/363) |
 | T-1 | Typed DC sources/probes/reference/exclusions round-trip against exact inputs; wrong dimensions, foreign/stale refs reject | [#253](https://github.com/RyanWillie/Volt/issues/253) |
-| T-2 | Missing model/reference, incomplete coverage, contradictory stimulus and ordinary non-simulation build have truthful separate outcomes | [#253](https://github.com/RyanWillie/Volt/issues/253) |
+| T-2 | Missing model/reference, request-local invalid stimulus, incomplete coverage and ordinary non-simulation build have truthful separate outcomes | [#253](https://github.com/RyanWillie/Volt/issues/253) |
 | C-1 | Shared/hierarchical nets, repeated Parts/private nodes, open/shorted terminals, orientation and KCL map deterministically with provenance | [#254](https://github.com/RyanWillie/Volt/issues/254) |
 | C-2 | R0 constraints and ideal C/L storage retained; unsupported/incomplete never runnable; source-free inputs and immutable input hashes/bytes proven | [#254](https://github.com/RyanWillie/Volt/issues/254) |
 
-E1 -> E2 -> E3 completes correct Part authoring/persistence. S1 may follow E1 under its own
-readiness gate; S2 joins E3 and S1. Solvers, public execution and SPICE lowering remain later
-issues. Nonlinear devices, arbitrary IC/digital behaviour, behavioural callbacks, arbitrary
-waveforms, transient initial conditions/integration, AC analysis, noise, Monte Carlo,
-temperature/power laws and broader solver choices are explicitly unsupported here.
+### S1–S3 shared capability proof
+
+Use one resistor-divider case across the stages: author exact Parts, apply 5 V, request the
+midpoint voltage, obtain its analytical value, save/reopen the supported inputs and trace
+the answer to authored entities. S1 proves request binding and coverage; S2 proves expansion,
+continuity, laws and provenance; S3 proves the numerical answer and conservation residuals.
+Owner-local request/compiled/result codecs do not automatically add artifact kinds to
+ProjectBundle v3; bundle admission requires a focused schema decision.
+
+S3 [#364](https://github.com/RyanWillie/Volt/issues/364) must establish a finite versioned
+corpus while the native DC solver is developed: circuit/model/request fixtures, expected S1
+coverage, deterministic S2 law/origin snapshots, analytical answers or ill-posed
+classifications, and independently authored pinned-SPICE decks/results for supported cases.
+Record backend version, tolerances, polarity and conservation checks. Include the divider,
+R0 and DC C/L behavior, floating/nonunique/inconsistent ideal constraints, and incomplete
+coverage. Unsupported oracle cases remain explicit; agreement between two solvers alone is
+not proof. S5 [#255](https://github.com/RyanWillie/Volt/issues/255) reuses this corpus for its
+full generated adapter and public backend workflow. This is future acceptance evidence,
+not a claim that a solver, corpus or SPICE adapter exists in E3.
+
+### Remaining delivery sequence
+
+E1 -> E2 -> E3 completes correct Part authoring/persistence. S1 follows the amended E3
+handoff; S2 and S3 build the shared proof above, followed by S4 public execution #365 and
+S5's full adapter. Native issue blockers remain the execution authority.
+
+Linear AC [#368](https://github.com/RyanWillie/Volt/issues/368) and bounded linear transient
+[#367](https://github.com/RyanWillie/Volt/issues/367) each depend on #365 and can be refined
+independently of each other and nonlinear #366. Prefer AC before transient in serial
+scheduling. Direct linear R/C/L AC needs no nonlinear operating-point linearization;
+linear transient still needs an explicit initialization, integration and error-control
+contract. Biased nonlinear AC and nonlinear transient remain later explicit refinement
+under [#366](https://github.com/RyanWillie/Volt/issues/366).
+
+Nonlinear devices, arbitrary IC/digital behaviour, behavioural callbacks, arbitrary
+waveforms, transient/AC execution, noise, Monte Carlo and temperature/power laws remain
+unsupported by the E1–E3 implementation.
 
 Acceptance settles the semantic choices in this ADR. Implementation may choose internal
 layout and idiomatic spellings while preserving these tests; changing coverage, value

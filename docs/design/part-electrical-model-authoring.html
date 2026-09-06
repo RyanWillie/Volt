@@ -77,16 +77,19 @@
     <div class="number">02</div>
     <div>
       <h2>Begin with a single element</h2>
-      <p>Prepare the normal exact-Part <code>fields</code> once: pins, component contract, footprint, mappings and illustrative identity. The builder snapshots that same component without registering a Part.</p>
-      <pre><code>builder = library.electrical_model_builder("R330", **fields)
+      <p>Declare pins and contract once as a reusable native component. Use it for the model and each implementing Part; physical fields are supplied only when creating the Part.</p>
+      <pre><code>component = library.component("R330",
+    pins=(volt.PinSpec("A", 1), volt.PinSpec("B", 2)),
+    contract=volt.ComponentContract("example.passives/R330@1", ("A", "B")))
+builder = volt.PartElectricalModelBuilder(component)
 a = builder.terminal("a", "A")
 b = builder.terminal("b", "B")
-builder.resistance(
+builder.add(volt.ResistanceElement,
     "body", a, b,
     volt.ModelParameter(volt.ohms(330), volt.Tolerance.percent(0.01)),
 )
-part = library.part("R330", **fields, electrical_model=builder.build())</code></pre>
-      <p class="caption">This excerpt uses the complete <code>fields</code> in the <a href="../python-api.md#part-electrical-models">runnable API example</a>. The <a href="../../samples/electrical_part_models/main.py">full sample</a> also authors ideal C and L with <code>capacitance</code> and <code>inductance</code>.</p>
+part = library.part("R330", component=component, **fields, electrical_model=builder.build())</code></pre>
+      <p class="caption">This excerpt uses the physical <code>fields</code> in the <a href="../python-api.md#part-electrical-models">runnable API example</a>. The <a href="../../samples/electrical_part_models/main.py">full sample</a> also authors ideal C and L with the same <code>add</code> operation and native <code>CapacitanceElement</code> and <code>InductanceElement</code> types.</p>
       <p>Every parameter takes a native <code>Quantity</code>. <code>ohms(330)</code>, <code>farads(100e-9)</code> and <code>henries(10e-6)</code> construct native SI values. Bare numbers are rejected at the model parameter boundary.</p>
     </div>
   </section>
@@ -117,9 +120,9 @@ part = library.part("R330", **fields, electrical_model=builder.build())</code></
       </svg>
       <pre><code>x = builder.internal_node("after_esr")
 y = builder.internal_node("after_esl")
-builder.resistance("esr", a, x, volt.ModelParameter(volt.ohms(0.08)))
-builder.inductance("esl", x, y, volt.ModelParameter(volt.henries(1e-9)))
-builder.capacitance("storage", y, b,
+builder.add(volt.ResistanceElement, "esr", a, x, volt.ModelParameter(volt.ohms(0.08)))
+builder.add(volt.InductanceElement, "esl", x, y, volt.ModelParameter(volt.henries(1e-9)))
+builder.add(volt.CapacitanceElement, "storage", y, b,
     volt.ModelParameter(volt.farads(10e-6), volt.Tolerance.percent(0.2)))</code></pre>
       <p class="caption">Use a fresh builder for this composite. Each pin gets exactly one terminal; every declared node must be used. Handles from another builder reject. Keys and endpoint direction are part of exact identity.</p>
     </div>

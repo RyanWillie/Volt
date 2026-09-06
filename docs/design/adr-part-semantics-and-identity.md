@@ -4,11 +4,11 @@ Status: accepted
 
 Issue: [#291](https://github.com/RyanWillie/Volt/issues/291)
 
-### Focused E0 amendment pending acceptance
+### Accepted E0 amendment
 
-The [Part electrical-model ADR](adr-part-electrical-model.md), proposed in
-[#252](https://github.com/RyanWillie/Volt/issues/252), defines a narrow extension to this
-accepted decision. On maintainer acceptance it adds one optional immutable R/C/L model to
+The [Part electrical-model ADR](adr-part-electrical-model.md), accepted via
+[PR #369](https://github.com/RyanWillie/Volt/pull/369) and amended 2026-09-06, defines a narrow
+extension to this decision. It adds one optional immutable R/C/L model to
 the exact `PartDefinition` ownership and semantic digest described below, and admits typed
 Frequency/Time quantities only as analysis/source coordinates. Model parameters are not
 additional observables in canonical Voltage/Current records; existing V/I meanings,
@@ -19,8 +19,8 @@ portions of the exclusions below. It does not accept a simulation engine, backen
 implementation, canonical Power/Temperature/rating semantics, arbitrary formulas, or
 intrinsic instance overrides. Model presence, graph, parameters, tolerance and evidence
 enter exact Part identity and selected closure under the new ADR's current-only transport
-contract. Until accepted/implemented, the new API and transport are proposals, not current
-product capabilities.
+contract. E1/E2 implement the native model and its transport; the later testbench, compiler
+and numerical consumers remain planned.
 
 ## Decision
 

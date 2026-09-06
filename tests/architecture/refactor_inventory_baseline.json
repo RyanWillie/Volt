@@ -650,6 +650,11 @@
           "python_type": "ModelInternalNodeHandle"
         },
         {
+          "cpp_type": "PyPartComponentDefinition",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "_PartComponentDefinition"
+        },
+        {
           "cpp_type": "PartElectricalModelBuilder",
           "path": "src/python/electrical_model_bindings.cpp",
           "python_type": "PartElectricalModelBuilder"
@@ -882,6 +887,7 @@
         "PCB_VISUAL_DIAGNOSTIC_CODES",
         "PadResolution",
         "Part",
+        "PartComponentDefinition",
         "PartElectricalModel",
         "PartElectricalModelBuilder",
         "PartModel3D",
