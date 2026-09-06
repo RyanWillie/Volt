@@ -45,6 +45,7 @@ open_verified(const detail::BundleSource &source, detail::CapturedEntry manifest
     verify_reports(*storage, library, storage->v2_artifacts[storage->v2_diagnostics].bytes,
                    storage->v2_artifacts[storage->v2_tests].bytes, manifest.run);
     verify_exports(*storage, library, manifest.exports);
+    storage->v2_parts = std::move(library.parts);
     return storage;
 }
 

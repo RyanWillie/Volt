@@ -47,6 +47,8 @@ add_library(
     bom/bom_writer.cpp
     capabilities/board_capability_profile.cpp
     detail/entity_ref_format.cpp
+    electrical/dc_input.cpp
+    electrical/dc_request_io.cpp
     logical/logical_circuit_reader.cpp
     logical/logical_circuit_hierarchy_parser.cpp
     logical/logical_circuit_parser.cpp

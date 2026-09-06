@@ -11,6 +11,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <volt/electrical/dc_input.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
 #include <volt/schematic/symbols.hpp>
 
@@ -83,6 +84,9 @@ void decode_compiled_and_scenes(detail::ProjectBundleStorage &storage);
 void verify_owner_graph(detail::ProjectBundleStorage &storage, const LibraryDecoded &decoded,
                         const ArtifactIndex &index);
 [[nodiscard]] std::string write_decoded_bom(const Circuit &circuit, const LibraryDecoded &library);
+[[nodiscard]] DcInput
+prepare_decoded_dc_input(const Circuit &circuit,
+                         const std::map<std::string, std::unique_ptr<PartDefinition>> &parts);
 void verify_exports(detail::ProjectBundleStorage &storage, const LibraryDecoded &library,
                     const ExportSelection &selection);
 

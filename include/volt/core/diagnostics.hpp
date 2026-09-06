@@ -27,6 +27,7 @@ inline constexpr auto PcbVisual = std::string_view{"pcb.visual"};
 inline constexpr auto PcbFabrication = std::string_view{"pcb.fabrication"};
 inline constexpr auto Bom = std::string_view{"bom"};
 inline constexpr auto Assembly = std::string_view{"assembly"};
+inline constexpr auto Analysis = std::string_view{"analysis"};
 
 } // namespace diagnostic_categories
 
@@ -40,7 +41,8 @@ inline constexpr auto All = std::array{diagnostic_categories::General,
                                        diagnostic_categories::PcbVisual,
                                        diagnostic_categories::PcbFabrication,
                                        diagnostic_categories::Bom,
-                                       diagnostic_categories::Assembly};
+                                       diagnostic_categories::Assembly,
+                                       diagnostic_categories::Analysis};
 
 } // namespace diagnostic_category_catalogs
 
@@ -181,6 +183,18 @@ inline constexpr auto OrientationAmbiguous = std::string_view{"ASSEMBLY_ORIENTAT
 
 } // namespace assembly_diagnostic_codes
 
+namespace analysis_diagnostic_codes {
+
+inline constexpr auto DcReferenceMissing = std::string_view{"DC_REQUEST_REFERENCE_MISSING"};
+inline constexpr auto DcContradictoryVoltageSources =
+    std::string_view{"DC_REQUEST_CONTRADICTORY_VOLTAGE_SOURCES"};
+inline constexpr auto DcOccurrenceUnselected = std::string_view{"DC_OCCURRENCE_UNSELECTED"};
+inline constexpr auto DcOccurrenceUnresolved = std::string_view{"DC_OCCURRENCE_UNRESOLVED"};
+inline constexpr auto DcOccurrenceModelAbsent = std::string_view{"DC_OCCURRENCE_MODEL_ABSENT"};
+inline constexpr auto DcOccurrenceUnsupported = std::string_view{"DC_OCCURRENCE_UNSUPPORTED"};
+
+} // namespace analysis_diagnostic_codes
+
 namespace diagnostic_code_catalogs {
 
 inline constexpr auto Erc =
@@ -263,6 +277,14 @@ inline constexpr auto Assembly = std::array{assembly_diagnostic_codes::Component
                                             assembly_diagnostic_codes::PartIdentityMissing,
                                             assembly_diagnostic_codes::ComponentUnplaced,
                                             assembly_diagnostic_codes::OrientationAmbiguous};
+
+inline constexpr auto Analysis =
+    std::array{analysis_diagnostic_codes::DcReferenceMissing,
+               analysis_diagnostic_codes::DcContradictoryVoltageSources,
+               analysis_diagnostic_codes::DcOccurrenceUnselected,
+               analysis_diagnostic_codes::DcOccurrenceUnresolved,
+               analysis_diagnostic_codes::DcOccurrenceModelAbsent,
+               analysis_diagnostic_codes::DcOccurrenceUnsupported};
 
 } // namespace diagnostic_code_catalogs
 

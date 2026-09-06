@@ -565,6 +565,106 @@
           "python_type": "Circuit"
         },
         {
+          "cpp_type": "DcRequestKey",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcRequestKey"
+        },
+        {
+          "cpp_type": "DcSourceKey",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcSourceKey"
+        },
+        {
+          "cpp_type": "DcProbeKey",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcProbeKey"
+        },
+        {
+          "cpp_type": "DcInputIdentity",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcInputIdentity"
+        },
+        {
+          "cpp_type": "DcNetRef",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcNetRef"
+        },
+        {
+          "cpp_type": "DcOccurrenceRef",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcOccurrenceRef"
+        },
+        {
+          "cpp_type": "DcInput",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcInput"
+        },
+        {
+          "cpp_type": "DcNetPair",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcNetPair"
+        },
+        {
+          "cpp_type": "DcVoltageSource",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "_DcVoltageSource"
+        },
+        {
+          "cpp_type": "DcCurrentSource",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "_DcCurrentSource"
+        },
+        {
+          "cpp_type": "DcVoltageProbe",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "_DcVoltageProbe"
+        },
+        {
+          "cpp_type": "DcSourceCurrentProbe",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcSourceCurrentProbe"
+        },
+        {
+          "cpp_type": "DcModelElementCurrentProbe",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcModelElementCurrentProbe"
+        },
+        {
+          "cpp_type": "DcNonElectricalExclusion",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcNonElectricalExclusion"
+        },
+        {
+          "cpp_type": "DcOutsideAnalysisExclusion",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcOutsideAnalysisExclusion"
+        },
+        {
+          "cpp_type": "DcReplacedByStimulusExclusion",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcReplacedByStimulusExclusion"
+        },
+        {
+          "cpp_type": "DcOccurrenceExclusion",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcOccurrenceExclusion"
+        },
+        {
+          "cpp_type": "DcRequest",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcRequest"
+        },
+        {
+          "cpp_type": "DcOccurrenceCoverage",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcOccurrenceCoverage"
+        },
+        {
+          "cpp_type": "DcRequestAssessment",
+          "path": "src/python/dc_request_bindings.cpp",
+          "python_type": "DcRequestAssessment"
+        },
+        {
           "cpp_type": "Quantity",
           "path": "src/python/electrical_model_bindings.cpp",
           "python_type": "Quantity"
@@ -789,6 +889,7 @@
         ]
       },
       "python_exports": [
+        "ANALYSIS_DIAGNOSTIC_CODES",
         "ASSEMBLY_DIAGNOSTIC_CODES",
         "ArtifactId",
         "BOM_DIAGNOSTIC_CODES",
@@ -822,6 +923,27 @@
         "Cutout",
         "DIAGNOSTIC_CATEGORIES",
         "DRC_DIAGNOSTIC_CODES",
+        "DcCoverageStatus",
+        "DcCurrentSource",
+        "DcInput",
+        "DcInputIdentity",
+        "DcModelElementCurrentProbe",
+        "DcNetPair",
+        "DcNetRef",
+        "DcNonElectricalExclusion",
+        "DcOccurrenceCoverage",
+        "DcOccurrenceExclusion",
+        "DcOccurrenceRef",
+        "DcOutsideAnalysisExclusion",
+        "DcProbeKey",
+        "DcReplacedByStimulusExclusion",
+        "DcRequest",
+        "DcRequestAssessment",
+        "DcRequestKey",
+        "DcSourceCurrentProbe",
+        "DcSourceKey",
+        "DcVoltageProbe",
+        "DcVoltageSource",
         "Design",
         "Diagnostic",
         "DiagnosticEntity",
@@ -944,11 +1066,13 @@
         "UnitDimension",
         "UnknownEntityError",
         "VoltError",
+        "assess_dc_request",
         "content_hash",
         "farads",
         "henries",
         "hertz",
         "ohms",
+        "prepare_dc_input",
         "seconds"
       ]
     }

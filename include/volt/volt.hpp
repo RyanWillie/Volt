@@ -29,10 +29,12 @@
 #include <volt/core/quantities.hpp>
 #include <volt/core/rule_set.hpp>
 #include <volt/core/version.hpp>
+#include <volt/electrical/dc_request.hpp>
 #include <volt/electrical/passive_model.hpp>
 #include <volt/io/assembly/cpl_writer.hpp>
 #include <volt/io/bom/bom_writer.hpp>
 #include <volt/io/capabilities/board_capability_profile.hpp>
+#include <volt/io/electrical/dc_request_io.hpp>
 #include <volt/io/logical/logical_circuit_reader.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/parts/electrical_records_io.hpp>

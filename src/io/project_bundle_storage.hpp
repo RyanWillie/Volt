@@ -1,12 +1,14 @@
 #pragma once
 
 #include <cstddef>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/parts/part_definition.hpp>
 #include <volt/io/project_bundle.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/compiled/board_consumers.hpp>
@@ -68,6 +70,7 @@ class ProjectBundleStorage final {
     std::optional<DependencyLock> v2_dependency_lock;
     ExportSelection v2_export_selection;
     std::vector<V2Artifact> v2_artifacts;
+    std::map<std::string, std::unique_ptr<PartDefinition>> v2_parts;
     std::vector<V2Circuit> v2_circuits;
     std::vector<V2Schematic> v2_schematics;
     std::vector<V2Board> v2_boards;
