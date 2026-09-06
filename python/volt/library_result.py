@@ -236,7 +236,11 @@ def _validate_part(part: Part) -> tuple[_PartValidationFacts, tuple[LibraryDiagn
 
     serializable = True
     try:
-        json.dumps(part._to_dict(), sort_keys=True)
+        metadata = part._to_dict()
+        # This immutable native value has its own kernel writer. Only the
+        # authoring metadata needs the Python JSON-compatibility preflight.
+        del metadata["electrical_model"]
+        json.dumps(metadata, sort_keys=True)
     except (TypeError, ValueError) as error:
         serializable = False
         diagnostics.append(
@@ -282,13 +286,14 @@ def _part_artifact_payload(part: Part) -> dict[str, object]:
             "version": part.source_version or part.library.version,
         },
         "component_name": part.name,
+        "component": part.component,
         "component_properties": dict(part.properties),
         "pins": [pin._to_dict() for pin in part.pins],
         "contract": None if part.contract is None else part.contract._to_dict(),
         "electrical_records": [
             record._to_dict() for record in part.electrical_records
         ],
-        "electrical_model": None,
+        "electrical_model": part.electrical_model,
         "voltage_rating": part._voltage_rating_input,
         "provenance": _part_provenance_payload(part),
         "symbols": _part_symbol_refs(part),
@@ -321,7 +326,14 @@ def _part_artifact_payload(part: Part) -> dict[str, object]:
 
 
 def _part_asset_payloads(part: Part, payload: dict[str, object]) -> list[dict[str, object]]:
-    assets: list[dict[str, object]] = []
+    assets: list[dict[str, object]] = [
+        {
+            "kind": "evidence",
+            "key": "evidence:" + str(_volt.content_hash(data)),
+            "bytes": data,
+        }
+        for data in part.evidence_assets
+    ]
     for symbol, symbol_ref in zip(part.schematic_symbols, payload["symbols"], strict=True):
         assets.append(
             {
@@ -359,6 +371,10 @@ def _part_provenance_payload(part: Part) -> dict[str, object]:
 
 
 def _part_symbol_refs(part: Part) -> list[dict[str, object]]:
+    return _symbol_refs(part.schematic_symbols)
+
+
+def _symbol_refs(symbols) -> list[dict[str, object]]:
     return [
         {
             "name": symbol.name,
@@ -369,7 +385,7 @@ def _part_symbol_refs(part: Part) -> list[dict[str, object]]:
                 for pin in symbol.pins
             ],
         }
-        for symbol in part.schematic_symbols
+        for symbol in symbols
     ]
 
 

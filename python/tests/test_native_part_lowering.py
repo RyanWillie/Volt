@@ -210,7 +210,7 @@ def test_native_part_lowering_rejects_model_payload_instead_of_dropping_it(model
     payload = _part_artifact_payload(part)
     payload["electrical_model"] = model
 
-    with pytest.raises(ValueError, match="electrical model authoring is not supported"):
+    with pytest.raises(TypeError, match="must be a native PartElectricalModel"):
         volt._volt.PartLibrarySnapshot(library.namespace, library.version, [payload])
 
 

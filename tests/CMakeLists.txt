@@ -150,6 +150,34 @@ include(Catch)
 catch_discover_tests(volt_core_tests PROPERTIES LABELS cpp)
 
 add_executable(
+    volt_electrical_part_models_example
+    ${PROJECT_SOURCE_DIR}/samples/electrical_part_models/main.cpp
+)
+target_link_libraries(volt_electrical_part_models_example PRIVATE Volt::IO)
+target_compile_features(volt_electrical_part_models_example PRIVATE cxx_std_23)
+volt_apply_project_warnings(volt_electrical_part_models_example PRIVATE)
+volt_apply_clang_tidy(volt_electrical_part_models_example)
+volt_apply_sanitizers(volt_electrical_part_models_example)
+volt_apply_coverage(volt_electrical_part_models_example)
+add_test(
+    NAME electrical_part_models_native_example
+    COMMAND
+        ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/support/run_electrical_model_example.py
+        native $<TARGET_FILE:volt_electrical_part_models_example>
+)
+set_tests_properties(electrical_part_models_native_example PROPERTIES LABELS "cpp;docs")
+
+if(VOLT_BUILD_PYTHON)
+    add_test(
+        NAME electrical_part_models_python_example
+        COMMAND
+            ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/support/run_electrical_model_example.py
+            python ${PROJECT_SOURCE_DIR}/samples/electrical_part_models ${PROJECT_BINARY_DIR}/python
+    )
+    set_tests_properties(electrical_part_models_python_example PROPERTIES LABELS "python;docs")
+endif()
+
+add_executable(
     volt_pcb_resolution_link_contract
     pcb/board_resolution_pcb_link_test.cpp
 )
@@ -210,6 +238,13 @@ add_test(NAME io_project_bundle_link_contract COMMAND volt_io_project_bundle_lin
 set_tests_properties(io_project_bundle_link_contract PROPERTIES LABELS cpp)
 
 if(VOLT_BUILD_PYTHON)
+    add_executable(volt_part_model_authoring_fixture support/part_model_authoring_fixture.cpp)
+    target_link_libraries(volt_part_model_authoring_fixture PRIVATE Volt::IO)
+    target_compile_features(volt_part_model_authoring_fixture PRIVATE cxx_std_23)
+    volt_apply_project_warnings(volt_part_model_authoring_fixture PRIVATE)
+    volt_apply_sanitizers(volt_part_model_authoring_fixture)
+    volt_apply_coverage(volt_part_model_authoring_fixture)
+
     add_executable(volt_part_model_transport_fixture support/part_model_transport_fixture.cpp)
     target_link_libraries(volt_part_model_transport_fixture PRIVATE Volt::IO)
     target_compile_features(volt_part_model_transport_fixture PRIVATE cxx_std_23)

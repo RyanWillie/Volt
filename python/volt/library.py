@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
+from . import _volt
 from ._immutable import _freeze_value, _mutable_value
 from ._library_symbol_builders import (
     _default_two_terminal_symbol_spec,
@@ -21,6 +22,9 @@ from ._library_symbol_builders import (
 )
 from ._footprint import FootprintInput
 from ._utils import _coordinate, _number, _positive_coordinate
+
+if TYPE_CHECKING:
+    from .part import ComponentContract
 
 PinPadValue = str | tuple[str, ...] | list[str]
 
@@ -477,6 +481,45 @@ class SchematicSymbolSpec:
         return primitive
 
 
+class PartComponentDefinition(_volt._PartComponentDefinition):
+    """Reusable native component definition, independent of an exact physical Part."""
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if getattr(self, "_frozen", False):
+            raise AttributeError("Library component definitions are immutable")
+        super().__setattr__(name, value)
+
+    def __init__(
+        self, name: str, *, namespace: str, version: str,
+        pins: Iterable[PinSpec],
+        symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
+        properties: dict | None = None,
+        contract: ComponentContract | None = None,
+        source_name: str | None = None,
+    ) -> None:
+        from .part import ComponentContract
+        from .library_result import _symbol_refs
+
+        self.name = name
+        self.pins = tuple(pins)
+        if any(not isinstance(pin, PinSpec) for pin in self.pins):
+            raise TypeError("Component pins must be PinSpec instances")
+        if contract is not None and not isinstance(contract, ComponentContract):
+            raise TypeError("Component contract must be a ComponentContract")
+        self.schematic_symbols = _normalize_schematic_symbols(symbol)
+        self.properties = _freeze_value(dict(properties or {}))
+        self.contract = contract
+        super().__init__({
+            "identity": {"namespace": namespace, "name": source_name or name, "version": version},
+            "component_name": name,
+            "component_properties": _mutable_value(self.properties),
+            "pins": [pin._to_dict() for pin in self.pins],
+            "symbols": _symbol_refs(self.schematic_symbols),
+            "contract": None if contract is None else contract._to_dict(),
+        })
+        self._frozen = True
+
+
 class Library:
     """Collection of reusable Python-authored exact parts."""
 
@@ -535,6 +578,21 @@ class Library:
 
         return self.add(Part(name=name, **kwargs))
 
+    def component(
+        self, name: str, *, pins: Iterable[PinSpec],
+        symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
+        properties: dict | None = None,
+        contract: ComponentContract | None = None,
+        source_name: str | None = None,
+        source_version: str | None = None,
+    ) -> PartComponentDefinition:
+        """Define a native component once for model builders and implementing Parts."""
+        return PartComponentDefinition(
+            name, namespace=self.namespace, version=source_version or self.version,
+            pins=pins, symbol=symbol, properties=properties, contract=contract,
+            source_name=source_name,
+        )
+
     def __getitem__(self, name: str) -> Part:
         """Return a registered public part by name."""
         return self._parts[name]
@@ -566,7 +624,11 @@ class _PartFamily:
 
         overrides = dict(overrides)
         explicit_name = overrides.pop("name", None)
-        if "value" not in overrides:
+        if (
+            "value" not in overrides
+            and self._defaults.get("component") is None
+            and overrides.get("component") is None
+        ):
             overrides["value"] = key
 
         payload = _merge_part_family_payload(

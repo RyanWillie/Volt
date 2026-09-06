@@ -6,9 +6,11 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable
 
+from . import _volt
 from ._footprint import Footprint, FootprintInput, footprint_ref
 from ._immutable import _freeze_value, _mutable_value
 from .library import (
+    PartComponentDefinition,
     PartModel3D,
     PinPadValue,
     PinSpec,
@@ -17,6 +19,7 @@ from .library import (
 )
 
 if TYPE_CHECKING:
+    from .electrical import PartElectricalModel
     from .library import Library
 
 
@@ -481,7 +484,8 @@ class Part:
         self,
         *,
         name: str,
-        pins: Iterable[PinSpec],
+        pins: Iterable[PinSpec] | None = None,
+        component: PartComponentDefinition | None = None,
         symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
         footprint: FootprintInput | None = None,
         pads: dict[int | str, PinPadValue] | None = None,
@@ -493,6 +497,8 @@ class Part:
         voltage_rating: float | None = None,
         contract: ComponentContract | None = None,
         electrical_records: Iterable[ElectricalRecord] = (),
+        electrical_model: PartElectricalModel | None = None,
+        evidence_assets: Iterable[bytes] = (),
         provenance: PartProvenance | None = None,
         model_3d: PartModel3D | None = None,
         approved_alternate_mpns: Iterable[str] = (),
@@ -508,6 +514,17 @@ class Part:
             raise TypeError("Part prefix must be a string")
         if not prefix:
             raise ValueError("Part prefix must not be empty")
+        if component is not None:
+            if not isinstance(component, PartComponentDefinition):
+                raise TypeError("Part component must be a PartComponentDefinition")
+            if any(field is not None for field in (pins, symbol, properties, contract, value)):
+                raise TypeError("Part component replaces pins, symbol, properties, contract and value")
+            pins = component.pins
+            symbol = component.schematic_symbols
+            properties = _mutable_value(component.properties)
+            contract = component.contract
+        elif pins is None:
+            raise TypeError("Part requires pins or a PartComponentDefinition")
         normalized_pins = tuple(pins)
         alternate_mpns = tuple(str(mpn) for mpn in approved_alternate_mpns)
 
@@ -520,12 +537,20 @@ class Part:
             raise TypeError("Part electrical_records must contain ElectricalRecord instances")
         if voltage_rating is not None and records:
             raise TypeError("Part accepts either voltage_rating shorthand or electrical_records")
+        if electrical_model is not None and not isinstance(
+            electrical_model, _volt.PartElectricalModel
+        ):
+            raise TypeError("Part electrical_model must be a native PartElectricalModel")
+        evidence = tuple(evidence_assets)
+        if any(not isinstance(asset, bytes) for asset in evidence):
+            raise TypeError("Part evidence_assets must contain immutable bytes")
 
         logical_properties = dict(properties or {})
         if value is not None:
             logical_properties["value"] = value
 
         self.name = name
+        self.component = component
         self.pins = normalized_pins
         for pin in self.pins:
             if not isinstance(pin, PinSpec):
@@ -540,6 +565,8 @@ class Part:
         self.properties = _freeze_value(logical_properties)
         self.contract = contract
         self.electrical_records = records
+        self.electrical_model = electrical_model
+        self.evidence_assets = evidence
         self.provenance = provenance or PartProvenance()
         self._voltage_rating_input = (
             None if voltage_rating is None else float(voltage_rating)
@@ -585,7 +612,7 @@ class Part:
             "properties": _mutable_value(self.properties),
             "contract": None if self.contract is None else self.contract._to_dict(),
             "electrical_records": [record._to_dict() for record in self.electrical_records],
-            "electrical_model": None,
+            "electrical_model": self.electrical_model,
             "voltage_rating": self._voltage_rating_input,
             "provenance": self.provenance._to_dict(),
             "model_3d": None if self.model_3d is None else self.model_3d._to_dict(),

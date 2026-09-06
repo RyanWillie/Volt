@@ -1,6 +1,7 @@
 #pragma once
 
 #include "binding_component_conversions.hpp"
+#include "py_part_component_definition.hpp"
 
 #include <algorithm>
 #include <map>
@@ -874,17 +875,21 @@ struct LoweredPartDefinition {
     if (!dict.contains("electrical_model")) {
         throw std::invalid_argument{"Part artifact payload missing field: electrical_model"};
     }
+    auto electrical_model = std::optional<volt::PartElectricalModel>{};
     if (!dict["electrical_model"].is_none()) {
-        throw std::invalid_argument{
-            "Part electrical model authoring is not supported by this lowering boundary"};
+        if (!py::isinstance<volt::PartElectricalModel>(dict["electrical_model"])) {
+            throw py::type_error{"Part electrical_model must be a native PartElectricalModel"};
+        }
+        electrical_model = py::cast<volt::PartElectricalModel>(dict["electrical_model"]);
     }
-    auto component_spec = component_spec_from_part_dict(dict);
-    auto circuit = volt::Circuit{};
-    const auto component_id = circuit.define_component(component_spec);
-    const auto component = circuit.get(component_id);
+    const auto authored = dict.contains("component") && !dict["component"].is_none()
+                              ? py::cast<PyPartComponentDefinition>(dict["component"])
+                              : PyPartComponentDefinition{component_spec_from_part_dict(dict)};
+    auto component_spec = authored.spec();
+    const auto &component = authored.definition();
     const auto identity = required_dict_field(dict, "identity");
     const auto provenance = required_dict_field(dict, "provenance");
-    const auto pins = part_pins_from_list(required_list_field(dict, "pins"));
+    const auto &pins = authored.pins();
     const auto assets = part_assets_from_list(required_list_field(dict, "symbols"), pins);
     auto pin_mappings = std::vector<volt::PinPackageTerminalMapping>{};
     pin_mappings.reserve(pins.size());
@@ -904,7 +909,8 @@ struct LoweredPartDefinition {
                              optional_part_string_field(provenance, "authored_by", ""),
                              optional_part_string_field(provenance, "derived_from", "")},
         assets,
-        orderable_part_from_dict(required_dict_field(dict, "orderable_part"))};
+        orderable_part_from_dict(required_dict_field(dict, "orderable_part")),
+        std::move(electrical_model)};
     return LoweredPartDefinition{std::move(component_spec), component, std::move(part)};
 }
 

@@ -32,6 +32,9 @@ namespace {
     if (kind == "model_3d") {
         return volt::PartAssetKind::Model3D;
     }
+    if (kind == "evidence") {
+        return volt::PartAssetKind::Evidence;
+    }
     throw volt::KernelArgumentError{volt::ErrorCode::InvalidArgument,
                                     "Part asset kind is unsupported"};
 }
@@ -117,6 +120,7 @@ struct BuiltLibrary {
     std::optional<volt::io::PartLibraryBundle> selected_bundle;
     std::map<std::string, volt::ComponentSpec> component_specs;
     std::vector<volt::ComponentKey> component_roots;
+    std::vector<volt::io::PartLibraryBundleAttachment> part_attachments;
     std::vector<volt::io::PartLibraryBundleComponentAttachment> component_attachments;
 };
 
@@ -129,6 +133,7 @@ struct BuiltLibrary {
     auto specs = std::map<std::string, volt::ComponentSpec>{};
     auto component_digests = std::map<std::string, volt::ContentHash>{};
     auto component_roots = std::vector<volt::ComponentKey>{};
+    auto part_attachments = std::vector<volt::io::PartLibraryBundleAttachment>{};
     auto component_attachments = std::vector<volt::io::PartLibraryBundleComponentAttachment>{};
     auto selected = std::vector<volt::PartKey>{};
 
@@ -170,6 +175,23 @@ struct BuiltLibrary {
         const auto part_key = lowered.part.identity().name();
         selected.emplace_back(part_key);
         specs.emplace(part_key, std::move(lowered.component_spec));
+        auto evidence = std::set<std::string>{};
+        for (const auto &reference : volt::part_asset_references(lowered.part)) {
+            if (reference.kind() == volt::PartAssetKind::Evidence) {
+                evidence.insert(reference.digest().value());
+            }
+        }
+        for (const auto &record : lowered.part.electrical_records().records()) {
+            for (const auto &evidence_digest : record.evidence()) {
+                if (evidence.insert(evidence_digest.value()).second) {
+                    part_attachments.emplace_back(
+                        volt::PartKey{part_key},
+                        volt::PartAssetReference{volt::PartAssetKind::Evidence,
+                                                 "evidence:" + evidence_digest.value(),
+                                                 evidence_digest});
+                }
+            }
+        }
         builder.add_part(std::move(lowered.part));
         for (const auto asset_item : required_list_field(payload, "assets")) {
             resolver.add(py::cast<py::dict>(asset_item));
@@ -178,7 +200,7 @@ struct BuiltLibrary {
     auto bundle = std::optional<volt::io::PartLibraryBundle>{};
     if (selected_bundle) {
         bundle.emplace(volt::io::PartLibraryBundle::build_with_component_roots(
-            builder, selected, component_roots, resolver, {}, component_attachments));
+            builder, selected, component_roots, resolver, part_attachments, component_attachments));
     }
     auto library = builder.build(resolver);
     return BuiltLibrary{std::move(builder),
@@ -187,6 +209,7 @@ struct BuiltLibrary {
                         std::move(bundle),
                         std::move(specs),
                         std::move(component_roots),
+                        std::move(part_attachments),
                         std::move(component_attachments)};
 }
 
@@ -198,6 +221,7 @@ struct PyPartLibrary::State {
           library{std::move(built.library)}, selected_bundle{std::move(built.selected_bundle)},
           component_specs{std::move(built.component_specs)},
           component_roots{std::move(built.component_roots)},
+          part_attachments{std::move(built.part_attachments)},
           component_attachments{std::move(built.component_attachments)} {}
 
     volt::PartLibraryBuilder builder;
@@ -206,6 +230,7 @@ struct PyPartLibrary::State {
     std::optional<volt::io::PartLibraryBundle> selected_bundle;
     std::map<std::string, volt::ComponentSpec> component_specs;
     std::vector<volt::ComponentKey> component_roots;
+    std::vector<volt::io::PartLibraryBundleAttachment> part_attachments;
     std::vector<volt::io::PartLibraryBundleComponentAttachment> component_attachments;
 };
 
@@ -289,6 +314,11 @@ py::dict PyPartLibrary::exact_reference(const std::string &part_key) const {
     return library_part_reference_to_dict(require(part_key));
 }
 
+std::optional<volt::PartElectricalModel>
+PyPartLibrary::electrical_model(const std::string &part_key) const {
+    return resolver().resolve(require(part_key)).electrical_model();
+}
+
 std::string PyPartLibrary::digest() const { return resolver().reference_digest().value(); }
 
 py::bytes PyPartLibrary::bundle_bytes() const {
@@ -301,8 +331,8 @@ py::bytes PyPartLibrary::bundle_bytes() const {
         selected.emplace_back(part.identity().name());
     }
     const auto bundle = volt::io::PartLibraryBundle::build_with_component_roots(
-        state_->builder, selected, state_->component_roots, state_->resolver, {},
-        state_->component_attachments);
+        state_->builder, selected, state_->component_roots, state_->resolver,
+        state_->part_attachments, state_->component_attachments);
     return py::bytes{bundle.bytes()};
 }
 
@@ -366,6 +396,11 @@ py::dict PyPartLibraryBundle::part_result(const std::string &part_key) const {
     result["diagnostics"] = diagnostics_to_list(volt::validate_part_lineup(part));
     result["exact_reference"] = library_part_reference_to_dict(reference);
     return result;
+}
+
+std::optional<volt::PartElectricalModel>
+PyPartLibraryBundle::electrical_model(const std::string &part_key) const {
+    return bundle_.resolve(bundle_.require(volt::PartKey{part_key})).electrical_model();
 }
 
 py::list PyPartLibraryBundle::part_assets(const std::string &part_key) const {

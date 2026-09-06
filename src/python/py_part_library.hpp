@@ -3,6 +3,7 @@
 #include "binding_conversions.hpp"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <volt/circuit/connectivity/definitions.hpp>
@@ -32,6 +33,9 @@ class PyPartLibrary {
 
     [[nodiscard]] py::dict part_result(const std::string &part_key) const;
 
+    [[nodiscard]] std::optional<volt::PartElectricalModel>
+    electrical_model(const std::string &part_key) const;
+
     [[nodiscard]] py::dict exact_reference(const std::string &part_key) const;
 
     [[nodiscard]] std::string digest() const;
@@ -59,6 +63,9 @@ class PyPartLibraryBundle {
     [[nodiscard]] py::list part_keys() const;
 
     [[nodiscard]] py::dict part_result(const std::string &part_key) const;
+
+    [[nodiscard]] std::optional<volt::PartElectricalModel>
+    electrical_model(const std::string &part_key) const;
 
     [[nodiscard]] py::list part_assets(const std::string &part_key) const;
 

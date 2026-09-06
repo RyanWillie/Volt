@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="The proposed Volt E0 contract: exact Part-owned RLC models, deterministic persistence, explicit testbenches and read-only compilation. No solver required for the first milestone.">
+  <meta name="description" content="The accepted Volt electrical-model contract: exact Part-owned RLC models, deterministic persistence, explicit testbenches and read-only compilation. No solver required for the first milestone.">
   <meta name="color-scheme" content="light">
   <title>Volt E0 — Define the Part. Preserve the meaning.</title>
   <style>
@@ -54,10 +54,10 @@
 <body>
 <main>
   <header>
-    <div class="eyebrow">Volt · Electrical E0 · Contract review</div>
+    <div class="eyebrow">Volt · Accepted contract · Amended 6 September 2026</div>
     <h1>Define the Part.<br>Preserve the meaning.</h1>
     <p class="lead">An exact Part owns its electrical model. A Circuit connects its terminals. An explicit analysis asks a question. The first milestone stops before solving.</p>
-    <div class="status"><strong>Proposed, not yet accepted or implemented.</strong> This page explains the <a href="https://github.com/RyanWillie/Volt/pull/369/files">normative ADR proposal in PR #369</a> for <a href="https://github.com/RyanWillie/Volt/issues/252">#252</a>. Maintainer review and merge are the gate. API sketches below are proposals; tutorial values are illustrative.</div>
+    <div class="status"><strong>Accepted via PR #369; amended 6 September 2026.</strong> This page explains the <a href="adr-part-electrical-model.md">normative ADR</a>. Native models and persistence are implemented in E1/E2; <a href="https://github.com/RyanWillie/Volt/pull/372">E3</a> supplies Python authoring. Testbench, compilation and execution remain planned. Tutorial values are illustrative.</div>
     <nav aria-label="On this page"><a href="#ownership">Ownership</a><a href="#authoring">Authoring</a><a href="#values">Values &amp; limits</a><a href="#identity">Identity &amp; bundles</a><a href="#compile">Compilation</a><a href="#delivery">Delivery gates</a></nav>
   </header>
 
@@ -79,30 +79,32 @@
     <h2>A real capacitor can contain three ideal laws.</h2>
     <div class="circuit" role="img" aria-label="A connects through ESR resistance, internal node x, ESL inductance, internal node y and capacitance to B">A ─ <b>ESR</b> ─ x ─ <b>ESL</b> ─ y ─ <b>C</b> ─ B</div>
     <p class="small">One physical Part. Three elements. Two private internal nodes. A second instance gets its own x and y.</p>
-    <pre><code># Proposed Python bindings; native meaning and validation.
-cb = ElectricalModelBuilder(component)
-p = cb.terminal("p", PinKey("A"))
-n = cb.terminal("n", PinKey("B"))
+    <pre><code>component = library.component("C-ESR-ESL",
+    pins=(volt.PinSpec("A", 1), volt.PinSpec("B", 2)),
+    contract=volt.ComponentContract("example/capacitor@1", ("A", "B")))
+cb = volt.PartElectricalModelBuilder(component)
+p = cb.terminal("p", "A")
+n = cb.terminal("n", "B")
 x = cb.internal_node("after_esr")
 y = cb.internal_node("after_esl")
-cb.add(ResistanceElement("esr", p, x, ModelParameter(ohms(0.08))))
-cb.add(InductanceElement("esl", x, y, ModelParameter(henries(1e-9))))
-cb.add(CapacitanceElement("storage", y, n,
-    ModelParameter(farads(10e-6), tolerance=Tolerance.percent(0.20))))
-capacitor = Part(**complete_capacitor_fields, electrical_model=cb.build())</code></pre>
-    <p class="small"><code>complete_capacitor_fields</code> means the existing complete exact identity, PinSpecs, ComponentContract, footprint and physical mappings. The helpers return the existing native Quantity type. They do not introduce a second units framework.</p>
+cb.add(volt.ResistanceElement, "esr", p, x, volt.ModelParameter(volt.ohms(0.08)))
+cb.add(volt.InductanceElement, "esl", x, y, volt.ModelParameter(volt.henries(1e-9)))
+cb.add(volt.CapacitanceElement, "storage", y, n,
+    volt.ModelParameter(volt.farads(10e-6), tolerance=volt.Tolerance.percent(0.20)))
+capacitor = library.part("C-ESR-ESL", component=component,
+    electrical_model=cb.build(), **physical_fields)</code></pre>
+    <p class="small">Component fields are authored once and reused by the native builder and exact Part. <code>physical_fields</code> supplies exact manufacturer identity, footprint and mappings; see the <a href="part-electrical-model-authoring.html">runnable authoring guide</a>. One <code>add</code> operation accepts the closed native R/C/L types and owned handles.</p>
     <div class="grid">
       <article class="card"><h3>Plain resistor</h3><p>Bind A and B; add one resistance element with <code>ohms(330)</code> and <code>Tolerance.percent(0.01)</code>. The nominal is 330 Ω; the bounds are 326.7–333.3 Ω. No special product class.</p></article>
       <article class="card"><h3>Three-terminal network</h3><p>Two resistances connect A→COM and B→COM. Terminal currents are <code>i₁</code>, <code>i₂</code> and <code>−i₁−i₂</code>. A terminal may have several incident branches; its current is their signed sum.</p></article>
     </div>
-    <pre><code>// Proposed C++ element construction; existing Quantity foundation.
-rb.add(ResistanceElement{ModelElementKey{"body"}, a, b,
+    <pre><code>// Native C++ element insertion.
+rb.add&lt;ResistanceElement&gt;(ModelElementKey{"body"}, a, b,
     ModelParameter{Quantity{UnitDimension::Resistance, 330.0},
-                   Tolerance::percent(0.01), {}}});
-const ElectricalModel model = rb.build();</code></pre>
+                   Tolerance::percent(0.01), {}});
+const PartElectricalModel model = rb.build();</code></pre>
     <p>The builder binds every contract pin exactly once, rejects foreign handles and dangling endpoints, then freezes an immutable model. The first vocabulary requires every declared terminal/node to participate in an element. Unused logical pins and partial IC behaviour remain unsupported; omission never means “open circuit.” Disconnected resistor-array subnetworks are valid.</p>
-    <pre><code># Existing instance/connection pattern after the proposed model is attached.
-library.add(capacitor)
+    <pre><code># Select the exact Part and connect its logical pins.
 c1 = design.instantiate(capacitor, ref="C1")
 input_net.connect(c1["A"])
 return_net.connect(c1["B"])</code></pre>
@@ -138,18 +140,20 @@ return_net.connect(c1["B"])</code></pre>
       <li><strong>Both bundles preserve closure.</strong> PartLibraryBundle and ProjectBundle carry the complete Part model plus referenced model and canonical V/I evidence. A logical-only project needs no Board.</li>
       <li><strong>Native reopening uses vendored bytes only.</strong> No Python source, ambient library, network or cache supplies missing truth. Declared evidence with missing bytes is a structural closure failure.</li>
     </ol>
-    <div class="callout"><strong>Current-only migration.</strong> E1 must reject writes that cannot preserve a model. E2 updates affected schemas, readers, writers and fixtures together. Old artifacts are regenerated. E0 changes no product schema today.</div>
-    <p class="small">The existing ProjectBundle closure does not yet carry all this evidence. The ADR explicitly amends that boundary; this page does not claim it already works.</p>
+    <div class="callout"><strong>Current-only persistence.</strong> E2 implements Part v6, ProjectBundle v3 and PartLibraryBundle v2. Readers reject malformed or incomplete closure; old artifacts are regenerated from source. The September amendment changes no formats.</div>
+    <p class="small">The implemented selected-Part closure includes model and canonical V/I evidence, including logical-only projects.</p>
   </section>
 
   <section id="compile">
     <div class="eyebrow">05 / Equations first, execution later</div>
     <h2>A complete compilation is not a promised solution.</h2>
-    <p>The compiler reads Circuit topology, the explicit exact-Part resolver and a separate native DC request. It emits typed nodes, oriented branches, R/C/L laws, independent-source constraints, KCL, storage and stable origins. It owns the result without modifying any input.</p>
+    <p>The compiler reads Circuit topology, the explicit exact-Part resolver and a separate native DC request. The planned output is a small typed resolved graph of nodes, oriented branches, R/C/L laws, source constraints, storage and stable origins. KCL derives from connectivity. It owns the result without modifying any input.</p>
     <div class="grid">
       <article class="card"><h3>Testbench owns the question</h3><p>Explicit DC voltage/current sources, reference net and probes. A source across an unmodeled supply does not clear missing coverage. Whole-occurrence exclusions or replacements must be explicit, reasoned and reported; completeness applies only to that stated analysis boundary.</p></article>
       <article class="card"><h3>Compiler owns the mapping</h3><p>PinKey→instance pin→logical net, including hierarchical PortBindings. Internal nodes are private per instance. Unconnected pins get distinct derived nodes. No names, pads, ground labels or schematic wires create connectivity.</p></article>
     </div>
+    <p>S1 owns request-local validation, exact binding and coverage. S2 owns expansion, hierarchical continuity and resolved-topology findings. S3 owns numerical lowering, rank/solvability, conditioning and residuals. Share native preparation rather than building competing resolution engines.</p>
+    <p>Canonical branches preserve observations, not a mandatory matrix unknown per element. Backends may eliminate coordinates only with deterministic reconstruction of requested currents/voltages, signs and origins. Nonunique currents remain nonunique; no arbitrary answer or hidden shunt repairs an ideal constraint.</p>
     <p class="equation">KCL: +i leaves “from”; −i leaves “to”.</p>
     <p>DC sets storage derivatives to zero: C imposes i=0; L imposes v=0. The compiled model still retains the original positive C/L values and storage laws. A capacitor across an ideal voltage source does not add an independent state merely because it is a capacitor.</p>
     <div class="scroll"><table>
@@ -173,14 +177,17 @@ return_net.connect(c1["B"])</code></pre>
       <tbody>
         <tr><td><a href="https://github.com/RyanWillie/Volt/issues/361">E1 · #361</a></td><td>Native typed elements, immutable model, value/reference failures, exact identity and explicit refusal of lossy transport.</td></tr>
         <tr><td><a href="https://github.com/RyanWillie/Volt/issues/362">E2 · #362</a></td><td>Deterministic Part/library/project round trips, complete evidence, corruption rejection and source-free reopening.</td></tr>
-        <tr><td><a href="https://github.com/RyanWillie/Volt/issues/363">E3 · #363</a></td><td>Runnable C++/Python authoring, selection, connectivity and inspection parity. <strong>First milestone complete.</strong></td></tr>
-        <tr><td><a href="https://github.com/RyanWillie/Volt/issues/253">S1 · #253</a></td><td>Separate typed DC request, explicit participation and truthful readiness.</td></tr>
-        <tr><td><a href="https://github.com/RyanWillie/Volt/issues/254">S2 · #254</a></td><td>Read-only equations, hierarchy and private-node mapping, storage, provenance and unchanged inputs.</td></tr>
+        <tr><td><a href="https://github.com/RyanWillie/Volt/issues/363">E3 · #363</a></td><td>Runnable C++/Python authoring, selection, connectivity and inspection parity. <strong>Completes the first milestone through PR #372.</strong></td></tr>
+        <tr><td><a href="https://github.com/RyanWillie/Volt/issues/253">S1 · #253</a></td><td>Request-local validation, exact binding, explicit participation and coverage.</td></tr>
+        <tr><td><a href="https://github.com/RyanWillie/Volt/issues/254">S2 · #254</a></td><td>Typed resolved graph/laws, hierarchy, private nodes, topology findings and provenance.</td></tr>
+        <tr><td><a href="https://github.com/RyanWillie/Volt/issues/364">S3 · #364</a></td><td>Numerical outcomes and residuals plus an early analytical/pinned-SPICE reference corpus.</td></tr>
       </tbody>
     </table></div>
+    <p>The first S1–S3 proof is one 5 V resistor divider: bind, compile, solve, reopen supported inputs and trace the midpoint answer. Versioned analytical cases, law/origin snapshots and independent pinned-SPICE decks/results test polarity, conservation and ideal constraints while S3 is developed. S5 reuses this corpus for the full adapter. This proof remains future work.</p>
+    <p>Linear AC (#368) and bounded linear transient (#367) each depend on S4 (#365), independently of nonlinear #366 and each other. Prefer AC first when scheduling serial work. Transient still needs initialization and integration/error controls; nonlinear extensions require later explicit refinement.</p>
     <p>The normative ADR supplies the finite acceptance matrix. GitHub issues and native blockers retain work state; this page does not mark any later issue ready. Arbitrary IC behaviour, nonlinear vocabulary, transient/AC execution and broader solvers remain outside this contract.</p>
   </section>
-  <footer>Review baseline: b40bb0e · 30 August 2026 · Companion to the proposed E0 ADR.<br><a href="https://github.com/RyanWillie/Volt/issues/252">Contract gate #252</a> · <a href="https://github.com/RyanWillie/Volt/issues/250">Program #250</a> · <a href="https://ryan-explainer-shelf.ryanwillie.chatgpt.site/volt/electrical-simulation-primer">Electrical simulation primer</a></footer>
+  <footer>Accepted 30 August 2026 via PR #369 · Amended 6 September 2026 · Companion to the normative ADR.<br><a href="https://github.com/RyanWillie/Volt/issues/252">Contract gate #252</a> · <a href="https://github.com/RyanWillie/Volt/issues/250">Program #250</a> · <a href="https://ryan-explainer-shelf.ryanwillie.chatgpt.site/volt/electrical-simulation-primer">Electrical simulation primer</a></footer>
 </main>
 </body>
 </html>
