@@ -32,6 +32,8 @@ set(
     diagnostics.py
     dc.py
     dc.pyi
+    compilation.py
+    compilation.pyi
     electrical.py
     electrical.pyi
     cli/__init__.py
@@ -63,6 +65,7 @@ pybind11_add_module(
     board_bindings.cpp
     circuit_bindings.cpp
     dc_request_bindings.cpp
+    electrical_compilation_bindings.cpp
     electrical_model_bindings.cpp
     py_board.cpp
     py_circuit.cpp
@@ -165,6 +168,12 @@ if(VOLT_BUILD_TESTS)
             list(
                 APPEND test_environment
                 "VOLT_DC_REQUEST_PARITY_FIXTURE=set:$<TARGET_FILE:volt_dc_request_parity_fixture>"
+            )
+        endif()
+        if(test_name STREQUAL "test_electrical_compilation")
+            list(
+                APPEND test_environment
+                "VOLT_ELECTRICAL_COMPILATION_PARITY_FIXTURE=set:$<TARGET_FILE:volt_electrical_compilation_parity_fixture>"
             )
         endif()
 

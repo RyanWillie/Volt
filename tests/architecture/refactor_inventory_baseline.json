@@ -665,6 +665,16 @@
           "python_type": "DcRequestAssessment"
         },
         {
+          "cpp_type": "CompiledElectricalModel",
+          "path": "src/python/electrical_compilation_bindings.cpp",
+          "python_type": "CompiledElectricalModel"
+        },
+        {
+          "cpp_type": "ElectricalCompileReport",
+          "path": "src/python/electrical_compilation_bindings.cpp",
+          "python_type": "ElectricalCompileReport"
+        },
+        {
           "cpp_type": "Quantity",
           "path": "src/python/electrical_model_bindings.cpp",
           "python_type": "Quantity"
@@ -912,6 +922,7 @@
         "CapacitanceElement",
         "Circle",
         "CompiledBoardIdentity",
+        "CompiledElectricalModel",
         "Component",
         "ComponentContract",
         "ComponentDefinition",
@@ -952,6 +963,7 @@
         "DiagnosticReport",
         "DuplicateNameError",
         "ERC_DIAGNOSTIC_CODES",
+        "ElectricalCompileReport",
         "ElectricalCondition",
         "ElectricalRecord",
         "ElectricalRecordSelector",
@@ -1067,6 +1079,7 @@
         "UnknownEntityError",
         "VoltError",
         "assess_dc_request",
+        "compile_electrical",
         "content_hash",
         "farads",
         "henries",

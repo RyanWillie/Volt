@@ -58,6 +58,11 @@ from .dc import (
     assess_dc_request,
     prepare_dc_input,
 )
+from .compilation import (
+    CompiledElectricalModel,
+    ElectricalCompileReport,
+    compile_electrical,
+)
 from .diagnostics import (
     ASSEMBLY_DIAGNOSTIC_CODES,
     BOM_DIAGNOSTIC_CODES,
@@ -221,6 +226,7 @@ __all__ = [
     "ANALYSIS_DIAGNOSTIC_CODES",
     "CapacitanceElement",
     "ContentHash",
+    "CompiledElectricalModel",
     "DcCoverageStatus",
     "DcCurrentSource",
     "DcInput",
@@ -242,7 +248,9 @@ __all__ = [
     "DcSourceKey",
     "DcVoltageProbe",
     "DcVoltageSource",
+    "ElectricalCompileReport",
     "assess_dc_request",
+    "compile_electrical",
     "prepare_dc_input",
     "InductanceElement",
     "ModelElementKey",

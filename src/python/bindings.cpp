@@ -2,6 +2,7 @@
 #include "board_bindings.hpp"
 #include "circuit_bindings.hpp"
 #include "dc_request_bindings.hpp"
+#include "electrical_compilation_bindings.hpp"
 #include "electrical_model_bindings.hpp"
 #include "project_bundle_bindings.hpp"
 #include "schematic_bindings.hpp"
@@ -151,6 +152,7 @@ PYBIND11_MODULE(_volt, module) {
     register_kernel_error_translator(module);
     volt::python::bind_electrical_model(module);
     volt::python::bind_dc_request(module);
+    volt::python::bind_electrical_compilation(module);
     volt::python::bind_circuit(module);
     volt::python::bind_schematic(module);
     volt::python::bind_board(module);
