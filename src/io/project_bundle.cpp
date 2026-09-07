@@ -13,6 +13,7 @@
 #include "project_bundle_storage.hpp"
 #include "project_bundle_v2.hpp"
 #include "project_bundle_v2_contract.hpp"
+#include "project_bundle_v2_internal.hpp"
 
 namespace volt::io {
 namespace {
@@ -84,6 +85,10 @@ ProjectBundleArtifactView LoadedLogicalModelView::artifact() const {
 
 const Circuit &LoadedLogicalModelView::model() const & {
     return *storage_->v2_circuits.at(index_).model;
+}
+
+DcInput LoadedLogicalModelView::dc_input() const {
+    return v2_open::prepare_decoded_dc_input(model(), storage_->v2_parts);
 }
 
 LoadedSchematicView::LoadedSchematicView(

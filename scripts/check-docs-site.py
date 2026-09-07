@@ -33,6 +33,7 @@ REQUIRED_PAGES = {
     "api/python/library",
     "api/python/schematic",
     "api/python/pcb",
+    "api/python/dc",
     "api/python/diagnostics",
 }
 

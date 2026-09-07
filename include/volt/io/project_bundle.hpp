@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <volt/electrical/dc_input.hpp>
 #include <volt/io/project_bundle_writer.hpp>
 
 namespace volt::io {
@@ -95,6 +96,8 @@ class LoadedLogicalModelView final {
     /** Return the immutable reopened Circuit. */
     [[nodiscard]] const Circuit &model() const &;
     [[nodiscard]] const Circuit &model() const && = delete;
+    /** Lazily capture an owning exact DC input from the verified vendored Part closure. */
+    [[nodiscard]] DcInput dc_input() const;
 
   private:
     std::shared_ptr<const detail::ProjectBundleStorage> storage_;

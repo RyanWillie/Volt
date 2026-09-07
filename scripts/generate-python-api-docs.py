@@ -26,6 +26,7 @@ PAGE_ORDER = (
     "library",
     "schematic",
     "pcb",
+    "dc",
     "diagnostics",
 )
 PAGE_TITLES = {
@@ -36,6 +37,7 @@ PAGE_TITLES = {
     "library": "Library",
     "schematic": "Schematic",
     "pcb": "PCB",
+    "dc": "DC Requests",
     "diagnostics": "Diagnostics",
 }
 PAGE_DESCRIPTIONS = {
@@ -46,6 +48,7 @@ PAGE_DESCRIPTIONS = {
     "library": "Generated reference for library, component, pin, and schematic symbol specs.",
     "schematic": "Generated reference for schematic sheets, drawing helpers, and presentation handles.",
     "pcb": "Generated reference for PCB board, footprint, pad, and placement helpers.",
+    "dc": "Generated reference for immutable DC inputs, requests, probes, and coverage.",
     "diagnostics": "Generated reference for diagnostics and validation report objects.",
 }
 PUBLIC_MAGIC_METHODS = {
@@ -109,6 +112,8 @@ def module_page(module: str) -> str:
         return "library"
     if module in {"pcb", "_footprint", "_pcb_layout"}:
         return "pcb"
+    if module == "dc":
+        return "dc"
     if module in {"schematic", "_schematic_handles"}:
         return "schematic"
     if module == "logical":

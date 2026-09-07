@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Volt S1: a DC request is not a solve</title>
+<style>
+:root{color-scheme:light dark;font-family:system-ui,sans-serif;line-height:1.6;background:#f4f3ed;color:#202c31}body{max-width:850px;margin:auto;padding:40px 22px 72px}h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.12;letter-spacing:-.04em}h2{margin-top:2.2rem;line-height:1.25}p,li{max-width:75ch}a{color:#13675d}code{font-size:.9em}pre{padding:20px;background:#e8ece7;overflow:auto;border-radius:8px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #c6d0c9;vertical-align:top}.eyebrow{font-weight:700;color:#13675d;letter-spacing:.12em;font-size:.8rem}.note{border-left:4px solid #bd7137;padding:8px 18px;background:#f5e9d7}footer{margin-top:48px;font-size:.85rem;color:#536267}@media(prefers-color-scheme:dark){:root{background:#172227;color:#e5ece8}a,.eyebrow{color:#82d3c2}pre{background:#243338}.note{background:#382f23}th,td{border-color:#405258}footer{color:#abbcb6}}
+</style>
+</head>
+<body>
+<p class="eyebrow">VOLT · SIMULATION S1 · CONTRACT GUIDE</p>
+<h1>A DC request is not a solve.</h1>
+<p>S1 captures exactly what you want to drive, observe and include, then checks that the request has valid references and declared Part-model coverage. It does not expand topology or calculate voltages and currents.</p>
+<div class="note"><strong><code>assessment.complete</code> means request-local completeness only.</strong> Floating networks, hierarchy continuity, global source loops, rank and convergence are not certified.</div>
+
+<h2>Three owners, one direction</h2>
+<table><thead><tr><th>Owner</th><th>Meaning</th></tr></thead><tbody>
+<tr><td>Exact Part</td><td>Intrinsic R/C/L model, stable terminals, internal nodes and element keys.</td></tr>
+<tr><td>Logical Circuit</td><td>Occurrences, selected exact Parts, pins, nets and connectivity.</td></tr>
+<tr><td>DC request</td><td>Reference net, independent ideal sources, observations and explicit whole-occurrence exclusions.</td></tr>
+</tbody></table>
+<p>None of the request operations changes the Circuit or its Parts. A pin rating, ProvidedRange, CurrentCapability, net name or ground kind never creates excitation. Adding an ideal source does not silently replace a physical power supply.</p>
+
+<h2>Capture first; author against the snapshot</h2>
+<pre><code>import volt
+
+# d, supply and return_net are existing authoring objects.
+input = volt.prepare_dc_input(d)
+positive = input.net(supply)
+negative = input.net(return_net)
+request = volt.DcRequest(
+    "operating-point", input, reference=negative,
+    sources=[volt.DcVoltageSource(
+        "drive", positive, negative,
+        volt.Quantity(volt.UnitDimension.VOLTAGE, 5.0),
+    )],
+    probes=[
+        volt.DcVoltageProbe("rail", positive, negative),
+        volt.DcSourceCurrentProbe("supply-current", "drive"),
+    ],
+)
+assessment = request.assess()
+for entry in assessment.coverage:
+    print(entry.occurrence.index, entry.status)
+for diagnostic in assessment.diagnostics:
+    print(diagnostic["code"], diagnostic["message"])</code></pre>
+<p>The native input owns an immutable logical snapshot and resolved exact Parts. Its identity combines canonical logical bytes and occurrence-keyed exact Part references. References from different or stale content reject; independently reopened identical content is interchangeable. Existing captured references remain valid after authoring changes, but converting a newly stale authoring handle rejects.</p>
+
+<h2>Participation is explicit</h2>
+<p>Every occurrence participates by default, including DNP and unplaced occurrences. An explicit exclusion changes only this request:</p>
+<pre><code>replacement = volt.DcOccurrenceExclusion(
+    input.occurrence(physical_supply),
+    volt.DcReplacedByStimulusExclusion(["drive"]),
+)
+# Pass exclusions=[replacement] when constructing the request.</code></pre>
+<p><code>DcNonElectricalExclusion()</code> and <code>DcOutsideAnalysisExclusion()</code> are the other typed reasons. Every exclusion remains inspectable in the request and assessment. Replacement keys must name existing sources; the request does not infer the author's replacement intent.</p>
+<table><thead><tr><th>Coverage</th><th>Interpretation</th></tr></thead><tbody>
+<tr><td>Supported</td><td>The selected, resolved Part has a model in the bounded R/C/L vocabulary.</td></tr>
+<tr><td>Excluded</td><td>The occurrence is explicitly out of scope, with the typed reason retained.</td></tr>
+<tr><td>Unselected</td><td>No exact Part was selected.</td></tr>
+<tr><td>Unresolved</td><td>The exact selected Part is unavailable to the supplied resolver.</td></tr>
+<tr><td>Model-absent</td><td>The exact Part is valid but declares no electrical model.</td></tr>
+<tr><td>Unsupported</td><td>Reserved for a law outside this consumer. Unreachable with the current closed R/C/L model vocabulary.</td></tr>
+</tbody></table>
+<p>Missing behavior is never interpreted as a zero or open element. Model-absent Parts remain valid for ordinary authoring and manufacturing workflows.</p>
+
+<h2>Reject bad structure; report incomplete intent</h2>
+<p>Native constructors reject dangling or foreign references, duplicate source/probe keys, wrong dimensions, nonfinite values, identical source endpoints and invalid probe/replacement targets. Zero and negative finite source values are valid. Voltage probes may compare a net with itself. Model-element current probes name a participating occurrence and an exact model element key.</p>
+<p>A missing reference is an error diagnostic, not an invented ground. Unequal ideal voltage constraints on the same authored net pair are diagnosed, accounting for reversed orientation. S1 performs no global source-loop reasoning.</p>
+
+<h2>Save the request; reopen against verified input</h2>
+<pre><code>from pathlib import Path
+
+Path("request.json").write_text(request.to_json(), encoding="utf-8")
+bundle = volt.ProjectBundle.open("project.volt")
+reopened_input = bundle.graph.loaded_project.circuits[0].dc_input()
+reopened = volt.DcRequest.from_json(
+    reopened_input, Path("request.json").read_bytes()
+)</code></pre>
+<p>The standalone current-only <code>volt.dc-request</code> version 1 format stores both input digests, typed local IDs, sources, probes and exclusions. It requires the exact matching input when read. Collections are canonicalized; unknown fields, duplicate JSON keys, old versions and malformed variants reject. The existing verified ProjectBundle supplies logical and exact-Part data without importing authoring source. The request is a separate file, not an embedded ProjectBundle artifact; no runtime handles or computed results are persisted.</p>
+
+<h2>Where this slice stops</h2>
+<p><strong>S1:</strong> request validity and model coverage. <strong>S2:</strong> model expansion, hierarchy and topology. <strong>S3:</strong> numerical solvability and results. Ordinary build, check and manufacturing never run a solver implicitly.</p>
+<footer>Implementation contract for <a href="https://github.com/RyanWillie/Volt/issues/253">Volt #253</a>. This page describes capability, not PR merge or CI status. Native APIs: <code>volt/electrical/dc_request.hpp</code> and <code>volt/io/electrical/dc_request_io.hpp</code>.</footer>
+</body>
+</html>

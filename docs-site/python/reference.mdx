@@ -10,7 +10,7 @@ This page is the human-readable index for the public names exported by `volt.__a
 </Note>
 
 <Card title="Generated Python API Reference" icon="book-open" href="/api/python/index">
-  Browse generated pages for `Project`, `Design`, logical handles, library specs, schematic authoring, PCB authoring, and diagnostics.
+  Browse generated pages for `Project`, `Design`, logical handles, library specs, schematic authoring, PCB authoring, DC requests, and diagnostics.
 </Card>
 
 ## Design root
@@ -158,6 +158,36 @@ separate from canonical Voltage/Current ratings and physical guarantees. An unmo
 IC remains unsupported, and defining a passive model does not certify full-design simulation.
 The [runnable examples](https://github.com/RyanWillie/Volt/tree/main/samples/electrical_part_models)
 demonstrate a resistor, ideal C/L, a composite C+ESR+ESL Part, and source-free bundle reopening.
+
+## DC requests
+
+`volt.prepare_dc_input` captures an immutable `volt.DcInput` from a `volt.Design`. Its
+`volt.DcInputIdentity`, `volt.DcNetRef`, and `volt.DcOccurrenceRef` values retain exact native
+input identity; `volt.DcNetPair` preserves endpoint order. Authoring handles are accepted only
+when their canonical logical identity matches the captured input.
+
+| Export | Purpose |
+| --- | --- |
+| `volt.DcRequest` | Immutable native request with deterministic JSON transport and exact input ownership. |
+| `volt.DcRequestKey` | Stable request-local key. |
+| `volt.DcSourceKey` | Stable request-local source key. |
+| `volt.DcProbeKey` | Stable request-local probe key. |
+| `volt.DcVoltageSource` | Ideal voltage stimulus over an ordered net pair. |
+| `volt.DcCurrentSource` | Ideal current stimulus over an ordered net pair. |
+| `volt.DcVoltageProbe` | Voltage measurement request over an ordered net pair. |
+| `volt.DcSourceCurrentProbe` | Current measurement request for one named stimulus source. |
+| `volt.DcModelElementCurrentProbe` | Current measurement request for one exact occurrence model element. |
+| `volt.DcOccurrenceExclusion` | Explicit occurrence exclusion paired with one native reason. |
+| `volt.DcNonElectricalExclusion` | Exclusion reason for a non-electrical occurrence. |
+| `volt.DcOutsideAnalysisExclusion` | Exclusion reason for an occurrence outside the analysis boundary. |
+| `volt.DcReplacedByStimulusExclusion` | Exclusion reason naming the stimuli that replace an occurrence. |
+| `volt.assess_dc_request` | Assess request validity and exact occurrence coverage without solving. |
+| `volt.DcRequestAssessment` | Immutable assessment result containing coverage and diagnostics. |
+| `volt.DcOccurrenceCoverage` | One occurrence's coverage status, selected Part, and optional exclusion. |
+| `volt.DcCoverageStatus` | Closed coverage status enum. |
+| `volt.ANALYSIS_DIAGNOSTIC_CODES` | Stable bounded-analysis diagnostic code strings. |
+
+No DC solver or inferred topology is exposed by this request surface.
 
 ## Schematic authoring
 

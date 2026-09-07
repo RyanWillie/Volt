@@ -23,12 +23,15 @@ authoring, PCB layout authoring, and staged project runs:
 - serialize deterministic PCB projection files
 - define reusable `Part` objects in buildable `Library` collections
 - author optional immutable ideal R/C/L models on exact Parts through native builders
+- capture immutable exact DC inputs and author typed sources, probes, exclusions, and
+  request-local model-coverage assessments (see the
+  [DC request contract guide](design/native-dc-requests.html))
 - validate library parts for board readiness, pad mapping, footprint geometry, and
   serializability
 - run staged projects with default diagnostics, product-intent tests, and bundle output
 - export deterministic manufacturing packages from project results
 
-Richer ERC, electrical analysis/solving, and deeper PCB flows remain planned layers. The
+Richer ERC, topology compilation/numerical solving, and deeper PCB flows remain planned layers. The
 Python API should not introduce semantics that those future kernel layers cannot load,
 validate, serialize, or inspect.
 

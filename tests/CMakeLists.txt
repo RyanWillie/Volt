@@ -55,6 +55,8 @@ add_executable(
     core/umbrella_header_test.cpp
     core/version_test.cpp
     io/capabilities/board_capability_profile_io_test.cpp
+    io/electrical/dc_request_io_test.cpp
+    io/electrical/dc_request_test.cpp
     io/logical/logical_circuit_reader_test.cpp
     io/logical/logical_circuit_round_trip_test.cpp
     io/logical/logical_circuit_writer_test.cpp
@@ -66,6 +68,7 @@ add_executable(
     io/pcb/pcb_svg_writer_test.cpp
     io/pcb/compiled_board_test.cpp
     io/project_bundle_source_test.cpp
+    io/project_bundle_dc_input_test.cpp
     io/project_bundle_electrical_model_closure_test.cpp
     io/project_bundle_v2_board_export_rejection_test.cpp
     io/project_bundle_v2_board_export_tamper_test.cpp
@@ -238,6 +241,13 @@ add_test(NAME io_project_bundle_link_contract COMMAND volt_io_project_bundle_lin
 set_tests_properties(io_project_bundle_link_contract PROPERTIES LABELS cpp)
 
 if(VOLT_BUILD_PYTHON)
+    add_executable(volt_dc_request_parity_fixture support/dc_request_parity_fixture.cpp)
+    target_link_libraries(volt_dc_request_parity_fixture PRIVATE Volt::IO)
+    target_compile_features(volt_dc_request_parity_fixture PRIVATE cxx_std_23)
+    volt_apply_project_warnings(volt_dc_request_parity_fixture PRIVATE)
+    volt_apply_sanitizers(volt_dc_request_parity_fixture)
+    volt_apply_coverage(volt_dc_request_parity_fixture)
+
     add_executable(volt_part_model_authoring_fixture support/part_model_authoring_fixture.cpp)
     target_link_libraries(volt_part_model_authoring_fixture PRIVATE Volt::IO)
     target_compile_features(volt_part_model_authoring_fixture PRIVATE cxx_std_23)

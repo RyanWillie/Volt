@@ -47,6 +47,7 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "pcb.fabrication",
         "bom",
         "assembly",
+        "analysis",
     )
     assert volt.ERC_DIAGNOSTIC_CODES == (
         "PIN_MUST_NOT_CONNECT",

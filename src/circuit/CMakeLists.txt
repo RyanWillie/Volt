@@ -13,6 +13,8 @@ add_library(
     electrical/electrical_model.cpp
     electrical/electrical_records.cpp
     electrical/electrical_queries.cpp
+    electrical/dc_request.cpp
+    electrical/dc_input.cpp
     electrical/passive_model.cpp
     hierarchy/hierarchy.cpp
     hierarchy/hierarchy_model.cpp
