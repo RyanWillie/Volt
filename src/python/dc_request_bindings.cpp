@@ -82,7 +82,7 @@ void require_logical_identity(const DcInput &input, const PyCircuit &circuit) {
     result["part_key"] = reference->part_key().value();
     result["library_bundle_digest"] = reference->library_digest().value();
     result["part_digest"] = reference->part_digest().value();
-    return std::move(result);
+    return result;
 }
 
 [[nodiscard]] std::string request_bytes(const py::handle &value) {
