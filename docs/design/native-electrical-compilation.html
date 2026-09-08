@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Volt S2: compilation preserves equations, not answers</title>
+<style>
+  :root{color-scheme:light;background:#f6f4ee;color:#20312d;font:18px/1.6 system-ui,sans-serif}
+  body{max-width:850px;margin:0 auto;padding:56px 24px 80px}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12;letter-spacing:-.04em}
+  h2{margin-top:2.2rem;font-size:1.35rem}p{max-width:75ch}code{font-size:.9em}pre{overflow:auto;background:#e7eae2;padding:20px;border-radius:8px}
+  .label{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:#526c5f}table{border-collapse:collapse;width:100%;font-size:.92rem}th,td{text-align:left;padding:12px 10px;border-bottom:1px solid #cbd2c5;vertical-align:top}a{color:#17634e}
+</style>
+<main>
+<p class="label">Volt · Native simulation foundations · S2</p>
+<h1>Compilation preserves equations.<br>It does not produce answers.</h1>
+<p>A DC request already owns an immutable logical snapshot and its exact selected Parts.
+S2 expands that request into a native, inspectable graph of node potentials, oriented branch
+currents and primitive laws. A complete report means those equations were constructed faithfully;
+it does not mean a unique numerical solution exists.</p>
+<h2>One operation, one owner</h2>
+<pre><code>report = volt.compile_electrical(request)
+if report.complete:
+    model = report.model
+    snapshot = model.to_json()
+else:
+    diagnostics = report.diagnostics
+    coverage = report.coverage</code></pre>
+<p>The C++ entry point is <code>compile_electrical(const DcRequest&amp;)</code>.
+There is no second Circuit or resolver argument that could disagree with the request.
+Python calls this native operation and exposes owning inspection copies; it cannot author a
+replacement graph or supply its own compilation semantics.</p>
+<h2>What survives expansion</h2>
+<table>
+<thead><tr><th>Record</th><th>Meaning retained</th></tr></thead>
+<tbody>
+<tr><td>Logical nodes</td><td>All original NetIds and explicit hierarchical PortBinding origins in each continuity group. Circuit nets are never merged.</td></tr>
+<tr><td>Private and open nodes</td><td>Internal nodes are occurrence-local. Each unconnected terminal has its own pin origin; unrelated open pins cannot alias.</td></tr>
+<tr><td>Branches</td><td>Exact Part selection, model-element or source key, ordered endpoints, original parameter, tolerance and evidence.</td></tr>
+<tr><td>Conservation</td><td>Current contributes +i at its from node and −i at its to node. Coincident endpoints cancel in KCL without deleting the branch.</td></tr>
+<tr><td>Observations</td><td>Explicit reference-node potential and resolved voltage/current probes retain the request's sign conventions.</td></tr>
+</tbody></table>
+<h2>Storage is not erased for DC</h2>
+<p>A capacitor retains <code>q = Cv</code> and <code>i = dq/dt</code>; an inductor retains
+<code>φ = Li</code> and <code>v = dφ/dt</code>. A later DC consumer sets the derivatives to zero,
+but the compiler keeps the positive C/L parameters, branches and storage origins. Likewise,
+zero resistance remains <code>v = 0</code>, never a division by zero or an epsilon resistor.</p>
+<h2>Failure remains inspectable</h2>
+<p>Missing required model coverage, required open pins and unbound required module ports block
+the complete model. Optional open pins remain explicit with diagnostics. Resolved shorted branches
+remain visible; contradictory voltage constraints on the same resolved node or node pair produce
+errors. Failed reports retain coverage and diagnostics, not a partial runnable graph.</p>
+<p>Floating gauges, numerical rank, conditioning, nonunique currents and numerical results belong
+to S3. A complete isolated network can therefore still be unsolvable. No source, ground, open-circuit
+behavior or stabilization is inferred from labels, ratings or absent models.</p>
+<h2>Identity and transport</h2>
+<p>The compiled identity covers the immutable logical input, exact selected closure, complete request,
+compiler-contract version and ordered graph. Inspection JSON includes that identity and the original
+request. It is a deterministic snapshot, not a new ProjectBundle artifact or a restoration API.
+Source-free input comes from the existing verified ProjectBundle and saved DC request.</p>
+<p>Ordinary builds and manufacturing never invoke compilation automatically. Compilation changes no
+Circuit, Part, Board or Schematic bytes and makes no manufacturing-readiness claim.</p>
+</main>
+</html>

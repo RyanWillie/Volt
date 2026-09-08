@@ -192,6 +192,14 @@ inline constexpr auto DcOccurrenceUnselected = std::string_view{"DC_OCCURRENCE_U
 inline constexpr auto DcOccurrenceUnresolved = std::string_view{"DC_OCCURRENCE_UNRESOLVED"};
 inline constexpr auto DcOccurrenceModelAbsent = std::string_view{"DC_OCCURRENCE_MODEL_ABSENT"};
 inline constexpr auto DcOccurrenceUnsupported = std::string_view{"DC_OCCURRENCE_UNSUPPORTED"};
+inline constexpr auto ElectricalRequiredPinUnconnected =
+    std::string_view{"ELECTRICAL_REQUIRED_PIN_UNCONNECTED"};
+inline constexpr auto ElectricalOptionalPinOpen = std::string_view{"ELECTRICAL_OPTIONAL_PIN_OPEN"};
+inline constexpr auto ElectricalRequiredPortUnbound =
+    std::string_view{"ELECTRICAL_REQUIRED_PORT_UNBOUND"};
+inline constexpr auto ElectricalShortedBranch = std::string_view{"ELECTRICAL_SHORTED_BRANCH"};
+inline constexpr auto ElectricalContradictoryVoltageSource =
+    std::string_view{"ELECTRICAL_CONTRADICTORY_VOLTAGE_SOURCE"};
 
 } // namespace analysis_diagnostic_codes
 
@@ -284,7 +292,12 @@ inline constexpr auto Analysis =
                analysis_diagnostic_codes::DcOccurrenceUnselected,
                analysis_diagnostic_codes::DcOccurrenceUnresolved,
                analysis_diagnostic_codes::DcOccurrenceModelAbsent,
-               analysis_diagnostic_codes::DcOccurrenceUnsupported};
+               analysis_diagnostic_codes::DcOccurrenceUnsupported,
+               analysis_diagnostic_codes::ElectricalRequiredPinUnconnected,
+               analysis_diagnostic_codes::ElectricalOptionalPinOpen,
+               analysis_diagnostic_codes::ElectricalRequiredPortUnbound,
+               analysis_diagnostic_codes::ElectricalShortedBranch,
+               analysis_diagnostic_codes::ElectricalContradictoryVoltageSource};
 
 } // namespace diagnostic_code_catalogs
 

@@ -57,6 +57,7 @@ add_executable(
     io/capabilities/board_capability_profile_io_test.cpp
     io/electrical/dc_request_io_test.cpp
     io/electrical/dc_request_test.cpp
+    io/electrical/compiled_electrical_model_test.cpp
     io/logical/logical_circuit_reader_test.cpp
     io/logical/logical_circuit_round_trip_test.cpp
     io/logical/logical_circuit_writer_test.cpp
@@ -247,6 +248,12 @@ if(VOLT_BUILD_PYTHON)
     volt_apply_project_warnings(volt_dc_request_parity_fixture PRIVATE)
     volt_apply_sanitizers(volt_dc_request_parity_fixture)
     volt_apply_coverage(volt_dc_request_parity_fixture)
+    add_executable(volt_electrical_compilation_parity_fixture support/electrical_compilation_parity_fixture.cpp)
+    target_link_libraries(volt_electrical_compilation_parity_fixture PRIVATE Volt::IO)
+    target_compile_features(volt_electrical_compilation_parity_fixture PRIVATE cxx_std_23)
+    volt_apply_project_warnings(volt_electrical_compilation_parity_fixture PRIVATE)
+    volt_apply_sanitizers(volt_electrical_compilation_parity_fixture)
+    volt_apply_coverage(volt_electrical_compilation_parity_fixture)
 
     add_executable(volt_part_model_authoring_fixture support/part_model_authoring_fixture.cpp)
     target_link_libraries(volt_part_model_authoring_fixture PRIVATE Volt::IO)
