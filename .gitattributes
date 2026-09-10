@@ -16,3 +16,6 @@ tests/fixtures/kicad_flat_resistor.kicad_pcb text eol=lf
 tests/fixtures/kicad_flat_resistor.kicad_sch text eol=lf
 tests/fixtures/pcb_placement_preview.svg text eol=lf
 tests/fixtures/native_fabrication_control* text eol=lf
+
+# The executed SPICE oracle evidence hashes the exact deck bytes.
+tests/fixtures/linear_dc/*.cir text eol=lf
