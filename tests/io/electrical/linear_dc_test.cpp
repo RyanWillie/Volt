@@ -142,8 +142,8 @@ void check_compiled_case(const volt::ElectricalCompileReport &compiled, std::str
     return solution.nodes().at(node->id.index());
 }
 
-[[nodiscard]] const volt::DcBranchResult &
-element_result(const volt::DcSolution &solution, volt::ComponentId occurrence, std::string key) {
+[[nodiscard]] volt::DcBranchResult element_result(const volt::DcSolution &solution,
+                                                  volt::ComponentId occurrence, std::string key) {
     const auto branch = std::ranges::find_if(
         solution.model().branches(), [&](const volt::ElectricalBranch &candidate) {
             const auto *origin = std::get_if<volt::ElectricalElementOrigin>(&candidate.origin);
@@ -154,8 +154,8 @@ element_result(const volt::DcSolution &solution, volt::ComponentId occurrence, s
     return solution.branches().at(branch->id.index());
 }
 
-[[nodiscard]] const volt::DcBranchResult &source_result(const volt::DcSolution &solution,
-                                                        std::string key) {
+[[nodiscard]] volt::DcBranchResult source_result(const volt::DcSolution &solution,
+                                                 std::string key) {
     const auto branch = std::ranges::find_if(
         solution.model().branches(), [&](const volt::ElectricalBranch &candidate) {
             const auto *origin = std::get_if<volt::DcSourceKey>(&candidate.origin);

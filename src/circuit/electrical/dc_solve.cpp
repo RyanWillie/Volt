@@ -372,9 +372,8 @@ std::string_view DcSolveReport::backend() noexcept { return backend_name; }
 DcSolution::DcSolution(ContentHash analysis_identity, CompiledElectricalModel model,
                        DcSolveOptions options, std::vector<DcNodeResult> nodes,
                        std::vector<DcBranchResult> branches, std::vector<DcProbeResult> probes)
-    : analysis_identity_{std::move(analysis_identity)}, model_{std::move(model)},
-      options_{std::move(options)}, nodes_{std::move(nodes)}, branches_{std::move(branches)},
-      probes_{std::move(probes)} {}
+    : analysis_identity_{std::move(analysis_identity)}, model_{std::move(model)}, options_{options},
+      nodes_{std::move(nodes)}, branches_{std::move(branches)}, probes_{std::move(probes)} {}
 
 class DcSolution::Solver final {
   public:
