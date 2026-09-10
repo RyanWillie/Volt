@@ -1,0 +1,10 @@
+* Volt S3 independent oracle: equal resistor divider
+Vdrive supply 0 DC 5
+Rupper supply midpoint 1k
+Rlower midpoint 0 1k
+.control
+op
+print v(supply) v(midpoint) i(vdrive) @rupper[i] @rlower[i]
+quit
+.endc
+.end

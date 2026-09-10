@@ -1,0 +1,10 @@
+* Volt S3 independent oracle: inductor is an ideal short in DC steady state
+Vdrive supply 0 DC 5
+Lstorage supply load 1m
+Rload load 0 1k
+.control
+op
+print v(supply) v(load) @lstorage[i] i(vdrive)
+quit
+.endc
+.end

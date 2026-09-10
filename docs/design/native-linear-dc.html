@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Volt S3: a DC answer must earn its success</title>
+<style>
+:root{color-scheme:light;background:#f5f3ed;color:#20312d;font:18px/1.6 system-ui,sans-serif}body{max-width:900px;margin:auto;padding:56px 24px 80px}h1{font-size:clamp(2rem,5vw,3.2rem);letter-spacing:-.04em;line-height:1.12}h2{margin-top:2.2rem;font-size:1.35rem}.label{font-size:.8rem;text-transform:uppercase;letter-spacing:.13em;color:#506858}code{font-size:.9em}pre{background:#e4e9df;padding:20px;border-radius:8px;overflow:auto}table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{padding:12px 10px;text-align:left;border-bottom:1px solid #c9d1c2;vertical-align:top}a{color:#17634e}
+</style>
+<main>
+<p class="label">Volt · Native linear DC · S3</p>
+<h1>A DC answer must earn its success.</h1>
+<p><code>volt.solve_dc(model)</code> evaluates one complete, immutable compiled electrical model.
+It returns every node potential, every oriented branch voltage/current and signed absorbed power,
+and all requested probes—but only after uniqueness, conditioning, finite arithmetic and residual
+checks pass. A small residual alone is not enough.</p>
+<h2>The whole public workflow</h2>
+<pre><code>compiled = volt.compile_electrical(request)
+if compiled.complete:
+    report = volt.solve_dc(compiled.model)
+    if report.success:
+        solution = report.solution
+        for probe in solution.probes:
+            print(probe.key.value, probe.value.value)
+    else:
+        print(report.outcome, report.diagnostics)
+        print(report.metrics.rank, report.metrics.reciprocal_condition)</code></pre>
+<p>The C++ entry point is <code>solve_dc(const CompiledElectricalModel&amp;, const DcSolveOptions&amp;)</code>.
+The compiled model already owns the exact request, input and selected Parts. No independent Circuit,
+resolver, new readiness engine or graph authoring interface enters the numerical service.</p>
+<h2>Equations without hidden substitutions</h2>
+<p>The small dense backend uses one voltage for every non-reference node and one current for every
+branch. Rows are non-reference KCL followed by the original DC branch laws. This branch-tableau
+formulation avoids dividing by resistance and leaves ideal-branch currents visible to the rank test.</p>
+<table><thead><tr><th>Branch</th><th>DC equation</th><th>What remains observable</th></tr></thead><tbody>
+<tr><td>Resistance, including R = 0</td><td>v − Ri = 0</td><td>Stored orientation, voltage, current and power</td></tr>
+<tr><td>Capacitance</td><td>i = 0</td><td>Voltage and zero steady current; original positive C stays in the model</td></tr>
+<tr><td>Inductance</td><td>v = 0</td><td>Identifiable current; original positive L stays in the model</td></tr>
+<tr><td>Voltage source</td><td>v = authored voltage</td><td>Source current; delivering power normally has negative current</td></tr>
+<tr><td>Current source</td><td>i = authored current</td><td>Source voltage and signed absorbed power</td></tr>
+</tbody></table>
+<p>Here <code>v = V(from) − V(to)</code>, and positive current leaves <code>from</code>.
+Power is <code>p = vi</code>. Coincident endpoints cancel KCL incidence, not the law or its current:
+an ideal zero-voltage self-loop still has an undetermined current and must not become a successful zero.</p>
+<h2>The acceptance policy is explicit</h2>
+<table><thead><tr><th>Setting</th><th>Default</th></tr></thead><tbody>
+<tr><td>Equilibration</td><td>Divide each row by its maximum absolute coefficient, then each column by its maximum; zero rows/columns remain zero</td></tr>
+<tr><td>Relative rank threshold</td><td>10⁻¹², on the equilibrated matrix</td></tr>
+<tr><td>Minimum estimated reciprocal condition</td><td>10⁻¹², on the equilibrated matrix</td></tr>
+<tr><td>Relative residual tolerance</td><td>10⁻⁹</td></tr>
+<tr><td>Absolute voltage residual tolerance</td><td>10⁻⁹ V</td></tr>
+<tr><td>Absolute current residual tolerance</td><td>10⁻¹² A</td></tr>
+</tbody></table>
+<p><code>DcSolveOptions</code> validates finite, strictly positive settings. Relative settings must
+also be below one; absolute quantities must have the correct voltage/current dimensions. These are
+numerical policies, not parasitic components or physical uncertainty. No library-default threshold
+silently replaces them.</p>
+<p>Eigen 5.0.0 FullPivLU supplies the established rank-revealing factorization and reciprocal-condition
+estimate. It is a private header-only implementation dependency pinned by archive SHA-256; public
+headers and the installed SDK expose no Eigen types or package dependency.</p>
+<h2>Two residual checks, different meanings</h2>
+<p>The dimensionless algebraic check is
+<code>‖Aₛy − bₛ‖∞ / (‖Aₛ‖∞ ‖y‖∞ + ‖bₛ‖∞)</code>, with zero residual for the all-zero case.
+After reconstruction, every original electrical equation is checked in its own SI units:</p>
+<ul>
+<li>KCL at <em>all</em> nodes, including the omitted reference row: absolute current tolerance plus relative tolerance times the sum of absolute incident currents.</li>
+<li>Resistance and voltage-source laws: absolute voltage tolerance plus relative tolerance times the sum of absolute terms being compared.</li>
+<li>Inductor voltage, capacitor current, current-source law and explicit reference potential use the same absolute-plus-relative rule in their respective dimensions.</li>
+</ul>
+<p>Nonfinite assembly, factorization, reconstruction, power, probe values or residual arithmetic
+fails the attempt. No shunt, epsilon resistance, regularization, least-squares answer or minimum-norm
+current is substituted. Rank and conditioning are numerical assessments under the effective policy,
+not exact symbolic proofs.</p>
+<h2>Failure is a useful result—not a fake operating point</h2>
+<p>The typed outcomes distinguish success, rank deficiency, inconsistency, unacceptable conditioning,
+numerical failure and residual failure. Rank-deficient cases may use the normalized augmented
+matrix rank to identify inconsistency; uncertain physical causes remain a conservative numerical
+classification. Available metrics are retained, and uncomputed metrics are absent. Failed reports
+have no solution.</p>
+<p>Floating resistor islands, capacitor-only unfixed potentials and nonunique parallel ideal currents
+are explicit failures. Globally inconsistent source loops are checked here, after S2 has already
+handled its simpler local topology contradictions.</p>
+<h2>Traceable results and independent proof</h2>
+<p>Solutions retain their model, effective options and analysis identity. That identity includes the
+compiled input, numerical contract, backend and every setting—not machine paths or floating-point
+outputs. Node/branch IDs resolve directly to the original compiled origins; probe keys retain the
+request's orientation. Native/Python snapshots match within one build; cross-platform numbers are
+compared with explicit tolerances, not promised bitwise equality.</p>
+<p>The versioned test corpus includes hand-authored ngspice-46 decks and independent analytical
+expectations for dividers, loads, source polarity, zero-ohm constraints, ideal C/L and composite
+storage. The zero-ohm oracle is an explicit 0 V constraint, not ngspice's backend-specific zero
+resistor behavior. Degenerate oracle behavior cannot certify native success.</p>
+<pre><code># Offline evidence validation; never invokes ngspice:
+python3 scripts/regenerate-dc-reference.py
+
+# Explicit regeneration on a host with the pinned oracle:
+python3 scripts/regenerate-dc-reference.py --regenerate \
+  --ngspice /opt/homebrew/bin/ngspice --executed-on YYYY-MM-DD</code></pre>
+<p>Inspection JSON is owner-local output, with no result reader or new ProjectBundle schema.
+Source-free operation reopens existing verified inputs, then compiles and solves them. Ordinary
+builds and manufacturing remain solver-free; canonical Circuit, Part, Board and Schematic truth
+is unchanged. There is no S4 CLI, public SPICE adapter, AC, transient, nonlinear or whole-IC solver here.</p>
+</main>
+</html>

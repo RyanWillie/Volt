@@ -29,6 +29,9 @@ authoring, PCB layout authoring, and staged project runs:
 - Native electrical compilation: `volt.compile_electrical(request)` returns coverage, diagnostics
   and an optional immutable graph/law snapshot. Complete compilation is not a numerical solve
   ([S2 contract guide](design/native-electrical-compilation.html)).
+- Native linear DC: `volt.solve_dc(model, options)` returns a typed numerical outcome and
+  success-only immutable observations, with explicit rank, conditioning and residual policy
+  ([S3 numerical contract](design/native-linear-dc.html)).
 - validate library parts for board readiness, pad mapping, footprint geometry, and
   serializability
 - run staged projects with default diagnostics, product-intent tests, and bundle output

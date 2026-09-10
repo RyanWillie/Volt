@@ -28,6 +28,7 @@ PAGE_ORDER = (
     "pcb",
     "dc",
     "compilation",
+    "solve",
     "diagnostics",
 )
 PAGE_TITLES = {
@@ -40,6 +41,7 @@ PAGE_TITLES = {
     "pcb": "PCB",
     "dc": "DC Requests",
     "compilation": "Electrical Compilation",
+    "solve": "Linear DC Solve",
     "diagnostics": "Diagnostics",
 }
 PAGE_DESCRIPTIONS = {
@@ -52,6 +54,7 @@ PAGE_DESCRIPTIONS = {
     "pcb": "Generated reference for PCB board, footprint, pad, and placement helpers.",
     "dc": "Generated reference for immutable DC inputs, requests, probes, and coverage.",
     "compilation": "Generated reference for native electrical compilation reports and models.",
+    "solve": "Generated reference for validated native linear DC options, reports, and results.",
     "diagnostics": "Generated reference for diagnostics and validation report objects.",
 }
 PUBLIC_MAGIC_METHODS = {
@@ -119,6 +122,8 @@ def module_page(module: str) -> str:
         return "dc"
     if module == "compilation":
         return "compilation"
+    if module == "dc_solve":
+        return "solve"
     if module in {"schematic", "_schematic_handles"}:
         return "schematic"
     if module == "logical":

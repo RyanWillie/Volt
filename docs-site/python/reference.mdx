@@ -187,7 +187,33 @@ when their canonical logical identity matches the captured input.
 | `volt.DcCoverageStatus` | Closed coverage status enum. |
 | `volt.ANALYSIS_DIAGNOSTIC_CODES` | Stable bounded-analysis diagnostic code strings. |
 
-No DC solver or inferred topology is exposed by this request surface.
+No inferred topology is exposed by this request surface. A request must first compile to a
+complete native electrical model before it can enter numerical evaluation.
+
+## Linear DC solving
+
+`volt.solve_dc` evaluates an explicitly compiled `volt.CompiledElectricalModel`. It never
+implicitly compiles a request or runs during ordinary project builds, checks, or manufacturing.
+The native solver supports the bounded linear R/C/L and independent DC-source vocabulary only.
+It publishes a solution only when uniqueness, conditioning, finiteness, and residual gates pass;
+rank-deficient, inconsistent, ill-conditioned, nonfinite, and residual failures remain typed
+reports with diagnostics and available metrics.
+
+| Export | Purpose |
+| --- | --- |
+| `volt.DcSolveOptions` | Validated typed numerical thresholds with deterministic defaults and scaling policy. |
+| `volt.DcSolveOutcome` | Closed success and numerical-refusal outcome enum. |
+| `volt.DcSolveMetrics` | Available coordinate-count, rank, conditioning, and residual evidence. |
+| `volt.DcSolveReport` | Immutable attempt retaining model, options, identities, outcome, metrics, and diagnostics. |
+| `volt.DcSolution` | Success-only immutable model-order node, branch, and request-probe observations. |
+| `volt.DcNodeResult` | One model-local node index and finite potential. |
+| `volt.DcBranchResult` | One model-local branch index with oriented voltage, current, and signed absorbed power. |
+| `volt.DcProbeResult` | One request-local probe key and native-dimension value. |
+| `volt.solve_dc` | Evaluate one complete compiled model with validated options. |
+
+The coordinate indices are scoped to the retained compiled model; they are not generic mutation
+handles. Eigen remains a private implementation dependency and no backend matrix or vector type
+crosses the native or Python API.
 
 ## Electrical compilation
 

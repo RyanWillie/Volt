@@ -665,6 +665,41 @@
           "python_type": "DcRequestAssessment"
         },
         {
+          "cpp_type": "DcSolveOptions",
+          "path": "src/python/dc_solve_bindings.cpp",
+          "python_type": "DcSolveOptions"
+        },
+        {
+          "cpp_type": "DcSolveMetrics",
+          "path": "src/python/dc_solve_bindings.cpp",
+          "python_type": "DcSolveMetrics"
+        },
+        {
+          "cpp_type": "DcNodeResult",
+          "path": "src/python/dc_solve_bindings.cpp",
+          "python_type": "DcNodeResult"
+        },
+        {
+          "cpp_type": "DcBranchResult",
+          "path": "src/python/dc_solve_bindings.cpp",
+          "python_type": "DcBranchResult"
+        },
+        {
+          "cpp_type": "DcProbeResult",
+          "path": "src/python/dc_solve_bindings.cpp",
+          "python_type": "DcProbeResult"
+        },
+        {
+          "cpp_type": "DcSolution",
+          "path": "src/python/dc_solve_bindings.cpp",
+          "python_type": "DcSolution"
+        },
+        {
+          "cpp_type": "DcSolveReport",
+          "path": "src/python/dc_solve_bindings.cpp",
+          "python_type": "DcSolveReport"
+        },
+        {
           "cpp_type": "CompiledElectricalModel",
           "path": "src/python/electrical_compilation_bindings.cpp",
           "python_type": "CompiledElectricalModel"
@@ -934,6 +969,7 @@
         "Cutout",
         "DIAGNOSTIC_CATEGORIES",
         "DRC_DIAGNOSTIC_CODES",
+        "DcBranchResult",
         "DcCoverageStatus",
         "DcCurrentSource",
         "DcInput",
@@ -941,16 +977,23 @@
         "DcModelElementCurrentProbe",
         "DcNetPair",
         "DcNetRef",
+        "DcNodeResult",
         "DcNonElectricalExclusion",
         "DcOccurrenceCoverage",
         "DcOccurrenceExclusion",
         "DcOccurrenceRef",
         "DcOutsideAnalysisExclusion",
         "DcProbeKey",
+        "DcProbeResult",
         "DcReplacedByStimulusExclusion",
         "DcRequest",
         "DcRequestAssessment",
         "DcRequestKey",
+        "DcSolution",
+        "DcSolveMetrics",
+        "DcSolveOptions",
+        "DcSolveOutcome",
+        "DcSolveReport",
         "DcSourceCurrentProbe",
         "DcSourceKey",
         "DcVoltageProbe",
@@ -1086,7 +1129,8 @@
         "hertz",
         "ohms",
         "prepare_dc_input",
-        "seconds"
+        "seconds",
+        "solve_dc"
       ]
     }
   },

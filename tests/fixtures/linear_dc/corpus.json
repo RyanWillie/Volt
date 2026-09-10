@@ -1,0 +1,121 @@
+{
+  "format": "volt.linear-dc-reference-corpus",
+  "version": 1,
+  "conventions": {
+    "voltage": "V(from)-V(to)",
+    "branch_current": "positive from the authored first endpoint to the second endpoint",
+    "branch_power": "(V(from)-V(to))*I; negative means delivered power",
+    "comparison": "abs(actual-expected) <= absolute_tolerance + relative_tolerance*abs(expected)"
+  },
+  "compiled_expectations": {
+    "divider": {"coverage": "complete", "branch_count": 3, "storage_count": 0, "origins": ["R1/body", "R2/body", "source:supply-5v"]},
+    "series_parallel_load": {"coverage": "complete", "branch_count": 4, "storage_count": 0, "origins": ["Rseries/body", "Rload1/body", "Rload2/body", "source:drive"]},
+    "source_polarity": {"coverage": "complete", "branch_count": 6, "storage_count": 0, "origins": ["Rpositive/body", "Rnegative/body", "Rcurrent/body", "source:inject", "source:negative", "source:positive"]},
+    "zero_ohm_constraint": {"coverage": "complete", "branch_count": 3, "storage_count": 0, "origins": ["Rwire/body", "Rload/body", "source:drive"]},
+    "ideal_capacitor_dc": {"coverage": "complete", "branch_count": 3, "storage_count": 1, "origins": ["Cstorage/storage", "Rreference/body", "source:drive"]},
+    "ideal_inductor_dc": {"coverage": "complete", "branch_count": 3, "storage_count": 1, "origins": ["Lstorage/storage", "Rload/body", "source:drive"]},
+    "composite_capacitor_dc": {"coverage": "complete", "branch_count": 4, "storage_count": 2, "origins": ["C1/esl", "C1/esr", "C1/storage", "source:drive"]}
+  },
+  "supported_cases": [
+    {
+      "id": "divider",
+      "deck": "divider.cir",
+      "analysis": "Two equal 1 kohm resistors divide an explicit 5 V source.",
+      "expectations": {
+        "supply_voltage_v": {"ngspice": "v(supply)", "value": 5.0, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "midpoint_voltage_v": {"ngspice": "v(midpoint)", "value": 2.5, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "upper_current_a": {"ngspice": "@rupper[i]", "value": 0.0025, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "lower_current_a": {"ngspice": "@rlower[i]", "value": 0.0025, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "source_current_a": {"ngspice": "i(vdrive)", "value": -0.0025, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "resistor_power_w_each": {"derived": "2.5 V * 2.5 mA", "value": 0.00625, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "source_power_w": {"derived": "5 V * -2.5 mA", "value": -0.0125, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "power_sum_w": {"derived": "two resistor powers plus source power", "value": 0.0, "absolute_tolerance": 1e-12, "relative_tolerance": 0.0}
+      }
+    },
+    {
+      "id": "series_parallel_load",
+      "deck": "series_parallel_load.cir",
+      "analysis": "A 1 kohm series resistor drives parallel 1 kohm and 2 kohm loads from 5 V.",
+      "expectations": {
+        "load_voltage_v": {"ngspice": "v(load)", "value": 2.0, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "series_current_a": {"ngspice": "@rseries[i]", "value": 0.003, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "load_1k_current_a": {"ngspice": "@rload1[i]", "value": 0.002, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "load_2k_current_a": {"ngspice": "@rload2[i]", "value": 0.001, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "source_current_a": {"ngspice": "i(vdrive)", "value": -0.003, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "load_kcl_residual_a": {"derived": "series current minus both load currents", "value": 0.0, "absolute_tolerance": 1e-12, "relative_tolerance": 0.0}
+      }
+    },
+    {
+      "id": "source_polarity",
+      "deck": "source_polarity.cir",
+      "analysis": "Positive and negative voltage sources plus a ground-to-node current source prove stored orientations.",
+      "expectations": {
+        "positive_node_v": {"ngspice": "v(vp)", "value": 5.0, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "positive_source_current_a": {"ngspice": "i(vpositive)", "value": -0.005, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "negative_node_v": {"ngspice": "v(vn)", "value": -5.0, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "negative_source_current_a": {"ngspice": "i(vnegative)", "value": 0.005, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "reversed_resistor_current_a": {"ngspice": "@rnegative[i]", "value": 0.005, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "current_driven_node_v": {"ngspice": "v(vi)", "value": 2.0, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "authored_current_source_a": {"ngspice": "@iinject[current]", "value": 0.002, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9}
+      }
+    },
+    {
+      "id": "zero_ohm_constraint",
+      "deck": "zero_ohm_constraint.cir",
+      "analysis": "Volt R=0 is represented independently as an ideal 0 V source; an ngspice zero-valued resistor is not used because its implementation resistance is backend-specific.",
+      "expectations": {
+        "supply_voltage_v": {"ngspice": "v(supply)", "value": 5.0, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "load_voltage_v": {"ngspice": "v(load)", "value": 5.0, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "constraint_voltage_v": {"derived": "v(supply)-v(load)", "value": 0.0, "absolute_tolerance": 1e-12, "relative_tolerance": 0.0},
+        "constraint_current_a": {"ngspice": "i(vwire)", "value": 0.005, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "source_current_a": {"ngspice": "i(vdrive)", "value": -0.005, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9}
+      }
+    },
+    {
+      "id": "ideal_capacitor_dc",
+      "deck": "ideal_capacitor_dc.cir",
+      "analysis": "At DC the capacitor is open: its current is zero and the downstream resistor fixes the isolated terminal to reference.",
+      "expectations": {
+        "supply_voltage_v": {"ngspice": "v(supply)", "value": 5.0, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "downstream_voltage_v": {"ngspice": "v(downstream)", "value": 0.0, "absolute_tolerance": 1e-12, "relative_tolerance": 0.0},
+        "capacitor_current_a": {"ngspice": "@cstorage[i]", "value": 0.0, "absolute_tolerance": 1e-12, "relative_tolerance": 0.0},
+        "source_current_a": {"ngspice": "i(vdrive)", "value": 0.0, "absolute_tolerance": 1e-12, "relative_tolerance": 0.0}
+      }
+    },
+    {
+      "id": "ideal_inductor_dc",
+      "deck": "ideal_inductor_dc.cir",
+      "analysis": "At DC the ideal inductor imposes zero voltage while retaining its identifiable branch current.",
+      "expectations": {
+        "supply_voltage_v": {"ngspice": "v(supply)", "value": 5.0, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "load_voltage_v": {"ngspice": "v(load)", "value": 5.0, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "inductor_voltage_v": {"derived": "v(supply)-v(load)", "value": 0.0, "absolute_tolerance": 1e-12, "relative_tolerance": 0.0},
+        "inductor_current_a": {"ngspice": "@lstorage[i]", "value": 0.005, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9},
+        "source_current_a": {"ngspice": "i(vdrive)", "value": -0.005, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-9}
+      }
+    },
+    {
+      "id": "composite_capacitor_dc",
+      "deck": "composite_capacitor_dc.cir",
+      "analysis": "The C+ESR+ESL chain preserves private-node voltages and storage, but its steady-state branch current is zero.",
+      "expectations": {
+        "terminal_a_voltage_v": {"ngspice": "v(a)", "value": 5.0, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "after_esr_voltage_v": {"ngspice": "v(after_esr)", "value": 5.0, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "after_esl_voltage_v": {"ngspice": "v(after_esl)", "value": 5.0, "absolute_tolerance": 1e-12, "relative_tolerance": 1e-12},
+        "esr_current_a": {"ngspice": "@resr[i]", "value": 0.0, "absolute_tolerance": 1e-12, "relative_tolerance": 0.0},
+        "esl_current_a": {"ngspice": "@lesl[i]", "value": 0.0, "absolute_tolerance": 1e-12, "relative_tolerance": 0.0},
+        "capacitor_current_a": {"ngspice": "@cstorage[i]", "value": 0.0, "absolute_tolerance": 1e-12, "relative_tolerance": 0.0},
+        "source_current_a": {"ngspice": "i(vdrive)", "value": 0.0, "absolute_tolerance": 1e-12, "relative_tolerance": 0.0}
+      }
+    }
+  ],
+  "non_oracle_cases": [
+    {"id": "floating_resistor_island", "volt_expectation": "rank_deficient", "oracle_status": "excluded", "reason": "A backend-selected floating gauge must not certify a unique Volt result."},
+    {"id": "capacitor_only_floating", "volt_expectation": "rank_deficient", "oracle_status": "excluded", "reason": "DC-open storage leaves unfixed potentials."},
+    {"id": "parallel_ideal_branches", "volt_expectation": "rank_deficient", "oracle_status": "excluded", "reason": "Individual ideal-branch currents are nonunique even when node voltages are fixed."},
+    {"id": "inconsistent_source_loop", "volt_expectation": "inconsistent", "oracle_status": "excluded", "reason": "Ngspice convergence aids or a reported operating point cannot override Volt's original-law checks."},
+    {"id": "unacceptable_conditioning", "volt_expectation": "unreliable", "oracle_status": "excluded", "reason": "Volt's explicit reciprocal-condition threshold is stricter than backend convergence."},
+    {"id": "finite_overflow", "volt_expectation": "numerical_failure", "oracle_status": "excluded", "reason": "Non-finite assembly or reconstruction must fail rather than be normalized by an oracle."},
+    {"id": "incomplete_compilation", "volt_expectation": "not_evaluated", "oracle_status": "excluded", "reason": "An incomplete S2 report has no runnable model."}
+  ]
+}

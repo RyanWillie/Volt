@@ -1,0 +1,11 @@
+* Volt S3 independent oracle: capacitor with ESR and ESL
+Vdrive a 0 DC 5
+Resr a after_esr 0.08
+Lesl after_esr after_esl 1n
+Cstorage after_esl 0 10u
+.control
+op
+print v(a) v(after_esr) v(after_esl) @resr[i] @lesl[i] @cstorage[i] i(vdrive)
+quit
+.endc
+.end
