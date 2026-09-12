@@ -372,6 +372,28 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     build_parser.set_defaults(handler=_handle_build)
 
+    simulate_parser = subparsers.add_parser(
+        "simulate",
+        help="explicitly solve native linear DC from project source or a verified bundle",
+        description=(
+            "Bind one native DC request to an exact Design and publish native reports. "
+            "Use --bundle or --project, not both; default to current project discovery."
+        ),
+    )
+    _add_project_argument(simulate_parser)
+    simulate_parser.add_argument(
+        "--bundle", type=Path, help="Verified ProjectBundle; never executes source."
+    )
+    simulate_parser.add_argument("--design", help="Required exact logical Design name.")
+    simulate_parser.add_argument(
+        "--request", type=Path, help="Required native DcRequest JSON file."
+    )
+    simulate_parser.add_argument(
+        "--output", type=Path, help="Required new, nonexistent output directory."
+    )
+    simulate_parser.add_argument("--json", dest="emit_json", action="store_true")
+    simulate_parser.set_defaults(handler=_handle_simulate)
+
     export_parser = subparsers.add_parser(
         "export",
         help="copy typed selected exports from a verified ProjectBundle",
@@ -579,6 +601,92 @@ def _open_verified_bundle(path: str | Path):
             code="invalid-project-bundle",
         ) from error
     return bundle_path, bundle, graph
+
+
+def _handle_simulate(args: argparse.Namespace) -> int:
+    from ._simulation import execute_dc, validate_output
+
+    if args.bundle is not None and args.project is not None:
+        raise CliError(
+            "`volt simulate` accepts --bundle or --project, not both.",
+            code="conflicting-simulation-inputs",
+        )
+    if not args.design or args.request is None or args.output is None:
+        raise CliError(
+            "`volt simulate` requires --design, --request and --output.",
+            code="missing-simulation-argument",
+        )
+    try:
+        request = args.request.expanduser().resolve()
+        destination = args.output.expanduser()
+        # Resolve the parent, not the final component: a dangling destination symlink
+        # is an existing collision, not permission to publish into its target.
+        output = destination.parent.resolve() / destination.name
+    except (OSError, RuntimeError) as error:
+        raise CliError(
+            f"Invalid simulation path: {error}", code="invalid-simulation-path"
+        ) from error
+    validate_output(output)
+
+    if args.bundle is not None:
+        bundle_path, _bundle, graph = _open_verified_bundle(args.bundle)
+        if output.is_relative_to(bundle_path):
+            raise CliError(
+                "Simulation output must not modify the input ProjectBundle.",
+                code="simulation-output-collision",
+            )
+        circuits = tuple(graph.loaded_project.circuits)
+        matches = tuple(
+            circuit for circuit in circuits if circuit.design == args.design
+        )
+        if len(matches) != 1:
+            raise CliError(
+                f"No exact Design selector {args.design!r}. Candidates: "
+                + (", ".join(circuit.design for circuit in circuits) or "<none>"),
+                code="invalid-design-selector",
+            )
+        try:
+            selected_input = matches[0].dc_input()
+        except Exception as error:
+            raise CliError(
+                f"Failed to prepare the selected Design for DC: {error}",
+                code="invalid-simulation-input",
+            ) from error
+        payload, exit_code = execute_dc(
+            selected_input,
+            request,
+            output,
+            design=args.design,
+            source={
+                "kind": "bundle",
+                "path": str(bundle_path),
+                "bundle_digest": graph.bundle_digest,
+                "build_id": graph.build_id,
+            },
+        )
+    else:
+        config = discover_project(project=args.project)
+        payload, exit_code = _run_project_worker(
+            config,
+            "simulate",
+            arguments=(
+                "--design",
+                args.design,
+                "--request",
+                str(request),
+                "--output",
+                str(output),
+            ),
+        )
+    if args.emit_json:
+        _print_json_result("simulate", payload)
+    else:
+        print(f"Simulate: {payload['status']} -> {output}")
+        for report in (payload["compile_report"], payload["solve_report"]):
+            if report is not None:
+                for diagnostic in report["diagnostics"]:
+                    print(f"{diagnostic['code']}: {diagnostic['message']}")
+    return exit_code
 
 
 def _artifact_payload(artifact) -> dict[str, object]:
@@ -1312,11 +1420,13 @@ def _run_project_worker(
     return payload, exit_code
 
 
-def _project_result_with_forwarded_stdout(config: ProjectConfig) -> ProjectResult:
+def _project_result_with_forwarded_stdout(
+    config: ProjectConfig, *, design_only: bool = False
+) -> ProjectResult:
     project_stdout = StringIO()
     try:
         with redirect_stdout(project_stdout):
-            result = _project_result_from_entrypoint(config)
+            result = _project_result_from_entrypoint(config, design_only=design_only)
     except Exception:
         _forward_project_stdout(project_stdout)
         raise
@@ -1324,14 +1434,16 @@ def _project_result_with_forwarded_stdout(config: ProjectConfig) -> ProjectResul
     return result
 
 
-def _project_result_from_entrypoint(config: ProjectConfig) -> ProjectResult:
+def _project_result_from_entrypoint(
+    config: ProjectConfig, *, design_only: bool = False
+) -> ProjectResult:
     value = run_entrypoint(config)
     if isinstance(value, ProjectResult):
         return value
     if isinstance(value, Project):
         with _project_runtime(config.root):
             try:
-                return value.run()
+                return value.run_through(value.design) if design_only else value.run()
             except CliError:
                 raise
             except Exception as error:

@@ -41,6 +41,7 @@ set(
     cli/__init__.py
     cli/__main__.py
     cli/_project_worker.py
+    cli/_simulation.py
     library.py
     library_result.py
     logical.py

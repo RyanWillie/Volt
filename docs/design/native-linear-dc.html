@@ -98,6 +98,8 @@ python3 scripts/regenerate-dc-reference.py --regenerate \
 <p>Inspection JSON is owner-local output, with no result reader or new ProjectBundle schema.
 Source-free operation reopens existing verified inputs, then compiles and solves them. Ordinary
 builds and manufacturing remain solver-free; canonical Circuit, Part, Board and Schematic truth
-is unchanged. There is no S4 CLI, public SPICE adapter, AC, transient, nonlinear or whole-IC solver here.</p>
+is unchanged. The explicit S4 CLI orchestrates these same native operations from project source or
+a verified bundle; it does not add a public SPICE adapter, AC, transient, nonlinear or whole-IC
+solver. See the <a href="../../docs-site/cli/simulate.mdx">focused command documentation</a>.</p>
 </main>
 </html>
