@@ -3,9 +3,17 @@
 // prove headers resolve and the static archives link.
 
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 #include <volt/volt.hpp>
+
+class NoParts final : public volt::PartDefinitionResolver {
+  public:
+    const volt::PartDefinition &resolve(const volt::LibraryPartRef &) const & override {
+        throw std::runtime_error{"source-only package test must not resolve a part"};
+    }
+};
 
 int main() {
     auto circuit = volt::Circuit{};
@@ -30,6 +38,28 @@ int main() {
 
     if (serialized.empty()) {
         std::cerr << "expected non-empty serialized circuit\n";
+        return 1;
+    }
+
+    // Link the private numerical implementation without resolving Eigen in the consumer.
+    auto dc_circuit = volt::Circuit{};
+    const auto positive = dc_circuit.add_net(volt::NetSpec{.name = volt::NetName{"positive"}});
+    const auto reference = dc_circuit.add_net(volt::NetSpec{.name = volt::NetName{"reference"}});
+    const auto input = volt::io::prepare_dc_input(dc_circuit, NoParts{});
+    const auto request = volt::DcRequest{
+        volt::DcRequestKey{"package-test"},
+        input,
+        input.net(reference),
+        {volt::DcVoltageSource{volt::DcSourceKey{"drive"},
+                               volt::DcNetPair{input.net(positive), input.net(reference)},
+                               volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}};
+    const auto compiled = volt::compile_electrical(request);
+    if (!compiled.complete()) {
+        return 1;
+    }
+    const auto dc_report = volt::solve_dc(*compiled.model());
+    if (!dc_report.success() || dc_report.solution()->branches().size() != 1U ||
+        volt::io::write_dc_solve_report(dc_report).empty()) {
         return 1;
     }
 

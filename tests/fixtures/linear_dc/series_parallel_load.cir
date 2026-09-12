@@ -1,0 +1,11 @@
+* Volt S3 independent oracle: series and parallel resistor loads
+Vdrive supply 0 DC 5
+Rseries supply load 1k
+Rload1 load 0 1k
+Rload2 load 0 2k
+.control
+op
+print v(load) @rseries[i] @rload1[i] @rload2[i] i(vdrive)
+quit
+.endc
+.end

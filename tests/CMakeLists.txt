@@ -57,6 +57,7 @@ add_executable(
     io/capabilities/board_capability_profile_io_test.cpp
     io/electrical/dc_request_io_test.cpp
     io/electrical/dc_request_test.cpp
+    io/electrical/linear_dc_test.cpp
     io/electrical/compiled_electrical_model_test.cpp
     io/logical/logical_circuit_reader_test.cpp
     io/logical/logical_circuit_round_trip_test.cpp
@@ -254,6 +255,12 @@ if(VOLT_BUILD_PYTHON)
     volt_apply_project_warnings(volt_electrical_compilation_parity_fixture PRIVATE)
     volt_apply_sanitizers(volt_electrical_compilation_parity_fixture)
     volt_apply_coverage(volt_electrical_compilation_parity_fixture)
+    add_executable(volt_dc_solve_parity_fixture support/dc_solve_parity_fixture.cpp)
+    target_link_libraries(volt_dc_solve_parity_fixture PRIVATE Volt::IO)
+    target_compile_features(volt_dc_solve_parity_fixture PRIVATE cxx_std_23)
+    volt_apply_project_warnings(volt_dc_solve_parity_fixture PRIVATE)
+    volt_apply_sanitizers(volt_dc_solve_parity_fixture)
+    volt_apply_coverage(volt_dc_solve_parity_fixture)
 
     add_executable(volt_part_model_authoring_fixture support/part_model_authoring_fixture.cpp)
     target_link_libraries(volt_part_model_authoring_fixture PRIVATE Volt::IO)
@@ -327,3 +334,9 @@ add_test(
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/generate-python-api-docs.py --check
 )
 set_tests_properties(python_api_docs PROPERTIES LABELS docs)
+
+add_test(
+    NAME linear_dc_reference_corpus
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/regenerate-dc-reference.py
+)
+set_tests_properties(linear_dc_reference_corpus PROPERTIES LABELS cpp)

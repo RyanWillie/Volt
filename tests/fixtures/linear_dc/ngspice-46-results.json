@@ -1,0 +1,133 @@
+{
+  "format": "volt.linear-dc-ngspice-evidence",
+  "version": 1,
+  "backend": {
+    "name": "ngspice",
+    "version": "ngspice-46",
+    "verified_executable": "/opt/homebrew/Cellar/ngspice/46_1/bin/ngspice"
+  },
+  "executed_on": "2026-09-10",
+  "invocation": "python3 scripts/regenerate-dc-reference.py --regenerate --ngspice /opt/homebrew/bin/ngspice --executed-on YYYY-MM-DD",
+  "cases": [
+    {
+      "id": "divider",
+      "deck": "divider.cir",
+      "deck_sha256": "f8a4847ea6c07bb1c7e9e1a6610eced6bc8de0f88a16825e8a0659a5db5a733b",
+      "command": [
+        "ngspice",
+        "-b",
+        "tests/fixtures/linear_dc/divider.cir"
+      ],
+      "observations": {
+        "supply_voltage_v": 5.0,
+        "midpoint_voltage_v": 2.5,
+        "upper_current_a": 0.0025,
+        "lower_current_a": 0.0025,
+        "source_current_a": -0.0025
+      }
+    },
+    {
+      "id": "series_parallel_load",
+      "deck": "series_parallel_load.cir",
+      "deck_sha256": "c8a7fe50845a4853bf77553e0ce7996f7cb15c68326e671a0d5f1ac3fa0b87e8",
+      "command": [
+        "ngspice",
+        "-b",
+        "tests/fixtures/linear_dc/series_parallel_load.cir"
+      ],
+      "observations": {
+        "load_voltage_v": 2.0,
+        "series_current_a": 0.003,
+        "load_1k_current_a": 0.002,
+        "load_2k_current_a": 0.001,
+        "source_current_a": -0.003
+      }
+    },
+    {
+      "id": "source_polarity",
+      "deck": "source_polarity.cir",
+      "deck_sha256": "bde312b5618c047c7643ccbf44101d9a52a265c59cb66377ba217c3f75ca761a",
+      "command": [
+        "ngspice",
+        "-b",
+        "tests/fixtures/linear_dc/source_polarity.cir"
+      ],
+      "observations": {
+        "positive_node_v": 5.0,
+        "positive_source_current_a": -0.005,
+        "negative_node_v": -5.0,
+        "negative_source_current_a": 0.005,
+        "reversed_resistor_current_a": 0.005,
+        "current_driven_node_v": 2.0,
+        "authored_current_source_a": 0.002
+      }
+    },
+    {
+      "id": "zero_ohm_constraint",
+      "deck": "zero_ohm_constraint.cir",
+      "deck_sha256": "f2ac8fe173359caae3b90c03916d6d6f7e623809fa1e10009421d9dd14f57164",
+      "command": [
+        "ngspice",
+        "-b",
+        "tests/fixtures/linear_dc/zero_ohm_constraint.cir"
+      ],
+      "observations": {
+        "supply_voltage_v": 5.0,
+        "load_voltage_v": 5.0,
+        "constraint_current_a": 0.005,
+        "source_current_a": -0.005
+      }
+    },
+    {
+      "id": "ideal_capacitor_dc",
+      "deck": "ideal_capacitor_dc.cir",
+      "deck_sha256": "308d767fe8669e2536c0398374b0774aaf60fcc49d21b8c2635ebea4ce33e7fc",
+      "command": [
+        "ngspice",
+        "-b",
+        "tests/fixtures/linear_dc/ideal_capacitor_dc.cir"
+      ],
+      "observations": {
+        "supply_voltage_v": 5.0,
+        "downstream_voltage_v": 0.0,
+        "capacitor_current_a": 0.0,
+        "source_current_a": 0.0
+      }
+    },
+    {
+      "id": "ideal_inductor_dc",
+      "deck": "ideal_inductor_dc.cir",
+      "deck_sha256": "e5fbc74ad7d6a033f425826708faca6b27546e5525ef5b7b6271802c4085cc15",
+      "command": [
+        "ngspice",
+        "-b",
+        "tests/fixtures/linear_dc/ideal_inductor_dc.cir"
+      ],
+      "observations": {
+        "supply_voltage_v": 5.0,
+        "load_voltage_v": 5.0,
+        "inductor_current_a": 0.005,
+        "source_current_a": -0.005
+      }
+    },
+    {
+      "id": "composite_capacitor_dc",
+      "deck": "composite_capacitor_dc.cir",
+      "deck_sha256": "8be1f235711d52f9d2c4162aabdfe013ec5e336666daf564d4d46a8482c05f32",
+      "command": [
+        "ngspice",
+        "-b",
+        "tests/fixtures/linear_dc/composite_capacitor_dc.cir"
+      ],
+      "observations": {
+        "terminal_a_voltage_v": 5.0,
+        "after_esr_voltage_v": 5.0,
+        "after_esl_voltage_v": 5.0,
+        "esr_current_a": 0.0,
+        "esl_current_a": 0.0,
+        "capacitor_current_a": 0.0,
+        "source_current_a": 0.0
+      }
+    }
+  ]
+}

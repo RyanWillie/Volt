@@ -1,0 +1,161 @@
+#include "dc_solve_bindings.hpp"
+
+#include "binding_diagnostic_conversions.hpp"
+
+#include <cstddef>
+#include <optional>
+#include <string>
+
+#include <pybind11/stl.h>
+
+#include <volt/electrical/dc_solve.hpp>
+#include <volt/io/electrical/dc_solve_io.hpp>
+
+namespace volt::python {
+namespace {
+
+template <typename Value> [[nodiscard]] py::tuple copied_tuple(const std::vector<Value> &values) {
+    auto result = py::tuple{values.size()};
+    for (std::size_t index = 0; index < values.size(); ++index) {
+        result[index] = py::cast(values[index], py::return_value_policy::copy);
+    }
+    return result;
+}
+
+template <typename Value>
+[[nodiscard]] py::object copied_optional(const std::optional<Value> &value) {
+    return value.has_value() ? py::cast(*value, py::return_value_policy::copy) : py::none{};
+}
+
+[[nodiscard]] py::list diagnostic_list(const std::vector<Diagnostic> &diagnostics) {
+    auto result = py::list{};
+    for (const auto &diagnostic : diagnostics) {
+        result.append(diagnostic_to_dict(diagnostic));
+    }
+    return result;
+}
+
+} // namespace
+
+void bind_dc_solve(pybind11::module_ &module) {
+    py::class_<DcSolveOptions>(module, "DcSolveOptions")
+        .def(py::init<double, double, double, Quantity, Quantity>(),
+             py::arg("relative_rank_threshold") = 1e-12,
+             py::arg("minimum_reciprocal_condition") = 1e-12,
+             py::arg("relative_residual_tolerance") = 1e-9,
+             py::arg("absolute_voltage_tolerance") = Quantity{UnitDimension::Voltage, 1e-9},
+             py::arg("absolute_current_tolerance") = Quantity{UnitDimension::Current, 1e-12})
+        .def_property_readonly("relative_rank_threshold", &DcSolveOptions::relative_rank_threshold)
+        .def_property_readonly("minimum_reciprocal_condition",
+                               &DcSolveOptions::minimum_reciprocal_condition)
+        .def_property_readonly("relative_residual_tolerance",
+                               &DcSolveOptions::relative_residual_tolerance)
+        .def_property_readonly("absolute_voltage_tolerance",
+                               &DcSolveOptions::absolute_voltage_tolerance,
+                               py::return_value_policy::copy)
+        .def_property_readonly("absolute_current_tolerance",
+                               &DcSolveOptions::absolute_current_tolerance,
+                               py::return_value_policy::copy)
+        .def_property_readonly("scaling", [](const DcSolveOptions &) {
+            return std::string{DcSolveOptions::scaling()};
+        });
+
+    py::enum_<DcSolveOutcome>(module, "DcSolveOutcome")
+        .value("SUCCESS", DcSolveOutcome::Success)
+        .value("RANK_DEFICIENT", DcSolveOutcome::RankDeficient)
+        .value("INCONSISTENT", DcSolveOutcome::Inconsistent)
+        .value("ILL_CONDITIONED", DcSolveOutcome::IllConditioned)
+        .value("NUMERICAL_FAILURE", DcSolveOutcome::NumericalFailure)
+        .value("RESIDUAL_FAILURE", DcSolveOutcome::ResidualFailure);
+
+    py::class_<DcSolveMetrics>(module, "DcSolveMetrics")
+        .def_property_readonly("coordinate_count",
+                               [](const DcSolveMetrics &value) { return value.coordinate_count; })
+        .def_property_readonly("rank", [](const DcSolveMetrics &value) { return value.rank; })
+        .def_property_readonly("augmented_rank",
+                               [](const DcSolveMetrics &value) { return value.augmented_rank; })
+        .def_property_readonly(
+            "reciprocal_condition",
+            [](const DcSolveMetrics &value) { return value.reciprocal_condition; })
+        .def_property_readonly("scaled_residual",
+                               [](const DcSolveMetrics &value) { return value.scaled_residual; })
+        .def_property_readonly(
+            "voltage_residual",
+            [](const DcSolveMetrics &value) { return copied_optional(value.voltage_residual); })
+        .def_property_readonly(
+            "current_residual",
+            [](const DcSolveMetrics &value) { return copied_optional(value.current_residual); })
+        .def_property_readonly(
+            "voltage_error_ratio",
+            [](const DcSolveMetrics &value) { return value.voltage_error_ratio; })
+        .def_property_readonly("current_error_ratio", [](const DcSolveMetrics &value) {
+            return value.current_error_ratio;
+        });
+
+    py::class_<DcNodeResult>(module, "DcNodeResult")
+        .def_property_readonly("node", [](const DcNodeResult &value) { return value.node.index(); })
+        .def_property_readonly(
+            "potential", [](const DcNodeResult &value) { return value.potential; },
+            py::return_value_policy::copy);
+    py::class_<DcBranchResult>(module, "DcBranchResult")
+        .def_property_readonly("branch",
+                               [](const DcBranchResult &value) { return value.branch.index(); })
+        .def_property_readonly(
+            "voltage", [](const DcBranchResult &value) { return value.voltage; },
+            py::return_value_policy::copy)
+        .def_property_readonly(
+            "current", [](const DcBranchResult &value) { return value.current; },
+            py::return_value_policy::copy)
+        .def_property_readonly(
+            "power", [](const DcBranchResult &value) { return value.power; },
+            py::return_value_policy::copy);
+    py::class_<DcProbeResult>(module, "DcProbeResult")
+        .def_property_readonly(
+            "key", [](const DcProbeResult &value) { return value.key; },
+            py::return_value_policy::copy)
+        .def_property_readonly(
+            "value", [](const DcProbeResult &value) { return value.value; },
+            py::return_value_policy::copy);
+
+    py::class_<DcSolution>(module, "DcSolution")
+        .def_property_readonly("analysis_identity", &DcSolution::analysis_identity,
+                               py::return_value_policy::copy)
+        .def_property_readonly("model", &DcSolution::model, py::return_value_policy::copy)
+        .def_property_readonly("options", &DcSolution::options, py::return_value_policy::copy)
+        .def_property_readonly("nodes",
+                               [](const DcSolution &value) { return copied_tuple(value.nodes()); })
+        .def_property_readonly(
+            "branches", [](const DcSolution &value) { return copied_tuple(value.branches()); })
+        .def_property_readonly("probes",
+                               [](const DcSolution &value) { return copied_tuple(value.probes()); })
+        .def("to_json", &io::write_dc_solution);
+
+    py::class_<DcSolveReport>(module, "DcSolveReport")
+        .def_property_readonly(
+            "contract_version",
+            [](const DcSolveReport &) { return DcSolveReport::contract_version(); })
+        .def_property_readonly(
+            "backend", [](const DcSolveReport &) { return std::string{DcSolveReport::backend()}; })
+        .def_property_readonly("analysis_identity", &DcSolveReport::analysis_identity,
+                               py::return_value_policy::copy)
+        .def_property_readonly("model", &DcSolveReport::model, py::return_value_policy::copy)
+        .def_property_readonly("options", &DcSolveReport::options, py::return_value_policy::copy)
+        .def_property_readonly("outcome", &DcSolveReport::outcome)
+        .def_property_readonly("success", &DcSolveReport::success)
+        .def_property_readonly("metrics", &DcSolveReport::metrics, py::return_value_policy::copy)
+        .def_property_readonly(
+            "diagnostics",
+            [](const DcSolveReport &report) { return diagnostic_list(report.diagnostics()); })
+        .def_property_readonly("solution",
+                               [](const DcSolveReport &report) -> py::object {
+                                   const auto *solution = report.solution();
+                                   return solution == nullptr
+                                              ? py::none{}
+                                              : py::cast(*solution, py::return_value_policy::copy);
+                               })
+        .def("to_json", &io::write_dc_solve_report);
+
+    module.def("solve_dc", &solve_dc, py::arg("model"), py::arg("options") = DcSolveOptions{});
+}
+
+} // namespace volt::python

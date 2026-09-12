@@ -49,6 +49,7 @@ add_library(
     detail/entity_ref_format.cpp
     electrical/dc_input.cpp
     electrical/dc_request_io.cpp
+    electrical/dc_solve_io.cpp
     electrical/compiled_electrical_model_io.cpp
     logical/logical_circuit_reader.cpp
     logical/logical_circuit_hierarchy_parser.cpp

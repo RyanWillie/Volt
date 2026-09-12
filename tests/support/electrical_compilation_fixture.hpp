@@ -44,6 +44,8 @@ struct Fixture {
     std::unique_ptr<Circuit> circuit;
     io::PartLibraryBundle library;
     PartVariant resistor;
+    PartVariant resistor_2k;
+    PartVariant resistor_tiny;
     PartVariant zero_resistor;
     PartVariant composite;
     PartVariant capacitor;
@@ -159,6 +161,10 @@ struct Fixture {
     };
     const auto resistor =
         make_part(required_component, "resistor", resistor_model(required_component, 1000.0));
+    const auto resistor_2k =
+        make_part(required_component, "resistor-2k", resistor_model(required_component, 2000.0));
+    const auto resistor_tiny =
+        make_part(required_component, "resistor-tiny", resistor_model(required_component, 1.0e-14));
     const auto zero_resistor =
         make_part(required_component, "zero-resistor", resistor_model(required_component, 0.0));
     const auto composite = make_part(required_component, "composite-capacitor", composite_model);
@@ -174,9 +180,10 @@ struct Fixture {
                   resistor_model(must_not_connect_component, 1000.0));
 
     auto assets = Assets{};
-    for (const auto &part : {std::cref(resistor), std::cref(zero_resistor), std::cref(composite),
-                             std::cref(capacitor), std::cref(inductor), std::cref(absent),
-                             std::cref(optional_resistor), std::cref(must_not_connect_resistor)}) {
+    for (const auto &part :
+         {std::cref(resistor), std::cref(resistor_2k), std::cref(resistor_tiny),
+          std::cref(zero_resistor), std::cref(composite), std::cref(capacitor), std::cref(inductor),
+          std::cref(absent), std::cref(optional_resistor), std::cref(must_not_connect_resistor)}) {
         for (const auto &reference : part_asset_references(part.get())) {
             assets.add(reference, footprint);
         }
@@ -186,12 +193,15 @@ struct Fixture {
     library_builder.add_component(required_spec)
         .add_component(optional_spec)
         .add_component(must_not_connect_spec);
-    for (const auto &part : {std::cref(resistor), std::cref(zero_resistor), std::cref(composite),
-                             std::cref(capacitor), std::cref(inductor), std::cref(absent),
-                             std::cref(optional_resistor), std::cref(must_not_connect_resistor)}) {
+    for (const auto &part :
+         {std::cref(resistor), std::cref(resistor_2k), std::cref(resistor_tiny),
+          std::cref(zero_resistor), std::cref(composite), std::cref(capacitor), std::cref(inductor),
+          std::cref(absent), std::cref(optional_resistor), std::cref(must_not_connect_resistor)}) {
         library_builder.add_part(part.get());
     }
     const auto part_keys = std::vector{PartKey{"resistor"},
+                                       PartKey{"resistor-2k"},
+                                       PartKey{"resistor-tiny"},
                                        PartKey{"zero-resistor"},
                                        PartKey{"composite-capacitor"},
                                        PartKey{"ideal-capacitor"},
@@ -220,6 +230,8 @@ struct Fixture {
     return {std::move(circuit),
             std::move(library),
             {required_definition, PartKey{"resistor"}},
+            {required_definition, PartKey{"resistor-2k"}},
+            {required_definition, PartKey{"resistor-tiny"}},
             {required_definition, PartKey{"zero-resistor"}},
             {required_definition, PartKey{"composite-capacitor"}},
             {required_definition, PartKey{"ideal-capacitor"}},

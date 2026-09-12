@@ -1,0 +1,10 @@
+* Volt S3 independent oracle: capacitor is open in DC steady state
+Vdrive supply 0 DC 5
+Cstorage supply downstream 1u
+Rreference downstream 0 1k
+.control
+op
+print v(supply) v(downstream) @cstorage[i] i(vdrive)
+quit
+.endc
+.end

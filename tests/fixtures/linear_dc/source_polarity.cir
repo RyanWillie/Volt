@@ -1,0 +1,13 @@
+* Volt S3 independent oracle: source and branch polarity
+Vpositive vp 0 DC 5
+Rpositive vp 0 1k
+Vnegative vn 0 DC -5
+Rnegative 0 vn 1k
+Iinject 0 vi DC 2m
+Rcurrent vi 0 1k
+.control
+op
+print v(vp) i(vpositive) v(vn) i(vnegative) @rnegative[i] v(vi) @iinject[current]
+quit
+.endc
+.end

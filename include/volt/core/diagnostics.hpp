@@ -200,6 +200,11 @@ inline constexpr auto ElectricalRequiredPortUnbound =
 inline constexpr auto ElectricalShortedBranch = std::string_view{"ELECTRICAL_SHORTED_BRANCH"};
 inline constexpr auto ElectricalContradictoryVoltageSource =
     std::string_view{"ELECTRICAL_CONTRADICTORY_VOLTAGE_SOURCE"};
+inline constexpr auto DcSolveRankDeficient = std::string_view{"DC_SOLVE_RANK_DEFICIENT"};
+inline constexpr auto DcSolveInconsistent = std::string_view{"DC_SOLVE_INCONSISTENT"};
+inline constexpr auto DcSolveIllConditioned = std::string_view{"DC_SOLVE_ILL_CONDITIONED"};
+inline constexpr auto DcSolveNumericalFailure = std::string_view{"DC_SOLVE_NUMERICAL_FAILURE"};
+inline constexpr auto DcSolveResidualFailure = std::string_view{"DC_SOLVE_RESIDUAL_FAILURE"};
 
 } // namespace analysis_diagnostic_codes
 
@@ -297,7 +302,12 @@ inline constexpr auto Analysis =
                analysis_diagnostic_codes::ElectricalOptionalPinOpen,
                analysis_diagnostic_codes::ElectricalRequiredPortUnbound,
                analysis_diagnostic_codes::ElectricalShortedBranch,
-               analysis_diagnostic_codes::ElectricalContradictoryVoltageSource};
+               analysis_diagnostic_codes::ElectricalContradictoryVoltageSource,
+               analysis_diagnostic_codes::DcSolveRankDeficient,
+               analysis_diagnostic_codes::DcSolveInconsistent,
+               analysis_diagnostic_codes::DcSolveIllConditioned,
+               analysis_diagnostic_codes::DcSolveNumericalFailure,
+               analysis_diagnostic_codes::DcSolveResidualFailure};
 
 } // namespace diagnostic_code_catalogs
 

@@ -1,0 +1,10 @@
+* Volt S3 independent oracle: R=0 represented as an exact ideal 0 V constraint
+Vdrive supply 0 DC 5
+Vwire supply load DC 0
+Rload load 0 1k
+.control
+op
+print v(supply) v(load) i(vwire) i(vdrive)
+quit
+.endc
+.end
