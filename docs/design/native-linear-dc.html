@@ -99,7 +99,8 @@ python3 scripts/regenerate-dc-reference.py --regenerate \
 Source-free operation reopens existing verified inputs, then compiles and solves them. Ordinary
 builds and manufacturing remain solver-free; canonical Circuit, Part, Board and Schematic truth
 is unchanged. The explicit S4 CLI orchestrates these same native operations from project source or
-a verified bundle; it does not add a public SPICE adapter, AC, transient, nonlinear or whole-IC
-solver. See the <a href="../../docs-site/cli/simulate.mdx">focused command documentation</a>.</p>
+a verified bundle. S5 adds a bounded <a href="ngspice-dc.html">ngspice 46 DC adapter</a>, while AC,
+transient, nonlinear and whole-IC solving remain outside this slice. See the
+<a href="../../docs-site/cli/simulate.mdx">focused command documentation</a>.</p>
 </main>
 </html>

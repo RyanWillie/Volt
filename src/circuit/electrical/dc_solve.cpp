@@ -1,4 +1,7 @@
 #include <volt/electrical/dc_solve.hpp>
+#include <volt/electrical/ngspice_dc.hpp>
+
+#include "ngspice_dc_detail.hpp"
 
 #include <algorithm>
 #include <array>
@@ -58,19 +61,54 @@ class IdentityEncoder final {
 };
 
 [[nodiscard]] ContentHash make_analysis_identity(const CompiledElectricalModel &model,
-                                                 const DcSolveOptions &options) {
+                                                 const DcSolveOptions &options,
+                                                 const DcSolveProvenance &provenance) {
     auto encoder = IdentityEncoder{};
     encoder.text("volt.linear-dc-analysis");
     encoder.text(std::to_string(DcSolveReport::contract_version()));
     encoder.text(model.identity().value());
-    encoder.text(DcSolveReport::backend());
+    encoder.text(provenance.backend);
     encoder.text(DcSolveOptions::scaling());
     encoder.number(options.relative_rank_threshold());
     encoder.number(options.minimum_reciprocal_condition());
     encoder.number(options.relative_residual_tolerance());
     encoder.number(options.absolute_voltage_tolerance().value());
     encoder.number(options.absolute_current_tolerance().value());
+    if (provenance.deck_identity) {
+        encoder.text(provenance.backend_version);
+        encoder.text(provenance.adapter);
+        encoder.text(std::to_string(provenance.adapter_contract_version));
+        encoder.text(provenance.effective_settings);
+        encoder.text(provenance.acceptance_policy);
+        encoder.text(provenance.validation_backend);
+        encoder.text(provenance.deck_identity->value());
+        encoder.text(provenance.mapping_identity->value());
+    }
     return encoder.digest();
+}
+
+[[nodiscard]] DcSolveProvenance native_provenance() {
+    return DcSolveProvenance{std::string{backend_name},
+                             "5.0.0",
+                             "volt.native-linear-dc",
+                             1,
+                             std::string{DcSolveOptions::scaling()},
+                             "volt.linear-dc-unique-finite-residual:1",
+                             std::string{backend_name},
+                             std::nullopt,
+                             std::nullopt};
+}
+
+[[nodiscard]] DcSolveProvenance ngspice_provenance(const NgspiceDcAnalysis &analysis) {
+    return DcSolveProvenance{"ngspice",
+                             "46",
+                             "volt.ngspice-dc",
+                             NgspiceDcAnalysis::contract_version(),
+                             std::string{NgspiceDcAnalysis::settings()},
+                             "volt.linear-dc-unique-finite-residual:1",
+                             std::string{backend_name},
+                             analysis.deck_identity(),
+                             analysis.mapping_identity()};
 }
 
 [[nodiscard]] Diagnostic solve_diagnostic(std::string_view code, std::string message,
@@ -367,26 +405,33 @@ DcSolveOptions::DcSolveOptions(double relative_rank_threshold, double minimum_re
     }
 }
 
-std::string_view DcSolveReport::backend() noexcept { return backend_name; }
-
 DcSolution::DcSolution(ContentHash analysis_identity, CompiledElectricalModel model,
-                       DcSolveOptions options, std::vector<DcNodeResult> nodes,
-                       std::vector<DcBranchResult> branches, std::vector<DcProbeResult> probes)
+                       DcSolveOptions options, DcSolveProvenance provenance,
+                       std::vector<DcNodeResult> nodes, std::vector<DcBranchResult> branches,
+                       std::vector<DcProbeResult> probes)
     : analysis_identity_{std::move(analysis_identity)}, model_{std::move(model)}, options_{options},
-      nodes_{std::move(nodes)}, branches_{std::move(branches)}, probes_{std::move(probes)} {}
+      provenance_{std::move(provenance)}, nodes_{std::move(nodes)}, branches_{std::move(branches)},
+      probes_{std::move(probes)} {}
 
 class DcSolution::Solver final {
   public:
     [[nodiscard]] static std::optional<DcSolution>
     solve(const CompiledElectricalModel &model, const DcSolveOptions &options,
-          const ContentHash &identity, DcSolveOutcome &outcome, DcSolveMetrics &metrics,
-          std::vector<Diagnostic> &diagnostics) {
+          const ContentHash &identity, const DcSolveProvenance &provenance, DcSolveOutcome &outcome,
+          DcSolveMetrics &metrics, std::vector<Diagnostic> &diagnostics,
+          const std::vector<double> *external_coordinates = nullptr) {
         const auto tableau = assemble_tableau(model, diagnostics);
         if (!tableau) {
             outcome = DcSolveOutcome::NumericalFailure;
             return std::nullopt;
         }
         metrics.coordinate_count = static_cast<std::size_t>(tableau->coefficients.cols());
+        if (external_coordinates != nullptr &&
+            (external_coordinates->size() != metrics.coordinate_count ||
+             !std::ranges::all_of(*external_coordinates, finite))) {
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "External DC output has invalid coordinates"};
+        }
         const auto system = equilibrate(*tableau, diagnostics);
         if (!system) {
             outcome = DcSolveOutcome::NumericalFailure;
@@ -466,7 +511,18 @@ class DcSolution::Solver final {
                 return std::nullopt;
             }
 
-            scaled_solution = decomposition.solve(system->right_hand_side);
+            if (external_coordinates == nullptr) {
+                scaled_solution = decomposition.solve(system->right_hand_side);
+            } else {
+                // Factorization above establishes trust only. Never compute a replacement
+                // answer for the external backend's observations.
+                scaled_solution = Vector(static_cast<Eigen::Index>(external_coordinates->size()));
+                for (Eigen::Index column = 0; column < scaled_solution.size(); ++column) {
+                    scaled_solution(column) =
+                        external_coordinates->at(static_cast<std::size_t>(column)) *
+                        system->column_maxima(column);
+                }
+            }
             if (!scaled_solution.allFinite()) {
                 diagnostics.push_back(
                     solve_diagnostic(analysis_diagnostic_codes::DcSolveNumericalFailure,
@@ -478,7 +534,9 @@ class DcSolution::Solver final {
 
         auto coordinates = scaled_solution;
         for (Eigen::Index column = 0; column < coordinates.size(); ++column) {
-            if (system->column_maxima(column) > 0.0) {
+            if (external_coordinates != nullptr) {
+                coordinates(column) = external_coordinates->at(static_cast<std::size_t>(column));
+            } else if (system->column_maxima(column) > 0.0) {
                 coordinates(column) /= system->column_maxima(column);
             }
         }
@@ -709,6 +767,7 @@ class DcSolution::Solver final {
         return DcSolution{identity,
                           model,
                           options,
+                          provenance,
                           std::move(node_results),
                           std::move(branch_results),
                           std::move(probe_results)};
@@ -716,13 +775,27 @@ class DcSolution::Solver final {
 };
 
 DcSolveReport::DcSolveReport(const CompiledElectricalModel &model, const DcSolveOptions &options)
-    : model_{model}, options_{options},
-      analysis_identity_{make_analysis_identity(model_, options_)},
-      solution_{DcSolution::Solver::solve(model_, options_, analysis_identity_, outcome_, metrics_,
-                                          diagnostics_)} {}
+    : model_{model}, options_{options}, provenance_{native_provenance()},
+      analysis_identity_{make_analysis_identity(model_, options_, provenance_)},
+      solution_{DcSolution::Solver::solve(model_, options_, analysis_identity_, provenance_,
+                                          outcome_, metrics_, diagnostics_)} {}
+
+DcSolveReport::DcSolveReport(const NgspiceDcAnalysis &analysis, std::string_view output,
+                             const DcSolveOptions &options)
+    : model_{analysis.model()}, options_{options}, provenance_{ngspice_provenance(analysis)},
+      analysis_identity_{make_analysis_identity(model_, options_, provenance_)} {
+    const auto coordinates = detail::read_ngspice_dc_coordinates(analysis, output);
+    solution_ = DcSolution::Solver::solve(model_, options_, analysis_identity_, provenance_,
+                                          outcome_, metrics_, diagnostics_, &coordinates);
+}
 
 DcSolveReport solve_dc(const CompiledElectricalModel &model, const DcSolveOptions &options) {
     return DcSolveReport{model, options};
+}
+
+DcSolveReport solve_ngspice_dc(const NgspiceDcAnalysis &analysis, std::string_view output,
+                               const DcSolveOptions &options) {
+    return DcSolveReport{analysis, output, options};
 }
 
 } // namespace volt

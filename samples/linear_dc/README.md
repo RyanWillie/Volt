@@ -39,3 +39,17 @@ python -m volt.cli simulate --bundle "$example_dir/divider.volt" --design divide
 Both modes bind the exact saved request bytes to the selected native input. If the logical design
 or exact selected-Part closure changes, regenerate the request explicitly; Volt does not rebind
 stale requests by names or indexes.
+
+To run the same source-free input through the bounded external adapter, install ngspice 46
+separately and pass its executable explicitly:
+
+```sh
+python -m volt.cli simulate --bundle "$example_dir/divider.volt" --design divider \
+  --request "$example_dir/canonicalrequest.json" \
+  --output "$example_dir/ngspice-dc" --json \
+  --backend ngspice --ngspice /absolute/path/to/ngspice
+```
+
+Volt generates the deck; this example does not supply arbitrary SPICE text. The ngspice result is
+accepted only after native finiteness, uniqueness, conditioning, and residual checks, and its deck
+and mapping identities are retained in the published solve provenance.

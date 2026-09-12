@@ -3,12 +3,37 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 
 #include <volt/electrical/compiled_electrical_model.hpp>
 
 namespace volt {
+
+class NgspiceDcAnalysis;
+
+/** Native-owned attribution; external observations and native validation are distinct. */
+struct DcSolveProvenance {
+    /** Backend that produced the candidate observations, never the acceptance checker. */
+    std::string backend;
+    /** Exact supported backend version for this result contract. */
+    std::string backend_version;
+    /** Closed native adapter identifier, not a user-defined backend registry key. */
+    std::string adapter;
+    /** Version of the adapter's lowering and ingestion contract. */
+    std::uint32_t adapter_contract_version = 1;
+    /** Deterministic backend settings; acceptance tolerances are retained in options. */
+    std::string effective_settings;
+    /** Native uniqueness, finite-observation and residual acceptance contract. */
+    std::string acceptance_policy;
+    /** Implementation that established the report's rank and residual metrics. */
+    std::string validation_backend;
+    /** Exact external deck bytes, absent for native evaluation. */
+    std::optional<ContentHash> deck_identity;
+    /** Exact external generated-name and observation map, absent for native evaluation. */
+    std::optional<ContentHash> mapping_identity;
+};
 
 /** Validated numerical acceptance policy; never physical parasitics or model uncertainty. */
 class DcSolveOptions {
@@ -135,6 +160,9 @@ class DcSolution {
     /** Effective validated numerical settings retained with these observations. */
     [[nodiscard]] const DcSolveOptions &options() const noexcept { return options_; }
 
+    /** Actual observation producer and separately attributed native trust checks. */
+    [[nodiscard]] const DcSolveProvenance &provenance() const noexcept { return provenance_; }
+
     /** Complete model-order node observations. */
     [[nodiscard]] const std::vector<DcNodeResult> &nodes() const noexcept { return nodes_; }
 
@@ -146,11 +174,12 @@ class DcSolution {
 
   private:
     DcSolution(ContentHash analysis_identity, CompiledElectricalModel model, DcSolveOptions options,
-               std::vector<DcNodeResult> nodes, std::vector<DcBranchResult> branches,
-               std::vector<DcProbeResult> probes);
+               DcSolveProvenance provenance, std::vector<DcNodeResult> nodes,
+               std::vector<DcBranchResult> branches, std::vector<DcProbeResult> probes);
     ContentHash analysis_identity_;
     CompiledElectricalModel model_;
     DcSolveOptions options_;
+    DcSolveProvenance provenance_;
     std::vector<DcNodeResult> nodes_;
     std::vector<DcBranchResult> branches_;
     std::vector<DcProbeResult> probes_;
@@ -163,11 +192,18 @@ class DcSolveReport {
     explicit DcSolveReport(const CompiledElectricalModel &model,
                            const DcSolveOptions &options = DcSolveOptions{});
 
+    /** Parse adapter-owned output and accept only unique, finite, validated observations. */
+    explicit DcSolveReport(const NgspiceDcAnalysis &analysis, std::string_view output,
+                           const DcSolveOptions &options = DcSolveOptions{});
+
     /** Current native numerical contract, not an artifact or Circuit format version. */
     [[nodiscard]] static constexpr std::uint32_t contract_version() noexcept { return 1; }
 
     /** Pinned established linear algebra backend and formulation identity. */
-    [[nodiscard]] static std::string_view backend() noexcept;
+    [[nodiscard]] std::string_view backend() const noexcept { return provenance_.backend; }
+
+    /** Immutable attribution, including deck/mapping identity for an external backend. */
+    [[nodiscard]] const DcSolveProvenance &provenance() const noexcept { return provenance_; }
 
     /** Identity of the complete numerical input and effective policy. */
     [[nodiscard]] const ContentHash &analysis_identity() const noexcept {
@@ -205,6 +241,7 @@ class DcSolveReport {
   private:
     CompiledElectricalModel model_;
     DcSolveOptions options_;
+    DcSolveProvenance provenance_;
     ContentHash analysis_identity_;
     DcSolveOutcome outcome_ = DcSolveOutcome::NumericalFailure;
     DcSolveMetrics metrics_;
@@ -216,5 +253,10 @@ class DcSolveReport {
  */
 [[nodiscard]] DcSolveReport solve_dc(const CompiledElectricalModel &model,
                                      const DcSolveOptions &options = DcSolveOptions{});
+
+/** Ingest only the narrow output contract of a retained native ngspice preparation. */
+[[nodiscard]] DcSolveReport solve_ngspice_dc(const NgspiceDcAnalysis &analysis,
+                                             std::string_view output,
+                                             const DcSolveOptions &options = DcSolveOptions{});
 
 } // namespace volt

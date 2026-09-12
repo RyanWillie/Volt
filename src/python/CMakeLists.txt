@@ -42,6 +42,7 @@ set(
     cli/__main__.py
     cli/_project_worker.py
     cli/_simulation.py
+    cli/_ngspice.py
     library.py
     library_result.py
     logical.py
@@ -180,7 +181,7 @@ if(VOLT_BUILD_TESTS)
                 "VOLT_ELECTRICAL_COMPILATION_PARITY_FIXTURE=set:$<TARGET_FILE:volt_electrical_compilation_parity_fixture>"
             )
         endif()
-        if(test_name STREQUAL "test_dc_solve")
+        if(test_name STREQUAL "test_dc_solve" OR test_name STREQUAL "test_ngspice_results")
             list(
                 APPEND test_environment
                 "VOLT_DC_SOLVE_PARITY_FIXTURE=set:$<TARGET_FILE:volt_dc_solve_parity_fixture>"

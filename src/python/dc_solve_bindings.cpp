@@ -9,7 +9,9 @@
 #include <pybind11/stl.h>
 
 #include <volt/electrical/dc_solve.hpp>
+#include <volt/electrical/ngspice_dc.hpp>
 #include <volt/io/electrical/dc_solve_io.hpp>
+#include <volt/io/electrical/ngspice_dc_io.hpp>
 
 namespace volt::python {
 namespace {
@@ -38,6 +40,37 @@ template <typename Value>
 } // namespace
 
 void bind_dc_solve(pybind11::module_ &module) {
+    py::class_<DcSolveProvenance>(module, "DcSolveProvenance")
+        .def_readonly("backend", &DcSolveProvenance::backend)
+        .def_readonly("backend_version", &DcSolveProvenance::backend_version)
+        .def_readonly("adapter", &DcSolveProvenance::adapter)
+        .def_readonly("adapter_contract_version", &DcSolveProvenance::adapter_contract_version)
+        .def_readonly("effective_settings", &DcSolveProvenance::effective_settings)
+        .def_readonly("acceptance_policy", &DcSolveProvenance::acceptance_policy)
+        .def_readonly("validation_backend", &DcSolveProvenance::validation_backend)
+        .def_property_readonly(
+            "deck_identity",
+            [](const DcSolveProvenance &value) { return copied_optional(value.deck_identity); })
+        .def_property_readonly("mapping_identity", [](const DcSolveProvenance &value) {
+            return copied_optional(value.mapping_identity);
+        });
+
+    py::class_<NgspiceDcAnalysis>(module, "NgspiceDcAnalysis")
+        .def_property_readonly("model", &NgspiceDcAnalysis::model, py::return_value_policy::copy)
+        .def_property_readonly("complete", &NgspiceDcAnalysis::complete)
+        .def_property_readonly("deck", &NgspiceDcAnalysis::deck)
+        .def_property_readonly("deck_identity", &NgspiceDcAnalysis::deck_identity,
+                               py::return_value_policy::copy)
+        .def_property_readonly("mapping_identity", &NgspiceDcAnalysis::mapping_identity,
+                               py::return_value_policy::copy)
+        .def_property_readonly(
+            "maximum_output_bytes",
+            [](const NgspiceDcAnalysis &) { return NgspiceDcAnalysis::maximum_output_bytes(); })
+        .def_property_readonly(
+            "diagnostics",
+            [](const NgspiceDcAnalysis &value) { return diagnostic_list(value.diagnostics()); })
+        .def("to_json", &io::write_ngspice_dc_analysis);
+
     py::class_<DcSolveOptions>(module, "DcSolveOptions")
         .def(py::init<double, double, double, Quantity, Quantity>(),
              py::arg("relative_rank_threshold") = 1e-12,
@@ -118,6 +151,7 @@ void bind_dc_solve(pybind11::module_ &module) {
             py::return_value_policy::copy);
 
     py::class_<DcSolution>(module, "DcSolution")
+        .def_property_readonly("provenance", &DcSolution::provenance, py::return_value_policy::copy)
         .def_property_readonly("analysis_identity", &DcSolution::analysis_identity,
                                py::return_value_policy::copy)
         .def_property_readonly("model", &DcSolution::model, py::return_value_policy::copy)
@@ -135,7 +169,9 @@ void bind_dc_solve(pybind11::module_ &module) {
             "contract_version",
             [](const DcSolveReport &) { return DcSolveReport::contract_version(); })
         .def_property_readonly(
-            "backend", [](const DcSolveReport &) { return std::string{DcSolveReport::backend()}; })
+            "backend", [](const DcSolveReport &value) { return std::string{value.backend()}; })
+        .def_property_readonly("provenance", &DcSolveReport::provenance,
+                               py::return_value_policy::copy)
         .def_property_readonly("analysis_identity", &DcSolveReport::analysis_identity,
                                py::return_value_policy::copy)
         .def_property_readonly("model", &DcSolveReport::model, py::return_value_policy::copy)
@@ -156,6 +192,15 @@ void bind_dc_solve(pybind11::module_ &module) {
         .def("to_json", &io::write_dc_solve_report);
 
     module.def("solve_dc", &solve_dc, py::arg("model"), py::arg("options") = DcSolveOptions{});
+    module.def("prepare_ngspice_dc", &prepare_ngspice_dc, py::arg("model"));
+    module.def(
+        "solve_ngspice_dc",
+        [](const NgspiceDcAnalysis &analysis, const py::bytes &output,
+           const DcSolveOptions &options) {
+            const auto bytes = output.cast<std::string>();
+            return solve_ngspice_dc(analysis, bytes, options);
+        },
+        py::arg("analysis"), py::arg("output"), py::arg("options") = DcSolveOptions{});
 }
 
 } // namespace volt::python

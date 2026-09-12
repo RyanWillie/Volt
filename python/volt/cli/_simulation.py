@@ -1,4 +1,4 @@
-"""Shared native linear-DC execution and immutable artifact publication."""
+"""Shared linear-DC execution and immutable artifact publication."""
 
 from __future__ import annotations
 
@@ -19,6 +19,10 @@ _ARTIFACT_REQUEST = "request.json"
 _ARTIFACT_COMPILE_REPORT = "compile-report.json"
 _ARTIFACT_SOLVE_REPORT = "solve-report.json"
 _ARTIFACT_SOLUTION = "solution.json"
+_ARTIFACT_NGSPICE_ANALYSIS = "ngspice-analysis.json"
+_ARTIFACT_NGSPICE_DECK = "deck.cir"
+_ARTIFACT_NGSPICE_PROCESS = "ngspice-process.json"
+_ARTIFACT_NGSPICE_OUTPUT = "ngspice-output.txt"
 
 
 def validate_output(output: Path) -> None:
@@ -72,9 +76,7 @@ def _publish_directory(stage: Path, output: Path) -> None:
     )
 
 
-def _native_outputs(
-    input, request_path: Path
-) -> tuple[dict[str, bytes], dict, dict | None, str, int]:
+def _compile_outputs(input, request_path: Path, *, error_code: str):
     try:
         request_data = request_path.read_bytes()
     except OSError as error:
@@ -94,9 +96,26 @@ def _native_outputs(
             _ARTIFACT_REQUEST: request_bytes,
             _ARTIFACT_COMPILE_REPORT: compile_bytes,
         }
-        if not compile_report.complete:
-            return artifacts, compile_payload, None, "incomplete", EXIT_CHECK_FAILED
+        return artifacts, compile_payload, compile_report
+    except CliError:
+        raise
+    except Exception as error:
+        raise CliError(
+            f"Native DC request binding or compilation failed: {error}",
+            code=error_code,
+        ) from error
 
+
+def _native_outputs(
+    input, request_path: Path
+) -> tuple[dict[str, bytes], dict, dict | None, str, int]:
+    artifacts, compile_payload, compile_report = _compile_outputs(
+        input, request_path, error_code="native-dc-execution-failed"
+    )
+    if not compile_report.complete:
+        return artifacts, compile_payload, None, "incomplete", EXIT_CHECK_FAILED
+
+    try:
         solve_report = solve_dc(compile_report.model)
         solve_bytes = solve_report.to_json().encode()
         solve_payload = json.loads(solve_bytes)
@@ -111,6 +130,93 @@ def _native_outputs(
         raise CliError(
             f"Native DC execution failed: {error}",
             code="native-dc-execution-failed",
+        ) from error
+
+
+def _ngspice_outputs(
+    input, request_path: Path, executable: Path
+) -> tuple[dict[str, bytes], dict, dict | None, dict | None, dict | None, str, int]:
+    from .. import prepare_ngspice_dc, solve_ngspice_dc
+    from ._ngspice import run_ngspice
+
+    process_payload = None
+    artifacts, compile_payload, compile_report = _compile_outputs(
+        input, request_path, error_code="ngspice-dc-execution-failed"
+    )
+    if not compile_report.complete:
+        return (
+            artifacts,
+            compile_payload,
+            None,
+            None,
+            None,
+            "incomplete",
+            EXIT_CHECK_FAILED,
+        )
+
+    try:
+        analysis = prepare_ngspice_dc(compile_report.model)
+        analysis_bytes = analysis.to_json().encode()
+        analysis_payload = json.loads(analysis_bytes)
+        artifacts[_ARTIFACT_NGSPICE_ANALYSIS] = analysis_bytes
+        artifacts[_ARTIFACT_NGSPICE_DECK] = analysis.deck.encode()
+        if not analysis.complete:
+            return (
+                artifacts,
+                compile_payload,
+                analysis_payload,
+                None,
+                None,
+                "incomplete",
+                EXIT_CHECK_FAILED,
+            )
+
+        output_bytes, process_payload = run_ngspice(
+            executable,
+            analysis.deck,
+            max_output_bytes=analysis.maximum_output_bytes,
+        )
+        process_bytes = json.dumps(
+            process_payload, separators=(",", ":"), sort_keys=True
+        ).encode()
+        artifacts[_ARTIFACT_NGSPICE_PROCESS] = process_bytes
+        artifacts[_ARTIFACT_NGSPICE_OUTPUT] = output_bytes
+        solve_report = solve_ngspice_dc(analysis, output_bytes)
+        solve_bytes = solve_report.to_json().encode()
+        solve_payload = json.loads(solve_bytes)
+        artifacts[_ARTIFACT_SOLVE_REPORT] = solve_bytes
+        if solve_report.success:
+            artifacts[_ARTIFACT_SOLUTION] = solve_report.solution.to_json().encode()
+            return (
+                artifacts,
+                compile_payload,
+                analysis_payload,
+                process_payload,
+                solve_payload,
+                "success",
+                EXIT_SUCCESS,
+            )
+        return (
+            artifacts,
+            compile_payload,
+            analysis_payload,
+            process_payload,
+            solve_payload,
+            "failed",
+            EXIT_CHECK_FAILED,
+        )
+    except CliError:
+        raise
+    except Exception as error:
+        evidence = (
+            ""
+            if process_payload is None
+            else "; process evidence: "
+            + json.dumps(process_payload, separators=(",", ":"), sort_keys=True)
+        )
+        raise CliError(
+            f"ngspice DC execution failed: {error}{evidence}",
+            code="ngspice-dc-execution-failed",
         ) from error
 
 
@@ -152,27 +258,58 @@ def execute_dc(
     *,
     design: str,
     source: dict,
+    backend: str = "native",
+    ngspice: Path | None = None,
 ) -> tuple[dict[str, object], int]:
     """Execute native linear DC and publish its canonical reports once."""
 
     output = Path(os.path.abspath(output))
     validate_output(output)
-    artifacts, compile_payload, solve_payload, status, exit_code = _native_outputs(
-        input, request_path
-    )
+    backend_payload = None
+    process_payload = None
+    if backend == "native":
+        artifacts, compile_payload, solve_payload, status, exit_code = _native_outputs(
+            input, request_path
+        )
+    elif backend == "ngspice":
+        if ngspice is None:
+            raise CliError(
+                "ngspice backend requires an explicit executable path.",
+                code="ngspice-path-required",
+            )
+        (
+            artifacts,
+            compile_payload,
+            backend_payload,
+            process_payload,
+            solve_payload,
+            status,
+            exit_code,
+        ) = _ngspice_outputs(input, request_path, ngspice)
+    else:
+        raise CliError(
+            f"Unsupported simulation backend: {backend}",
+            code="unsupported-simulation-backend",
+        )
     _write_and_publish(output, artifacts)
     artifact_paths = {name: str(output / name) for name in artifacts}
-    return (
-        {
-            "ok": status == "success",
-            "status": status,
-            "design": design,
-            "source": source,
-            "output": str(output),
-            "written": True,
-            "artifacts": artifact_paths,
-            "compile_report": compile_payload,
-            "solve_report": solve_payload,
-        },
-        exit_code,
-    )
+    payload = {
+        "ok": status == "success",
+        "status": status,
+        "design": design,
+        "source": source,
+        "output": str(output),
+        "written": True,
+        "artifacts": artifact_paths,
+        "compile_report": compile_payload,
+        "solve_report": solve_payload,
+    }
+    if backend == "ngspice":
+        payload.update(
+            {
+                "backend": backend,
+                "backend_report": backend_payload,
+                "process": process_payload,
+            }
+        )
+    return payload, exit_code
