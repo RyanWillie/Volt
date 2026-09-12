@@ -27,13 +27,14 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="volt-project-worker")
     parser.add_argument(
         "action",
-        choices=("check", "build"),
+        choices=("check", "build", "simulate"),
     )
     parser.add_argument("--config", required=True, type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--profile", default="default")
     parser.add_argument("--exports-json", default="[]")
     parser.add_argument("--design")
+    parser.add_argument("--request", type=Path)
     parser.add_argument("--schematic")
     parser.add_argument("--board")
     return parser
@@ -225,7 +226,42 @@ def _failure(error: Exception) -> dict[str, object]:
 
 def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
     config = load_project_config(args.config)
-    result = _project_result_with_forwarded_stdout(config)
+    if args.action == "simulate":
+        from ._simulation import validate_output
+
+        if not args.design or args.request is None or args.output is None:
+            raise CliError(
+                "Simulation worker requires design, request and output.",
+                code="missing-simulation-argument",
+            )
+        validate_output(args.output)
+    result = _project_result_with_forwarded_stdout(
+        config, design_only=args.action == "simulate"
+    )
+    if args.action == "simulate":
+        from ..dc import prepare_dc_input
+        from ._simulation import execute_dc
+
+        selected = _one(result.designs, args.design, "Design")
+        try:
+            selected_input = prepare_dc_input(selected)
+        except Exception as error:
+            raise CliError(
+                f"Failed to prepare the selected Design for DC: {error}",
+                code="invalid-simulation-input",
+            ) from error
+        return execute_dc(
+            selected_input,
+            args.request,
+            args.output,
+            design=selected.name,
+            source={
+                "kind": "project",
+                "path": str(config.root),
+                "config": str(config.config_path),
+                "entrypoint": config.entrypoint,
+            },
+        )
     if args.action == "check":
         payload = _outcome(result)
         return payload, EXIT_SUCCESS if result.ok else EXIT_CHECK_FAILED

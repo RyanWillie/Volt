@@ -312,7 +312,14 @@ profile = "profiles/generic.volt.json"
     _write_manufacturing_entrypoint(root, lossy=lossy, board_profile=board_profile)
 
 
-def test_project_result_manufacturing_package_writes_exact_native_handoff(tmp_path):
+def test_project_result_manufacturing_package_writes_exact_native_handoff(
+    tmp_path, monkeypatch
+):
+    def unexpected_dc_execution(*args, **kwargs):
+        pytest.fail("manufacturing must not compile or solve an electrical model")
+
+    monkeypatch.setattr(volt, "compile_electrical", unexpected_dc_execution)
+    monkeypatch.setattr(volt, "solve_dc", unexpected_dc_execution)
     root = tmp_path / "board"
     direct_output = tmp_path / "direct-package"
     _write_manufacturing_project(root)

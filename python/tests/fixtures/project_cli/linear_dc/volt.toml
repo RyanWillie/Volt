@@ -1,0 +1,5 @@
+[project]
+entrypoint = "project_entry:main"
+
+[paths]
+artifacts = "build"

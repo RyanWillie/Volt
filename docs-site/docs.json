@@ -62,6 +62,17 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "CLI",
+        "groups": [
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/simulate"
+            ]
+          }
+        ]
       }
     ]
   },

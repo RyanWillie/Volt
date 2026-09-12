@@ -37,8 +37,8 @@ authoring, PCB layout authoring, and staged project runs:
 - run staged projects with default diagnostics, product-intent tests, and bundle output
 - export deterministic manufacturing packages from project results
 
-Richer ERC, topology compilation/numerical solving, and deeper PCB flows remain planned layers. The
-Python API should not introduce semantics that those future kernel layers cannot load,
+Nonlinear, AC, transient, and deeper PCB flows remain planned layers. The Python API should not
+introduce semantics that those future kernel layers cannot load,
 validate, serialize, or inspect.
 
 ## Core Rule
@@ -374,6 +374,73 @@ Commands with `--json` use `volt.cli-result` schema version 1 for both success a
 responses. Exit status is stable: 0 for success, 1 for a completed check/build/diff whose
 result does not pass its gate, and 2 for command, selector, source, publication, or bundle
 integrity failure. Human output is deterministic and concise.
+
+### Explicit native linear DC
+
+`volt simulate` explicitly binds one canonical `DcRequest.to_json()` file to an exact Design and
+runs the existing native compiler and linear-DC solver. It is not part of an ordinary project
+build, export, or manufacturing run, and it does not infer simulation settings from `volt.toml`:
+
+```sh
+volt simulate --project samples/linear_dc --design divider \
+  --request canonicalrequest.json --output source-dc --json
+
+volt simulate --bundle divider.volt --design divider \
+  --request canonicalrequest.json --output bundle-dc --json
+```
+
+`--project` and `--bundle` are mutually exclusive; omitting both uses existing project discovery.
+Source mode runs the configured entrypoint once in the isolated worker. A returned `Project` runs
+only through its design stage, while a returned `ProjectResult` is selected directly. Bundle mode
+opens the verified ProjectBundle and its loaded Circuit without project discovery, source execution,
+an external catalogue, a cache, network access, or SPICE. Both modes require exact `--design`,
+`--request`, and a new, nonexistent `--output` directory.
+
+The saved request contains the native logical-content and exact selected-Part-closure identities.
+`DcRequest.from_json(selected_input, bytes)` rejects a stale or foreign request; source changes
+therefore require explicit request regeneration rather than name/index rebinding. The CLI uses the
+native default `DcSolveOptions` and offers no numerical-threshold flags in this first slice.
+
+Status and exit contracts are `success`/0, `incomplete`/1 when native compilation cannot produce a
+complete model, `failed`/1 when the solver returns an unsuccessful native outcome, and `error`/2
+for command, input, worker, I/O, selector, integrity, or publication errors. Atomic output contains
+canonical `request.json` and native `compile-report.json` whenever request binding and compilation
+complete, `solve-report.json` only when a solve ran, and `solution.json` only on success. The JSON
+envelope additionally exposes `design`, `source`, `output`, `artifacts`, `compile_report`, and
+`solve_report`.
+
+Python callers use the same explicit boundary:
+
+```python
+from pathlib import Path
+
+result = project.run_through(project.design)
+design = result.design("divider")
+dc_input = volt.prepare_dc_input(design)
+request = volt.DcRequest(
+    "divider-operating-point",
+    dc_input,
+    reference=dc_input.net(ground),
+    sources=[volt.DcVoltageSource(
+        "supply-5v", dc_input.net(supply), dc_input.net(ground),
+        volt.Quantity(volt.UnitDimension.VOLTAGE, 5),
+    )],
+    probes=[volt.DcVoltageProbe(
+        "midpoint-voltage", dc_input.net(midpoint), dc_input.net(ground)
+    )],
+)
+Path("canonicalrequest.json").write_text(request.to_json(), encoding="utf-8")
+compiled = volt.compile_electrical(request)
+if compiled.complete:
+    solved = volt.solve_dc(compiled.model)
+```
+
+The [runnable logical-only divider](../samples/linear_dc) also writes a source-free ProjectBundle.
+Currently supported model behavior is independent DC over exact ideal linear R/C/L models and
+authored independent sources. Nonlinear, AC, transient, sweeps, behavioural callbacks, and SPICE
+execution remain out of scope. Canonical transport is deterministic; floating-point observations
+are compared within the documented native tolerances rather than promised bit-for-bit across
+platforms.
 
 `result.write_manufacturing_package(path, board=None, manufacturing_profile=None,
 archive=False)` writes the full deterministic manufacturing handoff package for one
