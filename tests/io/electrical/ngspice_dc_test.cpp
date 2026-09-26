@@ -255,6 +255,11 @@ TEST_CASE("ngspice DC parser retains representable subnormals and signed zero") 
         analysis, machine_output(analysis, {"0", "0", "5", "2.5", "-0"}));
     CHECK(signed_zero[4] == 0.0);
     CHECK(std::signbit(signed_zero[4]));
+
+    const auto zero_exponents = volt::detail::read_ngspice_dc_coordinates(
+        analysis, machine_output(analysis, {"0e-9999", "0", "5", "2.5", "-0.000e+9999"}));
+    CHECK(zero_exponents[4] == 0.0);
+    CHECK(std::signbit(zero_exponents[4]));
 }
 
 TEST_CASE("ngspice DC parser rejects malformed or unassociated machine output") {
@@ -322,10 +327,14 @@ TEST_CASE("ngspice DC parser rejects malformed or unassociated machine output") 
                 analysis, machine_output(analysis, {"0", "0", "5", "1e9999", "-2.5e-3"})),
             volt::KernelArgumentError);
     }
-    SECTION("underflow") {
+    SECTION("positive and negative underflow to zero") {
         CHECK_THROWS_AS(
             volt::detail::read_ngspice_dc_coordinates(
                 analysis, machine_output(analysis, {"0", "0", "5", "1e-9999", "-2.5e-3"})),
+            volt::KernelArgumentError);
+        CHECK_THROWS_AS(
+            volt::detail::read_ngspice_dc_coordinates(
+                analysis, machine_output(analysis, {"0", "0", "5", "-1e-9999", "-2.5e-3"})),
             volt::KernelArgumentError);
     }
     SECTION("truncated row") {

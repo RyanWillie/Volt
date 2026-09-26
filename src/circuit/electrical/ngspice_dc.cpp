@@ -286,8 +286,12 @@ class IdentityEncoder final {
     stream.imbue(std::locale::classic());
     stream >> std::noskipws >> value;
     // Some standard libraries set failbit for representable subnormals.
+    // Others silently round a nonzero mantissa to zero on underflow.
+    const auto mantissa = text.substr(0, text.find_first_of("eE"));
+    const auto rounded_to_zero =
+        value == 0.0 && mantissa.find_first_of("123456789") != std::string_view::npos;
     if (stream.bad() || !stream.eof() || !std::isfinite(value) ||
-        (stream.fail() && std::fpclassify(value) != FP_SUBNORMAL)) {
+        (stream.fail() && std::fpclassify(value) != FP_SUBNORMAL) || rounded_to_zero) {
         parse_error("expected a finite numeric field");
     }
     return value;
