@@ -665,6 +665,16 @@
           "python_type": "DcRequestAssessment"
         },
         {
+          "cpp_type": "DcSolveProvenance",
+          "path": "src/python/dc_solve_bindings.cpp",
+          "python_type": "DcSolveProvenance"
+        },
+        {
+          "cpp_type": "NgspiceDcAnalysis",
+          "path": "src/python/dc_solve_bindings.cpp",
+          "python_type": "NgspiceDcAnalysis"
+        },
+        {
           "cpp_type": "DcSolveOptions",
           "path": "src/python/dc_solve_bindings.cpp",
           "python_type": "DcSolveOptions"
@@ -993,6 +1003,7 @@
         "DcSolveMetrics",
         "DcSolveOptions",
         "DcSolveOutcome",
+        "DcSolveProvenance",
         "DcSolveReport",
         "DcSourceCurrentProbe",
         "DcSourceKey",
@@ -1059,6 +1070,7 @@
         "ModulePort",
         "Net",
         "NetClass",
+        "NgspiceDcAnalysis",
         "PART_LINEUP_DIAGNOSTIC_CODES",
         "PCB_FABRICATION_DIAGNOSTIC_CODES",
         "PCB_VISUAL_DIAGNOSTIC_CODES",
@@ -1129,8 +1141,10 @@
         "hertz",
         "ohms",
         "prepare_dc_input",
+        "prepare_ngspice_dc",
         "seconds",
-        "solve_dc"
+        "solve_dc",
+        "solve_ngspice_dc"
       ]
     }
   },

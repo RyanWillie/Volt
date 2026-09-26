@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Volt S5: ngspice is an explicit, bounded DC adapter</title>
+<style>
+:root{color-scheme:light;background:#f4f2eb;color:#21302d;font:18px/1.6 system-ui,sans-serif}body{max-width:900px;margin:auto;padding:56px 24px 80px}h1{font-size:clamp(2rem,5vw,3.2rem);letter-spacing:-.04em;line-height:1.12}h2{margin-top:2.2rem;font-size:1.35rem}.label{font-size:.8rem;text-transform:uppercase;letter-spacing:.13em;color:#506858}code{font-size:.9em}pre{background:#e2e8df;padding:20px;border-radius:8px;overflow:auto}table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{padding:12px 10px;text-align:left;border-bottom:1px solid #c9d1c2;vertical-align:top}a{color:#17634e}
+</style>
+<main>
+<p class="label">Volt · Linear DC · S5</p>
+<h1>ngspice is an execution target, not a second source of truth.</h1>
+<p>Volt first binds a canonical request and compiles its exact selected-Part closure into one
+immutable native electrical model. Only then can <code>prepare_ngspice_dc(model)</code> generate a
+closed ngspice 46 deck and mapping. External numbers become a Volt solution only after
+<code>solve_ngspice_dc(analysis, output)</code> reconstructs them and applies native acceptance.</p>
+
+<h2>One model, two explicit executions</h2>
+<pre><code>request → native compile → complete model
+                           ├─ solve_dc(model)
+                           └─ prepare_ngspice_dc(model)
+                                → generated deck → ngspice 46
+                                → solve_ngspice_dc(analysis, output bytes)</code></pre>
+<p>No operation is implicit in project import, check, build, export, or manufacturing. The Python
+preparation/ingestion API does not start processes. The CLI starts one only when the user selects
+<code>--backend ngspice</code> and supplies <code>--ngspice /exact/executable</code>.</p>
+
+<h2>The projection is deliberately smaller than SPICE</h2>
+<table><thead><tr><th>Native law</th><th>Exact DC projection</th></tr></thead><tbody>
+<tr><td>Positive resistance</td><td>One resistor with the native orientation and nominal value</td></tr>
+<tr><td>Zero-ohm resistance</td><td>Ideal 0 V source, never backend-specific zero-resistor behavior</td></tr>
+<tr><td>Capacitance</td><td>DC-open; exact zero current is reconstructed by native policy</td></tr>
+<tr><td>Inductance</td><td>DC-short with an externally observed identifiable branch current</td></tr>
+<tr><td>Independent source</td><td>Authored value and ordered endpoints</td></tr>
+</tbody></table>
+<p>There are no convergence shunts, epsilon resistors, hidden parasitics, includes, model cards,
+vendor libraries, arbitrary control scripts, nonlinear devices, AC, transient, or sweeps. An
+unsupported or incomplete model stays incomplete; it is not silently approximated.</p>
+
+<h2>The executable is untrusted</h2>
+<p>The CLI accepts exactly ngspice 46. It invokes the resolved path directly without a shell, uses
+<code>-n</code> to disable user startup files, provides a private working/configuration directory and
+controlled locale, closes stdin, and enforces fixed time and byte ceilings. Version mismatch,
+startup failure, timeout, oversized logs/data, nonzero exit, missing output, malformed headers,
+nonfinite numbers, and extra operating points fail without retry or native fallback.</p>
+<p>The generated deck owns a single <code>op</code> and machine-readable <code>wrdata</code> command.
+The native parser requires the exact ordered header contract and one finite row; console text is
+evidence, never the numerical API.</p>
+
+<h2>Identity follows the numbers</h2>
+<p><code>NgspiceDcAnalysis</code> retains the compiled model plus deterministic deck and mapping
+identities. The published analysis records model/request identity, generated device and vector
+names, reconstruction policy, output filename and byte limit. The solve report and success-only
+solution repeat backend/adapter versions, effective settings, native acceptance policy, validation
+backend, deck identity, and mapping identity.</p>
+<p>Serialization is deterministic. Floating-point agreement is tolerance-based: cross-platform or
+cross-backend results are not promised bit-for-bit. Volt rechecks the reconstructed solution against
+the original laws, including reference potential and all-node KCL; convergence alone cannot certify
+success.</p>
+
+<h2>Auditable public CLI artifacts</h2>
+<pre><code>volt simulate --bundle design.volt --design exact-name \
+  --request canonicalrequest.json --output new-directory --json \
+  --backend ngspice --ngspice /absolute/path/to/ngspice</code></pre>
+<p>A successful external run publishes canonical request and compile report, native ngspice analysis,
+the exact <code>deck.cir</code>, bounded process evidence with output byte size and SHA-256, the
+exact ingested <code>ngspice-output.txt</code>, native solve report, and success-only solution.
+Project source and verified source-free bundle modes use the same native request binding.
+See the <a href="../../docs-site/cli/simulate.mdx">CLI contract</a> and
+<a href="../python-api.md">Python API</a>.</p>
+<p>The opt-in real-binary proof runs all seven supported S3 corpus cases through both public CLI
+backends and repeats the divider across source and deleted-source bundle modes:</p>
+<pre><code>PYTHONPATH="$PWD/build/dev/python" python scripts/test-ngspice-integration.py \
+  --ngspice /absolute/path/to/ngspice</code></pre>
+</main>
+</html>

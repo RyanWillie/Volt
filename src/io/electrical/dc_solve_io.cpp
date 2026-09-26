@@ -46,6 +46,23 @@ Json options_json(const DcSolveOptions &options) {
         {"absolute_current_tolerance", quantity_json(options.absolute_current_tolerance())}};
 }
 
+Json provenance_json(const DcSolveProvenance &provenance) {
+    return Json{
+        {"backend", provenance.backend},
+        {"backend_version", provenance.backend_version},
+        {"adapter", provenance.adapter},
+        {"adapter_contract_version", provenance.adapter_contract_version},
+        {"effective_settings", provenance.effective_settings},
+        {"acceptance_policy", provenance.acceptance_policy},
+        {"validation_backend", provenance.validation_backend},
+        {"metrics_origin", provenance.deck_identity ? "native_validation_of_external_observations"
+                                                    : "native_evaluation"},
+        {"deck_identity",
+         provenance.deck_identity ? Json(provenance.deck_identity->value()) : Json(nullptr)},
+        {"mapping_identity",
+         provenance.mapping_identity ? Json(provenance.mapping_identity->value()) : Json(nullptr)}};
+}
+
 Json observations_json(const DcSolution &solution) {
     auto nodes = Json::array();
     for (const auto &node : solution.nodes()) {
@@ -92,7 +109,8 @@ std::string write_dc_solution(const DcSolution &solution) {
     return Json{{"format", "volt.dc-solution"},
                 {"version", 1},
                 {"contract_version", DcSolveReport::contract_version()},
-                {"backend", DcSolveReport::backend()},
+                {"backend", solution.provenance().backend},
+                {"provenance", provenance_json(solution.provenance())},
                 {"options", options_json(solution.options())},
                 {"model", Json::parse(write_compiled_electrical_model(solution.model()))},
                 {"observations", observations_json(solution)}}
@@ -118,7 +136,8 @@ std::string write_dc_solve_report(const DcSolveReport &report) {
                 {"version", 1},
                 {"analysis_identity", report.analysis_identity().value()},
                 {"contract_version", DcSolveReport::contract_version()},
-                {"backend", DcSolveReport::backend()},
+                {"backend", report.backend()},
+                {"provenance", provenance_json(report.provenance())},
                 {"options", options_json(report.options())},
                 {"outcome", outcome_name(report.outcome())},
                 {"metrics",

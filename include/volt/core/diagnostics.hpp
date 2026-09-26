@@ -205,6 +205,7 @@ inline constexpr auto DcSolveInconsistent = std::string_view{"DC_SOLVE_INCONSIST
 inline constexpr auto DcSolveIllConditioned = std::string_view{"DC_SOLVE_ILL_CONDITIONED"};
 inline constexpr auto DcSolveNumericalFailure = std::string_view{"DC_SOLVE_NUMERICAL_FAILURE"};
 inline constexpr auto DcSolveResidualFailure = std::string_view{"DC_SOLVE_RESIDUAL_FAILURE"};
+inline constexpr auto DcNgspiceModelEmpty = std::string_view{"DC_NGSPICE_MODEL_EMPTY"};
 
 } // namespace analysis_diagnostic_codes
 
@@ -307,7 +308,8 @@ inline constexpr auto Analysis =
                analysis_diagnostic_codes::DcSolveInconsistent,
                analysis_diagnostic_codes::DcSolveIllConditioned,
                analysis_diagnostic_codes::DcSolveNumericalFailure,
-               analysis_diagnostic_codes::DcSolveResidualFailure};
+               analysis_diagnostic_codes::DcSolveResidualFailure,
+               analysis_diagnostic_codes::DcNgspiceModelEmpty};
 
 } // namespace diagnostic_code_catalogs
 

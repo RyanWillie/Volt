@@ -391,6 +391,17 @@ def _build_parser() -> argparse.ArgumentParser:
     simulate_parser.add_argument(
         "--output", type=Path, help="Required new, nonexistent output directory."
     )
+    simulate_parser.add_argument(
+        "--backend",
+        choices=("native", "ngspice"),
+        default="native",
+        help="DC execution backend. Defaults to Volt's native solver.",
+    )
+    simulate_parser.add_argument(
+        "--ngspice",
+        type=Path,
+        help="Explicit ngspice 46 executable path; required only for --backend ngspice.",
+    )
     simulate_parser.add_argument("--json", dest="emit_json", action="store_true")
     simulate_parser.set_defaults(handler=_handle_simulate)
 
@@ -616,8 +627,19 @@ def _handle_simulate(args: argparse.Namespace) -> int:
             "`volt simulate` requires --design, --request and --output.",
             code="missing-simulation-argument",
         )
+    if args.backend == "native" and args.ngspice is not None:
+        raise CliError(
+            "--ngspice is valid only with --backend ngspice.",
+            code="native-backend-rejects-ngspice-path",
+        )
+    if args.backend == "ngspice" and args.ngspice is None:
+        raise CliError(
+            "--backend ngspice requires an explicit --ngspice executable path.",
+            code="ngspice-path-required",
+        )
     try:
         request = args.request.expanduser().resolve()
+        ngspice = None if args.ngspice is None else args.ngspice.expanduser().resolve()
         destination = args.output.expanduser()
         # Resolve the parent, not the final component: a dangling destination symlink
         # is an existing collision, not permission to publish into its target.
@@ -663,6 +685,8 @@ def _handle_simulate(args: argparse.Namespace) -> int:
                 "bundle_digest": graph.bundle_digest,
                 "build_id": graph.build_id,
             },
+            backend=args.backend,
+            ngspice=ngspice,
         )
     else:
         config = discover_project(project=args.project)
@@ -676,13 +700,20 @@ def _handle_simulate(args: argparse.Namespace) -> int:
                 str(request),
                 "--output",
                 str(output),
+                "--backend",
+                args.backend,
+                *(() if ngspice is None else ("--ngspice", str(ngspice))),
             ),
         )
     if args.emit_json:
         _print_json_result("simulate", payload)
     else:
         print(f"Simulate: {payload['status']} -> {output}")
-        for report in (payload["compile_report"], payload["solve_report"]):
+        for report in (
+            payload["compile_report"],
+            payload.get("backend_report"),
+            payload["solve_report"],
+        ):
             if report is not None:
                 for diagnostic in report["diagnostics"]:
                     print(f"{diagnostic['code']}: {diagnostic['message']}")

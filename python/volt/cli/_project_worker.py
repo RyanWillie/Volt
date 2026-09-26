@@ -35,6 +35,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--exports-json", default="[]")
     parser.add_argument("--design")
     parser.add_argument("--request", type=Path)
+    parser.add_argument("--backend", choices=("native", "ngspice"), default="native")
+    parser.add_argument("--ngspice", type=Path)
     parser.add_argument("--schematic")
     parser.add_argument("--board")
     return parser
@@ -234,6 +236,16 @@ def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
                 "Simulation worker requires design, request and output.",
                 code="missing-simulation-argument",
             )
+        if args.backend == "native" and args.ngspice is not None:
+            raise CliError(
+                "Native simulation does not accept an ngspice executable.",
+                code="native-backend-rejects-ngspice-path",
+            )
+        if args.backend == "ngspice" and args.ngspice is None:
+            raise CliError(
+                "ngspice simulation requires an executable path.",
+                code="ngspice-path-required",
+            )
         validate_output(args.output)
     result = _project_result_with_forwarded_stdout(
         config, design_only=args.action == "simulate"
@@ -261,6 +273,8 @@ def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
                 "config": str(config.config_path),
                 "entrypoint": config.entrypoint,
             },
+            backend=args.backend,
+            ngspice=args.ngspice,
         )
     if args.action == "check":
         payload = _outcome(result)

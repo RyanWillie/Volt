@@ -1,11 +1,13 @@
 ---
-title: Native linear DC
-description: Explicitly compile and solve one native linear-DC request from project source or a verified bundle.
+title: Linear DC simulation
+description: Explicitly compile and solve one linear-DC request with Volt's native solver or pinned ngspice 46.
 ---
 
-`volt simulate` is an explicit native linear-DC command. It binds an existing canonical
-`DcRequest.to_json()` file to one exact logical Design, compiles through the native electrical
-compiler, and solves only a complete model.
+`volt simulate` binds an existing canonical `DcRequest.to_json()` file to one exact logical
+Design and compiles it through Volt's native electrical compiler. The default `native` backend
+solves the complete model in process. The opt-in `ngspice` backend projects that same immutable
+model to a generated deck, runs an explicitly selected ngspice 46 executable, and admits its
+output only through native validation.
 
 <Warning>
   This command does not infer a request from net names, ratings, or `volt.toml`. Regenerate the
@@ -33,41 +35,79 @@ volt simulate --bundle divider.volt --design divider \
 
 `--bundle` and `--project` are mutually exclusive. Bundle mode verifies and opens the
 ProjectBundle, selects the exact Design, and prepares its native input without project discovery,
-source import, catalogue lookup, network access, or an external SPICE executable. Bundled
-provenance source is never executed.
+source import, catalogue lookup, or network access. Bundled provenance source is never executed.
+
+## Opt in to ngspice 46
+
+```sh
+volt simulate --bundle divider.volt --design divider \
+  --request canonicalrequest.json --output ngspice-dc --json \
+  --backend ngspice --ngspice /absolute/path/to/ngspice
+```
+
+Volt never downloads or discovers a simulator. `--backend ngspice` requires an explicit executable
+path and accepts exactly ngspice 46; `--ngspice` is rejected with the default native backend. Volt
+generates the whole deck from the compiled model. There is no public arbitrary-deck, include,
+device-model, or control-script input.
+
+The child process runs without a shell, with a private working directory, disabled user startup
+files, controlled locale and configuration paths, closed stdin, and fixed time and byte limits.
+Nonzero exit, timeout, missing or oversized output, malformed data, and version mismatch are
+command errors. There is no retry or native fallback.
 
 ## Output contract
 
 `--design`, `--request`, and `--output` are required. The output directory must not already exist.
 Volt publishes the directory atomically and never modifies the request or input bundle.
 
-| Native outcome | Status | Exit | Published sidecars |
+| Outcome | Status | Exit | Published sidecars |
 | --- | --- | ---: | --- |
-| Solve succeeds | `success` | 0 | `request.json`, `compile-report.json`, `solve-report.json`, `solution.json` |
+| Native solve succeeds | `success` | 0 | `request.json`, `compile-report.json`, `solve-report.json`, `solution.json` |
+| ngspice solve succeeds | `success` | 0 | Native files plus `ngspice-analysis.json`, `deck.cir`, `ngspice-process.json`, `ngspice-output.txt` |
 | Compile is incomplete | `incomplete` | 1 | `request.json`, `compile-report.json` |
-| Solve runs but fails | `failed` | 1 | `request.json`, `compile-report.json`, `solve-report.json` |
+| ngspice projection is incomplete | `incomplete` | 1 | Compile files plus `ngspice-analysis.json`, `deck.cir` |
+| Native solve runs but fails | `failed` | 1 | `request.json`, `compile-report.json`, `solve-report.json` |
+| ngspice observations fail native acceptance | `failed` | 1 | External success files except `solution.json` |
 | Command, input, worker, I/O, or publication error | `error` | 2 | No success-looking partial output |
 
 The canonical `request.json` and native `compile-report.json` are present whenever request binding
 and compilation complete. `solve-report.json` exists only when the solver actually ran, and
 `solution.json` exists only for a successful solve.
 
-With `--json`, the versioned `volt.cli-result` envelope includes `status`, `design`, `source`,
-`output`, `artifacts`, `compile_report`, and `solve_report`. The two report fields contain the
-native report payloads; they are not Python reconstructions. `source` records either isolated
-project provenance or the verified bundle digest and build identity.
+With `--json`, the native `volt.cli-result` envelope retains `status`, `design`, `source`, `output`,
+`artifacts`, `compile_report`, and `solve_report`. An ngspice result additionally contains
+`backend: "ngspice"`, `backend_report`, and `process`. Report fields contain native payloads; they
+are not Python reconstructions. `backend_report` is the ngspice projection and mapping record,
+while `process` is bounded execution evidence including the ingested output's byte size and SHA-256
+identity. `source` records either isolated project provenance or the verified bundle digest and
+build identity.
 
 ## Scope and reproducibility
 
-The first CLI slice uses the native default `DcSolveOptions`; it intentionally exposes no
-numerical-setting flags. Supported behavior is independent DC over exact ideal linear resistor,
-capacitor, and inductor models plus authored independent sources. Nonlinear, AC, transient,
-sweeps, behavioural callbacks, and SPICE execution are outside this command.
+Both backends use the native default `DcSolveOptions`; the CLI exposes no numerical-setting flags.
+Supported behavior is independent DC over exact ideal linear resistor, capacitor, and inductor
+models plus authored independent sources. The generated ngspice projection preserves zero ohms as
+an ideal 0 V constraint, capacitors as DC-open with exact zero current, and inductors as DC-short
+with identifiable current. It adds no convergence resistors or hidden parasitics. Nonlinear, AC,
+transient, sweeps, behavioural callbacks, arbitrary SPICE, and vendor models remain out of scope.
 
-Canonical request, compiled-model, report, and solution serialization is deterministic. Numerical
-results are reproducible within the native solver's documented tolerances, not promised as
-bit-for-bit identical across platforms. Ordinary check, build, export, and manufacturing commands
-do not compile or solve automatically.
+Canonical deck, mapping, request, model, report, and solution serialization is deterministic. A
+generated deck identity and mapping identity follow external observations into solve provenance.
+Numerical results are compared within documented tolerances, not promised as bit-for-bit identical
+across platforms or backends. Ordinary check, build, export, and manufacturing commands do not
+compile or solve automatically.
 
 See the [runnable divider example](https://github.com/RyanWillie/Volt/tree/main/samples/linear_dc)
 for request authoring and equivalent source/bundle invocations.
+
+The repository's real-binary integration is opt-in, requires an explicit ngspice 46 path, and is
+not part of default CTest:
+
+```sh
+PYTHONPATH="$PWD/build/dev/python" python scripts/test-ngspice-integration.py \
+  --ngspice /absolute/path/to/ngspice
+```
+
+It runs the seven supported S3 corpus cases through the public native and ngspice CLI backends,
+including source and deleted-source bundle execution, and compares native, external, and analytical
+observations with the corpus tolerances.

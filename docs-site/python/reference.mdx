@@ -192,12 +192,17 @@ complete native electrical model before it can enter numerical evaluation.
 
 ## Linear DC solving
 
-`volt.solve_dc` evaluates an explicitly compiled `volt.CompiledElectricalModel`. It never
-implicitly compiles a request or runs during ordinary project builds, checks, or manufacturing.
-The native solver supports the bounded linear R/C/L and independent DC-source vocabulary only.
-It publishes a solution only when uniqueness, conditioning, finiteness, and residual gates pass;
-rank-deficient, inconsistent, ill-conditioned, nonfinite, and residual failures remain typed
-reports with diagnostics and available metrics.
+`volt.solve_dc` evaluates an explicitly compiled `volt.CompiledElectricalModel` in process.
+`volt.prepare_ngspice_dc` deterministically projects the same complete model to the bounded
+ngspice 46 DC contract; callers may execute its generated `deck` and pass the exact output bytes
+to `volt.solve_ngspice_dc`. Neither route implicitly compiles a request or runs during ordinary
+project builds, checks, or manufacturing.
+
+Both routes support only the bounded linear R/C/L and independent DC-source vocabulary. A solve
+publishes a solution only when native uniqueness, conditioning, finiteness, and residual gates
+pass; rank-deficient, inconsistent, ill-conditioned, nonfinite, and residual failures remain
+typed reports with diagnostics and available metrics. The low-level Python API never starts an
+external process; use the explicit CLI backend for bounded ngspice execution.
 
 | Export | Purpose |
 | --- | --- |
@@ -205,15 +210,21 @@ reports with diagnostics and available metrics.
 | `volt.DcSolveOutcome` | Closed success and numerical-refusal outcome enum. |
 | `volt.DcSolveMetrics` | Available coordinate-count, rank, conditioning, and residual evidence. |
 | `volt.DcSolveReport` | Immutable attempt retaining model, options, identities, outcome, metrics, and diagnostics. |
+| `volt.DcSolveProvenance` | Backend, adapter, settings, validation, and optional deck/mapping attribution retained by reports and solutions. |
 | `volt.DcSolution` | Success-only immutable model-order node, branch, and request-probe observations. |
 | `volt.DcNodeResult` | One model-local node index and finite potential. |
 | `volt.DcBranchResult` | One model-local branch index with oriented voltage, current, and signed absorbed power. |
 | `volt.DcProbeResult` | One request-local probe key and native-dimension value. |
 | `volt.solve_dc` | Evaluate one complete compiled model with validated options. |
+| `volt.NgspiceDcAnalysis` | Immutable generated deck, exact model, completeness, diagnostics, and deck/mapping identities. |
+| `volt.prepare_ngspice_dc` | Project one complete compiled model into the closed ngspice 46 DC adapter contract. |
+| `volt.solve_ngspice_dc` | Parse adapter-owned machine output bytes and apply native result acceptance. |
 
 The coordinate indices are scoped to the retained compiled model; they are not generic mutation
-handles. Eigen remains a private implementation dependency and no backend matrix or vector type
-crosses the native or Python API.
+handles. `NgspiceDcAnalysis.to_json()` exposes the deterministic mapping needed to audit generated
+device/vector names; it does not accept arbitrary SPICE text. Eigen and ngspice remain private
+implementation/execution choices, and no backend matrix or vector type crosses the native or
+Python API.
 
 ## Electrical compilation
 

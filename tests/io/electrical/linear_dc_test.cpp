@@ -834,8 +834,7 @@ TEST_CASE("linear DC analysis identity is deterministic and includes effective s
     REQUIRE(first.solution() != nullptr);
     CHECK(first.solution()->analysis_identity() == first.analysis_identity());
     CHECK(first.solution()->model().identity() == compiled.model()->identity());
-    CHECK(std::string{volt::DcSolveReport::backend()} ==
-          "eigen-5.0.0-full-piv-lu-double-dense-branch-tableau");
+    CHECK(std::string{first.backend()} == "eigen-5.0.0-full-piv-lu-double-dense-branch-tableau");
 }
 
 TEST_CASE("incomplete electrical compilation cannot enter linear DC evaluation") {

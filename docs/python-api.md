@@ -375,11 +375,12 @@ responses. Exit status is stable: 0 for success, 1 for a completed check/build/d
 result does not pass its gate, and 2 for command, selector, source, publication, or bundle
 integrity failure. Human output is deterministic and concise.
 
-### Explicit native linear DC
+### Explicit linear DC backends
 
 `volt simulate` explicitly binds one canonical `DcRequest.to_json()` file to an exact Design and
-runs the existing native compiler and linear-DC solver. It is not part of an ordinary project
-build, export, or manufacturing run, and it does not infer simulation settings from `volt.toml`:
+runs the native compiler followed by a selected DC backend. The default is the existing native
+solver. It is not part of an ordinary project build, export, or manufacturing run, and it does not
+infer simulation settings from `volt.toml`:
 
 ```sh
 volt simulate --project samples/linear_dc --design divider \
@@ -387,27 +388,41 @@ volt simulate --project samples/linear_dc --design divider \
 
 volt simulate --bundle divider.volt --design divider \
   --request canonicalrequest.json --output bundle-dc --json
+
+volt simulate --bundle divider.volt --design divider \
+  --request canonicalrequest.json --output ngspice-dc --json \
+  --backend ngspice --ngspice /absolute/path/to/ngspice
 ```
 
 `--project` and `--bundle` are mutually exclusive; omitting both uses existing project discovery.
 Source mode runs the configured entrypoint once in the isolated worker. A returned `Project` runs
 only through its design stage, while a returned `ProjectResult` is selected directly. Bundle mode
 opens the verified ProjectBundle and its loaded Circuit without project discovery, source execution,
-an external catalogue, a cache, network access, or SPICE. Both modes require exact `--design`,
-`--request`, and a new, nonexistent `--output` directory.
+an external catalogue, a cache, or network access. Both modes require exact `--design`, `--request`,
+and a new, nonexistent `--output` directory.
+
+The `ngspice` backend requires an explicit executable path and accepts exactly ngspice 46. Volt
+does not search for or download it. The command runs only a native-generated deck, without a shell,
+in a private working directory with user startup files disabled, a controlled locale and
+configuration environment, closed stdin, and bounded time and output. It never accepts arbitrary
+decks, include paths, vendor models, or control scripts and never falls back to the native solver
+after external execution fails.
 
 The saved request contains the native logical-content and exact selected-Part-closure identities.
 `DcRequest.from_json(selected_input, bytes)` rejects a stale or foreign request; source changes
 therefore require explicit request regeneration rather than name/index rebinding. The CLI uses the
-native default `DcSolveOptions` and offers no numerical-threshold flags in this first slice.
+native default `DcSolveOptions` for either backend and offers no numerical-threshold flags.
 
 Status and exit contracts are `success`/0, `incomplete`/1 when native compilation cannot produce a
 complete model, `failed`/1 when the solver returns an unsuccessful native outcome, and `error`/2
 for command, input, worker, I/O, selector, integrity, or publication errors. Atomic output contains
 canonical `request.json` and native `compile-report.json` whenever request binding and compilation
-complete, `solve-report.json` only when a solve ran, and `solution.json` only on success. The JSON
-envelope additionally exposes `design`, `source`, `output`, `artifacts`, `compile_report`, and
-`solve_report`.
+complete, `solve-report.json` only when a solve ran, and `solution.json` only on success. Successful
+ngspice execution additionally publishes `ngspice-analysis.json`, the exact generated `deck.cir`,
+`ngspice-process.json`, and the exact ingested `ngspice-output.txt`; projection-incomplete output
+stops before process evidence and solve output. The native JSON envelope retains `design`, `source`,
+`output`, `artifacts`, `compile_report`, and `solve_report`; an ngspice result additionally exposes
+`backend`, `backend_report`, and `process`.
 
 Python callers use the same explicit boundary:
 
@@ -429,18 +444,36 @@ request = volt.DcRequest(
         "midpoint-voltage", dc_input.net(midpoint), dc_input.net(ground)
     )],
 )
-Path("canonicalrequest.json").write_text(request.to_json(), encoding="utf-8")
+Path("canonicalrequest.json").write_bytes(request.to_json().encode("utf-8"))
 compiled = volt.compile_electrical(request)
 if compiled.complete:
     solved = volt.solve_dc(compiled.model)
 ```
 
+The low-level external boundary is preparation and ingestion, not process execution:
+
+```python
+if compiled.complete:
+    analysis = volt.prepare_ngspice_dc(compiled.model)
+    if analysis.complete:
+        # Execute only analysis.deck with the pinned adapter process contract.
+        solved = volt.solve_ngspice_dc(analysis, exact_output_bytes)
+```
+
+`NgspiceDcAnalysis` owns the compiled model, generated deck, diagnostics, and deterministic deck
+and mapping identities. `solve_ngspice_dc` accepts only the adapter's narrow machine-output bytes.
+Its `DcSolveReport` retains `DcSolveProvenance`, including ngspice/adapter versions, fixed settings,
+native acceptance policy, and deck/mapping identities. The Python API intentionally does not run
+an executable; bounded process execution belongs to `volt simulate --backend ngspice`.
+
 The [runnable logical-only divider](../samples/linear_dc) also writes a source-free ProjectBundle.
 Currently supported model behavior is independent DC over exact ideal linear R/C/L models and
-authored independent sources. Nonlinear, AC, transient, sweeps, behavioural callbacks, and SPICE
-execution remain out of scope. Canonical transport is deterministic; floating-point observations
-are compared within the documented native tolerances rather than promised bit-for-bit across
-platforms.
+authored independent sources. The ngspice projection preserves zero-ohm resistance as an ideal 0 V
+constraint, capacitance as DC-open with exact zero current, and inductance as DC-short with an
+identifiable current; it adds no hidden parasitics. Nonlinear, AC, transient, sweeps, behavioural
+callbacks, arbitrary SPICE, and vendor models remain out of scope. Canonical requests, decks,
+mappings, and reports are deterministic; floating-point observations are compared within the
+documented tolerances rather than promised bit-for-bit across platforms or backends.
 
 `result.write_manufacturing_package(path, board=None, manufacturing_profile=None,
 archive=False)` writes the full deterministic manufacturing handoff package for one
