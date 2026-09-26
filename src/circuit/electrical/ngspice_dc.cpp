@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <locale>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -276,11 +277,17 @@ class IdentityEncoder final {
 }
 
 [[nodiscard]] double parse_number(std::string_view text) {
+    if ((!text.empty() && text.front() == '+') ||
+        text.find_first_of("xX") != std::string_view::npos) {
+        parse_error("expected a finite numeric field");
+    }
     auto value = 0.0;
-    const auto parsed =
-        std::from_chars(text.data(), text.data() + text.size(), value, std::chars_format::general);
-    if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() ||
-        !std::isfinite(value)) {
+    auto stream = std::istringstream{std::string{text}};
+    stream.imbue(std::locale::classic());
+    stream >> std::noskipws >> value;
+    // Some standard libraries set failbit for representable subnormals.
+    if (stream.bad() || !stream.eof() || !std::isfinite(value) ||
+        (stream.fail() && std::fpclassify(value) != FP_SUBNORMAL)) {
         parse_error("expected a finite numeric field");
     }
     return value;

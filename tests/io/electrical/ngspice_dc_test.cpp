@@ -2,6 +2,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
+#include <locale>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -22,6 +25,22 @@ namespace {
 using Json = nlohmann::json;
 using volt::test::electrical_compilation::Fixture;
 using volt::test::electrical_compilation::PartVariant;
+
+class CommaDecimal final : public std::numpunct<char> {
+  protected:
+    [[nodiscard]] char do_decimal_point() const override { return ','; }
+};
+
+class ScopedGlobalLocale final {
+  public:
+    explicit ScopedGlobalLocale(const std::locale &locale)
+        : previous_{std::locale::global(locale)} {}
+
+    ~ScopedGlobalLocale() { std::locale::global(previous_); }
+
+  private:
+    std::locale previous_;
+};
 
 [[nodiscard]] volt::NgspiceDcAnalysis divider_analysis(std::string source_key = "supply-5v") {
     auto fixture = volt::test::electrical_compilation::make_fixture();
@@ -207,6 +226,37 @@ TEST_CASE("ngspice DC parser returns canonical node then all-branch coordinates"
     CHECK(coordinates[4] == Catch::Approx(-0.0025));
 }
 
+TEST_CASE("ngspice DC parser accepts decimal and exponent fields independent of global locale") {
+    const auto analysis = divider_analysis();
+    const auto locale = ScopedGlobalLocale{std::locale{std::locale::classic(), new CommaDecimal{}}};
+    const auto output = machine_output(analysis, {"0", "0", "5.", ".25e1", "-2.5E-3"});
+    const auto coordinates = volt::detail::read_ngspice_dc_coordinates(analysis, output);
+
+    REQUIRE(coordinates.size() == 5U);
+    CHECK(coordinates[0] == Catch::Approx(5.0));
+    CHECK(coordinates[1] == Catch::Approx(2.5));
+    CHECK(coordinates[4] == Catch::Approx(-0.0025));
+    CHECK_THROWS_AS(volt::detail::read_ngspice_dc_coordinates(
+                        analysis, machine_output(analysis, {"0", "0", "5", "2,5", "-2.5e-3"})),
+                    volt::KernelArgumentError);
+}
+
+TEST_CASE("ngspice DC parser retains representable subnormals and signed zero") {
+    const auto analysis = divider_analysis();
+    const auto output =
+        machine_output(analysis, {"0", "0", "5", "1e-310", "-4.9406564584124654e-324"});
+    const auto coordinates = volt::detail::read_ngspice_dc_coordinates(analysis, output);
+
+    REQUIRE(coordinates.size() == 5U);
+    CHECK(coordinates[1] == 1e-310);
+    CHECK(coordinates[4] == -std::numeric_limits<double>::denorm_min());
+
+    const auto signed_zero = volt::detail::read_ngspice_dc_coordinates(
+        analysis, machine_output(analysis, {"0", "0", "5", "2.5", "-0"}));
+    CHECK(signed_zero[4] == 0.0);
+    CHECK(std::signbit(signed_zero[4]));
+}
+
 TEST_CASE("ngspice DC parser rejects malformed or unassociated machine output") {
     const auto analysis = divider_analysis();
     const auto valid = machine_output(analysis, {"0", "0", "5", "2.5", "-2.5e-3"});
@@ -233,6 +283,50 @@ TEST_CASE("ngspice DC parser rejects malformed or unassociated machine output") 
         CHECK_THROWS_AS(volt::detail::read_ngspice_dc_coordinates(
                             analysis, machine_output(analysis, {"0", "0", "5", "nan", "-2.5e-3"})),
                         volt::KernelArgumentError);
+    }
+    SECTION("infinite vector") {
+        CHECK_THROWS_AS(volt::detail::read_ngspice_dc_coordinates(
+                            analysis, machine_output(analysis, {"0", "0", "5", "inf", "-2.5e-3"})),
+                        volt::KernelArgumentError);
+    }
+    SECTION("trailing numeric text") {
+        CHECK_THROWS_AS(
+            volt::detail::read_ngspice_dc_coordinates(
+                analysis, machine_output(analysis, {"0", "0", "5", "2.5junk", "-2.5e-3"})),
+            volt::KernelArgumentError);
+    }
+    SECTION("incomplete exponent") {
+        CHECK_THROWS_AS(
+            volt::detail::read_ngspice_dc_coordinates(
+                analysis, machine_output(analysis, {"0", "0", "5", "2.5e+", "-2.5e-3"})),
+            volt::KernelArgumentError);
+    }
+    SECTION("leading plus") {
+        CHECK_THROWS_AS(volt::detail::read_ngspice_dc_coordinates(
+                            analysis, machine_output(analysis, {"0", "0", "5", "+2.5", "-2.5e-3"})),
+                        volt::KernelArgumentError);
+    }
+    SECTION("hexadecimal floating point") {
+        CHECK_THROWS_AS(
+            volt::detail::read_ngspice_dc_coordinates(
+                analysis, machine_output(analysis, {"0", "0", "5", "0x1p2", "-2.5e-3"})),
+            volt::KernelArgumentError);
+        CHECK_THROWS_AS(
+            volt::detail::read_ngspice_dc_coordinates(
+                analysis, machine_output(analysis, {"0", "0", "5", "0X1.2P3", "-2.5e-3"})),
+            volt::KernelArgumentError);
+    }
+    SECTION("overflow") {
+        CHECK_THROWS_AS(
+            volt::detail::read_ngspice_dc_coordinates(
+                analysis, machine_output(analysis, {"0", "0", "5", "1e9999", "-2.5e-3"})),
+            volt::KernelArgumentError);
+    }
+    SECTION("underflow") {
+        CHECK_THROWS_AS(
+            volt::detail::read_ngspice_dc_coordinates(
+                analysis, machine_output(analysis, {"0", "0", "5", "1e-9999", "-2.5e-3"})),
+            volt::KernelArgumentError);
     }
     SECTION("truncated row") {
         CHECK_THROWS_AS(
