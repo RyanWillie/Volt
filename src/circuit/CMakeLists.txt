@@ -33,7 +33,9 @@ add_library(
     electrical/electrical_records.cpp
     electrical/electrical_queries.cpp
     electrical/dc_request.cpp
+    electrical/ac_request.cpp
     electrical/dc_solve.cpp
+    electrical/ac_solve.cpp
     electrical/ngspice_dc.cpp
     electrical/compiled_electrical_model.cpp
     electrical/dc_input.cpp

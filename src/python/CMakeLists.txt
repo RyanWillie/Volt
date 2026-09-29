@@ -31,8 +31,12 @@ set(
     design.py
     diagnostics.py
     dc.py
+    ac.py
+    ac.pyi
     dc.pyi
     dc_solve.py
+    ac_solve.py
+    ac_solve.pyi
     dc_solve.pyi
     compilation.py
     compilation.pyi
@@ -69,7 +73,9 @@ pybind11_add_module(
     board_bindings.cpp
     circuit_bindings.cpp
     dc_request_bindings.cpp
+    ac_request_bindings.cpp
     dc_solve_bindings.cpp
+    ac_solve_bindings.cpp
     electrical_compilation_bindings.cpp
     electrical_model_bindings.cpp
     py_board.cpp

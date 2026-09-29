@@ -525,6 +525,91 @@
       ],
       "native_bound_classes": [
         {
+          "cpp_type": "AcFrequencySweep",
+          "path": "src/python/ac_request_bindings.cpp",
+          "python_type": "AcFrequencySweep"
+        },
+        {
+          "cpp_type": "AcVoltageSource",
+          "path": "src/python/ac_request_bindings.cpp",
+          "python_type": "_AcVoltageSource"
+        },
+        {
+          "cpp_type": "AcCurrentSource",
+          "path": "src/python/ac_request_bindings.cpp",
+          "python_type": "_AcCurrentSource"
+        },
+        {
+          "cpp_type": "AcGainProbe",
+          "path": "src/python/ac_request_bindings.cpp",
+          "python_type": "AcGainProbe"
+        },
+        {
+          "cpp_type": "AcImpedanceProbe",
+          "path": "src/python/ac_request_bindings.cpp",
+          "python_type": "_AcImpedanceProbe"
+        },
+        {
+          "cpp_type": "AcRequest",
+          "path": "src/python/ac_request_bindings.cpp",
+          "python_type": "AcRequest"
+        },
+        {
+          "cpp_type": "AcRequestAssessment",
+          "path": "src/python/ac_request_bindings.cpp",
+          "python_type": "AcRequestAssessment"
+        },
+        {
+          "cpp_type": "AcComplexQuantity",
+          "path": "src/python/ac_solve_bindings.cpp",
+          "python_type": "AcComplexQuantity"
+        },
+        {
+          "cpp_type": "AcFrequencyResult",
+          "path": "src/python/ac_solve_bindings.cpp",
+          "python_type": "AcFrequencyResult"
+        },
+        {
+          "cpp_type": "AcPointReport",
+          "path": "src/python/ac_solve_bindings.cpp",
+          "python_type": "AcPointReport"
+        },
+        {
+          "cpp_type": "AcSolveOptions, DcSolveOptions",
+          "path": "src/python/ac_solve_bindings.cpp",
+          "python_type": "AcSolveOptions"
+        },
+        {
+          "cpp_type": "AcSolveMetrics",
+          "path": "src/python/ac_solve_bindings.cpp",
+          "python_type": "AcSolveMetrics"
+        },
+        {
+          "cpp_type": "AcNodeResult",
+          "path": "src/python/ac_solve_bindings.cpp",
+          "python_type": "AcNodeResult"
+        },
+        {
+          "cpp_type": "AcBranchResult",
+          "path": "src/python/ac_solve_bindings.cpp",
+          "python_type": "AcBranchResult"
+        },
+        {
+          "cpp_type": "AcProbeResult",
+          "path": "src/python/ac_solve_bindings.cpp",
+          "python_type": "AcProbeResult"
+        },
+        {
+          "cpp_type": "AcSolution",
+          "path": "src/python/ac_solve_bindings.cpp",
+          "python_type": "AcSolution"
+        },
+        {
+          "cpp_type": "AcSolveReport",
+          "path": "src/python/ac_solve_bindings.cpp",
+          "python_type": "AcSolveReport"
+        },
+        {
           "cpp_type": "volt::BoardSpatialBlocker",
           "path": "src/python/board_bindings.cpp",
           "python_type": "BoardSpatialBlocker"

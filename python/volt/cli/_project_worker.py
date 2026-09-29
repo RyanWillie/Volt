@@ -35,6 +35,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--exports-json", default="[]")
     parser.add_argument("--design")
     parser.add_argument("--request", type=Path)
+    parser.add_argument("--analysis", choices=("dc", "ac"), default="dc")
     parser.add_argument("--backend", choices=("native", "ngspice"), default="native")
     parser.add_argument("--ngspice", type=Path)
     parser.add_argument("--schematic")
@@ -236,6 +237,8 @@ def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
                 "Simulation worker requires design, request and output.",
                 code="missing-simulation-argument",
             )
+        if args.analysis == "ac" and args.backend != "native":
+            raise CliError("AC analysis requires --backend native.", code="unsupported-ac-backend")
         if args.backend == "native" and args.ngspice is not None:
             raise CliError(
                 "Native simulation does not accept an ngspice executable.",
@@ -252,17 +255,18 @@ def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
     )
     if args.action == "simulate":
         from ..dc import prepare_dc_input
-        from ._simulation import execute_dc
+        from ._simulation import execute_dc, execute_ac
 
         selected = _one(result.designs, args.design, "Design")
         try:
             selected_input = prepare_dc_input(selected)
         except Exception as error:
             raise CliError(
-                f"Failed to prepare the selected Design for DC: {error}",
+                f"Failed to prepare the selected Design for {args.analysis.upper()}: {error}",
                 code="invalid-simulation-input",
             ) from error
-        return execute_dc(
+        execute = execute_ac if args.analysis == "ac" else execute_dc
+        return execute(
             selected_input,
             args.request,
             args.output,

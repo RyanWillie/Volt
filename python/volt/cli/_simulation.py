@@ -1,4 +1,4 @@
-"""Shared linear-DC execution and immutable artifact publication."""
+"""Shared linear analysis execution and immutable artifact publication."""
 
 from __future__ import annotations
 
@@ -313,3 +313,51 @@ def execute_dc(
             }
         )
     return payload, exit_code
+
+
+def execute_ac(
+    input, request_path: Path, output: Path, *, design: str, source: dict,
+    backend: str = "native", ngspice: Path | None = None,
+) -> tuple[dict[str, object], int]:
+    """Explicitly execute a native AC sweep and atomically publish its reports."""
+    from .. import AcRequest, solve_ac
+
+    if backend != "native":
+        raise CliError("AC analysis requires --backend native.", code="unsupported-ac-backend")
+    if ngspice is not None:
+        raise CliError("Native simulation does not accept an ngspice executable.",
+                       code="native-backend-rejects-ngspice-path")
+    output = Path(os.path.abspath(output))
+    validate_output(output)
+    try:
+        data = request_path.read_bytes()
+    except OSError as error:
+        raise CliError(f"Failed to read AC request {request_path}: {error}",
+                       code="ac-request-read-failed") from error
+    try:
+        request = AcRequest.from_json(input, data)
+        report = compile_electrical(request)
+        compile_bytes = report.to_json().encode()
+        compile_payload = json.loads(compile_bytes)
+        artifacts = {_ARTIFACT_REQUEST: request.to_json().encode(),
+                     _ARTIFACT_COMPILE_REPORT: compile_bytes}
+        solve_payload = None
+        status, exit_code = "incomplete", EXIT_CHECK_FAILED
+        if report.complete:
+            solved = solve_ac(report.model)
+            solve_bytes = solved.to_json().encode()
+            solve_payload = json.loads(solve_bytes)
+            artifacts[_ARTIFACT_SOLVE_REPORT] = solve_bytes
+            status = "success" if solved.success else "failed"
+            if solved.success:
+                artifacts[_ARTIFACT_SOLUTION] = solved.solution.to_json().encode()
+                exit_code = EXIT_SUCCESS
+    except Exception as error:
+        raise CliError(f"Native AC execution failed: {error}",
+                       code="native-ac-execution-failed") from error
+    _write_and_publish(output, artifacts)
+    return {"ok": status == "success", "status": status, "analysis": "ac",
+            "backend": "native", "design": design, "source": source,
+            "output": str(output), "written": True,
+            "artifacts": {name: str(output / name) for name in artifacts},
+            "compile_report": compile_payload, "solve_report": solve_payload}, exit_code

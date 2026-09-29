@@ -6,7 +6,7 @@
 #include <variant>
 #include <vector>
 
-#include <volt/electrical/dc_request.hpp>
+#include <volt/electrical/ac_request.hpp>
 
 namespace volt {
 
@@ -85,8 +85,9 @@ struct ElectricalElementOrigin {
 using ElectricalBranchOrigin = std::variant<ElectricalElementOrigin, DcSourceKey>;
 
 /** Original closed laws; parameters, orientation, uncertainty and evidence stay intact. */
-using ElectricalLaw = std::variant<ResistanceElement, CapacitanceElement, InductanceElement,
-                                   DcVoltageSource, DcCurrentSource>;
+using ElectricalLaw =
+    std::variant<ResistanceElement, CapacitanceElement, InductanceElement, DcVoltageSource,
+                 DcCurrentSource, AcVoltageSource, AcCurrentSource>;
 
 /** One oriented current observation and its exact primitive law. */
 struct ElectricalBranch {
@@ -159,7 +160,18 @@ class CompiledElectricalModel {
     [[nodiscard]] const ContentHash &request_identity() const noexcept { return request_identity_; }
 
     /** Return the immutable request and owning exact input used for compilation. */
-    [[nodiscard]] const DcRequest &request() const noexcept { return request_; }
+    [[nodiscard]] const DcRequest &request() const;
+
+    /** Return the AC request only for a compiled AC analysis. */
+    [[nodiscard]] const AcRequest *ac_request() const noexcept {
+        return std::get_if<AcRequest>(&request_);
+    }
+
+    /** Return the exact input shared by every analysis kind. */
+    [[nodiscard]] const DcInput &input() const noexcept {
+        return std::visit([](const auto &request) -> const DcInput & { return request.input(); },
+                          request_);
+    }
 
     /** Return deterministic node-potential coordinates, origins and KCL incidence. */
     [[nodiscard]] const std::vector<ElectricalNode> &nodes() const noexcept { return nodes_; }
@@ -181,12 +193,13 @@ class CompiledElectricalModel {
     [[nodiscard]] const std::vector<ElectricalProbe> &probes() const noexcept { return probes_; }
 
   private:
-    CompiledElectricalModel(DcRequest request, std::vector<ElectricalNode> nodes,
+    CompiledElectricalModel(std::variant<DcRequest, AcRequest> request,
+                            std::vector<ElectricalNode> nodes,
                             std::vector<ElectricalBranch> branches, ElectricalNodeId reference,
                             std::vector<ElectricalStorage> storage,
                             std::vector<ElectricalProbe> probes);
 
-    DcRequest request_;
+    std::variant<DcRequest, AcRequest> request_;
     std::vector<ElectricalNode> nodes_;
     std::vector<ElectricalBranch> branches_;
     ElectricalNodeId reference_;
@@ -201,6 +214,8 @@ class ElectricalCompileReport {
   public:
     /** Assess and compile one owning immutable request through the native compiler. */
     explicit ElectricalCompileReport(const DcRequest &request);
+    /** Compile an immutable AC request through the same native graph compiler. */
+    explicit ElectricalCompileReport(const AcRequest &request);
 
     /** Return whether a complete required graph/law model is available, not solvability. */
     [[nodiscard]] bool complete() const noexcept { return model_.has_value(); }
@@ -215,11 +230,19 @@ class ElectricalCompileReport {
 
     /** Return one exact-Part/model coverage record for every input occurrence. */
     [[nodiscard]] const std::vector<DcOccurrenceCoverage> &coverage() const noexcept {
-        return assessment_.coverage();
+        return std::visit(
+            [](const auto &assessment) -> const std::vector<DcOccurrenceCoverage> & {
+                return assessment.coverage();
+            },
+            assessment_);
     }
 
     /** Return the exact immutable input identity assessed and compiled. */
-    [[nodiscard]] const DcInputIdentity &input() const noexcept { return assessment_.input(); }
+    [[nodiscard]] const DcInputIdentity &input() const noexcept {
+        return std::visit(
+            [](const auto &assessment) -> const DcInputIdentity & { return assessment.input(); },
+            assessment_);
+    }
 
     /** Return request-local plus topology compilation diagnostics in deterministic order. */
     [[nodiscard]] const std::vector<Diagnostic> &diagnostics() const noexcept {
@@ -227,12 +250,14 @@ class ElectricalCompileReport {
     }
 
   private:
-    DcRequestAssessment assessment_;
+    std::variant<DcRequestAssessment, AcRequestAssessment> assessment_;
     std::vector<Diagnostic> diagnostics_;
     std::optional<CompiledElectricalModel> model_;
 };
 
 /** Compile one immutable S1 request without a second Circuit/resolver or numerical solve. */
 [[nodiscard]] ElectricalCompileReport compile_electrical(const DcRequest &request);
+/** Compile an AC request without a second connectivity resolver. */
+[[nodiscard]] ElectricalCompileReport compile_electrical(const AcRequest &request);
 
 } // namespace volt

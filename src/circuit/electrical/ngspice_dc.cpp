@@ -65,9 +65,11 @@ class IdentityEncoder final {
                 return 'l';
             } else if constexpr (std::same_as<Law, DcVoltageSource>) {
                 return 'v';
-            } else {
-                static_assert(std::same_as<Law, DcCurrentSource>);
+            } else if constexpr (std::same_as<Law, DcCurrentSource>) {
                 return 'i';
+            } else {
+                throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                          "AC source cannot enter ngspice DC mapping"};
             }
         },
         branch.law);
@@ -76,7 +78,7 @@ class IdentityEncoder final {
 
 [[nodiscard]] detail::NgspiceCurrentProjection current_projection(const ElectricalBranch &branch) {
     return std::visit(
-        [](const auto &law) {
+        [](const auto &law) -> detail::NgspiceCurrentProjection {
             using Law = std::decay_t<decltype(law)>;
             if constexpr (std::same_as<Law, ResistanceElement>) {
                 return law.parameter().nominal().value() == 0.0
@@ -86,10 +88,12 @@ class IdentityEncoder final {
                 return detail::NgspiceCurrentProjection::CapacitorOpen;
             } else if constexpr (std::same_as<Law, DcCurrentSource>) {
                 return detail::NgspiceCurrentProjection::CurrentSourceNominal;
-            } else {
-                static_assert(std::same_as<Law, InductanceElement> ||
-                              std::same_as<Law, DcVoltageSource>);
+            } else if constexpr (std::same_as<Law, InductanceElement> ||
+                                 std::same_as<Law, DcVoltageSource>) {
                 return detail::NgspiceCurrentProjection::Returned;
+            } else {
+                throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                          "AC source cannot enter ngspice DC mapping"};
             }
         },
         branch.law);
@@ -108,15 +112,21 @@ class IdentityEncoder final {
                 return "inductance";
             } else if constexpr (std::same_as<Law, DcVoltageSource>) {
                 return "dc_voltage_source";
-            } else {
-                static_assert(std::same_as<Law, DcCurrentSource>);
+            } else if constexpr (std::same_as<Law, DcCurrentSource>) {
                 return "dc_current_source";
+            } else {
+                throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                          "AC source cannot enter ngspice DC mapping"};
             }
         },
         branch.law);
 }
 
 [[nodiscard]] ContentHash make_mapping_identity(const CompiledElectricalModel &model) {
+    if (model.ac_request() != nullptr) {
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "AC compiled model cannot enter ngspice DC adapter"};
+    }
     auto encoder = IdentityEncoder{};
     encoder.text("volt.ngspice-dc-mapping");
     encoder.text(std::to_string(NgspiceDcAnalysis::contract_version()));
@@ -167,16 +177,18 @@ class IdentityEncoder final {
 
 [[nodiscard]] double branch_value(const ElectricalBranch &branch) {
     return std::visit(
-        [](const auto &law) {
+        [](const auto &law) -> double {
             using Law = std::decay_t<decltype(law)>;
             if constexpr (std::same_as<Law, ResistanceElement> ||
                           std::same_as<Law, CapacitanceElement> ||
                           std::same_as<Law, InductanceElement>) {
                 return law.parameter().nominal().value();
-            } else {
-                static_assert(std::same_as<Law, DcVoltageSource> ||
-                              std::same_as<Law, DcCurrentSource>);
+            } else if constexpr (std::same_as<Law, DcVoltageSource> ||
+                                 std::same_as<Law, DcCurrentSource>) {
                 return law.value().value();
+            } else {
+                throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                          "AC source cannot enter ngspice DC deck"};
             }
         },
         branch.law);

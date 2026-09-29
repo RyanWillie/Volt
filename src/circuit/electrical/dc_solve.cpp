@@ -63,6 +63,10 @@ class IdentityEncoder final {
 [[nodiscard]] ContentHash make_analysis_identity(const CompiledElectricalModel &model,
                                                  const DcSolveOptions &options,
                                                  const DcSolveProvenance &provenance) {
+    if (model.ac_request() != nullptr) {
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "AC compiled model cannot be solved as DC"};
+    }
     auto encoder = IdentityEncoder{};
     encoder.text("volt.linear-dc-analysis");
     encoder.text(std::to_string(DcSolveReport::contract_version()));
@@ -269,10 +273,12 @@ struct Tableau {
                     add_node_coefficient(law_row, branch.from, 1.0);
                     add_node_coefficient(law_row, branch.to, -1.0);
                     result.right_hand_side(law_row) = law.value().value();
-                } else {
-                    static_assert(std::same_as<Law, DcCurrentSource>);
+                } else if constexpr (std::same_as<Law, DcCurrentSource>) {
                     result.coefficients(law_row, current_column) = 1.0;
                     result.right_hand_side(law_row) = law.value().value();
+                } else {
+                    throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                              "AC source cannot enter the DC tableau"};
                 }
             },
             branch.law);
@@ -660,7 +666,7 @@ class DcSolution::Solver final {
             const auto current = current_values.at(branch.id.index());
             const auto entities = branch_entities(model, branch);
             const auto valid = std::visit(
-                [&](const auto &law) {
+                [&](const auto &law) -> bool {
                     using Law = std::decay_t<decltype(law)>;
                     if constexpr (std::same_as<Law, ResistanceElement>) {
                         const auto resistance_drop =
@@ -698,8 +704,7 @@ class DcSolution::Solver final {
                             std::abs(voltage) + std::abs(law.value().value()),
                             "Voltage-source residual exceeds tolerance for " + branch_scope(branch),
                             entities);
-                    } else {
-                        static_assert(std::same_as<Law, DcCurrentSource>);
+                    } else if constexpr (std::same_as<Law, DcCurrentSource>) {
                         const auto difference = checked_difference(current, law.value().value());
                         if (!difference) {
                             return false;
@@ -709,6 +714,9 @@ class DcSolution::Solver final {
                             std::abs(current) + std::abs(law.value().value()),
                             "Current-source residual exceeds tolerance for " + branch_scope(branch),
                             entities);
+                    } else {
+                        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                                  "AC source cannot enter DC residual validation"};
                     }
                 },
                 branch.law);

@@ -1,5 +1,7 @@
 #include <volt/electrical/compiled_electrical_model.hpp>
 
+#include "ac_request_detail.hpp"
+
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -139,9 +141,19 @@ void encode(IdentityEncoder &out, const DcCurrentSource &value) {
     encode(out, value.value());
 }
 
-[[nodiscard]] ContentHash request_identity(const DcRequest &request) {
+template <UnitDimension Dimension>
+void encode(IdentityEncoder &out, const AcIndependentSource<Dimension> &value) {
+    out.text(Dimension == UnitDimension::Voltage ? "ac-voltage-source" : "ac-current-source");
+    out.text(value.key().value());
+    encode(out, value.nets());
+    encode(out, value.amplitude());
+    out.number(value.phase());
+}
+
+template <typename Request> [[nodiscard]] ContentHash request_identity(const Request &request) {
     auto out = IdentityEncoder{};
-    out.text("volt.electrical-request-content");
+    out.text(std::same_as<Request, AcRequest> ? "volt.ac-request-content"
+                                              : "volt.electrical-request-content");
     out.text("1");
     out.text(request.input().identity().logical().value());
     out.text(request.input().identity().selected_parts().value());
@@ -149,6 +161,11 @@ void encode(IdentityEncoder &out, const DcCurrentSource &value) {
     out.text(request.reference().has_value() ? "reference" : "no-reference");
     if (request.reference().has_value()) {
         out.id(request.reference()->id());
+    }
+    if constexpr (std::same_as<Request, AcRequest>) {
+        out.text(std::to_string(request.frequencies().size()));
+        for (const auto &frequency : request.frequencies())
+            encode(out, frequency);
     }
     out.text(std::to_string(request.sources().size()));
     for (const auto &source : request.sources()) {
@@ -195,6 +212,20 @@ void encode(IdentityEncoder &out, const DcCurrentSource &value) {
                 }
             },
             exclusion.reason());
+    }
+    if constexpr (std::same_as<Request, AcRequest>) {
+        out.text(std::to_string(request.gains().size()));
+        for (const auto &gain : request.gains()) {
+            out.text(gain.key().value());
+            out.text(gain.numerator().value());
+            out.text(gain.denominator().value());
+        }
+        out.text(std::to_string(request.impedances().size()));
+        for (const auto &impedance : request.impedances()) {
+            out.text(impedance.key().value());
+            encode(out, impedance.nets());
+            out.text(impedance.source().value());
+        }
     }
     return out.digest();
 }
@@ -332,30 +363,37 @@ struct VoltageConstraint {
     ElectricalBranchId branch;
     ElectricalNodeId from;
     ElectricalNodeId to;
-    double value;
+    std::complex<double> value;
 };
 
 } // namespace
 
 class CompiledElectricalModel::Compiler final {
   public:
+    template <typename Request, typename Assessment>
     [[nodiscard]] static std::optional<CompiledElectricalModel>
-    compile(const DcRequest &request, const DcRequestAssessment &assessment,
+    compile(const Request &request, const Assessment &assessment,
             std::vector<Diagnostic> &diagnostics) {
-        auto compiler = Compiler{request, diagnostics};
+        // Reuse the established exact-input connectivity resolver; this local projection
+        // supplies participation only and never becomes the compiled AC request or laws.
+        const DcRequest topology = [&] {
+            if constexpr (std::same_as<Request, AcRequest>)
+                return detail::ac_topology_request(request);
+            else
+                return request;
+        }();
+        auto compiler = Compiler{topology, diagnostics};
         compiler.build_net_nodes();
         compiler.check_required_ports();
-        if (!assessment.complete()) {
+        if (!assessment.complete())
             return std::nullopt;
-        }
-        compiler.build_part_nodes_and_branches(assessment);
-        compiler.build_source_branches();
+        compiler.build_part_nodes_and_branches(assessment.coverage());
+        compiler.build_source_branches(request.sources());
         compiler.derive_incidence_and_storage();
         compiler.resolve_probes();
         compiler.check_voltage_constraints();
-        if (compiler.failed_) {
+        if (compiler.failed_)
             return std::nullopt;
-        }
         return CompiledElectricalModel{request,
                                        std::move(compiler.nodes_),
                                        std::move(compiler.branches_),
@@ -417,9 +455,9 @@ class CompiledElectricalModel::Compiler final {
         }
     }
 
-    void build_part_nodes_and_branches(const DcRequestAssessment &assessment) {
+    void build_part_nodes_and_branches(const std::vector<DcOccurrenceCoverage> &coverage_records) {
         const auto &circuit = request_.input().circuit();
-        for (const auto &coverage : assessment.coverage()) {
+        for (const auto &coverage : coverage_records) {
             if (coverage.status() == DcCoverageStatus::Excluded) {
                 continue;
             }
@@ -522,8 +560,8 @@ class CompiledElectricalModel::Compiler final {
             endpoint);
     }
 
-    void build_source_branches() {
-        for (const auto &source : request_.sources()) {
+    template <typename Sources> void build_source_branches(const Sources &sources) {
+        for (const auto &source : sources) {
             std::visit(
                 [&](const auto &value) {
                     const auto from = *net_nodes_.at(value.nets().from().id().index());
@@ -534,6 +572,9 @@ class CompiledElectricalModel::Compiler final {
                     if constexpr (std::same_as<Source, DcVoltageSource>) {
                         voltage_constraints_.push_back(
                             VoltageConstraint{branch, from, to, value.value().value()});
+                    } else if constexpr (std::same_as<Source, AcVoltageSource>) {
+                        voltage_constraints_.push_back(
+                            VoltageConstraint{branch, from, to, value.phasor()});
                     }
                 },
                 source);
@@ -588,7 +629,7 @@ class CompiledElectricalModel::Compiler final {
 
     void check_voltage_constraints() {
         struct PriorConstraint {
-            double value;
+            std::complex<double> value;
             VoltageConstraint constraint;
         };
 
@@ -596,7 +637,7 @@ class CompiledElectricalModel::Compiler final {
         auto contradicted = std::set<std::pair<std::size_t, std::size_t>>{};
         for (const auto &constraint : voltage_constraints_) {
             if (constraint.from == constraint.to) {
-                if (constraint.value != 0.0) {
+                if (constraint.value != std::complex<double>{}) {
                     const auto &branch = branches_.at(constraint.branch.index());
                     fail(analysis_diagnostic_codes::ElectricalContradictoryVoltageSource,
                          "Nonzero voltage constraint from " + branch_label(branch) +
@@ -712,7 +753,7 @@ class CompiledElectricalModel::Compiler final {
     bool failed_ = false;
 };
 
-CompiledElectricalModel::CompiledElectricalModel(DcRequest request,
+CompiledElectricalModel::CompiledElectricalModel(std::variant<DcRequest, AcRequest> request,
                                                  std::vector<ElectricalNode> nodes,
                                                  std::vector<ElectricalBranch> branches,
                                                  ElectricalNodeId reference,
@@ -720,15 +761,34 @@ CompiledElectricalModel::CompiledElectricalModel(DcRequest request,
                                                  std::vector<ElectricalProbe> probes)
     : request_{std::move(request)}, nodes_{std::move(nodes)}, branches_{std::move(branches)},
       reference_{reference}, storage_{std::move(storage)}, probes_{std::move(probes)},
-      request_identity_{::volt::request_identity(request_)},
+      request_identity_{
+          std::visit([](const auto &value) { return ::volt::request_identity(value); }, request_)},
       identity_{
           compiled_identity(request_identity_, nodes_, branches_, reference_, storage_, probes_)} {}
 
 ElectricalCompileReport::ElectricalCompileReport(const DcRequest &request)
-    : assessment_{assess_dc_request(request)}, diagnostics_{assessment_.diagnostics()},
-      model_{CompiledElectricalModel::Compiler::compile(request, assessment_, diagnostics_)} {}
+    : assessment_{assess_dc_request(request)},
+      diagnostics_{std::get<DcRequestAssessment>(assessment_).diagnostics()},
+      model_{CompiledElectricalModel::Compiler::compile(
+          request, std::get<DcRequestAssessment>(assessment_), diagnostics_)} {}
 
 ElectricalCompileReport compile_electrical(const DcRequest &request) {
+    return ElectricalCompileReport{request};
+}
+
+const DcRequest &CompiledElectricalModel::request() const {
+    if (const auto *request = std::get_if<DcRequest>(&request_))
+        return *request;
+    throw KernelArgumentError{ErrorCode::InvalidArgument, "AC model has no DC request"};
+}
+
+ElectricalCompileReport::ElectricalCompileReport(const AcRequest &request)
+    : assessment_{AcRequestAssessment{request}},
+      diagnostics_{std::get<AcRequestAssessment>(assessment_).diagnostics()},
+      model_{CompiledElectricalModel::Compiler::compile(
+          request, std::get<AcRequestAssessment>(assessment_), diagnostics_)} {}
+
+ElectricalCompileReport compile_electrical(const AcRequest &request) {
     return ElectricalCompileReport{request};
 }
 
