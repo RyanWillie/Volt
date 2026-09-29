@@ -51,10 +51,10 @@ inline Fixture fixture(double resistance = 1000, double inductance = 0.1, double
                                      FootprintLayerSet::front_smd()),
          FootprintPad::surface_mount("2", FootprintPadShape::Rectangle, {0.5, 0.0}, {0.5, 0.5},
                                      FootprintLayerSet::front_smd())}});
-    const auto make_part = [&](const ComponentDefinition &component, std::string key,
-                               std::optional<PartElectricalModel> model) {
+    const auto make_part = [&](const ComponentDefinition &part_component, std::string key,
+                               std::optional<PartElectricalModel> part_model) {
         return PartDefinition{
-            component,
+            part_component,
             PartIdentity{"test.ac", key, "1"},
             ElectricalRecordSet{2},
             {PinPackageTerminalMapping{PinKey{"A"}, {PackageTerminalKey{"1"}}},
@@ -71,7 +71,7 @@ inline Fixture fixture(double resistance = 1000, double inductance = 0.1, double
                  PartFootprintPad{"2", 0.5, 0.0, 0.5, 0.5}},
                 {PackageTerminalPadMapping{PackageTerminalKey{"1"}, {FootprintPadKey{"1"}}},
                  PackageTerminalPadMapping{PackageTerminalKey{"2"}, {FootprintPadKey{"2"}}}}},
-            std::move(model)};
+            std::move(part_model)};
     };
 
     const auto r = make_part(component, "resistor", model(UnitDimension::Resistance, resistance));
