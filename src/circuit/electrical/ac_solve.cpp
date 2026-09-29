@@ -553,16 +553,16 @@ std::optional<AcFrequencyResult> solve_point(const CompiledElectricalModel &mode
         }
         result.probes.push_back({probe.key, *value});
     }
-    const auto publish_ratio = [&](DcProbeKey key, Complex numerator, Complex denominator,
-                                   UnitDimension dimension) {
-        if (denominator == Complex{}) {
+    const auto publish_ratio = [&](DcProbeKey key, Complex ratio_numerator,
+                                   Complex ratio_denominator, UnitDimension dimension) {
+        if (ratio_denominator == Complex{}) {
             outcome = AcSolveOutcome::UndefinedMeasurement;
             diagnostics.push_back(solve_diagnostic(
                 analysis_diagnostic_codes::AcSolveUndefinedMeasurement,
                 "Derived AC observation '" + key.value() + "' has a zero denominator"));
             return false;
         }
-        const auto value = numerator / denominator;
+        const auto value = ratio_numerator / ratio_denominator;
         if (!finite(value)) {
             outcome = AcSolveOutcome::NumericalFailure;
             diagnostics.push_back(
