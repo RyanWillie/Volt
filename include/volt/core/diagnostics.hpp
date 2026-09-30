@@ -185,6 +185,16 @@ inline constexpr auto OrientationAmbiguous = std::string_view{"ASSEMBLY_ORIENTAT
 
 namespace analysis_diagnostic_codes {
 
+inline constexpr auto AcReferenceMissing = std::string_view{"AC_REQUEST_REFERENCE_MISSING"};
+inline constexpr auto AcExcitationMissing = std::string_view{"AC_REQUEST_EXCITATION_MISSING"};
+inline constexpr auto AcOccurrenceUnselected = std::string_view{"AC_OCCURRENCE_UNSELECTED"};
+inline constexpr auto AcOccurrenceUnresolved = std::string_view{"AC_OCCURRENCE_UNRESOLVED"};
+inline constexpr auto AcOccurrenceModelAbsent = std::string_view{"AC_OCCURRENCE_MODEL_ABSENT"};
+inline constexpr auto AcOccurrenceUnsupported = std::string_view{"AC_OCCURRENCE_UNSUPPORTED"};
+inline constexpr auto AcTransferStimulusInvalid =
+    std::string_view{"AC_REQUEST_TRANSFER_STIMULUS_INVALID"};
+inline constexpr auto AcImpedanceStimulusInvalid =
+    std::string_view{"AC_REQUEST_IMPEDANCE_STIMULUS_INVALID"};
 inline constexpr auto DcReferenceMissing = std::string_view{"DC_REQUEST_REFERENCE_MISSING"};
 inline constexpr auto DcContradictoryVoltageSources =
     std::string_view{"DC_REQUEST_CONTRADICTORY_VOLTAGE_SOURCES"};
@@ -205,6 +215,13 @@ inline constexpr auto DcSolveInconsistent = std::string_view{"DC_SOLVE_INCONSIST
 inline constexpr auto DcSolveIllConditioned = std::string_view{"DC_SOLVE_ILL_CONDITIONED"};
 inline constexpr auto DcSolveNumericalFailure = std::string_view{"DC_SOLVE_NUMERICAL_FAILURE"};
 inline constexpr auto DcSolveResidualFailure = std::string_view{"DC_SOLVE_RESIDUAL_FAILURE"};
+inline constexpr auto AcSolveRankDeficient = std::string_view{"AC_SOLVE_RANK_DEFICIENT"};
+inline constexpr auto AcSolveInconsistent = std::string_view{"AC_SOLVE_INCONSISTENT"};
+inline constexpr auto AcSolveIllConditioned = std::string_view{"AC_SOLVE_ILL_CONDITIONED"};
+inline constexpr auto AcSolveNumericalFailure = std::string_view{"AC_SOLVE_NUMERICAL_FAILURE"};
+inline constexpr auto AcSolveResidualFailure = std::string_view{"AC_SOLVE_RESIDUAL_FAILURE"};
+inline constexpr auto AcSolveUndefinedMeasurement =
+    std::string_view{"AC_SOLVE_UNDEFINED_MEASUREMENT"};
 inline constexpr auto DcNgspiceModelEmpty = std::string_view{"DC_NGSPICE_MODEL_EMPTY"};
 
 } // namespace analysis_diagnostic_codes
@@ -293,7 +310,21 @@ inline constexpr auto Assembly = std::array{assembly_diagnostic_codes::Component
                                             assembly_diagnostic_codes::OrientationAmbiguous};
 
 inline constexpr auto Analysis =
-    std::array{analysis_diagnostic_codes::DcReferenceMissing,
+    std::array{analysis_diagnostic_codes::AcReferenceMissing,
+               analysis_diagnostic_codes::AcExcitationMissing,
+               analysis_diagnostic_codes::AcOccurrenceUnselected,
+               analysis_diagnostic_codes::AcOccurrenceUnresolved,
+               analysis_diagnostic_codes::AcOccurrenceModelAbsent,
+               analysis_diagnostic_codes::AcOccurrenceUnsupported,
+               analysis_diagnostic_codes::AcTransferStimulusInvalid,
+               analysis_diagnostic_codes::AcImpedanceStimulusInvalid,
+               analysis_diagnostic_codes::AcSolveRankDeficient,
+               analysis_diagnostic_codes::AcSolveInconsistent,
+               analysis_diagnostic_codes::AcSolveIllConditioned,
+               analysis_diagnostic_codes::AcSolveNumericalFailure,
+               analysis_diagnostic_codes::AcSolveResidualFailure,
+               analysis_diagnostic_codes::AcSolveUndefinedMeasurement,
+               analysis_diagnostic_codes::DcReferenceMissing,
                analysis_diagnostic_codes::DcContradictoryVoltageSources,
                analysis_diagnostic_codes::DcOccurrenceUnselected,
                analysis_diagnostic_codes::DcOccurrenceUnresolved,

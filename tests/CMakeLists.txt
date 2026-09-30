@@ -57,7 +57,10 @@ add_executable(
     io/capabilities/board_capability_profile_io_test.cpp
     io/electrical/dc_request_io_test.cpp
     io/electrical/dc_request_test.cpp
+    io/electrical/ac_request_test.cpp
+    io/electrical/ac_request_io_test.cpp
     io/electrical/linear_dc_test.cpp
+    io/electrical/linear_ac_test.cpp
     io/electrical/ngspice_dc_test.cpp
     io/electrical/compiled_electrical_model_test.cpp
     io/logical/logical_circuit_reader_test.cpp

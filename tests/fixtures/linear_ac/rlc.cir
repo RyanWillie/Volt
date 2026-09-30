@@ -1,0 +1,14 @@
+Independent linear AC rlc reference
+Vdrive input 0 DC 0 AC 1
+Rseries input r_l 10
+Lseries r_l l_c 10m
+Cseries l_c 0 10u
+.control
+set numdgt=17
+set wr_vecnames
+set wr_singlescale
+ac lin 3 251.64606052243517 754.9381815673055
+wrdata observations.txt v(input) v(r_l) i(Vdrive)
+quit
+.endc
+.end

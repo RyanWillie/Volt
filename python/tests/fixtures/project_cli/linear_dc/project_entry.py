@@ -97,6 +97,7 @@ def main():
 
         volt.compile_electrical = forbidden_simulation
         volt.solve_dc = forbidden_simulation
+        volt.solve_ac = forbidden_simulation
     project = volt.Project("linear-dc-cli", version="1.0.0")
     project.expect_diagnostic(code="SINGLE_PIN_NET", design="divider")
     project.expect_diagnostic(code="SINGLE_PIN_NET", design="alternate")

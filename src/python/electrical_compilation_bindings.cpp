@@ -6,6 +6,7 @@
 
 #include <pybind11/stl.h>
 
+#include <volt/electrical/ac_request.hpp>
 #include <volt/electrical/compiled_electrical_model.hpp>
 #include <volt/io/electrical/compiled_electrical_model_io.hpp>
 
@@ -38,6 +39,13 @@ void bind_electrical_compilation(pybind11::module_ &module) {
                                py::return_value_policy::copy)
         .def_property_readonly("request", &CompiledElectricalModel::request,
                                py::return_value_policy::copy)
+        .def_property_readonly("ac_request",
+                               [](const CompiledElectricalModel &model) -> py::object {
+                                   const auto *request = model.ac_request();
+                                   return request == nullptr
+                                              ? py::none{}
+                                              : py::cast(*request, py::return_value_policy::copy);
+                               })
         .def("to_json", &io::write_compiled_electrical_model);
 
     py::class_<ElectricalCompileReport>(module, "ElectricalCompileReport")
@@ -60,7 +68,10 @@ void bind_electrical_compilation(pybind11::module_ &module) {
                                py::return_value_policy::copy)
         .def("to_json", &io::write_electrical_compile_report);
 
-    module.def("compile_electrical", &compile_electrical, py::arg("request"));
+    module.def("compile_electrical", py::overload_cast<const DcRequest &>(&compile_electrical),
+               py::arg("request"));
+    module.def("compile_electrical", py::overload_cast<const AcRequest &>(&compile_electrical),
+               py::arg("request"));
 }
 
 } // namespace volt::python

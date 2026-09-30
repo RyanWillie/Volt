@@ -1,0 +1,312 @@
+{
+  "format": "volt.linear-ac-reference-corpus",
+  "version": 1,
+  "backend": "ngspice",
+  "backend_version": "46",
+  "settings": {
+    "mode": "batch",
+    "analysis": "explicit inclusive linear sweeps",
+    "temperature_c": 27,
+    "nominal_temperature_c": 27,
+    "direct_solver": "SPARSE 1.3",
+    "source_amplitude": "peak",
+    "time_convention": "Re(phasor*exp(j*omega*t))",
+    "wrdata": "numdgt=17, wr_vecnames, wr_singlescale; adjacent real/imaginary pairs",
+    "branch_polarity": "current positive from authored first node to second node",
+    "impedance": "V(input)/(-Itest)"
+  },
+  "version_banner": "******\n** ngspice-46 : Circuit level simulation program\n** Compiled with KLU Direct Linear Solver\n** The U. C. Berkeley CAD Group\n** Copyright 1985-1994, Regents of the University of California.\n** Copyright 2001-2025, The ngspice team.\n** Please get your ngspice manual from https://ngspice.sourceforge.io/docs.html\n** Please file your bug-reports at http://ngspice.sourceforge.net/bugrep.html\n******\n",
+  "native_comparison": {
+    "relative_tolerance": 1e-07,
+    "voltage_absolute_tolerance_v": 1e-09,
+    "current_absolute_tolerance_a": 1e-11,
+    "impedance_absolute_tolerance_ohm": 1e-06,
+    "wrapped_phase_tolerance_rad": 1e-05
+  },
+  "oracle_analytical_comparison": {
+    "relative_tolerance": 1e-09,
+    "voltage_absolute_tolerance_v": 1e-09,
+    "current_absolute_tolerance_a": 1e-11
+  },
+  "cases": [
+    {
+      "id": "rc",
+      "deck": "rc.cir",
+      "deck_sha256": "eae6dc2eb60d347b069e8286e95e05118b4ba9d104b1dda14f809aefc2a53728",
+      "columns": [
+        "input_voltage_v",
+        "output_voltage_v",
+        "source_current_a"
+      ],
+      "raw_wrdata": " frequency                v(input)                 v(input)                 v(output)                v(output)                i(Vdrive)                i(Vdrive)               \n 1.59154943091895348e+02  1.00000000000000000e+00  0.00000000000000000e+00  5.00000000000000000e-01 -5.00000000000000000e-01 -5.00000000000000010e-04 -5.00000000000000010e-04 \n",
+      "raw_wrdata_sha256": "87f4e2d3c61439008f856062718aec79c6407e92aaabe8ca1058e4f77af656f5",
+      "points": [
+        {
+          "frequency_hz": 159.15494309189535,
+          "observations": {
+            "input_voltage_v": {
+              "real": 1.0,
+              "imaginary": 0.0
+            },
+            "output_voltage_v": {
+              "real": 0.5,
+              "imaginary": -0.5
+            },
+            "source_current_a": {
+              "real": -0.0005,
+              "imaginary": -0.0005
+            }
+          },
+          "analytical": {
+            "input_voltage_v": {
+              "real": 1.0,
+              "imaginary": 0.0
+            },
+            "output_voltage_v": {
+              "real": 0.5,
+              "imaginary": -0.5
+            },
+            "source_current_a": {
+              "real": -0.0005,
+              "imaginary": -0.0005
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rl",
+      "deck": "rl.cir",
+      "deck_sha256": "d94ce6f29d57358638733d052518f9c03483eb6deaa6a4cb0f5ebb9d8a3ce9cd",
+      "columns": [
+        "input_voltage_v",
+        "output_voltage_v",
+        "source_current_a"
+      ],
+      "raw_wrdata": " frequency                v(input)                 v(input)                 v(output)                v(output)                i(Vdrive)                i(Vdrive)               \n 1.59154943091895348e+02  1.00000000000000000e+00  0.00000000000000000e+00  5.00000000000000000e-01  5.00000000000000000e-01 -5.00000000000000010e-03  5.00000000000000010e-03 \n",
+      "raw_wrdata_sha256": "028aad23b95c861952bf3c5ce5319193d78f8e39dcfac4be555a53fce9d342e6",
+      "points": [
+        {
+          "frequency_hz": 159.15494309189535,
+          "observations": {
+            "input_voltage_v": {
+              "real": 1.0,
+              "imaginary": 0.0
+            },
+            "output_voltage_v": {
+              "real": 0.5,
+              "imaginary": 0.5
+            },
+            "source_current_a": {
+              "real": -0.005,
+              "imaginary": 0.005
+            }
+          },
+          "analytical": {
+            "input_voltage_v": {
+              "real": 1.0,
+              "imaginary": 0.0
+            },
+            "output_voltage_v": {
+              "real": 0.5,
+              "imaginary": 0.5
+            },
+            "source_current_a": {
+              "real": -0.005,
+              "imaginary": 0.005
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rlc",
+      "deck": "rlc.cir",
+      "deck_sha256": "1249f1b8b8eea0ce5e338083e91471a32c8f89564655d95b74130295c1d1dd81",
+      "columns": [
+        "input_voltage_v",
+        "after_resistor_voltage_v",
+        "source_current_a"
+      ],
+      "raw_wrdata": " frequency                v(input)                 v(input)                 v(r_l)                   v(r_l)                   i(Vdrive)                i(Vdrive)               \n 2.51646060522435164e+02  1.00000000000000000e+00  0.00000000000000000e+00  9.57446808510638347e-01 -2.01847510223513382e-01 -4.25531914893616248e-03 -2.01847510223513403e-02 \n 5.03292121044870328e+02  1.00000000000000000e+00  0.00000000000000000e+00  0.00000000000000000e+00 -8.67361737988403547e-16 -1.00000000000000006e-01 -8.67361737988403547e-17 \n 7.54938181567305492e+02  1.00000000000000000e+00  0.00000000000000000e+00  8.74125874125874169e-01  3.31707446870809108e-01 -1.25874125874125831e-02  3.31707446870809150e-02 \n",
+      "raw_wrdata_sha256": "0b12ae3a08b173802b63c71d55fe9fc4f2c046ea30f0182ffd429ce3a2f7a24c",
+      "points": [
+        {
+          "frequency_hz": 251.64606052243516,
+          "observations": {
+            "input_voltage_v": {
+              "real": 1.0,
+              "imaginary": 0.0
+            },
+            "after_resistor_voltage_v": {
+              "real": 0.9574468085106383,
+              "imaginary": -0.20184751022351338
+            },
+            "source_current_a": {
+              "real": -0.0042553191489361625,
+              "imaginary": -0.02018475102235134
+            }
+          },
+          "analytical": {
+            "input_voltage_v": {
+              "real": 1.0,
+              "imaginary": 0.0
+            },
+            "after_resistor_voltage_v": {
+              "real": 0.9574468085106383,
+              "imaginary": -0.20184751022351358
+            },
+            "source_current_a": {
+              "real": -0.004255319148936169,
+              "imaginary": -0.020184751022351358
+            }
+          }
+        },
+        {
+          "frequency_hz": 503.2921210448703,
+          "observations": {
+            "input_voltage_v": {
+              "real": 1.0,
+              "imaginary": 0.0
+            },
+            "after_resistor_voltage_v": {
+              "real": 0.0,
+              "imaginary": -8.673617379884035e-16
+            },
+            "source_current_a": {
+              "real": -0.1,
+              "imaginary": -8.673617379884035e-17
+            }
+          },
+          "analytical": {
+            "input_voltage_v": {
+              "real": 1.0,
+              "imaginary": 0.0
+            },
+            "after_resistor_voltage_v": {
+              "real": 0.0,
+              "imaginary": -3.552713678800501e-16
+            },
+            "source_current_a": {
+              "real": -0.1,
+              "imaginary": -3.552713678800501e-17
+            }
+          }
+        },
+        {
+          "frequency_hz": 754.9381815673055,
+          "observations": {
+            "input_voltage_v": {
+              "real": 1.0,
+              "imaginary": 0.0
+            },
+            "after_resistor_voltage_v": {
+              "real": 0.8741258741258742,
+              "imaginary": 0.3317074468708091
+            },
+            "source_current_a": {
+              "real": -0.012587412587412583,
+              "imaginary": 0.033170744687080915
+            }
+          },
+          "analytical": {
+            "input_voltage_v": {
+              "real": 1.0,
+              "imaginary": 0.0
+            },
+            "after_resistor_voltage_v": {
+              "real": 0.8741258741258742,
+              "imaginary": 0.33170744687080894
+            },
+            "source_current_a": {
+              "real": -0.012587412587412583,
+              "imaginary": 0.033170744687080894
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "impedance",
+      "deck": "impedance.cir",
+      "deck_sha256": "8b93b9cd6fc021590b552419d4b45f068a7cd609b6429c5629bdacc0af1021cc",
+      "columns": [
+        "input_voltage_v",
+        "after_resistor_voltage_v"
+      ],
+      "raw_wrdata": " frequency                v(input)                 v(input)                 v(r_l)                   v(r_l)                  \n 2.51646060522435164e+02 -1.00000000000000000e+01  4.74341649025257084e+01  0.00000000000000000e+00  4.74341649025257084e+01 \n 5.03292121044870328e+02 -1.00000000000000000e+01  1.06581410364015028e-14  0.00000000000000000e+00  1.06581410364015028e-14 \n 7.54938181567305492e+02 -1.00000000000000000e+01 -2.63523138347364956e+01  0.00000000000000000e+00 -2.63523138347364956e+01 \n",
+      "raw_wrdata_sha256": "f034137928348080b3712415a6c4ea6e73bc825826ed2c00419e8c9af83c7699",
+      "points": [
+        {
+          "frequency_hz": 251.64606052243516,
+          "observations": {
+            "input_voltage_v": {
+              "real": -10.0,
+              "imaginary": 47.43416490252571
+            },
+            "after_resistor_voltage_v": {
+              "real": 0.0,
+              "imaginary": 47.43416490252571
+            }
+          },
+          "analytical": {
+            "input_voltage_v": {
+              "real": -10.0,
+              "imaginary": 47.434164902525694
+            },
+            "after_resistor_voltage_v": {
+              "real": 0.0,
+              "imaginary": 47.434164902525694
+            }
+          }
+        },
+        {
+          "frequency_hz": 503.2921210448703,
+          "observations": {
+            "input_voltage_v": {
+              "real": -10.0,
+              "imaginary": 1.0658141036401503e-14
+            },
+            "after_resistor_voltage_v": {
+              "real": 0.0,
+              "imaginary": 1.0658141036401503e-14
+            }
+          },
+          "analytical": {
+            "input_voltage_v": {
+              "real": -10.0,
+              "imaginary": 3.552713678800501e-15
+            },
+            "after_resistor_voltage_v": {
+              "real": 0.0,
+              "imaginary": 3.552713678800501e-15
+            }
+          }
+        },
+        {
+          "frequency_hz": 754.9381815673055,
+          "observations": {
+            "input_voltage_v": {
+              "real": -10.0,
+              "imaginary": -26.352313834736496
+            },
+            "after_resistor_voltage_v": {
+              "real": 0.0,
+              "imaginary": -26.352313834736496
+            }
+          },
+          "analytical": {
+            "input_voltage_v": {
+              "real": -10.0,
+              "imaginary": -26.3523138347365
+            },
+            "after_resistor_voltage_v": {
+              "real": 0.0,
+              "imaginary": -26.3523138347365
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

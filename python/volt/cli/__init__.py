@@ -374,9 +374,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     simulate_parser = subparsers.add_parser(
         "simulate",
-        help="explicitly solve native linear DC from project source or a verified bundle",
+        help="explicitly solve linear DC or AC from project source or a verified bundle",
         description=(
-            "Bind one native DC request to an exact Design and publish native reports. "
+            "Bind one native analysis request to an exact Design and publish native reports. "
             "Use --bundle or --project, not both; default to current project discovery."
         ),
     )
@@ -386,16 +386,17 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     simulate_parser.add_argument("--design", help="Required exact logical Design name.")
     simulate_parser.add_argument(
-        "--request", type=Path, help="Required native DcRequest JSON file."
+        "--request", type=Path, help="Required native request JSON for the selected analysis."
     )
     simulate_parser.add_argument(
         "--output", type=Path, help="Required new, nonexistent output directory."
     )
+    simulate_parser.add_argument("--analysis", choices=("dc", "ac"), default="dc")
     simulate_parser.add_argument(
         "--backend",
         choices=("native", "ngspice"),
         default="native",
-        help="DC execution backend. Defaults to Volt's native solver.",
+        help="Execution backend; AC requires native.",
     )
     simulate_parser.add_argument(
         "--ngspice",
@@ -615,7 +616,7 @@ def _open_verified_bundle(path: str | Path):
 
 
 def _handle_simulate(args: argparse.Namespace) -> int:
-    from ._simulation import execute_dc, validate_output
+    from ._simulation import execute_dc, execute_ac, validate_output
 
     if args.bundle is not None and args.project is not None:
         raise CliError(
@@ -627,6 +628,8 @@ def _handle_simulate(args: argparse.Namespace) -> int:
             "`volt simulate` requires --design, --request and --output.",
             code="missing-simulation-argument",
         )
+    if args.analysis == "ac" and args.backend != "native":
+        raise CliError("AC analysis requires --backend native.", code="unsupported-ac-backend")
     if args.backend == "native" and args.ngspice is not None:
         raise CliError(
             "--ngspice is valid only with --backend ngspice.",
@@ -671,10 +674,11 @@ def _handle_simulate(args: argparse.Namespace) -> int:
             selected_input = matches[0].dc_input()
         except Exception as error:
             raise CliError(
-                f"Failed to prepare the selected Design for DC: {error}",
+                f"Failed to prepare the selected Design for {args.analysis.upper()}: {error}",
                 code="invalid-simulation-input",
             ) from error
-        payload, exit_code = execute_dc(
+        execute = execute_ac if args.analysis == "ac" else execute_dc
+        payload, exit_code = execute(
             selected_input,
             request,
             output,
@@ -700,6 +704,8 @@ def _handle_simulate(args: argparse.Namespace) -> int:
                 str(request),
                 "--output",
                 str(output),
+                "--analysis",
+                args.analysis,
                 "--backend",
                 args.backend,
                 *(() if ngspice is None else ("--ngspice", str(ngspice))),

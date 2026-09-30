@@ -8,7 +8,7 @@
 
 #include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
-#include <volt/io/electrical/dc_request_io.hpp>
+#include <volt/io/electrical/ac_request_io.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 
 namespace volt::io {
@@ -68,6 +68,19 @@ Json law_json(const ElectricalLaw &law) {
                                   {"to", detail::encode_local_id(value.nets().to().id())}}},
                     {"value", Json{{"dimension", voltage ? "voltage" : "current"},
                                    {"si", value.value().value()}}}};
+            } else if constexpr (std::same_as<Law, AcVoltageSource> ||
+                                 std::same_as<Law, AcCurrentSource>) {
+                constexpr bool voltage = std::same_as<Law, AcVoltageSource>;
+                const auto phasor = value.phasor();
+                return Json{
+                    {"kind", voltage ? "ac_voltage_source" : "ac_current_source"},
+                    {"key", value.key().value()},
+                    {"nets", Json{{"from", detail::encode_local_id(value.nets().from().id())},
+                                  {"to", detail::encode_local_id(value.nets().to().id())}}},
+                    {"amplitude", Json{{"dimension", voltage ? "voltage" : "current"},
+                                       {"si", value.amplitude().value()}}},
+                    {"phase_radians", value.phase()},
+                    {"phasor_si", Json{{"real", phasor.real()}, {"imaginary", phasor.imag()}}}};
             } else {
                 constexpr const char *kind = [] {
                     if constexpr (std::same_as<Law, ResistanceElement>) {
@@ -134,10 +147,9 @@ Json model_json(const CompiledElectricalModel &model) {
         for (const auto &term : node.incidence) {
             incidence.push_back(Json{{"branch", coordinate(term.branch)}, {"sign", term.sign}});
         }
-        nodes.push_back(
-            Json{{"id", coordinate(node.id)},
-                 {"origin", node_origin_json(node.origin, model.request().input().circuit())},
-                 {"incidence", std::move(incidence)}});
+        nodes.push_back(Json{{"id", coordinate(node.id)},
+                             {"origin", node_origin_json(node.origin, model.input().circuit())},
+                             {"incidence", std::move(incidence)}});
     }
     auto branches = Json::array();
     for (const auto &branch : model.branches()) {
@@ -198,7 +210,8 @@ Json model_json(const CompiledElectricalModel &model) {
                 {"compiler_version", CompiledElectricalModel::compiler_version()},
                 {"identity", model.identity().value()},
                 {"request_identity", model.request_identity().value()},
-                {"request", Json::parse(write_dc_request(model.request()))},
+                {"request", Json::parse(model.ac_request() ? write_ac_request(*model.ac_request())
+                                                           : write_dc_request(model.request()))},
                 {"nodes", std::move(nodes)},
                 {"branches", std::move(branches)},
                 {"reference", Json{{"node", coordinate(model.reference())}, {"potential_si", 0}}},
