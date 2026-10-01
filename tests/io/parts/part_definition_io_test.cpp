@@ -16,6 +16,7 @@
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/electrical/passive_model.hpp>
+#include <volt/io/parts/electrical_records_io.hpp>
 #include <volt/io/parts/part_definition_reader.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
 
@@ -92,14 +93,14 @@ bool has_diagnostic(const volt::DiagnosticReport &report, std::string_view code)
 
 } // namespace
 
-TEST_CASE("Part definition v6 writer emits one exact component and two physical mapping seams") {
+TEST_CASE("Part definition v7 writer emits one exact component and two physical mapping seams") {
     const auto component = regulator_component();
     const auto part = current_part(component);
     const auto bytes = volt::io::write_part_definition(part);
     const auto document = nlohmann::json::parse(bytes);
 
     CHECK(document["format"] == "volt.part");
-    CHECK(document["version"] == 6);
+    CHECK(document["version"] == 7);
     CHECK(document["implements"] == component.content_identity().value());
     CHECK(document["content_identity"] == part.content_identity().value());
     CHECK(document["electrical_records"]["records"].size() == 2U);
@@ -113,7 +114,7 @@ TEST_CASE("Part definition v6 writer emits one exact component and two physical 
     CHECK_FALSE(part.electrical_model().has_value());
 }
 
-TEST_CASE("Part definition v6 preserves a three-terminal model alongside voltage records") {
+TEST_CASE("Part definition v7 preserves a three-terminal model alongside voltage records") {
     const auto component = regulator_component();
     const auto original = current_part(component);
     auto model_builder = volt::PartElectricalModelBuilder{component};
@@ -151,7 +152,7 @@ TEST_CASE("Part definition v6 preserves a three-terminal model alongside voltage
           nlohmann::json::parse(volt::io::write_part_definition(original))["electrical_records"]);
 }
 
-TEST_CASE("Golden v6 part fixture round-trips byte-identically against the supplied component") {
+TEST_CASE("Golden v7 part fixture round-trips byte-identically against the supplied component") {
     const auto component = regulator_component();
     const auto fixture = read_fixture("ap1117.part.volt.json");
     const auto first = volt::io::read_part_definition_text(fixture, component);
@@ -165,7 +166,7 @@ TEST_CASE("Golden v6 part fixture round-trips byte-identically against the suppl
     CHECK(nlohmann::json::parse(first_write)["electrical_model"].is_null());
 }
 
-TEST_CASE("Part definition v6 reader rejects component and content identity mismatches") {
+TEST_CASE("Part definition v7 reader rejects component and content identity mismatches") {
     const auto component = regulator_component();
     const auto bytes = volt::io::write_part_definition(current_part(component));
     const auto document = nlohmann::json::parse(bytes);
@@ -182,7 +183,7 @@ TEST_CASE("Part definition v6 reader rejects component and content identity mism
     check_current_part_is_rejected(std::move(forged_content), component);
 }
 
-TEST_CASE("Part definition v6 reader requires current provenance and schematic asset fields") {
+TEST_CASE("Part definition v7 reader requires current provenance and schematic asset fields") {
     const auto component = regulator_component();
     const auto document =
         nlohmann::json::parse(volt::io::write_part_definition(current_part(component)));
@@ -204,10 +205,10 @@ TEST_CASE("Part definition v6 reader requires current provenance and schematic a
     check_current_part_is_rejected(std::move(unknown_field), component);
 }
 
-TEST_CASE("Part definition v6 reader rejects duplicate object keys before schema validation") {
+TEST_CASE("Part definition v7 reader rejects duplicate object keys before schema validation") {
     const auto component = regulator_component();
     auto document = volt::io::write_part_definition(current_part(component));
-    const auto current_version = document.find("\"version\": 6");
+    const auto current_version = document.find("\"version\": 7");
     REQUIRE(current_version != std::string::npos);
     document.insert(current_version, "\"version\": 4,\n  ");
 
@@ -215,7 +216,7 @@ TEST_CASE("Part definition v6 reader rejects duplicate object keys before schema
                     volt::KernelLogicError);
 }
 
-TEST_CASE("Part definition v6 reader rejects incomplete dangling and duplicate ownership") {
+TEST_CASE("Part definition v7 reader rejects incomplete dangling and duplicate ownership") {
     const auto component = regulator_component();
     const auto document =
         nlohmann::json::parse(volt::io::write_part_definition(current_part(component)));
@@ -241,7 +242,7 @@ TEST_CASE("Part definition v6 reader rejects incomplete dangling and duplicate o
     check_current_part_is_rejected(std::move(duplicate_pad), component);
 }
 
-TEST_CASE("Part definition v6 requires explicit non-electrical terminal dispositions") {
+TEST_CASE("Part definition v7 requires explicit non-electrical terminal dispositions") {
     const auto component = regulator_component();
     const auto part = current_part(component);
     auto document = nlohmann::json::parse(volt::io::write_part_definition(part));
@@ -312,4 +313,88 @@ TEST_CASE("Loaded exact parts retain geometry lineup diagnostics") {
     const auto report = volt::validate_part_lineup(overlap);
     CHECK(has_diagnostic(report, "PART_PAD_OVERLAP"));
     CHECK(changed["orderable_part"]["footprint"]["pads"][1]["x_mm"] == 0.5);
+}
+
+TEST_CASE("Part diode roundtrip preserves conditions and hashes each semantic field") {
+    using namespace volt;
+    const auto component = regulator_component();
+    const auto original = current_part(component);
+    const auto make = [&](DiodeParameters parameters, bool reverse = false,
+                          std::string key = "junction", bool reorder = false) {
+        std::vector<ModelTerminal> terminals{{ModelTerminalKey{"ground"}, PinKey{"GND"}},
+                                             {ModelTerminalKey{"output"}, PinKey{"VO"}},
+                                             {ModelTerminalKey{"input"}, PinKey{"VI"}}};
+        std::vector<ModelElement> elements{
+            ShockleyDiodeElement{
+                ModelElementKey{key}, ModelTerminalKey{reverse ? "ground" : "output"},
+                ModelTerminalKey{reverse ? "output" : "ground"}, std::move(parameters)},
+            ResistanceElement{ModelElementKey{"load"}, ModelTerminalKey{"input"},
+                              ModelTerminalKey{"ground"},
+                              ModelParameter{Quantity{UnitDimension::Resistance, 1000.0}}}};
+        if (reorder) {
+            std::ranges::reverse(terminals);
+            std::ranges::reverse(elements);
+        }
+        return PartDefinition{
+            component,
+            original.identity(),
+            original.electrical_records(),
+            original.pin_terminal_mappings(),
+            original.terminal_dispositions(),
+            original.provenance(),
+            original.schematic_assets(),
+            original.orderable_part(),
+            PartElectricalModel{component, std::move(terminals), {}, std::move(elements)}};
+    };
+    const auto parameters = [&](double saturation = 1.0e-12, double ideality = 1.0,
+                                double temperature = 300.15, double maximum = 0.8,
+                                std::optional<Tolerance> tolerance = std::nullopt,
+                                std::vector<ContentHash> evidence = {hash('a'), hash('b')}) {
+        return DiodeParameters{
+            ModelParameter{Quantity{UnitDimension::Current, saturation}, tolerance, {hash('c')}},
+            ModelParameter{Quantity{UnitDimension::Ratio, ideality}, std::nullopt, {hash('d')}},
+            Quantity{UnitDimension::Temperature, temperature},
+            QuantityRange::bounded(Quantity{UnitDimension::Voltage, -0.05},
+                                   Quantity{UnitDimension::Voltage, maximum}),
+            std::move(evidence)};
+    };
+    const auto part = make(parameters());
+    const auto bytes = io::write_part_definition(part);
+    const auto reopened = io::read_part_definition_text(bytes, component);
+    CHECK(reopened.content_identity() == part.content_identity());
+    CHECK(io::write_part_definition(reopened) == bytes);
+    CHECK(io::write_electrical_records(reopened.electrical_records()) ==
+          io::write_electrical_records(original.electrical_records()));
+    CHECK(
+        make(parameters(1.0e-12, 1.0, 300.15, 0.8, std::nullopt, {hash('b'), hash('a'), hash('a')}),
+             false, "junction", true)
+            .content_identity() == part.content_identity());
+    for (const auto &different :
+         {make(parameters(2.0e-12)), make(parameters(1.0e-12, 2.0)),
+          make(parameters(1.0e-12, 1.0, 310.0)), make(parameters(1.0e-12, 1.0, 300.15, 0.7)),
+          make(parameters(1.0e-12, 1.0, 300.15, 0.8, Tolerance::percent(0.0))),
+          make(parameters(1.0e-12, 1.0, 300.15, 0.8, std::nullopt, {hash('e')})),
+          make(parameters(), true), make(parameters(), false, "different")}) {
+        CHECK(different.content_identity() != part.content_identity());
+    }
+    const auto percent = make(parameters(1.0e-12, 1.0, 300.15, 0.8, Tolerance::percent(0.1)));
+    const auto absolute =
+        make(parameters(1.0e-12, 1.0, 300.15, 0.8,
+                        Tolerance::absolute(Quantity{UnitDimension::Current, 1.0e-13},
+                                            Quantity{UnitDimension::Current, 1.0e-13})));
+    CHECK(percent.content_identity() == absolute.content_identity());
+    auto document = nlohmann::json::parse(bytes);
+    auto &law = document["electrical_model"]["elements"][0];
+    REQUIRE(law["kind"] == "shockley_diode");
+    for (const auto field : {"saturation_current", "ideality_factor", "fixed_temperature",
+                             "voltage_domain", "evidence"}) {
+        auto missing = document;
+        missing["electrical_model"]["elements"][0]["parameters"].erase(field);
+        CHECK_THROWS(io::read_part_definition_text(missing.dump(), component));
+    }
+    law["law_version"] = 2;
+    CHECK_THROWS(io::read_part_definition_text(document.dump(), component));
+    document = nlohmann::json::parse(bytes);
+    document["version"] = 6;
+    CHECK_THROWS(io::read_part_definition_text(document.dump(), component));
 }

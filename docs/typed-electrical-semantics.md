@@ -101,7 +101,7 @@ where these facts exist. The kernel can inspect, serialize, and validate them di
 The canonical record substrate is intentionally separate from the named electrical
 attribute maps. Component contracts bind required shapes to stable subjects, and exact
 `PartDefinition` values bind the actual records and physical implementation to one
-component content identity. The current `volt.part` v6 writer and reader persist that truth;
+component content identity. The current `volt.part` v7 writer and reader persist that truth;
 non-current part schemas are rejected and must be regenerated.
 
 ## Quantities And Attributes
@@ -543,7 +543,7 @@ Loading malformed typed fields is a structural format error. Loading a well-form
 bad design should succeed and allow validation to report diagnostics.
 
 Canonical Voltage/Current records additionally round-trip through the standalone
-`volt.electrical_records` v1 native codec. That P1 codec is embedded by the `volt.part` v6
+`volt.electrical_records` v1 native codec. That P1 codec is embedded by the `volt.part` v7
 writer but remains independently usable; neither format is a package or registry format.
 
 ## Python Authoring
@@ -628,10 +628,10 @@ bounds must be positive. Wrong dimensions, nonfinite values, invalid bounds, and
 reject; signed zero normalizes to positive zero. Nominal laws and parameter evidence do
 not become operating guarantees or V/I ratings.
 
-Exact Part semantic identity is now version **2**, including explicit model absence or all
+Exact Part semantic identity is now version **3**, including explicit model absence or all
 canonical model content. Declaration and evidence order are nonsemantic; keys, orientation,
 normalized parameters, tolerance presence, and evidence content affect identity. The current wire
-formats are `volt.part` **v6**, PartLibraryBundle **v2**, and ProjectBundle **v3**. The Part
+formats are `volt.part` **v7**, PartLibraryBundle **v2**, and ProjectBundle **v3**. The Part
 artifact requires `electrical_model`: `null` preserves absence, an object preserves the
 complete model, and omission rejects. Model objects retain the implemented component digest,
 typed keys, PinKey bindings, ordered endpoints, SI nominal quantities, optional absolute

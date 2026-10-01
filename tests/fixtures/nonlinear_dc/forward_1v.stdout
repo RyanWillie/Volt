@@ -1,0 +1,15 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: independent idealized diode bias reference: forward_1v
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+No. of Data Rows : 1
+v(junction) = 5.17173366365147769e-01
+@djunction[id] = 4.82826633634851404e-04
+@djunction[gd] = 1.86672408228196265e-02
+ngspice-46 done

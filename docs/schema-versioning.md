@@ -43,10 +43,10 @@ source. Volt does not retain old readers, converters, compatibility overloads, o
 output modes during this pre-release period.
 
 Current first-version schemas remain version `1`; being the first current version does not
-make them migration paths. ProjectBundle is schema version `3`; the exact Part artifact is `volt.part` version `6`.
+make them migration paths. ProjectBundle is schema version `3`; the exact Part artifact is `volt.part` version `7`.
 PartLibraryBundle remains version `2`, whose existing evidence role and dependency edges
-already support the selected model closure. Part semantic identity remains version `2`;
-a lossless wire-format change does not redefine E1 model meaning.
+already support the selected model closure. Part semantic identity is version `3`, including
+the closed diode law and its parameter, temperature, domain, and evidence data.
 
 ## Changing a Schema
 

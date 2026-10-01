@@ -193,6 +193,12 @@ if(VOLT_BUILD_TESTS)
                 "VOLT_ELECTRICAL_COMPILATION_PARITY_FIXTURE=set:$<TARGET_FILE:volt_electrical_compilation_parity_fixture>"
             )
         endif()
+        if(test_name STREQUAL "test_nonlinear_dc")
+            list(
+                APPEND test_environment
+                "VOLT_NONLINEAR_PARITY_FIXTURE=set:$<TARGET_FILE:volt_nonlinear_dc_parity_fixture>"
+            )
+        endif()
         if(test_name STREQUAL "test_dc_solve" OR test_name STREQUAL "test_ngspice_results")
             list(
                 APPEND test_environment

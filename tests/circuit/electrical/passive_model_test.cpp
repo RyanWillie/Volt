@@ -255,7 +255,11 @@ TEST_CASE("Passive builder produces resistor and ideal storage models with porta
                 CHECK(value.key() == ModelElementKey{"body"});
                 CHECK(value.from() == ModelEndpoint{ModelTerminalKey{"a"}});
                 CHECK(value.to() == ModelEndpoint{ModelTerminalKey{"b"}});
-                CHECK(value.parameter().nominal().dimension() == dimension);
+                if constexpr (std::is_same_v<std::decay_t<decltype(value)>, ShockleyDiodeElement>) {
+                    FAIL("R/C/L fixture contains a diode");
+                } else {
+                    CHECK(value.parameter().nominal().dimension() == dimension);
+                }
             },
             model.elements().front());
     }
@@ -531,5 +535,192 @@ TEST_CASE("Passive handle ownership survives builder storage address reuse") {
     CHECK_THROWS_AS(
         storage->add<ResistanceElement>(ModelElementKey{"body"}, stale, b,
                                         ModelParameter{Quantity{UnitDimension::Resistance, 1.0}}),
+        std::invalid_argument);
+}
+
+TEST_CASE("Diode parameters enforce dimensions positive bounds and fixed law domain") {
+    const auto current = ModelParameter{Quantity{UnitDimension::Current, 1.0e-12}};
+    const auto ideality = ModelParameter{Quantity{UnitDimension::Ratio, 1.0}};
+    const auto temperature = Quantity{UnitDimension::Temperature, 300.15};
+    const auto domain = QuantityRange::bounded(Quantity{UnitDimension::Voltage, -0.05},
+                                               Quantity{UnitDimension::Voltage, 0.8});
+    const auto parameters = DiodeParameters{
+        current, ideality, temperature, domain, {evidence('c'), evidence('a'), evidence('c')}};
+    CHECK(parameters.evidence() == std::vector{evidence('a'), evidence('c')});
+    for (const auto dimension :
+         {UnitDimension::Voltage, UnitDimension::Resistance, UnitDimension::Ratio}) {
+        CHECK_THROWS_AS((DiodeParameters{ModelParameter{Quantity{dimension, 1.0e-12}}, ideality,
+                                         temperature, domain}),
+                        std::invalid_argument);
+    }
+    CHECK_THROWS_AS((DiodeParameters{current, ModelParameter{Quantity{UnitDimension::Current, 1.0}},
+                                     temperature, domain}),
+                    std::invalid_argument);
+    for (const auto value : {0.0, -1.0}) {
+        CHECK_THROWS_AS((DiodeParameters{ModelParameter{Quantity{UnitDimension::Current, value}},
+                                         ideality, temperature, domain}),
+                        std::invalid_argument);
+        CHECK_THROWS_AS(
+            (DiodeParameters{current, ModelParameter{Quantity{UnitDimension::Ratio, value}},
+                             temperature, domain}),
+            std::invalid_argument);
+        CHECK_THROWS_AS((DiodeParameters{current, ideality,
+                                         Quantity{UnitDimension::Temperature, value}, domain}),
+                        std::invalid_argument);
+    }
+    CHECK_THROWS_AS(
+        (DiodeParameters{current, ideality, Quantity{UnitDimension::Voltage, 300.15}, domain}),
+        std::invalid_argument);
+    CHECK_THROWS_AS((DiodeParameters{ModelParameter{Quantity{UnitDimension::Current, 1.0e-12},
+                                                    Tolerance::percent(1.0)},
+                                     ideality, temperature, domain}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(
+        (DiodeParameters{
+            current, ModelParameter{Quantity{UnitDimension::Ratio, 1.0}, Tolerance::percent(1.1)},
+            temperature, domain}),
+        std::invalid_argument);
+    for (const auto invalid : {QuantityRange::minimum(Quantity{UnitDimension::Voltage, 0.0}),
+                               QuantityRange::maximum(Quantity{UnitDimension::Voltage, 1.0}),
+                               QuantityRange::bounded(Quantity{UnitDimension::Voltage, 0.0},
+                                                      Quantity{UnitDimension::Voltage, 0.0}),
+                               QuantityRange::bounded(Quantity{UnitDimension::Voltage, 0.1},
+                                                      Quantity{UnitDimension::Voltage, 0.8}),
+                               QuantityRange::bounded(Quantity{UnitDimension::Voltage, -0.1},
+                                                      Quantity{UnitDimension::Voltage, -0.05}),
+                               QuantityRange::bounded(Quantity{UnitDimension::Voltage, -0.08},
+                                                      Quantity{UnitDimension::Voltage, 0.8}),
+                               QuantityRange::bounded(Quantity{UnitDimension::Current, 0.0},
+                                                      Quantity{UnitDimension::Current, 0.8})}) {
+        CHECK_THROWS_AS((DiodeParameters{current, ideality, temperature, invalid}),
+                        std::invalid_argument);
+    }
+    CHECK_THROWS_AS(
+        (DiodeParameters{ModelParameter{Quantity{UnitDimension::Current,
+                                                 std::numeric_limits<double>::denorm_min()}},
+                         ideality, Quantity{UnitDimension::Temperature, 1.0e308}, domain}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        (DiodeParameters{current, ModelParameter{Quantity{UnitDimension::Ratio, 1.0e308}},
+                         Quantity{UnitDimension::Temperature, 1.0e308}, domain}),
+        std::invalid_argument);
+}
+
+TEST_CASE("Diode evaluator preserves near-zero law and resolves scaled analytic derivatives") {
+    for (const double ideality : {1.0, 2.0}) {
+        const long double a = ideality * (1.380649e-23L / 1.602176634e-19L) * 300.15L;
+        const double minimum = static_cast<double>(-2.5L * a);
+        const auto parameters = DiodeParameters{
+            ModelParameter{Quantity{UnitDimension::Current, 1.0e-12}, Tolerance::percent(0.5)},
+            ModelParameter{Quantity{UnitDimension::Ratio, ideality}},
+            Quantity{UnitDimension::Temperature, 300.15},
+            QuantityRange::bounded(Quantity{UnitDimension::Voltage, minimum},
+                                   Quantity{UnitDimension::Voltage, 0.8})};
+        for (const double exponent : {-2.0, 0.0, 1.0, 10.0}) {
+            const double voltage = static_cast<double>(a * exponent);
+            const auto evaluation = evaluate_shockley_diode(parameters, voltage);
+            REQUIRE(evaluation.status == ShockleyDiodeEvaluationStatus::Valid);
+            const long double h = 1.0e-5L * a;
+            const long double difference =
+                1.0e-12L * (std::expm1((voltage + h) / a) - std::expm1((voltage - h) / a)) /
+                (2.0L * h);
+            const long double half = h / 2.0L;
+            const long double refined =
+                1.0e-12L * (std::expm1((voltage + half) / a) - std::expm1((voltage - half) / a)) /
+                (2.0L * half);
+            CHECK(std::abs(evaluation.conductance / difference - 1.0L) < 1.0e-6L);
+            CHECK(std::abs(evaluation.conductance / refined - 1.0L) < 1.0e-6L);
+            CHECK(std::abs(refined / difference - 1.0L) < 1.0e-8L);
+        }
+        const auto tiny = evaluate_shockley_diode(parameters, static_cast<double>(a * 1.0e-12L));
+        REQUIRE(tiny.status == ShockleyDiodeEvaluationStatus::Valid);
+        CHECK(std::abs(tiny.current / (1.0e-12L * std::expm1(1.0e-12L)) - 1.0L) < 1.0e-12L);
+        const auto zero = evaluate_shockley_diode(parameters, -0.0);
+        CHECK(zero.current == 0.0);
+        CHECK_FALSE(std::signbit(zero.current));
+        for (const double voltage : {minimum, 0.8}) {
+            const auto at_boundary = evaluate_shockley_diode(parameters, voltage);
+            REQUIRE(at_boundary.status == ShockleyDiodeEvaluationStatus::Valid);
+            const long double h = 1.0e-5L * a;
+            const long double direction = voltage < 0.0 ? 1.0L : -1.0L;
+            const long double difference =
+                1.0e-12L * (std::expm1((voltage + direction * h) / a) - std::expm1(voltage / a)) /
+                (direction * h);
+            CHECK(std::abs(at_boundary.conductance / difference - 1.0L) < 1.0e-5L);
+        }
+        CHECK(evaluate_shockley_diode(parameters, minimum - 0.001).status ==
+              ShockleyDiodeEvaluationStatus::OutsideDomain);
+        CHECK(evaluate_shockley_diode(parameters, 0.801).status ==
+              ShockleyDiodeEvaluationStatus::OutsideDomain);
+        CHECK(evaluate_shockley_diode(parameters, std::numeric_limits<double>::infinity()).status ==
+              ShockleyDiodeEvaluationStatus::Nonfinite);
+    }
+    const auto huge_domain =
+        DiodeParameters{ModelParameter{Quantity{UnitDimension::Current, 1.0e-12}},
+                        ModelParameter{Quantity{UnitDimension::Ratio, 1.0}},
+                        Quantity{UnitDimension::Temperature, 300.15},
+                        QuantityRange::bounded(Quantity{UnitDimension::Voltage, -0.05},
+                                               Quantity{UnitDimension::Voltage, 100.0})};
+    CHECK(evaluate_shockley_diode(huge_domain, 100.0).status ==
+          ShockleyDiodeEvaluationStatus::Nonfinite);
+}
+
+TEST_CASE("Diode builder preserves explicit polarity and rejects foreign or duplicate handles") {
+    const auto definition = component();
+    auto builder = PartElectricalModelBuilder{definition};
+    auto other = PartElectricalModelBuilder{definition};
+    const auto a = builder.terminal(ModelTerminalKey{"anode"}, PinKey{"A"});
+    const auto b = builder.terminal(ModelTerminalKey{"cathode"}, PinKey{"B"});
+    const auto foreign = other.terminal(ModelTerminalKey{"foreign"}, PinKey{"A"});
+    const auto parameters =
+        DiodeParameters{ModelParameter{Quantity{UnitDimension::Current, 1.0e-12}},
+                        ModelParameter{Quantity{UnitDimension::Ratio, 1.0}},
+                        Quantity{UnitDimension::Temperature, 300.15},
+                        QuantityRange::bounded(Quantity{UnitDimension::Voltage, -0.05},
+                                               Quantity{UnitDimension::Voltage, 0.8})};
+    CHECK_THROWS_AS(
+        builder.add<ShockleyDiodeElement>(ModelElementKey{"bad"}, foreign, b, parameters),
+        std::logic_error);
+    CHECK_THROWS_AS(builder.add<ShockleyDiodeElement>(ModelElementKey{"bad"}, a, a, parameters),
+                    std::invalid_argument);
+    builder.add<ShockleyDiodeElement>(ModelElementKey{"junction"}, b, a, parameters);
+    CHECK_THROWS_AS(
+        builder.add<ShockleyDiodeElement>(ModelElementKey{"junction"}, a, b, parameters),
+        std::invalid_argument);
+    const auto model = builder.build();
+    const auto &diode = std::get<ShockleyDiodeElement>(model.elements().front());
+    CHECK(diode.from() == ModelEndpoint{ModelTerminalKey{"cathode"}});
+    CHECK(diode.to() == ModelEndpoint{ModelTerminalKey{"anode"}});
+    CHECK_THROWS_AS(
+        (PartElectricalModel{
+            definition,
+            terminals(),
+            {},
+            {ShockleyDiodeElement{ModelElementKey{"junction"}, ModelTerminalKey{"absent"},
+                                  ModelTerminalKey{"b"}, parameters}}}),
+        std::logic_error);
+}
+
+TEST_CASE("Diode reverse domain includes the represented minus three emission voltage boundary") {
+    using namespace volt;
+    const auto saturation = ModelParameter{Quantity{UnitDimension::Current, 1e-12}};
+    const auto ideality = ModelParameter{Quantity{UnitDimension::Ratio, 1.1}};
+    const auto temperature = Quantity{UnitDimension::Temperature, 300.15};
+    const auto nominal =
+        DiodeParameters{saturation, ideality, temperature,
+                        QuantityRange::bounded(Quantity{UnitDimension::Voltage, -0.05},
+                                               Quantity{UnitDimension::Voltage, 0.8})};
+    const auto boundary = -3.0 * nominal.emission_voltage();
+    CHECK_NOTHROW(
+        (DiodeParameters{saturation, ideality, temperature,
+                         QuantityRange::bounded(Quantity{UnitDimension::Voltage, boundary},
+                                                Quantity{UnitDimension::Voltage, 0.8})}));
+    CHECK_THROWS_AS(
+        (DiodeParameters{
+            saturation, ideality, temperature,
+            QuantityRange::bounded(
+                Quantity{UnitDimension::Voltage,
+                         std::nextafter(boundary, -std::numeric_limits<double>::infinity())},
+                Quantity{UnitDimension::Voltage, 0.8})}),
         std::invalid_argument);
 }

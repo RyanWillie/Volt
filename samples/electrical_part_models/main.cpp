@@ -229,17 +229,21 @@ void inspect(const std::filesystem::path &destination) {
         for (const auto &element : model.elements()) {
             std::visit(
                 [&](const auto &value) {
-                    std::cout << part.identity().name() << '.' << value.key().value() << " = "
-                              << value.parameter().nominal().value() << " SI\n";
-                    for (const auto &hash : value.parameter().evidence()) {
-                        const auto asset = graph.artifact(volt::io::ArtifactId{
-                            volt::io::ArtifactKind::EvidenceAsset,
-                            volt::io::LibraryAssetRef{reference.library_namespace(),
-                                                      reference.library_version(),
-                                                      volt::io::LibraryAssetKind::Evidence,
-                                                      reference.library_digest(), hash}});
-                        require(asset.has_value() && asset->bytes() == evidence,
-                                "Model evidence was not vendored");
+                    if constexpr (requires { value.parameter(); }) {
+                        std::cout << part.identity().name() << '.' << value.key().value() << " = "
+                                  << value.parameter().nominal().value() << " SI\n";
+                        for (const auto &hash : value.parameter().evidence()) {
+                            const auto asset = graph.artifact(volt::io::ArtifactId{
+                                volt::io::ArtifactKind::EvidenceAsset,
+                                volt::io::LibraryAssetRef{reference.library_namespace(),
+                                                          reference.library_version(),
+                                                          volt::io::LibraryAssetKind::Evidence,
+                                                          reference.library_digest(), hash}});
+                            require(asset.has_value() && asset->bytes() == evidence,
+                                    "Model evidence was not vendored");
+                        }
+                    } else {
+                        require(false, "Passive example unexpectedly contains a diode law");
                     }
                 },
                 element);

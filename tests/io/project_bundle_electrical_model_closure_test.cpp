@@ -46,7 +46,8 @@ struct ElectricalFixture {
     volt::io::PartLibraryBundle library;
 };
 
-[[nodiscard]] ElectricalFixture electrical_fixture(std::string library_namespace = "test.e2") {
+[[nodiscard]] ElectricalFixture electrical_fixture(std::string library_namespace = "test.e2",
+                                                   bool with_diode = false) {
     auto circuit = std::make_unique<volt::Circuit>();
     const auto spec = volt::ComponentSpec{
         .name = "Passive",
@@ -101,6 +102,21 @@ struct ElectricalFixture {
                              volt::Tolerance::percent(0.2),
                              {volt::sha256_content_hash(shared_evidence),
                               volt::sha256_content_hash(model_evidence)}});
+    if (with_diode) {
+        model.add<volt::ShockleyDiodeElement>(
+            volt::ModelElementKey{"junction"}, a, b,
+            volt::DiodeParameters{
+                volt::ModelParameter{volt::Quantity{volt::UnitDimension::Current, 1.0e-12},
+                                     std::nullopt,
+                                     {volt::sha256_content_hash(shared_evidence)}},
+                volt::ModelParameter{volt::Quantity{volt::UnitDimension::Ratio, 1.0},
+                                     std::nullopt,
+                                     {volt::sha256_content_hash(model_evidence)}},
+                volt::Quantity{volt::UnitDimension::Temperature, 300.15},
+                volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, -0.05},
+                                             volt::Quantity{volt::UnitDimension::Voltage, 0.8}),
+                {volt::sha256_content_hash(current_evidence)}});
+    }
     const auto glb = std::string{"glTF\2\0\0\0\14\0\0\0", 12U};
     const auto exact_part = volt::PartDefinition{
         component,
@@ -137,6 +153,8 @@ struct ElectricalFixture {
             assets.add(reference, glb);
         } else if (reference.digest() == volt::sha256_content_hash(shared_evidence)) {
             assets.add(reference, shared_evidence);
+        } else if (reference.digest() == volt::sha256_content_hash(current_evidence)) {
+            assets.add(reference, current_evidence);
         } else {
             assets.add(reference, model_evidence);
         }
@@ -396,5 +414,56 @@ TEST_CASE("ProjectBundle evidence deduplication retains exact library origin") {
         const auto evidence = graph.artifact(id);
         REQUIRE(evidence.has_value());
         CHECK(evidence->bytes() == shared_evidence);
+    }
+}
+
+TEST_CASE("Logical-only project retains diode parameter and condition evidence after source "
+          "destruction") {
+    auto temporary = TempDirectory{};
+    const auto root = temporary.path() / "diode-project";
+    const auto expected = [&] {
+        const auto fixture = electrical_fixture("test.diode-closure", true);
+        const auto &part =
+            fixture.library.resolve(fixture.library.require(volt::PartKey{"capacitor"}));
+        const auto bytes = volt::io::write_part_definition(part);
+        publication(fixture).write(root);
+        return bytes;
+    }();
+    const auto bundle = volt::io::ProjectBundle::open(root);
+    const auto graph = bundle.graph();
+    const auto loaded = graph.loaded_project();
+    REQUIRE(loaded.circuits().size() == 1U);
+    const auto logical = loaded.circuits().front();
+    const auto &circuit = logical.model();
+    const auto selection = circuit.get(volt::ComponentId{0}).selected_library_part_ref();
+    REQUIRE(selection);
+    const auto artifact =
+        graph.artifact(volt::io::ArtifactId{volt::io::ArtifactKind::PartDefinition, *selection});
+    REQUIRE(artifact);
+    CHECK(artifact->bytes() == expected);
+    const auto part = volt::io::read_part_definition_text(artifact->bytes(),
+                                                          circuit.get(volt::ComponentDefId{0}));
+    REQUIRE(part.electrical_model());
+    const auto found =
+        std::ranges::find_if(part.electrical_model()->elements(), [](const auto &element) {
+            return std::holds_alternative<volt::ShockleyDiodeElement>(element);
+        });
+    REQUIRE(found != part.electrical_model()->elements().end());
+    const auto &parameters = std::get<volt::ShockleyDiodeElement>(*found).parameters();
+    CHECK(parameters.fixed_temperature().value() == 300.15);
+    CHECK(parameters.voltage_domain().minimum()->value() == -0.05);
+    CHECK(parameters.voltage_domain().maximum()->value() == 0.8);
+    for (const auto bytes : {shared_evidence, model_evidence, current_evidence}) {
+        const auto digest = volt::sha256_content_hash(bytes);
+        const auto id = volt::io::ArtifactId{
+            volt::io::ArtifactKind::EvidenceAsset,
+            volt::io::LibraryAssetRef{selection->library_namespace(), selection->library_version(),
+                                      volt::io::LibraryAssetKind::Evidence,
+                                      selection->library_digest(), digest}};
+        const auto evidence = graph.artifact(id);
+        REQUIRE(evidence);
+        CHECK(evidence->bytes() == bytes);
+        CHECK(std::ranges::count(artifact->descriptor().dependencies(),
+                                 volt::io::ArtifactRef{id, digest}) == 1);
     }
 }

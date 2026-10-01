@@ -77,10 +77,73 @@ class DcSolveOptions {
     Quantity current_tolerance_;
 };
 
+/** Explicit bounded Newton policy; acceptance is in original physical units. */
+class NonlinearDcSolveOptions {
+  public:
+    /** Validate positive work budgets and one to 24 backtracking halvings. */
+    explicit NonlinearDcSolveOptions(DcSolveOptions acceptance = DcSolveOptions{},
+                                     std::size_t max_iterations = 80,
+                                     std::size_t max_backtracks = 24,
+                                     std::size_t max_residual_evaluations = 2048,
+                                     std::size_t max_jacobian_evaluations = 81);
+
+    /** Original-unit residual, undamped-correction, rank and conditioning acceptance. */
+    [[nodiscard]] const DcSolveOptions &acceptance() const noexcept { return acceptance_; }
+
+    /** Maximum accepted Newton corrections. */
+    [[nodiscard]] std::size_t max_iterations() const noexcept { return max_iterations_; }
+
+    /** Maximum trial halvings per correction; the first trial is additional. */
+    [[nodiscard]] std::size_t max_backtracks() const noexcept { return max_backtracks_; }
+
+    /** Independent bound on all base, attempted trial and final residual evaluations. */
+    [[nodiscard]] std::size_t max_residual_evaluations() const noexcept {
+        return max_residual_evaluations_;
+    }
+
+    /** Independent bound on current-state Jacobian/factorization evaluations. */
+    [[nodiscard]] std::size_t max_jacobian_evaluations() const noexcept {
+        return max_jacobian_evaluations_;
+    }
+
+    /** Closed explicitly selected native numerical algorithm. */
+    [[nodiscard]] static constexpr std::string_view algorithm() noexcept { return "diode-newton"; }
+
+    /** Deterministic initial coordinate policy; no cached state. */
+    [[nodiscard]] static constexpr std::string_view initial_guess() noexcept { return "all-zero"; }
+
+    /** Required fractional decrease coefficient with frozen base row weights. */
+    [[nodiscard]] static constexpr double armijo_coefficient() noexcept { return 1e-4; }
+
+    /** Smallest admissible damped Newton step fraction. */
+    [[nodiscard]] static constexpr double minimum_step() noexcept { return 0x1p-24; }
+
+  private:
+    DcSolveOptions acceptance_;
+    std::size_t max_iterations_;
+    std::size_t max_backtracks_;
+    std::size_t max_residual_evaluations_;
+    std::size_t max_jacobian_evaluations_;
+};
+
 /** Numerical outcome, separate from the upstream S1/S2 coverage and topology assessment. */
 enum class DcSolveOutcome {
     /** All coordinates are unique and every numerical trust gate passed. */
     Success,
+    /** Accepted locally regular operating point; global uniqueness is not established. */
+    Converged,
+    /** This explicitly selected numerical method does not support the model laws. */
+    UnsupportedModel,
+    /** Rank policy found a singular Jacobian at the evaluated iterate. */
+    JacobianSingular,
+    /** No admissible progressing trial was found inside the authored domain. */
+    DomainLimited,
+    /** No Armijo-decreasing trial was found within the backtracking bound. */
+    LineSearchFailed,
+    /** Accepted-correction budget exhausted. */
+    IterationLimit,
+    /** Residual or Jacobian evaluation budget exhausted. */
+    EvaluationLimit,
     /** The chosen rank policy cannot establish unique observable coordinates. */
     RankDeficient,
     /** The assembled constraints cannot be satisfied together under the rank policy. */
@@ -97,6 +160,24 @@ enum class DcSolveOutcome {
 struct DcSolveMetrics {
     /** Number of deterministic backend coordinates after removing the reference potential. */
     std::size_t coordinate_count = 0;
+    /** Accepted Newton corrections; zero for linear evaluation. */
+    std::size_t iterations = 0;
+    /** All attempted nonlinear base, trial and independent final residual evaluations. */
+    std::size_t residual_evaluations = 0;
+    /** Nonlinear Jacobian/factorization evaluation attempts. */
+    std::size_t jacobian_evaluations = 0;
+    /** Actually evaluated halved nonlinear trials. */
+    std::size_t backtracks = 0;
+    /** Attempted trial evaluations rejected outside a declared diode domain. */
+    std::size_t domain_rejections = 0;
+    /** Attempted trial evaluations rejected for nonfinite equations or merit. */
+    std::size_t nonfinite_rejections = 0;
+    /** Largest undamped correction divided by its original-unit allowed error. */
+    std::optional<double> correction_error_ratio;
+    /** Stable weighted residual 2-norm at the last evaluated nonlinear base iterate. */
+    std::optional<double> merit;
+    /** Original-unit row denominators frozen at the last evaluated base iterate. */
+    std::vector<Quantity> residual_weights;
     /** Rank of the equilibrated coefficient matrix, when factorization completed. */
     std::optional<std::size_t> rank;
     /** Rank after adding the normalized right-hand side, when uniqueness failed. */
@@ -160,6 +241,11 @@ class DcSolution {
     /** Effective validated numerical settings retained with these observations. */
     [[nodiscard]] const DcSolveOptions &options() const noexcept { return options_; }
 
+    /** Explicit nonlinear settings, absent for the linear method. */
+    [[nodiscard]] const NonlinearDcSolveOptions *nonlinear_options() const noexcept {
+        return nonlinear_options_ ? &*nonlinear_options_ : nullptr;
+    }
+
     /** Actual observation producer and separately attributed native trust checks. */
     [[nodiscard]] const DcSolveProvenance &provenance() const noexcept { return provenance_; }
 
@@ -175,10 +261,12 @@ class DcSolution {
   private:
     DcSolution(ContentHash analysis_identity, CompiledElectricalModel model, DcSolveOptions options,
                DcSolveProvenance provenance, std::vector<DcNodeResult> nodes,
-               std::vector<DcBranchResult> branches, std::vector<DcProbeResult> probes);
+               std::vector<DcBranchResult> branches, std::vector<DcProbeResult> probes,
+               std::optional<NonlinearDcSolveOptions> nonlinear_options = std::nullopt);
     ContentHash analysis_identity_;
     CompiledElectricalModel model_;
     DcSolveOptions options_;
+    std::optional<NonlinearDcSolveOptions> nonlinear_options_;
     DcSolveProvenance provenance_;
     std::vector<DcNodeResult> nodes_;
     std::vector<DcBranchResult> branches_;
@@ -192,12 +280,16 @@ class DcSolveReport {
     explicit DcSolveReport(const CompiledElectricalModel &model,
                            const DcSolveOptions &options = DcSolveOptions{});
 
+    /** Explicit nonlinear method; default linear execution never selects it. */
+    explicit DcSolveReport(const CompiledElectricalModel &model,
+                           const NonlinearDcSolveOptions &options);
+
     /** Parse adapter-owned output and accept only unique, finite, validated observations. */
     explicit DcSolveReport(const NgspiceDcAnalysis &analysis, std::string_view output,
                            const DcSolveOptions &options = DcSolveOptions{});
 
     /** Current native numerical contract, not an artifact or Circuit format version. */
-    [[nodiscard]] static constexpr std::uint32_t contract_version() noexcept { return 1; }
+    [[nodiscard]] static constexpr std::uint32_t contract_version() noexcept { return 2; }
 
     /** Pinned established linear algebra backend and formulation identity. */
     [[nodiscard]] std::string_view backend() const noexcept { return provenance_.backend; }
@@ -216,11 +308,18 @@ class DcSolveReport {
     /** Effective validated policy used in this attempt. */
     [[nodiscard]] const DcSolveOptions &options() const noexcept { return options_; }
 
+    /** Explicit nonlinear settings, absent for the linear method. */
+    [[nodiscard]] const NonlinearDcSolveOptions *nonlinear_options() const noexcept {
+        return nonlinear_options_ ? &*nonlinear_options_ : nullptr;
+    }
+
     /** Typed reason for success or refusal to publish observations. */
     [[nodiscard]] DcSolveOutcome outcome() const noexcept { return outcome_; }
 
-    /** True only when the unique finite solution passed every trust gate. */
-    [[nodiscard]] bool success() const noexcept { return outcome_ == DcSolveOutcome::Success; }
+    /** True for accepted linear Success or locally regular nonlinear Converged. */
+    [[nodiscard]] bool success() const noexcept {
+        return outcome_ == DcSolveOutcome::Success || outcome_ == DcSolveOutcome::Converged;
+    }
 
     /** Available rank, conditioning and residual evidence, also retained on failure. */
     [[nodiscard]] const DcSolveMetrics &metrics() const noexcept { return metrics_; }
@@ -241,6 +340,7 @@ class DcSolveReport {
   private:
     CompiledElectricalModel model_;
     DcSolveOptions options_;
+    std::optional<NonlinearDcSolveOptions> nonlinear_options_;
     DcSolveProvenance provenance_;
     ContentHash analysis_identity_;
     DcSolveOutcome outcome_ = DcSolveOutcome::NumericalFailure;
@@ -253,6 +353,10 @@ class DcSolveReport {
  */
 [[nodiscard]] DcSolveReport solve_dc(const CompiledElectricalModel &model,
                                      const DcSolveOptions &options = DcSolveOptions{});
+
+/** Execute bounded native Newton only when explicitly selected. */
+[[nodiscard]] DcSolveReport solve_dc(const CompiledElectricalModel &model,
+                                     const NonlinearDcSolveOptions &options);
 
 /** Ingest only the narrow output contract of a retained native ngspice preparation. */
 [[nodiscard]] DcSolveReport solve_ngspice_dc(const NgspiceDcAnalysis &analysis,

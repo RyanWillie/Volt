@@ -128,6 +128,18 @@ void append_model_endpoint(std::ostringstream &out, const ModelEndpoint &endpoin
         endpoint);
 }
 
+void append_model_parameter(std::ostringstream &out, const ModelParameter &parameter) {
+    append_quantity(out, parameter.nominal());
+    append_string(out, parameter.tolerance().has_value() ? "tolerance" : "no-tolerance");
+    if (parameter.tolerance()) {
+        append_quantity(out, parameter.tolerance()->minus());
+        append_quantity(out, parameter.tolerance()->plus());
+    }
+    append_string(out, std::to_string(parameter.evidence().size()));
+    for (const auto &evidence : parameter.evidence())
+        append_string(out, evidence.value());
+}
+
 void append_electrical_model(std::ostringstream &out,
                              const std::optional<PartElectricalModel> &model) {
     append_string(out, model.has_value() ? "electrical-model" : "no-electrical-model");
@@ -153,23 +165,27 @@ void append_electrical_model(std::ostringstream &out,
                     append_string(out, "resistance");
                 } else if constexpr (std::is_same_v<Element, CapacitanceElement>) {
                     append_string(out, "capacitance");
-                } else {
+                } else if constexpr (std::is_same_v<Element, InductanceElement>) {
                     append_string(out, "inductance");
+                } else {
+                    static_assert(std::is_same_v<Element, ShockleyDiodeElement>);
+                    append_string(out, "shockley-diode");
+                    append_string(out, "1");
                 }
                 append_string(out, value.key().value());
                 append_model_endpoint(out, value.from());
                 append_model_endpoint(out, value.to());
-                const auto &parameter = value.parameter();
-                append_quantity(out, parameter.nominal());
-                append_string(out,
-                              parameter.tolerance().has_value() ? "tolerance" : "no-tolerance");
-                if (parameter.tolerance().has_value()) {
-                    append_quantity(out, parameter.tolerance()->minus());
-                    append_quantity(out, parameter.tolerance()->plus());
-                }
-                append_string(out, std::to_string(parameter.evidence().size()));
-                for (const auto &evidence : parameter.evidence()) {
-                    append_string(out, evidence.value());
+                if constexpr (std::is_same_v<Element, ShockleyDiodeElement>) {
+                    const auto &parameters = value.parameters();
+                    append_model_parameter(out, parameters.saturation_current());
+                    append_model_parameter(out, parameters.ideality_factor());
+                    append_quantity(out, parameters.fixed_temperature());
+                    append_range(out, parameters.voltage_domain());
+                    append_string(out, std::to_string(parameters.evidence().size()));
+                    for (const auto &evidence : parameters.evidence())
+                        append_string(out, evidence.value());
+                } else {
+                    append_model_parameter(out, value.parameter());
                 }
             },
             element);
@@ -191,7 +207,7 @@ void append_polygon(std::ostringstream &out, const std::optional<PartFootprintPo
 [[nodiscard]] ContentHash part_content_identity(const PartDefinition &part) {
     auto out = std::ostringstream{};
     append_string(out, "volt.part-definition");
-    append_string(out, "2");
+    append_string(out, "3");
     append_string(out, part.identity().namespace_name());
     append_string(out, part.identity().name());
     append_string(out, part.identity().version());

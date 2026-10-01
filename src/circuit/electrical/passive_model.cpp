@@ -37,12 +37,7 @@ std::optional<Tolerance> normalized_tolerance(const Quantity &nominal,
                                normalized_quantity(nominal.dimension(), plus));
 }
 
-void validate_element(const ModelEndpoint &from, const ModelEndpoint &to,
-                      const ModelParameter &parameter, UnitDimension dimension) {
-    if (from == to) {
-        throw KernelArgumentError{ErrorCode::InvalidArgument,
-                                  "Electrical-model element endpoints must be distinct"};
-    }
+void validate_parameter(const ModelParameter &parameter, UnitDimension dimension) {
     if (parameter.nominal().dimension() != dimension) {
         throw KernelArgumentError{ErrorCode::InvalidArgument,
                                   "Electrical-model parameter dimension must match element"};
@@ -60,6 +55,15 @@ void validate_element(const ModelEndpoint &from, const ModelEndpoint &to,
         throw KernelArgumentError{ErrorCode::InvalidArgument,
                                   "Electrical-model tolerance bounds exceed the element domain"};
     }
+}
+
+void validate_element(const ModelEndpoint &from, const ModelEndpoint &to,
+                      const ModelParameter &parameter, UnitDimension dimension) {
+    if (from == to) {
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Electrical-model element endpoints must be distinct"};
+    }
+    validate_parameter(parameter, dimension);
 }
 
 const ModelElementKey &element_key(const ModelElement &element) {
@@ -122,6 +126,75 @@ InductanceElement::InductanceElement(ModelElementKey key, ModelEndpoint from, Mo
     : key_{std::move(key)}, from_{std::move(from)}, to_{std::move(to)},
       parameter_{std::move(parameter)} {
     validate_element(from_, to_, parameter_, UnitDimension::Inductance);
+}
+
+DiodeParameters::DiodeParameters(ModelParameter saturation_current, ModelParameter ideality_factor,
+                                 Quantity fixed_temperature, QuantityRange voltage_domain,
+                                 std::vector<ContentHash> evidence)
+    : saturation_current_{std::move(saturation_current)},
+      ideality_factor_{std::move(ideality_factor)},
+      fixed_temperature_{
+          normalized_quantity(fixed_temperature.dimension(), fixed_temperature.value())},
+      voltage_domain_{std::move(voltage_domain)}, evidence_{std::move(evidence)} {
+    validate_parameter(saturation_current_, UnitDimension::Current);
+    validate_parameter(ideality_factor_, UnitDimension::Ratio);
+    if (fixed_temperature_.dimension() != UnitDimension::Temperature ||
+        fixed_temperature_.value() <= 0.0) {
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Diode fixed temperature must be positive kelvin"};
+    }
+    const double a = emission_voltage();
+    const double conductance = saturation_current_.nominal().value() / a;
+    if (!std::isfinite(a) || a <= 0.0 || !std::isfinite(conductance) || conductance <= 0.0) {
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
+            "Diode emission voltage and zero-bias conductance must be representable"};
+    }
+    if (voltage_domain_.dimension() != UnitDimension::Voltage || !voltage_domain_.minimum() ||
+        !voltage_domain_.maximum() || voltage_domain_.minimum()->value() > 0.0 ||
+        voltage_domain_.maximum()->value() < 0.0 ||
+        voltage_domain_.minimum()->value() >= voltage_domain_.maximum()->value() ||
+        voltage_domain_.minimum()->value() < -3.0 * a) {
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
+            "Diode voltage domain must contain zero and remain within the limited reverse law"};
+    }
+    voltage_domain_ = QuantityRange::bounded(
+        normalized_quantity(UnitDimension::Voltage, voltage_domain_.minimum()->value()),
+        normalized_quantity(UnitDimension::Voltage, voltage_domain_.maximum()->value()));
+    std::ranges::sort(evidence_, {}, &ContentHash::value);
+    evidence_.erase(std::unique(evidence_.begin(), evidence_.end()), evidence_.end());
+}
+
+double DiodeParameters::emission_voltage() const noexcept {
+    constexpr double boltzmann_over_charge = 1.380649e-23 / 1.602176634e-19;
+    return ideality_factor_.nominal().value() * boltzmann_over_charge * fixed_temperature_.value();
+}
+
+ShockleyDiodeEvaluation evaluate_shockley_diode(const DiodeParameters &parameters,
+                                                double voltage) noexcept {
+    if (!std::isfinite(voltage))
+        return {ShockleyDiodeEvaluationStatus::Nonfinite, 0.0, 0.0};
+    if (voltage < parameters.voltage_domain().minimum()->value() ||
+        voltage > parameters.voltage_domain().maximum()->value())
+        return {ShockleyDiodeEvaluationStatus::OutsideDomain, 0.0, 0.0};
+    const double a = parameters.emission_voltage();
+    const double saturation_current = parameters.saturation_current().nominal().value();
+    const double exponent = voltage / a;
+    const double current = saturation_current * std::expm1(exponent);
+    const double conductance = (saturation_current / a) * std::exp(exponent);
+    if (!std::isfinite(current) || !std::isfinite(conductance) || conductance <= 0.0)
+        return {ShockleyDiodeEvaluationStatus::Nonfinite, 0.0, 0.0};
+    return {ShockleyDiodeEvaluationStatus::Valid, current == 0.0 ? 0.0 : current, conductance};
+}
+
+ShockleyDiodeElement::ShockleyDiodeElement(ModelElementKey key, ModelEndpoint from,
+                                           ModelEndpoint to, DiodeParameters parameters)
+    : key_{std::move(key)}, from_{std::move(from)}, to_{std::move(to)},
+      parameters_{std::move(parameters)} {
+    if (from_ == to_)
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Electrical-model element endpoints must be distinct"};
 }
 
 PartElectricalModel::PartElectricalModel(const ComponentDefinition &component,

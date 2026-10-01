@@ -141,7 +141,11 @@ TEST_CASE("Part electrical model transport preserves ideal R C L and exact finit
             [&](const auto &element) {
                 using Element = std::decay_t<decltype(element)>;
                 const auto &restored = std::get<Element>(loaded.electrical_model()->elements()[0]);
-                CHECK(restored.parameter().nominal() == element.parameter().nominal());
+                if constexpr (std::is_same_v<Element, volt::ShockleyDiodeElement>) {
+                    FAIL("R/C/L fixture contains a diode");
+                } else {
+                    CHECK(restored.parameter().nominal() == element.parameter().nominal());
+                }
             },
             model.elements()[0]);
     }
@@ -373,7 +377,7 @@ TEST_CASE("Part electrical model reader enforces native nominal and tolerance do
 TEST_CASE("Part model reader rejects nonfinite JSON numbers duplicate keys and old versions") {
     const auto component = passive_component();
     const auto original = composite_document(component);
-    for (const auto version : {1, 2, 3, 4, 5, 7}) {
+    for (const auto version : {1, 2, 3, 4, 5, 6, 8}) {
         auto document = original;
         document["version"] = version;
         check_structural_rejection(document, component);

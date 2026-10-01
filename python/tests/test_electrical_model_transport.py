@@ -40,7 +40,7 @@ def test_python_reads_native_model_library_bytes_without_model_authoring(native_
     assert result["bytes"] == expected
     assert result["sha256"] == _hash(expected)
     document = json.loads(result["bytes"])
-    assert document["version"] == 6
+    assert document["version"] == 7
     model = document["electrical_model"]
     assert model["implements"] == document["implements"] == result["component_sha256"]
     assert model["terminals"] == [

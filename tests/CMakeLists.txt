@@ -60,6 +60,7 @@ add_executable(
     io/electrical/ac_request_test.cpp
     io/electrical/ac_request_io_test.cpp
     io/electrical/linear_dc_test.cpp
+    io/electrical/nonlinear_dc_test.cpp
     io/electrical/linear_ac_test.cpp
     io/electrical/linear_transient_test.cpp
     io/electrical/transient_request_test.cpp
@@ -262,6 +263,12 @@ if(VOLT_BUILD_PYTHON)
     volt_apply_project_warnings(volt_electrical_compilation_parity_fixture PRIVATE)
     volt_apply_sanitizers(volt_electrical_compilation_parity_fixture)
     volt_apply_coverage(volt_electrical_compilation_parity_fixture)
+    add_executable(volt_nonlinear_dc_parity_fixture support/nonlinear_dc_parity_fixture.cpp)
+    target_link_libraries(volt_nonlinear_dc_parity_fixture PRIVATE Volt::IO)
+    target_compile_features(volt_nonlinear_dc_parity_fixture PRIVATE cxx_std_23)
+    volt_apply_project_warnings(volt_nonlinear_dc_parity_fixture PRIVATE)
+    volt_apply_sanitizers(volt_nonlinear_dc_parity_fixture)
+    volt_apply_coverage(volt_nonlinear_dc_parity_fixture)
     add_executable(volt_dc_solve_parity_fixture support/dc_solve_parity_fixture.cpp)
     target_link_libraries(volt_dc_solve_parity_fixture PRIVATE Volt::IO)
     target_compile_features(volt_dc_solve_parity_fixture PRIVATE cxx_std_23)
@@ -347,3 +354,9 @@ add_test(
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/regenerate-dc-reference.py
 )
 set_tests_properties(linear_dc_reference_corpus PROPERTIES LABELS cpp)
+
+add_test(
+    NAME nonlinear_dc_independent_reference
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/verify_nonlinear_dc_reference.py
+)
+set_tests_properties(nonlinear_dc_independent_reference PROPERTIES LABELS cpp)

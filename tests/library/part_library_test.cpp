@@ -395,3 +395,48 @@ TEST_CASE("Part library verifies each unique passive model evidence asset") {
     REQUIRE(resolved.electrical_model().has_value());
     CHECK(resolved.electrical_model()->elements().size() == 2U);
 }
+
+TEST_CASE("Part library closes both diode parameters and condition evidence") {
+    const auto definition = component();
+    const std::vector<std::string> payloads{"saturation-current fit", "ideality-factor fit",
+                                            "fixed-temperature voltage-domain declaration"};
+    std::vector<volt::ContentHash> digests;
+    for (const auto &bytes : payloads)
+        digests.push_back(volt::sha256_content_hash(bytes));
+    auto builder = volt::PartElectricalModelBuilder{definition};
+    const auto anode = builder.terminal(volt::ModelTerminalKey{"anode"}, volt::PinKey{"A"});
+    const auto cathode = builder.terminal(volt::ModelTerminalKey{"cathode"}, volt::PinKey{"K"});
+    builder.add<volt::ShockleyDiodeElement>(
+        volt::ModelElementKey{"junction"}, anode, cathode,
+        volt::DiodeParameters{
+            volt::ModelParameter{
+                volt::Quantity{volt::UnitDimension::Current, 1.0e-12}, std::nullopt, {digests[0]}},
+            volt::ModelParameter{
+                volt::Quantity{volt::UnitDimension::Ratio, 1.0}, std::nullopt, {digests[1]}},
+            volt::Quantity{volt::UnitDimension::Temperature, 300.15},
+            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, -0.05},
+                                         volt::Quantity{volt::UnitDimension::Voltage, 0.8}),
+            {digests[2], digests[0], digests[2]}});
+    const auto exact =
+        part(definition, "vendor/DIODE", "Vendor", "0603", "test.parts", builder.build());
+    const auto references = volt::part_asset_references(exact);
+    CHECK(std::ranges::count_if(references, [](const auto &reference) {
+              return reference.kind() == volt::PartAssetKind::Evidence;
+          }) == 3);
+    auto resolver = MemoryAssetResolver{};
+    for (const auto &reference : references) {
+        if (reference.kind() != volt::PartAssetKind::Evidence) {
+            resolver.add(reference, std::string{asset_bytes});
+        }
+    }
+    for (std::size_t index = 0; index < digests.size(); ++index) {
+        check_kernel_error([&] { static_cast<void>(build_library(definition, {exact}, resolver)); },
+                           volt::ErrorCode::UnknownEntity);
+        resolver.add(volt::PartAssetReference{volt::PartAssetKind::Evidence,
+                                              "evidence:" + digests[index].value(), digests[index]},
+                     payloads[index]);
+    }
+    const auto library = build_library(definition, {exact}, resolver);
+    CHECK(library.resolve(library.require(volt::PartKey{"vendor/DIODE"})).content_identity() ==
+          exact.content_identity());
+}

@@ -148,20 +148,20 @@ TEST_CASE("ngspice DC divider pins the independent deck and mapping contract") {
                     "option numdgt=16\n"
                     "op\n"
                     "let volt_mapping_"
-                    "dfe391c3593e091bb3997b2b8117d864b8c50cba5656f06e3f86f137809308e9 = 0\n"
+                    "db6740affc357308d37b73e8ad8cda0cb2feb4eee5571525ebcd3b3bd9a92d39 = 0\n"
                     "let volt_scale = 0\n"
                     "setscale volt_scale\n"
                     "wrdata volt-dc-output.txt volt_mapping_"
-                    "dfe391c3593e091bb3997b2b8117d864b8c50cba5656f06e3f86f137809308e9 "
+                    "db6740affc357308d37b73e8ad8cda0cb2feb4eee5571525ebcd3b3bd9a92d39 "
                     "v(n0) v(n1) i(vb2)\n"
                     "quit\n"
                     ".endc\n"
                     ".end\n"};
 
     CHECK(analysis.mapping_identity().value() ==
-          "sha256:dfe391c3593e091bb3997b2b8117d864b8c50cba5656f06e3f86f137809308e9");
+          "sha256:db6740affc357308d37b73e8ad8cda0cb2feb4eee5571525ebcd3b3bd9a92d39");
     CHECK(analysis.deck_identity().value() ==
-          "sha256:85533c95f524253259a573f210b816c1f411c10d96caedc7f9ecde1bd61c7572");
+          "sha256:4e4378226b6302f6a17f66a8aae17edec1ddedd8880f28eaf1f764ad00ec943d");
     CHECK(analysis.deck() == expected_deck);
 }
 

@@ -99,6 +99,33 @@ Json law_json(const ElectricalLaw &law) {
                     {"waveform",
                      Json{{"kind", value.waveform().constant() ? "constant" : "continuous_pwl"},
                           {"knots", std::move(knots)}}}};
+            } else if constexpr (std::same_as<Law, ShockleyDiodeElement>) {
+                const auto &parameters = value.parameters();
+                auto evidence = Json::array();
+                for (const auto &digest : parameters.evidence())
+                    evidence.push_back(digest.value());
+                return Json{
+                    {"kind", "shockley_diode"},
+                    {"law_version", 1},
+                    {"key", value.key().value()},
+                    {"from", endpoint_json(value.from())},
+                    {"to", endpoint_json(value.to())},
+                    {"parameters",
+                     Json{
+                         {"saturation_current",
+                          parameter_json(parameters.saturation_current(), "current")},
+                         {"ideality_factor", parameter_json(parameters.ideality_factor(), "ratio")},
+                         {"fixed_temperature",
+                          Json{{"dimension", "temperature"},
+                               {"si", parameters.fixed_temperature().value()}}},
+                         {"voltage_domain",
+                          Json{{"minimum",
+                                Json{{"dimension", "voltage"},
+                                     {"si", parameters.voltage_domain().minimum()->value()}}},
+                               {"maximum",
+                                Json{{"dimension", "voltage"},
+                                     {"si", parameters.voltage_domain().maximum()->value()}}}}},
+                         {"evidence", std::move(evidence)}}}};
             } else {
                 constexpr const char *kind = [] {
                     if constexpr (std::same_as<Law, ResistanceElement>) {
@@ -224,7 +251,7 @@ Json model_json(const CompiledElectricalModel &model) {
         probes.push_back(Json{{"key", probe.key.value()}, {"target", std::move(target)}});
     }
     return Json{{"format", "volt.compiled-electrical-model"},
-                {"version", 1},
+                {"version", 2},
                 {"compiler_version", CompiledElectricalModel::compiler_version()},
                 {"identity", model.identity().value()},
                 {"request_identity", model.request_identity().value()},

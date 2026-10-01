@@ -47,6 +47,14 @@ std::string_view model_dimension_name(UnitDimension dimension) {
         return "capacitance";
     case UnitDimension::Inductance:
         return "inductance";
+    case UnitDimension::Current:
+        return "current";
+    case UnitDimension::Ratio:
+        return "ratio";
+    case UnitDimension::Temperature:
+        return "temperature";
+    case UnitDimension::Voltage:
+        return "voltage";
     default:
         throw KernelLogicError{ErrorCode::InvalidState, "Invalid electrical-model dimension"};
     }
@@ -99,9 +107,11 @@ void write_model_element(std::ostream &out, const ModelElement &element) {
                     return "resistance";
                 } else if constexpr (std::is_same_v<Element, CapacitanceElement>) {
                     return "capacitance";
-                } else {
-                    static_assert(std::is_same_v<Element, InductanceElement>);
+                } else if constexpr (std::is_same_v<Element, InductanceElement>) {
                     return "inductance";
+                } else {
+                    static_assert(std::is_same_v<Element, ShockleyDiodeElement>);
+                    return "shockley_diode";
                 }
             }();
             out << "      { \"kind\": " << detail::json_string(kind)
@@ -109,8 +119,29 @@ void write_model_element(std::ostream &out, const ModelElement &element) {
             write_model_endpoint(out, value.from());
             out << ", \"to\": ";
             write_model_endpoint(out, value.to());
-            out << ", \"parameter\": ";
-            write_model_parameter(out, value.parameter());
+            if constexpr (std::is_same_v<Element, ShockleyDiodeElement>) {
+                const auto &parameters = value.parameters();
+                out << ", \"law_version\": 1, \"parameters\": { \"saturation_current\": ";
+                write_model_parameter(out, parameters.saturation_current());
+                out << ", \"ideality_factor\": ";
+                write_model_parameter(out, parameters.ideality_factor());
+                out << ", \"fixed_temperature\": ";
+                write_model_quantity(out, parameters.fixed_temperature());
+                out << ", \"voltage_domain\": { \"minimum\": ";
+                write_model_quantity(out, *parameters.voltage_domain().minimum());
+                out << ", \"maximum\": ";
+                write_model_quantity(out, *parameters.voltage_domain().maximum());
+                out << " }, \"evidence\": [";
+                for (std::size_t index = 0; index < parameters.evidence().size(); ++index) {
+                    if (index != 0U)
+                        out << ", ";
+                    out << detail::json_string(parameters.evidence()[index].value());
+                }
+                out << "] }";
+            } else {
+                out << ", \"parameter\": ";
+                write_model_parameter(out, value.parameter());
+            }
             out << " }";
         },
         element);

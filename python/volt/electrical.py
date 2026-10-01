@@ -1,4 +1,4 @@
-"""Native ideal passive model values; all construction and validation belongs to C++."""
+"""Native ideal electrical model values; all construction and validation belongs to C++."""
 
 from . import _volt
 
@@ -17,6 +17,8 @@ ModelInternalNode = _volt.ModelInternalNode
 ModelTerminalHandle = _volt.ModelTerminalHandle
 ModelInternalNodeHandle = _volt.ModelInternalNodeHandle
 ModelParameter = _volt.ModelParameter
+DiodeParameters = _volt.DiodeParameters
+ShockleyDiodeElement = _volt.ShockleyDiodeElement
 ResistanceElement = _volt.ResistanceElement
 CapacitanceElement = _volt.CapacitanceElement
 InductanceElement = _volt.InductanceElement

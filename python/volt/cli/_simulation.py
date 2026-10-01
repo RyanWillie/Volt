@@ -1,4 +1,4 @@
-"""Shared linear analysis execution and immutable artifact publication."""
+"""Explicit native analysis execution and immutable artifact publication."""
 
 from __future__ import annotations
 
@@ -107,7 +107,7 @@ def _compile_outputs(input, request_path: Path, *, error_code: str):
 
 
 def _native_outputs(
-    input, request_path: Path
+    input, request_path: Path, options=None
 ) -> tuple[dict[str, bytes], dict, dict | None, str, int]:
     artifacts, compile_payload, compile_report = _compile_outputs(
         input, request_path, error_code="native-dc-execution-failed"
@@ -116,7 +116,8 @@ def _native_outputs(
         return artifacts, compile_payload, None, "incomplete", EXIT_CHECK_FAILED
 
     try:
-        solve_report = solve_dc(compile_report.model)
+        solve_report = (solve_dc(compile_report.model) if options is None
+                        else solve_dc(compile_report.model, options))
         solve_bytes = solve_report.to_json().encode()
         solve_payload = json.loads(solve_bytes)
         artifacts[_ARTIFACT_SOLVE_REPORT] = solve_bytes
@@ -159,7 +160,6 @@ def _ngspice_outputs(
         analysis_bytes = analysis.to_json().encode()
         analysis_payload = json.loads(analysis_bytes)
         artifacts[_ARTIFACT_NGSPICE_ANALYSIS] = analysis_bytes
-        artifacts[_ARTIFACT_NGSPICE_DECK] = analysis.deck.encode()
         if not analysis.complete:
             return (
                 artifacts,
@@ -171,6 +171,7 @@ def _ngspice_outputs(
                 EXIT_CHECK_FAILED,
             )
 
+        artifacts[_ARTIFACT_NGSPICE_DECK] = analysis.deck.encode()
         output_bytes, process_payload = run_ngspice(
             executable,
             analysis.deck,
@@ -260,8 +261,9 @@ def execute_dc(
     source: dict,
     backend: str = "native",
     ngspice: Path | None = None,
+    options=None,
 ) -> tuple[dict[str, object], int]:
-    """Execute native linear DC and publish its canonical reports once."""
+    """Execute the explicitly selected DC method and publish native reports once."""
 
     output = Path(os.path.abspath(output))
     validate_output(output)
@@ -269,9 +271,12 @@ def execute_dc(
     process_payload = None
     if backend == "native":
         artifacts, compile_payload, solve_payload, status, exit_code = _native_outputs(
-            input, request_path
+            input, request_path, options
         )
     elif backend == "ngspice":
+        if options is not None:
+            raise CliError("Diode Newton requires --backend native.",
+                           code="unsupported-diode-backend")
         if ngspice is None:
             raise CliError(
                 "ngspice backend requires an explicit executable path.",
@@ -364,12 +369,39 @@ def execute_ac(
 
 
 
+def nonlinear_options(args):
+    from .. import DcSolveOptions, NonlinearDcSolveOptions, Quantity, UnitDimension
+    budgets = ("max_iterations", "max_backtracks", "max_residual_evaluations", "max_jacobian_evaluations")
+    thresholds = ("relative_rank_threshold", "minimum_reciprocal_condition")
+    if args.method != "diode-newton":
+        if any(getattr(args, name) is not None for name in budgets + thresholds):
+            raise CliError("Diode numerical options require --method diode-newton.",
+                           code="unexpected-diode-options")
+        return None
+    if args.analysis != "dc":
+        raise CliError("--method diode-newton requires --analysis dc.", code="unsupported-diode-analysis")
+    if args.backend != "native":
+        raise CliError("--method diode-newton requires --backend native.", code="unsupported-diode-backend")
+    try:
+        acceptance = DcSolveOptions(
+            relative_rank_threshold=1e-12 if args.relative_rank_threshold is None else args.relative_rank_threshold,
+            minimum_reciprocal_condition=1e-12 if args.minimum_reciprocal_condition is None else args.minimum_reciprocal_condition,
+            relative_residual_tolerance=1e-9 if args.relative_tolerance is None else args.relative_tolerance,
+            absolute_voltage_tolerance=Quantity(UnitDimension.VOLTAGE, 1e-9 if args.absolute_voltage_tolerance is None else args.absolute_voltage_tolerance),
+            absolute_current_tolerance=Quantity(UnitDimension.CURRENT, 1e-12 if args.absolute_current_tolerance is None else args.absolute_current_tolerance))
+        supplied = {name: getattr(args, name) for name in budgets if getattr(args, name) is not None}
+        return NonlinearDcSolveOptions(acceptance, **supplied)
+    except Exception as error:
+        raise CliError(f"Invalid diode numerical options: {error}", code="invalid-diode-options") from error
+
+
 def transient_options(args):
     from .. import Quantity, UnitDimension, TransientSolveOptions
     fields = ('h_min', 'h_initial', 'h_max', 'max_trials', 'max_accepted_steps')
     temporal = ('relative_tolerance', 'absolute_voltage_tolerance', 'absolute_current_tolerance')
     if args.analysis != 'transient':
-        if any(getattr(args, name) is not None for name in fields + temporal):
+        checked = fields if args.analysis == "dc" and args.method == "diode-newton" else fields + temporal
+        if any(getattr(args, name) is not None for name in checked):
             raise CliError('Transient numerical options require --analysis transient.',
                            code='unexpected-transient-options')
         return None

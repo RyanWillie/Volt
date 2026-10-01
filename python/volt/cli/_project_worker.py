@@ -13,6 +13,7 @@ from ..project_bundle import ProjectBundle
 from . import (
     CliError,
     _add_transient_arguments,
+    _add_nonlinear_arguments,
     EXIT_CHECK_FAILED,
     EXIT_COMMAND_FAILED,
     EXIT_SUCCESS,
@@ -42,6 +43,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--schematic")
     parser.add_argument("--board")
     _add_transient_arguments(parser)
+    _add_nonlinear_arguments(parser)
     return parser
 
 
@@ -232,7 +234,7 @@ def _failure(error: Exception) -> dict[str, object]:
 def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
     config = load_project_config(args.config)
     if args.action == "simulate":
-        from ._simulation import validate_output, transient_options
+        from ._simulation import validate_output, transient_options, nonlinear_options
 
         if not args.design or args.request is None or args.output is None:
             raise CliError(
@@ -251,6 +253,7 @@ def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
                 "ngspice simulation requires an executable path.",
                 code="ngspice-path-required",
             )
+        dc_options = nonlinear_options(args)
         options = transient_options(args)
         validate_output(args.output)
     result = _project_result_with_forwarded_stdout(
@@ -282,7 +285,8 @@ def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
             },
             backend=args.backend,
             ngspice=args.ngspice,
-            **({"options": options} if args.analysis == "transient" else {}),
+            **({"options": options} if args.analysis == "transient" else
+               {"options": dc_options} if args.analysis == "dc" else {}),
         )
     if args.action == "check":
         payload = _outcome(result)

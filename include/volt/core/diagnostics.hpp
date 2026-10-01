@@ -191,6 +191,8 @@ inline constexpr auto AcOccurrenceUnselected = std::string_view{"AC_OCCURRENCE_U
 inline constexpr auto AcOccurrenceUnresolved = std::string_view{"AC_OCCURRENCE_UNRESOLVED"};
 inline constexpr auto AcOccurrenceModelAbsent = std::string_view{"AC_OCCURRENCE_MODEL_ABSENT"};
 inline constexpr auto AcOccurrenceUnsupported = std::string_view{"AC_OCCURRENCE_UNSUPPORTED"};
+inline constexpr auto AcOccurrenceLawUnsupported =
+    std::string_view{"AC_OCCURRENCE_LAW_UNSUPPORTED"};
 inline constexpr auto AcTransferStimulusInvalid =
     std::string_view{"AC_REQUEST_TRANSFER_STIMULUS_INVALID"};
 inline constexpr auto AcImpedanceStimulusInvalid =
@@ -215,6 +217,13 @@ inline constexpr auto DcSolveInconsistent = std::string_view{"DC_SOLVE_INCONSIST
 inline constexpr auto DcSolveIllConditioned = std::string_view{"DC_SOLVE_ILL_CONDITIONED"};
 inline constexpr auto DcSolveNumericalFailure = std::string_view{"DC_SOLVE_NUMERICAL_FAILURE"};
 inline constexpr auto DcSolveResidualFailure = std::string_view{"DC_SOLVE_RESIDUAL_FAILURE"};
+inline constexpr auto DcSolveLineSearchFailed = std::string_view{"DC_SOLVE_LINE_SEARCH_FAILED"};
+inline constexpr auto DcSolveJacobianSingular = std::string_view{"DC_SOLVE_JACOBIAN_SINGULAR"};
+inline constexpr auto DcSolveIterationLimit = std::string_view{"DC_SOLVE_ITERATION_LIMIT"};
+inline constexpr auto DcSolveEvaluationLimit = std::string_view{"DC_SOLVE_EVALUATION_LIMIT"};
+inline constexpr auto DcSolveDomainLimited = std::string_view{"DC_SOLVE_DOMAIN_LIMITED"};
+inline constexpr auto DcSolveDiodeEvaluation = std::string_view{"DC_SOLVE_DIODE_EVALUATION"};
+inline constexpr auto DcSolveUnsupportedModel = std::string_view{"DC_SOLVE_UNSUPPORTED_MODEL"};
 inline constexpr auto AcSolveRankDeficient = std::string_view{"AC_SOLVE_RANK_DEFICIENT"};
 inline constexpr auto AcSolveInconsistent = std::string_view{"AC_SOLVE_INCONSISTENT"};
 inline constexpr auto AcSolveIllConditioned = std::string_view{"AC_SOLVE_ILL_CONDITIONED"};
@@ -223,6 +232,7 @@ inline constexpr auto AcSolveResidualFailure = std::string_view{"AC_SOLVE_RESIDU
 inline constexpr auto AcSolveUndefinedMeasurement =
     std::string_view{"AC_SOLVE_UNDEFINED_MEASUREMENT"};
 inline constexpr auto DcNgspiceModelEmpty = std::string_view{"DC_NGSPICE_MODEL_EMPTY"};
+inline constexpr auto DcNgspiceUnsupportedLaw = std::string_view{"DC_NGSPICE_UNSUPPORTED_LAW"};
 
 inline constexpr auto TransientReferenceMissing =
     std::string_view{"TRANSIENT_REQUEST_REFERENCE_MISSING"};
@@ -234,6 +244,8 @@ inline constexpr auto TransientOccurrenceModelAbsent =
     std::string_view{"TRANSIENT_OCCURRENCE_MODEL_ABSENT"};
 inline constexpr auto TransientOccurrenceUnsupported =
     std::string_view{"TRANSIENT_OCCURRENCE_UNSUPPORTED"};
+inline constexpr auto TransientOccurrenceLawUnsupported =
+    std::string_view{"TRANSIENT_OCCURRENCE_LAW_UNSUPPORTED"};
 inline constexpr auto TransientInitialStateMissing =
     std::string_view{"TRANSIENT_INITIAL_STATE_MISSING"};
 inline constexpr auto TransientContradictoryVoltageSources =
@@ -386,6 +398,16 @@ inline constexpr auto Analysis =
                analysis_diagnostic_codes::DcSolveIllConditioned,
                analysis_diagnostic_codes::DcSolveNumericalFailure,
                analysis_diagnostic_codes::DcSolveResidualFailure,
+               analysis_diagnostic_codes::AcOccurrenceLawUnsupported,
+               analysis_diagnostic_codes::TransientOccurrenceLawUnsupported,
+               analysis_diagnostic_codes::DcSolveUnsupportedModel,
+               analysis_diagnostic_codes::DcSolveDiodeEvaluation,
+               analysis_diagnostic_codes::DcSolveDomainLimited,
+               analysis_diagnostic_codes::DcSolveEvaluationLimit,
+               analysis_diagnostic_codes::DcSolveIterationLimit,
+               analysis_diagnostic_codes::DcSolveJacobianSingular,
+               analysis_diagnostic_codes::DcSolveLineSearchFailed,
+               analysis_diagnostic_codes::DcNgspiceUnsupportedLaw,
                analysis_diagnostic_codes::DcNgspiceModelEmpty};
 
 } // namespace diagnostic_code_catalogs

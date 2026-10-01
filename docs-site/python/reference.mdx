@@ -119,7 +119,7 @@ Declare component fields once with `Library.component(...)`, pass the returned
 `PartComponentDefinition` to `PartElectricalModelBuilder(component)`, then attach its finalized
 model with `Library.part(..., component=component, electrical_model=model)`.
 The single `add(element_type, key, from_, to, parameter)` operation accepts exactly the
-native R/C/L element classes and builder-owned handles. Python does not own model
+native R/C/L or Shockley diode element classes and builder-owned handles. Python does not own model
 validation, unit conversion, identity or serialization.
 
 | Export | Purpose |
@@ -128,6 +128,8 @@ validation, unit conversion, identity or serialization.
 | `volt.PartElectricalModelBuilder` | Native append-only builder with `terminal`, `internal_node`, generic typed `add` and immutable `build`. |
 | `volt.PartElectricalModel` | Complete immutable model for one exact component identity, with terminal, internal-node and element inspection. |
 | `volt.ModelParameter` | Native nominal Quantity, optional normalized tolerance and immutable evidence hashes. |
+| `volt.DiodeParameters` | Native positive Is/n parameters, fixed per-element temperature, bounded mild-reverse voltage domain, and immutable condition evidence. |
+| `volt.ShockleyDiodeElement` | Explicitly oriented idealized anode-to-cathode Shockley law, added through the existing generic builder with DiodeParameters. |
 | `volt.ResistanceElement` | Oriented ideal resistance with finite nonnegative value and bounds, including zero ohms. |
 | `volt.CapacitanceElement` | Oriented ideal capacitance with finite positive value and bounds. |
 | `volt.InductanceElement` | Oriented ideal inductance with finite positive value and bounds. |
@@ -190,7 +192,7 @@ when their canonical logical identity matches the captured input.
 No inferred topology is exposed by this request surface. A request must first compile to a
 complete native electrical model before it can enter numerical evaluation.
 
-## Linear DC solving
+## Explicit DC solving
 
 `volt.solve_dc` evaluates an explicitly compiled `volt.CompiledElectricalModel` in process.
 `volt.prepare_ngspice_dc` deterministically projects the same complete model to the bounded
@@ -198,7 +200,8 @@ ngspice 46 DC contract; callers may execute its generated `deck` and pass the ex
 to `volt.solve_ngspice_dc`. Neither route implicitly compiles a request or runs during ordinary
 project builds, checks, or manufacturing.
 
-Both routes support only the bounded linear R/C/L and independent DC-source vocabulary. A solve
+The default native method and ngspice route support the bounded linear R/C/L and
+independent DC-source vocabulary. A linear solve
 publishes a solution only when native uniqueness, conditioning, finiteness, and residual gates
 pass; rank-deficient, inconsistent, ill-conditioned, nonfinite, and residual failures remain
 typed reports with diagnostics and available metrics. The low-level Python API never starts an
@@ -206,6 +209,7 @@ external process; use the explicit CLI backend for bounded ngspice execution.
 
 | Export | Purpose |
 | --- | --- |
+| `volt.NonlinearDcSolveOptions` | Explicit native diode Newton method with physical acceptance gates and bounded iteration, backtracking, residual and Jacobian work. |
 | `volt.DcSolveOptions` | Validated typed numerical thresholds with deterministic defaults and scaling policy. |
 | `volt.DcSolveOutcome` | Closed success and numerical-refusal outcome enum. |
 | `volt.DcSolveMetrics` | Available coordinate-count, rank, conditioning, and residual evidence. |
@@ -220,9 +224,27 @@ external process; use the explicit CLI backend for bounded ngspice execution.
 | `volt.prepare_ngspice_dc` | Project one complete compiled model into the closed ngspice 46 DC adapter contract. |
 | `volt.solve_ngspice_dc` | Parse adapter-owned machine output bytes and apply native result acceptance. |
 
+For an idealized diode operating point, explicitly call
+`volt.solve_dc(model, volt.NonlinearDcSolveOptions())`; the default linear method refuses
+diode laws. In source or source-free bundle CLI mode use `--method diode-newton` with
+DC and the native backend. Python binds native values and orchestrates execution.
+The native model keeps each prescribed fixed temperature without rescaling Is; its
+inclusive voltage domain must contain zero and satisfy the mild-reverse bound
+`vmin >= -3*n*k*T0/q`. It excludes ordinary rectifier reverse operation and breakdown.
+Evidence absence means uncalibrated, and illustrative evidence does not establish
+manufacturer accuracy. Native acceptance requires original laws, all-node KCL, an
+undamped correction, and final Jacobian rank/condition. Convergence is a locally regular
+accepted point, with no global convergence or uniqueness guarantee. Failure retains
+available metrics and exact identities without a solution. AC, transient and public
+ngspice capability checks refuse diode execution; sweeps remain deferred.
+See the [executable diode example](https://github.com/RyanWillie/Volt/tree/main/samples/nonlinear_dc)
+and [bounded contract](https://github.com/RyanWillie/Volt/blob/main/docs/nonlinear-dc.md).
+
 The coordinate indices are scoped to the retained compiled model; they are not generic mutation
 handles. `NgspiceDcAnalysis.to_json()` exposes the deterministic mapping needed to audit generated
-device/vector names; it does not accept arbitrary SPICE text. Eigen and ngspice remain private
+device/vector names when lowering is available. Diode lowering returns an incomplete report
+with branch provenance, an unavailable mapping and no executable deck. It does not accept
+arbitrary SPICE text. Eigen and ngspice remain private
 implementation/execution choices, and no backend matrix or vector type crosses the native or
 Python API.
 

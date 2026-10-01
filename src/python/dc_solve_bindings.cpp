@@ -93,7 +93,28 @@ void bind_dc_solve(pybind11::module_ &module) {
             return std::string{DcSolveOptions::scaling()};
         });
 
+    py::class_<NonlinearDcSolveOptions>(module, "NonlinearDcSolveOptions")
+        .def(py::init<DcSolveOptions, std::size_t, std::size_t, std::size_t, std::size_t>(),
+             py::arg("acceptance") = DcSolveOptions{}, py::arg("max_iterations") = 80,
+             py::arg("max_backtracks") = 24, py::arg("max_residual_evaluations") = 2048,
+             py::arg("max_jacobian_evaluations") = 81)
+        .def_property_readonly("acceptance", &NonlinearDcSolveOptions::acceptance,
+                               py::return_value_policy::copy)
+        .def_property_readonly("max_iterations", &NonlinearDcSolveOptions::max_iterations)
+        .def_property_readonly("max_backtracks", &NonlinearDcSolveOptions::max_backtracks)
+        .def_property_readonly("max_residual_evaluations",
+                               &NonlinearDcSolveOptions::max_residual_evaluations)
+        .def_property_readonly("max_jacobian_evaluations",
+                               &NonlinearDcSolveOptions::max_jacobian_evaluations);
+
     py::enum_<DcSolveOutcome>(module, "DcSolveOutcome")
+        .value("CONVERGED", DcSolveOutcome::Converged)
+        .value("UNSUPPORTED_MODEL", DcSolveOutcome::UnsupportedModel)
+        .value("JACOBIAN_SINGULAR", DcSolveOutcome::JacobianSingular)
+        .value("DOMAIN_LIMITED", DcSolveOutcome::DomainLimited)
+        .value("LINE_SEARCH_FAILED", DcSolveOutcome::LineSearchFailed)
+        .value("ITERATION_LIMIT", DcSolveOutcome::IterationLimit)
+        .value("EVALUATION_LIMIT", DcSolveOutcome::EvaluationLimit)
         .value("SUCCESS", DcSolveOutcome::Success)
         .value("RANK_DEFICIENT", DcSolveOutcome::RankDeficient)
         .value("INCONSISTENT", DcSolveOutcome::Inconsistent)
@@ -121,8 +142,19 @@ void bind_dc_solve(pybind11::module_ &module) {
         .def_property_readonly(
             "voltage_error_ratio",
             [](const DcSolveMetrics &value) { return value.voltage_error_ratio; })
-        .def_property_readonly("current_error_ratio", [](const DcSolveMetrics &value) {
-            return value.current_error_ratio;
+        .def_property_readonly(
+            "current_error_ratio",
+            [](const DcSolveMetrics &value) { return value.current_error_ratio; })
+        .def_readonly("iterations", &DcSolveMetrics::iterations)
+        .def_readonly("residual_evaluations", &DcSolveMetrics::residual_evaluations)
+        .def_readonly("jacobian_evaluations", &DcSolveMetrics::jacobian_evaluations)
+        .def_readonly("backtracks", &DcSolveMetrics::backtracks)
+        .def_readonly("domain_rejections", &DcSolveMetrics::domain_rejections)
+        .def_readonly("nonfinite_rejections", &DcSolveMetrics::nonfinite_rejections)
+        .def_readonly("correction_error_ratio", &DcSolveMetrics::correction_error_ratio)
+        .def_readonly("merit", &DcSolveMetrics::merit)
+        .def_property_readonly("residual_weights", [](const DcSolveMetrics &value) {
+            return copied_tuple(value.residual_weights);
         });
 
     py::class_<DcNodeResult>(module, "DcNodeResult")
@@ -156,6 +188,13 @@ void bind_dc_solve(pybind11::module_ &module) {
                                py::return_value_policy::copy)
         .def_property_readonly("model", &DcSolution::model, py::return_value_policy::copy)
         .def_property_readonly("options", &DcSolution::options, py::return_value_policy::copy)
+        .def_property_readonly("nonlinear_options",
+                               [](const DcSolution &value) -> py::object {
+                                   const auto *options = value.nonlinear_options();
+                                   return options == nullptr
+                                              ? py::none{}
+                                              : py::cast(*options, py::return_value_policy::copy);
+                               })
         .def_property_readonly("nodes",
                                [](const DcSolution &value) { return copied_tuple(value.nodes()); })
         .def_property_readonly(
@@ -176,6 +215,13 @@ void bind_dc_solve(pybind11::module_ &module) {
                                py::return_value_policy::copy)
         .def_property_readonly("model", &DcSolveReport::model, py::return_value_policy::copy)
         .def_property_readonly("options", &DcSolveReport::options, py::return_value_policy::copy)
+        .def_property_readonly("nonlinear_options",
+                               [](const DcSolveReport &value) -> py::object {
+                                   const auto *options = value.nonlinear_options();
+                                   return options == nullptr
+                                              ? py::none{}
+                                              : py::cast(*options, py::return_value_policy::copy);
+                               })
         .def_property_readonly("outcome", &DcSolveReport::outcome)
         .def_property_readonly("success", &DcSolveReport::success)
         .def_property_readonly("metrics", &DcSolveReport::metrics, py::return_value_policy::copy)
@@ -191,7 +237,14 @@ void bind_dc_solve(pybind11::module_ &module) {
                                })
         .def("to_json", &io::write_dc_solve_report);
 
-    module.def("solve_dc", &solve_dc, py::arg("model"), py::arg("options") = DcSolveOptions{});
+    module.def(
+        "solve_dc",
+        py::overload_cast<const CompiledElectricalModel &, const DcSolveOptions &>(&solve_dc),
+        py::arg("model"), py::arg("options") = DcSolveOptions{});
+    module.def("solve_dc",
+               py::overload_cast<const CompiledElectricalModel &, const NonlinearDcSolveOptions &>(
+                   &solve_dc),
+               py::arg("model"), py::arg("options"));
     module.def("prepare_ngspice_dc", &prepare_ngspice_dc, py::arg("model"));
     module.def(
         "solve_ngspice_dc",

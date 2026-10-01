@@ -1,6 +1,6 @@
-"""Type information for immutable native linear DC solve options and results."""
+"""Type information for immutable native explicit DC solve options and results."""
 
-from typing import ClassVar
+from typing import ClassVar, overload
 
 from .compilation import CompiledElectricalModel
 from .dc import ElectricalProbeKey
@@ -30,8 +30,32 @@ class DcSolveOptions:
     def scaling(self) -> str: ...
 
 
+class NonlinearDcSolveOptions:
+    def __init__(self, acceptance: DcSolveOptions = ..., max_iterations: int = 80,
+                 max_backtracks: int = 24, max_residual_evaluations: int = 2048,
+                 max_jacobian_evaluations: int = 81) -> None: ...
+    @property
+    def acceptance(self) -> DcSolveOptions: ...
+    @property
+    def max_iterations(self) -> int: ...
+    @property
+    def max_backtracks(self) -> int: ...
+    @property
+    def max_residual_evaluations(self) -> int: ...
+    @property
+    def max_jacobian_evaluations(self) -> int: ...
+
+
 class DcSolveOutcome:
     SUCCESS: ClassVar[DcSolveOutcome]
+    CONVERGED: ClassVar[DcSolveOutcome]
+    UNSUPPORTED_MODEL: ClassVar[DcSolveOutcome]
+    JACOBIAN_SINGULAR: ClassVar[DcSolveOutcome]
+    DOMAIN_LIMITED: ClassVar[DcSolveOutcome]
+    LINE_SEARCH_FAILED: ClassVar[DcSolveOutcome]
+    ITERATION_LIMIT: ClassVar[DcSolveOutcome]
+    EVALUATION_LIMIT: ClassVar[DcSolveOutcome]
+
     RANK_DEFICIENT: ClassVar[DcSolveOutcome]
     INCONSISTENT: ClassVar[DcSolveOutcome]
     ILL_CONDITIONED: ClassVar[DcSolveOutcome]
@@ -40,6 +64,24 @@ class DcSolveOutcome:
 
 
 class DcSolveMetrics:
+    @property
+    def iterations(self) -> int: ...
+    @property
+    def residual_evaluations(self) -> int: ...
+    @property
+    def jacobian_evaluations(self) -> int: ...
+    @property
+    def backtracks(self) -> int: ...
+    @property
+    def domain_rejections(self) -> int: ...
+    @property
+    def nonfinite_rejections(self) -> int: ...
+    @property
+    def correction_error_ratio(self) -> float | None: ...
+    @property
+    def merit(self) -> float | None: ...
+    @property
+    def residual_weights(self) -> tuple[Quantity, ...]: ...
     @property
     def coordinate_count(self) -> int: ...
     @property
@@ -95,6 +137,8 @@ class DcSolution:
     @property
     def options(self) -> DcSolveOptions: ...
     @property
+    def nonlinear_options(self) -> NonlinearDcSolveOptions | None: ...
+    @property
     def nodes(self) -> tuple[DcNodeResult, ...]: ...
     @property
     def branches(self) -> tuple[DcBranchResult, ...]: ...
@@ -117,6 +161,8 @@ class DcSolveReport:
     @property
     def options(self) -> DcSolveOptions: ...
     @property
+    def nonlinear_options(self) -> NonlinearDcSolveOptions | None: ...
+    @property
     def outcome(self) -> DcSolveOutcome: ...
     @property
     def success(self) -> bool: ...
@@ -129,9 +175,14 @@ class DcSolveReport:
     def to_json(self) -> str: ...
 
 
+@overload
 def solve_dc(
     model: CompiledElectricalModel, options: DcSolveOptions = ...
 ) -> DcSolveReport: ...
+
+
+@overload
+def solve_dc(model: CompiledElectricalModel, options: NonlinearDcSolveOptions) -> DcSolveReport: ...
 
 
 class DcSolveProvenance:

@@ -125,6 +125,23 @@ void encode(IdentityEncoder &out, const InductanceElement &value) {
     encode(out, value.parameter());
 }
 
+void encode(IdentityEncoder &out, const ShockleyDiodeElement &value) {
+    out.text("shockley-diode");
+    out.text("1");
+    out.text(value.key().value());
+    encode(out, value.from());
+    encode(out, value.to());
+    const auto &parameters = value.parameters();
+    encode(out, parameters.saturation_current());
+    encode(out, parameters.ideality_factor());
+    encode(out, parameters.fixed_temperature());
+    encode(out, *parameters.voltage_domain().minimum());
+    encode(out, *parameters.voltage_domain().maximum());
+    out.text(std::to_string(parameters.evidence().size()));
+    for (const auto &evidence : parameters.evidence())
+        out.text(evidence.value());
+}
+
 void encode(IdentityEncoder &out, const DcVoltageSource &value) {
     out.text("voltage-source");
     out.text(value.key().value());

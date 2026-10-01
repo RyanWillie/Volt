@@ -190,10 +190,99 @@ class InductanceElement {
     ModelParameter parameter_;
 };
 
-/** Closed passive element vocabulary. */
-using ModelElement = std::variant<ResistanceElement, CapacitanceElement, InductanceElement>;
+/** Fixed-temperature idealized Shockley-law parameters and declared validity domain. */
+class DiodeParameters {
+  public:
+    /** Validate positive parameters, bounded voltage domain and derived conductance. */
+    DiodeParameters(ModelParameter saturation_current, ModelParameter ideality_factor,
+                    Quantity fixed_temperature, QuantityRange voltage_domain,
+                    std::vector<ContentHash> evidence = {});
 
-/** Complete immutable passive model implementing exactly one component contract. */
+    /** Return saturation current at the prescribed temperature. */
+    [[nodiscard]] const ModelParameter &saturation_current() const noexcept {
+        return saturation_current_;
+    }
+
+    /** Return the dimensionless ideality factor. */
+    [[nodiscard]] const ModelParameter &ideality_factor() const noexcept {
+        return ideality_factor_;
+    }
+
+    /** Return the prescribed temperature in kelvin. */
+    [[nodiscard]] const Quantity &fixed_temperature() const noexcept { return fixed_temperature_; }
+
+    /** Return the inclusive anode-minus-cathode voltage domain. */
+    [[nodiscard]] const QuantityRange &voltage_domain() const noexcept { return voltage_domain_; }
+
+    /** Return sorted unique evidence for temperature and domain conditions. */
+    [[nodiscard]] const std::vector<ContentHash> &evidence() const noexcept { return evidence_; }
+
+    /** Derive n k T / q in volts using exact SI defining constants. */
+    [[nodiscard]] double emission_voltage() const noexcept;
+
+  private:
+    ModelParameter saturation_current_;
+    ModelParameter ideality_factor_;
+    Quantity fixed_temperature_;
+    QuantityRange voltage_domain_;
+    std::vector<ContentHash> evidence_;
+};
+
+/** Outcome of evaluating the original law without saturation or domain extension. */
+enum class ShockleyDiodeEvaluationStatus {
+    /** Original current and derivative are admissible and representable. */
+    Valid,
+    /** Anode-minus-cathode voltage is outside the declared inclusive domain. */
+    OutsideDomain,
+    /** Input, original law or positive derivative cannot be represented. */
+    Nonfinite
+};
+
+/** Native current and analytic derivative, available only when status is Valid. */
+struct ShockleyDiodeEvaluation {
+    /** Whether the original law is admissible and representable. */
+    ShockleyDiodeEvaluationStatus status;
+    /** Oriented current in amperes. */
+    double current;
+    /** Analytic current derivative in amperes per volt. */
+    double conductance;
+};
+
+/** Evaluate Is expm1(v/a) and (Is/a) exp(v/a) using nominal parameters. */
+[[nodiscard]] ShockleyDiodeEvaluation evaluate_shockley_diode(const DiodeParameters &parameters,
+                                                              double voltage) noexcept;
+
+/** Oriented idealized diode law i - Is expm1(v/a) = 0. */
+class ShockleyDiodeElement {
+  public:
+    /** Construct distinct explicit anode and cathode endpoints. */
+    ShockleyDiodeElement(ModelElementKey key, ModelEndpoint from, ModelEndpoint to,
+                         DiodeParameters parameters);
+
+    /** Return the stable observation key. */
+    [[nodiscard]] const ModelElementKey &key() const noexcept { return key_; }
+
+    /** Return the anode, where positive current leaves the node. */
+    [[nodiscard]] const ModelEndpoint &from() const noexcept { return from_; }
+
+    /** Return the cathode, where positive current enters the node. */
+    [[nodiscard]] const ModelEndpoint &to() const noexcept { return to_; }
+
+    /** Return immutable parameters, uncertainty and law conditions. */
+    [[nodiscard]] const DiodeParameters &parameters() const noexcept { return parameters_; }
+
+  private:
+    ModelElementKey key_;
+    ModelEndpoint from_;
+    ModelEndpoint to_;
+    DiodeParameters parameters_;
+};
+
+/** Closed electrical element vocabulary. */
+using ModelElement =
+    std::variant<ResistanceElement, CapacitanceElement, InductanceElement, ShockleyDiodeElement>;
+
+/** Complete immutable electrical model implementing exactly one component contract. */
 class PartElectricalModel {
   public:
     /** Validate portable model content and canonicalize each collection by typed key. */
@@ -226,7 +315,7 @@ class PartElectricalModel {
     std::vector<ModelElement> elements_;
 };
 
-/** Append-only authoring of a complete passive model using builder-owned handles. */
+/** Append-only authoring of a complete electrical model using builder-owned handles. */
 class PartElectricalModelBuilder {
     struct Identity {};
 
@@ -286,6 +375,15 @@ class PartElectricalModelBuilder {
     PartElectricalModelBuilder &add(ModelElementKey key, Endpoint from, Endpoint to,
                                     ModelParameter parameter) {
         append(Element{std::move(key), resolve(from), resolve(to), std::move(parameter)});
+        return *this;
+    }
+
+    /** Append an idealized diode over endpoints owned by this builder. */
+    template <typename Element>
+        requires(std::same_as<Element, ShockleyDiodeElement>)
+    PartElectricalModelBuilder &add(ModelElementKey key, Endpoint from, Endpoint to,
+                                    DiodeParameters parameters) {
+        append(Element{std::move(key), resolve(from), resolve(to), std::move(parameters)});
         return *this;
     }
 

@@ -171,6 +171,45 @@ void bind_electrical_model(py::module_ &module) {
         .def_property_readonly("bounds", &ModelParameter::bounds)
         .def_property_readonly(
             "evidence", [](const ModelParameter &value) { return copied_tuple(value.evidence()); });
+    py::class_<DiodeParameters>(module, "DiodeParameters")
+        .def(py::init([](ModelParameter saturation_current, ModelParameter ideality_factor,
+                         Quantity fixed_temperature, QuantityRange voltage_domain,
+                         const std::vector<KeyInput<ContentHash>> &evidence) {
+                 auto references = std::vector<ContentHash>{};
+                 references.reserve(evidence.size());
+                 for (const auto &reference : evidence) {
+                     references.push_back(key_value(reference));
+                 }
+                 return DiodeParameters{std::move(saturation_current), std::move(ideality_factor),
+                                        fixed_temperature, voltage_domain, std::move(references)};
+             }),
+             py::arg("saturation_current"), py::arg("ideality_factor"),
+             py::arg("fixed_temperature"), py::arg("voltage_domain"),
+             py::arg("evidence") = py::tuple{})
+        .def_property_readonly("saturation_current", &DiodeParameters::saturation_current,
+                               py::return_value_policy::copy)
+        .def_property_readonly("ideality_factor", &DiodeParameters::ideality_factor,
+                               py::return_value_policy::copy)
+        .def_property_readonly("fixed_temperature", &DiodeParameters::fixed_temperature,
+                               py::return_value_policy::copy)
+        .def_property_readonly("voltage_domain", &DiodeParameters::voltage_domain,
+                               py::return_value_policy::copy)
+        .def_property_readonly("emission_voltage", &DiodeParameters::emission_voltage)
+        .def_property_readonly("evidence", [](const DiodeParameters &value) {
+            return copied_tuple(value.evidence());
+        });
+    py::class_<ShockleyDiodeElement>(module, "ShockleyDiodeElement")
+        .def(py::init([](KeyInput<ModelElementKey> key, const py::handle &from,
+                         const py::handle &to, DiodeParameters parameters) {
+                 return ShockleyDiodeElement{key_value(std::move(key)), model_endpoint(from),
+                                             model_endpoint(to), std::move(parameters)};
+             }),
+             py::arg("key"), py::arg("from_"), py::arg("to"), py::arg("parameters"))
+        .def_property_readonly("key", &ShockleyDiodeElement::key, py::return_value_policy::copy)
+        .def_property_readonly("from_", &ShockleyDiodeElement::from, py::return_value_policy::copy)
+        .def_property_readonly("to", &ShockleyDiodeElement::to, py::return_value_policy::copy)
+        .def_property_readonly("parameters", &ShockleyDiodeElement::parameters,
+                               py::return_value_policy::copy);
     bind_element(py::class_<ResistanceElement>(module, "ResistanceElement"));
     bind_element(py::class_<CapacitanceElement>(module, "CapacitanceElement"));
     bind_element(py::class_<InductanceElement>(module, "InductanceElement"));
@@ -248,6 +287,21 @@ void bind_electrical_model(py::module_ &module) {
             },
             py::arg("element_type"), py::arg("key"), py::arg("from_"), py::arg("to"),
             py::arg("parameter"), py::return_value_policy::reference_internal)
+        .def(
+            "add",
+            [](PartElectricalModelBuilder &builder, const py::handle &element_type,
+               KeyInput<ModelElementKey> key, const py::handle &from, const py::handle &to,
+               DiodeParameters parameters) -> PartElectricalModelBuilder & {
+                if (!element_type.is(py::type::of<ShockleyDiodeElement>())) {
+                    throw py::type_error{
+                        "Element type must be ShockleyDiodeElement for DiodeParameters"};
+                }
+                return builder.add<ShockleyDiodeElement>(
+                    key_value(std::move(key)), builder_endpoint(from), builder_endpoint(to),
+                    std::move(parameters));
+            },
+            py::arg("element_type"), py::arg("key"), py::arg("from_"), py::arg("to"),
+            py::arg("parameters"), py::return_value_policy::reference_internal)
         .def("build", &PartElectricalModelBuilder::build);
 }
 

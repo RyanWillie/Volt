@@ -45,7 +45,7 @@ PAGE_TITLES = {
     "transient": "Transient Requests",
     "transient_solve": "Native Transient Solve",
     "compilation": "Electrical Compilation",
-    "solve": "Linear DC Solve",
+    "solve": "Native DC Solve",
     "diagnostics": "Diagnostics",
 }
 PAGE_DESCRIPTIONS = {
