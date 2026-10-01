@@ -391,7 +391,7 @@ def _build_parser() -> argparse.ArgumentParser:
     simulate_parser.add_argument(
         "--output", type=Path, help="Required new, nonexistent output directory."
     )
-    simulate_parser.add_argument("--analysis", choices=("dc", "ac"), default="dc")
+    simulate_parser.add_argument("--analysis", choices=("dc", "ac", "transient"), default="dc")
     simulate_parser.add_argument(
         "--backend",
         choices=("native", "ngspice"),
@@ -404,6 +404,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Explicit ngspice 46 executable path; required only for --backend ngspice.",
     )
     simulate_parser.add_argument("--json", dest="emit_json", action="store_true")
+    _add_transient_arguments(simulate_parser)
     simulate_parser.set_defaults(handler=_handle_simulate)
 
     export_parser = subparsers.add_parser(
@@ -537,6 +538,27 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+
+_TRANSIENT_ARGUMENTS = (
+    ("--h-min", "h_min", float, "Minimum adaptive macro step in SI seconds."),
+    ("--h-initial", "h_initial", float, "Initial adaptive macro step in SI seconds."),
+    ("--h-max", "h_max", float, "Maximum adaptive macro step in SI seconds."),
+    ("--max-trials", "max_trials", int, "Maximum transient macro trials, including rejections."),
+    ("--max-accepted-steps", "max_accepted_steps", int, "Maximum accepted macro steps; each has two half steps."),
+    ("--relative-tolerance", "relative_tolerance", float, "Transient local state error relative tolerance (default 1e-4)."),
+    ("--absolute-voltage-tolerance", "absolute_voltage_tolerance", float, "Transient local voltage error tolerance in volts (default 1e-6)."),
+    ("--absolute-current-tolerance", "absolute_current_tolerance", float, "Transient local current error tolerance in amperes (default 1e-9)."),
+)
+
+def _add_transient_arguments(parser):
+    for flag, _name, conversion, help_text in _TRANSIENT_ARGUMENTS:
+        parser.add_argument(flag, type=conversion, help=help_text)
+
+def _transient_worker_arguments(args):
+    return tuple(value for flag, name, _conversion, _help in _TRANSIENT_ARGUMENTS
+                 if getattr(args, name) is not None
+                 for value in (flag, str(getattr(args, name))))
+
 def _add_project_argument(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--project",
@@ -616,7 +638,7 @@ def _open_verified_bundle(path: str | Path):
 
 
 def _handle_simulate(args: argparse.Namespace) -> int:
-    from ._simulation import execute_dc, execute_ac, validate_output
+    from ._simulation import execute_dc, execute_ac, execute_transient, transient_options, validate_output
 
     if args.bundle is not None and args.project is not None:
         raise CliError(
@@ -628,8 +650,8 @@ def _handle_simulate(args: argparse.Namespace) -> int:
             "`volt simulate` requires --design, --request and --output.",
             code="missing-simulation-argument",
         )
-    if args.analysis == "ac" and args.backend != "native":
-        raise CliError("AC analysis requires --backend native.", code="unsupported-ac-backend")
+    if args.analysis in ("ac", "transient") and args.backend != "native":
+        raise CliError(f"{args.analysis.upper()} analysis requires --backend native.", code=f"unsupported-{args.analysis}-backend")
     if args.backend == "native" and args.ngspice is not None:
         raise CliError(
             "--ngspice is valid only with --backend ngspice.",
@@ -651,6 +673,7 @@ def _handle_simulate(args: argparse.Namespace) -> int:
         raise CliError(
             f"Invalid simulation path: {error}", code="invalid-simulation-path"
         ) from error
+    options = transient_options(args)
     validate_output(output)
 
     if args.bundle is not None:
@@ -671,13 +694,13 @@ def _handle_simulate(args: argparse.Namespace) -> int:
                 code="invalid-design-selector",
             )
         try:
-            selected_input = matches[0].dc_input()
+            selected_input = matches[0].electrical_input()
         except Exception as error:
             raise CliError(
                 f"Failed to prepare the selected Design for {args.analysis.upper()}: {error}",
                 code="invalid-simulation-input",
             ) from error
-        execute = execute_ac if args.analysis == "ac" else execute_dc
+        execute = execute_transient if args.analysis == "transient" else execute_ac if args.analysis == "ac" else execute_dc
         payload, exit_code = execute(
             selected_input,
             request,
@@ -691,6 +714,7 @@ def _handle_simulate(args: argparse.Namespace) -> int:
             },
             backend=args.backend,
             ngspice=ngspice,
+            **({"options": options} if args.analysis == "transient" else {}),
         )
     else:
         config = discover_project(project=args.project)
@@ -709,6 +733,7 @@ def _handle_simulate(args: argparse.Namespace) -> int:
                 "--backend",
                 args.backend,
                 *(() if ngspice is None else ("--ngspice", str(ngspice))),
+                *_transient_worker_arguments(args),
             ),
         )
     if args.emit_json:

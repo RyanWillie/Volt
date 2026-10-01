@@ -42,7 +42,7 @@ if "--version" in sys.argv:
 
 
 def _analysis_and_output(bundle: Path, request_path: Path):
-    input = _circuit(bundle, "divider").dc_input()
+    input = _circuit(bundle, "divider").electrical_input()
     request = volt.DcRequest.from_json(input, request_path.read_bytes())
     compiled = volt.compile_electrical(request)
     assert compiled.complete

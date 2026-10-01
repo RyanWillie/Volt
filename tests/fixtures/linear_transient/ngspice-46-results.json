@@ -1,0 +1,498 @@
+{
+  "backend": "ngspice",
+  "version": "46",
+  "method": "trap",
+  "maxord": 2,
+  "maximum_step_s": 1e-07,
+  "reltol": 1e-10,
+  "abstol_a": 1e-14,
+  "vntol_v": 1e-12,
+  "initialization": "explicit C/L IC with UIC, no bias solve",
+  "orientation": "v(node) relative to 0; i(source) from positive to negative; i(L1) first to second node",
+  "interpolation": "Oracle-only linear interpolation of bracketing accepted ngspice times at stated samples; no extrapolation; native must land exactly.",
+  "cases": [
+    {
+      "case": "rc_startup",
+      "deck": "rc_startup.cir",
+      "deck_sha256": "1d0dbc99baf49e3b8b69ab1e9b6ea142c4cd8f10f6443322166175e5c4f49ef4",
+      "raw": "rc_startup.tsv.gz",
+      "raw_sha256": "83ade9c55c0028f3e5ff8aac73691e1fac6fa4c336577d22e018e1ae71399df8",
+      "vectors": [
+        "v(out)",
+        "i(Vdrive)"
+      ],
+      "samples": [
+        {
+          "time_s": 0.00025,
+          "values": [
+            0.22119921632454262,
+            -0.0007788007836754574
+          ],
+          "bracket_s": [
+            0.0002499248425860629,
+            0.0002500248425860629
+          ],
+          "analytical_values": [
+            0.22119921692859512,
+            -0.0007788007830714049
+          ]
+        },
+        {
+          "time_s": 0.001,
+          "values": [
+            0.6321205587722948,
+            -0.00036787944122770524
+          ],
+          "bracket_s": [
+            0.0009999248425858291,
+            0.0010000248425858292
+          ],
+          "analytical_values": [
+            0.6321205588285577,
+            -0.00036787944117144236
+          ]
+        },
+        {
+          "time_s": 0.002,
+          "values": [
+            0.8646647168540861,
+            -0.00013533528314591393
+          ],
+          "bracket_s": [
+            0.0019999248425862943,
+            0.002000024842586294
+          ],
+          "analytical_values": [
+            0.8646647167633873,
+            -0.0001353352832366127
+          ]
+        },
+        {
+          "time_s": 0.003,
+          "values": [
+            0.9502129317525073,
+            -4.978706824749268e-05
+          ],
+          "bracket_s": [
+            0.002999912421292346,
+            0.003
+          ],
+          "analytical_values": [
+            0.950212931632136,
+            -4.9787068367863945e-05
+          ]
+        }
+      ],
+      "compressed_sha256": "9f852a91da572af4a8534153715b72493a2c5722a1920808d611702d25c32fa0"
+    },
+    {
+      "case": "rc_discharge",
+      "deck": "rc_discharge.cir",
+      "deck_sha256": "ee45a7eaa3220537d251600323eaf2d820dc44b61fc735143a9b1f452bdd4300",
+      "raw": "rc_discharge.tsv.gz",
+      "raw_sha256": "5430da53abf57521f737eadfce6a565a3dc009c58fc9521281a6fb0b23a528a9",
+      "vectors": [
+        "v(out)"
+      ],
+      "samples": [
+        {
+          "time_s": 0.00025,
+          "values": [
+            0.7788007840033383
+          ],
+          "bracket_s": [
+            0.00024995000000000524,
+            0.00025005000000000524
+          ],
+          "analytical_values": [
+            0.7788007830714049
+          ]
+        },
+        {
+          "time_s": 0.001,
+          "values": [
+            0.3678794413807866
+          ],
+          "bracket_s": [
+            0.0009999499999997713,
+            0.0010000499999997714
+          ],
+          "analytical_values": [
+            0.36787944117144233
+          ]
+        },
+        {
+          "time_s": 0.002,
+          "values": [
+            0.1353352832004864
+          ],
+          "bracket_s": [
+            0.0019999500000002363,
+            0.002000050000000236
+          ],
+          "analytical_values": [
+            0.1353352832366127
+          ]
+        },
+        {
+          "time_s": 0.003,
+          "values": [
+            0.0497870682506188
+          ],
+          "bracket_s": [
+            0.002999924999999317,
+            0.003
+          ],
+          "analytical_values": [
+            0.049787068367863944
+          ]
+        }
+      ],
+      "compressed_sha256": "33366444b48e7349c6def14ab56e7569e6baa9b63f05f86be6ffcbd84257b782"
+    },
+    {
+      "case": "rl_startup",
+      "deck": "rl_startup.cir",
+      "deck_sha256": "a03726851bf2dc84d34e120bd1d3765579ed100d17906710b6ccc1d9e6333e7d",
+      "raw": "rl_startup.tsv.gz",
+      "raw_sha256": "67fd6943bed70273a9346e2b749ce5ae1b9759a39b2a5f6b18be9db069339f00",
+      "vectors": [
+        "v(out)",
+        "i(L1)",
+        "i(Vdrive)"
+      ],
+      "samples": [
+        {
+          "time_s": 0.00025,
+          "values": [
+            0.7788007836753611,
+            0.002211992163246389,
+            -0.00221199216324639
+          ],
+          "bracket_s": [
+            0.0002499248425861292,
+            0.0002500248425861292
+          ],
+          "analytical_values": [
+            0.7788007830714049,
+            0.0022119921692859514,
+            -0.0022119921692859514
+          ]
+        },
+        {
+          "time_s": 0.001,
+          "values": [
+            0.3678794412266778,
+            0.006321205587733222,
+            -0.006321205587733222
+          ],
+          "bracket_s": [
+            0.0009999248425858953,
+            0.0010000248425858953
+          ],
+          "analytical_values": [
+            0.36787944117144233,
+            0.006321205588285576,
+            -0.006321205588285576
+          ]
+        },
+        {
+          "time_s": 0.002,
+          "values": [
+            0.13533528314412763,
+            0.008646647168558725,
+            -0.008646647168558725
+          ],
+          "bracket_s": [
+            0.00199992484258636,
+            0.00200002484258636
+          ],
+          "analytical_values": [
+            0.1353352832366127,
+            0.008646647167633872,
+            -0.008646647167633872
+          ]
+        },
+        {
+          "time_s": 0.003,
+          "values": [
+            0.0497870682457685,
+            0.009502129317542315,
+            -0.009502129317542315
+          ],
+          "bracket_s": [
+            0.002999912421292379,
+            0.003
+          ],
+          "analytical_values": [
+            0.049787068367863944,
+            0.009502129316321361,
+            -0.009502129316321361
+          ]
+        }
+      ],
+      "compressed_sha256": "d8d7c54d15d5169fa5d67d4a308c47b254ea20777d0c62ddb38f2ad236c3c8bf"
+    },
+    {
+      "case": "rl_decay",
+      "deck": "rl_decay.cir",
+      "deck_sha256": "65824409a8872279da3f54a6bcb2eaae4552ae853a09d838d8cf9103d185f38f",
+      "raw": "rl_decay.tsv.gz",
+      "raw_sha256": "e1638f2cc8dd6c41f00e9c258402dc979628c5c8d7173a68e7ff92302e5483a0",
+      "vectors": [
+        "v(out)",
+        "i(L1)"
+      ],
+      "samples": [
+        {
+          "time_s": 0.00025,
+          "values": [
+            -0.7788007840044202,
+            0.007788007840044202
+          ],
+          "bracket_s": [
+            0.00024995000000000524,
+            0.00025005000000000524
+          ],
+          "analytical_values": [
+            -0.7788007830714049,
+            0.007788007830714049
+          ]
+        },
+        {
+          "time_s": 0.001,
+          "values": [
+            -0.3678794413828438,
+            0.003678794413828438
+          ],
+          "bracket_s": [
+            0.0009999499999997713,
+            0.0010000499999997714
+          ],
+          "analytical_values": [
+            -0.36787944117144233,
+            0.0036787944117144234
+          ]
+        },
+        {
+          "time_s": 0.002,
+          "values": [
+            -0.13533528320200258,
+            0.0013533528320200257
+          ],
+          "bracket_s": [
+            0.0019999500000002363,
+            0.002000050000000236
+          ],
+          "analytical_values": [
+            -0.1353352832366127,
+            0.0013533528323661271
+          ]
+        },
+        {
+          "time_s": 0.003,
+          "values": [
+            -0.049787068251452585,
+            0.0004978706825145259
+          ],
+          "bracket_s": [
+            0.002999924999999317,
+            0.003
+          ],
+          "analytical_values": [
+            -0.049787068367863944,
+            0.0004978706836786395
+          ]
+        }
+      ],
+      "compressed_sha256": "7e0ee39c0a1ee2808316718e6d61e54fd6e95ea06cba61537f37ce00c3d3b46f"
+    },
+    {
+      "case": "rlc_free",
+      "deck": "rlc_free.cir",
+      "deck_sha256": "c2b23977838c29b0e32bc121fff0ec1f99476470b42ac764da146d23de951f5a",
+      "raw": "rlc_free.tsv.gz",
+      "raw_sha256": "30397b0809c0204c8a2e039fc1a22caf19831217ee81d8ee6674633a087783a7",
+      "vectors": [
+        "v(out)",
+        "i(L1)"
+      ],
+      "samples": [
+        {
+          "time_s": 0.00025,
+          "values": [
+            0.7264361138871054,
+            0.01988899704158141
+          ],
+          "bracket_s": [
+            0.00024992363156740415,
+            0.00025002363156740416
+          ],
+          "analytical_values": [
+            0.7264361136744216,
+            0.01988899733864628
+          ]
+        },
+        {
+          "time_s": 0.001,
+          "values": [
+            -0.6045657859358124,
+            0.00037086320187162475
+          ],
+          "bracket_s": [
+            0.0009999447295064015,
+            0.0010000447295064015
+          ],
+          "analytical_values": [
+            -0.6045657890000152,
+            0.0003708626692986779
+          ]
+        },
+        {
+          "time_s": 0.002,
+          "values": [
+            0.3653622580213166,
+            -0.0004497977310838379
+          ],
+          "bracket_s": [
+            0.0019999077213370005,
+            0.0020000077213370004
+          ],
+          "analytical_values": [
+            0.3653622541097316,
+            -0.00044979715574520725
+          ]
+        },
+        {
+          "time_s": 0.003,
+          "values": [
+            -0.2207187109376858,
+            0.00040909983970985667
+          ],
+          "bracket_s": [
+            0.002999922684440438,
+            0.003
+          ],
+          "analytical_values": [
+            -0.22071870645285133,
+            0.0004090993229114007
+          ]
+        }
+      ],
+      "compressed_sha256": "4f821b4529556d5834e3bc7a451f69851158b53f2620ab48f8476d168911aadc"
+    },
+    {
+      "case": "rc_ramp",
+      "deck": "rc_ramp.cir",
+      "deck_sha256": "1e34fde1ab68fdc05056b7d3a1669b74a40e09461ae15ba3a28d246a43f9308e",
+      "raw": "rc_ramp.tsv.gz",
+      "raw_sha256": "90dd2b440c22618af6656cbc5daec0e91ae7822b53fb41a30a292acfd0e4c7dd",
+      "vectors": [
+        "v(out)",
+        "i(Vdrive)"
+      ],
+      "samples": [
+        {
+          "time_s": 0.00025,
+          "values": [
+            0.02880078383500183,
+            -0.0002211992161649982
+          ],
+          "bracket_s": [
+            0.0002499650529103558,
+            0.0002500650529103558
+          ],
+          "analytical_values": [
+            0.02880078307140488,
+            -0.00022119921692859512
+          ]
+        },
+        {
+          "time_s": 0.001,
+          "values": [
+            0.3678794408838533,
+            -0.0006321205591161467
+          ],
+          "bracket_s": [
+            0.000999932526455061,
+            0.001
+          ],
+          "analytical_values": [
+            0.36787944117144233,
+            -0.0006321205588285577
+          ]
+        },
+        {
+          "time_s": 0.0015,
+          "values": [
+            0.6165994999217346,
+            -0.0003834005000782654
+          ],
+          "bracket_s": [
+            0.001499950000000283,
+            0.0015000500000002831
+          ],
+          "analytical_values": [
+            0.6165995004357965,
+            -0.00038340049956420353
+          ]
+        },
+        {
+          "time_s": 0.002,
+          "values": [
+            0.7674558421398139,
+            -0.00023254415786018613
+          ],
+          "bracket_s": [
+            0.0019999250000002325,
+            0.002
+          ],
+          "analytical_values": [
+            0.7674558420651704,
+            -0.00023254415793482963
+          ]
+        },
+        {
+          "time_s": 0.0025,
+          "values": [
+            0.6458935195907335,
+            0.0006458935195907327
+          ],
+          "bracket_s": [
+            0.0024999249999996,
+            0.0025000000000000005
+          ],
+          "analytical_values": [
+            0.6458935190502022,
+            0.0006458935190502022
+          ]
+        },
+        {
+          "time_s": 0.003,
+          "values": [
+            0.39175422239696345,
+            0.00039175422239696344
+          ],
+          "bracket_s": [
+            0.0029999249999996,
+            0.003
+          ],
+          "analytical_values": [
+            0.3917542222136335,
+            0.00039175422221363347
+          ]
+        }
+      ],
+      "compressed_sha256": "396a413d36accd19f0f107bf466f408cb10c8b95f9558abbfe12b76a3219daa9"
+    }
+  ],
+  "format": "volt.linear-transient-reference-corpus",
+  "format_version": 1,
+  "version_banner": "******\n** ngspice-46 : Circuit level simulation program\n** Compiled with KLU Direct Linear Solver\n** The U. C. Berkeley CAD Group\n** Copyright 1985-1994, Regents of the University of California.\n** Copyright 2001-2025, The ngspice team.\n** Please get your ngspice manual from https://ngspice.sourceforge.io/docs.html\n** Please file your bug-reports at http://ngspice.sourceforge.net/bugrep.html\n******\n",
+  "precision": "set numdgt=17",
+  "native_analytical_budget": {
+    "relative_physical_case_scale": 0.001,
+    "voltage_absolute_v": 1e-08,
+    "current_absolute_a": 1e-11
+  }
+}

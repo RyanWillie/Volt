@@ -15,18 +15,18 @@ using namespace volt;
 
 Quantity hz(double value) { return Quantity{UnitDimension::Frequency, value}; }
 
-AcRequest request(const DcInput &input, double amplitude = 1.0, double phase = 0.0,
+AcRequest request(const ElectricalInput &input, double amplitude = 1.0, double phase = 0.0,
                   double frequency = 100.0) {
     const auto dc = test::dc_request::complete_request(input);
-    return AcRequest{
-        DcRequestKey{"ac"},
-        input,
-        dc.reference(),
-        AcFrequencySweep{{hz(frequency)}},
-        {AcVoltageSource{DcSourceKey{"drive"}, DcNetPair{input.net(NetId{0}), input.net(NetId{1})},
-                         Quantity{UnitDimension::Voltage, amplitude}, phase}},
-        {},
-        dc.exclusions()};
+    return AcRequest{ElectricalRequestKey{"ac"},
+                     input,
+                     dc.reference(),
+                     AcFrequencySweep{{hz(frequency)}},
+                     {AcVoltageSource{ElectricalSourceKey{"drive"},
+                                      ElectricalNetPair{input.net(NetId{0}), input.net(NetId{1})},
+                                      Quantity{UnitDimension::Voltage, amplitude}, phase}},
+                     {},
+                     dc.exclusions()};
 }
 } // namespace
 
@@ -53,28 +53,31 @@ TEST_CASE("AC frequency sweeps enforce typed finite positive strictly ascending 
 
 TEST_CASE("AC sources use explicit peak amplitudes finite radian phases and canonical zero") {
     const auto fixture = test::dc_request::make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
-    const auto nets = DcNetPair{input.net(fixture.positive), input.net(fixture.negative)};
-    const auto source = AcVoltageSource{
-        DcSourceKey{"drive"}, nets, Quantity{UnitDimension::Voltage, 2.0}, std::numbers::pi / 2.0};
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
+    const auto nets = ElectricalNetPair{input.net(fixture.positive), input.net(fixture.negative)};
+    const auto source =
+        AcVoltageSource{ElectricalSourceKey{"drive"}, nets, Quantity{UnitDimension::Voltage, 2.0},
+                        std::numbers::pi / 2.0};
     CHECK(std::abs(source.phasor() - std::complex<double>{0.0, 2.0}) < 1e-14);
-    const auto zero =
-        AcVoltageSource{DcSourceKey{"zero"}, nets, Quantity{UnitDimension::Voltage, -0.0}, 9.0};
+    const auto zero = AcVoltageSource{ElectricalSourceKey{"zero"}, nets,
+                                      Quantity{UnitDimension::Voltage, -0.0}, 9.0};
     CHECK(zero.phase() == 0.0);
     CHECK_FALSE(std::signbit(zero.amplitude().value()));
     CHECK(zero.phasor() == std::complex<double>{});
-    CHECK_THROWS(
-        AcVoltageSource{DcSourceKey{"bad"}, nets, Quantity{UnitDimension::Current, 1.0}, 0.0});
-    CHECK_THROWS(
-        AcCurrentSource{DcSourceKey{"bad"}, nets, Quantity{UnitDimension::Current, -1.0}, 0.0});
-    CHECK_THROWS(AcVoltageSource{DcSourceKey{"bad"}, nets, Quantity{UnitDimension::Voltage, 0.0},
+    CHECK_THROWS(AcVoltageSource{ElectricalSourceKey{"bad"}, nets,
+                                 Quantity{UnitDimension::Current, 1.0}, 0.0});
+    CHECK_THROWS(AcCurrentSource{ElectricalSourceKey{"bad"}, nets,
+                                 Quantity{UnitDimension::Current, -1.0}, 0.0});
+    CHECK_THROWS(AcVoltageSource{ElectricalSourceKey{"bad"}, nets,
+                                 Quantity{UnitDimension::Voltage, 0.0},
                                  std::numeric_limits<double>::infinity()});
-    CHECK_THROWS(AcVoltageSource{
-        DcSourceKey{"bad"}, DcNetPair{input.net(fixture.positive), input.net(fixture.positive)},
-        Quantity{UnitDimension::Voltage, 1.0}, 0.0});
+    CHECK_THROWS(
+        AcVoltageSource{ElectricalSourceKey{"bad"},
+                        ElectricalNetPair{input.net(fixture.positive), input.net(fixture.positive)},
+                        Quantity{UnitDimension::Voltage, 1.0}, 0.0});
     for (const auto amplitude :
          {std::numeric_limits<double>::denorm_min(), std::numeric_limits<double>::max()}) {
-        const auto value = AcVoltageSource{DcSourceKey{"extreme"}, nets,
+        const auto value = AcVoltageSource{ElectricalSourceKey{"extreme"}, nets,
                                            Quantity{UnitDimension::Voltage, amplitude}, 1e300}
                                .phasor();
         CHECK(std::isfinite(value.real()));
@@ -84,9 +87,9 @@ TEST_CASE("AC sources use explicit peak amplitudes finite radian phases and cano
 
 TEST_CASE("AC request assesses missing assignments and models without fabricated DC excitation") {
     const auto fixture = test::dc_request::make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
-    const auto incomplete =
-        AcRequest{DcRequestKey{"incomplete"}, input, std::nullopt, AcFrequencySweep{{hz(1.0)}}};
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
+    const auto incomplete = AcRequest{ElectricalRequestKey{"incomplete"}, input, std::nullopt,
+                                      AcFrequencySweep{{hz(1.0)}}};
     const auto assessment = assess_ac_request(incomplete);
     CHECK_FALSE(assessment.complete());
     CHECK(assessment.diagnostics().size() == 5);
@@ -94,11 +97,12 @@ TEST_CASE("AC request assesses missing assignments and models without fabricated
     CHECK(assess_ac_request(request(input, 0.0)).complete());
     const auto foreign_fixture = test::dc_request::make_fixture();
     static_cast<void>(foreign_fixture.circuit->add_net(NetSpec{.name = NetName{"extra"}}));
-    const auto foreign = io::prepare_dc_input(*foreign_fixture.circuit, foreign_fixture.library);
-    CHECK_THROWS(AcRequest{DcRequestKey{"foreign"}, input, foreign.net(NetId{1}),
+    const auto foreign =
+        io::prepare_electrical_input(*foreign_fixture.circuit, foreign_fixture.library);
+    CHECK_THROWS(AcRequest{ElectricalRequestKey{"foreign"}, input, foreign.net(NetId{1}),
                            AcFrequencySweep{{hz(1.0)}}});
     const auto source = std::get<AcVoltageSource>(request(input).sources().front());
-    CHECK_THROWS(AcRequest{DcRequestKey{"duplicate"},
+    CHECK_THROWS(AcRequest{ElectricalRequestKey{"duplicate"},
                            input,
                            input.net(NetId{1}),
                            AcFrequencySweep{{hz(1.0)}},
@@ -107,7 +111,7 @@ TEST_CASE("AC request assesses missing assignments and models without fabricated
 
 TEST_CASE("AC uses one graph preserving RCL laws origins and true request identities") {
     const auto fixture = test::dc_request::make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
     const auto compiled = compile_electrical(request(input));
     REQUIRE(compiled.complete());
     const auto &model = *compiled.model();
@@ -144,9 +148,9 @@ TEST_CASE("AC uses one graph preserving RCL laws origins and true request identi
 
 TEST_CASE("AC derived probes validate dimensions target keys and stimulus readiness") {
     const auto fixture = test::dc_request::make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
     const auto base = request(input);
-    const auto nets = DcNetPair{input.net(NetId{0}), input.net(NetId{1})};
+    const auto nets = ElectricalNetPair{input.net(NetId{0}), input.net(NetId{1})};
     const auto make = [&](std::vector<DcProbe> probes, std::vector<AcGainProbe> gains,
                           std::vector<AcImpedanceProbe> impedances = {}) {
         return AcRequest{base.key(),           input,
@@ -155,15 +159,21 @@ TEST_CASE("AC derived probes validate dimensions target keys and stimulus readin
                          base.exclusions(),    std::move(gains),
                          std::move(impedances)};
     };
-    const std::vector<DcProbe> probes{DcVoltageProbe{DcProbeKey{"v"}, nets},
-                                      DcSourceCurrentProbe{DcProbeKey{"i"}, DcSourceKey{"drive"}}};
-    CHECK_THROWS(make(probes, {AcGainProbe{DcProbeKey{"gain"}, DcProbeKey{"v"}, DcProbeKey{"i"}}}));
+    const std::vector<DcProbe> probes{
+        DcVoltageProbe{ElectricalProbeKey{"v"}, nets},
+        DcSourceCurrentProbe{ElectricalProbeKey{"i"}, ElectricalSourceKey{"drive"}}};
+    CHECK_THROWS(make(probes, {AcGainProbe{ElectricalProbeKey{"gain"}, ElectricalProbeKey{"v"},
+                                           ElectricalProbeKey{"i"}}}));
     CHECK_THROWS(
-        make(probes, {AcGainProbe{DcProbeKey{"gain"}, DcProbeKey{"missing"}, DcProbeKey{"v"}}}));
-    CHECK_THROWS(make(probes, {AcGainProbe{DcProbeKey{"v"}, DcProbeKey{"v"}, DcProbeKey{"v"}}}));
-    CHECK_NOTHROW(
-        make(probes, {AcGainProbe{DcProbeKey{"gain"}, DcProbeKey{"v"}, DcProbeKey{"v"}}}));
-    CHECK_THROWS(make(probes, {}, {AcImpedanceProbe{DcProbeKey{"z"}, nets, DcSourceKey{"drive"}}}));
+        make(probes, {AcGainProbe{ElectricalProbeKey{"gain"}, ElectricalProbeKey{"missing"},
+                                  ElectricalProbeKey{"v"}}}));
+    CHECK_THROWS(make(probes, {AcGainProbe{ElectricalProbeKey{"v"}, ElectricalProbeKey{"v"},
+                                           ElectricalProbeKey{"v"}}}));
+    CHECK_NOTHROW(make(probes, {AcGainProbe{ElectricalProbeKey{"gain"}, ElectricalProbeKey{"v"},
+                                            ElectricalProbeKey{"v"}}}));
+    CHECK_THROWS(
+        make(probes, {},
+             {AcImpedanceProbe{ElectricalProbeKey{"z"}, nets, ElectricalSourceKey{"drive"}}}));
     const auto zero_gain =
         AcRequest{base.key(),
                   input,
@@ -172,17 +182,19 @@ TEST_CASE("AC derived probes validate dimensions target keys and stimulus readin
                   request(input, 0.0).sources(),
                   probes,
                   base.exclusions(),
-                  {AcGainProbe{DcProbeKey{"gain"}, DcProbeKey{"v"}, DcProbeKey{"v"}}}};
+                  {AcGainProbe{ElectricalProbeKey{"gain"}, ElectricalProbeKey{"v"},
+                               ElectricalProbeKey{"v"}}}};
     CHECK_FALSE(assess_ac_request(zero_gain).complete());
-    const auto impedance = AcRequest{
-        base.key(),
-        input,
-        base.reference(),
-        base.sweep(),
-        {AcCurrentSource{DcSourceKey{"drive"}, nets, Quantity{UnitDimension::Current, 1.0}, 0.0}},
-        {},
-        base.exclusions(),
-        {},
-        {AcImpedanceProbe{DcProbeKey{"z"}, nets, DcSourceKey{"drive"}}}};
+    const auto impedance =
+        AcRequest{base.key(),
+                  input,
+                  base.reference(),
+                  base.sweep(),
+                  {AcCurrentSource{ElectricalSourceKey{"drive"}, nets,
+                                   Quantity{UnitDimension::Current, 1.0}, 0.0}},
+                  {},
+                  base.exclusions(),
+                  {},
+                  {AcImpedanceProbe{ElectricalProbeKey{"z"}, nets, ElectricalSourceKey{"drive"}}}};
     CHECK(assess_ac_request(impedance).complete());
 }

@@ -6,14 +6,10 @@ from . import _volt
 
 ANALYSIS_DIAGNOSTIC_CODES = frozenset(_volt.analysis_diagnostic_codes())
 
-DcRequestKey = _volt.DcRequestKey
-DcSourceKey = _volt.DcSourceKey
-DcProbeKey = _volt.DcProbeKey
-DcInputIdentity = _volt.DcInputIdentity
-DcInput = _volt.DcInput
-DcNetRef = _volt.DcNetRef
-DcOccurrenceRef = _volt.DcOccurrenceRef
-DcNetPair = _volt.DcNetPair
+from .electrical import (ElectricalRequestKey, ElectricalSourceKey, ElectricalProbeKey,
+                         ElectricalInputIdentity, ElectricalInput, ElectricalNetRef,
+                         ElectricalOccurrenceRef, ElectricalNetPair, prepare_electrical_input)
+
 DcSourceCurrentProbe = _volt.DcSourceCurrentProbe
 DcModelElementCurrentProbe = _volt.DcModelElementCurrentProbe
 DcNonElectricalExclusion = _volt.DcNonElectricalExclusion
@@ -27,21 +23,16 @@ DcRequestAssessment = _volt.DcRequestAssessment
 assess_dc_request = _volt.assess_dc_request
 
 
-def prepare_dc_input(design):
-    """Capture one exact immutable native input from an authoring Design."""
-    return _volt.prepare_dc_input(design._circuit)
-
-
 def DcVoltageSource(key, from_, to, value):
     """Construct a native ideal voltage source over an ordered net pair."""
-    return _volt._DcVoltageSource(key, DcNetPair(from_, to), value)
+    return _volt._DcVoltageSource(key, ElectricalNetPair(from_, to), value)
 
 
 def DcCurrentSource(key, from_, to, value):
     """Construct a native ideal current source over an ordered net pair."""
-    return _volt._DcCurrentSource(key, DcNetPair(from_, to), value)
+    return _volt._DcCurrentSource(key, ElectricalNetPair(from_, to), value)
 
 
 def DcVoltageProbe(key, from_, to):
     """Construct a native voltage probe over an ordered net pair."""
-    return _volt._DcVoltageProbe(key, DcNetPair(from_, to))
+    return _volt._DcVoltageProbe(key, ElectricalNetPair(from_, to))

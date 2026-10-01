@@ -123,9 +123,9 @@ class IdentityEncoder final {
 }
 
 [[nodiscard]] ContentHash make_mapping_identity(const CompiledElectricalModel &model) {
-    if (model.ac_request() != nullptr) {
+    if (model.ac_request() != nullptr || model.transient_request() != nullptr) {
         throw KernelArgumentError{ErrorCode::InvalidArgument,
-                                  "AC compiled model cannot enter ngspice DC adapter"};
+                                  "Non-DC compiled model cannot enter ngspice DC adapter"};
     }
     auto encoder = IdentityEncoder{};
     encoder.text("volt.ngspice-dc-mapping");

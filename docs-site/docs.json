@@ -56,6 +56,8 @@
               "api/python/schematic",
               "api/python/pcb",
               "api/python/dc",
+              "api/python/transient",
+              "api/python/transient_solve",
               "api/python/compilation",
               "api/python/solve",
               "api/python/diagnostics"

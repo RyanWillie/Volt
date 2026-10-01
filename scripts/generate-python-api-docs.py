@@ -27,6 +27,8 @@ PAGE_ORDER = (
     "schematic",
     "pcb",
     "dc",
+    "transient",
+    "transient_solve",
     "compilation",
     "solve",
     "diagnostics",
@@ -40,6 +42,8 @@ PAGE_TITLES = {
     "schematic": "Schematic",
     "pcb": "PCB",
     "dc": "DC Requests",
+    "transient": "Transient Requests",
+    "transient_solve": "Native Transient Solve",
     "compilation": "Electrical Compilation",
     "solve": "Linear DC Solve",
     "diagnostics": "Diagnostics",
@@ -53,6 +57,8 @@ PAGE_DESCRIPTIONS = {
     "schematic": "Generated reference for schematic sheets, drawing helpers, and presentation handles.",
     "pcb": "Generated reference for PCB board, footprint, pad, and placement helpers.",
     "dc": "Generated reference for immutable DC inputs, requests, probes, and coverage.",
+    "transient": "Generated reference for explicit native transient waveforms, initial states and requests.",
+    "transient_solve": "Generated reference for native adaptive backward-Euler options, reports and observations.",
     "compilation": "Generated reference for native electrical compilation reports and models.",
     "solve": "Generated reference for validated native linear DC options, reports, and results.",
     "diagnostics": "Generated reference for diagnostics and validation report objects.",
@@ -118,6 +124,8 @@ def module_page(module: str) -> str:
         return "library"
     if module in {"pcb", "_footprint", "_pcb_layout"}:
         return "pcb"
+    if module in {"transient", "transient_solve"}:
+        return module
     if module == "dc":
         return "dc"
     if module == "compilation":

@@ -161,17 +161,17 @@ demonstrate a resistor, ideal C/L, a composite C+ESR+ESL Part, and source-free b
 
 ## DC requests
 
-`volt.prepare_dc_input` captures an immutable `volt.DcInput` from a `volt.Design`. Its
-`volt.DcInputIdentity`, `volt.DcNetRef`, and `volt.DcOccurrenceRef` values retain exact native
-input identity; `volt.DcNetPair` preserves endpoint order. Authoring handles are accepted only
+`volt.prepare_electrical_input` captures an immutable `volt.ElectricalInput` from a `volt.Design`. Its
+`volt.ElectricalInputIdentity`, `volt.ElectricalNetRef`, and `volt.ElectricalOccurrenceRef` values retain exact native
+input identity; `volt.ElectricalNetPair` preserves endpoint order. Authoring handles are accepted only
 when their canonical logical identity matches the captured input.
 
 | Export | Purpose |
 | --- | --- |
 | `volt.DcRequest` | Immutable native request with deterministic JSON transport and exact input ownership. |
-| `volt.DcRequestKey` | Stable request-local key. |
-| `volt.DcSourceKey` | Stable request-local source key. |
-| `volt.DcProbeKey` | Stable request-local probe key. |
+| `volt.ElectricalRequestKey` | Stable request-local key. |
+| `volt.ElectricalSourceKey` | Stable request-local source key. |
+| `volt.ElectricalProbeKey` | Stable request-local probe key. |
 | `volt.DcVoltageSource` | Ideal voltage stimulus over an ordered net pair. |
 | `volt.DcCurrentSource` | Ideal current stimulus over an ordered net pair. |
 | `volt.DcVoltageProbe` | Voltage measurement request over an ordered net pair. |
@@ -311,6 +311,42 @@ the compiled graph.
 | `volt.ASSEMBLY_DIAGNOSTIC_CODES` | Stable assembly handoff diagnostic code strings exported for project-facing checks. |
 | `volt.PCB_VISUAL_DIAGNOSTIC_CODES` | Stable PCB visual/review diagnostic code strings exported for project-facing checks. |
 | `volt.PCB_FABRICATION_DIAGNOSTIC_CODES` | Stable fabrication handoff diagnostic code strings exported for project-facing checks. |
+
+## Native linear transient
+
+Requests use the shared exact `ElectricalInput` and oriented DC primitive probe types. Execution
+is explicit; initial-state conversion copies an already successful DC result and never solves.
+See [CLI simulation](/cli/simulate) for mandatory step/work limits and supported initialization.
+
+| Export | Purpose |
+| --- | --- |
+| `volt.TransientTimeGrid` | Typed exact output times, beginning at zero. |
+| `volt.TransientWaveformKnot` | One Time/value corner of a continuous native PWL source. |
+| `volt.TransientWaveform` | Constant or continuous PWL law with final-value hold. |
+| `volt.TransientVoltageSource` | Signed oriented voltage stimulus bound to exact input nets. |
+| `volt.TransientCurrentSource` | Signed oriented current stimulus bound to exact input nets. |
+| `volt.TransientStorageKind` | Capacitor voltage or inductor current coordinate kind. |
+| `volt.TransientInitialState` | One exact occurrence/selected-Part/model-element storage value. |
+| `volt.TransientInitialConditions` | Complete initial entries with optional DC-result provenance. |
+| `volt.TransientDcProvenance` | Exact input, participation and successful DC-result identity. |
+| `volt.initial_state_from` | Native complete storage conversion without numerical execution. |
+| `volt.TransientRequest` | Immutable input, grid, waveform, probe, exclusion and initial-state contract. |
+| `volt.TransientRequestAssessment` | Completeness, coverage and native validation evidence. |
+| `volt.assess_transient_request` | Assess request completeness without numerical execution. |
+| `volt.TransientSolveOptions` | Mandatory step/work bounds and tunable local temporal tolerances. |
+| `volt.TransientSolveOutcome` | Success or explicit initialization/numerical/step/work failure. |
+| `volt.TransientAlgebraMetrics` | Rank, conditioning and separate voltage/current residual evidence. |
+| `volt.TransientNodeResult` | Potential at a compiled node. |
+| `volt.TransientBranchResult` | Oriented voltage/current and absorbed power at a compiled branch. |
+| `volt.TransientProbeResult` | Typed request-keyed observation. |
+| `volt.TransientStorageDerivative` | Native initial storage derivative by compiled origin. |
+| `volt.TransientEvaluationKind` | Initialization, algebraic sample, full step or half-step stage. |
+| `volt.TransientEvaluation` | Timed solve result with algebra/error evidence and work counters. |
+| `volt.TransientAcceptedHalfStep` | Actual accepted half-step time, duration and local-error evidence. |
+| `volt.TransientSample` | Complete observations at exactly one requested output time. |
+| `volt.TransientSolution` | Immutable complete successful trajectory and analysis identity. |
+| `volt.TransientSolveReport` | Full success/failure evidence; optional solution only on whole success. |
+| `volt.solve_transient` | Explicit native adaptive backward-Euler execution. |
 
 ## Example lookup
 

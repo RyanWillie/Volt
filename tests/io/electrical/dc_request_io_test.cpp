@@ -20,22 +20,23 @@ class NoParts final : public PartDefinitionResolver {
     }
 };
 
-DcInput input() {
+ElectricalInput input() {
     auto circuit = Circuit{};
     static_cast<void>(circuit.add_net(NetSpec{.name = NetName{"positive"}}));
     static_cast<void>(circuit.add_net(NetSpec{.name = NetName{"reference"}}));
-    return io::prepare_dc_input(circuit, NoParts{});
+    return io::prepare_electrical_input(circuit, NoParts{});
 }
 
-DcRequest request(const DcInput &owner) {
-    const auto pair = DcNetPair{owner.net(NetId{0}), owner.net(NetId{1})};
+DcRequest request(const ElectricalInput &owner) {
+    const auto pair = ElectricalNetPair{owner.net(NetId{0}), owner.net(NetId{1})};
     return DcRequest{
-        DcRequestKey{"dc"},
+        ElectricalRequestKey{"dc"},
         owner,
         owner.net(NetId{1}),
-        {DcVoltageSource{DcSourceKey{"supply"}, pair, Quantity{UnitDimension::Voltage, -1.25}}},
-        {DcVoltageProbe{DcProbeKey{"voltage"}, pair},
-         DcSourceCurrentProbe{DcProbeKey{"current"}, DcSourceKey{"supply"}}}};
+        {DcVoltageSource{ElectricalSourceKey{"supply"}, pair,
+                         Quantity{UnitDimension::Voltage, -1.25}}},
+        {DcVoltageProbe{ElectricalProbeKey{"voltage"}, pair},
+         DcSourceCurrentProbe{ElectricalProbeKey{"current"}, ElectricalSourceKey{"supply"}}}};
 }
 
 } // namespace
@@ -54,7 +55,7 @@ TEST_CASE("DC request codec publishes deterministic current-only bound values") 
     CHECK(io::write_dc_request(reopened) == bytes);
     CHECK(assess_dc_request(reopened).complete());
 
-    const auto incomplete = DcRequest{DcRequestKey{"missing"}, owner, std::nullopt};
+    const auto incomplete = DcRequest{ElectricalRequestKey{"missing"}, owner, std::nullopt};
     const auto incomplete_bytes = io::write_dc_request(incomplete);
     CHECK(Json::parse(incomplete_bytes).at("reference").is_null());
     CHECK_FALSE(assess_dc_request(io::read_dc_request(incomplete_bytes, owner)).complete());

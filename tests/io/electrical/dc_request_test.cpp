@@ -29,16 +29,20 @@ coverage_by_occurrence(const DcRequestAssessment &assessment) {
     return result;
 }
 
-[[nodiscard]] DcRequest request_with(const DcInput &input, std::optional<DcNetRef> reference,
+[[nodiscard]] DcRequest request_with(const ElectricalInput &input,
+                                     std::optional<ElectricalNetRef> reference,
                                      std::vector<DcSource> sources,
                                      std::vector<DcProbe> probes = {},
                                      std::vector<DcOccurrenceExclusion> exclusions = {}) {
-    return DcRequest{DcRequestKey{"test"}, input,
-                     std::move(reference), std::move(sources),
-                     std::move(probes),    std::move(exclusions)};
+    return DcRequest{ElectricalRequestKey{"test"},
+                     input,
+                     std::move(reference),
+                     std::move(sources),
+                     std::move(probes),
+                     std::move(exclusions)};
 }
 
-[[nodiscard]] std::vector<DcOccurrenceExclusion> exclude_unselected(const DcInput &input) {
+[[nodiscard]] std::vector<DcOccurrenceExclusion> exclude_unselected(const ElectricalInput &input) {
     return {DcOccurrenceExclusion{input.occurrence(ComponentId{2}), DcOutsideAnalysisExclusion{}},
             DcOccurrenceExclusion{input.occurrence(ComponentId{3}), DcNonElectricalExclusion{}}};
 }
@@ -47,7 +51,7 @@ coverage_by_occurrence(const DcRequestAssessment &assessment) {
 
 TEST_CASE("complete DC request retains all typed participation and probe variants") {
     const auto fixture = make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
     const auto request = complete_request(input);
     const auto assessment = assess_dc_request(request);
 
@@ -73,14 +77,14 @@ TEST_CASE("complete DC request retains all typed participation and probe variant
 
 TEST_CASE("a stimulus does not fabricate coverage for a selected model-absent supply") {
     const auto fixture = make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
     const auto positive = input.net(fixture.positive);
     const auto negative = input.net(fixture.negative);
-    const auto request =
-        request_with(input, negative,
-                     {DcVoltageSource{DcSourceKey{"drive"}, DcNetPair{positive, negative},
-                                      Quantity{UnitDimension::Voltage, 5.0}}},
-                     {}, exclude_unselected(input));
+    const auto request = request_with(
+        input, negative,
+        {DcVoltageSource{ElectricalSourceKey{"drive"}, ElectricalNetPair{positive, negative},
+                         Quantity{UnitDimension::Voltage, 5.0}}},
+        {}, exclude_unselected(input));
 
     const auto assessment = assess_dc_request(request);
     CHECK_FALSE(assessment.complete());
@@ -93,7 +97,7 @@ TEST_CASE("a stimulus does not fabricate coverage for a selected model-absent su
 
 TEST_CASE("assessment reports missing reference and every ordinary uncovered occurrence") {
     const auto fixture = make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
     const auto assessment = assess_dc_request(request_with(input, std::nullopt, {}));
     const auto coverage = coverage_by_occurrence(assessment);
 
@@ -110,7 +114,7 @@ TEST_CASE("assessment reports missing reference and every ordinary uncovered occ
 TEST_CASE("unavailable exact resolver remains unresolved rather than becoming an open model") {
     const auto fixture = make_fixture();
     const auto input =
-        io::prepare_dc_input(*fixture.circuit, volt::test::dc_request::UnavailableParts{});
+        io::prepare_electrical_input(*fixture.circuit, volt::test::dc_request::UnavailableParts{});
     const auto request =
         request_with(input, input.net(fixture.negative), {}, {}, exclude_unselected(input));
     const auto assessment = assess_dc_request(request);
@@ -127,55 +131,56 @@ TEST_CASE("unavailable exact resolver remains unresolved rather than becoming an
 
 TEST_CASE("request construction rejects foreign references and invalid local relationships") {
     const auto fixture = make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
     auto changed = make_fixture();
     static_cast<void>(changed.circuit->add_net(NetSpec{.name = NetName{"identity-change"}}));
-    const auto foreign = io::prepare_dc_input(*changed.circuit, changed.library);
+    const auto foreign = io::prepare_electrical_input(*changed.circuit, changed.library);
 
-    CHECK_THROWS_AS((DcNetPair{input.net(fixture.positive), foreign.net(changed.negative)}),
+    CHECK_THROWS_AS((ElectricalNetPair{input.net(fixture.positive), foreign.net(changed.negative)}),
                     KernelLogicError);
-    CHECK_THROWS_AS(
-        (DcVoltageSource{DcSourceKey{"same"},
-                         DcNetPair{input.net(fixture.positive), input.net(fixture.positive)},
-                         Quantity{UnitDimension::Voltage, 1.0}}),
-        KernelArgumentError);
+    CHECK_THROWS_AS((DcVoltageSource{
+                        ElectricalSourceKey{"same"},
+                        ElectricalNetPair{input.net(fixture.positive), input.net(fixture.positive)},
+                        Quantity{UnitDimension::Voltage, 1.0}}),
+                    KernelArgumentError);
     CHECK_THROWS_AS(input.net(NetId{99}), KernelRangeError);
     CHECK_THROWS_AS(input.occurrence(ComponentId{99}), KernelRangeError);
-    CHECK_THROWS_AS(
-        (DcVoltageSource{DcSourceKey{"wrong"},
-                         DcNetPair{input.net(fixture.positive), input.net(fixture.negative)},
-                         Quantity{UnitDimension::Current, 1.0}}),
-        KernelArgumentError);
+    CHECK_THROWS_AS((DcVoltageSource{
+                        ElectricalSourceKey{"wrong"},
+                        ElectricalNetPair{input.net(fixture.positive), input.net(fixture.negative)},
+                        Quantity{UnitDimension::Current, 1.0}}),
+                    KernelArgumentError);
     CHECK_THROWS_AS((Quantity{UnitDimension::Voltage, std::numeric_limits<double>::infinity()}),
                     std::invalid_argument);
 }
 
 TEST_CASE("request rejects duplicate keys and invalid probe or replacement targets") {
     const auto fixture = make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
-    const auto pair = DcNetPair{input.net(fixture.positive), input.net(fixture.negative)};
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
+    const auto pair = ElectricalNetPair{input.net(fixture.positive), input.net(fixture.negative)};
     const auto drive =
-        DcVoltageSource{DcSourceKey{"drive"}, pair, Quantity{UnitDimension::Voltage, 5.0}};
+        DcVoltageSource{ElectricalSourceKey{"drive"}, pair, Quantity{UnitDimension::Voltage, 5.0}};
 
     CHECK_THROWS_AS(request_with(input, input.net(fixture.negative), {drive, drive}),
                     KernelArgumentError);
-    CHECK_THROWS_AS(request_with(input, input.net(fixture.negative), {drive},
-                                 {DcVoltageProbe{DcProbeKey{"p"}, pair},
-                                  DcSourceCurrentProbe{DcProbeKey{"p"}, DcSourceKey{"drive"}}}),
-                    KernelArgumentError);
     CHECK_THROWS_AS(
         request_with(input, input.net(fixture.negative), {drive},
-                     {DcSourceCurrentProbe{DcProbeKey{"missing"}, DcSourceKey{"unknown"}}}),
-        KernelRangeError);
+                     {DcVoltageProbe{ElectricalProbeKey{"p"}, pair},
+                      DcSourceCurrentProbe{ElectricalProbeKey{"p"}, ElectricalSourceKey{"drive"}}}),
+        KernelArgumentError);
     CHECK_THROWS_AS(request_with(input, input.net(fixture.negative), {drive},
-                                 {DcModelElementCurrentProbe{DcProbeKey{"missing"},
+                                 {DcSourceCurrentProbe{ElectricalProbeKey{"missing"},
+                                                       ElectricalSourceKey{"unknown"}}}),
+                    KernelRangeError);
+    CHECK_THROWS_AS(request_with(input, input.net(fixture.negative), {drive},
+                                 {DcModelElementCurrentProbe{ElectricalProbeKey{"missing"},
                                                              input.occurrence(fixture.resistor),
                                                              ModelElementKey{"unknown"}}}),
                     KernelLogicError);
     CHECK_THROWS_AS(request_with(input, input.net(fixture.negative), {drive}, {},
-                                 {DcOccurrenceExclusion{
-                                     input.occurrence(fixture.absent),
-                                     DcReplacedByStimulusExclusion{{DcSourceKey{"unknown"}}}}}),
+                                 {DcOccurrenceExclusion{input.occurrence(fixture.absent),
+                                                        DcReplacedByStimulusExclusion{
+                                                            {ElectricalSourceKey{"unknown"}}}}}),
                     KernelRangeError);
     CHECK_THROWS_AS(
         request_with(
@@ -187,7 +192,7 @@ TEST_CASE("request rejects duplicate keys and invalid probe or replacement targe
 
 TEST_CASE("only unequal ideal voltage constraints on the same oriented pair contradict") {
     const auto fixture = make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
     const auto positive = input.net(fixture.positive);
     const auto negative = input.net(fixture.negative);
     const auto assessment = [&](std::vector<DcSource> sources) {
@@ -195,19 +200,20 @@ TEST_CASE("only unequal ideal voltage constraints on the same oriented pair cont
             request_with(input, negative, std::move(sources), {}, exclude_unselected(input)));
     };
 
-    const auto direct = assessment({DcVoltageSource{DcSourceKey{"a"}, DcNetPair{positive, negative},
-                                                    Quantity{UnitDimension::Voltage, 5.0}},
-                                    DcVoltageSource{DcSourceKey{"b"}, DcNetPair{positive, negative},
-                                                    Quantity{UnitDimension::Voltage, 4.0}}});
+    const auto direct =
+        assessment({DcVoltageSource{ElectricalSourceKey{"a"}, ElectricalNetPair{positive, negative},
+                                    Quantity{UnitDimension::Voltage, 5.0}},
+                    DcVoltageSource{ElectricalSourceKey{"b"}, ElectricalNetPair{positive, negative},
+                                    Quantity{UnitDimension::Voltage, 4.0}}});
     CHECK(std::ranges::any_of(direct.diagnostics(), [](const Diagnostic &diagnostic) {
         return diagnostic.code().value() ==
                analysis_diagnostic_codes::DcContradictoryVoltageSources;
     }));
 
     const auto reversed =
-        assessment({DcVoltageSource{DcSourceKey{"a"}, DcNetPair{positive, negative},
+        assessment({DcVoltageSource{ElectricalSourceKey{"a"}, ElectricalNetPair{positive, negative},
                                     Quantity{UnitDimension::Voltage, 5.0}},
-                    DcVoltageSource{DcSourceKey{"b"}, DcNetPair{negative, positive},
+                    DcVoltageSource{ElectricalSourceKey{"b"}, ElectricalNetPair{negative, positive},
                                     Quantity{UnitDimension::Voltage, 5.0}}});
     CHECK(std::ranges::any_of(reversed.diagnostics(), [](const Diagnostic &diagnostic) {
         return diagnostic.code().value() ==
@@ -215,9 +221,9 @@ TEST_CASE("only unequal ideal voltage constraints on the same oriented pair cont
     }));
 
     const auto currents =
-        assessment({DcCurrentSource{DcSourceKey{"a"}, DcNetPair{positive, negative},
+        assessment({DcCurrentSource{ElectricalSourceKey{"a"}, ElectricalNetPair{positive, negative},
                                     Quantity{UnitDimension::Current, 0.01}},
-                    DcCurrentSource{DcSourceKey{"b"}, DcNetPair{positive, negative},
+                    DcCurrentSource{ElectricalSourceKey{"b"}, ElectricalNetPair{positive, negative},
                                     Quantity{UnitDimension::Current, 0.01}}});
     CHECK(std::ranges::none_of(currents.diagnostics(), [](const Diagnostic &diagnostic) {
         return diagnostic.code().value() ==
@@ -227,7 +233,7 @@ TEST_CASE("only unequal ideal voltage constraints on the same oriented pair cont
 
 TEST_CASE("standalone request JSON is deterministic strict and exact-input bound") {
     const auto fixture = make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
     const auto request = complete_request(input);
     const auto bytes = io::write_dc_request(request);
     const auto reopened = io::read_dc_request(bytes, input);
@@ -252,7 +258,7 @@ TEST_CASE("standalone request JSON is deterministic strict and exact-input bound
 
 TEST_CASE("prepared input owns immutable logical and Part bytes after authoring mutation") {
     auto fixture = make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
     const auto identity = input.identity();
     const auto part_identity = input.part(fixture.resistor)->content_identity();
     const auto bytes = io::write_dc_request(complete_request(input));
@@ -280,5 +286,5 @@ TEST_CASE("DC input rejects a resolver returning another exact selected Part") {
 
     const auto wrong =
         WrongPart{fixture.library.resolve(fixture.library.require(PartKey{"absent"}))};
-    CHECK_THROWS_AS(io::prepare_dc_input(*fixture.circuit, wrong), KernelLogicError);
+    CHECK_THROWS_AS(io::prepare_electrical_input(*fixture.circuit, wrong), KernelLogicError);
 }

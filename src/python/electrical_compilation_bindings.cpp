@@ -46,6 +46,13 @@ void bind_electrical_compilation(pybind11::module_ &module) {
                                               ? py::none{}
                                               : py::cast(*request, py::return_value_policy::copy);
                                })
+        .def_property_readonly("transient_request",
+                               [](const CompiledElectricalModel &model) -> py::object {
+                                   const auto *request = model.transient_request();
+                                   return request
+                                              ? py::cast(*request, py::return_value_policy::copy)
+                                              : py::none{};
+                               })
         .def("to_json", &io::write_compiled_electrical_model);
 
     py::class_<ElectricalCompileReport>(module, "ElectricalCompileReport")
@@ -69,6 +76,9 @@ void bind_electrical_compilation(pybind11::module_ &module) {
         .def("to_json", &io::write_electrical_compile_report);
 
     module.def("compile_electrical", py::overload_cast<const DcRequest &>(&compile_electrical),
+               py::arg("request"));
+    module.def("compile_electrical",
+               py::overload_cast<const TransientRequest &>(&compile_electrical),
                py::arg("request"));
     module.def("compile_electrical", py::overload_cast<const AcRequest &>(&compile_electrical),
                py::arg("request"));

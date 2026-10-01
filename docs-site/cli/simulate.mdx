@@ -1,13 +1,14 @@
 ---
-title: Linear DC simulation
-description: Explicitly compile and solve one linear-DC request with Volt's native solver or pinned ngspice 46.
+title: Native electrical simulation
+description: Explicit native DC, AC and bounded linear transient analysis, with an optional pinned ngspice 46 DC backend.
 ---
 
-`volt simulate` binds an existing canonical `DcRequest.to_json()` file to one exact logical
-Design and compiles it through Volt's native electrical compiler. The default `native` backend
-solves the complete model in process. The opt-in `ngspice` backend projects that same immutable
-model to a generated deck, runs an explicitly selected ngspice 46 executable, and admits its
-output only through native validation.
+`volt simulate` binds a canonical `DcRequest`, `AcRequest` or `TransientRequest` JSON file to
+one exact logical Design and compiles it through the native electrical compiler. `--analysis`
+selects the analysis, with DC as the default. The `native` backend solves the complete model in
+process. AC and transient require native execution. The opt-in DC `ngspice` backend projects the
+immutable model to a generated deck, runs an explicitly selected ngspice 46 executable and admits
+its output only through native validation.
 
 <Warning>
   This command does not infer a request from net names, ratings, or `volt.toml`. Regenerate the
@@ -84,12 +85,12 @@ build identity.
 
 ## Scope and reproducibility
 
-Both backends use the native default `DcSolveOptions`; the CLI exposes no numerical-setting flags.
+DC uses the native default `DcSolveOptions`. Transient requires explicit step/work limits below.
 Supported behavior is independent DC over exact ideal linear resistor, capacitor, and inductor
 models plus authored independent sources. The generated ngspice projection preserves zero ohms as
 an ideal 0 V constraint, capacitors as DC-open with exact zero current, and inductors as DC-short
-with identifiable current. It adds no convergence resistors or hidden parasitics. Nonlinear, AC,
-transient, sweeps, behavioural callbacks, arbitrary SPICE, and vendor models remain out of scope.
+with identifiable current. It adds no convergence resistors or hidden parasitics. Nonlinear devices, behavioural callbacks, arbitrary SPICE and vendor models remain out of scope.
+AC and bounded linear transient have explicit native analysis modes; the ngspice backend is DC-only.
 
 Canonical deck, mapping, request, model, report, and solution serialization is deterministic. A
 generated deck identity and mapping identity follow external observations into solve provenance.
@@ -111,3 +112,49 @@ PYTHONPATH="$PWD/build/dev/python" python scripts/test-ngspice-integration.py \
 It runs the seven supported S3 corpus cases through the public native and ngspice CLI backends,
 including source and deleted-source bundle execution, and compares native, external, and analytical
 observations with the corpus tolerances.
+
+## Native AC and linear transient
+
+`--analysis ac --backend native` executes an authored `AcRequest` frequency sweep. DC remains the
+default. `--analysis transient --backend native` executes an exact `TransientRequest` with explicit
+capacitor voltages and inductor currents; it does not calculate a hidden DC operating point.
+
+```sh
+volt simulate --project samples/linear_transient --design startup \
+  --analysis transient --backend native --request request.json --output transient \
+  --h-min 1e-12 --h-initial 5e-5 --h-max 1e-4 \
+  --max-trials 100000 --max-accepted-steps 100000 \
+  --relative-tolerance 1e-7 --absolute-voltage-tolerance 1e-9 \
+  --absolute-current-tolerance 1e-12 --json
+```
+
+All five step/work flags are mandatory for transient. Times use SI seconds and satisfy
+`0 < h_min <= h_initial <= h_max`; budgets are positive integers. A macro trial compares one full
+step with two half steps, retaining the halves on acceptance. Accepted-step budget counts accepted
+macro trials; each retains two actual half steps. Trial budget includes rejected trials. The output
+sample grid does not infer these bounds. Optional local temporal defaults are relative 1e-4, absolute voltage 1e-6 V and absolute
+current 1e-9 A. Algebra rank, conditioning and residual gates are separate and fixed.
+
+<Warning>
+  Backward Euler adds artificial damping. Default local tolerances do not guarantee waveform,
+  phase or energy accuracy. Tight settings cost additional work. The bounded initializer declines
+  ideal supply-rail capacitors directly across ideal voltage sources and compatible ideal parallel
+  capacitors when their frozen-state projector is rank deficient. This support diagnostic does
+  not prove physical nonuniqueness. No parasitics or invented currents are inserted.
+</Warning>
+
+Constant and continuous PWL sources are supported. Output times start at t=0+, and every
+participating storage element needs an exact-input initial voltage/current. PWL knots are native
+linear interpolation corners; the final value is held. Solver steps land exactly on requested
+times and knots without dense-output interpolation. `initial_state_from()` can explicitly copy
+state/provenance from an already successful native DC result; it invokes no solver.
+
+Transient accepts the same source-free `--bundle` workflow and atomic output contract: exit 0
+publishes all four native files, exit 1 retains incomplete/failed evidence with no `solution.json`,
+and malformed inputs/options or unsupported ngspice transient are exit 2. A solution is published
+only after every requested sample succeeds. `solve-report.json` retains timed evaluations,
+accepted half-step errors and separate solve/factorization counters.
+
+See the [runnable transient example](https://github.com/RyanWillie/Volt/tree/main/samples/linear_transient)
+and [numerical contract](https://github.com/RyanWillie/Volt/blob/main/docs/linear-transient.md) for
+orientations, conservative initialization support and tolerance-based numerical reproducibility.

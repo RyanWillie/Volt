@@ -36,9 +36,12 @@ add_library(
     electrical/ac_request.cpp
     electrical/dc_solve.cpp
     electrical/ac_solve.cpp
+    electrical/transient_request.cpp
+    electrical/transient_solve.cpp
     electrical/ngspice_dc.cpp
     electrical/compiled_electrical_model.cpp
-    electrical/dc_input.cpp
+    electrical/electrical_input.cpp
+    electrical/electrical_request.cpp
     electrical/passive_model.cpp
     hierarchy/hierarchy.cpp
     hierarchy/hierarchy_model.cpp

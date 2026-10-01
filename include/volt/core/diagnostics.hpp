@@ -224,6 +224,36 @@ inline constexpr auto AcSolveUndefinedMeasurement =
     std::string_view{"AC_SOLVE_UNDEFINED_MEASUREMENT"};
 inline constexpr auto DcNgspiceModelEmpty = std::string_view{"DC_NGSPICE_MODEL_EMPTY"};
 
+inline constexpr auto TransientReferenceMissing =
+    std::string_view{"TRANSIENT_REQUEST_REFERENCE_MISSING"};
+inline constexpr auto TransientOccurrenceUnselected =
+    std::string_view{"TRANSIENT_OCCURRENCE_UNSELECTED"};
+inline constexpr auto TransientOccurrenceUnresolved =
+    std::string_view{"TRANSIENT_OCCURRENCE_UNRESOLVED"};
+inline constexpr auto TransientOccurrenceModelAbsent =
+    std::string_view{"TRANSIENT_OCCURRENCE_MODEL_ABSENT"};
+inline constexpr auto TransientOccurrenceUnsupported =
+    std::string_view{"TRANSIENT_OCCURRENCE_UNSUPPORTED"};
+inline constexpr auto TransientInitialStateMissing =
+    std::string_view{"TRANSIENT_INITIAL_STATE_MISSING"};
+inline constexpr auto TransientContradictoryVoltageSources =
+    std::string_view{"TRANSIENT_CONTRADICTORY_VOLTAGE_SOURCES"};
+inline constexpr auto TransientSolveRankDeficient =
+    std::string_view{"TRANSIENT_SOLVE_RANK_DEFICIENT"};
+inline constexpr auto TransientSolveInconsistent = std::string_view{"TRANSIENT_SOLVE_INCONSISTENT"};
+inline constexpr auto TransientSolveIllConditioned =
+    std::string_view{"TRANSIENT_SOLVE_ILL_CONDITIONED"};
+inline constexpr auto TransientSolveNumericalFailure =
+    std::string_view{"TRANSIENT_SOLVE_NUMERICAL_FAILURE"};
+inline constexpr auto TransientSolveResidualFailure =
+    std::string_view{"TRANSIENT_SOLVE_RESIDUAL_FAILURE"};
+inline constexpr auto TransientSolveInconsistentInitialState =
+    std::string_view{"TRANSIENT_SOLVE_INCONSISTENT_INITIAL_STATE"};
+inline constexpr auto TransientSolveUnsupportedInitializationTopology =
+    std::string_view{"TRANSIENT_SOLVE_UNSUPPORTED_INITIALIZATION_TOPOLOGY"};
+inline constexpr auto TransientSolveStepLimit = std::string_view{"TRANSIENT_SOLVE_STEP_LIMIT"};
+inline constexpr auto TransientSolveWorkLimit = std::string_view{"TRANSIENT_SOLVE_WORK_LIMIT"};
+
 } // namespace analysis_diagnostic_codes
 
 namespace diagnostic_code_catalogs {
@@ -310,7 +340,23 @@ inline constexpr auto Assembly = std::array{assembly_diagnostic_codes::Component
                                             assembly_diagnostic_codes::OrientationAmbiguous};
 
 inline constexpr auto Analysis =
-    std::array{analysis_diagnostic_codes::AcReferenceMissing,
+    std::array{analysis_diagnostic_codes::TransientReferenceMissing,
+               analysis_diagnostic_codes::TransientOccurrenceUnselected,
+               analysis_diagnostic_codes::TransientOccurrenceUnresolved,
+               analysis_diagnostic_codes::TransientOccurrenceModelAbsent,
+               analysis_diagnostic_codes::TransientOccurrenceUnsupported,
+               analysis_diagnostic_codes::TransientInitialStateMissing,
+               analysis_diagnostic_codes::TransientContradictoryVoltageSources,
+               analysis_diagnostic_codes::TransientSolveRankDeficient,
+               analysis_diagnostic_codes::TransientSolveInconsistent,
+               analysis_diagnostic_codes::TransientSolveIllConditioned,
+               analysis_diagnostic_codes::TransientSolveNumericalFailure,
+               analysis_diagnostic_codes::TransientSolveResidualFailure,
+               analysis_diagnostic_codes::TransientSolveInconsistentInitialState,
+               analysis_diagnostic_codes::TransientSolveUnsupportedInitializationTopology,
+               analysis_diagnostic_codes::TransientSolveStepLimit,
+               analysis_diagnostic_codes::TransientSolveWorkLimit,
+               analysis_diagnostic_codes::AcReferenceMissing,
                analysis_diagnostic_codes::AcExcitationMissing,
                analysis_diagnostic_codes::AcOccurrenceUnselected,
                analysis_diagnostic_codes::AcOccurrenceUnresolved,

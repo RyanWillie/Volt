@@ -14,7 +14,7 @@ def native_case(tmp_path):
     subprocess.run([os.environ["VOLT_DC_SOLVE_PARITY_FIXTURE"], str(path)],
                    check=True, capture_output=True)
     bundle = volt.ProjectBundle.open(path / "project.volt")
-    input = bundle.graph.loaded_project.circuits[0].dc_input()
+    input = bundle.graph.loaded_project.circuits[0].electrical_input()
     request = volt.DcRequest.from_json(input, (path / "request.json").read_bytes())
     return volt.compile_electrical(request).model, path
 
@@ -92,7 +92,7 @@ def test_rank_failure_is_typed_and_never_exposes_a_solution():
     design = volt.Design("floating")
     design.net("reference")
     design.net("unfixed")
-    input = volt.prepare_dc_input(design)
+    input = volt.prepare_electrical_input(design)
     compiled = volt.compile_electrical(volt.DcRequest("floating", input, reference=input.nets[0]))
     assert compiled.complete
     report = volt.solve_dc(compiled.model)
@@ -108,7 +108,7 @@ def test_rank_failure_is_typed_and_never_exposes_a_solution():
 
 def test_incomplete_compilation_and_python_dicts_cannot_enter_solver():
     design = volt.Design("missing-reference")
-    input = volt.prepare_dc_input(design)
+    input = volt.prepare_electrical_input(design)
     report = volt.compile_electrical(volt.DcRequest("incomplete", input))
     assert not report.complete
     for value in (report, report.model, {"matrix": [[1]], "rhs": [5]}):

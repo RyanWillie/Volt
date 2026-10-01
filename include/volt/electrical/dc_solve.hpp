@@ -138,7 +138,7 @@ struct DcBranchResult {
 /** One finite observation in the requested probe's native voltage/current dimension. */
 struct DcProbeResult {
     /** Original request-local key, interpreted under the solution's analysis identity. */
-    DcProbeKey key;
+    ElectricalProbeKey key;
     /** Result with the native probe's orientation and dimension. */
     Quantity value;
 };

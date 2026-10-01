@@ -650,44 +650,44 @@
           "python_type": "Circuit"
         },
         {
-          "cpp_type": "DcRequestKey",
+          "cpp_type": "ElectricalRequestKey",
           "path": "src/python/dc_request_bindings.cpp",
-          "python_type": "DcRequestKey"
+          "python_type": "ElectricalRequestKey"
         },
         {
-          "cpp_type": "DcSourceKey",
+          "cpp_type": "ElectricalSourceKey",
           "path": "src/python/dc_request_bindings.cpp",
-          "python_type": "DcSourceKey"
+          "python_type": "ElectricalSourceKey"
         },
         {
-          "cpp_type": "DcProbeKey",
+          "cpp_type": "ElectricalProbeKey",
           "path": "src/python/dc_request_bindings.cpp",
-          "python_type": "DcProbeKey"
+          "python_type": "ElectricalProbeKey"
         },
         {
-          "cpp_type": "DcInputIdentity",
+          "cpp_type": "ElectricalInputIdentity",
           "path": "src/python/dc_request_bindings.cpp",
-          "python_type": "DcInputIdentity"
+          "python_type": "ElectricalInputIdentity"
         },
         {
-          "cpp_type": "DcNetRef",
+          "cpp_type": "ElectricalNetRef",
           "path": "src/python/dc_request_bindings.cpp",
-          "python_type": "DcNetRef"
+          "python_type": "ElectricalNetRef"
         },
         {
-          "cpp_type": "DcOccurrenceRef",
+          "cpp_type": "ElectricalOccurrenceRef",
           "path": "src/python/dc_request_bindings.cpp",
-          "python_type": "DcOccurrenceRef"
+          "python_type": "ElectricalOccurrenceRef"
         },
         {
-          "cpp_type": "DcInput",
+          "cpp_type": "ElectricalInput",
           "path": "src/python/dc_request_bindings.cpp",
-          "python_type": "DcInput"
+          "python_type": "ElectricalInput"
         },
         {
-          "cpp_type": "DcNetPair",
+          "cpp_type": "ElectricalNetPair",
           "path": "src/python/dc_request_bindings.cpp",
-          "python_type": "DcNetPair"
+          "python_type": "ElectricalNetPair"
         },
         {
           "cpp_type": "DcVoltageSource",
@@ -953,6 +953,111 @@
           "cpp_type": "PySchematicDocument",
           "path": "src/python/schematic_bindings.cpp",
           "python_type": "SchematicDocument"
+        },
+        {
+          "cpp_type": "TransientTimeGrid",
+          "path": "src/python/transient_request_bindings.cpp",
+          "python_type": "TransientTimeGrid"
+        },
+        {
+          "cpp_type": "TransientWaveformKnot",
+          "path": "src/python/transient_request_bindings.cpp",
+          "python_type": "TransientWaveformKnot"
+        },
+        {
+          "cpp_type": "TransientWaveform",
+          "path": "src/python/transient_request_bindings.cpp",
+          "python_type": "TransientWaveform"
+        },
+        {
+          "cpp_type": "TransientVoltageSource",
+          "path": "src/python/transient_request_bindings.cpp",
+          "python_type": "_TransientVoltageSource"
+        },
+        {
+          "cpp_type": "TransientCurrentSource",
+          "path": "src/python/transient_request_bindings.cpp",
+          "python_type": "_TransientCurrentSource"
+        },
+        {
+          "cpp_type": "TransientDcProvenance",
+          "path": "src/python/transient_request_bindings.cpp",
+          "python_type": "TransientDcProvenance"
+        },
+        {
+          "cpp_type": "TransientInitialState",
+          "path": "src/python/transient_request_bindings.cpp",
+          "python_type": "TransientInitialState"
+        },
+        {
+          "cpp_type": "TransientInitialConditions",
+          "path": "src/python/transient_request_bindings.cpp",
+          "python_type": "TransientInitialConditions"
+        },
+        {
+          "cpp_type": "TransientRequest",
+          "path": "src/python/transient_request_bindings.cpp",
+          "python_type": "TransientRequest"
+        },
+        {
+          "cpp_type": "TransientRequestAssessment",
+          "path": "src/python/transient_request_bindings.cpp",
+          "python_type": "TransientRequestAssessment"
+        },
+        {
+          "cpp_type": "TransientSolveOptions",
+          "path": "src/python/transient_solve_bindings.cpp",
+          "python_type": "TransientSolveOptions"
+        },
+        {
+          "cpp_type": "TransientAlgebraMetrics",
+          "path": "src/python/transient_solve_bindings.cpp",
+          "python_type": "TransientAlgebraMetrics"
+        },
+        {
+          "cpp_type": "TransientNodeResult",
+          "path": "src/python/transient_solve_bindings.cpp",
+          "python_type": "TransientNodeResult"
+        },
+        {
+          "cpp_type": "TransientBranchResult",
+          "path": "src/python/transient_solve_bindings.cpp",
+          "python_type": "TransientBranchResult"
+        },
+        {
+          "cpp_type": "TransientProbeResult",
+          "path": "src/python/transient_solve_bindings.cpp",
+          "python_type": "TransientProbeResult"
+        },
+        {
+          "cpp_type": "TransientStorageDerivative",
+          "path": "src/python/transient_solve_bindings.cpp",
+          "python_type": "TransientStorageDerivative"
+        },
+        {
+          "cpp_type": "TransientEvaluation",
+          "path": "src/python/transient_solve_bindings.cpp",
+          "python_type": "TransientEvaluation"
+        },
+        {
+          "cpp_type": "TransientAcceptedHalfStep",
+          "path": "src/python/transient_solve_bindings.cpp",
+          "python_type": "TransientAcceptedHalfStep"
+        },
+        {
+          "cpp_type": "TransientSample",
+          "path": "src/python/transient_solve_bindings.cpp",
+          "python_type": "TransientSample"
+        },
+        {
+          "cpp_type": "TransientSolution",
+          "path": "src/python/transient_solve_bindings.cpp",
+          "python_type": "TransientSolution"
+        },
+        {
+          "cpp_type": "TransientSolveReport",
+          "path": "src/python/transient_solve_bindings.cpp",
+          "python_type": "TransientSolveReport"
         }
       ],
       "py_board_owner_private_members": [
@@ -1067,23 +1172,16 @@
         "DcBranchResult",
         "DcCoverageStatus",
         "DcCurrentSource",
-        "DcInput",
-        "DcInputIdentity",
         "DcModelElementCurrentProbe",
-        "DcNetPair",
-        "DcNetRef",
         "DcNodeResult",
         "DcNonElectricalExclusion",
         "DcOccurrenceCoverage",
         "DcOccurrenceExclusion",
-        "DcOccurrenceRef",
         "DcOutsideAnalysisExclusion",
-        "DcProbeKey",
         "DcProbeResult",
         "DcReplacedByStimulusExclusion",
         "DcRequest",
         "DcRequestAssessment",
-        "DcRequestKey",
         "DcSolution",
         "DcSolveMetrics",
         "DcSolveOptions",
@@ -1091,7 +1189,6 @@
         "DcSolveProvenance",
         "DcSolveReport",
         "DcSourceCurrentProbe",
-        "DcSourceKey",
         "DcVoltageProbe",
         "DcVoltageSource",
         "Design",
@@ -1104,8 +1201,16 @@
         "ERC_DIAGNOSTIC_CODES",
         "ElectricalCompileReport",
         "ElectricalCondition",
+        "ElectricalInput",
+        "ElectricalInputIdentity",
+        "ElectricalNetPair",
+        "ElectricalNetRef",
+        "ElectricalOccurrenceRef",
+        "ElectricalProbeKey",
         "ElectricalRecord",
         "ElectricalRecordSelector",
+        "ElectricalRequestKey",
+        "ElectricalSourceKey",
         "ElectricalSubject",
         "ElectricalValueExpression",
         "ExpectedDiagnostic",
@@ -1215,21 +1320,48 @@
         "Text",
         "Tolerance",
         "ToleranceMode",
+        "TransientAcceptedHalfStep",
+        "TransientAlgebraMetrics",
+        "TransientBranchResult",
+        "TransientCurrentSource",
+        "TransientDcProvenance",
+        "TransientEvaluation",
+        "TransientEvaluationKind",
+        "TransientInitialConditions",
+        "TransientInitialState",
+        "TransientNodeResult",
+        "TransientProbeResult",
+        "TransientRequest",
+        "TransientRequestAssessment",
+        "TransientSample",
+        "TransientSolution",
+        "TransientSolveOptions",
+        "TransientSolveOutcome",
+        "TransientSolveReport",
+        "TransientStorageDerivative",
+        "TransientStorageKind",
+        "TransientTimeGrid",
+        "TransientVoltageSource",
+        "TransientWaveform",
+        "TransientWaveformKnot",
         "UnitDimension",
         "UnknownEntityError",
         "VoltError",
         "assess_dc_request",
+        "assess_transient_request",
         "compile_electrical",
         "content_hash",
         "farads",
         "henries",
         "hertz",
+        "initial_state_from",
         "ohms",
-        "prepare_dc_input",
+        "prepare_electrical_input",
         "prepare_ngspice_dc",
         "seconds",
         "solve_dc",
-        "solve_ngspice_dc"
+        "solve_ngspice_dc",
+        "solve_transient"
       ]
     }
   },

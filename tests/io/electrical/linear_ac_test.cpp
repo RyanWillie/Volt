@@ -14,18 +14,19 @@ using Complex = std::complex<double>;
 
 AcRequest request(const test::linear_ac::Fixture &fixture, std::vector<double> frequencies,
                   double phase = 0, bool reverse = false) {
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
     std::vector<Quantity> sweep;
     for (auto f : frequencies)
         sweep.emplace_back(UnitDimension::Frequency, f);
-    const auto pair = reverse ? DcNetPair{input.net(fixture.reference), input.net(fixture.supply)}
-                              : DcNetPair{input.net(fixture.supply), input.net(fixture.reference)};
-    return AcRequest{
-        DcRequestKey{"test-ac"},
-        input,
-        input.net(fixture.reference),
-        AcFrequencySweep{std::move(sweep)},
-        {AcVoltageSource{DcSourceKey{"drive"}, pair, Quantity{UnitDimension::Voltage, 1}, phase}}};
+    const auto pair =
+        reverse ? ElectricalNetPair{input.net(fixture.reference), input.net(fixture.supply)}
+                : ElectricalNetPair{input.net(fixture.supply), input.net(fixture.reference)};
+    return AcRequest{ElectricalRequestKey{"test-ac"},
+                     input,
+                     input.net(fixture.reference),
+                     AcFrequencySweep{std::move(sweep)},
+                     {AcVoltageSource{ElectricalSourceKey{"drive"}, pair,
+                                      Quantity{UnitDimension::Voltage, 1}, phase}}};
 }
 
 Complex potential(const AcFrequencyResult &point, const CompiledElectricalModel &model, NetId net) {
@@ -123,21 +124,23 @@ TEST_CASE("native AC matches separately recorded ngspice 46 complex values") {
             frequencies.push_back(point.at("frequency_hz").get<double>());
         auto req = request(fixture, frequencies);
         if (id == "impedance") {
-            const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+            const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
             std::vector<Quantity> sweep;
             for (auto frequency : frequencies)
                 sweep.emplace_back(UnitDimension::Frequency, frequency);
-            const auto port = DcNetPair{input.net(fixture.supply), input.net(fixture.reference)};
-            req = AcRequest{DcRequestKey{"impedance"},
-                            input,
-                            input.net(fixture.reference),
-                            AcFrequencySweep{std::move(sweep)},
-                            {AcCurrentSource{DcSourceKey{"test"}, port,
-                                             Quantity{UnitDimension::Current, 1}, 0}},
-                            {},
-                            {},
-                            {},
-                            {AcImpedanceProbe{DcProbeKey{"z"}, port, DcSourceKey{"test"}}}};
+            const auto port =
+                ElectricalNetPair{input.net(fixture.supply), input.net(fixture.reference)};
+            req = AcRequest{
+                ElectricalRequestKey{"impedance"},
+                input,
+                input.net(fixture.reference),
+                AcFrequencySweep{std::move(sweep)},
+                {AcCurrentSource{ElectricalSourceKey{"test"}, port,
+                                 Quantity{UnitDimension::Current, 1}, 0}},
+                {},
+                {},
+                {},
+                {AcImpedanceProbe{ElectricalProbeKey{"z"}, port, ElectricalSourceKey{"test"}}}};
         }
         const auto compiled = compile_electrical(req);
         REQUIRE(compiled.complete());
@@ -168,21 +171,25 @@ TEST_CASE("native AC failures retain per-frequency evidence and publish no sweep
     SECTION("undefined gain denominator") {
         auto fixture = test::linear_ac::fixture(1000, .1, 1e-6, false, false);
         fixture.add("resistor", "R1", fixture.supply, fixture.reference);
-        const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
-        const auto req = AcRequest{
-            DcRequestKey{"undefined-gain"},
-            input,
-            input.net(fixture.reference),
-            AcFrequencySweep{{Quantity{UnitDimension::Frequency, 100}}},
-            {AcVoltageSource{DcSourceKey{"drive"},
-                             DcNetPair{input.net(fixture.supply), input.net(fixture.reference)},
-                             Quantity{UnitDimension::Voltage, 1}, 0}},
-            {DcVoltageProbe{DcProbeKey{"signal"},
-                            DcNetPair{input.net(fixture.supply), input.net(fixture.reference)}},
-             DcVoltageProbe{DcProbeKey{"zero"},
-                            DcNetPair{input.net(fixture.reference), input.net(fixture.reference)}}},
-            {},
-            {AcGainProbe{DcProbeKey{"gain"}, DcProbeKey{"signal"}, DcProbeKey{"zero"}}}};
+        const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
+        const auto req =
+            AcRequest{ElectricalRequestKey{"undefined-gain"},
+                      input,
+                      input.net(fixture.reference),
+                      AcFrequencySweep{{Quantity{UnitDimension::Frequency, 100}}},
+                      {AcVoltageSource{ElectricalSourceKey{"drive"},
+                                       ElectricalNetPair{input.net(fixture.supply),
+                                                         input.net(fixture.reference)},
+                                       Quantity{UnitDimension::Voltage, 1}, 0}},
+                      {DcVoltageProbe{ElectricalProbeKey{"signal"},
+                                      ElectricalNetPair{input.net(fixture.supply),
+                                                        input.net(fixture.reference)}},
+                       DcVoltageProbe{ElectricalProbeKey{"zero"},
+                                      ElectricalNetPair{input.net(fixture.reference),
+                                                        input.net(fixture.reference)}}},
+                      {},
+                      {AcGainProbe{ElectricalProbeKey{"gain"}, ElectricalProbeKey{"signal"},
+                                   ElectricalProbeKey{"zero"}}}};
         const auto compiled = compile_electrical(req);
         REQUIRE(compiled.complete());
         const auto solved = solve_ac(*compiled.model());
@@ -223,22 +230,24 @@ TEST_CASE("native AC derived gain and canonical orientation") {
     auto fixture = test::linear_ac::fixture();
     fixture.add("resistor", "R1", fixture.output, fixture.supply);
     fixture.add("capacitor", "C1", fixture.output, fixture.reference);
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
     const auto frequency = 1 / (2 * std::numbers::pi * 1000 * 1e-6);
     const auto req = AcRequest{
-        DcRequestKey{"gain"},
+        ElectricalRequestKey{"gain"},
         input,
         input.net(fixture.reference),
         AcFrequencySweep{{Quantity{UnitDimension::Frequency, frequency}}},
-        {AcVoltageSource{DcSourceKey{"drive"},
-                         DcNetPair{input.net(fixture.reference), input.net(fixture.supply)},
+        {AcVoltageSource{ElectricalSourceKey{"drive"},
+                         ElectricalNetPair{input.net(fixture.reference), input.net(fixture.supply)},
                          Quantity{UnitDimension::Voltage, 1}, 0}},
-        {DcVoltageProbe{DcProbeKey{"vin"},
-                        DcNetPair{input.net(fixture.supply), input.net(fixture.reference)}},
-         DcVoltageProbe{DcProbeKey{"vout"},
-                        DcNetPair{input.net(fixture.output), input.net(fixture.reference)}}},
+        {DcVoltageProbe{ElectricalProbeKey{"vin"},
+                        ElectricalNetPair{input.net(fixture.supply), input.net(fixture.reference)}},
+         DcVoltageProbe{
+             ElectricalProbeKey{"vout"},
+             ElectricalNetPair{input.net(fixture.output), input.net(fixture.reference)}}},
         {},
-        {AcGainProbe{DcProbeKey{"gain"}, DcProbeKey{"vout"}, DcProbeKey{"vin"}}}};
+        {AcGainProbe{ElectricalProbeKey{"gain"}, ElectricalProbeKey{"vout"},
+                     ElectricalProbeKey{"vin"}}}};
     const auto compiled = compile_electrical(req);
     REQUIRE(compiled.complete());
     const auto solved = solve_ac(*compiled.model());
@@ -248,7 +257,7 @@ TEST_CASE("native AC derived gain and canonical orientation") {
     close(potential(point, *compiled.model(), fixture.output), {-.5, .5});
     close(point.branches.front().current.value(), {.0005, .0005}, 1e-11);
     const auto gain_result =
-        std::ranges::find(point.probes, DcProbeKey{"gain"}, &AcProbeResult::key);
+        std::ranges::find(point.probes, ElectricalProbeKey{"gain"}, &AcProbeResult::key);
     REQUIRE(gain_result != point.probes.end());
     const auto &gain = gain_result->value;
     close(gain.value(), {.5, -.5});

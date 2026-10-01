@@ -41,7 +41,7 @@ using Json = nlohmann::ordered_json;
                             {"part_digest", value.part.part_digest().value()},
                             {"element", value.element.value()}};
             } else {
-                static_assert(std::same_as<Origin, DcSourceKey>);
+                static_assert(std::same_as<Origin, ElectricalSourceKey>);
                 return Json{{"kind", "request_source"}, {"key", value.value()}};
             }
         },

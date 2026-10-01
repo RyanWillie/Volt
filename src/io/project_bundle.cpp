@@ -87,7 +87,7 @@ const Circuit &LoadedLogicalModelView::model() const & {
     return *storage_->v2_circuits.at(index_).model;
 }
 
-DcInput LoadedLogicalModelView::dc_input() const {
+ElectricalInput LoadedLogicalModelView::electrical_input() const {
     return v2_open::prepare_decoded_dc_input(model(), storage_->v2_parts);
 }
 

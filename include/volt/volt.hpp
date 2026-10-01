@@ -74,3 +74,8 @@
 #include <volt/schematic/schematic_document.hpp>
 #include <volt/schematic/symbols.hpp>
 #include <volt/schematic/validation.hpp>
+
+#include <volt/electrical/transient_request.hpp>
+#include <volt/electrical/transient_solve.hpp>
+#include <volt/io/electrical/transient_request_io.hpp>
+#include <volt/io/electrical/transient_solve_io.hpp>

@@ -1,6 +1,6 @@
 #include <volt/io/electrical/ac_request_io.hpp>
 
-#include "../../circuit/electrical/ac_request_detail.hpp"
+#include "request_io_detail.hpp"
 
 #include <nlohmann/json.hpp>
 #include <set>
@@ -11,46 +11,31 @@ namespace volt::io {
 namespace {
 using Json = nlohmann::ordered_json;
 
-void require(bool valid, const char *message) {
-    if (!valid)
-        throw KernelArgumentError{ErrorCode::InvalidArgument, message};
-}
-
-void fields(const Json &value, std::initializer_list<std::string_view> expected) {
-    require(value.is_object() && value.size() == expected.size(),
-            "AC request has unexpected object fields");
-    for (const auto key : expected)
-        require(value.contains(key), "AC request field is missing");
-}
-
-Json nets_json(const DcNetPair &nets) {
-    return Json{{"from", detail::encode_local_id(nets.from().id())},
-                {"to", detail::encode_local_id(nets.to().id())}};
-}
-
-DcNetPair nets_from_json(const Json &nets, const DcInput &input) {
-    fields(nets, {"from", "to"});
-    const auto net = [&](const Json &value) {
-        require(value.is_string(), "AC request net ID must be a string");
-        const auto spelling = value.get<std::string>();
-        const auto id = detail::decode_local_id<NetId>(spelling);
-        require(detail::encode_local_id(id) == spelling, "AC request net ID must be canonical");
-        return input.net(id);
-    };
-    return DcNetPair{net(nets.at("from")), net(nets.at("to"))};
-}
+using namespace request_detail;
 } // namespace
 
 std::string write_ac_request(const AcRequest &request) {
-    // The shared request fields use the same exact-input and primitive target codec.
-    auto document = Json::parse(write_dc_request(::volt::detail::ac_topology_request(request)));
-    document["format"] = ac_request_format_name();
-    document["version"] = ac_request_format_version();
+    auto probes = Json::array();
+    for (const auto &probe : request.probes())
+        probes.push_back(probe_json(probe));
+    auto exclusions = Json::array();
+    for (const auto &exclusion : request.exclusions())
+        exclusions.push_back(exclusion_json(exclusion));
+    auto document = Json{
+        {"format", ac_request_format_name()},
+        {"version", ac_request_format_version()},
+        {"key", request.key().value()},
+        {"input", Json{{"logical", request.input().identity().logical().value()},
+                       {"selected_parts", request.input().identity().selected_parts().value()}}},
+        {"reference", request.reference() ? Json(detail::encode_local_id(request.reference()->id()))
+                                          : Json(nullptr)},
+        {"sources", Json::array()},
+        {"probes", std::move(probes)},
+        {"exclusions", std::move(exclusions)}};
     document["frequencies"] = Json::array();
     for (const auto frequency : request.frequencies())
         document["frequencies"].push_back(
             Json{{"dimension", "frequency"}, {"si", frequency.value()}});
-    document["sources"] = Json::array();
     for (const auto &source : request.sources()) {
         std::visit(
             [&](const auto &value) {
@@ -79,7 +64,7 @@ std::string write_ac_request(const AcRequest &request) {
     return document.dump(2) + "\n";
 }
 
-AcRequest read_ac_request(std::string_view bytes, const DcInput &input) {
+AcRequest read_ac_request(std::string_view bytes, const ElectricalInput &input) {
     try {
         std::vector<std::set<std::string>> keys;
         auto document = Json::parse(bytes, [&](int, Json::parse_event_t event, Json &value) {
@@ -117,7 +102,7 @@ AcRequest read_ac_request(std::string_view bytes, const DcInput &input) {
                         source.at("amplitude").at("si").is_number() &&
                         source.at("phase_radians").is_number(),
                     "AC source amplitude dimension or phase is invalid");
-            const auto key = DcSourceKey{source.at("key").get<std::string>()};
+            const auto key = ElectricalSourceKey{source.at("key").get<std::string>()};
             const auto nets = nets_from_json(source.at("nets"), input);
             const auto amplitude =
                 Quantity{voltage ? UnitDimension::Voltage : UnitDimension::Current,
@@ -127,36 +112,46 @@ AcRequest read_ac_request(std::string_view bytes, const DcInput &input) {
                 sources.emplace_back(AcVoltageSource{key, nets, amplitude, phase});
             else
                 sources.emplace_back(AcCurrentSource{key, nets, amplitude, phase});
-            source["value"] = Json{{"dimension", voltage ? "voltage" : "current"}, {"si", 0.0}};
-            source.erase("amplitude");
-            source.erase("phase_radians");
         }
         require(document.at("gains").is_array() && document.at("impedances").is_array(),
                 "AC derived probes must be arrays");
         std::vector<AcGainProbe> gains;
         for (const auto &gain : document.at("gains")) {
             fields(gain, {"key", "numerator", "denominator"});
-            gains.emplace_back(DcProbeKey{gain.at("key").get<std::string>()},
-                               DcProbeKey{gain.at("numerator").get<std::string>()},
-                               DcProbeKey{gain.at("denominator").get<std::string>()});
+            gains.emplace_back(ElectricalProbeKey{gain.at("key").get<std::string>()},
+                               ElectricalProbeKey{gain.at("numerator").get<std::string>()},
+                               ElectricalProbeKey{gain.at("denominator").get<std::string>()});
         }
         std::vector<AcImpedanceProbe> impedances;
         for (const auto &impedance : document.at("impedances")) {
             fields(impedance, {"key", "nets", "source"});
-            impedances.emplace_back(DcProbeKey{impedance.at("key").get<std::string>()},
+            impedances.emplace_back(ElectricalProbeKey{impedance.at("key").get<std::string>()},
                                     nets_from_json(impedance.at("nets"), input),
-                                    DcSourceKey{impedance.at("source").get<std::string>()});
+                                    ElectricalSourceKey{impedance.at("source").get<std::string>()});
         }
-        document.erase("frequencies");
-        document.erase("gains");
-        document.erase("impedances");
-        document["format"] = dc_request_format_name();
-        document["version"] = dc_request_format_version();
-        const auto topology = read_dc_request(document.dump(), input);
-        return AcRequest{topology.key(),        input,
-                         topology.reference(),  AcFrequencySweep{std::move(frequencies)},
-                         std::move(sources),    topology.probes(),
-                         topology.exclusions(), std::move(gains),
+        const auto &identity = document.at("input");
+        fields(identity, {"logical", "selected_parts"});
+        require(ElectricalInputIdentity{ContentHash{text(identity.at("logical"))},
+                                        ContentHash{text(identity.at("selected_parts"))}} ==
+                    input.identity(),
+                "AC request belongs to another exact input");
+        std::optional<ElectricalNetRef> reference;
+        if (!document.at("reference").is_null())
+            reference = input.net(local_id<NetId>(document.at("reference")));
+        std::vector<DcProbe> probes;
+        for (const auto &probe : array(document.at("probes")))
+            probes.push_back(probe_from_json(probe, input));
+        std::vector<DcOccurrenceExclusion> exclusions;
+        for (const auto &exclusion : array(document.at("exclusions")))
+            exclusions.push_back(exclusion_from_json(exclusion, input));
+        return AcRequest{ElectricalRequestKey{text(document.at("key"))},
+                         input,
+                         reference,
+                         AcFrequencySweep{std::move(frequencies)},
+                         std::move(sources),
+                         std::move(probes),
+                         std::move(exclusions),
+                         std::move(gains),
                          std::move(impedances)};
     } catch (const Json::exception &error) {
         throw KernelArgumentError{ErrorCode::InvalidArgument,

@@ -18,7 +18,7 @@ def analysis(tmp_path):
         check=True, capture_output=True,
     )
     bundle = volt.ProjectBundle.open(path / "project.volt")
-    dc_input = bundle.graph.loaded_project.circuits[0].dc_input()
+    dc_input = bundle.graph.loaded_project.circuits[0].electrical_input()
     request = volt.DcRequest.from_json(dc_input, (path / "request.json").read_bytes())
     return volt.prepare_ngspice_dc(volt.compile_electrical(request).model)
 

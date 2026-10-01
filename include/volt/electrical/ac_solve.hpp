@@ -103,7 +103,7 @@ struct AcBranchResult {
 /** One primitive or derived observation identified by its request-local key. */
 struct AcProbeResult {
     /** Request-local primitive, gain or impedance key. */
-    DcProbeKey key;
+    ElectricalProbeKey key;
     /** Finite phasor in the observation dimension. */
     AcComplexQuantity value;
 };

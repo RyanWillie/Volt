@@ -52,21 +52,22 @@ template <typename Value> [[nodiscard]] py::tuple copied_tuple(const std::vector
     return handle.attr("_design").attr("_circuit").cast<const PyCircuit &>();
 }
 
-void require_logical_identity(const DcInput &input, const PyCircuit &circuit) {
+void require_logical_identity(const ElectricalInput &input, const PyCircuit &circuit) {
     const auto actual = sha256_content_hash(io::write_logical_circuit(circuit.logical_circuit()));
     if (actual != input.identity().logical()) {
         throw KernelLogicError{ErrorCode::CrossReferenceViolation,
-                               "DC input handle belongs to another logical circuit"};
+                               "Electrical input handle belongs to another logical circuit"};
     }
 }
 
-[[nodiscard]] DcNetRef input_net(const DcInput &input, const py::handle &handle) {
+[[nodiscard]] ElectricalNetRef input_net(const ElectricalInput &input, const py::handle &handle) {
     const auto &circuit = authoring_circuit(handle, "Net");
     require_logical_identity(input, circuit);
     return input.net(NetId{handle.attr("index").cast<std::size_t>()});
 }
 
-[[nodiscard]] DcOccurrenceRef input_occurrence(const DcInput &input, const py::handle &handle) {
+[[nodiscard]] ElectricalOccurrenceRef input_occurrence(const ElectricalInput &input,
+                                                       const py::handle &handle) {
     const auto &circuit = authoring_circuit(handle, "Component");
     require_logical_identity(input, circuit);
     return input.occurrence(ComponentId{handle.attr("index").cast<std::size_t>()});
@@ -133,30 +134,33 @@ void bind_dc_request(pybind11::module_ &module) {
         }
         return result;
     });
-    bind_key(py::class_<DcRequestKey>(module, "DcRequestKey"));
-    bind_key(py::class_<DcSourceKey>(module, "DcSourceKey"));
-    bind_key(py::class_<DcProbeKey>(module, "DcProbeKey"));
+    bind_key(py::class_<ElectricalRequestKey>(module, "ElectricalRequestKey"));
+    bind_key(py::class_<ElectricalSourceKey>(module, "ElectricalSourceKey"));
+    bind_key(py::class_<ElectricalProbeKey>(module, "ElectricalProbeKey"));
 
-    py::class_<DcInputIdentity>(module, "DcInputIdentity")
-        .def_property_readonly("logical", &DcInputIdentity::logical, py::return_value_policy::copy)
-        .def_property_readonly("selected_parts", &DcInputIdentity::selected_parts,
+    py::class_<ElectricalInputIdentity>(module, "ElectricalInputIdentity")
+        .def_property_readonly("logical", &ElectricalInputIdentity::logical,
+                               py::return_value_policy::copy)
+        .def_property_readonly("selected_parts", &ElectricalInputIdentity::selected_parts,
                                py::return_value_policy::copy)
         .def(py::self == py::self);
-    py::class_<DcNetRef>(module, "DcNetRef")
-        .def_property_readonly("index", [](const DcNetRef &value) { return value.id().index(); })
-        .def_property_readonly("input", &DcNetRef::input, py::return_value_policy::copy)
-        .def(py::self == py::self);
-    py::class_<DcOccurrenceRef>(module, "DcOccurrenceRef")
+    py::class_<ElectricalNetRef>(module, "ElectricalNetRef")
         .def_property_readonly("index",
-                               [](const DcOccurrenceRef &value) { return value.id().index(); })
-        .def_property_readonly("input", &DcOccurrenceRef::input, py::return_value_policy::copy)
+                               [](const ElectricalNetRef &value) { return value.id().index(); })
+        .def_property_readonly("input", &ElectricalNetRef::input, py::return_value_policy::copy)
         .def(py::self == py::self);
-    py::class_<DcInput>(module, "DcInput")
+    py::class_<ElectricalOccurrenceRef>(module, "ElectricalOccurrenceRef")
         .def_property_readonly(
-            "identity", [](const DcInput &input) { return input.identity(); },
+            "index", [](const ElectricalOccurrenceRef &value) { return value.id().index(); })
+        .def_property_readonly("input", &ElectricalOccurrenceRef::input,
+                               py::return_value_policy::copy)
+        .def(py::self == py::self);
+    py::class_<ElectricalInput>(module, "ElectricalInput")
+        .def_property_readonly(
+            "identity", [](const ElectricalInput &input) { return input.identity(); },
             py::return_value_policy::copy)
         .def_property_readonly("nets",
-                               [](const DcInput &input) {
+                               [](const ElectricalInput &input) {
                                    auto result = py::tuple{input.circuit().all<NetId>().size()};
                                    for (std::size_t index = 0; index < py::len(result); ++index) {
                                        result[index] = py::cast(input.net(NetId{index}),
@@ -165,7 +169,7 @@ void bind_dc_request(pybind11::module_ &module) {
                                    return result;
                                })
         .def_property_readonly("occurrences",
-                               [](const DcInput &input) {
+                               [](const ElectricalInput &input) {
                                    auto result =
                                        py::tuple{input.circuit().all<ComponentId>().size()};
                                    for (std::size_t index = 0; index < py::len(result); ++index) {
@@ -178,42 +182,45 @@ void bind_dc_request(pybind11::module_ &module) {
         .def("net", &input_net, py::arg("net"))
         .def("occurrence", &input_occurrence, py::arg("component"));
     module.def(
-        "prepare_dc_input",
+        "prepare_electrical_input",
         [](const PyCircuit &circuit) {
-            return io::prepare_dc_input(circuit.logical_circuit(), circuit.selected_part_bundle());
+            return io::prepare_electrical_input(circuit.logical_circuit(),
+                                                circuit.selected_part_bundle());
         },
         py::arg("circuit"));
 
-    py::class_<DcNetPair>(module, "DcNetPair")
-        .def(py::init<DcNetRef, DcNetRef>(), py::arg("from_"), py::arg("to"))
-        .def_property_readonly("from_", &DcNetPair::from, py::return_value_policy::copy)
-        .def_property_readonly("to", &DcNetPair::to, py::return_value_policy::copy)
+    py::class_<ElectricalNetPair>(module, "ElectricalNetPair")
+        .def(py::init<ElectricalNetRef, ElectricalNetRef>(), py::arg("from_"), py::arg("to"))
+        .def_property_readonly("from_", &ElectricalNetPair::from, py::return_value_policy::copy)
+        .def_property_readonly("to", &ElectricalNetPair::to, py::return_value_policy::copy)
         .def(py::self == py::self);
     py::class_<DcVoltageSource>(module, "_DcVoltageSource")
-        .def(py::init([](KeyInput<DcSourceKey> key, DcNetPair nets, Quantity value) {
-                 return DcVoltageSource{key_value(std::move(key)), std::move(nets), value};
-             }),
-             py::arg("key"), py::arg("nets"), py::arg("value"))
+        .def(
+            py::init([](KeyInput<ElectricalSourceKey> key, ElectricalNetPair nets, Quantity value) {
+                return DcVoltageSource{key_value(std::move(key)), std::move(nets), value};
+            }),
+            py::arg("key"), py::arg("nets"), py::arg("value"))
         .def_property_readonly("key", &DcVoltageSource::key, py::return_value_policy::copy)
         .def_property_readonly("nets", &DcVoltageSource::nets, py::return_value_policy::copy)
         .def_property_readonly("value", &DcVoltageSource::value, py::return_value_policy::copy);
     py::class_<DcCurrentSource>(module, "_DcCurrentSource")
-        .def(py::init([](KeyInput<DcSourceKey> key, DcNetPair nets, Quantity value) {
-                 return DcCurrentSource{key_value(std::move(key)), std::move(nets), value};
-             }),
-             py::arg("key"), py::arg("nets"), py::arg("value"))
+        .def(
+            py::init([](KeyInput<ElectricalSourceKey> key, ElectricalNetPair nets, Quantity value) {
+                return DcCurrentSource{key_value(std::move(key)), std::move(nets), value};
+            }),
+            py::arg("key"), py::arg("nets"), py::arg("value"))
         .def_property_readonly("key", &DcCurrentSource::key, py::return_value_policy::copy)
         .def_property_readonly("nets", &DcCurrentSource::nets, py::return_value_policy::copy)
         .def_property_readonly("value", &DcCurrentSource::value, py::return_value_policy::copy);
     py::class_<DcVoltageProbe>(module, "_DcVoltageProbe")
-        .def(py::init([](KeyInput<DcProbeKey> key, DcNetPair nets) {
+        .def(py::init([](KeyInput<ElectricalProbeKey> key, ElectricalNetPair nets) {
                  return DcVoltageProbe{key_value(std::move(key)), std::move(nets)};
              }),
              py::arg("key"), py::arg("nets"))
         .def_property_readonly("key", &DcVoltageProbe::key, py::return_value_policy::copy)
         .def_property_readonly("nets", &DcVoltageProbe::nets, py::return_value_policy::copy);
     py::class_<DcSourceCurrentProbe>(module, "DcSourceCurrentProbe")
-        .def(py::init([](KeyInput<DcProbeKey> key, KeyInput<DcSourceKey> source) {
+        .def(py::init([](KeyInput<ElectricalProbeKey> key, KeyInput<ElectricalSourceKey> source) {
                  return DcSourceCurrentProbe{key_value(std::move(key)),
                                              key_value(std::move(source))};
              }),
@@ -222,7 +229,7 @@ void bind_dc_request(pybind11::module_ &module) {
         .def_property_readonly("source", &DcSourceCurrentProbe::source,
                                py::return_value_policy::copy);
     py::class_<DcModelElementCurrentProbe>(module, "DcModelElementCurrentProbe")
-        .def(py::init([](KeyInput<DcProbeKey> key, DcOccurrenceRef occurrence,
+        .def(py::init([](KeyInput<ElectricalProbeKey> key, ElectricalOccurrenceRef occurrence,
                          KeyInput<ModelElementKey> element) {
                  return DcModelElementCurrentProbe{key_value(std::move(key)), std::move(occurrence),
                                                    key_value(std::move(element))};
@@ -242,8 +249,8 @@ void bind_dc_request(pybind11::module_ &module) {
         .def(py::init<>())
         .def(py::self == py::self);
     py::class_<DcReplacedByStimulusExclusion>(module, "DcReplacedByStimulusExclusion")
-        .def(py::init([](const std::vector<KeyInput<DcSourceKey>> &sources) {
-                 auto keys = std::vector<DcSourceKey>{};
+        .def(py::init([](const std::vector<KeyInput<ElectricalSourceKey>> &sources) {
+                 auto keys = std::vector<ElectricalSourceKey>{};
                  keys.reserve(sources.size());
                  for (const auto &source : sources) {
                      keys.push_back(key_value(source));
@@ -255,7 +262,7 @@ void bind_dc_request(pybind11::module_ &module) {
             return copied_tuple(value.sources());
         });
     py::class_<DcOccurrenceExclusion>(module, "DcOccurrenceExclusion")
-        .def(py::init<DcOccurrenceRef, DcExclusionReason>(), py::arg("occurrence"),
+        .def(py::init<ElectricalOccurrenceRef, DcExclusionReason>(), py::arg("occurrence"),
              py::arg("reason"))
         .def_property_readonly("occurrence", &DcOccurrenceExclusion::occurrence,
                                py::return_value_policy::copy)
@@ -264,8 +271,8 @@ void bind_dc_request(pybind11::module_ &module) {
 
     py::class_<DcRequest>(module, "DcRequest")
         .def(
-            py::init([](KeyInput<DcRequestKey> key, const DcInput &input,
-                        std::optional<DcNetRef> reference, const py::iterable &sources,
+            py::init([](KeyInput<ElectricalRequestKey> key, const ElectricalInput &input,
+                        std::optional<ElectricalNetRef> reference, const py::iterable &sources,
                         const py::iterable &probes, std::vector<DcOccurrenceExclusion> exclusions) {
                 return DcRequest{key_value(std::move(key)), input,
                                  std::move(reference),      request_sources(sources),
@@ -286,7 +293,7 @@ void bind_dc_request(pybind11::module_ &module) {
         .def("to_json", &io::write_dc_request)
         .def_static(
             "from_json",
-            [](const DcInput &input, const py::handle &value) {
+            [](const ElectricalInput &input, const py::handle &value) {
                 return io::read_dc_request(request_bytes(value), input);
             },
             py::arg("input"), py::arg("data"))

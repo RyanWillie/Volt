@@ -45,13 +45,13 @@ int main() {
     auto dc_circuit = volt::Circuit{};
     const auto positive = dc_circuit.add_net(volt::NetSpec{.name = volt::NetName{"positive"}});
     const auto reference = dc_circuit.add_net(volt::NetSpec{.name = volt::NetName{"reference"}});
-    const auto input = volt::io::prepare_dc_input(dc_circuit, NoParts{});
+    const auto input = volt::io::prepare_electrical_input(dc_circuit, NoParts{});
     const auto request = volt::DcRequest{
-        volt::DcRequestKey{"package-test"},
+        volt::ElectricalRequestKey{"package-test"},
         input,
         input.net(reference),
-        {volt::DcVoltageSource{volt::DcSourceKey{"drive"},
-                               volt::DcNetPair{input.net(positive), input.net(reference)},
+        {volt::DcVoltageSource{volt::ElectricalSourceKey{"drive"},
+                               volt::ElectricalNetPair{input.net(positive), input.net(reference)},
                                volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}};
     const auto compiled = volt::compile_electrical(request);
     if (!compiled.complete()) {
@@ -62,6 +62,30 @@ int main() {
         volt::io::write_dc_solve_report(dc_report).empty()) {
         return 1;
     }
+
+    const auto transient = volt::TransientRequest{
+        volt::ElectricalRequestKey{"package-transient"},
+        input,
+        input.net(reference),
+        volt::TransientTimeGrid::uniform(volt::Quantity{volt::UnitDimension::Time, 0.001}, 3),
+        {volt::TransientVoltageSource{
+            volt::ElectricalSourceKey{"drive"},
+            volt::ElectricalNetPair{input.net(positive), input.net(reference)},
+            volt::TransientWaveform{volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}},
+        {},
+        {},
+        volt::initial_state_from(dc_report)};
+    const auto transient_model = volt::compile_electrical(transient);
+    if (!transient_model.complete())
+        return 1;
+    const auto transient_report = volt::solve_transient(
+        *transient_model.model(),
+        volt::TransientSolveOptions{volt::Quantity{volt::UnitDimension::Time, 1e-12},
+                                    volt::Quantity{volt::UnitDimension::Time, 1e-6},
+                                    volt::Quantity{volt::UnitDimension::Time, 1e-3}, 100, 100});
+    if (!transient_report.success() || transient_report.solution()->samples().size() != 3U ||
+        volt::io::write_transient_solve_report(transient_report).empty())
+        return 1;
 
     std::cout << "umbrella consumer: volt " << volt::version_string() << ", "
               << circuit.all<volt::ComponentId>().size() << " components, "

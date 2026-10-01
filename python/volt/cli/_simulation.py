@@ -361,3 +361,81 @@ def execute_ac(
             "output": str(output), "written": True,
             "artifacts": {name: str(output / name) for name in artifacts},
             "compile_report": compile_payload, "solve_report": solve_payload}, exit_code
+
+
+
+def transient_options(args):
+    from .. import Quantity, UnitDimension, TransientSolveOptions
+    fields = ('h_min', 'h_initial', 'h_max', 'max_trials', 'max_accepted_steps')
+    temporal = ('relative_tolerance', 'absolute_voltage_tolerance', 'absolute_current_tolerance')
+    if args.analysis != 'transient':
+        if any(getattr(args, name) is not None for name in fields + temporal):
+            raise CliError('Transient numerical options require --analysis transient.',
+                           code='unexpected-transient-options')
+        return None
+    if any(getattr(args, name) is None for name in fields):
+        raise CliError('Transient analysis requires --h-min, --h-initial, --h-max, '
+                       '--max-trials and --max-accepted-steps.',
+                       code='missing-transient-options')
+    try:
+        # Native constructors validate dimensions, positivity, ordering, finite values and budgets.
+        if args.max_trials <= 0 or args.max_accepted_steps <= 0:
+            raise ValueError('Transient work budgets must be positive integers')
+        return TransientSolveOptions(
+            Quantity(UnitDimension.TIME, args.h_min),
+            Quantity(UnitDimension.TIME, args.h_initial),
+            Quantity(UnitDimension.TIME, args.h_max),
+            args.max_trials, args.max_accepted_steps,
+            1e-4 if args.relative_tolerance is None else args.relative_tolerance,
+            Quantity(UnitDimension.VOLTAGE, 1e-6 if args.absolute_voltage_tolerance is None
+                     else args.absolute_voltage_tolerance),
+            Quantity(UnitDimension.CURRENT, 1e-9 if args.absolute_current_tolerance is None
+                     else args.absolute_current_tolerance))
+    except Exception as error:
+        raise CliError(f'Invalid transient numerical options: {error}',
+                       code='invalid-transient-options') from error
+
+
+def execute_transient(input, request_path, output, *, design, source,
+                      options, backend='native', ngspice=None):
+    from .. import TransientRequest, compile_electrical, solve_transient
+    if backend != 'native':
+        raise CliError('Transient analysis requires --backend native.',
+                       code='unsupported-transient-backend')
+    if ngspice is not None:
+        raise CliError('Native simulation does not accept an ngspice executable.',
+                       code='native-backend-rejects-ngspice-path')
+    output = Path(os.path.abspath(output))
+    validate_output(output)
+    try:
+        data = request_path.read_bytes()
+    except OSError as error:
+        raise CliError(f'Failed to read transient request {request_path}: {error}',
+                       code='transient-request-read-failed') from error
+    try:
+        request = TransientRequest.from_json(input, data)
+        report = compile_electrical(request)
+        compile_bytes = report.to_json().encode()
+        compile_payload = json.loads(compile_bytes)
+        artifacts = {_ARTIFACT_REQUEST: request.to_json().encode(),
+                     _ARTIFACT_COMPILE_REPORT: compile_bytes}
+        solve_payload = None
+        status, exit_code = 'incomplete', EXIT_CHECK_FAILED
+        if report.complete:
+            solved = solve_transient(report.model, options)
+            solve_bytes = solved.to_json().encode()
+            solve_payload = json.loads(solve_bytes)
+            artifacts[_ARTIFACT_SOLVE_REPORT] = solve_bytes
+            status = 'success' if solved.success else 'failed'
+            if solved.success:
+                artifacts[_ARTIFACT_SOLUTION] = solved.solution.to_json().encode()
+                exit_code = EXIT_SUCCESS
+    except Exception as error:
+        raise CliError(f'Native transient execution failed: {error}',
+                       code='native-transient-execution-failed') from error
+    _write_and_publish(output, artifacts)
+    return {'ok': status == 'success', 'status': status, 'analysis': 'transient',
+            'backend': 'native', 'design': design, 'source': source,
+            'output': str(output), 'written': True,
+            'artifacts': {name: str(output / name) for name in artifacts},
+            'compile_report': compile_payload, 'solve_report': solve_payload}, exit_code

@@ -1,7 +1,7 @@
 """Type information for immutable native electrical compilation results."""
 
 from .ac import AcRequest
-from .dc import DcInputIdentity, DcOccurrenceCoverage, DcRequest
+from .dc import ElectricalInputIdentity, DcOccurrenceCoverage, DcRequest
 from .electrical import ContentHash
 
 
@@ -27,7 +27,7 @@ class ElectricalCompileReport:
     @property
     def diagnostics(self) -> list[dict[str, object]]: ...
     @property
-    def input(self) -> DcInputIdentity: ...
+    def input(self) -> ElectricalInputIdentity: ...
     def to_json(self) -> str: ...
 
 

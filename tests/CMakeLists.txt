@@ -61,6 +61,9 @@ add_executable(
     io/electrical/ac_request_io_test.cpp
     io/electrical/linear_dc_test.cpp
     io/electrical/linear_ac_test.cpp
+    io/electrical/linear_transient_test.cpp
+    io/electrical/transient_request_test.cpp
+    io/electrical/transient_request_io_test.cpp
     io/electrical/ngspice_dc_test.cpp
     io/electrical/compiled_electrical_model_test.cpp
     io/logical/logical_circuit_reader_test.cpp

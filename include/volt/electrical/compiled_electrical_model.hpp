@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <volt/electrical/ac_request.hpp>
+#include <volt/electrical/transient_request.hpp>
 
 namespace volt {
 
@@ -82,12 +83,12 @@ struct ElectricalElementOrigin {
 };
 
 /** A branch originates either in an exact Part element or a request-local source. */
-using ElectricalBranchOrigin = std::variant<ElectricalElementOrigin, DcSourceKey>;
+using ElectricalBranchOrigin = std::variant<ElectricalElementOrigin, ElectricalSourceKey>;
 
 /** Original closed laws; parameters, orientation, uncertainty and evidence stay intact. */
-using ElectricalLaw =
-    std::variant<ResistanceElement, CapacitanceElement, InductanceElement, DcVoltageSource,
-                 DcCurrentSource, AcVoltageSource, AcCurrentSource>;
+using ElectricalLaw = std::variant<ResistanceElement, CapacitanceElement, InductanceElement,
+                                   DcVoltageSource, DcCurrentSource, AcVoltageSource,
+                                   AcCurrentSource, TransientVoltageSource, TransientCurrentSource>;
 
 /** One oriented current observation and its exact primitive law. */
 struct ElectricalBranch {
@@ -139,7 +140,7 @@ struct ElectricalCurrentObservation {
 /** One requested observation resolved without computing a numerical result. */
 struct ElectricalProbe {
     /** Original request-local probe identity. */
-    DcProbeKey key;
+    ElectricalProbeKey key;
     /** Closed resolved observation target. */
     std::variant<ElectricalVoltageObservation, ElectricalCurrentObservation> target;
 };
@@ -167,10 +168,16 @@ class CompiledElectricalModel {
         return std::get_if<AcRequest>(&request_);
     }
 
+    /** Return the transient request only for a compiled transient analysis. */
+    [[nodiscard]] const TransientRequest *transient_request() const noexcept {
+        return std::get_if<TransientRequest>(&request_);
+    }
+
     /** Return the exact input shared by every analysis kind. */
-    [[nodiscard]] const DcInput &input() const noexcept {
-        return std::visit([](const auto &request) -> const DcInput & { return request.input(); },
-                          request_);
+    [[nodiscard]] const ElectricalInput &input() const noexcept {
+        return std::visit(
+            [](const auto &request) -> const ElectricalInput & { return request.input(); },
+            request_);
     }
 
     /** Return deterministic node-potential coordinates, origins and KCL incidence. */
@@ -193,13 +200,13 @@ class CompiledElectricalModel {
     [[nodiscard]] const std::vector<ElectricalProbe> &probes() const noexcept { return probes_; }
 
   private:
-    CompiledElectricalModel(std::variant<DcRequest, AcRequest> request,
+    CompiledElectricalModel(std::variant<DcRequest, AcRequest, TransientRequest> request,
                             std::vector<ElectricalNode> nodes,
                             std::vector<ElectricalBranch> branches, ElectricalNodeId reference,
                             std::vector<ElectricalStorage> storage,
                             std::vector<ElectricalProbe> probes);
 
-    std::variant<DcRequest, AcRequest> request_;
+    std::variant<DcRequest, AcRequest, TransientRequest> request_;
     std::vector<ElectricalNode> nodes_;
     std::vector<ElectricalBranch> branches_;
     ElectricalNodeId reference_;
@@ -216,6 +223,9 @@ class ElectricalCompileReport {
     explicit ElectricalCompileReport(const DcRequest &request);
     /** Compile an immutable AC request through the same native graph compiler. */
     explicit ElectricalCompileReport(const AcRequest &request);
+
+    /** Compile an immutable transient request without executing a solver. */
+    explicit ElectricalCompileReport(const TransientRequest &request);
 
     /** Return whether a complete required graph/law model is available, not solvability. */
     [[nodiscard]] bool complete() const noexcept { return model_.has_value(); }
@@ -238,9 +248,11 @@ class ElectricalCompileReport {
     }
 
     /** Return the exact immutable input identity assessed and compiled. */
-    [[nodiscard]] const DcInputIdentity &input() const noexcept {
+    [[nodiscard]] const ElectricalInputIdentity &input() const noexcept {
         return std::visit(
-            [](const auto &assessment) -> const DcInputIdentity & { return assessment.input(); },
+            [](const auto &assessment) -> const ElectricalInputIdentity & {
+                return assessment.input();
+            },
             assessment_);
     }
 
@@ -250,7 +262,7 @@ class ElectricalCompileReport {
     }
 
   private:
-    std::variant<DcRequestAssessment, AcRequestAssessment> assessment_;
+    std::variant<DcRequestAssessment, AcRequestAssessment, TransientRequestAssessment> assessment_;
     std::vector<Diagnostic> diagnostics_;
     std::optional<CompiledElectricalModel> model_;
 };
@@ -259,5 +271,8 @@ class ElectricalCompileReport {
 [[nodiscard]] ElectricalCompileReport compile_electrical(const DcRequest &request);
 /** Compile an AC request without a second connectivity resolver. */
 [[nodiscard]] ElectricalCompileReport compile_electrical(const AcRequest &request);
+
+/** Compile a transient request using the same native connectivity and typed law graph. */
+[[nodiscard]] ElectricalCompileReport compile_electrical(const TransientRequest &request);
 
 } // namespace volt

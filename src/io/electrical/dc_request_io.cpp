@@ -1,3 +1,4 @@
+#include "request_io_detail.hpp"
 #include <volt/io/electrical/dc_request_io.hpp>
 
 #include <algorithm>
@@ -15,48 +16,7 @@
 namespace volt::io {
 namespace {
 
-using Json = nlohmann::ordered_json;
-
-void require(bool condition, const std::string &message) {
-    if (!condition) {
-        throw KernelArgumentError{ErrorCode::InvalidArgument, "DC request: " + message};
-    }
-}
-
-void fields(const Json &value, std::initializer_list<std::string_view> keys) {
-    require(value.is_object() && value.size() == keys.size(), "unexpected object fields");
-    for (const auto key : keys) {
-        require(value.contains(key), "missing field " + std::string{key});
-    }
-}
-
-std::string text(const Json &value) {
-    require(value.is_string(), "expected a string");
-    return value.get<std::string>();
-}
-
-const Json &array(const Json &value) {
-    require(value.is_array(), "expected an array");
-    return value;
-}
-
-template <typename Id> Id local_id(const Json &value) {
-    const auto spelling = text(value);
-    const auto result = detail::decode_local_id<Id>(spelling);
-    require(detail::encode_local_id(result) == spelling, "noncanonical local identity");
-    return result;
-}
-
-Json nets_json(const DcNetPair &nets) {
-    return Json{{"from", detail::encode_local_id(nets.from().id())},
-                {"to", detail::encode_local_id(nets.to().id())}};
-}
-
-DcNetPair nets_from_json(const Json &value, const DcInput &input) {
-    fields(value, {"from", "to"});
-    return DcNetPair{input.net(local_id<NetId>(value.at("from"))),
-                     input.net(local_id<NetId>(value.at("to")))};
-}
+using namespace request_detail;
 
 Json source_json(const DcSource &source) {
     return std::visit(
@@ -71,7 +31,7 @@ Json source_json(const DcSource &source) {
         source);
 }
 
-DcSource source_from_json(const Json &value, const DcInput &input) {
+DcSource source_from_json(const Json &value, const ElectricalInput &input) {
     fields(value, {"kind", "key", "nets", "value"});
     const auto kind = text(value.at("kind"));
     const auto &parameter = value.at("value");
@@ -82,102 +42,13 @@ DcSource source_from_json(const Json &value, const DcInput &input) {
     const auto quantity =
         Quantity{dimension == "voltage" ? UnitDimension::Voltage : UnitDimension::Current,
                  parameter.at("si").get<double>()};
-    const auto key = DcSourceKey{text(value.at("key"))};
+    const auto key = ElectricalSourceKey{text(value.at("key"))};
     const auto nets = nets_from_json(value.at("nets"), input);
     if (kind == "voltage") {
         return DcVoltageSource{key, nets, quantity};
     }
     require(kind == "current", "unknown source kind");
     return DcCurrentSource{key, nets, quantity};
-}
-
-Json probe_json(const DcProbe &probe) {
-    return std::visit(
-        [](const auto &value) {
-            using Probe = std::decay_t<decltype(value)>;
-            if constexpr (std::same_as<Probe, DcVoltageProbe>) {
-                return Json{{"kind", "voltage"},
-                            {"key", value.key().value()},
-                            {"nets", nets_json(value.nets())}};
-            } else if constexpr (std::same_as<Probe, DcSourceCurrentProbe>) {
-                return Json{{"kind", "source_current"},
-                            {"key", value.key().value()},
-                            {"source", value.source().value()}};
-            } else {
-                static_assert(std::same_as<Probe, DcModelElementCurrentProbe>);
-                return Json{{"kind", "model_element_current"},
-                            {"key", value.key().value()},
-                            {"occurrence", detail::encode_local_id(value.occurrence().id())},
-                            {"element", value.element().value()}};
-            }
-        },
-        probe);
-}
-
-DcProbe probe_from_json(const Json &value, const DcInput &input) {
-    require(value.is_object() && value.contains("kind"), "probe kind is missing");
-    const auto kind = text(value.at("kind"));
-    if (kind == "voltage") {
-        fields(value, {"kind", "key", "nets"});
-        return DcVoltageProbe{DcProbeKey{text(value.at("key"))},
-                              nets_from_json(value.at("nets"), input)};
-    }
-    if (kind == "source_current") {
-        fields(value, {"kind", "key", "source"});
-        return DcSourceCurrentProbe{DcProbeKey{text(value.at("key"))},
-                                    DcSourceKey{text(value.at("source"))}};
-    }
-    require(kind == "model_element_current", "unknown probe kind");
-    fields(value, {"kind", "key", "occurrence", "element"});
-    return DcModelElementCurrentProbe{
-        DcProbeKey{text(value.at("key"))},
-        input.occurrence(local_id<ComponentId>(value.at("occurrence"))),
-        ModelElementKey{text(value.at("element"))}};
-}
-
-Json exclusion_json(const DcOccurrenceExclusion &exclusion) {
-    auto reason = std::visit(
-        [](const auto &value) {
-            using Reason = std::decay_t<decltype(value)>;
-            if constexpr (std::same_as<Reason, DcNonElectricalExclusion>) {
-                return Json{{"kind", "non_electrical"}};
-            } else if constexpr (std::same_as<Reason, DcOutsideAnalysisExclusion>) {
-                return Json{{"kind", "outside_analysis"}};
-            } else {
-                static_assert(std::same_as<Reason, DcReplacedByStimulusExclusion>);
-                auto sources = Json::array();
-                for (const auto &source : value.sources()) {
-                    sources.push_back(source.value());
-                }
-                return Json{{"kind", "replaced_by_stimulus"}, {"sources", std::move(sources)}};
-            }
-        },
-        exclusion.reason());
-    return Json{{"occurrence", detail::encode_local_id(exclusion.occurrence().id())},
-                {"reason", std::move(reason)}};
-}
-
-DcOccurrenceExclusion exclusion_from_json(const Json &value, const DcInput &input) {
-    fields(value, {"occurrence", "reason"});
-    const auto occurrence = input.occurrence(local_id<ComponentId>(value.at("occurrence")));
-    const auto &reason = value.at("reason");
-    require(reason.is_object() && reason.contains("kind"), "exclusion reason is missing");
-    const auto kind = text(reason.at("kind"));
-    if (kind == "non_electrical") {
-        fields(reason, {"kind"});
-        return DcOccurrenceExclusion{occurrence, DcNonElectricalExclusion{}};
-    }
-    if (kind == "outside_analysis") {
-        fields(reason, {"kind"});
-        return DcOccurrenceExclusion{occurrence, DcOutsideAnalysisExclusion{}};
-    }
-    require(kind == "replaced_by_stimulus", "unknown exclusion reason");
-    fields(reason, {"kind", "sources"});
-    auto sources = std::vector<DcSourceKey>{};
-    for (const auto &source : array(reason.at("sources"))) {
-        sources.emplace_back(text(source));
-    }
-    return DcOccurrenceExclusion{occurrence, DcReplacedByStimulusExclusion{std::move(sources)}};
 }
 
 } // namespace
@@ -211,7 +82,7 @@ std::string write_dc_request(const DcRequest &request) {
            "\n";
 }
 
-DcRequest read_dc_request(std::string_view bytes, const DcInput &input) {
+DcRequest read_dc_request(std::string_view bytes, const ElectricalInput &input) {
     try {
         auto object_keys = std::vector<std::set<std::string>>{};
         const auto document = Json::parse(bytes, [&](int, Json::parse_event_t event, Json &value) {
@@ -233,12 +104,13 @@ DcRequest read_dc_request(std::string_view bytes, const DcInput &input) {
                 "unsupported version");
         const auto &identity = document.at("input");
         fields(identity, {"logical", "selected_parts"});
-        if (DcInputIdentity{ContentHash{text(identity.at("logical"))},
-                            ContentHash{text(identity.at("selected_parts"))}} != input.identity()) {
+        if (ElectricalInputIdentity{ContentHash{text(identity.at("logical"))},
+                                    ContentHash{text(identity.at("selected_parts"))}} !=
+            input.identity()) {
             throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
                                       "DC request belongs to a different exact input"};
         }
-        auto reference = std::optional<DcNetRef>{};
+        auto reference = std::optional<ElectricalNetRef>{};
         if (!document.at("reference").is_null()) {
             reference = input.net(local_id<NetId>(document.at("reference")));
         }
@@ -254,7 +126,7 @@ DcRequest read_dc_request(std::string_view bytes, const DcInput &input) {
         for (const auto &exclusion : array(document.at("exclusions"))) {
             exclusions.push_back(exclusion_from_json(exclusion, input));
         }
-        return DcRequest{DcRequestKey{text(document.at("key"))},
+        return DcRequest{ElectricalRequestKey{text(document.at("key"))},
                          input,
                          reference,
                          std::move(sources),

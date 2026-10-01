@@ -232,7 +232,7 @@ def main() -> volt.Project:
 
 
 def _handles(design: volt.Design):
-    dc_input = volt.prepare_dc_input(design)
+    dc_input = volt.prepare_electrical_input(design)
     nets = {net.name: dc_input.net(net) for net in design.nets()}
     components = {
         component.reference: dc_input.occurrence(component)

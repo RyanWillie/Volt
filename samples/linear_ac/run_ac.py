@@ -16,7 +16,7 @@ def run(destination):
     result = project.run_through(project.design)
     design = result.design("lowpass")
     nets = {net.name: net for net in design.nets()}
-    input = volt.prepare_ac_input(design)
+    input = volt.prepare_electrical_input(design)
     supply, output, ground = (input.net(nets[name]) for name in ("INPUT", "OUTPUT", "GROUND"))
     cutoff = 1 / (2 * math.pi * 1000 * 1e-6)
     request = volt.AcRequest(

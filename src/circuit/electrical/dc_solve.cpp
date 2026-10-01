@@ -63,9 +63,9 @@ class IdentityEncoder final {
 [[nodiscard]] ContentHash make_analysis_identity(const CompiledElectricalModel &model,
                                                  const DcSolveOptions &options,
                                                  const DcSolveProvenance &provenance) {
-    if (model.ac_request() != nullptr) {
+    if (model.ac_request() != nullptr || model.transient_request() != nullptr) {
         throw KernelArgumentError{ErrorCode::InvalidArgument,
-                                  "AC compiled model cannot be solved as DC"};
+                                  "Non-DC compiled model cannot be solved as DC"};
     }
     auto encoder = IdentityEncoder{};
     encoder.text("volt.linear-dc-analysis");

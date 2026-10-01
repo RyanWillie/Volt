@@ -12,6 +12,7 @@ from ..project import _diagnostics_payload, _tests_payload
 from ..project_bundle import ProjectBundle
 from . import (
     CliError,
+    _add_transient_arguments,
     EXIT_CHECK_FAILED,
     EXIT_COMMAND_FAILED,
     EXIT_SUCCESS,
@@ -35,11 +36,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--exports-json", default="[]")
     parser.add_argument("--design")
     parser.add_argument("--request", type=Path)
-    parser.add_argument("--analysis", choices=("dc", "ac"), default="dc")
+    parser.add_argument("--analysis", choices=("dc", "ac", "transient"), default="dc")
     parser.add_argument("--backend", choices=("native", "ngspice"), default="native")
     parser.add_argument("--ngspice", type=Path)
     parser.add_argument("--schematic")
     parser.add_argument("--board")
+    _add_transient_arguments(parser)
     return parser
 
 
@@ -230,15 +232,15 @@ def _failure(error: Exception) -> dict[str, object]:
 def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
     config = load_project_config(args.config)
     if args.action == "simulate":
-        from ._simulation import validate_output
+        from ._simulation import validate_output, transient_options
 
         if not args.design or args.request is None or args.output is None:
             raise CliError(
                 "Simulation worker requires design, request and output.",
                 code="missing-simulation-argument",
             )
-        if args.analysis == "ac" and args.backend != "native":
-            raise CliError("AC analysis requires --backend native.", code="unsupported-ac-backend")
+        if args.analysis in ("ac", "transient") and args.backend != "native":
+            raise CliError(f"{args.analysis.upper()} analysis requires --backend native.", code=f"unsupported-{args.analysis}-backend")
         if args.backend == "native" and args.ngspice is not None:
             raise CliError(
                 "Native simulation does not accept an ngspice executable.",
@@ -249,23 +251,24 @@ def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
                 "ngspice simulation requires an executable path.",
                 code="ngspice-path-required",
             )
+        options = transient_options(args)
         validate_output(args.output)
     result = _project_result_with_forwarded_stdout(
         config, design_only=args.action == "simulate"
     )
     if args.action == "simulate":
-        from ..dc import prepare_dc_input
-        from ._simulation import execute_dc, execute_ac
+        from ..dc import prepare_electrical_input
+        from ._simulation import execute_dc, execute_ac, execute_transient
 
         selected = _one(result.designs, args.design, "Design")
         try:
-            selected_input = prepare_dc_input(selected)
+            selected_input = prepare_electrical_input(selected)
         except Exception as error:
             raise CliError(
                 f"Failed to prepare the selected Design for {args.analysis.upper()}: {error}",
                 code="invalid-simulation-input",
             ) from error
-        execute = execute_ac if args.analysis == "ac" else execute_dc
+        execute = execute_transient if args.analysis == "transient" else execute_ac if args.analysis == "ac" else execute_dc
         return execute(
             selected_input,
             args.request,
@@ -279,6 +282,7 @@ def _run(args: argparse.Namespace) -> tuple[dict[str, object], int]:
             },
             backend=args.backend,
             ngspice=args.ngspice,
+            **({"options": options} if args.analysis == "transient" else {}),
         )
     if args.action == "check":
         payload = _outcome(result)

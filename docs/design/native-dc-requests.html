@@ -26,7 +26,7 @@
 <pre><code>import volt
 
 # d, supply and return_net are existing authoring objects.
-input = volt.prepare_dc_input(d)
+input = volt.prepare_electrical_input(d)
 positive = input.net(supply)
 negative = input.net(return_net)
 request = volt.DcRequest(
@@ -74,7 +74,7 @@ for diagnostic in assessment.diagnostics:
 
 Path("request.json").write_text(request.to_json(), encoding="utf-8")
 bundle = volt.ProjectBundle.open("project.volt")
-reopened_input = bundle.graph.loaded_project.circuits[0].dc_input()
+reopened_input = bundle.graph.loaded_project.circuits[0].electrical_input()
 reopened = volt.DcRequest.from_json(
     reopened_input, Path("request.json").read_bytes()
 )</code></pre>

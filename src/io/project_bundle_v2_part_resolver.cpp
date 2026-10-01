@@ -32,10 +32,10 @@ class DecodedVendoredPartResolver final : public PartDefinitionResolver {
 
 } // namespace
 
-DcInput
+ElectricalInput
 prepare_decoded_dc_input(const Circuit &circuit,
                          const std::map<std::string, std::unique_ptr<PartDefinition>> &parts) {
-    return prepare_dc_input(circuit, DecodedVendoredPartResolver{parts});
+    return prepare_electrical_input(circuit, DecodedVendoredPartResolver{parts});
 }
 
 [[nodiscard]] std::string write_decoded_bom(const Circuit &circuit, const LibraryDecoded &library) {
