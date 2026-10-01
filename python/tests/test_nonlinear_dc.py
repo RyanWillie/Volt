@@ -242,6 +242,61 @@ def test_condition_evidence_requires_library_closure():
         library.build().bundle_bytes
 
 
+def _assert_native_solution_parity(actual, expected):
+    if "observations" in expected:
+        actual_observations = actual.pop("observations")
+        expected_observations = expected.pop("observations")
+        assert actual == expected  # Exact model, request/compiler identities and settings.
+    else:
+        actual_observations, expected_observations = actual, expected
+    assert actual_observations.keys() == expected_observations.keys()
+    for sequence, targets in expected_observations.items():
+        values = actual_observations[sequence]
+        if not isinstance(targets, list):
+            assert values == targets
+            continue
+        assert len(values) == len(targets)
+        for value, target in zip(values, targets):
+            assert value.keys() == target.keys()
+            for key, reference in target.items():
+                if isinstance(reference, dict) and "si" in reference:
+                    assert value[key]["dimension"] == reference["dimension"]
+                    floor = 1e-9 if reference["dimension"] == "voltage" else 1e-12
+                    assert value[key]["si"] == pytest.approx(reference["si"], abs=floor, rel=1e-9)
+                else:
+                    assert value[key] == reference
+
+
+def _assert_native_report_parity(actual_json, expected_json):
+    actual, expected = json.loads(actual_json), json.loads(expected_json)
+    actual_metrics, expected_metrics = actual.pop("metrics"), expected.pop("metrics")
+    assert actual_metrics.keys() == expected_metrics.keys()
+    for key, reference in expected_metrics.items():
+        value = actual_metrics[key]
+        if isinstance(reference, float):
+            # Ratios near zero amplify executable-specific floating-point roundoff.
+            floor = 1e-6 if key.endswith("error_ratio") or key == "merit" else 1e-15
+            assert value == pytest.approx(reference, abs=floor, rel=1e-9)
+        elif isinstance(reference, dict) or isinstance(reference, list):
+            references = reference if isinstance(reference, list) else [reference]
+            values = value if isinstance(value, list) else [value]
+            assert len(values) == len(references)
+            for item, target in zip(values, references):
+                assert item.keys() == target.keys()
+                assert item["dimension"] == target["dimension"]
+                assert item["si"] == pytest.approx(target["si"], abs=1e-15, rel=1e-9)
+        else:
+            assert value == reference  # Work counts, rank and unavailable metrics stay exact.
+    actual_solution, expected_solution = actual.pop("solution"), expected.pop("solution")
+    if expected_solution is None:
+        assert actual_solution is None
+    else:
+        _assert_native_solution_parity(actual_solution, expected_solution)
+        for key in ("voltage_error_ratio", "current_error_ratio", "correction_error_ratio"):
+            assert actual_metrics[key] <= 1.0
+    assert actual == expected  # Exact identities, contracts, provenance, outcomes and diagnostics.
+
+
 def test_native_fixture_source_free_report_parity(tmp_path):
     native = tmp_path / "native"
     subprocess.run([os.environ["VOLT_NONLINEAR_PARITY_FIXTURE"], str(native)], check=True, capture_output=True)
@@ -251,18 +306,21 @@ def test_native_fixture_source_free_report_parity(tmp_path):
     compiled = volt.compile_electrical(request)
     report = volt.solve_dc(compiled.model, volt.NonlinearDcSolveOptions())
     assert report.success
-    assert report.to_json().encode() == (native / "report.json").read_bytes()
-    assert report.solution.to_json().encode() == (native / "solution.json").read_bytes()
+    _assert_native_report_parity(report.to_json(), (native / "report.json").read_bytes())
+    _assert_native_solution_parity(json.loads(report.solution.to_json()),
+                                  json.loads((native / "solution.json").read_bytes()))
 
     failed_request = volt.DcRequest.from_json(input, (native / "failed-request.json").read_bytes())
     failed_model = volt.compile_electrical(failed_request).model
     failed = volt.solve_dc(failed_model, volt.NonlinearDcSolveOptions())
     assert not failed.success and failed.solution is None
-    assert failed.to_json().encode() == (native / "failed-report.json").read_bytes()
+    _assert_native_report_parity(failed.to_json(), (native / "failed-report.json").read_bytes())
     budget = volt.solve_dc(compiled.model, volt.NonlinearDcSolveOptions(max_iterations=1))
-    assert budget.to_json().encode() == (native / "budget-report.json").read_bytes()
+    _assert_native_report_parity(budget.to_json(), (native / "budget-report.json").read_bytes())
     unrelated = tmp_path / "unrelated"
     unrelated.mkdir()
+    python_reports = {"report.json": report.to_json(), "failed-report.json": failed.to_json(),
+                      "budget-report.json": budget.to_json()}
     for name, request_name, flags, expected in (
         ("success", "request.json", [], "report.json"),
         ("domain", "failed-request.json", [], "failed-report.json"),
@@ -272,5 +330,7 @@ def test_native_fixture_source_free_report_parity(tmp_path):
                     "--request", str(native / request_name), "--output", str(output),
                     "--method", "diode-newton", *flags], unrelated)
         assert run.returncode == (0 if name == "success" else 1), run.stdout + run.stderr
-        assert (output / "solve-report.json").read_bytes() == (native / expected).read_bytes()
+        actual_report = (output / "solve-report.json").read_bytes()
+        assert actual_report == python_reports[expected].encode()
+        _assert_native_report_parity(actual_report, (native / expected).read_bytes())
         assert (output / "solution.json").exists() == (name == "success")

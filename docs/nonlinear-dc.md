@@ -77,7 +77,10 @@ Successful execution exits 0, incomplete compilation or a failed numerical analy
 and invalid options/input/publication exits 2. Output publication uses the existing atomic
 no-replace directory contract. Failure never publishes `solution.json`, and a pre-existing
 or racing output destination is preserved. Requests, compile reports and solve reports are
-native canonical bytes, including from the source-free bundle route.
+native canonical bytes, including from the source-free bundle route. Separate native
+executables may differ in floating-point roundoff: their parity gate keeps identities,
+contracts, settings and work counts exact and compares physical observations using the
+native acceptance tolerances.
 
 AC and transient compile reports explicitly reject diode models before numerical execution.
 The public ngspice adapter returns an incomplete native capability report with branch
