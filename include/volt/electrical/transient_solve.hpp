@@ -205,7 +205,7 @@ struct TransientEvaluation {
     std::size_t factorization_count = 0;
     /** Available on the second half after a complete temporal trial. */
     std::optional<double> normalized_error;
-    /** True for a full/first-half/second-half evaluation whose entire macro trial was accepted. */
+    /** On the second half after a complete temporal trial, true when that macro was accepted. */
     bool trial_accepted = false;
 };
 
