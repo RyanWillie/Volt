@@ -135,7 +135,7 @@ DiodeParameters::DiodeParameters(ModelParameter saturation_current, ModelParamet
       ideality_factor_{std::move(ideality_factor)},
       fixed_temperature_{
           normalized_quantity(fixed_temperature.dimension(), fixed_temperature.value())},
-      voltage_domain_{std::move(voltage_domain)}, evidence_{std::move(evidence)} {
+      voltage_domain_{voltage_domain}, evidence_{std::move(evidence)} {
     validate_parameter(saturation_current_, UnitDimension::Current);
     validate_parameter(ideality_factor_, UnitDimension::Ratio);
     if (fixed_temperature_.dimension() != UnitDimension::Temperature ||
