@@ -1,8 +1,9 @@
 """Type information for immutable native electrical compilation results."""
 
 from .ac import AcRequest
-from .dc import ElectricalInputIdentity, DcOccurrenceCoverage, DcRequest
-from .electrical import ContentHash
+from .dc import DcOccurrenceCoverage, DcRequest
+from .electrical import ContentHash, ElectricalInputIdentity
+from .transient import TransientRequest
 
 
 class CompiledElectricalModel:
@@ -14,6 +15,8 @@ class CompiledElectricalModel:
     def request(self) -> DcRequest: ...
     @property
     def ac_request(self) -> AcRequest | None: ...
+    @property
+    def transient_request(self) -> TransientRequest | None: ...
     def to_json(self) -> str: ...
 
 
@@ -31,4 +34,4 @@ class ElectricalCompileReport:
     def to_json(self) -> str: ...
 
 
-def compile_electrical(request: DcRequest | AcRequest) -> ElectricalCompileReport: ...
+def compile_electrical(request: DcRequest | AcRequest | TransientRequest) -> ElectricalCompileReport: ...
