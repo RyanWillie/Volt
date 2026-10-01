@@ -287,13 +287,12 @@ struct Tableau {
                     add_node_coefficient(law_row, branch.to, -1.0);
                     result.coefficients(law_row, current_column) =
                         -law.parameter().nominal().value();
-                } else if constexpr (std::same_as<Law, CapacitanceElement>) {
+                } else if constexpr (std::same_as<Law, CapacitanceElement> ||
+                                     std::same_as<Law, ShockleyDiodeElement>) {
                     result.coefficients(law_row, current_column) = 1.0;
                 } else if constexpr (std::same_as<Law, InductanceElement>) {
                     add_node_coefficient(law_row, branch.from, 1.0);
                     add_node_coefficient(law_row, branch.to, -1.0);
-                } else if constexpr (std::same_as<Law, ShockleyDiodeElement>) {
-                    result.coefficients(law_row, current_column) = 1.0;
                 } else if constexpr (std::same_as<Law, DcVoltageSource>) {
                     add_node_coefficient(law_row, branch.from, 1.0);
                     add_node_coefficient(law_row, branch.to, -1.0);
@@ -458,7 +457,7 @@ DcSolution::DcSolution(ContentHash analysis_identity, CompiledElectricalModel mo
                        std::vector<DcProbeResult> probes,
                        std::optional<NonlinearDcSolveOptions> nonlinear_options)
     : analysis_identity_{std::move(analysis_identity)}, model_{std::move(model)}, options_{options},
-      nonlinear_options_{std::move(nonlinear_options)}, provenance_{std::move(provenance)},
+      nonlinear_options_{nonlinear_options}, provenance_{std::move(provenance)},
       nodes_{std::move(nodes)}, branches_{std::move(branches)}, probes_{std::move(probes)} {}
 
 class DcSolution::Solver final {
@@ -1291,7 +1290,7 @@ class DcSolution::Solver final {
                           std::move(node_results),
                           std::move(branch_results),
                           std::move(probe_results),
-                          std::move(nonlinear_options)};
+                          nonlinear_options};
     }
 };
 
