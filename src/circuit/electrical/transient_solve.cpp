@@ -586,16 +586,32 @@ evaluate(const CompiledElectricalModel &model, const TransientSolveOptions &opti
     }
     for (const auto &probe : model.probes()) {
         const auto value = std::visit(
-            [&](const auto &target) -> Quantity {
+            [&](const auto &target) -> std::optional<Quantity> {
                 using Target = std::decay_t<decltype(target)>;
-                if constexpr (std::same_as<Target, ElectricalVoltageObservation>)
-                    return {UnitDimension::Voltage,
-                            potentials.at(target.from.index()) - potentials.at(target.to.index())};
-                else
+                if constexpr (std::same_as<Target, ElectricalVoltageObservation>) {
+                    const auto voltage =
+                        potentials.at(target.from.index()) - potentials.at(target.to.index());
+                    if (!finite(voltage)) {
+                        std::vector<EntityRef> entities;
+                        append_node_entities(model, target.from, entities);
+                        append_node_entities(model, target.to, entities);
+                        diagnostics.push_back(solve_diagnostic(
+                            "TRANSIENT_SOLVE_NUMERICAL_FAILURE",
+                            "Nonfinite reconstructed voltage probe " + probe.key.value(),
+                            std::move(entities)));
+                        return std::nullopt;
+                    }
+                    return Quantity{UnitDimension::Voltage, voltage};
+                } else {
                     return result.branches.at(target.branch.index()).current;
+                }
             },
             probe.target);
-        result.probes.push_back({probe.key, value});
+        if (!value) {
+            outcome = TransientSolveOutcome::NumericalFailure;
+            return std::nullopt;
+        }
+        result.probes.push_back({probe.key, *value});
     }
     outcome = TransientSolveOutcome::Success;
     return result;

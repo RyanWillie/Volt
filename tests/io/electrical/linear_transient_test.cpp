@@ -739,3 +739,74 @@ TEST_CASE("native transient refuses floating and nonunique or contradictory idea
               report.evaluations().front().metrics.rank);
     }
 }
+
+TEST_CASE("native transient overflowing voltage probes retain timed numerical failure") {
+    for (const bool ramp : {false, true}) {
+        auto fixture = test::linear_transient::fixture(5e307, .1, 1e-6, true);
+        const auto negative_midpoint =
+            fixture.circuit->add_net(NetSpec{.name = NetName{"negative-midpoint"}});
+        fixture.add("resistor", "RP1", fixture.supply, fixture.output);
+        fixture.add("resistor", "RP2", fixture.output, fixture.reference);
+        fixture.add("resistor", "RN1", fixture.middle, negative_midpoint);
+        fixture.add("resistor", "RN2", negative_midpoint, fixture.reference);
+        const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
+        const auto drive = ramp ? TransientWaveform{std::vector<TransientWaveformKnot>{
+                                      {seconds(0), Quantity{UnitDimension::Current, 0}},
+                                      {seconds(1), Quantity{UnitDimension::Current, .9}}}}
+                                : TransientWaveform{Quantity{UnitDimension::Current, .9}};
+        const auto sources = std::vector<TransientSource>{
+            TransientCurrentSource{
+                ElectricalSourceKey{"positive"},
+                ElectricalNetPair{input.net(fixture.reference), input.net(fixture.supply)}, drive},
+            TransientCurrentSource{
+                ElectricalSourceKey{"negative"},
+                ElectricalNetPair{input.net(fixture.middle), input.net(fixture.reference)}, drive}};
+        for (const bool observe : {false, true}) {
+            std::vector<DcProbe> probes;
+            if (observe)
+                probes.emplace_back(DcVoltageProbe{
+                    ElectricalProbeKey{"rails"},
+                    ElectricalNetPair{input.net(fixture.supply), input.net(fixture.middle)}});
+            const auto model =
+                compiled(TransientRequest{ElectricalRequestKey{"probe-overflow"},
+                                          input,
+                                          input.net(fixture.reference),
+                                          TransientTimeGrid{std::vector{seconds(0), seconds(1)}},
+                                          sources,
+                                          std::move(probes),
+                                          {},
+                                          {}});
+            const auto report = solve_transient(model, options());
+            if (!observe) {
+                successful(report);
+                const auto &sample = report.solution()->samples().back();
+                CHECK(potential(sample, model, fixture.supply) > 8e307);
+                CHECK(potential(sample, model, fixture.middle) < -8e307);
+                for (const auto &node : sample.nodes)
+                    CHECK(std::isfinite(node.potential.value()));
+                for (const auto &entry : sample.branches) {
+                    CHECK(std::isfinite(entry.voltage.value()));
+                    CHECK(std::isfinite(entry.current.value()));
+                    CHECK(std::isfinite(entry.power.value()));
+                }
+            } else {
+                CHECK(report.outcome() == TransientSolveOutcome::NumericalFailure);
+                CHECK_FALSE(report.solution());
+                CHECK(report.last_accepted_time().value() == 0);
+                REQUIRE(report.evaluations().size() == (ramp ? 2 : 1));
+                const auto &failed = report.evaluations().back();
+                CHECK(failed.time.value() == (ramp ? 1 : 0));
+                CHECK(failed.outcome == TransientSolveOutcome::NumericalFailure);
+                REQUIRE_FALSE(failed.diagnostics.empty());
+                const auto &diagnostic = failed.diagnostics.back();
+                CHECK(diagnostic.code().value() == "TRANSIENT_SOLVE_NUMERICAL_FAILURE");
+                CHECK(diagnostic.message().find("rails") != std::string::npos);
+                CHECK(std::ranges::find(diagnostic.entities(), EntityRef::net(fixture.supply)) !=
+                      diagnostic.entities().end());
+                CHECK(std::ranges::find(diagnostic.entities(), EntityRef::net(fixture.middle)) !=
+                      diagnostic.entities().end());
+                CHECK_FALSE(io::write_transient_solve_report(report).empty());
+            }
+        }
+    }
+}

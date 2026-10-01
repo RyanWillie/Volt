@@ -245,6 +245,52 @@ def test_failed_and_incomplete_cli_publish_evidence_without_solution(rc_project,
         assert payload["solve_report"]["evaluations"]
 
 
+def test_voltage_probe_overflow_is_timed_analysis_failure_in_cli(tmp_path):
+    example = _load(SAMPLE / "main.py")
+    resistor = example._part("Rlarge", volt.ResistanceElement, volt.ohms(5e307))
+    project = volt.Project("probe-overflow", version="1")
+    project.use_library(example.LIBRARY)
+
+    @project.design
+    def design():
+        result = volt.Design("startup")
+        positive, pmid, negative, nmid, ground = (
+            result.net(name) for name in ("positive", "pmid", "negative", "nmid", "ground"))
+        for index, (from_, to) in enumerate(((positive, pmid), (pmid, ground),
+                                            (negative, nmid), (nmid, ground))):
+            element = result.instantiate(resistor, ref=f"R{index + 1}").dnp(False)
+            from_ += element["A"]
+            to += element["B"]
+        return result
+
+    result = project.run_through(project.design)
+    bundle = tmp_path / "probe.volt"
+    result.write(bundle)
+    input = _circuit(bundle, "startup").electrical_input()
+    positive, _, negative, _, ground = input.nets
+    ramp = volt.TransientWaveform([
+        volt.TransientWaveformKnot(volt.seconds(0), _amps(0)),
+        volt.TransientWaveformKnot(volt.seconds(1), _amps(.9))])
+    request = volt.TransientRequest(
+        "probe-overflow", input, volt.TransientTimeGrid([volt.seconds(0), volt.seconds(1)]),
+        reference=ground,
+        sources=[volt.TransientCurrentSource("positive", ground, positive, ramp),
+                 volt.TransientCurrentSource("negative", negative, ground, ramp)],
+        probes=[volt.DcVoltageProbe("rails", positive, negative)])
+    request_path = tmp_path / "request.json"
+    request_path.write_text(request.to_json())
+    output = tmp_path / "result"
+    run = _execute(tmp_path, bundle, request_path, output)
+    assert run.returncode == 1, run
+    payload = _payload(run)
+    assert payload["status"] == "failed"
+    report = payload["solve_report"]
+    assert report["last_accepted_time"]["si"] == 0
+    assert report["evaluations"][-1]["time"]["si"] == 1
+    assert any(d["code"] == "TRANSIENT_SOLVE_NUMERICAL_FAILURE" for d in report["diagnostics"])
+    assert set(path.name for path in output.iterdir()) == SUCCESS_FILES - {"solution.json"}
+
+
 @pytest.mark.parametrize("kind", ["malformed", "duplicate-json", "missing-options", "step-order", "zero-budget", "nonfinite"])
 def test_cli_command_failures_are_exit_two_without_output(rc_project, tmp_path, kind):
     _, bundle, _ = rc_project
