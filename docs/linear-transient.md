@@ -99,16 +99,18 @@ The native lossless-LC fixture uses L=10 mH, C=10 uF, vC(0)=1 V, iL(0)=0,
 output samples [0, T] over one period T=2*pi*sqrt(LC), h_initial=h_max=T/20,
 h_min=1e-12 s and trial/accepted-macro budgets 200000/100000:
 
-| Temporal settings | Energy lost over one period | Phase error | Trials | Accepted macro trials |
-| --- | ---: | ---: | ---: | ---: |
-| Defaults: 1e-4 / 1e-6 V / 1e-9 A | 5.409% | 0.000164367 rad | 362 | 356 |
-| Tight: 1e-7 / 1e-9 V / 1e-12 A | 0.1787403603% | 1.6979686284e-7 rad | 11039 | 11034 |
+| Temporal settings | Energy lost over one period | Phase error | Trials | Accepted macro trials | Solves | Factorizations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Defaults: 1e-4 / 1e-6 V / 1e-9 A | 5.409% | 0.000164367 rad | 362 | 356 | 1087 | 1087 |
+| Tight: 1e-7 / 1e-9 V / 1e-12 A | 0.1787403603% | 1.6979686284e-7 rad | 11039 | 11034 | 33118 | 33118 |
 
 Default local acceptance therefore admits about 5.4% artificial energy loss in this specific
 lossless fixture. Tight settings reduce it at roughly 30 times the trial count. These are actual
 native solver observations from `tests/io/electrical/linear_transient_test.cpp`; independent
 scratch estimates in the issue are separate. They are fixture-specific observations, not
-universal error bounds or runtime performance certification.
+universal error bounds or runtime performance certification. Solve and factorization counts were
+measured separately; this implementation performs a distinct factorization for every actual solve
+in this fixture. The accepted-half-step counts are 712 and 22068 respectively.
 
 All step bounds and work budgets are mandatory. h_min <= h_initial <= h_max, all finite positive
 Time quantities, and positive integer trial/accepted-step budgets. h denotes a macro trial;
