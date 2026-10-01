@@ -28,3 +28,17 @@ henries = _volt.henries
 hertz = _volt.hertz
 seconds = _volt.seconds
 content_hash = _volt.content_hash
+
+
+ElectricalRequestKey = _volt.ElectricalRequestKey
+ElectricalSourceKey = _volt.ElectricalSourceKey
+ElectricalProbeKey = _volt.ElectricalProbeKey
+ElectricalInputIdentity = _volt.ElectricalInputIdentity
+ElectricalInput = _volt.ElectricalInput
+ElectricalNetRef = _volt.ElectricalNetRef
+ElectricalOccurrenceRef = _volt.ElectricalOccurrenceRef
+ElectricalNetPair = _volt.ElectricalNetPair
+
+def prepare_electrical_input(design):
+    """Capture one exact immutable native input from an authoring Design."""
+    return _volt.prepare_electrical_input(design._circuit)

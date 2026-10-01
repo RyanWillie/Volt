@@ -17,5 +17,5 @@ namespace volt::io {
 /** Deterministic canonical AC request transport, including exact input and materialized sweep. */
 [[nodiscard]] std::string write_ac_request(const AcRequest &request);
 /** Validate and bind canonical AC request transport to one exact input. */
-[[nodiscard]] AcRequest read_ac_request(std::string_view bytes, const DcInput &input);
+[[nodiscard]] AcRequest read_ac_request(std::string_view bytes, const ElectricalInput &input);
 } // namespace volt::io

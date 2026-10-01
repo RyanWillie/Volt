@@ -1,4 +1,4 @@
-#include <volt/io/electrical/dc_request_io.hpp>
+#include <volt/io/electrical/electrical_input_io.hpp>
 
 #include <optional>
 #include <utility>
@@ -11,7 +11,8 @@
 
 namespace volt {
 
-DcInput DcInput::Codec::prepare(const Circuit &circuit, const PartDefinitionResolver &resolver) {
+ElectricalInput ElectricalInput::Codec::prepare(const Circuit &circuit,
+                                                const PartDefinitionResolver &resolver) {
     auto selections = nlohmann::ordered_json::array();
     auto parts = std::vector<std::optional<PartDefinition>>{};
     parts.reserve(circuit.all<ComponentId>().size());
@@ -36,17 +37,18 @@ DcInput DcInput::Codec::prepare(const Circuit &circuit, const PartDefinitionReso
             parts.emplace_back(std::nullopt);
         }
     }
-    auto identity = DcInputIdentity{sha256_content_hash(io::write_logical_circuit(circuit)),
-                                    sha256_content_hash(selections.dump() + "\n")};
-    return DcInput{circuit, std::move(identity), std::move(parts)};
+    auto identity = ElectricalInputIdentity{sha256_content_hash(io::write_logical_circuit(circuit)),
+                                            sha256_content_hash(selections.dump() + "\n")};
+    return ElectricalInput{circuit, std::move(identity), std::move(parts)};
 }
 
 } // namespace volt
 
 namespace volt::io {
 
-DcInput prepare_dc_input(const Circuit &circuit, const PartDefinitionResolver &resolver) {
-    return DcInput::Codec::prepare(circuit, resolver);
+ElectricalInput prepare_electrical_input(const Circuit &circuit,
+                                         const PartDefinitionResolver &resolver) {
+    return ElectricalInput::Codec::prepare(circuit, resolver);
 }
 
 } // namespace volt::io

@@ -13,11 +13,11 @@
 
 namespace volt {
 
-/** Exact immutable logical and selected-Part input identities for one DC request. */
-class DcInputIdentity {
+/** Exact immutable logical and selected-Part input identities for one electrical analysis. */
+class ElectricalInputIdentity {
   public:
     /** Construct an exact identity from canonical logical and selected-Part digests. */
-    DcInputIdentity(ContentHash logical, ContentHash selected_parts)
+    ElectricalInputIdentity(ContentHash logical, ContentHash selected_parts)
         : logical_{std::move(logical)}, selected_parts_{std::move(selected_parts)} {}
 
     /** Return the digest of the canonical logical Circuit. */
@@ -27,7 +27,7 @@ class DcInputIdentity {
     [[nodiscard]] const ContentHash &selected_parts() const noexcept { return selected_parts_; }
 
     /** Compare complete exact input identities. */
-    [[nodiscard]] bool operator==(const DcInputIdentity &) const noexcept = default;
+    [[nodiscard]] bool operator==(const ElectricalInputIdentity &) const noexcept = default;
 
   private:
     ContentHash logical_;
@@ -35,7 +35,7 @@ class DcInputIdentity {
 };
 
 /** Owning immutable S1 snapshot of one Circuit and its exact resolved Part inputs. */
-class DcInput {
+class ElectricalInput {
     struct Storage;
 
   public:
@@ -48,7 +48,7 @@ class DcInput {
     class Reference {
       public:
         /** Validate and retain one entity from the supplied exact input. */
-        Reference(const DcInput &input, Id id)
+        Reference(const ElectricalInput &input, Id id)
             : storage_{input.storage_}, input_{input.identity()}, id_{id} {
             static_cast<void>(input.circuit().get(id));
         }
@@ -57,7 +57,7 @@ class DcInput {
         [[nodiscard]] Id id() const noexcept { return id_; }
 
         /** Return the exact input identity captured with this reference. */
-        [[nodiscard]] const DcInputIdentity &input() const noexcept { return input_; }
+        [[nodiscard]] const ElectricalInputIdentity &input() const noexcept { return input_; }
 
         /** Compare exact input identity and document-local entity ID. */
         [[nodiscard]] bool operator==(const Reference &other) const noexcept {
@@ -66,7 +66,7 @@ class DcInput {
 
       private:
         std::shared_ptr<const Storage> storage_;
-        DcInputIdentity input_;
+        ElectricalInputIdentity input_;
         Id id_;
     };
 
@@ -76,9 +76,9 @@ class DcInput {
     [[nodiscard]] const Circuit &circuit() const && = delete;
 
     /** Return the exact identity of the prepared input. */
-    [[nodiscard]] const DcInputIdentity &identity() const &;
+    [[nodiscard]] const ElectricalInputIdentity &identity() const &;
     /** Prevent borrowing the identity from a temporary input owner. */
-    [[nodiscard]] const DcInputIdentity &identity() const && = delete;
+    [[nodiscard]] const ElectricalInputIdentity &identity() const && = delete;
 
     /** Return the resolved exact Part, or null for unselected or unresolved occurrences. */
     [[nodiscard]] const PartDefinition *part(ComponentId occurrence) const &;
@@ -94,15 +94,15 @@ class DcInput {
     }
 
   private:
-    DcInput(Circuit circuit, DcInputIdentity identity,
-            std::vector<std::optional<PartDefinition>> parts);
+    ElectricalInput(Circuit circuit, ElectricalInputIdentity identity,
+                    std::vector<std::optional<PartDefinition>> parts);
 
     std::shared_ptr<const Storage> storage_;
 };
 
 /** Exact-input-bound logical net reference. */
-using DcNetRef = DcInput::Reference<NetId>;
+using ElectricalNetRef = ElectricalInput::Reference<NetId>;
 /** Exact-input-bound component occurrence reference. */
-using DcOccurrenceRef = DcInput::Reference<ComponentId>;
+using ElectricalOccurrenceRef = ElectricalInput::Reference<ComponentId>;
 
 } // namespace volt

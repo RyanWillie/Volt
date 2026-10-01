@@ -28,13 +28,14 @@ template <UnitDimension Dimension> class AcIndependentSource {
   public:
     /** Validate one distinct oriented source with a non-negative amplitude and finite radian phase.
      */
-    AcIndependentSource(DcSourceKey key, DcNetPair nets, Quantity amplitude, double phase);
+    AcIndependentSource(ElectricalSourceKey key, ElectricalNetPair nets, Quantity amplitude,
+                        double phase);
 
     /** Return the request-local source identity. */
-    [[nodiscard]] const DcSourceKey &key() const noexcept { return key_; }
+    [[nodiscard]] const ElectricalSourceKey &key() const noexcept { return key_; }
 
     /** Return the ordered positive-voltage and outgoing-current endpoints. */
-    [[nodiscard]] const DcNetPair &nets() const noexcept { return nets_; }
+    [[nodiscard]] const ElectricalNetPair &nets() const noexcept { return nets_; }
 
     /** Return the non-negative peak amplitude in volts or amperes. */
     [[nodiscard]] const Quantity &amplitude() const noexcept { return amplitude_; }
@@ -48,8 +49,8 @@ template <UnitDimension Dimension> class AcIndependentSource {
     }
 
   private:
-    DcSourceKey key_;
-    DcNetPair nets_;
+    ElectricalSourceKey key_;
+    ElectricalNetPair nets_;
     Quantity amplitude_;
     double phase_;
 };
@@ -65,64 +66,68 @@ using AcSource = std::variant<AcVoltageSource, AcCurrentSource>;
 class AcGainProbe {
   public:
     /** Define a ratio whose primitive targets are validated by the owning request. */
-    AcGainProbe(DcProbeKey key, DcProbeKey numerator, DcProbeKey denominator)
+    AcGainProbe(ElectricalProbeKey key, ElectricalProbeKey numerator,
+                ElectricalProbeKey denominator)
         : key_{std::move(key)}, numerator_{std::move(numerator)},
           denominator_{std::move(denominator)} {}
 
     /** Return the request-local observation identity. */
-    [[nodiscard]] const DcProbeKey &key() const noexcept { return key_; }
+    [[nodiscard]] const ElectricalProbeKey &key() const noexcept { return key_; }
 
     /** Return the primitive numerator probe identity. */
-    [[nodiscard]] const DcProbeKey &numerator() const noexcept { return numerator_; }
+    [[nodiscard]] const ElectricalProbeKey &numerator() const noexcept { return numerator_; }
 
     /** Return the primitive denominator probe identity. */
-    [[nodiscard]] const DcProbeKey &denominator() const noexcept { return denominator_; }
+    [[nodiscard]] const ElectricalProbeKey &denominator() const noexcept { return denominator_; }
 
   private:
-    DcProbeKey key_;
-    DcProbeKey numerator_;
-    DcProbeKey denominator_;
+    ElectricalProbeKey key_;
+    ElectricalProbeKey numerator_;
+    ElectricalProbeKey denominator_;
 };
 
 /** Driving-point impedance V(from)-V(to) divided by -I(test source). */
 class AcImpedanceProbe {
   public:
     /** Define an oriented port and explicit current test source for request validation. */
-    AcImpedanceProbe(DcProbeKey key, DcNetPair nets, DcSourceKey source)
+    AcImpedanceProbe(ElectricalProbeKey key, ElectricalNetPair nets, ElectricalSourceKey source)
         : key_{std::move(key)}, nets_{std::move(nets)}, source_{std::move(source)} {}
 
     /** Return the request-local observation identity. */
-    [[nodiscard]] const DcProbeKey &key() const noexcept { return key_; }
+    [[nodiscard]] const ElectricalProbeKey &key() const noexcept { return key_; }
 
     /** Return the ordered positive-voltage and outgoing-current endpoints. */
-    [[nodiscard]] const DcNetPair &nets() const noexcept { return nets_; }
+    [[nodiscard]] const ElectricalNetPair &nets() const noexcept { return nets_; }
 
     /** Return the current test source identity. */
-    [[nodiscard]] const DcSourceKey &source() const noexcept { return source_; }
+    [[nodiscard]] const ElectricalSourceKey &source() const noexcept { return source_; }
 
   private:
-    DcProbeKey key_;
-    DcNetPair nets_;
-    DcSourceKey source_;
+    ElectricalProbeKey key_;
+    ElectricalNetPair nets_;
+    ElectricalSourceKey source_;
 };
 
 /** Immutable AC analysis request bound to the existing exact electrical input. */
 class AcRequest {
   public:
     /** Validate and retain the exact input, sweep, keyed stimuli and measurements. */
-    AcRequest(DcRequestKey key, const DcInput &input, std::optional<DcNetRef> reference,
-              AcFrequencySweep sweep, std::vector<AcSource> sources = {},
-              std::vector<DcProbe> probes = {}, std::vector<DcOccurrenceExclusion> exclusions = {},
+    AcRequest(ElectricalRequestKey key, const ElectricalInput &input,
+              std::optional<ElectricalNetRef> reference, AcFrequencySweep sweep,
+              std::vector<AcSource> sources = {}, std::vector<DcProbe> probes = {},
+              std::vector<DcOccurrenceExclusion> exclusions = {},
               std::vector<AcGainProbe> gains = {}, std::vector<AcImpedanceProbe> impedances = {});
 
     /** Return the stable analysis request identity. */
-    [[nodiscard]] const DcRequestKey &key() const noexcept { return key_; }
+    [[nodiscard]] const ElectricalRequestKey &key() const noexcept { return key_; }
 
     /** Return the immutable exact logical and selected-Part input. */
-    [[nodiscard]] const DcInput &input() const noexcept { return input_; }
+    [[nodiscard]] const ElectricalInput &input() const noexcept { return input_; }
 
     /** Return the explicit reference or absence for an incomplete request. */
-    [[nodiscard]] const std::optional<DcNetRef> &reference() const noexcept { return reference_; }
+    [[nodiscard]] const std::optional<ElectricalNetRef> &reference() const noexcept {
+        return reference_;
+    }
 
     /** Return the canonical frequency sweep. */
     [[nodiscard]] const AcFrequencySweep &sweep() const noexcept { return sweep_; }
@@ -152,9 +157,9 @@ class AcRequest {
     }
 
   private:
-    DcRequestKey key_;
-    DcInput input_;
-    std::optional<DcNetRef> reference_;
+    ElectricalRequestKey key_;
+    ElectricalInput input_;
+    std::optional<ElectricalNetRef> reference_;
     AcFrequencySweep sweep_;
     std::vector<AcSource> sources_;
     std::vector<DcProbe> probes_;
@@ -173,7 +178,7 @@ class AcRequestAssessment {
     [[nodiscard]] bool complete() const noexcept { return complete_; }
 
     /** Return the assessed exact input identity. */
-    [[nodiscard]] const DcInputIdentity &input() const noexcept { return input_; }
+    [[nodiscard]] const ElectricalInputIdentity &input() const noexcept { return input_; }
 
     /** Return one deterministic coverage record per occurrence. */
     [[nodiscard]] const std::vector<DcOccurrenceCoverage> &coverage() const noexcept {
@@ -186,7 +191,7 @@ class AcRequestAssessment {
     }
 
   private:
-    DcInputIdentity input_;
+    ElectricalInputIdentity input_;
     std::vector<DcOccurrenceCoverage> coverage_;
     std::vector<Diagnostic> diagnostics_;
     bool complete_;

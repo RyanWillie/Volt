@@ -45,14 +45,14 @@ class ScopedGlobalLocale final {
 [[nodiscard]] volt::NgspiceDcAnalysis divider_analysis(std::string source_key = "supply-5v") {
     auto fixture = volt::test::electrical_compilation::make_fixture();
     const auto input = volt::test::electrical_compilation::input(fixture);
-    const auto request =
-        volt::DcRequest{volt::DcRequestKey{"divider); quit"},
-                        input,
-                        input.net(fixture.reference),
-                        {volt::DcVoltageSource{volt::DcSourceKey{std::move(source_key)},
-                                               volt::DcNetPair{input.net(fixture.supply),
-                                                               input.net(fixture.reference)},
-                                               volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}};
+    const auto request = volt::DcRequest{
+        volt::ElectricalRequestKey{"divider); quit"},
+        input,
+        input.net(fixture.reference),
+        {volt::DcVoltageSource{
+            volt::ElectricalSourceKey{std::move(source_key)},
+            volt::ElectricalNetPair{input.net(fixture.supply), input.net(fixture.reference)},
+            volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}};
     const auto compiled = volt::compile_electrical(request);
     REQUIRE(compiled.model() != nullptr);
     return volt::prepare_ngspice_dc(*compiled.model());
@@ -192,7 +192,7 @@ TEST_CASE("ngspice DC preparation refuses a model without an operating-point cir
     auto fixture = volt::test::electrical_compilation::make_fixture();
     const auto input = volt::test::electrical_compilation::input(fixture);
     const auto request =
-        volt::DcRequest{volt::DcRequestKey{"reference-only"},
+        volt::DcRequest{volt::ElectricalRequestKey{"reference-only"},
                         input,
                         input.net(fixture.reference),
                         {},
@@ -369,16 +369,17 @@ TEST_CASE("ngspice lowering covers exact DC storage constraints and source proje
     static_cast<void>(add_part(fixture, fixture.inductor, "inductor", fixture.midpoint, extra));
     const auto input = volt::test::electrical_compilation::input(fixture);
     const auto request = volt::DcRequest{
-        volt::DcRequestKey{"all-laws"},
+        volt::ElectricalRequestKey{"all-laws"},
         input,
         input.net(fixture.reference),
         {volt::DcVoltageSource{
-             volt::DcSourceKey{"voltage"},
-             volt::DcNetPair{input.net(fixture.supply), input.net(fixture.reference)},
+             volt::ElectricalSourceKey{"voltage"},
+             volt::ElectricalNetPair{input.net(fixture.supply), input.net(fixture.reference)},
              volt::Quantity{volt::UnitDimension::Voltage, 5.0}},
-         volt::DcCurrentSource{volt::DcSourceKey{"current"},
-                               volt::DcNetPair{input.net(extra), input.net(fixture.reference)},
-                               volt::Quantity{volt::UnitDimension::Current, 0.001}}}};
+         volt::DcCurrentSource{
+             volt::ElectricalSourceKey{"current"},
+             volt::ElectricalNetPair{input.net(extra), input.net(fixture.reference)},
+             volt::Quantity{volt::UnitDimension::Current, 0.001}}}};
     const auto compiled = volt::compile_electrical(request);
     REQUIRE(compiled.model() != nullptr);
     const auto analysis = volt::prepare_ngspice_dc(*compiled.model());
@@ -421,20 +422,20 @@ TEST_CASE("ngspice candidates cannot bypass native uniqueness and conditioning g
         auto fixture = make_fixture();
         const auto input = volt::test::electrical_compilation::input(fixture);
         const auto request = volt::DcRequest{
-            volt::DcRequestKey{"inconsistent-loop"},
+            volt::ElectricalRequestKey{"inconsistent-loop"},
             input,
             input.net(fixture.reference),
             {volt::DcVoltageSource{
-                 volt::DcSourceKey{"supply-midpoint"},
-                 volt::DcNetPair{input.net(fixture.supply), input.net(fixture.midpoint)},
+                 volt::ElectricalSourceKey{"supply-midpoint"},
+                 volt::ElectricalNetPair{input.net(fixture.supply), input.net(fixture.midpoint)},
                  volt::Quantity{volt::UnitDimension::Voltage, 2.0}},
              volt::DcVoltageSource{
-                 volt::DcSourceKey{"midpoint-reference"},
-                 volt::DcNetPair{input.net(fixture.midpoint), input.net(fixture.reference)},
+                 volt::ElectricalSourceKey{"midpoint-reference"},
+                 volt::ElectricalNetPair{input.net(fixture.midpoint), input.net(fixture.reference)},
                  volt::Quantity{volt::UnitDimension::Voltage, 2.0}},
              volt::DcVoltageSource{
-                 volt::DcSourceKey{"supply-reference"},
-                 volt::DcNetPair{input.net(fixture.supply), input.net(fixture.reference)},
+                 volt::ElectricalSourceKey{"supply-reference"},
+                 volt::ElectricalNetPair{input.net(fixture.supply), input.net(fixture.reference)},
                  volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}};
         const auto compiled = volt::compile_electrical(request);
         REQUIRE(compiled.model() != nullptr);

@@ -55,7 +55,7 @@ def _circuit(bundle: Path, design: str):
 
 
 def _write_request(bundle: Path, output: Path, design: str = "divider", kind: str = "complete"):
-    input = _circuit(bundle, design).dc_input()
+    input = _circuit(bundle, design).electrical_input()
     if kind == "incomplete":
         request = volt.DcRequest("incomplete", input)
     elif design == "floating":
@@ -647,7 +647,7 @@ def test_native_incomplete_compile_never_calls_solver(linear_project, tmp_path, 
 
     monkeypatch.setattr(_simulation, "solve_dc", fail_solve)
     artifacts, compile_report, solve_report, status, exit_code = _simulation._native_outputs(
-        _circuit(bundle, "divider").dc_input(), request
+        _circuit(bundle, "divider").electrical_input(), request
     )
 
     assert set(artifacts) == {"request.json", "compile-report.json"}

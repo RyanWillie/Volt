@@ -17,7 +17,7 @@ def run(destination: Path) -> int:
     result = project.run_through(project.design)
     design = result.design("divider")
     design_nets = {net.name: net for net in design.nets()}
-    dc_input = volt.prepare_dc_input(design)
+    dc_input = volt.prepare_electrical_input(design)
     supply = dc_input.net(design_nets["SUPPLY"])
     midpoint = dc_input.net(design_nets["MIDPOINT"])
     ground = dc_input.net(design_nets["GROUND"])

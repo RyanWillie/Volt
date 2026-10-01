@@ -1,6 +1,6 @@
 #include <volt/electrical/ac_request.hpp>
 
-#include "ac_request_detail.hpp"
+#include "request_validation_detail.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -62,7 +62,7 @@ AcFrequencySweep AcFrequencySweep::logarithmic(Quantity start, Quantity stop, st
 }
 
 template <UnitDimension Dimension>
-AcIndependentSource<Dimension>::AcIndependentSource(DcSourceKey key, DcNetPair nets,
+AcIndependentSource<Dimension>::AcIndependentSource(ElectricalSourceKey key, ElectricalNetPair nets,
                                                     Quantity amplitude, double phase)
     : key_{std::move(key)}, nets_{std::move(nets)},
       amplitude_{Dimension, amplitude.value() == 0.0 ? 0.0 : amplitude.value()},
@@ -75,22 +75,22 @@ AcIndependentSource<Dimension>::AcIndependentSource(DcSourceKey key, DcNetPair n
 template class AcIndependentSource<UnitDimension::Voltage>;
 template class AcIndependentSource<UnitDimension::Current>;
 
-AcRequest::AcRequest(DcRequestKey key, const DcInput &input, std::optional<DcNetRef> reference,
-                     AcFrequencySweep sweep, std::vector<AcSource> sources,
-                     std::vector<DcProbe> probes, std::vector<DcOccurrenceExclusion> exclusions,
-                     std::vector<AcGainProbe> gains, std::vector<AcImpedanceProbe> impedances)
+AcRequest::AcRequest(ElectricalRequestKey key, const ElectricalInput &input,
+                     std::optional<ElectricalNetRef> reference, AcFrequencySweep sweep,
+                     std::vector<AcSource> sources, std::vector<DcProbe> probes,
+                     std::vector<DcOccurrenceExclusion> exclusions, std::vector<AcGainProbe> gains,
+                     std::vector<AcImpedanceProbe> impedances)
     : key_{std::move(key)}, input_{input}, reference_{std::move(reference)},
       sweep_{std::move(sweep)}, sources_{std::move(sources)}, probes_{std::move(probes)},
       exclusions_{std::move(exclusions)}, gains_{std::move(gains)},
       impedances_{std::move(impedances)} {
-    const auto validation = detail::ac_topology_request(*this);
-    probes_ = validation.probes();
-    exclusions_ = validation.exclusions();
+    detail::normalize_request(sources_, probes_, exclusions_);
+    detail::validate_request(*this);
     std::ranges::sort(sources_, {}, [](const AcSource &value) {
         return std::visit([](const auto &source) { return source.key(); }, value);
     });
-    std::map<DcProbeKey, UnitDimension> primitive_dimensions;
-    std::set<DcProbeKey> keys;
+    std::map<ElectricalProbeKey, UnitDimension> primitive_dimensions;
+    std::set<ElectricalProbeKey> keys;
     for (const auto &probe : probes_) {
         std::visit(
             [&](const auto &value) {
@@ -133,18 +133,10 @@ AcRequest::AcRequest(DcRequestKey key, const DcInput &input, std::optional<DcNet
 
 AcRequestAssessment::AcRequestAssessment(const AcRequest &request)
     : input_{request.input().identity()}, complete_{false} {
-    const auto assessment = assess_dc_request(detail::ac_topology_request(request));
-    coverage_ = assessment.coverage();
-    for (const auto &diagnostic : assessment.diagnostics()) {
-        auto code = diagnostic.code().value();
-        if (code.starts_with("DC_"))
-            code.replace(0, 2, "AC");
-        auto message = diagnostic.message();
-        if (message.starts_with("DC "))
-            message.replace(0, 2, "AC");
-        diagnostics_.emplace_back(diagnostic.severity(), DiagnosticCode{std::move(code)},
-                                  diagnostic.category(), std::move(message), diagnostic.entities());
-    }
+    if (!request.reference())
+        diagnostics_.push_back(detail::analysis_error("AC_REQUEST_REFERENCE_MISSING",
+                                                      "AC request has no explicit reference net"));
+    detail::assess_participation(request, "AC", coverage_, diagnostics_);
     if (request.sources().empty()) {
         diagnostics_.emplace_back(
             Severity::Error,

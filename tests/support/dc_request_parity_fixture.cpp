@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     const auto destination = std::filesystem::path{argv[1]};
     std::filesystem::create_directory(destination);
     const auto fixture = volt::test::dc_request::make_fixture();
-    const auto input = volt::io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = volt::io::prepare_electrical_input(*fixture.circuit, fixture.library);
     const auto request = volt::test::dc_request::complete_request(input);
 
     auto project = volt::io::ProjectBundleBuilder{

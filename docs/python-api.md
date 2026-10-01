@@ -431,7 +431,7 @@ from pathlib import Path
 
 result = project.run_through(project.design)
 design = result.design("divider")
-dc_input = volt.prepare_dc_input(design)
+dc_input = volt.prepare_electrical_input(design)
 request = volt.DcRequest(
     "divider-operating-point",
     dc_input,

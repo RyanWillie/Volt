@@ -553,7 +553,7 @@ std::optional<AcFrequencyResult> solve_point(const CompiledElectricalModel &mode
         }
         result.probes.push_back({probe.key, *value});
     }
-    const auto publish_ratio = [&](DcProbeKey key, Complex ratio_numerator,
+    const auto publish_ratio = [&](ElectricalProbeKey key, Complex ratio_numerator,
                                    Complex ratio_denominator, UnitDimension dimension) {
         if (ratio_denominator == Complex{}) {
             outcome = AcSolveOutcome::UndefinedMeasurement;
@@ -574,7 +574,7 @@ std::optional<AcFrequencyResult> solve_point(const CompiledElectricalModel &mode
         return true;
     };
     for (const auto &gain : model.ac_request()->gains()) {
-        const auto probe_value = [&](const DcProbeKey &key) {
+        const auto probe_value = [&](const ElectricalProbeKey &key) {
             const auto found = std::ranges::find(result.probes, key, &AcProbeResult::key);
             return found->value.value();
         };
@@ -583,7 +583,7 @@ std::optional<AcFrequencyResult> solve_point(const CompiledElectricalModel &mode
             return std::nullopt;
     }
     for (const auto &impedance : model.ac_request()->impedances()) {
-        const auto node_for = [&](const DcNetRef &net) {
+        const auto node_for = [&](const ElectricalNetRef &net) {
             for (const auto &node : model.nodes()) {
                 if (const auto *origin = std::get_if<ElectricalNetOrigin>(&node.origin)) {
                     if (std::ranges::find(origin->nets, net.id()) != origin->nets.end())
@@ -595,7 +595,7 @@ std::optional<AcFrequencyResult> solve_point(const CompiledElectricalModel &mode
         };
         const auto source =
             std::ranges::find_if(model.branches(), [&](const ElectricalBranch &branch) {
-                const auto *key = std::get_if<DcSourceKey>(&branch.origin);
+                const auto *key = std::get_if<ElectricalSourceKey>(&branch.origin);
                 return key && *key == impedance.source();
             });
         const auto voltage = potentials.at(node_for(impedance.nets().from()).index()) -

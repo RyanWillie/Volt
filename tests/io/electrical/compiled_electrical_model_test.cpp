@@ -148,15 +148,16 @@ TEST_CASE("request values perturb identities and current probes retain branch or
     const auto fixture = make_fixture();
     const auto owner = input(fixture);
     const auto request = volt::DcRequest{
-        volt::DcRequestKey{"probe-orientation"},
+        volt::ElectricalRequestKey{"probe-orientation"},
         owner,
         owner.net(fixture.reference),
         {volt::DcVoltageSource{
-            volt::DcSourceKey{"drive"},
-            volt::DcNetPair{owner.net(fixture.supply), owner.net(fixture.reference)},
+            volt::ElectricalSourceKey{"drive"},
+            volt::ElectricalNetPair{owner.net(fixture.supply), owner.net(fixture.reference)},
             volt::Quantity{volt::UnitDimension::Voltage, 5.0}}},
-        {volt::DcSourceCurrentProbe{volt::DcProbeKey{"source-current"}, volt::DcSourceKey{"drive"}},
-         volt::DcModelElementCurrentProbe{volt::DcProbeKey{"element-current"},
+        {volt::DcSourceCurrentProbe{volt::ElectricalProbeKey{"source-current"},
+                                    volt::ElectricalSourceKey{"drive"}},
+         volt::DcModelElementCurrentProbe{volt::ElectricalProbeKey{"element-current"},
                                           owner.occurrence(fixture.upper_resistor),
                                           volt::ModelElementKey{"body"}}}};
     const auto report = volt::compile_electrical(request);
@@ -166,16 +167,16 @@ TEST_CASE("request values perturb identities and current probes retain branch or
         element_branch(model, fixture.upper_resistor, volt::ModelElementKey{"body"});
     REQUIRE(element != nullptr);
     const auto source = std::ranges::find_if(model.branches(), [](const auto &branch) {
-        const auto *origin = std::get_if<volt::DcSourceKey>(&branch.origin);
-        return origin != nullptr && *origin == volt::DcSourceKey{"drive"};
+        const auto *origin = std::get_if<volt::ElectricalSourceKey>(&branch.origin);
+        return origin != nullptr && *origin == volt::ElectricalSourceKey{"drive"};
     });
     REQUIRE(source != model.branches().end());
     REQUIRE(model.probes().size() == 2U);
     const auto element_probe = std::ranges::find_if(model.probes(), [](const auto &probe) {
-        return probe.key == volt::DcProbeKey{"element-current"};
+        return probe.key == volt::ElectricalProbeKey{"element-current"};
     });
     const auto source_probe = std::ranges::find_if(model.probes(), [](const auto &probe) {
-        return probe.key == volt::DcProbeKey{"source-current"};
+        return probe.key == volt::ElectricalProbeKey{"source-current"};
     });
     REQUIRE(element_probe != model.probes().end());
     REQUIRE(source_probe != model.probes().end());
@@ -183,15 +184,15 @@ TEST_CASE("request values perturb identities and current probes retain branch or
           element->id);
     CHECK(std::get<volt::ElectricalCurrentObservation>(source_probe->target).branch == source->id);
 
-    const auto changed_request =
-        volt::DcRequest{request.key(),
-                        owner,
-                        owner.net(fixture.reference),
-                        {volt::DcVoltageSource{volt::DcSourceKey{"drive"},
-                                               volt::DcNetPair{owner.net(fixture.supply),
-                                                               owner.net(fixture.reference)},
-                                               volt::Quantity{volt::UnitDimension::Voltage, 6.0}}},
-                        request.probes()};
+    const auto changed_request = volt::DcRequest{
+        request.key(),
+        owner,
+        owner.net(fixture.reference),
+        {volt::DcVoltageSource{
+            volt::ElectricalSourceKey{"drive"},
+            volt::ElectricalNetPair{owner.net(fixture.supply), owner.net(fixture.reference)},
+            volt::Quantity{volt::UnitDimension::Voltage, 6.0}}},
+        request.probes()};
     const auto changed = volt::compile_electrical(changed_request);
     REQUIRE(changed.model() != nullptr);
     CHECK(changed.model()->request_identity() != model.request_identity());
@@ -357,16 +358,17 @@ TEST_CASE("hierarchy-resolved unequal sources report both origins and joined net
     static_cast<void>(add_alias(fixture, "reference-alias", fixture.reference, other_reference));
     const auto owner = input(fixture);
     const auto request = volt::DcRequest{
-        volt::DcRequestKey{"unequal-resolved-sources"},
+        volt::ElectricalRequestKey{"unequal-resolved-sources"},
         owner,
         owner.net(fixture.reference),
         {volt::DcVoltageSource{
-             volt::DcSourceKey{"first"},
-             volt::DcNetPair{owner.net(fixture.supply), owner.net(fixture.reference)},
+             volt::ElectricalSourceKey{"first"},
+             volt::ElectricalNetPair{owner.net(fixture.supply), owner.net(fixture.reference)},
              volt::Quantity{volt::UnitDimension::Voltage, 5.0}},
-         volt::DcVoltageSource{volt::DcSourceKey{"second"},
-                               volt::DcNetPair{owner.net(other_supply), owner.net(other_reference)},
-                               volt::Quantity{volt::UnitDimension::Voltage, 3.0}}}};
+         volt::DcVoltageSource{
+             volt::ElectricalSourceKey{"second"},
+             volt::ElectricalNetPair{owner.net(other_supply), owner.net(other_reference)},
+             volt::Quantity{volt::UnitDimension::Voltage, 3.0}}}};
     const auto report = volt::compile_electrical(request);
 
     CHECK_FALSE(report.complete());
@@ -435,7 +437,7 @@ TEST_CASE("source-free ProjectBundle input compiles without changing canonical i
     const auto bundle = volt::io::ProjectBundle::open(path);
     const auto circuits = bundle.graph().loaded_project().circuits();
     REQUIRE(circuits.size() == 1U);
-    const auto reopened = circuits.front().dc_input();
+    const auto reopened = circuits.front().electrical_input();
     const auto report = volt::compile_electrical(
         divider_request(reopened, fixture.supply, fixture.midpoint, fixture.reference));
 

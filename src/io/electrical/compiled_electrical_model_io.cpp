@@ -9,6 +9,7 @@
 #include <volt/core/errors.hpp>
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/electrical/ac_request_io.hpp>
+#include <volt/io/electrical/transient_request_io.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 
 namespace volt::io {
@@ -81,6 +82,23 @@ Json law_json(const ElectricalLaw &law) {
                                        {"si", value.amplitude().value()}}},
                     {"phase_radians", value.phase()},
                     {"phasor_si", Json{{"real", phasor.real()}, {"imaginary", phasor.imag()}}}};
+            } else if constexpr (std::same_as<Law, TransientVoltageSource> ||
+                                 std::same_as<Law, TransientCurrentSource>) {
+                constexpr bool voltage = std::same_as<Law, TransientVoltageSource>;
+                auto knots = Json::array();
+                for (const auto &knot : value.waveform().knots())
+                    knots.push_back(
+                        Json{{"time", Json{{"dimension", "time"}, {"si", knot.time.value()}}},
+                             {"value", Json{{"dimension", voltage ? "voltage" : "current"},
+                                            {"si", knot.value.value()}}}});
+                return Json{
+                    {"kind", voltage ? "transient_voltage_source" : "transient_current_source"},
+                    {"key", value.key().value()},
+                    {"nets", Json{{"from", detail::encode_local_id(value.nets().from().id())},
+                                  {"to", detail::encode_local_id(value.nets().to().id())}}},
+                    {"waveform",
+                     Json{{"kind", value.waveform().constant() ? "constant" : "continuous_pwl"},
+                          {"knots", std::move(knots)}}}};
             } else {
                 constexpr const char *kind = [] {
                     if constexpr (std::same_as<Law, ResistanceElement>) {
@@ -210,8 +228,10 @@ Json model_json(const CompiledElectricalModel &model) {
                 {"compiler_version", CompiledElectricalModel::compiler_version()},
                 {"identity", model.identity().value()},
                 {"request_identity", model.request_identity().value()},
-                {"request", Json::parse(model.ac_request() ? write_ac_request(*model.ac_request())
-                                                           : write_dc_request(model.request()))},
+                {"request", Json::parse(model.transient_request()
+                                            ? write_transient_request(*model.transient_request())
+                                        : model.ac_request() ? write_ac_request(*model.ac_request())
+                                                             : write_dc_request(model.request()))},
                 {"nodes", std::move(nodes)},
                 {"branches", std::move(branches)},
                 {"reference", Json{{"node", coordinate(model.reference())}, {"potential_si", 0}}},

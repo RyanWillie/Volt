@@ -402,7 +402,7 @@ void bind_project_bundle(py::module_ &module) {
                                [](const volt::io::LoadedLogicalModelView &view) {
                                    return view.model().template all<volt::NetId>().size();
                                })
-        .def("dc_input", &volt::io::LoadedLogicalModelView::dc_input);
+        .def("electrical_input", &volt::io::LoadedLogicalModelView::electrical_input);
 
     py::class_<volt::io::LoadedSchematicView>(module, "LoadedSchematic")
         .def_property_readonly(

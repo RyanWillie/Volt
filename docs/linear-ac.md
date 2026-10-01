@@ -7,7 +7,7 @@ its verified offline project bundle. DC remains the default analysis.
 ```python
 import volt
 
-input = volt.prepare_ac_input(design)
+input = volt.prepare_electrical_input(design)
 supply = input.net(supply_net)
 output = input.net(output_net)
 reference = input.net(reference_net)
@@ -30,7 +30,7 @@ if compiled.complete:
 ```
 
 Use existing net handles when preparing a request; supply_net, output_net and reference_net must already exist in the
-Design. `AcInput`, net references, probe keys and exclusions reuse the native exact input types.
+Design. `ElectricalInput`, net references, probe keys and exclusions reuse the native exact input types.
 Frequency samples must be finite, positive, unique and ascending. Sweeps preserve both endpoints.
 Amplitudes are nonnegative peak values; phases are radians. The time convention is
 `Re{phasor * exp(j * omega * t)}`. DC source values are never implicit AC excitations.

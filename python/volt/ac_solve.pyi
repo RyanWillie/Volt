@@ -1,7 +1,7 @@
 from .dc_solve import DcSolveOptions, DcSolveProvenance as AcSolveProvenance
 from .electrical import Quantity, UnitDimension, ContentHash
 from .compilation import CompiledElectricalModel
-from .dc import DcProbeKey
+from .dc import ElectricalProbeKey
 from enum import Enum
 
 class AcComplexQuantity:
@@ -62,7 +62,7 @@ class AcBranchResult:
     def current(self) -> AcComplexQuantity: ...
 class AcProbeResult:
     @property
-    def key(self) -> DcProbeKey: ...
+    def key(self) -> ElectricalProbeKey: ...
     @property
     def value(self) -> AcComplexQuantity: ...
 class AcFrequencyResult:

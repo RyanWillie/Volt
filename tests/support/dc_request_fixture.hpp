@@ -135,23 +135,23 @@ struct Fixture {
             non_electrical};
 }
 
-[[nodiscard]] inline DcRequest complete_request(const DcInput &input) {
+[[nodiscard]] inline DcRequest complete_request(const ElectricalInput &input) {
     const auto positive = input.net(NetId{0});
     const auto negative = input.net(NetId{1});
     return DcRequest{
-        DcRequestKey{"operating-point"},
+        ElectricalRequestKey{"operating-point"},
         input,
         negative,
-        {DcVoltageSource{DcSourceKey{"drive"}, DcNetPair{positive, negative},
+        {DcVoltageSource{ElectricalSourceKey{"drive"}, ElectricalNetPair{positive, negative},
                          Quantity{UnitDimension::Voltage, 5.0}},
-         DcCurrentSource{DcSourceKey{"load"}, DcNetPair{positive, negative},
+         DcCurrentSource{ElectricalSourceKey{"load"}, ElectricalNetPair{positive, negative},
                          Quantity{UnitDimension::Current, 0.01}}},
-        {DcVoltageProbe{DcProbeKey{"rail"}, DcNetPair{positive, negative}},
-         DcSourceCurrentProbe{DcProbeKey{"supply-current"}, DcSourceKey{"drive"}},
-         DcModelElementCurrentProbe{DcProbeKey{"resistor-current"},
+        {DcVoltageProbe{ElectricalProbeKey{"rail"}, ElectricalNetPair{positive, negative}},
+         DcSourceCurrentProbe{ElectricalProbeKey{"supply-current"}, ElectricalSourceKey{"drive"}},
+         DcModelElementCurrentProbe{ElectricalProbeKey{"resistor-current"},
                                     input.occurrence(ComponentId{0}), ModelElementKey{"esr"}}},
         {DcOccurrenceExclusion{input.occurrence(ComponentId{1}),
-                               DcReplacedByStimulusExclusion{{DcSourceKey{"drive"}}}},
+                               DcReplacedByStimulusExclusion{{ElectricalSourceKey{"drive"}}}},
          DcOccurrenceExclusion{input.occurrence(ComponentId{2}), DcOutsideAnalysisExclusion{}},
          DcOccurrenceExclusion{input.occurrence(ComponentId{3}), DcNonElectricalExclusion{}}}};
 }

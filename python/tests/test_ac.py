@@ -38,7 +38,7 @@ def test_native_sweep_endpoints_and_zero_phase():
 
 def test_native_binding_request_codec_and_complex_orientation(linear_project):
     _, bundle = linear_project
-    input = _circuit(bundle, "divider").dc_input()
+    input = _circuit(bundle, "divider").electrical_input()
     request = _request(input, math.pi / 2)
     assert request.sources[0].phasor == pytest.approx(1j)
     assert volt.AcRequest.from_json(input, request.to_json()).to_json() == request.to_json()
@@ -59,7 +59,7 @@ def test_native_binding_request_codec_and_complex_orientation(linear_project):
 def test_ac_source_and_offline_bundle_parity(linear_project, tmp_path):
     project, bundle = linear_project
     request_path = tmp_path / "request.json"
-    request_path.write_text(_request(_circuit(bundle, "divider").dc_input()).to_json())
+    request_path.write_text(_request(_circuit(bundle, "divider").electrical_input()).to_json())
     outputs = []
     for selector, path in (("--project", project), ("--bundle", bundle)):
         if selector == "--bundle":
@@ -94,7 +94,7 @@ def test_ngspice_ac_rejected_before_source_execution(tmp_path):
 @pytest.mark.parametrize("kind", ["incomplete", "floating", "undefined"])
 def test_ac_cli_failed_or_incomplete_analysis_retains_evidence(linear_project, tmp_path, kind):
     _, bundle = linear_project
-    input = _circuit(bundle, "floating" if kind == "floating" else "divider").dc_input()
+    input = _circuit(bundle, "floating" if kind == "floating" else "divider").electrical_input()
     sweep = volt.AcFrequencySweep([volt.hertz(100)])
     if kind == "incomplete":
         request = volt.AcRequest("incomplete", input, sweep)
@@ -134,7 +134,7 @@ def test_sdk_rc_example_gain_at_cutoff(tmp_path):
     project = module.main()
     design = project.run_through(project.design).design("lowpass")
     nets = {net.name: net for net in design.nets()}
-    input = volt.prepare_ac_input(design)
+    input = volt.prepare_electrical_input(design)
     supply, output, reference = (input.net(nets[name]) for name in ("INPUT", "OUTPUT", "GROUND"))
     request = volt.AcRequest(
         "rc-cutoff", input, volt.AcFrequencySweep([volt.hertz(1 / (2 * math.pi * 1000 * 1e-6))]),
@@ -153,7 +153,7 @@ def test_sdk_rc_example_gain_at_cutoff(tmp_path):
 
 def test_native_keyed_impedance_uses_current_entering_positive_port(linear_project):
     _, bundle = linear_project
-    input = _circuit(bundle, "divider").dc_input()
+    input = _circuit(bundle, "divider").electrical_input()
     supply, _, reference = input.nets
     request = volt.AcRequest(
         "input-impedance", input, volt.AcFrequencySweep([volt.hertz(100)]), reference=reference,

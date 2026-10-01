@@ -24,7 +24,7 @@ def native_input(tmp_path):
         check=True, capture_output=True,
     )
     bundle = volt.ProjectBundle.open(path / "project.volt")
-    input = bundle.graph.loaded_project.circuits[0].dc_input()
+    input = bundle.graph.loaded_project.circuits[0].electrical_input()
     return input, (path / "request.json").read_bytes()
 
 
@@ -127,7 +127,7 @@ def test_foreign_and_stale_authoring_handles_are_rejected():
     design = volt.Design("original")
     positive = design.net("positive")
     negative = design.net("negative")
-    input = volt.prepare_dc_input(design)
+    input = volt.prepare_electrical_input(design)
     assert input.net(positive) == input.nets[0]
     other = volt.Design("other")
     foreign = other.net("positive")
@@ -136,7 +136,7 @@ def test_foreign_and_stale_authoring_handles_are_rejected():
     design.net("new")
     with pytest.raises(RuntimeError):
         input.net(negative)
-    fresh = volt.prepare_dc_input(design)
+    fresh = volt.prepare_electrical_input(design)
     with pytest.raises(RuntimeError):
         volt.DcRequest("foreign", input, reference=fresh.nets[0])
     # The captured snapshot remains usable after authoring changes.
@@ -150,7 +150,7 @@ def test_current_only_transport_rejects_changed_identity_and_shape(native_input)
         document[field] = value
         with pytest.raises((RuntimeError, ValueError)):
             volt.DcRequest.from_json(input, json.dumps(document))
-    foreign = volt.prepare_dc_input(volt.Design("foreign"))
+    foreign = volt.prepare_electrical_input(volt.Design("foreign"))
     with pytest.raises(RuntimeError):
         volt.DcRequest.from_json(foreign, expected)
 

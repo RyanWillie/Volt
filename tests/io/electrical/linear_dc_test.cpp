@@ -158,8 +158,8 @@ void check_compiled_case(const volt::ElectricalCompileReport &compiled, std::str
                                                  std::string key) {
     const auto branch = std::ranges::find_if(
         solution.model().branches(), [&](const volt::ElectricalBranch &candidate) {
-            const auto *origin = std::get_if<volt::DcSourceKey>(&candidate.origin);
-            return origin != nullptr && *origin == volt::DcSourceKey{key};
+            const auto *origin = std::get_if<volt::ElectricalSourceKey>(&candidate.origin);
+            return origin != nullptr && *origin == volt::ElectricalSourceKey{key};
         });
     REQUIRE(branch != solution.model().branches().end());
     return solution.branches().at(branch->id.index());
@@ -221,13 +221,13 @@ TEST_CASE("native linear DC matches every checked-in supported reference case") 
         const auto series = add_catalog_part(fixture, "resistor", "Rseries", supply, load);
         const auto load_1k = add_catalog_part(fixture, "resistor", "Rload1", load, reference);
         const auto load_2k = add_catalog_part(fixture, "resistor-2k", "Rload2", load, reference);
-        const auto input = volt::io::prepare_dc_input(*fixture.circuit, fixture.library);
+        const auto input = volt::io::prepare_electrical_input(*fixture.circuit, fixture.library);
         const auto request = volt::DcRequest{
-            volt::DcRequestKey{"series-parallel-load"},
+            volt::ElectricalRequestKey{"series-parallel-load"},
             input,
             input.net(reference),
-            {volt::DcVoltageSource{volt::DcSourceKey{"drive"},
-                                   volt::DcNetPair{input.net(supply), input.net(reference)},
+            {volt::DcVoltageSource{volt::ElectricalSourceKey{"drive"},
+                                   volt::ElectricalNetPair{input.net(supply), input.net(reference)},
                                    volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}};
         const auto compiled = volt::compile_electrical(request);
         check_compiled_case(compiled, "series_parallel_load");
@@ -261,20 +261,23 @@ TEST_CASE("native linear DC matches every checked-in supported reference case") 
             add_catalog_part(fixture, "resistor", "Rnegative", reference, negative);
         const auto current_resistor =
             add_catalog_part(fixture, "resistor", "Rcurrent", current_driven, reference);
-        const auto input = volt::io::prepare_dc_input(*fixture.circuit, fixture.library);
+        const auto input = volt::io::prepare_electrical_input(*fixture.circuit, fixture.library);
         const auto request = volt::DcRequest{
-            volt::DcRequestKey{"source-polarity"},
+            volt::ElectricalRequestKey{"source-polarity"},
             input,
             input.net(reference),
-            {volt::DcVoltageSource{volt::DcSourceKey{"positive"},
-                                   volt::DcNetPair{input.net(positive), input.net(reference)},
-                                   volt::Quantity{volt::UnitDimension::Voltage, 5.0}},
-             volt::DcVoltageSource{volt::DcSourceKey{"negative"},
-                                   volt::DcNetPair{input.net(negative), input.net(reference)},
-                                   volt::Quantity{volt::UnitDimension::Voltage, -5.0}},
-             volt::DcCurrentSource{volt::DcSourceKey{"inject"},
-                                   volt::DcNetPair{input.net(reference), input.net(current_driven)},
-                                   volt::Quantity{volt::UnitDimension::Current, 0.002}}}};
+            {volt::DcVoltageSource{
+                 volt::ElectricalSourceKey{"positive"},
+                 volt::ElectricalNetPair{input.net(positive), input.net(reference)},
+                 volt::Quantity{volt::UnitDimension::Voltage, 5.0}},
+             volt::DcVoltageSource{
+                 volt::ElectricalSourceKey{"negative"},
+                 volt::ElectricalNetPair{input.net(negative), input.net(reference)},
+                 volt::Quantity{volt::UnitDimension::Voltage, -5.0}},
+             volt::DcCurrentSource{
+                 volt::ElectricalSourceKey{"inject"},
+                 volt::ElectricalNetPair{input.net(reference), input.net(current_driven)},
+                 volt::Quantity{volt::UnitDimension::Current, 0.002}}}};
         const auto compiled = volt::compile_electrical(request);
         check_compiled_case(compiled, "source_polarity");
         const auto solved = volt::solve_dc(*compiled.model());
@@ -306,13 +309,13 @@ TEST_CASE("native linear DC matches every checked-in supported reference case") 
             fixture.circuit->add_net(volt::NetSpec{.name = volt::NetName{"reference"}});
         const auto wire = add_catalog_part(fixture, "zero-resistor", "Rwire", supply, load);
         static_cast<void>(add_catalog_part(fixture, "resistor", "Rload", load, reference));
-        const auto input = volt::io::prepare_dc_input(*fixture.circuit, fixture.library);
+        const auto input = volt::io::prepare_electrical_input(*fixture.circuit, fixture.library);
         const auto request = volt::DcRequest{
-            volt::DcRequestKey{"zero-ohm"},
+            volt::ElectricalRequestKey{"zero-ohm"},
             input,
             input.net(reference),
-            {volt::DcVoltageSource{volt::DcSourceKey{"drive"},
-                                   volt::DcNetPair{input.net(supply), input.net(reference)},
+            {volt::DcVoltageSource{volt::ElectricalSourceKey{"drive"},
+                                   volt::ElectricalNetPair{input.net(supply), input.net(reference)},
                                    volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}};
         const auto compiled = volt::compile_electrical(request);
         check_compiled_case(compiled, "zero_ohm_constraint");
@@ -338,13 +341,13 @@ TEST_CASE("native linear DC matches every checked-in supported reference case") 
             add_catalog_part(fixture, "ideal-capacitor", "Cstorage", supply, downstream);
         static_cast<void>(
             add_catalog_part(fixture, "resistor", "Rreference", downstream, reference));
-        const auto input = volt::io::prepare_dc_input(*fixture.circuit, fixture.library);
+        const auto input = volt::io::prepare_electrical_input(*fixture.circuit, fixture.library);
         const auto request = volt::DcRequest{
-            volt::DcRequestKey{"ideal-capacitor"},
+            volt::ElectricalRequestKey{"ideal-capacitor"},
             input,
             input.net(reference),
-            {volt::DcVoltageSource{volt::DcSourceKey{"drive"},
-                                   volt::DcNetPair{input.net(supply), input.net(reference)},
+            {volt::DcVoltageSource{volt::ElectricalSourceKey{"drive"},
+                                   volt::ElectricalNetPair{input.net(supply), input.net(reference)},
                                    volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}};
         const auto compiled = volt::compile_electrical(request);
         check_compiled_case(compiled, "ideal_capacitor_dc");
@@ -367,13 +370,13 @@ TEST_CASE("native linear DC matches every checked-in supported reference case") 
             fixture.circuit->add_net(volt::NetSpec{.name = volt::NetName{"reference"}});
         const auto inductor = add_catalog_part(fixture, "ideal-inductor", "Lstorage", supply, load);
         static_cast<void>(add_catalog_part(fixture, "resistor", "Rload", load, reference));
-        const auto input = volt::io::prepare_dc_input(*fixture.circuit, fixture.library);
+        const auto input = volt::io::prepare_electrical_input(*fixture.circuit, fixture.library);
         const auto request = volt::DcRequest{
-            volt::DcRequestKey{"ideal-inductor"},
+            volt::ElectricalRequestKey{"ideal-inductor"},
             input,
             input.net(reference),
-            {volt::DcVoltageSource{volt::DcSourceKey{"drive"},
-                                   volt::DcNetPair{input.net(supply), input.net(reference)},
+            {volt::DcVoltageSource{volt::ElectricalSourceKey{"drive"},
+                                   volt::ElectricalNetPair{input.net(supply), input.net(reference)},
                                    volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}};
         const auto compiled = volt::compile_electrical(request);
         check_compiled_case(compiled, "ideal_inductor_dc");
@@ -395,14 +398,15 @@ TEST_CASE("native linear DC matches every checked-in supported reference case") 
             fixture.circuit->add_net(volt::NetSpec{.name = volt::NetName{"reference"}});
         const auto composite =
             add_catalog_part(fixture, "composite-capacitor", "C1", terminal_a, reference);
-        const auto input = volt::io::prepare_dc_input(*fixture.circuit, fixture.library);
+        const auto input = volt::io::prepare_electrical_input(*fixture.circuit, fixture.library);
         const auto request = volt::DcRequest{
-            volt::DcRequestKey{"composite-capacitor"},
+            volt::ElectricalRequestKey{"composite-capacitor"},
             input,
             input.net(reference),
-            {volt::DcVoltageSource{volt::DcSourceKey{"drive"},
-                                   volt::DcNetPair{input.net(terminal_a), input.net(reference)},
-                                   volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}};
+            {volt::DcVoltageSource{
+                volt::ElectricalSourceKey{"drive"},
+                volt::ElectricalNetPair{input.net(terminal_a), input.net(reference)},
+                volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}};
         const auto compiled = volt::compile_electrical(request);
         check_compiled_case(compiled, "composite_capacitor_dc");
         const auto solved = volt::solve_dc(*compiled.model());
@@ -427,12 +431,12 @@ TEST_CASE("linear DC preserves voltage and current source polarity") {
         const auto fixture = make_fixture();
         const auto input = volt::test::electrical_compilation::input(fixture);
         const auto request = volt::DcRequest{
-            volt::DcRequestKey{"negative-voltage"},
+            volt::ElectricalRequestKey{"negative-voltage"},
             input,
             input.net(fixture.reference),
             {volt::DcVoltageSource{
-                volt::DcSourceKey{"drive"},
-                volt::DcNetPair{input.net(fixture.supply), input.net(fixture.reference)},
+                volt::ElectricalSourceKey{"drive"},
+                volt::ElectricalNetPair{input.net(fixture.supply), input.net(fixture.reference)},
                 volt::Quantity{volt::UnitDimension::Voltage, -5.0}}}};
         const auto compiled = volt::compile_electrical(request);
         REQUIRE(compiled.model() != nullptr);
@@ -446,15 +450,15 @@ TEST_CASE("linear DC preserves voltage and current source polarity") {
         const auto fixture = make_fixture();
         const auto input = volt::test::electrical_compilation::input(fixture);
         const auto request = volt::DcRequest{
-            volt::DcRequestKey{"current-source"},
+            volt::ElectricalRequestKey{"current-source"},
             input,
             input.net(fixture.reference),
             {volt::DcCurrentSource{
-                volt::DcSourceKey{"inject"},
-                volt::DcNetPair{input.net(fixture.reference), input.net(fixture.supply)},
+                volt::ElectricalSourceKey{"inject"},
+                volt::ElectricalNetPair{input.net(fixture.reference), input.net(fixture.supply)},
                 volt::Quantity{volt::UnitDimension::Current, 0.005}}},
-            {volt::DcSourceCurrentProbe{volt::DcProbeKey{"injected-current"},
-                                        volt::DcSourceKey{"inject"}}}};
+            {volt::DcSourceCurrentProbe{volt::ElectricalProbeKey{"injected-current"},
+                                        volt::ElectricalSourceKey{"inject"}}}};
         const auto compiled = volt::compile_electrical(request);
         REQUIRE(compiled.model() != nullptr);
         const auto solved = volt::solve_dc(*compiled.model());
@@ -469,12 +473,12 @@ TEST_CASE("linear DC preserves voltage and current source polarity") {
         const auto fixture = make_fixture();
         const auto input = volt::test::electrical_compilation::input(fixture);
         const auto request = volt::DcRequest{
-            volt::DcRequestKey{"negative-current"},
+            volt::ElectricalRequestKey{"negative-current"},
             input,
             input.net(fixture.reference),
             {volt::DcCurrentSource{
-                volt::DcSourceKey{"withdraw"},
-                volt::DcNetPair{input.net(fixture.supply), input.net(fixture.reference)},
+                volt::ElectricalSourceKey{"withdraw"},
+                volt::ElectricalNetPair{input.net(fixture.supply), input.net(fixture.reference)},
                 volt::Quantity{volt::UnitDimension::Current, -0.005}}}};
         const auto compiled = volt::compile_electrical(request);
         REQUIRE(compiled.model() != nullptr);
@@ -490,9 +494,9 @@ TEST_CASE("linear DC handles empty, source-only, and coincident formulations") {
         auto fixture = make_catalog_circuit();
         const auto reference =
             fixture.circuit->add_net(volt::NetSpec{.name = volt::NetName{"reference"}});
-        const auto input = volt::io::prepare_dc_input(*fixture.circuit, fixture.library);
-        const auto compiled = volt::compile_electrical(
-            volt::DcRequest{volt::DcRequestKey{"reference-only"}, input, input.net(reference)});
+        const auto input = volt::io::prepare_electrical_input(*fixture.circuit, fixture.library);
+        const auto compiled = volt::compile_electrical(volt::DcRequest{
+            volt::ElectricalRequestKey{"reference-only"}, input, input.net(reference)});
         REQUIRE(compiled.model() != nullptr);
         const auto solved = volt::solve_dc(*compiled.model());
         CHECK(solved.outcome() == volt::DcSolveOutcome::Success);
@@ -509,13 +513,13 @@ TEST_CASE("linear DC handles empty, source-only, and coincident formulations") {
             fixture.circuit->add_net(volt::NetSpec{.name = volt::NetName{"supply"}});
         const auto reference =
             fixture.circuit->add_net(volt::NetSpec{.name = volt::NetName{"reference"}});
-        const auto input = volt::io::prepare_dc_input(*fixture.circuit, fixture.library);
+        const auto input = volt::io::prepare_electrical_input(*fixture.circuit, fixture.library);
         const auto compiled = volt::compile_electrical(volt::DcRequest{
-            volt::DcRequestKey{"source-only"},
+            volt::ElectricalRequestKey{"source-only"},
             input,
             input.net(reference),
-            {volt::DcVoltageSource{volt::DcSourceKey{"drive"},
-                                   volt::DcNetPair{input.net(supply), input.net(reference)},
+            {volt::DcVoltageSource{volt::ElectricalSourceKey{"drive"},
+                                   volt::ElectricalNetPair{input.net(supply), input.net(reference)},
                                    volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}});
         REQUIRE(compiled.model() != nullptr);
         const auto solved = volt::solve_dc(*compiled.model());
@@ -532,9 +536,9 @@ TEST_CASE("linear DC handles empty, source-only, and coincident formulations") {
         const auto resistor = add_catalog_part(fixture, "resistor", "Rsame", reference, reference);
         const auto capacitor =
             add_catalog_part(fixture, "ideal-capacitor", "Csame", reference, reference);
-        const auto input = volt::io::prepare_dc_input(*fixture.circuit, fixture.library);
-        const auto compiled = volt::compile_electrical(
-            volt::DcRequest{volt::DcRequestKey{"coincident-passive"}, input, input.net(reference)});
+        const auto input = volt::io::prepare_electrical_input(*fixture.circuit, fixture.library);
+        const auto compiled = volt::compile_electrical(volt::DcRequest{
+            volt::ElectricalRequestKey{"coincident-passive"}, input, input.net(reference)});
         REQUIRE(compiled.model() != nullptr);
         const auto solved = volt::solve_dc(*compiled.model());
         CHECK(solved.outcome() == volt::DcSolveOutcome::Success);
@@ -551,9 +555,10 @@ TEST_CASE("linear DC handles empty, source-only, and coincident formulations") {
                 fixture.circuit->add_net(volt::NetSpec{.name = volt::NetName{"reference"}});
             static_cast<void>(
                 add_catalog_part(fixture, part, reference, reference_net, reference_net));
-            const auto input = volt::io::prepare_dc_input(*fixture.circuit, fixture.library);
+            const auto input =
+                volt::io::prepare_electrical_input(*fixture.circuit, fixture.library);
             const auto compiled = volt::compile_electrical(volt::DcRequest{
-                volt::DcRequestKey{"coincident-ideal"}, input, input.net(reference_net)});
+                volt::ElectricalRequestKey{"coincident-ideal"}, input, input.net(reference_net)});
             REQUIRE(compiled.model() != nullptr);
             const auto solved = volt::solve_dc(*compiled.model());
             CHECK(solved.outcome() == volt::DcSolveOutcome::RankDeficient);
@@ -565,9 +570,10 @@ TEST_CASE("linear DC handles empty, source-only, and coincident formulations") {
         auto fixture = make_catalog_circuit();
         const auto reference =
             fixture.circuit->add_net(volt::NetSpec{.name = volt::NetName{"reference"}});
-        const auto input = volt::io::prepare_dc_input(*fixture.circuit, fixture.library);
+        const auto input = volt::io::prepare_electrical_input(*fixture.circuit, fixture.library);
         CHECK_THROWS(volt::DcVoltageSource{
-            volt::DcSourceKey{"zero"}, volt::DcNetPair{input.net(reference), input.net(reference)},
+            volt::ElectricalSourceKey{"zero"},
+            volt::ElectricalNetPair{input.net(reference), input.net(reference)},
             volt::Quantity{volt::UnitDimension::Voltage, 0.0}});
     }
 }
@@ -702,22 +708,22 @@ TEST_CASE("linear DC rejects a globally inconsistent ideal-source loop") {
 
     const auto fixture = make_fixture();
     const auto input = volt::test::electrical_compilation::input(fixture);
-    const auto request =
-        volt::DcRequest{volt::DcRequestKey{"inconsistent-loop"},
-                        input,
-                        input.net(fixture.reference),
-                        {volt::DcVoltageSource{volt::DcSourceKey{"supply-midpoint"},
-                                               volt::DcNetPair{input.net(fixture.supply),
-                                                               input.net(fixture.midpoint)},
-                                               volt::Quantity{volt::UnitDimension::Voltage, 2.0}},
-                         volt::DcVoltageSource{volt::DcSourceKey{"midpoint-reference"},
-                                               volt::DcNetPair{input.net(fixture.midpoint),
-                                                               input.net(fixture.reference)},
-                                               volt::Quantity{volt::UnitDimension::Voltage, 2.0}},
-                         volt::DcVoltageSource{volt::DcSourceKey{"supply-reference"},
-                                               volt::DcNetPair{input.net(fixture.supply),
-                                                               input.net(fixture.reference)},
-                                               volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}};
+    const auto request = volt::DcRequest{
+        volt::ElectricalRequestKey{"inconsistent-loop"},
+        input,
+        input.net(fixture.reference),
+        {volt::DcVoltageSource{
+             volt::ElectricalSourceKey{"supply-midpoint"},
+             volt::ElectricalNetPair{input.net(fixture.supply), input.net(fixture.midpoint)},
+             volt::Quantity{volt::UnitDimension::Voltage, 2.0}},
+         volt::DcVoltageSource{
+             volt::ElectricalSourceKey{"midpoint-reference"},
+             volt::ElectricalNetPair{input.net(fixture.midpoint), input.net(fixture.reference)},
+             volt::Quantity{volt::UnitDimension::Voltage, 2.0}},
+         volt::DcVoltageSource{
+             volt::ElectricalSourceKey{"supply-reference"},
+             volt::ElectricalNetPair{input.net(fixture.supply), input.net(fixture.reference)},
+             volt::Quantity{volt::UnitDimension::Voltage, 5.0}}}};
     const auto compiled = volt::compile_electrical(request);
     REQUIRE(compiled.model() != nullptr);
     const auto solved = volt::solve_dc(*compiled.model());
@@ -783,12 +789,12 @@ TEST_CASE("linear DC enforces conditioning and finite-result trust gates") {
         const auto fixture = make_fixture();
         const auto input = volt::test::electrical_compilation::input(fixture);
         const auto request = volt::DcRequest{
-            volt::DcRequestKey{"finite-overflow"},
+            volt::ElectricalRequestKey{"finite-overflow"},
             input,
             input.net(fixture.reference),
             {volt::DcVoltageSource{
-                volt::DcSourceKey{"drive"},
-                volt::DcNetPair{input.net(fixture.supply), input.net(fixture.reference)},
+                volt::ElectricalSourceKey{"drive"},
+                volt::ElectricalNetPair{input.net(fixture.supply), input.net(fixture.reference)},
                 volt::Quantity{volt::UnitDimension::Voltage, std::numeric_limits<double>::max()}}}};
         const auto compiled = volt::compile_electrical(request);
         REQUIRE(compiled.model() != nullptr);

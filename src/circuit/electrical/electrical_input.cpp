@@ -1,4 +1,4 @@
-#include <volt/electrical/dc_input.hpp>
+#include <volt/electrical/electrical_input.hpp>
 
 #include <cstddef>
 #include <memory>
@@ -8,18 +8,18 @@
 
 namespace volt {
 
-struct DcInput::Storage {
+struct ElectricalInput::Storage {
     Circuit circuit;
-    DcInputIdentity identity;
+    ElectricalInputIdentity identity;
     std::vector<std::optional<PartDefinition>> parts;
 };
 
-DcInput::DcInput(Circuit circuit, DcInputIdentity identity,
-                 std::vector<std::optional<PartDefinition>> parts) {
+ElectricalInput::ElectricalInput(Circuit circuit, ElectricalInputIdentity identity,
+                                 std::vector<std::optional<PartDefinition>> parts) {
     const auto count = circuit.all<ComponentId>().size();
     if (parts.size() != count) {
         throw KernelArgumentError{ErrorCode::InvalidArgument,
-                                  "DC input resolved Parts must match occurrence count"};
+                                  "Electrical input resolved Parts must match occurrence count"};
     }
 
     for (std::size_t index = 0; index < count; ++index) {
@@ -30,7 +30,7 @@ DcInput::DcInput(Circuit circuit, DcInputIdentity identity,
             if (resolved.has_value()) {
                 throw KernelLogicError{
                     ErrorCode::CrossReferenceViolation,
-                    "DC input cannot resolve a Part for an unselected occurrence",
+                    "Electrical input cannot resolve a Part for an unselected occurrence",
                     EntityRef::component(occurrence)};
             }
             continue;
@@ -45,14 +45,15 @@ DcInput::DcInput(Circuit circuit, DcInputIdentity identity,
             part.identity().namespace_name() != reference.library_namespace() ||
             part.identity().name() != reference.part_key().value()) {
             throw KernelLogicError{ErrorCode::CrossReferenceViolation,
-                                   "DC input resolved Part differs from exact selection",
+                                   "Electrical input resolved Part differs from exact selection",
                                    EntityRef::component(occurrence)};
         }
         const auto &component = circuit.get(instance.definition());
         if (part.implemented_component() != component.content_identity()) {
-            throw KernelLogicError{ErrorCode::CrossReferenceViolation,
-                                   "DC input resolved Part implements another component definition",
-                                   EntityRef::component(occurrence)};
+            throw KernelLogicError{
+                ErrorCode::CrossReferenceViolation,
+                "Electrical input resolved Part implements another component definition",
+                EntityRef::component(occurrence)};
         }
     }
 
@@ -60,11 +61,11 @@ DcInput::DcInput(Circuit circuit, DcInputIdentity identity,
         Storage{std::move(circuit), std::move(identity), std::move(parts)});
 }
 
-const Circuit &DcInput::circuit() const & { return storage_->circuit; }
+const Circuit &ElectricalInput::circuit() const & { return storage_->circuit; }
 
-const DcInputIdentity &DcInput::identity() const & { return storage_->identity; }
+const ElectricalInputIdentity &ElectricalInput::identity() const & { return storage_->identity; }
 
-const PartDefinition *DcInput::part(ComponentId occurrence) const & {
+const PartDefinition *ElectricalInput::part(ComponentId occurrence) const & {
     static_cast<void>(storage_->circuit.get(occurrence));
     const auto &part = storage_->parts.at(occurrence.index());
     return part.has_value() ? &*part : nullptr;

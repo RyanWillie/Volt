@@ -8,20 +8,21 @@ TEST_CASE(
     "AC request codecs preserve canonical samples phases exact identity and keyed measurements") {
     using namespace volt;
     const auto fixture = test::dc_request::make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
     const auto dc = test::dc_request::complete_request(input);
-    const auto nets = DcNetPair{input.net(NetId{0}), input.net(NetId{1})};
+    const auto nets = ElectricalNetPair{input.net(NetId{0}), input.net(NetId{1})};
     const auto request = AcRequest{
-        DcRequestKey{"sweep"},
+        ElectricalRequestKey{"sweep"},
         input,
         dc.reference(),
         AcFrequencySweep::logarithmic(Quantity{UnitDimension::Frequency, 1.0},
                                       Quantity{UnitDimension::Frequency, 1000.0}, 4),
-        {AcCurrentSource{DcSourceKey{"drive"}, nets, Quantity{UnitDimension::Current, 0.1}, 1.0}},
-        {DcVoltageProbe{DcProbeKey{"v"}, nets}},
+        {AcCurrentSource{ElectricalSourceKey{"drive"}, nets, Quantity{UnitDimension::Current, 0.1},
+                         1.0}},
+        {DcVoltageProbe{ElectricalProbeKey{"v"}, nets}},
         dc.exclusions(),
-        {AcGainProbe{DcProbeKey{"g"}, DcProbeKey{"v"}, DcProbeKey{"v"}}},
-        {AcImpedanceProbe{DcProbeKey{"z"}, nets, DcSourceKey{"drive"}}}};
+        {AcGainProbe{ElectricalProbeKey{"g"}, ElectricalProbeKey{"v"}, ElectricalProbeKey{"v"}}},
+        {AcImpedanceProbe{ElectricalProbeKey{"z"}, nets, ElectricalSourceKey{"drive"}}}};
     const auto bytes = io::write_ac_request(request);
     const auto restored = io::read_ac_request(bytes, input);
     CHECK(io::write_ac_request(restored) == bytes);
@@ -50,7 +51,7 @@ TEST_CASE(
 TEST_CASE("AC request codec rejects duplicate object keys before interpretation") {
     using namespace volt;
     const auto fixture = test::dc_request::make_fixture();
-    const auto input = io::prepare_dc_input(*fixture.circuit, fixture.library);
+    const auto input = io::prepare_electrical_input(*fixture.circuit, fixture.library);
     CHECK_THROWS(
         io::read_ac_request(R"({"format":"volt.ac-request","format":"volt.ac-request"})", input));
 }

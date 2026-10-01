@@ -16,7 +16,7 @@ def native_compilation(tmp_path):
         check=True, capture_output=True,
     )
     bundle = volt.ProjectBundle.open(path / "project.volt")
-    input = bundle.graph.loaded_project.circuits[0].dc_input()
+    input = bundle.graph.loaded_project.circuits[0].electrical_input()
     return input, path
 
 

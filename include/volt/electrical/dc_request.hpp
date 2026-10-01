@@ -9,81 +9,29 @@
 
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/quantities.hpp>
-#include <volt/electrical/dc_input.hpp>
+#include <volt/electrical/electrical_request.hpp>
 #include <volt/electrical/passive_model.hpp>
 
 namespace volt {
-
-/** Strongly typed non-empty identity local to one DC request collection. */
-template <typename Tag> class DcRequestKeyValue {
-  public:
-    /** Construct a stable request-local key. */
-    explicit DcRequestKeyValue(std::string value);
-
-    /** Return the stable key spelling. */
-    [[nodiscard]] const std::string &value() const noexcept { return value_; }
-
-    /** Compare keys in the same request-local collection. */
-    [[nodiscard]] bool operator==(const DcRequestKeyValue &) const noexcept = default;
-    /** Order keys for deterministic request normalization. */
-    [[nodiscard]] std::strong_ordering
-    operator<=>(const DcRequestKeyValue &) const noexcept = default;
-
-  private:
-    std::string value_;
-};
-
-/** Type tag for request identities. */
-struct DcRequestKeyTag;
-/** Type tag for independent-source identities. */
-struct DcSourceKeyTag;
-/** Type tag for probe identities. */
-struct DcProbeKeyTag;
-/** Stable identity of one DC request. */
-using DcRequestKey = DcRequestKeyValue<DcRequestKeyTag>;
-/** Stable identity of one independent source within a request. */
-using DcSourceKey = DcRequestKeyValue<DcSourceKeyTag>;
-/** Stable identity of one requested observation within a request. */
-using DcProbeKey = DcRequestKeyValue<DcProbeKeyTag>;
-
-/** One ordered pair of exact-input logical nets. */
-class DcNetPair {
-  public:
-    /** Construct an oriented pair from references to the same exact input. */
-    DcNetPair(DcNetRef from, DcNetRef to);
-
-    /** Return the positive-voltage or outgoing-current net. */
-    [[nodiscard]] const DcNetRef &from() const noexcept { return from_; }
-
-    /** Return the negative-voltage or incoming-current net. */
-    [[nodiscard]] const DcNetRef &to() const noexcept { return to_; }
-
-    /** Compare exact input, authored endpoints, and orientation. */
-    [[nodiscard]] bool operator==(const DcNetPair &) const noexcept = default;
-
-  private:
-    DcNetRef from_;
-    DcNetRef to_;
-};
 
 /** Independent source imposing V(from)-V(to)=value. */
 class DcVoltageSource {
   public:
     /** Construct a finite voltage source over two distinct authored nets. */
-    DcVoltageSource(DcSourceKey key, DcNetPair nets, Quantity value);
+    DcVoltageSource(ElectricalSourceKey key, ElectricalNetPair nets, Quantity value);
 
     /** Return the request-local source identity. */
-    [[nodiscard]] const DcSourceKey &key() const noexcept { return key_; }
+    [[nodiscard]] const ElectricalSourceKey &key() const noexcept { return key_; }
 
     /** Return the ordered source terminals. */
-    [[nodiscard]] const DcNetPair &nets() const noexcept { return nets_; }
+    [[nodiscard]] const ElectricalNetPair &nets() const noexcept { return nets_; }
 
     /** Return the finite voltage value in canonical SI form. */
     [[nodiscard]] const Quantity &value() const noexcept { return value_; }
 
   private:
-    DcSourceKey key_;
-    DcNetPair nets_;
+    ElectricalSourceKey key_;
+    ElectricalNetPair nets_;
     Quantity value_;
 };
 
@@ -91,20 +39,20 @@ class DcVoltageSource {
 class DcCurrentSource {
   public:
     /** Construct a finite current source over two distinct authored nets. */
-    DcCurrentSource(DcSourceKey key, DcNetPair nets, Quantity value);
+    DcCurrentSource(ElectricalSourceKey key, ElectricalNetPair nets, Quantity value);
 
     /** Return the request-local source identity. */
-    [[nodiscard]] const DcSourceKey &key() const noexcept { return key_; }
+    [[nodiscard]] const ElectricalSourceKey &key() const noexcept { return key_; }
 
     /** Return the ordered source terminals. */
-    [[nodiscard]] const DcNetPair &nets() const noexcept { return nets_; }
+    [[nodiscard]] const ElectricalNetPair &nets() const noexcept { return nets_; }
 
     /** Return the finite current value in canonical SI form. */
     [[nodiscard]] const Quantity &value() const noexcept { return value_; }
 
   private:
-    DcSourceKey key_;
-    DcNetPair nets_;
+    ElectricalSourceKey key_;
+    ElectricalNetPair nets_;
     Quantity value_;
 };
 
@@ -115,56 +63,58 @@ using DcSource = std::variant<DcVoltageSource, DcCurrentSource>;
 class DcVoltageProbe {
   public:
     /** Construct an oriented voltage probe over one exact input. */
-    DcVoltageProbe(DcProbeKey key, DcNetPair nets) : key_{std::move(key)}, nets_{std::move(nets)} {}
+    DcVoltageProbe(ElectricalProbeKey key, ElectricalNetPair nets)
+        : key_{std::move(key)}, nets_{std::move(nets)} {}
 
     /** Return the request-local observation identity. */
-    [[nodiscard]] const DcProbeKey &key() const noexcept { return key_; }
+    [[nodiscard]] const ElectricalProbeKey &key() const noexcept { return key_; }
 
     /** Return the ordered observed nets. */
-    [[nodiscard]] const DcNetPair &nets() const noexcept { return nets_; }
+    [[nodiscard]] const ElectricalNetPair &nets() const noexcept { return nets_; }
 
   private:
-    DcProbeKey key_;
-    DcNetPair nets_;
+    ElectricalProbeKey key_;
+    ElectricalNetPair nets_;
 };
 
 /** Current observation using an independent source's stored positive orientation. */
 class DcSourceCurrentProbe {
   public:
     /** Construct a current probe targeting one request-local source. */
-    DcSourceCurrentProbe(DcProbeKey key, DcSourceKey source)
+    DcSourceCurrentProbe(ElectricalProbeKey key, ElectricalSourceKey source)
         : key_{std::move(key)}, source_{std::move(source)} {}
 
     /** Return the request-local observation identity. */
-    [[nodiscard]] const DcProbeKey &key() const noexcept { return key_; }
+    [[nodiscard]] const ElectricalProbeKey &key() const noexcept { return key_; }
 
     /** Return the observed source identity. */
-    [[nodiscard]] const DcSourceKey &source() const noexcept { return source_; }
+    [[nodiscard]] const ElectricalSourceKey &source() const noexcept { return source_; }
 
   private:
-    DcProbeKey key_;
-    DcSourceKey source_;
+    ElectricalProbeKey key_;
+    ElectricalSourceKey source_;
 };
 
 /** Current observation using one exact occurrence/model-element orientation. */
 class DcModelElementCurrentProbe {
   public:
     /** Construct a current probe targeting one resolved occurrence-local model element. */
-    DcModelElementCurrentProbe(DcProbeKey key, DcOccurrenceRef occurrence, ModelElementKey element)
+    DcModelElementCurrentProbe(ElectricalProbeKey key, ElectricalOccurrenceRef occurrence,
+                               ModelElementKey element)
         : key_{std::move(key)}, occurrence_{std::move(occurrence)}, element_{std::move(element)} {}
 
     /** Return the request-local observation identity. */
-    [[nodiscard]] const DcProbeKey &key() const noexcept { return key_; }
+    [[nodiscard]] const ElectricalProbeKey &key() const noexcept { return key_; }
 
     /** Return the exact-input-bound observed occurrence. */
-    [[nodiscard]] const DcOccurrenceRef &occurrence() const noexcept { return occurrence_; }
+    [[nodiscard]] const ElectricalOccurrenceRef &occurrence() const noexcept { return occurrence_; }
 
     /** Return the observed model-local element key. */
     [[nodiscard]] const ModelElementKey &element() const noexcept { return element_; }
 
   private:
-    DcProbeKey key_;
-    DcOccurrenceRef occurrence_;
+    ElectricalProbeKey key_;
+    ElectricalOccurrenceRef occurrence_;
     ModelElementKey element_;
 };
 
@@ -187,16 +137,18 @@ struct DcOutsideAnalysisExclusion {
 class DcReplacedByStimulusExclusion {
   public:
     /** Construct a replacement from one or more unique source keys. */
-    explicit DcReplacedByStimulusExclusion(std::vector<DcSourceKey> sources);
+    explicit DcReplacedByStimulusExclusion(std::vector<ElectricalSourceKey> sources);
 
     /** Return canonical replacement source identities. */
-    [[nodiscard]] const std::vector<DcSourceKey> &sources() const noexcept { return sources_; }
+    [[nodiscard]] const std::vector<ElectricalSourceKey> &sources() const noexcept {
+        return sources_;
+    }
 
     /** Compare complete replacement-source sets. */
     [[nodiscard]] bool operator==(const DcReplacedByStimulusExclusion &) const noexcept = default;
 
   private:
-    std::vector<DcSourceKey> sources_;
+    std::vector<ElectricalSourceKey> sources_;
 };
 
 /** Closed whole-occurrence exclusion reason vocabulary. */
@@ -207,17 +159,17 @@ using DcExclusionReason = std::variant<DcNonElectricalExclusion, DcOutsideAnalys
 class DcOccurrenceExclusion {
   public:
     /** Exclude exactly one input-bound occurrence for one typed reason. */
-    DcOccurrenceExclusion(DcOccurrenceRef occurrence, DcExclusionReason reason)
+    DcOccurrenceExclusion(ElectricalOccurrenceRef occurrence, DcExclusionReason reason)
         : occurrence_{std::move(occurrence)}, reason_{std::move(reason)} {}
 
     /** Return the exact-input-bound excluded occurrence. */
-    [[nodiscard]] const DcOccurrenceRef &occurrence() const noexcept { return occurrence_; }
+    [[nodiscard]] const ElectricalOccurrenceRef &occurrence() const noexcept { return occurrence_; }
 
     /** Return the explicit typed exclusion reason. */
     [[nodiscard]] const DcExclusionReason &reason() const noexcept { return reason_; }
 
   private:
-    DcOccurrenceRef occurrence_;
+    ElectricalOccurrenceRef occurrence_;
     DcExclusionReason reason_;
 };
 
@@ -225,18 +177,20 @@ class DcOccurrenceExclusion {
 class DcRequest {
   public:
     /** Validate, normalize, and retain one complete request against an exact input. */
-    DcRequest(DcRequestKey key, const DcInput &input, std::optional<DcNetRef> reference,
-              std::vector<DcSource> sources = {}, std::vector<DcProbe> probes = {},
-              std::vector<DcOccurrenceExclusion> exclusions = {});
+    DcRequest(ElectricalRequestKey key, const ElectricalInput &input,
+              std::optional<ElectricalNetRef> reference, std::vector<DcSource> sources = {},
+              std::vector<DcProbe> probes = {}, std::vector<DcOccurrenceExclusion> exclusions = {});
 
     /** Return the stable request identity. */
-    [[nodiscard]] const DcRequestKey &key() const noexcept { return key_; }
+    [[nodiscard]] const ElectricalRequestKey &key() const noexcept { return key_; }
 
     /** Return the immutable owning exact input snapshot. */
-    [[nodiscard]] const DcInput &input() const noexcept { return input_; }
+    [[nodiscard]] const ElectricalInput &input() const noexcept { return input_; }
 
     /** Return the explicit reference net, or absence for an incomplete request. */
-    [[nodiscard]] const std::optional<DcNetRef> &reference() const noexcept { return reference_; }
+    [[nodiscard]] const std::optional<ElectricalNetRef> &reference() const noexcept {
+        return reference_;
+    }
 
     /** Return independent sources in canonical key order. */
     [[nodiscard]] const std::vector<DcSource> &sources() const noexcept { return sources_; }
@@ -250,9 +204,9 @@ class DcRequest {
     }
 
   private:
-    DcRequestKey key_;
-    DcInput input_;
-    std::optional<DcNetRef> reference_;
+    ElectricalRequestKey key_;
+    ElectricalInput input_;
+    std::optional<ElectricalNetRef> reference_;
     std::vector<DcSource> sources_;
     std::vector<DcProbe> probes_;
     std::vector<DcOccurrenceExclusion> exclusions_;
@@ -278,12 +232,12 @@ enum class DcCoverageStatus {
 class DcOccurrenceCoverage {
   public:
     /** Construct and validate one status-shaped occurrence coverage record. */
-    DcOccurrenceCoverage(DcOccurrenceRef occurrence, DcCoverageStatus status,
+    DcOccurrenceCoverage(ElectricalOccurrenceRef occurrence, DcCoverageStatus status,
                          std::optional<LibraryPartRef> selected_part,
                          std::optional<DcOccurrenceExclusion> exclusion);
 
     /** Return the exact-input-bound occurrence. */
-    [[nodiscard]] const DcOccurrenceRef &occurrence() const noexcept { return occurrence_; }
+    [[nodiscard]] const ElectricalOccurrenceRef &occurrence() const noexcept { return occurrence_; }
 
     /** Return this occurrence's request-relative coverage status. */
     [[nodiscard]] DcCoverageStatus status() const noexcept { return status_; }
@@ -299,7 +253,7 @@ class DcOccurrenceCoverage {
     }
 
   private:
-    DcOccurrenceRef occurrence_;
+    ElectricalOccurrenceRef occurrence_;
     DcCoverageStatus status_;
     std::optional<LibraryPartRef> selected_part_;
     std::optional<DcOccurrenceExclusion> exclusion_;
@@ -315,7 +269,7 @@ class DcRequestAssessment {
     [[nodiscard]] bool complete() const noexcept { return complete_; }
 
     /** Return the exact input identity assessed by this report. */
-    [[nodiscard]] const DcInputIdentity &input() const noexcept { return input_; }
+    [[nodiscard]] const ElectricalInputIdentity &input() const noexcept { return input_; }
 
     /** Return one deterministic coverage record for every Circuit occurrence. */
     [[nodiscard]] const std::vector<DcOccurrenceCoverage> &coverage() const noexcept {
@@ -328,7 +282,7 @@ class DcRequestAssessment {
     }
 
   private:
-    DcInputIdentity input_;
+    ElectricalInputIdentity input_;
     std::vector<DcOccurrenceCoverage> coverage_;
     std::vector<Diagnostic> diagnostics_;
     bool complete_;

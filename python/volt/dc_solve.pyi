@@ -3,7 +3,7 @@
 from typing import ClassVar
 
 from .compilation import CompiledElectricalModel
-from .dc import DcProbeKey
+from .dc import ElectricalProbeKey
 from .electrical import ContentHash, Quantity
 
 
@@ -80,7 +80,7 @@ class DcBranchResult:
 
 class DcProbeResult:
     @property
-    def key(self) -> DcProbeKey: ...
+    def key(self) -> ElectricalProbeKey: ...
     @property
     def value(self) -> Quantity: ...
 

@@ -246,23 +246,25 @@ struct Fixture {
             lower_resistor};
 }
 
-[[nodiscard]] inline DcInput input(const Fixture &fixture) {
-    return io::prepare_dc_input(*fixture.circuit, fixture.library);
+[[nodiscard]] inline ElectricalInput input(const Fixture &fixture) {
+    return io::prepare_electrical_input(*fixture.circuit, fixture.library);
 }
 
-[[nodiscard]] inline DcRequest divider_request(const DcInput &input, NetId supply, NetId midpoint,
-                                               NetId reference) {
-    return DcRequest{DcRequestKey{"divider-operating-point"},
-                     input,
-                     input.net(reference),
-                     {DcVoltageSource{DcSourceKey{"supply-5v"},
-                                      DcNetPair{input.net(supply), input.net(reference)},
-                                      Quantity{UnitDimension::Voltage, 5.0}}},
-                     {DcVoltageProbe{DcProbeKey{"midpoint-voltage"},
-                                     DcNetPair{input.net(midpoint), input.net(reference)}}}};
+[[nodiscard]] inline DcRequest divider_request(const ElectricalInput &input, NetId supply,
+                                               NetId midpoint, NetId reference) {
+    return DcRequest{
+        ElectricalRequestKey{"divider-operating-point"},
+        input,
+        input.net(reference),
+        {DcVoltageSource{ElectricalSourceKey{"supply-5v"},
+                         ElectricalNetPair{input.net(supply), input.net(reference)},
+                         Quantity{UnitDimension::Voltage, 5.0}}},
+        {DcVoltageProbe{ElectricalProbeKey{"midpoint-voltage"},
+                        ElectricalNetPair{input.net(midpoint), input.net(reference)}}}};
 }
 
-[[nodiscard]] inline DcRequest divider_request(const Fixture &fixture, const DcInput &input) {
+[[nodiscard]] inline DcRequest divider_request(const Fixture &fixture,
+                                               const ElectricalInput &input) {
     return divider_request(input, fixture.supply, fixture.midpoint, fixture.reference);
 }
 

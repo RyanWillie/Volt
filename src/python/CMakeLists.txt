@@ -37,6 +37,10 @@ set(
     dc_solve.py
     ac_solve.py
     ac_solve.pyi
+    transient.py
+    transient.pyi
+    transient_solve.py
+    transient_solve.pyi
     dc_solve.pyi
     compilation.py
     compilation.pyi
@@ -76,6 +80,8 @@ pybind11_add_module(
     ac_request_bindings.cpp
     dc_solve_bindings.cpp
     ac_solve_bindings.cpp
+    transient_request_bindings.cpp
+    transient_solve_bindings.cpp
     electrical_compilation_bindings.cpp
     electrical_model_bindings.cpp
     py_board.cpp
