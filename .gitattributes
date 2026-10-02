@@ -19,3 +19,4 @@ tests/fixtures/native_fabrication_control* text eol=lf
 
 # The executed SPICE oracle evidence hashes the exact deck bytes.
 tests/fixtures/linear_dc/*.cir text eol=lf
+tests/fixtures/nonlinear_dc/* text eol=lf

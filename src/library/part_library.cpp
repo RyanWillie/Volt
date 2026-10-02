@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <sstream>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <variant>
 
@@ -129,8 +130,17 @@ std::vector<PartAssetReference> part_asset_references(const PartDefinition &part
         for (const auto &element : part.electrical_model()->elements()) {
             std::visit(
                 [&](const auto &value) {
-                    const auto &references = value.parameter().evidence();
-                    evidence.insert(evidence.end(), references.begin(), references.end());
+                    const auto append = [&](const auto &references) {
+                        evidence.insert(evidence.end(), references.begin(), references.end());
+                    };
+                    if constexpr (std::is_same_v<std::decay_t<decltype(value)>,
+                                                 ShockleyDiodeElement>) {
+                        append(value.parameters().saturation_current().evidence());
+                        append(value.parameters().ideality_factor().evidence());
+                        append(value.parameters().evidence());
+                    } else {
+                        append(value.parameter().evidence());
+                    }
                 },
                 element);
         }

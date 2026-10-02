@@ -178,6 +178,21 @@ void assess_participation(const Request &request, std::string_view analysis,
                 {EntityRef::component(occurrence)}));
             continue;
         }
+        if (analysis != "DC" &&
+            std::ranges::any_of(part->electrical_model()->elements(),
+                                [](const ModelElement &element) {
+                                    return std::holds_alternative<ShockleyDiodeElement>(element);
+                                })) {
+            coverage.emplace_back(occurrence_ref, DcCoverageStatus::Unsupported, selection,
+                                  std::nullopt);
+            diagnostics.push_back(analysis_error(
+                analysis == "AC" ? analysis_diagnostic_codes::AcOccurrenceLawUnsupported
+                                 : analysis_diagnostic_codes::TransientOccurrenceLawUnsupported,
+                std::string{analysis} +
+                    " request occurrence contains an unsupported Shockley diode law",
+                {EntityRef::component(occurrence)}));
+            continue;
+        }
         coverage.emplace_back(occurrence_ref, DcCoverageStatus::Supported, selection, std::nullopt);
     }
 }

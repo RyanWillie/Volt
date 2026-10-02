@@ -1,0 +1,15 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: independent idealized diode bias reference: picoamp_forward
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+No. of Data Rows : 1
+v(junction) = 9.99999532375822203e-02
+@djunction[id] = 4.67624177990451897e-11
+@djunction[gd] = 1.84661013162455321e-09
+ngspice-46 done

@@ -5,13 +5,17 @@
 #include <string>
 #include <variant>
 
+#include <nlohmann/json.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/electrical/compiled_electrical_model.hpp>
+#include <volt/electrical/ngspice_dc.hpp>
+#include <volt/io/electrical/compiled_electrical_model_io.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
 #include <volt/io/project_bundle.hpp>
 
 #include "io/support/project_bundle_v2_board_test_support.hpp"
+#include "support/diode_fixture.hpp"
 #include "support/electrical_compilation_fixture.hpp"
 
 namespace {
@@ -447,4 +451,252 @@ TEST_CASE("source-free ProjectBundle input compiles without changing canonical i
     REQUIRE(reopened.part(fixture.upper_resistor) != nullptr);
     CHECK(volt::io::write_part_definition(*reopened.part(fixture.upper_resistor)) == part_before);
     CHECK(volt::io::write_logical_circuit(*fixture.circuit) == circuit_before);
+}
+
+TEST_CASE("Diode compiler retains repeated polarity coincident endpoints and exact law snapshots") {
+    using namespace volt;
+    auto fixture = test::diode::make_fixture();
+    const auto add_diode = [&](std::string reference, NetId anode, NetId cathode) {
+        const auto id = fixture.circuit->instantiate_component(
+            fixture.definition, ComponentInstanceSpec{.reference = ReferenceDesignator{reference}});
+        fixture.circuit->update(
+            id, SelectLibraryPart{fixture.library, fixture.library.require(PartKey{"diode"})});
+        fixture.circuit->connect(anode, queries::pin_by_number(*fixture.circuit, id, "1").value());
+        fixture.circuit->connect(cathode,
+                                 queries::pin_by_number(*fixture.circuit, id, "2").value());
+        return id;
+    };
+    const auto reversed = add_diode("D2", fixture.reference, fixture.junction);
+    const auto coincident = add_diode("D3", fixture.junction, fixture.junction);
+    const auto owner = test::diode::input(fixture);
+    const auto request = test::diode::voltage_request(fixture, owner, 1.0);
+    const auto report = compile_electrical(request);
+    REQUIRE(report.complete());
+    REQUIRE(report.model());
+    const auto &model = *report.model();
+    CHECK(model.branches().size() == 5U);
+    const auto *first = element_branch(model, fixture.diode, ModelElementKey{"junction"});
+    const auto *second = element_branch(model, reversed, ModelElementKey{"junction"});
+    const auto *third = element_branch(model, coincident, ModelElementKey{"junction"});
+    REQUIRE(first);
+    REQUIRE(second);
+    REQUIRE(third);
+    CHECK(first->from == second->to);
+    CHECK(first->to == second->from);
+    CHECK(third->from == third->to);
+    CHECK(model.nodes().at(third->from.index()).incidence.size() == 3U);
+    const auto &law = std::get<ShockleyDiodeElement>(first->law);
+    CHECK(law.from() == ModelEndpoint{ModelTerminalKey{"anode"}});
+    CHECK(law.to() == ModelEndpoint{ModelTerminalKey{"cathode"}});
+    CHECK(law.parameters().fixed_temperature().value() == 300.15);
+    const auto bytes = io::write_compiled_electrical_model(model);
+    const auto repeated = compile_electrical(request);
+    REQUIRE(repeated.model());
+    CHECK(bytes == io::write_compiled_electrical_model(*repeated.model()));
+    const auto document = nlohmann::json::parse(bytes);
+    CHECK(document["version"] == 2);
+    CHECK(document["compiler_version"] == 2);
+    CHECK(document["branches"][first->id.index()]["law"]["parameters"]["voltage_domain"]["minimum"]
+                  ["si"] == -0.05);
+    CHECK(std::get<ElectricalElementOrigin>(first->origin).part ==
+          fixture.library.require(PartKey{"diode"}));
+}
+
+TEST_CASE("Diode occurrence refuses AC transient and public ngspice lowering before execution") {
+    using namespace volt;
+    const auto fixture = test::diode::make_fixture();
+    const auto owner = test::diode::input(fixture);
+    const auto ac =
+        AcRequest{ElectricalRequestKey{"unsupported-diode-ac"}, owner, owner.net(fixture.reference),
+                  AcFrequencySweep{{Quantity{UnitDimension::Frequency, 1000.0}}}};
+    const auto ac_report = compile_electrical(ac);
+    CHECK_FALSE(ac_report.complete());
+    CHECK(ac_report.model() == nullptr);
+    const auto *ac_failure =
+        diagnostic(ac_report, analysis_diagnostic_codes::AcOccurrenceLawUnsupported);
+    REQUIRE(ac_failure);
+    CHECK(ac_failure->entities() == std::vector{EntityRef::component(fixture.diode)});
+    CHECK(ac_report.coverage().front().status() == DcCoverageStatus::Unsupported);
+    const auto transient = TransientRequest{
+        ElectricalRequestKey{"unsupported-diode-transient"}, owner, owner.net(fixture.reference),
+        TransientTimeGrid::uniform(Quantity{UnitDimension::Time, 1.0}, 2)};
+    const auto transient_report = compile_electrical(transient);
+    CHECK_FALSE(transient_report.complete());
+    CHECK(transient_report.model() == nullptr);
+    REQUIRE(
+        diagnostic(transient_report, analysis_diagnostic_codes::TransientOccurrenceLawUnsupported));
+    const auto dc_report = compile_electrical(test::diode::voltage_request(fixture, owner, 1.0));
+    REQUIRE(dc_report.complete());
+    const auto unsupported = NgspiceDcAnalysis{*dc_report.model()};
+    CHECK_FALSE(unsupported.complete());
+    CHECK(unsupported.deck().empty());
+    REQUIRE_FALSE(unsupported.diagnostics().empty());
+    for (const auto *diagnostics :
+         {&ac_report.diagnostics(), &transient_report.diagnostics(), &unsupported.diagnostics()}) {
+        for (const auto &emitted : *diagnostics) {
+            CHECK(std::ranges::find(diagnostic_code_catalogs::Analysis, emitted.code().value()) !=
+                  diagnostic_code_catalogs::Analysis.end());
+        }
+    }
+    const auto excluded = AcRequest{
+        ElectricalRequestKey{"excluded-diode-ac"},
+        owner,
+        owner.net(fixture.reference),
+        AcFrequencySweep{{Quantity{UnitDimension::Frequency, 1000.0}}},
+        {AcVoltageSource{
+            ElectricalSourceKey{"anchor"},
+            ElectricalNetPair{owner.net(fixture.junction), owner.net(fixture.reference)},
+            Quantity{UnitDimension::Voltage, 1.0}, 0.0}},
+        {},
+        {DcOccurrenceExclusion{owner.occurrence(fixture.diode), DcOutsideAnalysisExclusion{}}}};
+    const auto excluded_report = compile_electrical(excluded);
+    CHECK(excluded_report.complete());
+    CHECK(excluded_report.coverage().front().status() == DcCoverageStatus::Excluded);
+}
+
+TEST_CASE("Diode compiler preserves authored private series nodes for repeated exact Parts") {
+    using namespace volt;
+    auto fixture = test::diode::make_fixture(std::nullopt);
+    auto builder = PartElectricalModelBuilder{fixture.circuit->get(fixture.definition)};
+    const auto anode = builder.terminal(ModelTerminalKey{"anode"}, PinKey{"A"});
+    const auto cathode = builder.terminal(ModelTerminalKey{"cathode"}, PinKey{"K"});
+    const auto internal = builder.internal_node(ModelInternalNodeKey{"after_series"});
+    builder.add<ResistanceElement>(ModelElementKey{"series"}, anode, internal,
+                                   ModelParameter{Quantity{UnitDimension::Resistance, 1000.0}});
+    builder.add<ShockleyDiodeElement>(ModelElementKey{"junction"}, internal, cathode,
+                                      test::diode::canonical_parameters(2.0, 310.0));
+    test::diode::replace_model(fixture, builder.build());
+    const auto second = fixture.circuit->instantiate_component(
+        fixture.definition, ComponentInstanceSpec{.reference = ReferenceDesignator{"D2"}});
+    fixture.circuit->update(
+        second, SelectLibraryPart{fixture.library, fixture.library.require(PartKey{"diode"})});
+    fixture.circuit->connect(fixture.junction,
+                             queries::pin_by_number(*fixture.circuit, second, "1").value());
+    fixture.circuit->connect(fixture.reference,
+                             queries::pin_by_number(*fixture.circuit, second, "2").value());
+    const auto owner = test::diode::input(fixture);
+    const auto report = compile_electrical(test::diode::voltage_request(fixture, owner, 1.0));
+    REQUIRE(report.complete());
+    REQUIRE(report.model());
+    const auto &model = *report.model();
+    CHECK(model.nodes().size() == 4U);
+    CHECK(model.branches().size() == 5U);
+    CHECK(model.storage().empty());
+    const auto *first = element_branch(model, fixture.diode, ModelElementKey{"junction"});
+    const auto *repeated = element_branch(model, second, ModelElementKey{"junction"});
+    REQUIRE(first);
+    REQUIRE(repeated);
+    CHECK(first->from != repeated->from);
+    CHECK(first->to == repeated->to);
+    for (const auto *branch : {first, repeated}) {
+        const auto &origin =
+            std::get<ElectricalInternalNodeOrigin>(model.nodes().at(branch->from.index()).origin);
+        CHECK(origin.occurrence == std::get<ElectricalElementOrigin>(branch->origin).occurrence);
+        CHECK(origin.node == ModelInternalNodeKey{"after_series"});
+        CHECK(
+            std::get<ShockleyDiodeElement>(branch->law).parameters().fixed_temperature().value() ==
+            310.0);
+    }
+    const auto *series = element_branch(model, fixture.diode, ModelElementKey{"series"});
+    REQUIRE(series);
+    CHECK(series->to == first->from);
+}
+
+TEST_CASE("Three-terminal diode law compilation resolves authored hierarchical continuity") {
+    using namespace volt;
+    auto circuit = Circuit{};
+    const auto spec = ComponentSpec{
+        .name = "Three-terminal diode network",
+        .pins = {PinSpec{.name = "A", .number = "1"}, PinSpec{.name = "K1", .number = "2"},
+                 PinSpec{.name = "K2", .number = "3"}},
+        .contract = ComponentContractSpec{.key = ComponentKey{"test.diode/network@1"},
+                                          .pin_keys = {PinKey{"A"}, PinKey{"K1"}, PinKey{"K2"}}}};
+    const auto definition = circuit.define_component(spec);
+    const auto &component = circuit.get(definition);
+    auto builder = PartElectricalModelBuilder{component};
+    const auto a = builder.terminal(ModelTerminalKey{"anode"}, PinKey{"A"});
+    const auto k1 = builder.terminal(ModelTerminalKey{"cathode_1"}, PinKey{"K1"});
+    const auto k2 = builder.terminal(ModelTerminalKey{"cathode_2"}, PinKey{"K2"});
+    builder.add<ShockleyDiodeElement>(ModelElementKey{"first"}, a, k1,
+                                      test::diode::canonical_parameters());
+    builder.add<ShockleyDiodeElement>(ModelElementKey{"second"}, a, k2,
+                                      test::diode::canonical_parameters(2.0, 310.0));
+    const auto footprint = io::write_footprint_asset(FootprintDefinition{
+        FootprintRef{"test.diode", "three-terminal"},
+        {FootprintPad::surface_mount("1", FootprintPadShape::Rectangle, {-1.0, 0.0}, {0.5, 0.5},
+                                     FootprintLayerSet::front_smd()),
+         FootprintPad::surface_mount("2", FootprintPadShape::Rectangle, {0.0, 0.0}, {0.5, 0.5},
+                                     FootprintLayerSet::front_smd()),
+         FootprintPad::surface_mount("3", FootprintPadShape::Rectangle, {1.0, 0.0}, {0.5, 0.5},
+                                     FootprintLayerSet::front_smd())}});
+    const auto part = PartDefinition{
+        component,
+        PartIdentity{"test.diode", "network", "1"},
+        ElectricalRecordSet{3},
+        {PinPackageTerminalMapping{PinKey{"A"}, {PackageTerminalKey{"1"}}},
+         PinPackageTerminalMapping{PinKey{"K1"}, {PackageTerminalKey{"2"}}},
+         PinPackageTerminalMapping{PinKey{"K2"}, {PackageTerminalKey{"3"}}}},
+        {},
+        PartProvenance{"", "volt.tests", "idealized network"},
+        {},
+        OrderablePart{ManufacturerPart{"Test", "Network"},
+                      PackageRef{"TEST-3"},
+                      HashedFootprintReference{FootprintRef{"test.diode", "three-terminal"},
+                                               sha256_content_hash(footprint)},
+                      {PartFootprintPad{"1", -1.0, 0.0, 0.5, 0.5},
+                       PartFootprintPad{"2", 0.0, 0.0, 0.5, 0.5},
+                       PartFootprintPad{"3", 1.0, 0.0, 0.5, 0.5}},
+                      {PackageTerminalPadMapping{PackageTerminalKey{"1"}, {FootprintPadKey{"1"}}},
+                       PackageTerminalPadMapping{PackageTerminalKey{"2"}, {FootprintPadKey{"2"}}},
+                       PackageTerminalPadMapping{PackageTerminalKey{"3"}, {FootprintPadKey{"3"}}}}},
+        builder.build()};
+    auto library_builder = PartLibraryBuilder{
+        PartLibraryIdentity{"test.diode", "network", PartLibrarySchemaVersion::V1}};
+    library_builder.add_component(spec).add_part(part);
+    auto assets = test::electrical_compilation::Assets{};
+    for (const auto &reference : part_asset_references(part))
+        assets.add(reference, footprint);
+    const auto library =
+        io::PartLibraryBundle::build(library_builder, std::vector{PartKey{"network"}}, assets);
+    const auto occurrence = circuit.instantiate_component(
+        definition, ComponentInstanceSpec{.reference = ReferenceDesignator{"D1"}});
+    circuit.update(occurrence, SelectLibraryPart{library, library.require(PartKey{"network"})});
+    const auto anode = circuit.add_net(NetSpec{.name = NetName{"anode"}});
+    const auto cathode1 = circuit.add_net(NetSpec{.name = NetName{"cathode1"}});
+    const auto cathode2 = circuit.add_net(NetSpec{.name = NetName{"cathode2"}});
+    circuit.connect(anode, queries::pin_by_number(circuit, occurrence, "1").value());
+    circuit.connect(cathode1, queries::pin_by_number(circuit, occurrence, "2").value());
+    circuit.connect(cathode2, queries::pin_by_number(circuit, occurrence, "3").value());
+    const auto module = circuit.define_module(
+        ModuleSpec{.name = ModuleName{"join-cathodes"},
+                   .template_nets = {TemplateNetDefinition{NetName{"joined"}, NetKind::Signal}},
+                   .ports = {ModulePortSpec{PortName{"first"}, NetName{"joined"}},
+                             ModulePortSpec{PortName{"second"}, NetName{"joined"}}}});
+    const auto instance = circuit.instantiate_module(
+        module, ModuleInstanceSpec{.name = ModuleInstanceName{"cathode-link"}});
+    const auto &ports = circuit.get(module).ports();
+    static_cast<void>(circuit.bind_port(instance, ports[0], cathode1));
+    static_cast<void>(circuit.bind_port(instance, ports[1], cathode2));
+    const auto owner = io::prepare_electrical_input(circuit, library);
+    const auto report =
+        compile_electrical(DcRequest{ElectricalRequestKey{"network"}, owner, owner.net(cathode1)});
+    REQUIRE(report.complete());
+    REQUIRE(report.model());
+    const auto &model = *report.model();
+    CHECK(model.nodes().size() == 2U);
+    CHECK(model.branches().size() == 2U);
+    CHECK(model.branches()[0].from == model.branches()[1].from);
+    CHECK(model.branches()[0].to == model.branches()[1].to);
+    CHECK(std::get<ShockleyDiodeElement>(model.branches()[0].law)
+              .parameters()
+              .fixed_temperature()
+              .value() == 300.15);
+    CHECK(std::get<ShockleyDiodeElement>(model.branches()[1].law)
+              .parameters()
+              .fixed_temperature()
+              .value() == 310.0);
+    const auto &origin =
+        std::get<ElectricalNetOrigin>(model.nodes().at(model.reference().index()).origin);
+    CHECK(origin.nets.size() == 3U);
+    CHECK(origin.bindings.size() == 2U);
 }

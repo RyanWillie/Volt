@@ -2,6 +2,7 @@
 
 #include "ngspice_dc_detail.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <charconv>
@@ -139,6 +140,12 @@ class IdentityEncoder final {
         encoder.text("node:" + std::to_string(node.id.index()));
         encoder.text(node.id == model.reference() ? "0" : "n" + std::to_string(node.id.index()));
         encoder.text(node.id == model.reference() ? "reference" : "returned");
+    }
+    if (std::ranges::any_of(model.branches(), [](const ElectricalBranch &branch) {
+            return std::holds_alternative<ShockleyDiodeElement>(branch.law);
+        })) {
+        encoder.text("unsupported-shockley-diode;no-executable-mapping");
+        return encoder.digest();
     }
     for (const auto &branch : model.branches()) {
         encoder.text("branch:" + std::to_string(branch.id.index()));
@@ -321,7 +328,27 @@ class IdentityEncoder final {
 
 NgspiceDcAnalysis::NgspiceDcAnalysis(const CompiledElectricalModel &model)
     : model_{model}, mapping_identity_{make_mapping_identity(model_)},
-      deck_{write_deck(model_, mapping_identity_)}, deck_identity_{sha256_content_hash(deck_)} {
+      deck_identity_{sha256_content_hash("")} {
+    for (const auto &branch : model_.branches()) {
+        if (std::holds_alternative<ShockleyDiodeElement>(branch.law)) {
+            auto entities = std::vector<EntityRef>{};
+            if (const auto *origin = std::get_if<ElectricalElementOrigin>(&branch.origin)) {
+                entities.push_back(EntityRef::component(origin->occurrence));
+            }
+            diagnostics_.push_back(Diagnostic{
+                Severity::Error,
+                DiagnosticCode{std::string{analysis_diagnostic_codes::DcNgspiceUnsupportedLaw}},
+                DiagnosticCategory{diagnostic_categories::Analysis},
+                "Shockley diode branch:" + std::to_string(branch.id.index()) +
+                    " has no supported ngspice DC lowering",
+                std::move(entities)});
+        }
+    }
+    if (!diagnostics_.empty()) {
+        return;
+    }
+    deck_ = write_deck(model_, mapping_identity_);
+    deck_identity_ = sha256_content_hash(deck_);
     if (model_.branches().empty() || model_.nodes().size() == 1U) {
         diagnostics_.push_back(
             Diagnostic{Severity::Error,

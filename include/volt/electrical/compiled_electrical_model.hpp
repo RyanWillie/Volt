@@ -86,9 +86,10 @@ struct ElectricalElementOrigin {
 using ElectricalBranchOrigin = std::variant<ElectricalElementOrigin, ElectricalSourceKey>;
 
 /** Original closed laws; parameters, orientation, uncertainty and evidence stay intact. */
-using ElectricalLaw = std::variant<ResistanceElement, CapacitanceElement, InductanceElement,
-                                   DcVoltageSource, DcCurrentSource, AcVoltageSource,
-                                   AcCurrentSource, TransientVoltageSource, TransientCurrentSource>;
+using ElectricalLaw =
+    std::variant<ResistanceElement, CapacitanceElement, InductanceElement, ShockleyDiodeElement,
+                 DcVoltageSource, DcCurrentSource, AcVoltageSource, AcCurrentSource,
+                 TransientVoltageSource, TransientCurrentSource>;
 
 /** One oriented current observation and its exact primitive law. */
 struct ElectricalBranch {
@@ -152,7 +153,7 @@ class CompiledElectricalModel {
     class Compiler;
 
     /** Current deterministic compiler contract, independent of solver/backend versions. */
-    [[nodiscard]] static constexpr std::uint32_t compiler_version() noexcept { return 1; }
+    [[nodiscard]] static constexpr std::uint32_t compiler_version() noexcept { return 2; }
 
     /** Return the content identity of the exact input, request, contract and derived graph. */
     [[nodiscard]] const ContentHash &identity() const noexcept { return identity_; }

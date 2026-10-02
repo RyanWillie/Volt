@@ -2,6 +2,7 @@
 #include <volt/electrical/ngspice_dc.hpp>
 
 #include "ngspice_dc_detail.hpp"
+#include "nonlinear_dc_detail.hpp"
 
 #include <algorithm>
 #include <array>
@@ -60,15 +61,17 @@ class IdentityEncoder final {
     std::string bytes_;
 };
 
-[[nodiscard]] ContentHash make_analysis_identity(const CompiledElectricalModel &model,
-                                                 const DcSolveOptions &options,
-                                                 const DcSolveProvenance &provenance) {
+[[nodiscard]] ContentHash
+make_analysis_identity(const CompiledElectricalModel &model, const DcSolveOptions &options,
+                       const DcSolveProvenance &provenance,
+                       const NonlinearDcSolveOptions *nonlinear = nullptr) {
     if (model.ac_request() != nullptr || model.transient_request() != nullptr) {
         throw KernelArgumentError{ErrorCode::InvalidArgument,
                                   "Non-DC compiled model cannot be solved as DC"};
     }
     auto encoder = IdentityEncoder{};
-    encoder.text("volt.linear-dc-analysis");
+    encoder.text("volt.dc-analysis");
+    encoder.text(nonlinear ? NonlinearDcSolveOptions::algorithm() : "linear");
     encoder.text(std::to_string(DcSolveReport::contract_version()));
     encoder.text(model.identity().value());
     encoder.text(provenance.backend);
@@ -78,15 +81,24 @@ class IdentityEncoder final {
     encoder.number(options.relative_residual_tolerance());
     encoder.number(options.absolute_voltage_tolerance().value());
     encoder.number(options.absolute_current_tolerance().value());
-    if (provenance.deck_identity) {
-        encoder.text(provenance.backend_version);
-        encoder.text(provenance.adapter);
-        encoder.text(std::to_string(provenance.adapter_contract_version));
-        encoder.text(provenance.effective_settings);
-        encoder.text(provenance.acceptance_policy);
-        encoder.text(provenance.validation_backend);
-        encoder.text(provenance.deck_identity->value());
-        encoder.text(provenance.mapping_identity->value());
+    encoder.text(provenance.backend_version);
+    encoder.text(provenance.adapter);
+    encoder.text(std::to_string(provenance.adapter_contract_version));
+    encoder.text(provenance.effective_settings);
+    encoder.text(provenance.acceptance_policy);
+    encoder.text(provenance.validation_backend);
+    encoder.text(provenance.deck_identity ? provenance.deck_identity->value() : "absent");
+    encoder.text(provenance.mapping_identity ? provenance.mapping_identity->value() : "absent");
+    if (nonlinear) {
+        encoder.text(NonlinearDcSolveOptions::initial_guess());
+        encoder.number(NonlinearDcSolveOptions::armijo_coefficient());
+        encoder.number(NonlinearDcSolveOptions::minimum_step());
+        encoder.text("base-original-terms-frozen-stable-l2");
+        encoder.text("original-laws-and-undamped-coordinate-correction");
+        encoder.text(std::to_string(nonlinear->max_iterations()));
+        encoder.text(std::to_string(nonlinear->max_backtracks()));
+        encoder.text(std::to_string(nonlinear->max_residual_evaluations()));
+        encoder.text(std::to_string(nonlinear->max_jacobian_evaluations()));
     }
     return encoder.digest();
 }
@@ -101,6 +113,17 @@ class IdentityEncoder final {
                              std::string{backend_name},
                              std::nullopt,
                              std::nullopt};
+}
+
+[[nodiscard]] DcSolveProvenance nonlinear_provenance() {
+    auto result = native_provenance();
+    result.adapter = "volt.native-diode-newton-dc";
+    result.adapter_contract_version = 2;
+    result.effective_settings =
+        "all-zero;max_abs_row_then_column;frozen-original-term-l2;armijo=0.0001;alpha-min=2^-24";
+    result.acceptance_policy =
+        "volt.nonlinear-dc-local-regular-finite-original-residual-undamped-correction:2";
+    return result;
 }
 
 [[nodiscard]] DcSolveProvenance ngspice_provenance(const NgspiceDcAnalysis &analysis) {
@@ -264,7 +287,8 @@ struct Tableau {
                     add_node_coefficient(law_row, branch.to, -1.0);
                     result.coefficients(law_row, current_column) =
                         -law.parameter().nominal().value();
-                } else if constexpr (std::same_as<Law, CapacitanceElement>) {
+                } else if constexpr (std::same_as<Law, CapacitanceElement> ||
+                                     std::same_as<Law, ShockleyDiodeElement>) {
                     result.coefficients(law_row, current_column) = 1.0;
                 } else if constexpr (std::same_as<Law, InductanceElement>) {
                     add_node_coefficient(law_row, branch.from, 1.0);
@@ -411,13 +435,30 @@ DcSolveOptions::DcSolveOptions(double relative_rank_threshold, double minimum_re
     }
 }
 
+NonlinearDcSolveOptions::NonlinearDcSolveOptions(DcSolveOptions acceptance,
+                                                 std::size_t max_iterations,
+                                                 std::size_t max_backtracks,
+                                                 std::size_t max_residual_evaluations,
+                                                 std::size_t max_jacobian_evaluations)
+    : acceptance_{acceptance}, max_iterations_{max_iterations}, max_backtracks_{max_backtracks},
+      max_residual_evaluations_{max_residual_evaluations},
+      max_jacobian_evaluations_{max_jacobian_evaluations} {
+    if (max_iterations == 0 || max_backtracks == 0 || max_backtracks > 24 ||
+        max_residual_evaluations == 0 || max_jacobian_evaluations == 0) {
+        throw KernelArgumentError{
+            ErrorCode::InvalidArgument,
+            "Nonlinear DC requires positive work budgets and at most 24 backtracks"};
+    }
+}
+
 DcSolution::DcSolution(ContentHash analysis_identity, CompiledElectricalModel model,
                        DcSolveOptions options, DcSolveProvenance provenance,
                        std::vector<DcNodeResult> nodes, std::vector<DcBranchResult> branches,
-                       std::vector<DcProbeResult> probes)
+                       std::vector<DcProbeResult> probes,
+                       std::optional<NonlinearDcSolveOptions> nonlinear_options)
     : analysis_identity_{std::move(analysis_identity)}, model_{std::move(model)}, options_{options},
-      provenance_{std::move(provenance)}, nodes_{std::move(nodes)}, branches_{std::move(branches)},
-      probes_{std::move(probes)} {}
+      nonlinear_options_{nonlinear_options}, provenance_{std::move(provenance)},
+      nodes_{std::move(nodes)}, branches_{std::move(branches)}, probes_{std::move(probes)} {}
 
 class DcSolution::Solver final {
   public:
@@ -426,6 +467,17 @@ class DcSolution::Solver final {
           const ContentHash &identity, const DcSolveProvenance &provenance, DcSolveOutcome &outcome,
           DcSolveMetrics &metrics, std::vector<Diagnostic> &diagnostics,
           const std::vector<double> *external_coordinates = nullptr) {
+        for (const auto &branch : model.branches()) {
+            if (std::holds_alternative<ShockleyDiodeElement>(branch.law)) {
+                outcome = DcSolveOutcome::UnsupportedModel;
+                diagnostics.push_back(
+                    solve_diagnostic(analysis_diagnostic_codes::DcSolveUnsupportedModel,
+                                     "Linear DC requires explicit nonlinear method selection for " +
+                                         branch_scope(branch),
+                                     branch_entities(model, branch)));
+                return std::nullopt;
+            }
+        }
         const auto tableau = assemble_tableau(model, diagnostics);
         if (!tableau) {
             outcome = DcSolveOutcome::NumericalFailure;
@@ -575,11 +627,458 @@ class DcSolution::Solver final {
         }
         metrics.scaled_residual = static_cast<double>(scaled_residual);
 
+        return observe(model, options, identity, provenance, outcome, metrics, diagnostics,
+                       coordinates, *tableau);
+    }
+
+    struct NonlinearEvaluation {
+        Vector residual;
+        Vector weights;
+        Matrix jacobian;
+        double reference_current_residual = 0.0;
+        double reference_current_weight = 0.0;
+    };
+
+    [[nodiscard]] static ShockleyDiodeEvaluationStatus
+    evaluate(const CompiledElectricalModel &model, const Tableau &tableau,
+             const Vector &coordinates, const DcSolveOptions &options, NonlinearEvaluation &result,
+             bool with_jacobian, std::vector<Diagnostic> &diagnostics) {
+        result.residual = Vector::Zero(coordinates.size());
+        result.weights = Vector::Zero(coordinates.size());
+        if (with_jacobian) {
+            result.jacobian = tableau.coefficients;
+        }
+        const auto potential = [&](ElectricalNodeId node) {
+            const auto column = tableau.node_columns.at(node.index());
+            return column ? coordinates(static_cast<Eigen::Index>(*column)) : 0.0;
+        };
+        const auto weight = [&](double floor, long double scale) {
+            return static_cast<double>(
+                static_cast<long double>(floor) +
+                static_cast<long double>(options.relative_residual_tolerance()) * scale);
+        };
+        for (const auto &node : model.nodes()) {
+            if (const auto row = tableau.node_columns.at(node.id.index())) {
+                auto sum = 0.0L;
+                auto scale = 0.0L;
+                for (const auto &incidence : node.incidence) {
+                    const auto term =
+                        static_cast<long double>(incidence.sign) *
+                        coordinates(static_cast<Eigen::Index>(tableau.node_coordinate_count +
+                                                              incidence.branch.index()));
+                    sum += term;
+                    scale += std::abs(term);
+                }
+                result.residual(static_cast<Eigen::Index>(*row)) = static_cast<double>(sum);
+                result.weights(static_cast<Eigen::Index>(*row)) =
+                    weight(options.absolute_current_tolerance().value(), scale);
+            }
+        }
+        auto reference_sum = 0.0L;
+        auto reference_scale = 0.0L;
+        for (const auto &incidence : model.nodes().at(model.reference().index()).incidence) {
+            const auto term = static_cast<long double>(incidence.sign) *
+                              coordinates(static_cast<Eigen::Index>(tableau.node_coordinate_count +
+                                                                    incidence.branch.index()));
+            reference_sum += term;
+            reference_scale += std::abs(term);
+        }
+        result.reference_current_residual = static_cast<double>(reference_sum);
+        result.reference_current_weight =
+            weight(options.absolute_current_tolerance().value(), reference_scale);
+        for (const auto &branch : model.branches()) {
+            const auto row =
+                static_cast<Eigen::Index>(tableau.node_coordinate_count + branch.id.index());
+            const auto voltage = checked_difference(potential(branch.from), potential(branch.to));
+            if (!voltage) {
+                return ShockleyDiodeEvaluationStatus::Nonfinite;
+            }
+            const auto current = coordinates(row);
+            auto status = ShockleyDiodeEvaluationStatus::Valid;
+            std::visit(
+                [&](const auto &law) {
+                    using Law = std::decay_t<decltype(law)>;
+                    auto residual = 0.0L;
+                    auto scale = 0.0L;
+                    auto floor = options.absolute_current_tolerance().value();
+                    if constexpr (std::same_as<Law, ShockleyDiodeElement>) {
+                        const auto diode = evaluate_shockley_diode(law.parameters(), *voltage);
+                        status = diode.status;
+                        if (status != ShockleyDiodeEvaluationStatus::Valid) {
+                            diagnostics.push_back(
+                                solve_diagnostic(analysis_diagnostic_codes::DcSolveDiodeEvaluation,
+                                                 "Diode evaluation refused " + branch_scope(branch),
+                                                 branch_entities(model, branch)));
+                            return;
+                        }
+                        residual = static_cast<long double>(current) - diode.current;
+                        scale =
+                            std::abs(static_cast<long double>(current)) + std::abs(diode.current);
+                        if (with_jacobian) {
+                            if (const auto from = tableau.node_columns.at(branch.from.index())) {
+                                result.jacobian(row, static_cast<Eigen::Index>(*from)) -=
+                                    diode.conductance;
+                            }
+                            if (const auto to = tableau.node_columns.at(branch.to.index())) {
+                                result.jacobian(row, static_cast<Eigen::Index>(*to)) +=
+                                    diode.conductance;
+                            }
+                        }
+                    } else if constexpr (std::same_as<Law, ResistanceElement>) {
+                        const auto drop =
+                            static_cast<long double>(law.parameter().nominal().value()) * current;
+                        residual = static_cast<long double>(*voltage) - drop;
+                        scale = std::abs(static_cast<long double>(*voltage)) + std::abs(drop);
+                        floor = options.absolute_voltage_tolerance().value();
+                    } else if constexpr (std::same_as<Law, DcVoltageSource>) {
+                        residual = static_cast<long double>(*voltage) - law.value().value();
+                        scale = std::abs(static_cast<long double>(*voltage)) +
+                                std::abs(law.value().value());
+                        floor = options.absolute_voltage_tolerance().value();
+                    } else if constexpr (std::same_as<Law, DcCurrentSource>) {
+                        residual = static_cast<long double>(current) - law.value().value();
+                        scale = std::abs(static_cast<long double>(current)) +
+                                std::abs(law.value().value());
+                    } else if constexpr (std::same_as<Law, CapacitanceElement>) {
+                        residual = current;
+                        scale = std::abs(current);
+                    } else if constexpr (std::same_as<Law, InductanceElement>) {
+                        residual = *voltage;
+                        scale = std::abs(*voltage);
+                        floor = options.absolute_voltage_tolerance().value();
+                    } else {
+                        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                                  "AC source cannot enter nonlinear DC"};
+                    }
+                    result.residual(row) = static_cast<double>(residual);
+                    result.weights(row) = weight(floor, scale);
+                },
+                branch.law);
+            if (status != ShockleyDiodeEvaluationStatus::Valid) {
+                return status;
+            }
+        }
+        if (!finite(result.reference_current_residual) ||
+            !finite(result.reference_current_weight) || result.reference_current_weight <= 0.0 ||
+            !coordinates.allFinite() || !result.residual.allFinite() ||
+            !result.weights.allFinite() || (result.weights.array() <= 0.0).any() ||
+            (with_jacobian && !result.jacobian.allFinite())) {
+            return ShockleyDiodeEvaluationStatus::Nonfinite;
+        }
+        return ShockleyDiodeEvaluationStatus::Valid;
+    }
+
+    [[nodiscard]] static std::optional<DcSolution>
+    nonlinear(const CompiledElectricalModel &model,
+              const NonlinearDcSolveOptions &nonlinear_options, const ContentHash &identity,
+              const DcSolveProvenance &provenance, DcSolveOutcome &outcome, DcSolveMetrics &metrics,
+              std::vector<Diagnostic> &diagnostics) {
+        const auto &options = nonlinear_options.acceptance();
+        const auto tableau = assemble_tableau(model, diagnostics);
+        if (!tableau) {
+            outcome = DcSolveOutcome::NumericalFailure;
+            return std::nullopt;
+        }
+        metrics.coordinate_count = static_cast<std::size_t>(tableau->coefficients.cols());
+        auto coordinates = Vector{Vector::Zero(tableau->coefficients.cols())};
+        const auto fail = [&](DcSolveOutcome reason, std::string_view code, std::string message) {
+            outcome = reason;
+            diagnostics.push_back(solve_diagnostic(code, std::move(message)));
+            return std::optional<DcSolution>{};
+        };
+        const auto residual_budget = [&] {
+            return metrics.residual_evaluations < nonlinear_options.max_residual_evaluations();
+        };
+        for (;;) {
+            if (!residual_budget() ||
+                metrics.jacobian_evaluations >= nonlinear_options.max_jacobian_evaluations()) {
+                return fail(DcSolveOutcome::EvaluationLimit,
+                            analysis_diagnostic_codes::DcSolveEvaluationLimit,
+                            "Nonlinear DC evaluation budget exhausted");
+            }
+            ++metrics.residual_evaluations;
+            ++metrics.jacobian_evaluations;
+            // These optional measurements describe this base evaluation, not a prior iterate.
+            metrics.rank.reset();
+            metrics.reciprocal_condition.reset();
+            metrics.scaled_residual.reset();
+            metrics.correction_error_ratio.reset();
+            metrics.merit.reset();
+            metrics.voltage_residual.reset();
+            metrics.current_residual.reset();
+            metrics.voltage_error_ratio.reset();
+            metrics.current_error_ratio.reset();
+            metrics.residual_weights.clear();
+            auto base = NonlinearEvaluation{};
+            const auto status =
+                evaluate(model, *tableau, coordinates, options, base, true, diagnostics);
+            if (status != ShockleyDiodeEvaluationStatus::Valid) {
+                return fail(status == ShockleyDiodeEvaluationStatus::OutsideDomain
+                                ? DcSolveOutcome::DomainLimited
+                                : DcSolveOutcome::NumericalFailure,
+                            analysis_diagnostic_codes::DcSolveNumericalFailure,
+                            "Nonlinear DC base evaluation failed");
+            }
+            const Vector normalized = base.residual.cwiseQuotient(base.weights);
+            const auto merit = normalized.stableNorm();
+            if (!normalized.allFinite() || !finite(merit)) {
+                return fail(DcSolveOutcome::NumericalFailure,
+                            analysis_diagnostic_codes::DcSolveNumericalFailure,
+                            "Nonlinear DC merit is nonfinite");
+            }
+            metrics.merit = merit;
+            metrics.voltage_residual = Quantity{UnitDimension::Voltage, 0.0};
+            metrics.current_residual =
+                Quantity{UnitDimension::Current, std::abs(base.reference_current_residual)};
+            metrics.voltage_error_ratio = 0.0;
+            metrics.current_error_ratio =
+                std::abs(base.reference_current_residual) / base.reference_current_weight;
+            metrics.residual_weights.clear();
+            for (Eigen::Index row = 0; row < base.weights.size(); ++row) {
+                auto dimension = UnitDimension::Current;
+                if (static_cast<std::size_t>(row) >= tableau->node_coordinate_count) {
+                    const auto &law =
+                        model.branches()
+                            .at(static_cast<std::size_t>(row) - tableau->node_coordinate_count)
+                            .law;
+                    if (std::holds_alternative<ResistanceElement>(law) ||
+                        std::holds_alternative<InductanceElement>(law) ||
+                        std::holds_alternative<DcVoltageSource>(law)) {
+                        dimension = UnitDimension::Voltage;
+                    }
+                }
+                metrics.residual_weights.emplace_back(dimension, base.weights(row));
+                if (dimension == UnitDimension::Voltage) {
+                    metrics.voltage_residual =
+                        Quantity{dimension, std::max(metrics.voltage_residual->value(),
+                                                     std::abs(base.residual(row)))};
+                    metrics.voltage_error_ratio =
+                        std::max(*metrics.voltage_error_ratio, std::abs(normalized(row)));
+                } else {
+                    metrics.current_residual =
+                        Quantity{dimension, std::max(metrics.current_residual->value(),
+                                                     std::abs(base.residual(row)))};
+                    metrics.current_error_ratio =
+                        std::max(*metrics.current_error_ratio, std::abs(normalized(row)));
+                }
+            }
+            const auto system =
+                equilibrate(Tableau{base.jacobian, -base.residual, tableau->node_columns,
+                                    tableau->node_coordinate_count},
+                            diagnostics);
+            if (!system) {
+                outcome = DcSolveOutcome::NumericalFailure;
+                return std::nullopt;
+            }
+            auto correction = Vector{Vector::Zero(coordinates.size())};
+            if (coordinates.size() != 0) {
+                auto decomposition = Eigen::FullPivLU<Matrix>{system->coefficients};
+                decomposition.setThreshold(options.relative_rank_threshold());
+                if (!decomposition.matrixLU().allFinite()) {
+                    return fail(DcSolveOutcome::NumericalFailure,
+                                analysis_diagnostic_codes::DcSolveNumericalFailure,
+                                "Nonlinear DC Jacobian factorization is nonfinite");
+                }
+                metrics.rank = static_cast<std::size_t>(decomposition.rank());
+                if (*metrics.rank != metrics.coordinate_count) {
+                    return fail(DcSolveOutcome::JacobianSingular,
+                                analysis_diagnostic_codes::DcSolveJacobianSingular,
+                                "Nonlinear DC Jacobian is singular at the current iterate");
+                }
+                const auto rcond = decomposition.rcond();
+                if (!finite(rcond)) {
+                    return fail(DcSolveOutcome::NumericalFailure,
+                                analysis_diagnostic_codes::DcSolveNumericalFailure,
+                                "Nonlinear DC reciprocal condition is nonfinite");
+                }
+                metrics.reciprocal_condition = rcond;
+                if (rcond < options.minimum_reciprocal_condition()) {
+                    return fail(DcSolveOutcome::IllConditioned,
+                                analysis_diagnostic_codes::DcSolveIllConditioned,
+                                "Nonlinear DC Jacobian is below the accepted reciprocal condition");
+                }
+                const Vector scaled = decomposition.solve(system->right_hand_side);
+                const Vector difference = system->coefficients * scaled - system->right_hand_side;
+                const auto denominator =
+                    static_cast<long double>(matrix_infinity_norm(system->coefficients)) *
+                        max_abs(scaled) +
+                    max_abs(system->right_hand_side);
+                const auto backward = denominator == 0.0L
+                                          ? static_cast<long double>(max_abs(difference))
+                                          : max_abs(difference) / denominator;
+                if (!scaled.allFinite() || !difference.allFinite() || !std::isfinite(denominator) ||
+                    !std::isfinite(backward)) {
+                    return fail(DcSolveOutcome::NumericalFailure,
+                                analysis_diagnostic_codes::DcSolveNumericalFailure,
+                                "Nonlinear DC correction residual is nonfinite");
+                }
+                metrics.scaled_residual = static_cast<double>(backward);
+                if (backward > options.relative_residual_tolerance()) {
+                    return fail(DcSolveOutcome::ResidualFailure,
+                                analysis_diagnostic_codes::DcSolveResidualFailure,
+                                "Nonlinear DC linearized correction failed its residual gate");
+                }
+                correction = scaled.cwiseQuotient(system->column_maxima);
+            } else {
+                metrics.rank = 0;
+                metrics.reciprocal_condition = 1.0;
+                metrics.scaled_residual = 0.0;
+            }
+            if (!correction.allFinite()) {
+                return fail(DcSolveOutcome::NumericalFailure,
+                            analysis_diagnostic_codes::DcSolveNumericalFailure,
+                            "Nonlinear DC undamped correction is nonfinite");
+            }
+            auto correction_ratio = 0.0L;
+            for (Eigen::Index column = 0; column < correction.size(); ++column) {
+                const auto floor = static_cast<std::size_t>(column) < tableau->node_coordinate_count
+                                       ? options.absolute_voltage_tolerance().value()
+                                       : options.absolute_current_tolerance().value();
+                const auto next =
+                    static_cast<long double>(coordinates(column)) + correction(column);
+                const auto allowed =
+                    static_cast<long double>(floor) +
+                    options.relative_residual_tolerance() *
+                        std::max(std::abs(static_cast<long double>(coordinates(column))),
+                                 std::abs(next));
+                correction_ratio =
+                    std::max(correction_ratio,
+                             std::abs(static_cast<long double>(correction(column))) / allowed);
+            }
+            if (!std::isfinite(correction_ratio) ||
+                correction_ratio > std::numeric_limits<double>::max()) {
+                return fail(DcSolveOutcome::NumericalFailure,
+                            analysis_diagnostic_codes::DcSolveNumericalFailure,
+                            "Nonlinear DC correction normalization is nonfinite");
+            }
+            metrics.correction_error_ratio = static_cast<double>(correction_ratio);
+            if (*metrics.voltage_error_ratio <= 1.0 && *metrics.current_error_ratio <= 1.0 &&
+                correction_ratio <= 1.0L) {
+                if (!residual_budget()) {
+                    return fail(DcSolveOutcome::EvaluationLimit,
+                                analysis_diagnostic_codes::DcSolveEvaluationLimit,
+                                "Nonlinear DC final residual evaluation budget exhausted");
+                }
+                ++metrics.residual_evaluations;
+                // Independently evaluate all original laws and all-node KCL, including the
+                // reference.
+                return observe(model, options, identity, provenance, outcome, metrics, diagnostics,
+                               coordinates, *tableau, nonlinear_options);
+            }
+            if (metrics.iterations >= nonlinear_options.max_iterations()) {
+                return fail(DcSolveOutcome::IterationLimit,
+                            analysis_diagnostic_codes::DcSolveIterationLimit,
+                            "Nonlinear DC accepted-correction budget exhausted");
+            }
+            auto alpha_bound = 1.0L;
+            const ElectricalBranch *limiting_branch = nullptr;
+            const auto potential = [&](const Vector &values, ElectricalNodeId node) {
+                const auto column = tableau->node_columns.at(node.index());
+                return column ? static_cast<long double>(values(static_cast<Eigen::Index>(*column)))
+                              : 0.0L;
+            };
+            for (const auto &branch : model.branches()) {
+                if (const auto *diode = std::get_if<ShockleyDiodeElement>(&branch.law)) {
+                    const auto voltage =
+                        potential(coordinates, branch.from) - potential(coordinates, branch.to);
+                    const auto delta =
+                        potential(correction, branch.from) - potential(correction, branch.to);
+                    const auto &domain = diode->parameters().voltage_domain();
+                    auto candidate_bound = 1.0L;
+                    if (delta > 0.0L) {
+                        candidate_bound = (domain.maximum()->value() - voltage) / delta;
+                    } else if (delta < 0.0L) {
+                        candidate_bound = (domain.minimum()->value() - voltage) / delta;
+                    }
+                    if (candidate_bound < alpha_bound) {
+                        alpha_bound = candidate_bound;
+                        limiting_branch = &branch;
+                    }
+                }
+            }
+            auto alpha = static_cast<double>(alpha_bound);
+            if (static_cast<long double>(alpha) > alpha_bound) {
+                alpha = std::nextafter(alpha, 0.0);
+            }
+            if (!finite(alpha) || alpha < NonlinearDcSolveOptions::minimum_step()) {
+                if (limiting_branch != nullptr) {
+                    diagnostics.push_back(
+                        solve_diagnostic(analysis_diagnostic_codes::DcSolveDomainLimited,
+                                         "Authored diode domain limits progression for " +
+                                             branch_scope(*limiting_branch),
+                                         branch_entities(model, *limiting_branch)));
+                }
+                return fail(DcSolveOutcome::DomainLimited,
+                            analysis_diagnostic_codes::DcSolveDomainLimited,
+                            "Nonlinear DC has no admissible progressing domain step");
+            }
+            auto accepted = false;
+            auto admissible = false;
+            auto last_domain_diagnostics = std::vector<Diagnostic>{};
+            for (std::size_t halving = 0; halving <= nonlinear_options.max_backtracks() &&
+                                          alpha >= NonlinearDcSolveOptions::minimum_step();
+                 ++halving) {
+                if (!residual_budget()) {
+                    return fail(DcSolveOutcome::EvaluationLimit,
+                                analysis_diagnostic_codes::DcSolveEvaluationLimit,
+                                "Nonlinear DC trial residual budget exhausted");
+                }
+                if (halving != 0) {
+                    ++metrics.backtracks;
+                }
+                ++metrics.residual_evaluations;
+                const Vector trial = coordinates + alpha * correction;
+                auto evaluated = NonlinearEvaluation{};
+                auto trial_diagnostics = std::vector<Diagnostic>{};
+                const auto trial_status =
+                    evaluate(model, *tableau, trial, options, evaluated, false, trial_diagnostics);
+                if (trial_status == ShockleyDiodeEvaluationStatus::OutsideDomain) {
+                    ++metrics.domain_rejections;
+                    last_domain_diagnostics = std::move(trial_diagnostics);
+                } else if (trial_status == ShockleyDiodeEvaluationStatus::Nonfinite) {
+                    ++metrics.nonfinite_rejections;
+                } else {
+                    admissible = true;
+                    const Vector trial_normalized = evaluated.residual.cwiseQuotient(base.weights);
+                    const auto trial_merit = trial_normalized.stableNorm();
+                    if (!trial_normalized.allFinite() || !finite(trial_merit)) {
+                        ++metrics.nonfinite_rejections;
+                    } else if (trial_merit <=
+                               (1.0 - NonlinearDcSolveOptions::armijo_coefficient() * alpha) *
+                                   merit) {
+                        coordinates = trial;
+                        ++metrics.iterations;
+                        accepted = true;
+                        break;
+                    }
+                }
+                alpha *= 0.5;
+            }
+            if (!accepted) {
+                if (!admissible) {
+                    diagnostics.insert(diagnostics.end(), last_domain_diagnostics.begin(),
+                                       last_domain_diagnostics.end());
+                }
+                return fail(admissible ? DcSolveOutcome::LineSearchFailed
+                                       : DcSolveOutcome::DomainLimited,
+                            admissible ? analysis_diagnostic_codes::DcSolveLineSearchFailed
+                                       : analysis_diagnostic_codes::DcSolveDomainLimited,
+                            "Nonlinear DC did not find an admissible Armijo-decreasing trial");
+            }
+        }
+    }
+
+    [[nodiscard]] static std::optional<DcSolution>
+    observe(const CompiledElectricalModel &model, const DcSolveOptions &options,
+            const ContentHash &identity, const DcSolveProvenance &provenance,
+            DcSolveOutcome &outcome, DcSolveMetrics &metrics, std::vector<Diagnostic> &diagnostics,
+            const Vector &coordinates, const Tableau &tableau,
+            std::optional<NonlinearDcSolveOptions> nonlinear_options = std::nullopt) {
         auto node_values = std::vector<double>(model.nodes().size(), 0.0);
         auto node_results = std::vector<DcNodeResult>{};
         node_results.reserve(model.nodes().size());
         for (const auto &node : model.nodes()) {
-            if (const auto column = tableau->node_columns.at(node.id.index())) {
+            if (const auto column = tableau.node_columns.at(node.id.index())) {
                 node_values.at(node.id.index()) = coordinates(static_cast<Eigen::Index>(*column));
             }
             node_results.push_back(DcNodeResult{
@@ -591,7 +1090,7 @@ class DcSolution::Solver final {
         branch_results.reserve(model.branches().size());
         for (const auto &branch : model.branches()) {
             const auto current = coordinates(
-                static_cast<Eigen::Index>(tableau->node_coordinate_count + branch.id.index()));
+                static_cast<Eigen::Index>(tableau.node_coordinate_count + branch.id.index()));
             const auto voltage = checked_difference(node_values.at(branch.from.index()),
                                                     node_values.at(branch.to.index()));
             const auto power = voltage ? checked_product(*voltage, current) : std::nullopt;
@@ -682,6 +1181,18 @@ class DcSolution::Solver final {
                             std::abs(*difference), std::abs(voltage) + std::abs(*resistance_drop),
                             "Resistance-law residual exceeds tolerance for " + branch_scope(branch),
                             entities);
+                    } else if constexpr (std::same_as<Law, ShockleyDiodeElement>) {
+                        const auto evaluation = evaluate_shockley_diode(law.parameters(), voltage);
+                        if (evaluation.status != ShockleyDiodeEvaluationStatus::Valid) {
+                            return false;
+                        }
+                        const auto difference = checked_difference(current, evaluation.current);
+                        return difference && residuals.record_current(
+                                                 std::abs(*difference),
+                                                 std::abs(current) + std::abs(evaluation.current),
+                                                 "Diode-law residual exceeds tolerance for " +
+                                                     branch_scope(branch),
+                                                 entities);
                     } else if constexpr (std::same_as<Law, CapacitanceElement>) {
                         return residuals.record_current(
                             std::abs(current), std::abs(current),
@@ -771,22 +1282,58 @@ class DcSolution::Solver final {
             probe_results.push_back(DcProbeResult{probe.key, *value});
         }
 
-        outcome = DcSolveOutcome::Success;
+        outcome = nonlinear_options ? DcSolveOutcome::Converged : DcSolveOutcome::Success;
         return DcSolution{identity,
                           model,
                           options,
                           provenance,
                           std::move(node_results),
                           std::move(branch_results),
-                          std::move(probe_results)};
+                          std::move(probe_results),
+                          nonlinear_options};
     }
 };
+
+detail::NonlinearDcEquationEvaluation detail::evaluate_nonlinear_dc_equations(
+    const CompiledElectricalModel &model, const DcSolveOptions &options,
+    const std::vector<double> &coordinates, const std::vector<double> &direction) {
+    auto diagnostics = std::vector<Diagnostic>{};
+    const auto tableau = assemble_tableau(model, diagnostics);
+    if (!tableau || coordinates.size() != static_cast<std::size_t>(tableau->coefficients.cols()) ||
+        direction.size() != coordinates.size()) {
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Invalid private nonlinear evaluation coordinates"};
+    }
+    const Vector values =
+        Eigen::Map<const Vector>{coordinates.data(), static_cast<Eigen::Index>(coordinates.size())};
+    const Vector tangent =
+        Eigen::Map<const Vector>{direction.data(), static_cast<Eigen::Index>(direction.size())};
+    auto evaluation = DcSolution::Solver::NonlinearEvaluation{};
+    const auto status = DcSolution::Solver::evaluate(model, *tableau, values, options, evaluation,
+                                                     true, diagnostics);
+    if (status != ShockleyDiodeEvaluationStatus::Valid) {
+        return {status, {}, {}};
+    }
+    const Vector product = evaluation.jacobian * tangent;
+    return {status,
+            std::vector<double>{evaluation.residual.data(),
+                                evaluation.residual.data() + evaluation.residual.size()},
+            std::vector<double>{product.data(), product.data() + product.size()}};
+}
 
 DcSolveReport::DcSolveReport(const CompiledElectricalModel &model, const DcSolveOptions &options)
     : model_{model}, options_{options}, provenance_{native_provenance()},
       analysis_identity_{make_analysis_identity(model_, options_, provenance_)},
       solution_{DcSolution::Solver::solve(model_, options_, analysis_identity_, provenance_,
                                           outcome_, metrics_, diagnostics_)} {}
+
+DcSolveReport::DcSolveReport(const CompiledElectricalModel &model,
+                             const NonlinearDcSolveOptions &options)
+    : model_{model}, options_{options.acceptance()}, nonlinear_options_{options},
+      provenance_{nonlinear_provenance()},
+      analysis_identity_{make_analysis_identity(model_, options_, provenance_, &options)},
+      solution_{DcSolution::Solver::nonlinear(model_, options, analysis_identity_, provenance_,
+                                              outcome_, metrics_, diagnostics_)} {}
 
 DcSolveReport::DcSolveReport(const NgspiceDcAnalysis &analysis, std::string_view output,
                              const DcSolveOptions &options)
@@ -798,6 +1345,11 @@ DcSolveReport::DcSolveReport(const NgspiceDcAnalysis &analysis, std::string_view
 }
 
 DcSolveReport solve_dc(const CompiledElectricalModel &model, const DcSolveOptions &options) {
+    return DcSolveReport{model, options};
+}
+
+DcSolveReport solve_dc(const CompiledElectricalModel &model,
+                       const NonlinearDcSolveOptions &options) {
     return DcSolveReport{model, options};
 }
 

@@ -22,7 +22,8 @@ authoring, PCB layout authoring, and staged project runs:
   routing over kernel-owned board state
 - serialize deterministic PCB projection files
 - define reusable `Part` objects in buildable `Library` collections
-- author optional immutable ideal R/C/L models on exact Parts through native builders
+- author optional immutable ideal R/C/L and bounded Shockley diode models on exact Parts
+  through native builders
 - capture immutable exact DC inputs and author typed sources, probes, exclusions, and
   request-local model-coverage assessments (see the
   [DC request contract guide](design/native-dc-requests.html))
@@ -32,12 +33,14 @@ authoring, PCB layout authoring, and staged project runs:
 - Native linear DC: `volt.solve_dc(model, options)` returns a typed numerical outcome and
   success-only immutable observations, with explicit rank, conditioning and residual policy
   ([S3 numerical contract](design/native-linear-dc.html)).
+- Native idealized diode DC: explicitly select `volt.NonlinearDcSolveOptions` for a
+  bounded operating point with success-only observations ([contract](nonlinear-dc.md)).
 - validate library parts for board readiness, pad mapping, footprint geometry, and
   serializability
 - run staged projects with default diagnostics, product-intent tests, and bundle output
 - export deterministic manufacturing packages from project results
 
-Nonlinear, AC, transient, and deeper PCB flows remain planned layers. The Python API should not
+Broader nonlinear models and deeper PCB flows remain planned layers. The Python API should not
 introduce semantics that those future kernel layers cannot load,
 validate, serialize, or inspect.
 
@@ -411,7 +414,9 @@ after external execution fails.
 The saved request contains the native logical-content and exact selected-Part-closure identities.
 `DcRequest.from_json(selected_input, bytes)` rejects a stale or foreign request; source changes
 therefore require explicit request regeneration rather than name/index rebinding. The CLI uses the
-native default `DcSolveOptions` for either backend and offers no numerical-threshold flags.
+native default `DcSolveOptions` for either linear backend. Explicit native diode DC uses
+`--method diode-newton` and native-validated numerical settings; see
+[idealized diode DC](nonlinear-dc.md).
 
 Status and exit contracts are `success`/0, `incomplete`/1 when native compilation cannot produce a
 complete model, `failed`/1 when the solver returns an unsuccessful native outcome, and `error`/2
@@ -420,7 +425,7 @@ canonical `request.json` and native `compile-report.json` whenever request bindi
 complete, `solve-report.json` only when a solve ran, and `solution.json` only on success. Successful
 ngspice execution additionally publishes `ngspice-analysis.json`, the exact generated `deck.cir`,
 `ngspice-process.json`, and the exact ingested `ngspice-output.txt`; projection-incomplete output
-stops before process evidence and solve output. The native JSON envelope retains `design`, `source`,
+retains the native adapter report and stops before deck, process evidence and solve output. The native JSON envelope retains `design`, `source`,
 `output`, `artifacts`, `compile_report`, and `solve_report`; an ngspice result additionally exposes
 `backend`, `backend_report`, and `process`.
 
@@ -695,7 +700,8 @@ library closure.
 `terminal(key, pin_key)` binds exactly one contract pin; `internal_node(key)` declares a
 private model node. `add(element_type, key, from_, to, parameter)` accepts exactly the native
 `ResistanceElement`, `CapacitanceElement` or `InductanceElement` class, a stable key, two
-handles from that builder, and one `ModelParameter`. Finalization requires every
+handles from that builder, and one `ModelParameter`. The diode overload accepts
+`ShockleyDiodeElement` with a `DiodeParameters` value. Finalization requires every
 contract pin to have exactly one terminal and every terminal/internal node to be used.
 Keys and endpoint orientation are semantic; declaration order is not. Internal nodes never
 become Circuit pins or nets. Later builder changes cannot alter a finalized model.
@@ -720,7 +726,7 @@ evidence must resolve when building a self-contained bundle. Omitting evidence l
 nominal model without a substantiated provenance claim. Unsourced example values are explicitly illustrative.
 
 `LibraryResult.bundle_bytes` writes the current PartLibraryBundle v2. `ProjectResult.write`
-writes ProjectBundle v3, including selected Part v6 artifacts and all required evidence,
+writes ProjectBundle v3, including selected Part v7 artifacts and all required evidence,
 even with only a design stage. `ProjectBundle.open` verifies and reopens that closure without
 source imports, original libraries, network or caches. Its graph exposes the unchanged
 canonical Part artifact bytes. An omitted model remains `None`/`null`; no model is inferred
@@ -975,3 +981,23 @@ native point-to-point obstacle avoidance and returns a read-only `BoardRouteResu
 `BoardEscapeResult` with typed per-pad outcomes. C++ owns assisted algorithms, legality,
 rule resolution, result semantics, and Board mutation. Volt does not provide a whole-board
 or global autorouter.
+
+### Bounded idealized diode DC
+
+`volt.DiodeParameters` and `volt.ShockleyDiodeElement` are immutable native model values.
+The existing model builder accepts `add(volt.ShockleyDiodeElement, key, from_, to, parameters)`.
+`volt.NonlinearDcSolveOptions(acceptance=volt.DcSolveOptions(), max_iterations=80,
+max_backtracks=24, max_residual_evaluations=2048, max_jacobian_evaluations=81)` explicitly
+selects the native single-point diode Newton solver through `volt.solve_dc(model, options)`.
+All acceptance and work settings participate in native analysis identity. The default
+linear solver rejects diode laws. `report.nonlinear_options` and
+`solution.nonlinear_options` retain the effective settings (None for a linear analysis).
+Typed nonlinear outcomes and native work counters are exposed without Python numerical logic.
+`report.metrics.residual_weights` retains the physical row denominators used at the last
+base iterate, alongside correction and merit metrics.
+
+The model uses positive Is/n, fixed per-element T0 without Is rescaling, and a declared
+mild-reverse voltage domain. It is idealized and is uncalibrated without evidence.
+See [the complete bounded contract and CLI example](nonlinear-dc.md) and the
+[executable example](../samples/nonlinear_dc/run_dc.py). AC/transient and public ngspice
+requests reject diode models; sweeps and physical manufacturer fidelity remain outside scope.

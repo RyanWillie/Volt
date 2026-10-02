@@ -108,6 +108,14 @@ UnitDimension model_dimension(const std::string &value) {
     if (value == "inductance") {
         return UnitDimension::Inductance;
     }
+    if (value == "current")
+        return UnitDimension::Current;
+    if (value == "ratio")
+        return UnitDimension::Ratio;
+    if (value == "temperature")
+        return UnitDimension::Temperature;
+    if (value == "voltage")
+        return UnitDimension::Voltage;
     throw KernelLogicError{ErrorCode::InvalidArgument, "Invalid electrical-model dimension"};
 }
 
@@ -147,8 +155,36 @@ ModelEndpoint model_endpoint(const Json &object) {
 }
 
 ModelElement model_element(const Json &object) {
-    require_fields(object, {"kind", "key", "from", "to", "parameter"}, "Electrical-model element");
     const auto kind = string_field(object, "kind");
+    if (kind == "shockley_diode") {
+        require_fields(object, {"kind", "law_version", "key", "from", "to", "parameters"},
+                       "Diode element");
+        const auto &version = field(object, "law_version");
+        require(version.is_number_integer() && version.get<std::int64_t>() == 1,
+                "Unsupported diode law version");
+        const auto &parameters = field(object, "parameters");
+        require_fields(parameters,
+                       {"saturation_current", "ideality_factor", "fixed_temperature",
+                        "voltage_domain", "evidence"},
+                       "Diode parameters");
+        const auto &domain = field(parameters, "voltage_domain");
+        require_fields(domain, {"minimum", "maximum"}, "Diode voltage domain");
+        auto evidence = std::vector<ContentHash>{};
+        for (const auto &reference : array_field(parameters, "evidence")) {
+            require(reference.is_string(), "Diode condition evidence must be a content hash");
+            evidence.emplace_back(reference.get<std::string>());
+        }
+        return ShockleyDiodeElement{
+            ModelElementKey{string_field(object, "key")}, model_endpoint(field(object, "from")),
+            model_endpoint(field(object, "to")),
+            DiodeParameters{model_parameter(field(parameters, "saturation_current")),
+                            model_parameter(field(parameters, "ideality_factor")),
+                            model_quantity(field(parameters, "fixed_temperature")),
+                            QuantityRange::bounded(model_quantity(field(domain, "minimum")),
+                                                   model_quantity(field(domain, "maximum"))),
+                            std::move(evidence)}};
+    }
+    require_fields(object, {"kind", "key", "from", "to", "parameter"}, "Electrical-model element");
     const auto key = ModelElementKey{string_field(object, "key")};
     const auto from = model_endpoint(field(object, "from"));
     const auto to = model_endpoint(field(object, "to"));

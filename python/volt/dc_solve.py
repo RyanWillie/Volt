@@ -1,7 +1,8 @@
-"""Immutable native linear DC solve options and results."""
+"""Immutable native explicit DC solve options and results."""
 
 from . import _volt
 
+NonlinearDcSolveOptions = _volt.NonlinearDcSolveOptions
 DcSolveOptions = _volt.DcSolveOptions
 DcSolveOutcome = _volt.DcSolveOutcome
 DcSolveMetrics = _volt.DcSolveMetrics

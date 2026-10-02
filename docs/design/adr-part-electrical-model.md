@@ -510,3 +510,27 @@ unsupported by the E1–E3 implementation.
 Acceptance settles the semantic choices in this ADR. Implementation may choose internal
 layout and idiomatic spellings while preserving these tests; changing coverage, value
 domains, identity, ownership or equation meaning requires an explicit ADR amendment.
+
+## Accepted bounded nonlinear DC amendment (#366)
+
+The closed element vocabulary additionally admits `ShockleyDiodeElement`, with ordered
+anode/cathode endpoints and a native `DiodeParameters` value. It preserves two native
+`ModelParameter`s (positive Current Is and Ratio n), fixed positive per-element Temperature
+T0, a finite inclusive Voltage domain containing zero with `vmin >= -3*n*k*T0/q`, and
+condition/domain evidence. The law is idealized `i - Is*expm1(v/(n*k*T0/q)) = 0`;
+its derivative and domain checks belong to the kernel. Is is not temperature-rescaled.
+All evidence participates in exact Part/library/project closure; nominal execution does
+not reinterpret uncertainty metadata. V/I characterization records remain separate.
+
+The existing generic builder `add` accepts `ShockleyDiodeElement` with `DiodeParameters`.
+No logical-root methods, alternate Python semantics, callbacks or arbitrary equation
+language are introduced. Compilation retains original laws and provenance. DC Newton
+execution requires explicit `NonlinearDcSolveOptions`; linear defaults reject diode laws,
+and AC/transient/ngspice capability checks reject them before execution. Bounded native
+Newton acceptance proves a locally regular accepted operating point under its gates,
+without global convergence or uniqueness guarantees. Failures retain reports and never
+return partial solutions. Sweeps and broader nonlinear models remain deferred.
+The current Part format is v7; DC report/solution contracts are v2. Only current formats
+are accepted; old or unknown versions and missing diode fields reject at native readers.
+Library/project closure versions remain unchanged.
+See [the public numerical and persistence contract](../nonlinear-dc.md).

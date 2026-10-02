@@ -378,7 +378,7 @@ TEST_CASE("Selected PartLibraryBundle builds byte-identically and reopens fully 
     CHECK(std::string{first.bytes()} == std::string{second.bytes()});
     CHECK(first.digest() == second.digest());
     CHECK(first.digest().value() ==
-          "sha256:1fc06b74a04995c6e254a2c36289441bfbcdb997a561c7fdeb21c3b4cc118808");
+          "sha256:6a73e4f139733ed2fa412a08dba9775d271e3e33e35020ba104a3ccb60f82cc4");
     CHECK(std::ranges::is_sorted(first.entries(), {}, &volt::io::PartLibraryBundleEntry::path));
     CHECK(first.library().components().size() == 2U);
     CHECK(first.library().parts().size() == 2U);

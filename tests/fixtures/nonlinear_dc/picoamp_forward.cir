@@ -1,0 +1,14 @@
+Independent idealized diode bias reference: picoamp_forward
+Vdrive supply 0 DC 0.1
+Rseries supply junction 1000
+Djunction junction 0 DM
+.model DM D(IS=1e-12 N=1 RS=0 ISR=0 JSW=0 IKF=0 IKR=0 TT=0 CJO=0 TNOM=27)
+.temp 27
+.options TNOM=27 GMIN=0 GMINSTEPS=0 SRCSTEPS=0 RELTOL=1e-10 ABSTOL=1e-14 VNTOL=1e-10 ITL1=200
+.control
+set numdgt=17
+op
+print v(junction) @djunction[id] @djunction[gd]
+quit
+.endc
+.end

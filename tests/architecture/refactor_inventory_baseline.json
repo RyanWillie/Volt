@@ -4,7 +4,7 @@
       {
         "byte_count": 4761,
         "path": "tests/fixtures/ap1117.part.volt.json",
-        "sha256": "e605ef4913e88b5f516903e80c39584b05fca535d6932342eb34bbd0ef8f6796"
+        "sha256": "ba0b366582ae654707b2f216c6e13569c063b8ea4ec9a8f6dc6bd11b27370dc6"
       },
       {
         "byte_count": 1828,
@@ -94,7 +94,7 @@
       {
         "byte_count": 4017,
         "path": "tests/fixtures/led_circuit.volt.json",
-        "sha256": "0f990c583f3bc39e7c021d1ec48a8842bd800de2e40a5ba1f74313eaef3239f4"
+        "sha256": "2028de4e8af6d71ba604980d146143d9a5f4ba9237898a6870925cc4d215cf53"
       }
     ],
     "semantic": [
@@ -132,7 +132,7 @@
       },
       {
         "path": "tests/fixtures/ap1117.part.volt.json",
-        "sha256": "e605ef4913e88b5f516903e80c39584b05fca535d6932342eb34bbd0ef8f6796",
+        "sha256": "ba0b366582ae654707b2f216c6e13569c063b8ea4ec9a8f6dc6bd11b27370dc6",
         "top_level_counts": {
           "electrical_records": 5,
           "identity": 3,
@@ -157,11 +157,11 @@
           "version"
         ],
         "top_level_scalars": {
-          "content_identity": "sha256:9a86a87fa8816b39f9c01d9f0b3143539db8b37845c3e1cf8794417142c210bf",
+          "content_identity": "sha256:6d01eeedf49af40feff5387e640482fb42315506d65efa04ac2b39fbc58e9f70",
           "electrical_model": null,
           "format": "volt.part",
           "implements": "sha256:758419641e5722ee2741e509eddd05758105f2445e5762635d847c8580d6fd3c",
-          "version": 6
+          "version": 7
         }
       },
       {
@@ -250,7 +250,7 @@
       },
       {
         "path": "tests/fixtures/led_circuit.volt.json",
-        "sha256": "0f990c583f3bc39e7c021d1ec48a8842bd800de2e40a5ba1f74313eaef3239f4",
+        "sha256": "2028de4e8af6d71ba604980d146143d9a5f4ba9237898a6870925cc4d215cf53",
         "top_level_counts": {
           "component_definitions": 3,
           "components": 3,
@@ -765,6 +765,11 @@
           "python_type": "DcSolveOptions"
         },
         {
+          "cpp_type": "NonlinearDcSolveOptions",
+          "path": "src/python/dc_solve_bindings.cpp",
+          "python_type": "NonlinearDcSolveOptions"
+        },
+        {
           "cpp_type": "DcSolveMetrics",
           "path": "src/python/dc_solve_bindings.cpp",
           "python_type": "DcSolveMetrics"
@@ -858,6 +863,16 @@
           "cpp_type": "ModelParameter",
           "path": "src/python/electrical_model_bindings.cpp",
           "python_type": "ModelParameter"
+        },
+        {
+          "cpp_type": "DiodeParameters",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "DiodeParameters"
+        },
+        {
+          "cpp_type": "ShockleyDiodeElement",
+          "path": "src/python/electrical_model_bindings.cpp",
+          "python_type": "ShockleyDiodeElement"
         },
         {
           "cpp_type": "ResistanceElement",
@@ -1197,6 +1212,7 @@
         "DiagnosticMeasurement",
         "DiagnosticOverlay",
         "DiagnosticReport",
+        "DiodeParameters",
         "DuplicateNameError",
         "ERC_DIAGNOSTIC_CODES",
         "ElectricalCompileReport",
@@ -1261,6 +1277,7 @@
         "Net",
         "NetClass",
         "NgspiceDcAnalysis",
+        "NonlinearDcSolveOptions",
         "PART_LINEUP_DIAGNOSTIC_CODES",
         "PCB_FABRICATION_DIAGNOSTIC_CODES",
         "PCB_VISUAL_DIAGNOSTIC_CODES",
@@ -1314,6 +1331,7 @@
         "SchematicTwoTerminalElement",
         "SchematicWire",
         "SchematicWireBuilder",
+        "ShockleyDiodeElement",
         "Slot",
         "StageResult",
         "TemplateNetInfo",

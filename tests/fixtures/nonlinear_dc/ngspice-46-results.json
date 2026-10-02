@@ -1,0 +1,106 @@
+{
+  "format": "volt.nonlinear-dc-independent-reference",
+  "version": 1,
+  "executed_on": "2026-10-01",
+  "backend": {
+    "version": "ngspice-46",
+    "executable": "/opt/homebrew/Cellar/ngspice/46_1/bin/ngspice",
+    "executable_sha256": "5155292cf5502d1652f364a659081d6a114810384cb8d7ee355d6080ab7f6f3a",
+    "version_sha256": "9bd09bd13966aef2653d393453d97dca9382f7b9a028a804bd788c9b86c9d343"
+  },
+  "process": {
+    "timeout_seconds": 30,
+    "max_output_bytes_per_stream": 65536,
+    "environment_keys": [
+      "PATH",
+      "LC_ALL",
+      "TMPDIR"
+    ],
+    "isolated_cwd": true,
+    "init_files_disabled": true
+  },
+  "comparison": {
+    "voltage_absolute": 1e-06,
+    "current_absolute": 1e-09,
+    "relative": 1e-06,
+    "meaning": "external model comparison; no manufacturer calibration"
+  },
+  "cases": {
+    "forward_1v": {
+      "command": [
+        "ngspice",
+        "-n",
+        "-b",
+        "forward_1v.cir"
+      ],
+      "returncode": 0,
+      "sha256": {
+        "cir": "9d98568724dc5aa43e5c1b380c88236ac2f2c70a1ededacb2f96ec57f3d25281",
+        "stdout": "0b77965d647ff3c47113bb1372263e6119156e91c065ccb7a1b3695bd2a898b8",
+        "stderr": "9147a0d58f373488d67f54aa70f308fa5b4950fae96b33782c16af820aa0ef1e"
+      },
+      "observations": {
+        "v(junction)": 0.5171733663651478,
+        "@djunction[id]": 0.0004828266336348514,
+        "@djunction[gd]": 0.018667240822819627
+      }
+    },
+    "forward_5v": {
+      "command": [
+        "ngspice",
+        "-n",
+        "-b",
+        "forward_5v.cir"
+      ],
+      "returncode": 0,
+      "sha256": {
+        "cir": "84ffd4061d43ad23855646dae1f7b94475ddbdea7125cf7af5605beebbb0dc2b",
+        "stdout": "b8d87722fe19d2ddc6ccb9fcc41f7cb3ea549e774ac32e5621be0f8b9092f403",
+        "stderr": "9147a0d58f373488d67f54aa70f308fa5b4950fae96b33782c16af820aa0ef1e"
+      },
+      "observations": {
+        "v(junction)": 0.574476731731161,
+        "@djunction[id]": 0.004425523268268839,
+        "@djunction[gd]": 0.17110139066149668
+      }
+    },
+    "picoamp_forward": {
+      "command": [
+        "ngspice",
+        "-n",
+        "-b",
+        "picoamp_forward.cir"
+      ],
+      "returncode": 0,
+      "sha256": {
+        "cir": "dea86c1ffbd6ba2dc8e074611e23a1f5a18e099d7f539dd92e15300400221a49",
+        "stdout": "022efef47d0bab06538f8dda09b074b08de5c2357bdd3989c42fe137522db097",
+        "stderr": "9147a0d58f373488d67f54aa70f308fa5b4950fae96b33782c16af820aa0ef1e"
+      },
+      "observations": {
+        "v(junction)": 0.09999995323758222,
+        "@djunction[id]": 4.676241779904519e-11,
+        "@djunction[gd]": 1.8466101316245532e-09
+      }
+    },
+    "mild_reverse": {
+      "command": [
+        "ngspice",
+        "-n",
+        "-b",
+        "mild_reverse.cir"
+      ],
+      "returncode": 0,
+      "sha256": {
+        "cir": "bb5c237cc5c8ff0e351e040862b93e3460b607db3a806f7da9eb22d4f95655b9",
+        "stdout": "109cac98f393ee22fad641f15cb3167b4b0571308a01ce86c87dcda341e20206",
+        "stderr": "9147a0d58f373488d67f54aa70f308fa5b4950fae96b33782c16af820aa0ef1e"
+      },
+      "observations": {
+        "v(junction)": -0.04999999914469599,
+        "@djunction[id]": -8.553040184699914e-13,
+        "@djunction[gd]": 5.594295218112151e-12
+      }
+    }
+  }
+}

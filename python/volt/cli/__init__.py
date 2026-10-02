@@ -374,7 +374,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     simulate_parser = subparsers.add_parser(
         "simulate",
-        help="explicitly solve linear DC or AC from project source or a verified bundle",
+        help="explicitly solve native DC, AC or transient from source or a verified bundle",
         description=(
             "Bind one native analysis request to an exact Design and publish native reports. "
             "Use --bundle or --project, not both; default to current project discovery."
@@ -405,6 +405,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     simulate_parser.add_argument("--json", dest="emit_json", action="store_true")
     _add_transient_arguments(simulate_parser)
+    _add_nonlinear_arguments(simulate_parser)
     simulate_parser.set_defaults(handler=_handle_simulate)
 
     export_parser = subparsers.add_parser(
@@ -545,10 +546,29 @@ _TRANSIENT_ARGUMENTS = (
     ("--h-max", "h_max", float, "Maximum adaptive macro step in SI seconds."),
     ("--max-trials", "max_trials", int, "Maximum transient macro trials, including rejections."),
     ("--max-accepted-steps", "max_accepted_steps", int, "Maximum accepted macro steps; each has two half steps."),
-    ("--relative-tolerance", "relative_tolerance", float, "Transient local state error relative tolerance (default 1e-4)."),
-    ("--absolute-voltage-tolerance", "absolute_voltage_tolerance", float, "Transient local voltage error tolerance in volts (default 1e-6)."),
-    ("--absolute-current-tolerance", "absolute_current_tolerance", float, "Transient local current error tolerance in amperes (default 1e-9)."),
+    ("--relative-tolerance", "relative_tolerance", float, "Relative tolerance for transient error or diode DC acceptance."),
+    ("--absolute-voltage-tolerance", "absolute_voltage_tolerance", float, "Absolute voltage tolerance in volts for transient or diode DC."),
+    ("--absolute-current-tolerance", "absolute_current_tolerance", float, "Absolute current tolerance in amperes for transient or diode DC."),
 )
+
+_NONLINEAR_ARGUMENTS = (
+    ("--max-iterations", "max_iterations", int, "Maximum accepted diode Newton corrections (default 80)."),
+    ("--max-backtracks", "max_backtracks", int, "Maximum halvings per Newton correction (default 24)."),
+    ("--max-residual-evaluations", "max_residual_evaluations", int, "Diode residual evaluation cap (default 2048)."),
+    ("--max-jacobian-evaluations", "max_jacobian_evaluations", int, "Diode Jacobian evaluation cap (default 81)."),
+    ("--relative-rank-threshold", "relative_rank_threshold", float, "Diode Jacobian rank threshold (default 1e-12)."),
+    ("--minimum-reciprocal-condition", "minimum_reciprocal_condition", float, "Diode Jacobian reciprocal condition floor (default 1e-12)."),
+)
+
+def _add_nonlinear_arguments(parser):
+    parser.add_argument("--method", choices=("linear", "diode-newton"), default="linear",
+                        help="Explicit DC method; the default linear method rejects diode laws.")
+    for flag, _name, conversion, help_text in _NONLINEAR_ARGUMENTS:
+        parser.add_argument(flag, type=conversion, help=help_text)
+
+def _nonlinear_worker_arguments(args):
+    return ("--method", args.method, *(value for flag, name, _conversion, _help in _NONLINEAR_ARGUMENTS
+            if getattr(args, name) is not None for value in (flag, str(getattr(args, name)))))
 
 def _add_transient_arguments(parser):
     for flag, _name, conversion, help_text in _TRANSIENT_ARGUMENTS:
@@ -638,7 +658,7 @@ def _open_verified_bundle(path: str | Path):
 
 
 def _handle_simulate(args: argparse.Namespace) -> int:
-    from ._simulation import execute_dc, execute_ac, execute_transient, transient_options, validate_output
+    from ._simulation import execute_dc, execute_ac, execute_transient, transient_options, nonlinear_options, validate_output
 
     if args.bundle is not None and args.project is not None:
         raise CliError(
@@ -673,6 +693,7 @@ def _handle_simulate(args: argparse.Namespace) -> int:
         raise CliError(
             f"Invalid simulation path: {error}", code="invalid-simulation-path"
         ) from error
+    dc_options = nonlinear_options(args)
     options = transient_options(args)
     validate_output(output)
 
@@ -714,7 +735,8 @@ def _handle_simulate(args: argparse.Namespace) -> int:
             },
             backend=args.backend,
             ngspice=ngspice,
-            **({"options": options} if args.analysis == "transient" else {}),
+            **({"options": options} if args.analysis == "transient" else
+               {"options": dc_options} if args.analysis == "dc" else {}),
         )
     else:
         config = discover_project(project=args.project)
@@ -734,6 +756,7 @@ def _handle_simulate(args: argparse.Namespace) -> int:
                 args.backend,
                 *(() if ngspice is None else ("--ngspice", str(ngspice))),
                 *_transient_worker_arguments(args),
+                *_nonlinear_worker_arguments(args),
             ),
         )
     if args.emit_json:

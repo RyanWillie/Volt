@@ -67,6 +67,32 @@ using Json = nlohmann::ordered_json;
 } // namespace
 
 std::string write_ngspice_dc_analysis(const NgspiceDcAnalysis &analysis) {
+    if (analysis.deck().empty()) {
+        auto origins = Json::array();
+        for (const auto &branch : analysis.model().branches()) {
+            origins.push_back(Json{{"branch", "branch:" + std::to_string(branch.id.index())},
+                                   {"origin", origin_json(branch.origin)}});
+        }
+        return Json{{"format", "volt.ngspice-dc-analysis"},
+                    {"version", 1},
+                    {"complete", analysis.complete()},
+                    {"backend",
+                     Json{{"name", NgspiceDcAnalysis::backend()},
+                          {"version", NgspiceDcAnalysis::backend_version()},
+                          {"adapter_contract_version", NgspiceDcAnalysis::contract_version()},
+                          {"settings", NgspiceDcAnalysis::settings()}}},
+                    {"model_identity", analysis.model().identity().value()},
+                    {"request_identity", analysis.model().request_identity().value()},
+                    {"deck_identity", analysis.deck_identity().value()},
+                    {"mapping_identity", analysis.mapping_identity().value()},
+                    {"projection", Json{{"kind", "unavailable"},
+                                        {"losses", diagnostics_json(analysis.diagnostics())}}},
+                    {"mapping", nullptr},
+                    {"unlowered_branches", std::move(origins)},
+                    {"diagnostics", diagnostics_json(analysis.diagnostics())}}
+                   .dump(2) +
+               "\n";
+    }
     const auto mapping = volt::detail::ngspice_dc_mapping(analysis);
     auto nodes = Json::array();
     for (const auto &node : analysis.model().nodes()) {

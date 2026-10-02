@@ -30,6 +30,12 @@ target_link_libraries(
 )
 target_compile_features(volt_consumer_layers PRIVATE cxx_std_23)
 
+add_executable(volt_consumer_nonlinear_dc nonlinear_dc.cpp)
+target_link_libraries(volt_consumer_nonlinear_dc PRIVATE Volt::Volt)
+target_compile_features(volt_consumer_nonlinear_dc PRIVATE cxx_std_23)
+
 enable_testing()
 add_test(NAME consumer_umbrella COMMAND volt_consumer_umbrella)
 add_test(NAME consumer_layers COMMAND volt_consumer_layers)
+
+add_test(NAME consumer_nonlinear_dc COMMAND volt_consumer_nonlinear_dc)

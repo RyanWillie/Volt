@@ -46,6 +46,21 @@ Json options_json(const DcSolveOptions &options) {
         {"absolute_current_tolerance", quantity_json(options.absolute_current_tolerance())}};
 }
 
+Json nonlinear_options_json(const NonlinearDcSolveOptions *options) {
+    if (options == nullptr) {
+        return nullptr;
+    }
+    return Json{{"algorithm", NonlinearDcSolveOptions::algorithm()},
+                {"initial_guess", NonlinearDcSolveOptions::initial_guess()},
+                {"merit", "base-original-terms-frozen-stable-l2"},
+                {"armijo_coefficient", NonlinearDcSolveOptions::armijo_coefficient()},
+                {"minimum_step", NonlinearDcSolveOptions::minimum_step()},
+                {"max_iterations", options->max_iterations()},
+                {"max_backtracks", options->max_backtracks()},
+                {"max_residual_evaluations", options->max_residual_evaluations()},
+                {"max_jacobian_evaluations", options->max_jacobian_evaluations()}};
+}
+
 Json provenance_json(const DcSolveProvenance &provenance) {
     return Json{
         {"backend", provenance.backend},
@@ -88,6 +103,20 @@ Json observations_json(const DcSolution &solution) {
 
 const char *outcome_name(DcSolveOutcome outcome) {
     switch (outcome) {
+    case DcSolveOutcome::Converged:
+        return "converged";
+    case DcSolveOutcome::UnsupportedModel:
+        return "unsupported_model";
+    case DcSolveOutcome::JacobianSingular:
+        return "jacobian_singular";
+    case DcSolveOutcome::DomainLimited:
+        return "domain_limited";
+    case DcSolveOutcome::LineSearchFailed:
+        return "line_search_failed";
+    case DcSolveOutcome::IterationLimit:
+        return "iteration_limit";
+    case DcSolveOutcome::EvaluationLimit:
+        return "evaluation_limit";
     case DcSolveOutcome::Success:
         return "success";
     case DcSolveOutcome::RankDeficient:
@@ -107,11 +136,12 @@ const char *outcome_name(DcSolveOutcome outcome) {
 
 std::string write_dc_solution(const DcSolution &solution) {
     return Json{{"format", "volt.dc-solution"},
-                {"version", 1},
+                {"version", 2},
                 {"contract_version", DcSolveReport::contract_version()},
                 {"backend", solution.provenance().backend},
                 {"provenance", provenance_json(solution.provenance())},
                 {"options", options_json(solution.options())},
+                {"nonlinear_options", nonlinear_options_json(solution.nonlinear_options())},
                 {"model", Json::parse(write_compiled_electrical_model(solution.model()))},
                 {"observations", observations_json(solution)}}
                .dump(2) +
@@ -120,6 +150,10 @@ std::string write_dc_solution(const DcSolution &solution) {
 
 std::string write_dc_solve_report(const DcSolveReport &report) {
     const auto &metrics = report.metrics();
+    auto weights = Json::array();
+    for (const auto &weight : metrics.residual_weights) {
+        weights.push_back(quantity_json(weight));
+    }
     auto diagnostics = Json::array();
     for (const auto &diagnostic : report.diagnostics()) {
         auto entities = Json::array();
@@ -133,15 +167,25 @@ std::string write_dc_solve_report(const DcSolveReport &report) {
                                    {"entities", std::move(entities)}});
     }
     return Json{{"format", "volt.dc-solve-report"},
-                {"version", 1},
+                {"version", 2},
                 {"analysis_identity", report.analysis_identity().value()},
                 {"contract_version", DcSolveReport::contract_version()},
                 {"backend", report.backend()},
                 {"provenance", provenance_json(report.provenance())},
                 {"options", options_json(report.options())},
+                {"nonlinear_options", nonlinear_options_json(report.nonlinear_options())},
                 {"outcome", outcome_name(report.outcome())},
                 {"metrics",
                  Json{{"coordinate_count", metrics.coordinate_count},
+                      {"iterations", metrics.iterations},
+                      {"residual_evaluations", metrics.residual_evaluations},
+                      {"jacobian_evaluations", metrics.jacobian_evaluations},
+                      {"backtracks", metrics.backtracks},
+                      {"domain_rejections", metrics.domain_rejections},
+                      {"nonfinite_rejections", metrics.nonfinite_rejections},
+                      {"correction_error_ratio", optional_number(metrics.correction_error_ratio)},
+                      {"merit", optional_number(metrics.merit)},
+                      {"residual_weights", std::move(weights)},
                       {"rank", optional_number(metrics.rank)},
                       {"augmented_rank", optional_number(metrics.augmented_rank)},
                       {"reciprocal_condition", optional_number(metrics.reciprocal_condition)},
