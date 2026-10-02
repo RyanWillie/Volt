@@ -26,6 +26,7 @@
 #include <volt/io/bom/bom_writer.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
+#include <volt/io/parts/part_definition_writer.hpp>
 #include <volt/io/pcb/board_resolution.hpp>
 #include <volt/io/pcb/board_scene.hpp>
 #include <volt/io/pcb/compiled_board.hpp>
@@ -482,7 +483,9 @@ struct SchemaInfo {
                 static_cast<std::uint32_t>(logical_circuit_format_version()),
                 "application/vnd.volt.logical+json"};
     case ArtifactKind::PartDefinition:
-        return {"volt.part-definition", 6, "application/vnd.volt.part+json"};
+        return {"volt.part-definition",
+                static_cast<std::uint32_t>(part_definition_format_version()),
+                "application/vnd.volt.part+json"};
     case ArtifactKind::SymbolDefinition:
         return {std::string{symbol_definition_format_name()},
                 static_cast<std::uint32_t>(symbol_definition_format_version()),

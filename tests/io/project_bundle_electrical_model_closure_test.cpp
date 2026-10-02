@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <optional>
@@ -250,6 +251,10 @@ TEST_CASE(
         graph.artifact(volt::io::ArtifactId{volt::io::ArtifactKind::PartDefinition, *first});
     REQUIRE(part_artifact.has_value());
     CHECK(part_artifact->bytes() == expected);
+    CHECK(part_artifact->descriptor().schema_version() ==
+          static_cast<std::uint32_t>(volt::io::part_definition_format_version()));
+    CHECK(OrderedJson::parse(part_artifact->bytes()).at("version") ==
+          part_artifact->descriptor().schema_version());
     const auto part = volt::io::read_part_definition_text(part_artifact->bytes(),
                                                           circuit.get(volt::ComponentDefId{0}));
     CHECK(part.content_identity() == first->part_digest());
