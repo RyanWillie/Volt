@@ -959,5 +959,5 @@ def test_unreadable_profile_has_typed_host_path_diagnostic(tmp_path, manufacturi
     with pytest.raises(volt.ManufacturingPackageError) as error:
         _publish(manufacturing_result, output)
     assert error.value.status == "invalid-manufacturing-profile"
-    assert str(missing) in str(error.value)
+    assert repr(str(missing)) in str(error.value)
     assert not output.exists()
