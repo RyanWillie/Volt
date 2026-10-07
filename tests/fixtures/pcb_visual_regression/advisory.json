@@ -1,0 +1,43 @@
+[
+  {
+    "code": "PCB_VISUAL_LABEL_OUTSIDE_BOARD",
+    "severity": "warning",
+    "category": "pcb.visual",
+    "message": "Board text 'REVIEW' is outside the board outline",
+    "entities": [
+      {
+        "kind": "board_text",
+        "index": 1
+      }
+    ],
+    "overlays": [
+      {
+        "kind": "bounding_box",
+        "points": [
+          [
+            21.0,
+            0.4
+          ],
+          [
+            23.16,
+            1.0
+          ]
+        ],
+        "entities": [
+          {
+            "kind": "board_text",
+            "index": 1
+          }
+        ],
+        "layers": [
+          {
+            "kind": "board_layer",
+            "index": 2
+          }
+        ]
+      }
+    ],
+    "measurement": null,
+    "rule": null
+  }
+]
