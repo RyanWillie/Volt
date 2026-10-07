@@ -1,7 +1,9 @@
+import hashlib
 import importlib
 import json
 import os
 import sys
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -355,8 +357,6 @@ def test_project_result_manufacturing_package_rerun_is_deterministic(tmp_path):
     )
     first = _directory_bytes(output)
     first_archive = output.with_suffix(".zip").read_bytes()
-    output.joinpath("stale-order-file.txt").write_text("stale", encoding="utf-8")
-    output.joinpath("manufacturing", "old-gerber.gbr").write_text("stale", encoding="utf-8")
 
     repeated = result.write_manufacturing_package(
         output,
@@ -501,4 +501,463 @@ def main():
 
     with pytest.raises(LookupError, match="No board named 'missing'"):
         result.write_manufacturing_package(output, board="missing")
+    assert not output.exists()
+
+
+@pytest.fixture
+def manufacturing_result(tmp_path):
+    root = tmp_path / "board"
+    _write_manufacturing_project(root)
+    return _run_project_direct(root), _manufacturing_profile_metadata(root)
+
+
+def _publish(result_and_profile, output, *, archive=True):
+    result, profile = result_and_profile
+    return result.write_manufacturing_package(
+        output, manufacturing_profile=profile, archive=archive,
+    )
+
+
+def _snapshot(root):
+    return _directory_bytes(root) if root.is_dir() else root.read_bytes()
+
+
+@pytest.mark.parametrize("kind", ["file", "directory", "symlink", "dangling-symlink"])
+def test_publication_refuses_unrelated_package_destinations(
+    tmp_path, manufacturing_result, kind,
+):
+    output = tmp_path / "package"
+    target = tmp_path / "unrelated-target"
+    target.write_bytes(b"keep target")
+    if kind == "file":
+        output.write_bytes(b"keep file")
+    elif kind == "directory":
+        output.mkdir()
+        (output / "unrelated.bin").write_bytes(b"keep directory")
+    else:
+        output.symlink_to(target if kind == "symlink" else tmp_path / "missing")
+    before = None if kind == "dangling-symlink" else _snapshot(output)
+    with pytest.raises(volt.ManufacturingPackageError) as error:
+        _publish(manufacturing_result, output)
+    assert error.value.status == "unsafe-output"
+    if kind != "dangling-symlink":
+        assert _snapshot(output) == before
+    if "symlink" in kind:
+        assert output.is_symlink()
+    assert target.read_bytes() == b"keep target"
+    assert not list(tmp_path.glob(".package.publish-*"))
+
+
+@pytest.mark.parametrize("archive", [True, False])
+@pytest.mark.parametrize("change", [
+    "extra-file", "changed-file", "empty-directory", "malformed", "unknown-version",
+    "missing-marker", "marker-symlink", "content-symlink", "stale-generation", "boolean-version",
+])
+def test_publication_refuses_changed_or_invalid_package_ownership(
+    tmp_path, manufacturing_result, archive, change,
+):
+    from volt import manufacturing as writer
+
+    output = tmp_path / "package"
+    _publish(manufacturing_result, output)
+    marker = output / writer._OWNERSHIP_FILE
+    if change == "extra-file":
+        (output / "unrelated.bin").write_bytes(b"keep me")
+    elif change == "changed-file":
+        (output / "manufacturing/profile.json").write_bytes(b"keep edits")
+    elif change == "empty-directory":
+        (output / "unrelated-directory").mkdir()
+    elif change == "missing-marker":
+        marker.unlink()
+    elif change in {"marker-symlink", "content-symlink"}:
+        target = tmp_path / "outside"
+        target.write_bytes(b"outside bytes")
+        path = marker if change == "marker-symlink" else output / "manufacturing/profile.json"
+        path.unlink()
+        path.symlink_to(target)
+    elif change == "malformed":
+        marker.write_text("not json")
+    else:
+        payload = json.loads(marker.read_text())
+        if change == "boolean-version":
+            payload["schema_version"] = True
+        else:
+            payload["schema_version" if change == "unknown-version" else "generation"] = "invalid"
+        marker.write_text(json.dumps(payload))
+    before = _directory_bytes(tmp_path)
+    with pytest.raises(volt.ManufacturingPackageError) as error:
+        _publish(manufacturing_result, output, archive=archive)
+    assert error.value.status == "unsafe-output"
+    assert _directory_bytes(tmp_path) == before
+    if change == "empty-directory":
+        assert (output / "unrelated-directory").is_dir()
+
+
+@pytest.mark.parametrize("kind", ["file", "directory", "symlink", "dangling-symlink", "zip"])
+def test_publication_refuses_unrelated_archive_when_requested(
+    tmp_path, manufacturing_result, kind,
+):
+    output = tmp_path / "package"
+    _publish(manufacturing_result, output, archive=False)
+    archive = output.with_suffix(".zip")
+    target = tmp_path / "outside"
+    target.write_bytes(b"outside")
+    if kind == "directory":
+        archive.mkdir()
+        (archive / "keep").write_bytes(b"keep")
+    elif "symlink" in kind:
+        archive.symlink_to(target if kind == "symlink" else tmp_path / "missing")
+    elif kind == "zip":
+        with zipfile.ZipFile(archive, "w") as unrelated:
+            unrelated.writestr("keep", b"keep")
+    else:
+        archive.write_bytes(b"unrelated archive")
+    before = _directory_bytes(tmp_path)
+    with pytest.raises(volt.ManufacturingPackageError) as error:
+        _publish(manufacturing_result, output)
+    assert error.value.status == "unsafe-output"
+    assert _directory_bytes(tmp_path) == before
+    if "symlink" in kind:
+        assert archive.is_symlink()
+
+
+@pytest.mark.parametrize("existing_package", [True, False])
+@pytest.mark.parametrize("kind", ["file", "directory", "symlink", "dangling-symlink"])
+def test_archive_false_preserves_inferred_unrelated_sibling(
+    tmp_path, manufacturing_result, existing_package, kind,
+):
+    output = tmp_path / "package"
+    if existing_package:
+        _publish(manufacturing_result, output, archive=False)
+    sibling = output.with_suffix(".zip")
+    target = tmp_path / "outside"
+    target.write_bytes(b"outside bytes")
+    if kind == "file":
+        sibling.write_bytes(b"unrelated inferred zip")
+    elif kind == "directory":
+        sibling.mkdir()
+        (sibling / "keep").write_bytes(b"unrelated directory bytes")
+    else:
+        sibling.symlink_to(target if kind == "symlink" else tmp_path / "missing")
+    before = None if kind == "dangling-symlink" else _snapshot(sibling)
+    assert _publish(manufacturing_result, output, archive=False).archive is None
+    if kind == "dangling-symlink":
+        assert sibling.is_symlink()
+    else:
+        assert _snapshot(sibling) == before
+    assert target.read_bytes() == b"outside bytes"
+
+
+@pytest.mark.parametrize("change", ["comment", "content", "other-generation", "missing", "symlink"])
+@pytest.mark.parametrize("archive", [True, False])
+def test_publication_refuses_stale_or_invalid_archive_ownership(
+    tmp_path, manufacturing_result, change, archive,
+):
+    output = tmp_path / "package"
+    _publish(manufacturing_result, output)
+    sibling = output.with_suffix(".zip")
+    if change == "comment":
+        with zipfile.ZipFile(sibling, "a") as previous:
+            previous.comment = b"unknown ownership"
+    elif change == "content":
+        with zipfile.ZipFile(sibling, "a") as previous:
+            previous.writestr("unrelated.txt", b"keep me")
+    elif change == "other-generation":
+        other = tmp_path / "other"
+        manufacturing_result[0].project.description = "another generation"
+        _publish(manufacturing_result, other)
+        sibling.write_bytes(other.with_suffix(".zip").read_bytes())
+    elif change == "symlink":
+        target = tmp_path / "outside.zip"
+        target.write_bytes(sibling.read_bytes())
+        sibling.unlink()
+        sibling.symlink_to(target)
+    else:
+        sibling.unlink()
+    before = _directory_bytes(tmp_path)
+    with pytest.raises(volt.ManufacturingPackageError) as error:
+        _publish(manufacturing_result, output, archive=archive)
+    assert error.value.status == "unsafe-output"
+    assert _directory_bytes(tmp_path) == before
+
+
+def test_archive_transitions_are_owned_and_coherent(tmp_path, manufacturing_result):
+    from volt import manufacturing as writer
+
+    output = tmp_path / "package"
+    for requested in (False, True, False, True, True, False):
+        written = _publish(manufacturing_result, output, archive=requested)
+        owner = writer._validate_directory(output)
+        assert owner["archive"] is requested
+        assert output.with_suffix(".zip").exists() is requested
+        assert written.archive == (output.with_suffix(".zip") if requested else None)
+        if requested:
+            writer._validate_archive(written.archive, owner)
+        assert not list(tmp_path.glob(".package.publish-*"))
+
+
+@pytest.mark.parametrize("phase", ["project", "contents", "archive", "archive-validation", "directory-validation"])
+def test_staging_failures_preserve_previous_generation(
+    tmp_path, monkeypatch, manufacturing_result, phase,
+):
+    from volt import manufacturing as writer
+
+    output = tmp_path / "package"
+    _publish(manufacturing_result, output)
+    before = _directory_bytes(tmp_path)
+
+    def fail(*args, **kwargs):
+        raise OSError("injected staging failure")
+
+    if phase == "project":
+        monkeypatch.setattr(volt.ProjectResult, "write", fail)
+    else:
+        name = {
+            "contents": "_write_manufacturing_contents",
+            "archive": "_write_deterministic_archive",
+            "archive-validation": "_validate_archive",
+            "directory-validation": "_validate_directory",
+        }[phase]
+        original = getattr(writer, name)
+
+        def fail_staging(path, *args, **kwargs):
+            if ".publish-" in str(path):
+                raise OSError("injected staging failure")
+            return original(path, *args, **kwargs)
+
+        monkeypatch.setattr(writer, name, fail if phase == "contents" else fail_staging)
+    with pytest.raises(volt.ManufacturingPackageError):
+        _publish(manufacturing_result, output)
+    assert _directory_bytes(tmp_path) == before
+    assert not list(tmp_path.glob(".package.publish-*"))
+
+
+@pytest.mark.parametrize("old_archive,new_archive", [(True, True), (True, False), (False, True), (False, False)])
+@pytest.mark.parametrize("step", ["save-directory", "save-archive", "publish-archive", "publish-directory"])
+def test_publication_rename_failures_restore_previous_generation(
+    tmp_path, monkeypatch, manufacturing_result, old_archive, new_archive, step,
+):
+    if (step == "save-archive" and not old_archive) or (step == "publish-archive" and not new_archive):
+        pytest.skip("transition does not perform this rename")
+    output = tmp_path / "package"
+    _publish(manufacturing_result, output, archive=old_archive)
+    before = _directory_bytes(tmp_path)
+    manufacturing_result[0].project.description = "new generation"
+    original = Path.replace
+    injected = False
+
+    def replace(source, destination):
+        nonlocal injected
+        destination = Path(destination)
+        operation = (
+            "save-directory" if destination.name == "previous-package" else
+            "save-archive" if destination.name == "previous-archive.zip" else
+            "publish-archive" if source.name == "archive.zip" else
+            "publish-directory" if source.name == "package" else "rollback"
+        )
+        if operation == step and not injected:
+            injected = True
+            raise OSError("injected rename failure")
+        return original(source, destination)
+
+    monkeypatch.setattr(Path, "replace", replace)
+    with pytest.raises(volt.ManufacturingPackageError) as error:
+        _publish(manufacturing_result, output, archive=new_archive)
+    assert injected
+    assert error.value.status == "publication-failed"
+    assert _directory_bytes(tmp_path) == before
+    assert not list(tmp_path.glob(".package.publish-*"))
+
+
+def test_rollback_failure_retains_recovery_and_no_accepted_directory(
+    tmp_path, monkeypatch, manufacturing_result,
+):
+    output = tmp_path / "package"
+    _publish(manufacturing_result, output)
+    before = _directory_bytes(output)
+    old_zip = output.with_suffix(".zip").read_bytes()
+    original = Path.replace
+
+    def replace(source, destination):
+        if (source.name == "package" and Path(destination) == output) or source.name == "previous-archive.zip":
+            raise OSError("injected publication/rollback failure")
+        return original(source, destination)
+
+    monkeypatch.setattr(Path, "replace", replace)
+    with pytest.raises(volt.ManufacturingPackageError) as error:
+        _publish(manufacturing_result, output)
+    assert error.value.status == "publication-incomplete"
+    assert not output.exists()
+    [recovery] = tmp_path.glob(".package.publish-*")
+    assert str(recovery) in str(error.value)
+    assert _directory_bytes(recovery / "previous-package") == before
+    assert (recovery / "previous-archive.zip").read_bytes() == old_zip
+
+
+def test_two_checkout_roots_produce_identical_package_and_archive_bytes(tmp_path):
+    outputs = []
+    for name in ("checkout-one", "checkout-two"):
+        root = tmp_path / name
+        _write_manufacturing_project(root)
+        result = _run_project_direct(root)
+        output = root / "dist" / "package"
+        profile = _manufacturing_profile_metadata(root)
+        # Absolute configured paths must be canonicalized too.
+        profile["path"] = profile["resolved_path"]
+        result.write_manufacturing_package(output, manufacturing_profile=profile, archive=True)
+        outputs.append(output)
+        payload = json.loads((output / "manufacturing/profile.json").read_text())
+        assert payload["config"] == {
+            "content_sha256": hashlib.sha256(Path(profile["resolved_path"]).read_bytes()).hexdigest(),
+        }
+        assert payload["board"]["provenance"]["as_of"] == "2026-06-21"
+        manifest = json.loads((output / "manufacturing/manifest.json").read_text())
+        assert manifest["schema_version"] == 2
+        for content in _directory_bytes(output).values():
+            assert str(root).encode() not in content
+    assert _directory_bytes(outputs[0]) == _directory_bytes(outputs[1])
+    assert outputs[0].with_suffix(".zip").read_bytes() == outputs[1].with_suffix(".zip").read_bytes()
+
+
+@pytest.mark.parametrize("operation", ["save-directory", "save-archive", "publish-archive", "publish-directory"])
+@pytest.mark.parametrize("after_rename", [False, True])
+def test_cancellation_at_rename_boundaries_preserves_a_coherent_generation(
+    tmp_path, monkeypatch, manufacturing_result, operation, after_rename,
+):
+    from volt import manufacturing as writer
+
+    output = tmp_path / "package"
+    _publish(manufacturing_result, output)
+    before = _directory_bytes(tmp_path)
+    manufacturing_result[0].project.description = "new generation"
+    original = Path.replace
+    injected = False
+
+    def replace(source, destination):
+        nonlocal injected
+        destination = Path(destination)
+        step = (
+            "save-directory" if destination.name == "previous-package" else
+            "save-archive" if destination.name == "previous-archive.zip" else
+            "publish-archive" if source.name == "archive.zip" else
+            "publish-directory" if source.name == "package" else "rollback"
+        )
+        if step == operation and not injected:
+            injected = True
+            if after_rename:
+                original(source, destination)
+            raise KeyboardInterrupt("injected cancellation")
+        return original(source, destination)
+
+    monkeypatch.setattr(Path, "replace", replace)
+    with pytest.raises(KeyboardInterrupt):
+        _publish(manufacturing_result, output)
+    assert injected
+    if operation == "publish-directory" and after_rename:
+        manifest = json.loads((output / "manufacturing/manifest.json").read_text())
+        assert manifest["project"]["description"] == "new generation"
+    else:
+        assert _directory_bytes(tmp_path) == before
+    owner = writer._validate_directory(output)
+    writer._validate_archive(output.with_suffix(".zip"), owner)
+    assert not list(tmp_path.glob(".package.publish-*"))
+
+
+@pytest.mark.parametrize("generation_fails", [True, False])
+def test_cleanup_failure_has_typed_outcome_and_preserves_output(
+    tmp_path, monkeypatch, manufacturing_result, generation_fails,
+):
+    from volt import manufacturing as writer
+
+    output = tmp_path / "package"
+    _publish(manufacturing_result, output)
+    before = _directory_bytes(output)
+
+    def fail(*args, **kwargs):
+        raise OSError("injected cleanup/generation failure")
+
+    monkeypatch.setattr(writer.shutil, "rmtree", fail)
+    if generation_fails:
+        monkeypatch.setattr(writer, "_write_manufacturing_contents", fail)
+    with pytest.raises(volt.ManufacturingPackageError) as error:
+        _publish(manufacturing_result, output)
+    assert error.value.status == "publication-cleanup-failed"
+    assert _directory_bytes(output) == before
+    [transaction] = tmp_path.glob(".package.publish-*")
+    assert str(transaction) in str(error.value)
+    writer._validate_archive(output.with_suffix(".zip"), writer._validate_directory(output))
+
+
+def test_malformed_zip_compression_is_a_typed_ownership_refusal(tmp_path, manufacturing_result):
+    output = tmp_path / "package"
+    _publish(manufacturing_result, output)
+    archive = output.with_suffix(".zip")
+    content = bytearray(archive.read_bytes())
+    # Corrupt both header compression fields without changing the ownership comment.
+    for signature, offset in ((b"PK\x03\x04", 8), (b"PK\x01\x02", 10)):
+        index = content.index(signature)
+        content[index + offset:index + offset + 2] = (99).to_bytes(2, "little")
+    archive.write_bytes(content)
+    before = _directory_bytes(tmp_path)
+    with pytest.raises(volt.ManufacturingPackageError) as error:
+        _publish(manufacturing_result, output)
+    assert error.value.status == "unsafe-output"
+    assert _directory_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize("archive", [True, False])
+def test_generation_refuses_output_changed_while_staging(
+    tmp_path, monkeypatch, manufacturing_result, archive,
+):
+    from volt import manufacturing as writer
+
+    output = tmp_path / "package"
+    _publish(manufacturing_result, output, archive=archive)
+    original = writer._write_manufacturing_contents
+
+    def change_previous(*args, **kwargs):
+        original(*args, **kwargs)
+        (output / "keep-edits.txt").write_bytes(b"new unrelated bytes")
+
+    monkeypatch.setattr(writer, "_write_manufacturing_contents", change_previous)
+    with pytest.raises(volt.ManufacturingPackageError) as error:
+        _publish(manufacturing_result, output, archive=archive)
+    assert error.value.status == "unsafe-output"
+    assert (output / "keep-edits.txt").read_bytes() == b"new unrelated bytes"
+    assert not list(tmp_path.glob(".package.publish-*"))
+
+
+@pytest.mark.parametrize("archive", [True, False])
+def test_first_publication_failure_removes_only_own_staging(
+    tmp_path, monkeypatch, manufacturing_result, archive,
+):
+    output = tmp_path / "package"
+    earlier_recovery = tmp_path / ".package.publish-earlier"
+    earlier_recovery.mkdir()
+    (earlier_recovery / "keep").write_bytes(b"previous recovery bytes")
+    before = _directory_bytes(tmp_path)
+    original = Path.replace
+
+    def replace(source, destination):
+        if source.name == "package" and Path(destination) == output:
+            raise OSError("injected first-publication failure")
+        return original(source, destination)
+
+    monkeypatch.setattr(Path, "replace", replace)
+    with pytest.raises(volt.ManufacturingPackageError) as error:
+        _publish(manufacturing_result, output, archive=archive)
+    assert error.value.status == "publication-failed"
+    assert _directory_bytes(tmp_path) == before
+    assert list(tmp_path.glob(".package.publish-*")) == [earlier_recovery]
+
+
+def test_unreadable_profile_has_typed_host_path_diagnostic(tmp_path, manufacturing_result):
+    result, profile = manufacturing_result
+    missing = tmp_path / "missing-profile.volt.json"
+    profile["resolved_path"] = str(missing)
+    output = tmp_path / "package"
+    with pytest.raises(volt.ManufacturingPackageError) as error:
+        _publish(manufacturing_result, output)
+    assert error.value.status == "invalid-manufacturing-profile"
+    assert str(missing) in str(error.value)
     assert not output.exists()
