@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
 
 if not __debug__:
@@ -123,6 +124,13 @@ def input_identity(root, paths):
     return {path: hashlib.sha256((root / path).read_bytes()).hexdigest() for path in paths}
 
 
+def package_identity(package):
+    # Bytecode caches are generated locally; pin all distributed package files.
+    paths = sorted(str(p.relative_to(package)) for p in package.rglob("*")
+                   if p.is_file() and "__pycache__" not in p.relative_to(package).parts)
+    return input_identity(package, paths)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--consumer-root", type=Path, required=True)
@@ -140,33 +148,44 @@ def main():
                                      "src", "include", "python/volt"], text=True)
     assert not delta, "Volt production sources differ from the pinned merged dependency"
     assert input_identity(root, policy["inputs"]) == policy["inputs"], "Consumer input identity changed"
-    sys.path[:0] = [str(volt_root / "build/dev/python"), str(root)]
-    import volt
-    assert Path(volt.__file__).resolve().is_relative_to(volt_root / "build/dev/python")
-    module = importlib.import_module(policy["module"])
-    outputs = []
-    for index in (1, 2):
-        result = module.build_project().run()
-        assert result.ok, f"Consumer project failed: {result.test_failures()}"
-        check_diagnostics(result.board(policy["board"]).validate(), policy["diagnostics"])
-        artifacts = review_artifacts(result, policy["board"])
-        destination = args.output / f"build-{index}"
-        destination.mkdir(parents=True, exist_ok=False)
-        result.write(destination / "project.volt")
-        check_bundle_diagnostics(destination / "project.volt", result)
-        for name, content in artifacts.items():
-            (destination / name).write_text(content, encoding="utf-8")
-        outputs.append({str(p.relative_to(destination)): p.read_bytes()
-                        for p in destination.rglob("*") if p.is_file()})
-    assert outputs[0] == outputs[1], "Two pinned builds produced different artifacts"
-    hashes = {name: hashlib.sha256(data).hexdigest() for name, data in outputs[0].items()}
-    (args.output / "review-hashes.json").write_text(json.dumps(hashes, indent=2, sort_keys=True) + "\n")
-    extension = Path(volt._volt.__file__).resolve()
-    provenance = {"volt_revision": revision, "volt_package": str(Path(volt.__file__).resolve()),
-                  "extension": str(extension), "extension_sha256": hashlib.sha256(extension.read_bytes()).hexdigest(),
-                  "inputs": policy["inputs"], "board": policy["board"]}
-    (args.output / "provenance.json").write_text(json.dumps(provenance, indent=2, sort_keys=True) + "\n")
-    print(f"PASS: exact native policy, project/SVG agreement, {len(hashes)} matching artifacts")
+    package = volt_root / "build/dev/python/volt"
+    expected_package = policy["volt_package_files"]
+    assert package_identity(package) == expected_package, "Volt built package differs from the reviewed identity"
+    # -B prevents cache writes, but still reads caches. Use an empty cache namespace
+    # for the entire consumer run so only reviewed Python source can be imported.
+    with tempfile.TemporaryDirectory(prefix="volt-review-pycache-") as cache:
+        sys.pycache_prefix = cache
+        sys.dont_write_bytecode = True
+        sys.path[:0] = [str(package.parent), str(root)]
+        import volt
+        assert Path(volt.__file__).resolve() == package / "__init__.py"
+        extension = Path(volt._volt.__file__).resolve()
+        assert extension.parent == package and extension.name in expected_package
+        assert hashlib.sha256(extension.read_bytes()).hexdigest() == expected_package[extension.name]
+        module = importlib.import_module(policy["module"])
+        outputs = []
+        for index in (1, 2):
+            result = module.build_project().run()
+            assert result.ok, f"Consumer project failed: {result.test_failures()}"
+            check_diagnostics(result.board(policy["board"]).validate(), policy["diagnostics"])
+            artifacts = review_artifacts(result, policy["board"])
+            destination = args.output / f"build-{index}"
+            destination.mkdir(parents=True, exist_ok=False)
+            result.write(destination / "project.volt")
+            check_bundle_diagnostics(destination / "project.volt", result)
+            for name, content in artifacts.items():
+                (destination / name).write_text(content, encoding="utf-8")
+            outputs.append({str(p.relative_to(destination)): p.read_bytes()
+                            for p in destination.rglob("*") if p.is_file()})
+        assert outputs[0] == outputs[1], "Two pinned builds produced different artifacts"
+        hashes = {name: hashlib.sha256(data).hexdigest() for name, data in outputs[0].items()}
+        (args.output / "review-hashes.json").write_text(json.dumps(hashes, indent=2, sort_keys=True) + "\n")
+        provenance = {"volt_revision": revision, "volt_package": str(Path(volt.__file__).resolve()),
+                      "extension": str(extension), "extension_sha256": hashlib.sha256(extension.read_bytes()).hexdigest(),
+                      "volt_package_files": expected_package,
+                      "inputs": policy["inputs"], "board": policy["board"]}
+        (args.output / "provenance.json").write_text(json.dumps(provenance, indent=2, sort_keys=True) + "\n")
+        print(f"PASS: exact native policy, project/SVG agreement, {len(hashes)} matching artifacts")
 
 
 if __name__ == "__main__":

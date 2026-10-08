@@ -155,3 +155,77 @@ def test_svg_agreement_rejects_tampered_native_overlay(damage):
         parent.remove(overlay)
     with pytest.raises(AssertionError):
         regression.check_svg(ET.tostring(root), regression.diagnostic_snapshot(board.validate()))
+
+
+@pytest.mark.parametrize("damage", ["extension", "python", "missing", "extra"])
+def test_consumer_runner_rejects_stale_package_before_import(tmp_path, monkeypatch, damage):
+    package = tmp_path / "build/dev/python/volt"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text("# reviewed Python package\n")
+    (package / "_volt.so").write_bytes(b"reviewed extension")
+    expected = regression.package_identity(package)
+    assert set(expected) == {"__init__.py", "_volt.so"}
+    policy = tmp_path / "policy.json"
+    policy.write_text(json.dumps({"volt_revision": "reviewed-revision", "inputs": {},
+                                  "volt_package_files": expected}))
+    if damage == "extension":
+        (package / "_volt.so").write_bytes(b"stale extension")
+    elif damage == "python":
+        (package / "__init__.py").write_text("# stale Python package\n")
+    elif damage == "missing":
+        (package / "__init__.py").unlink()
+    else:
+        (package / "stale.py").write_text("# leftover package module\n")
+    output = tmp_path / "output"
+    monkeypatch.setattr(regression.sys, "argv", [str(_SCRIPT), "--consumer-root", str(tmp_path),
+                        "--volt-root", str(tmp_path), "--policy", str(policy), "--output", str(output)])
+    monkeypatch.setattr(regression.subprocess, "run", lambda *args, **kwargs: None)
+    monkeypatch.setattr(regression.subprocess, "check_output", lambda *args, **kwargs: "")
+    original_path = list(regression.sys.path)
+    with pytest.raises(AssertionError, match="Volt built package differs from the reviewed identity"):
+        regression.main()
+    assert regression.sys.path == original_path  # Failure precedes package/consumer import.
+    assert not output.exists()
+
+
+def test_consumer_runner_ignores_valid_stale_bytecode(tmp_path):
+    import os
+    import py_compile
+    import subprocess
+    import sys
+
+    package = tmp_path / "build/dev/python/volt"
+    package.mkdir(parents=True)
+    source = package / "__init__.py"
+    stale = 'raise RuntimeError("UNREVIEWED CACHE")\n'
+    reviewed = 'raise RuntimeError("REVIEWED SOURCE") \n'
+    assert len(stale) == len(reviewed)
+    source.write_text(stale)
+    stamp = source.stat().st_mtime
+    py_compile.compile(str(source), doraise=True,
+                       invalidation_mode=py_compile.PycInvalidationMode.TIMESTAMP)
+    source.write_text(reviewed)
+    os.utime(source, (stamp, stamp))  # Retain a valid timestamp/size cache header.
+    policy = tmp_path / "policy.json"
+    policy.write_text(json.dumps({"volt_revision": "reviewed-revision", "inputs": {},
+                                  "volt_package_files": regression.package_identity(package)}))
+    baseline = subprocess.run([sys.executable, "-B", "-c",
+        "import sys; sys.path.insert(0, sys.argv[1]); import volt", str(package.parent)],
+        capture_output=True, text=True)
+    assert "RuntimeError: UNREVIEWED CACHE" in baseline.stderr
+    # Isolate revision/source checks: this regression targets actual Python import behavior.
+    driver = """
+import runpy, sys
+runner = runpy.run_path(sys.argv[1])
+runner['subprocess'].run = lambda *args, **kwargs: None
+runner['subprocess'].check_output = lambda *args, **kwargs: ''
+sys.argv = sys.argv[1:]
+runner['main']()
+"""
+    output = tmp_path / "output"
+    checked = subprocess.run([sys.executable, "-B", "-c", driver, str(_SCRIPT),
+        "--consumer-root", str(tmp_path), "--volt-root", str(tmp_path),
+        "--policy", str(policy), "--output", str(output)], capture_output=True, text=True)
+    assert "RuntimeError: REVIEWED SOURCE" in checked.stderr
+    assert "RuntimeError: UNREVIEWED CACHE" not in checked.stderr
+    assert not output.exists()

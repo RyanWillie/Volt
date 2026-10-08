@@ -54,8 +54,23 @@ No private board source or preview is included in public Volt.
 The exact merged Volt production dependency is
 `f24c692215bab7c709b45d40de15d0982f6b8ebc`. A fresh `dev` build in the isolated
 issue worktree used matching `src`, `include` and `python/volt` sources. The runner
-records the loaded package/extension path and extension hash as build provenance;
-a binary hash alone does not establish its source revision. Rebuild before running.
+requires `volt_package_files` in the reviewed policy: a map from every built package
+file's relative path to its SHA-256, including the compiled extension and copied
+Python modules (excluding generated `__pycache__` directories). It compares the
+complete file map before importing Volt or the consumer, rejecting stale, missing
+and extra package files. It also verifies the loaded package/extension paths and
+records the checked identities in provenance. Imports use a fresh temporary
+bytecode-cache namespace throughout the consumer run, because `-B` alone does not
+prevent Python from reading stale local caches.
+
+Establish this identity only after a fresh build from the pinned production sources:
+call `package_identity(Path("build/dev/python/volt"))` from the runner module and
+save the reviewed result as `volt_package_files` in the private policy. A rebuild
+may change the binary hash, so review and explicitly update the policy when needed.
+The runner never refreshes identities itself; checks cannot bless the current build.
+Public tests exercise stale extension bytes, stale Python modules, and missing/extra
+files without importing the consumer or writing review evidence, plus a valid
+stale bytecode cache that must be ignored in favor of reviewed source.
 
 The selected `Pulse Badge` build contains 20 placements, 38 tracks, 13 vias, four
 mounting holes, five board texts, one zone and four layers. Both project and native
