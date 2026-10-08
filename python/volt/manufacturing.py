@@ -195,7 +195,10 @@ def _required_profile_config(
             diagnostics=diagnostics,
         ) from error
     # Host paths are input diagnostics, not canonical package provenance.
-    return {"content_sha256": hashlib.sha256(content).hexdigest()}
+    return {
+        **{key: value for key, value in manufacturing_profile.items() if key not in required_fields},
+        "content_sha256": hashlib.sha256(content).hexdigest(),
+    }
 
 
 def native_fabrication_payload(native_export: Any) -> dict[str, object]:

@@ -804,15 +804,25 @@ def test_two_checkout_roots_produce_identical_package_and_archive_bytes(tmp_path
         profile = _manufacturing_profile_metadata(root)
         # Absolute configured paths must be canonicalized too.
         profile["path"] = profile["resolved_path"]
+        profile.update({
+            "source": "pinned test profile",
+            "revision": "r7",
+            "content_sha256": "caller-supplied digest must be replaced",
+        })
+        supplied_profile = dict(profile)
         result.write_manufacturing_package(output, manufacturing_profile=profile, archive=True)
+        assert profile == supplied_profile
         outputs.append(output)
         payload = json.loads((output / "manufacturing/profile.json").read_text())
         assert payload["config"] == {
+            "source": "pinned test profile",
+            "revision": "r7",
             "content_sha256": hashlib.sha256(Path(profile["resolved_path"]).read_bytes()).hexdigest(),
         }
         assert payload["board"]["provenance"]["as_of"] == "2026-06-21"
         manifest = json.loads((output / "manufacturing/manifest.json").read_text())
         assert manifest["schema_version"] == 2
+        assert manifest["profile"] == payload
         for content in _directory_bytes(output).values():
             assert str(root).encode() not in content
     assert _directory_bytes(outputs[0]) == _directory_bytes(outputs[1])

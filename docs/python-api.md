@@ -544,7 +544,9 @@ fallback. Consumers must wait for the call to complete before using the handoff.
 
 The manufacturing manifest is schema version 2: canonical profile `config` records
 `content_sha256` of the pinned profile file, replacing host `path`/`resolved_path` fields.
-The kernel-exported board profile, including its source/as-of provenance, is retained.
+Other caller-provided configuration metadata is preserved; the computed digest takes
+precedence over a supplied `content_sha256` value. The kernel-exported board profile,
+including its source/as-of provenance, is retained.
 Input paths remain available in read-error diagnostics rather than canonical content.
 Equivalent deterministic project/profile inputs produce identical directory and ZIP
 bytes across checkout roots; archive entries use sorted paths and fixed timestamps.
