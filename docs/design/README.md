@@ -43,6 +43,9 @@ into a Markdown document under `docs/` rather than editing the exported HTML.
 
 ## Design notes and explorations
 
+- [`r1a-native-route-contract.md`](r1a-native-route-contract.md) — proposed #382
+  explicit-route grammar, rule provenance, native rejection and append-only atomic
+  publication; not approved for implementation
 - `circuit-aggregate-api.html` — single-page review companion for the accepted Circuit API
   ADR and migration roadmap
 - `circuit-semantic-parity.html` — final evidence matrix for Circuit API redesign parity,
