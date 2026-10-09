@@ -281,6 +281,12 @@ TEST_CASE("Real-board DRC regression locks broken copper and placement variants"
              ExpectedDiagnostic{"PCB_NET_UNROUTED", volt::Severity::Warning,
                                 volt::DiagnosticCategory{volt::diagnostic_categories::Drc}}});
         REQUIRE(layout.led_placement.has_value());
+        CHECK(report.diagnostics()[0].entities() ==
+              std::vector{volt::EntityRef::component(fixture.resistor),
+                          volt::EntityRef::component_placement(layout.resistor_placement),
+                          volt::EntityRef::component(fixture.led),
+                          volt::EntityRef::component_placement(layout.led_placement.value())});
+        CHECK(report.diagnostics()[0].overlays().size() == 2);
         CHECK(report.diagnostics()[5].entities() ==
               std::vector{volt::EntityRef::component_placement(layout.resistor_placement),
                           volt::EntityRef::component_placement(layout.led_placement.value()),
@@ -354,5 +360,80 @@ TEST_CASE("Real-board DRC regression covers net-class and manufacturability prer
         CHECK(report.diagnostics()[0].entities() == std::vector{volt::EntityRef::board()});
         CHECK(report.diagnostics()[1].entities() == std::vector{volt::EntityRef::board()});
         CHECK(report.diagnostics()[2].entities() == std::vector{volt::EntityRef::board()});
+    }
+}
+
+TEST_CASE("Real-board visual regression locks text conflicts and off-board geometry") {
+    const auto fixture = make_real_board_fixture();
+    auto layout = make_real_board_layout(fixture);
+    const auto library = real_board_library();
+    const auto category = volt::DiagnosticCategory{volt::diagnostic_categories::PcbVisual};
+
+    SECTION("off-board label has one stable text entity and bounding overlay") {
+        const auto text = layout.board.add_text(
+            volt::BoardText{"REV A", volt::BoardPoint{43.0, 2.0}, volt::BoardRotation::degrees(0.0),
+                            layout.front, 1.0});
+        const auto report = volt::validate_board(layout.view(library));
+        check_diagnostic_summaries(
+            report, {{"PCB_VISUAL_LABEL_OUTSIDE_BOARD", volt::Severity::Warning, category}});
+        CHECK(report.diagnostics()[0].entities() == std::vector{volt::EntityRef::board_text(text)});
+        REQUIRE(report.diagnostics()[0].overlays().size() == 1);
+        CHECK(report.diagnostics()[0].overlays()[0].entities() ==
+              std::vector{volt::EntityRef::board_text(text)});
+        CHECK(report.diagnostics()[0].overlays()[0].layers() == std::vector{layout.front});
+    }
+
+    SECTION("overlapping labels retain ordered entities and exact multiplicity") {
+        const auto first = layout.board.add_text(
+            volt::BoardText{"STATUS", volt::BoardPoint{18.0, 3.0},
+                            volt::BoardRotation::degrees(0.0), layout.front, 1.0});
+        const auto second = layout.board.add_text(
+            volt::BoardText{"REV A", volt::BoardPoint{18.0, 3.0}, volt::BoardRotation::degrees(0.0),
+                            layout.front, 1.0});
+        const auto report = volt::validate_board(layout.view(library));
+        check_diagnostic_summaries(
+            report, {{"PCB_VISUAL_LABEL_OVERLAP", volt::Severity::Warning, category}});
+        CHECK(report.diagnostics()[0].entities() ==
+              std::vector{volt::EntityRef::board_text(first), volt::EntityRef::board_text(second)});
+        REQUIRE(report.diagnostics()[0].overlays().size() == 2);
+
+        const auto third = layout.board.add_text(
+            volt::BoardText{"EXTRA", volt::BoardPoint{18.0, 3.0}, volt::BoardRotation::degrees(0.0),
+                            layout.front, 1.0});
+        const auto extra = volt::validate_board(layout.view(library));
+        check_diagnostic_summaries(
+            extra, {{"PCB_VISUAL_LABEL_OVERLAP", volt::Severity::Warning, category},
+                    {"PCB_VISUAL_LABEL_OVERLAP", volt::Severity::Warning, category},
+                    {"PCB_VISUAL_LABEL_OVERLAP", volt::Severity::Warning, category}});
+        CHECK(extra.diagnostics()[1].entities() ==
+              std::vector{volt::EntityRef::board_text(first), volt::EntityRef::board_text(third)});
+        CHECK(extra.diagnostics()[2].entities() ==
+              std::vector{volt::EntityRef::board_text(second), volt::EntityRef::board_text(third)});
+    }
+
+    SECTION("off-board hole belongs to board validation rather than the visual category") {
+        const auto hole = layout.board.add_feature(
+            volt::BoardFeature::hole("MH1", volt::BoardPoint{44.0, 20.0}, 2.0, false, "mounting"));
+        const auto report = volt::validate_board(layout.view(library));
+        check_diagnostic_summaries(
+            report, {{"PCB_BOARD_FEATURE_OUTSIDE_OUTLINE", volt::Severity::Error,
+                      volt::DiagnosticCategory{volt::diagnostic_categories::PcbBoard}}});
+        CHECK(report.diagnostics()[0].entities() ==
+              std::vector{volt::EntityRef::board_feature(hole)});
+    }
+
+    SECTION("text over a mounting hole pins its obstruction rule") {
+        const auto hole = layout.board.add_feature(
+            volt::BoardFeature::hole("MH1", volt::BoardPoint{18.0, 3.0}, 2.0, false, "mounting"));
+        const auto text = layout.board.add_text(volt::BoardText{"X", volt::BoardPoint{18.0, 3.0},
+                                                                volt::BoardRotation::degrees(0.0),
+                                                                layout.front, 1.0});
+        const auto report = volt::validate_board(layout.view(library));
+        check_diagnostic_summaries(
+            report, {{"PCB_VISUAL_LABEL_OBSTRUCTION", volt::Severity::Warning, category}});
+        CHECK(report.diagnostics()[0].entities() ==
+              std::vector{volt::EntityRef::board_text(text), volt::EntityRef::board_feature(hole)});
+        CHECK(report.diagnostics()[0].rule() == "board-text-over-hole");
+        REQUIRE(report.diagnostics()[0].overlays().size() == 2);
     }
 }
