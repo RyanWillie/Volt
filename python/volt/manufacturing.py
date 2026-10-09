@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import os
@@ -183,7 +184,21 @@ def _required_profile_config(
             board=board,
             diagnostics=diagnostics,
         )
-    return dict(manufacturing_profile)
+    try:
+        content = Path(manufacturing_profile["resolved_path"]).read_bytes()
+    except OSError as error:
+        raise ManufacturingPackageError(
+            f"Manufacturing profile could not be read: {error}",
+            status="invalid-manufacturing-profile",
+            output=output,
+            board=board,
+            diagnostics=diagnostics,
+        ) from error
+    # Host paths are input diagnostics, not canonical package provenance.
+    return {
+        **{key: value for key, value in manufacturing_profile.items() if key not in required_fields},
+        "content_sha256": hashlib.sha256(content).hexdigest(),
+    }
 
 
 def native_fabrication_payload(native_export: Any) -> dict[str, object]:
@@ -228,9 +243,15 @@ def _write_manufacturing_package(
     board_selector: str | None,
     archive: bool,
 ) -> dict[str, str | None]:
-    output.parent.mkdir(parents=True, exist_ok=True)
-    staging = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=output.parent))
+    archive_path = _deterministic_archive_path(output)
+    previous = _checked_previous_output(output, archive_path, archive=archive)
+    transaction = None
+    preserve_transaction = False
     try:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        transaction = Path(tempfile.mkdtemp(prefix=f".{output.name}.publish-", dir=output.parent))
+        staging = transaction / "package"
+        staging.mkdir()
         result.write(staging / "project.volt")
         _write_manufacturing_contents(
             result,
@@ -243,17 +264,51 @@ def _write_manufacturing_package(
             board_selector=board_selector,
             archive=archive,
         )
-        _replace_directory(staging, output)
-    except Exception:
-        shutil.rmtree(staging, ignore_errors=True)
+        owner = _ownership_payload(staging, archive=archive)
+        _write_json(staging / _OWNERSHIP_FILE, owner)
+        staged_archive = transaction / "archive.zip"
+        if archive:
+            _write_deterministic_archive(staging, staged_archive, owner)
+            _validate_archive(staged_archive, owner)
+        _validate_directory(staging)
+        # Recheck after generation, before the first publication rename.
+        if _checked_previous_output(output, archive_path, archive=archive) != previous:
+            raise ValueError("The previous package changed during generation.")
+        try:
+            _publish_generation(
+                staging, output, staged_archive, archive_path, transaction,
+                previous=previous, archive=archive,
+            )
+        except _IncompletePublication as error:
+            preserve_transaction = True
+            raise ManufacturingPackageError(
+                f"Manufacturing publication is incomplete; recovery files remain at "
+                f"{transaction}: {error}",
+                status="publication-incomplete",
+                output=output,
+                board=board_record,
+            ) from error
+    except ManufacturingPackageError:
         raise
-
-    archive_path = None
-    if archive:
-        archive_path = _write_deterministic_archive(output)
-    else:
-        _remove_deterministic_archive(output)
-    return {"archive": None if archive_path is None else str(archive_path)}
+    except Exception as error:
+        raise ManufacturingPackageError(
+            f"Manufacturing package publication failed: {error}",
+            status="publication-failed",
+            output=output,
+            board=board_record,
+        ) from error
+    finally:
+        if transaction is not None and not preserve_transaction:
+            try:
+                shutil.rmtree(transaction)
+            except OSError as error:
+                raise ManufacturingPackageError(
+                    f"Manufacturing transaction cleanup failed at {transaction}: {error}",
+                    status="publication-cleanup-failed",
+                    output=output,
+                    board=board_record,
+                ) from error
+    return {"archive": str(archive_path) if archive else None}
 
 
 def _write_manufacturing_contents(
@@ -363,7 +418,7 @@ def _write_manufacturing_contents(
 
     manifest = {
         "format": "volt.manufacturing_package",
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {
             "name": result.project.name,
             "version": result.project.version,
@@ -428,13 +483,137 @@ def _format_candidates(candidates) -> str:
     return ", ".join(names)
 
 
-def _replace_directory(source: Path, destination: Path) -> None:
-    if destination.exists():
-        if destination.is_dir():
-            shutil.rmtree(destination)
+_OWNERSHIP_FILE = ".volt-manufacturing-owner.json"
+
+
+def _ownership_payload(root: Path, *, archive: bool) -> dict[str, object]:
+    files = {}
+    directories = []
+    for path in sorted(root.rglob("*")):
+        if path.is_symlink():
+            raise ValueError(f"Symlink in package: {path}")
+        relative = path.relative_to(root).as_posix()
+        if path.is_dir():
+            directories.append(relative)
+        elif path.is_file():
+            if relative != _OWNERSHIP_FILE:
+                files[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
         else:
-            destination.unlink()
-    source.replace(destination)
+            raise ValueError(f"Non-regular package entry: {path}")
+    inventory = {"files": files, "directories": directories, "archive": archive}
+    generation = hashlib.sha256(
+        json.dumps(inventory, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return {
+        "format": "volt.manufacturing_package_ownership",
+        "schema_version": 1,
+        "generation": generation,
+        **inventory,
+    }
+
+
+def _validate_directory(root: Path) -> dict[str, object]:
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError(f"Not an owned package directory: {root}")
+    marker = root / _OWNERSHIP_FILE
+    if marker.is_symlink() or not marker.is_file():
+        raise ValueError(f"Missing regular package ownership record: {marker}")
+    owner = json.loads(marker.read_text(encoding="utf-8"))
+    if (
+        not isinstance(owner, dict)
+        or type(owner.get("archive")) is not bool
+        or type(owner.get("schema_version")) is not int
+    ):
+        raise ValueError(f"Invalid package ownership record: {marker}")
+    if owner != _ownership_payload(root, archive=owner["archive"]):
+        raise ValueError(f"Unknown, stale or invalid package ownership record: {marker}")
+    return owner
+
+
+def _archive_owner(owner: dict[str, object]) -> bytes:
+    return json.dumps({
+        "format": "volt.manufacturing_archive_ownership",
+        "schema_version": 1,
+        "generation": owner["generation"],
+    }, sort_keys=True).encode("utf-8")
+
+
+def _validate_archive(path: Path, owner: dict[str, object]) -> None:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"Not an owned package archive: {path}")
+    with zipfile.ZipFile(path) as archive:
+        if archive.comment != _archive_owner(owner):
+            raise ValueError(f"Unknown or stale archive ownership record: {path}")
+        names = archive.namelist()
+        if len(names) != len(set(names)) or set(names) != set(owner["files"]) | {_OWNERSHIP_FILE}:
+            raise ValueError(f"Archive inventory does not match its generation: {path}")
+        if json.loads(archive.read(_OWNERSHIP_FILE)) != owner:
+            raise ValueError(f"Archive package ownership does not match: {path}")
+        for name, digest in owner["files"].items():
+            if hashlib.sha256(archive.read(name)).hexdigest() != digest:
+                raise ValueError(f"Archive content changed: {path}: {name}")
+
+
+def _checked_previous_output(
+    output: Path, archive_path: Path, *, archive: bool,
+) -> dict[str, object] | None:
+    try:
+        if output == archive_path:
+            raise ValueError("Package directory and archive paths must be distinct.")
+        for path in (output, *output.parents):
+            if path.is_symlink():
+                raise ValueError(f"Symlink package destination: {path}")
+        owner = _validate_directory(output) if output.exists() else None
+        if owner is not None and owner["archive"]:
+            _validate_archive(archive_path, owner)
+        elif archive and (archive_path.exists() or archive_path.is_symlink()):
+            raise ValueError(f"Refusing unrelated archive destination: {archive_path}")
+        return owner
+    except Exception as error:
+        raise ManufacturingPackageError(
+            f"Manufacturing publication refused: {error}",
+            status="unsafe-output",
+            output=output,
+        ) from error
+
+
+class _IncompletePublication(RuntimeError):
+    pass
+
+
+def _publish_generation(
+    staging: Path, output: Path, staged_archive: Path, archive_path: Path,
+    transaction: Path, *, previous: dict[str, object] | None, archive: bool,
+) -> None:
+    old_directory = transaction / "previous-package"
+    old_archive = transaction / "previous-archive.zip"
+    try:
+        if previous is not None:
+            output.replace(old_directory)
+        if previous is not None and previous["archive"]:
+            archive_path.replace(old_archive)
+        if archive:
+            staged_archive.replace(archive_path)
+        # The directory rename is the commit boundary; until then it is absent.
+        staging.replace(output)
+    except BaseException as error:
+        # A cancellation delivered after the final rename leaves a coherent commit.
+        if not staging.exists():
+            raise
+        try:
+            # Inspect backup paths so cancellation immediately after a rename is safe.
+            if old_archive.exists():
+                old_archive.replace(archive_path)
+            elif archive and not staged_archive.exists():
+                archive_path.unlink()
+            # Restore the directory only after its archive is restored.
+            if old_directory.exists():
+                old_directory.replace(output)
+        except BaseException as rollback_error:
+            raise _IncompletePublication(
+                f"Publication failed ({error}); rollback failed ({rollback_error})."
+            ) from rollback_error
+        raise
 
 
 def _write_text(path: Path, text: str) -> None:
@@ -571,9 +750,11 @@ def _relative_href(from_path: str, to_path: str) -> str:
     return os.path.relpath(to_path, start=str(Path(from_path).parent)).replace(os.sep, "/")
 
 
-def _write_deterministic_archive(root: Path) -> Path:
-    archive_path = _deterministic_archive_path(root)
+def _write_deterministic_archive(
+    root: Path, archive_path: Path, owner: dict[str, object],
+) -> None:
     with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.comment = _archive_owner(owner)
         for path in sorted(root.rglob("*")):
             if not path.is_file():
                 continue
@@ -581,13 +762,6 @@ def _write_deterministic_archive(root: Path) -> Path:
             info.date_time = (1980, 1, 1, 0, 0, 0)
             info.compress_type = zipfile.ZIP_DEFLATED
             archive.writestr(info, path.read_bytes())
-    return archive_path
-
-
-def _remove_deterministic_archive(root: Path) -> None:
-    archive_path = _deterministic_archive_path(root)
-    if archive_path.is_file():
-        archive_path.unlink()
 
 
 def _deterministic_archive_path(root: Path) -> Path:

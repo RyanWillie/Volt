@@ -503,6 +503,54 @@ package = result.write_manufacturing_package(
 print(package.archive)
 ```
 
+Manufacturing publication is supported on local filesystems with same-filesystem
+renames (tested on Linux, macOS, and Windows). The caller must have exclusive access to
+these output paths during the call; concurrent writers or namespace edits are unsupported.
+This is ownership protection for generated outputs, not a security boundary against an
+actor who can rewrite the parent directory.
+
+The package root contains `.volt-manufacturing-owner.json`, format
+`volt.manufacturing_package_ownership`, schema version 1. It records the complete file
+SHA-256 inventory (excluding the ownership record itself), directory inventory, requested
+archive state, and a deterministic content generation digest. A managed ZIP carries a separate version 1
+`volt.manufacturing_archive_ownership` record in its comment, the same generation, and
+the package record inside the archive. Both inventories and file contents are checked
+before replacing an old generation. Unmarked legacy output, unknown/malformed/stale
+records, extra or edited files, and symlinks in package destinations, ancestors, or
+contents are refused with `ManufacturingPackageError(status="unsafe-output")`. Write to
+a new destination when migrating legacy output; manually review and relocate edited
+output before regenerating it. No ownership is inferred from a filename.
+
+The writer stages and validates all requested directory and ZIP bytes before publication.
+It moves the previous owned directory and archive into a unique sibling transaction,
+installs the requested ZIP (or retains the old ZIP in the transaction for `archive=False`),
+then renames the staged directory into place. **The final directory rename is the commit
+boundary.** There is an interval with no directory at the requested path; this is not a
+single atomic OS rename across the directory and archive. Success means the requested
+outputs form a coherent generation. `archive=False` removes only the archive proven to
+belong to the previous generation; an unrelated inferred sibling ZIP is left untouched.
+
+Recoverable publication errors and cancellation before commit restore the archive before
+restoring the old directory. Rollback failure raises `publication-incomplete`, may leave the
+package directory absent, and reports the transaction path holding recovery files; those
+files are retained for manual recovery. Generation/publication failures raise
+`publication-failed`; cleanup failures raise `publication-cleanup-failed` and report the
+transaction path (outputs may already be coherently committed). Cleanup removes only the
+current operation's transaction, never earlier recovery directories. An abrupt process
+exit can leave the output directory absent with old outputs in that transaction, or a
+fully committed generation with pending cleanup. There is no automatic crash recovery,
+no power-loss durability guarantee (`fsync` is not used), and no cross-filesystem rename
+fallback. Consumers must wait for the call to complete before using the handoff.
+
+The manufacturing manifest is schema version 2: canonical profile `config` records
+`content_sha256` of the pinned profile file, replacing host `path`/`resolved_path` fields.
+Other caller-provided configuration metadata is preserved; the computed digest takes
+precedence over a supplied `content_sha256` value. The kernel-exported board profile,
+including its source/as-of provenance, is retained.
+Input paths remain available in read-error diagnostics rather than canonical content.
+Equivalent deterministic project/profile inputs produce identical directory and ZIP
+bytes across checkout roots; archive entries use sorted paths and fixed timestamps.
+
 Stages can also own product-intent tests. These tests are not a replacement for kernel
 diagnostics; they encode the specific behavior the product must keep while the circuit
 iterates:
