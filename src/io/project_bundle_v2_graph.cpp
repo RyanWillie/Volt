@@ -70,7 +70,8 @@ void verify_descriptors_and_capture(const BundleSource &source, const ParsedMani
         const auto expected_schema = detail::project_bundle_v2_schema_for_kind(artifact.kind());
         require(artifact.role() == detail::project_bundle_v2_role_for_kind(artifact.kind()) &&
                     artifact.schema_format() == expected_schema.format &&
-                    artifact.schema_version() == expected_schema.version &&
+                    detail::project_bundle_v2_supported_schema_version(artifact.kind(),
+                                                                       artifact.schema_version()) &&
                     artifact.media_type() == expected_schema.media_type,
                 ProjectBundleOpenErrorCode::MalformedManifest,
                 "artifact closed role/schema/media mapping is invalid");

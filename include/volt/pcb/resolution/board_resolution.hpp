@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <volt/circuit/parts/selected_part.hpp>
+#include <volt/circuit/validation/validation.hpp>
 #include <volt/core/content_hash.hpp>
 #include <volt/pcb/board.hpp>
 
@@ -113,9 +114,17 @@ class ResolvedBoardView {
     /** Return the exact resolved implementation for a component, or null when none is selected. */
     [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const;
 
+    /** Derive live Circuit continuity, or return the verified historical compiled query. */
+    [[nodiscard]] detail::NetContinuityView logical_continuity() const;
+
   private:
-    ResolvedBoardView(const Board &board, const FootprintLibrary &footprints,
-                      std::span<const ResolvedBoardPart> parts, bool complete);
+    // Transfer only the compiled historical query; authoring indexes still derive live bindings.
+    friend class BoardSpatialIndex;
+
+    ResolvedBoardView(
+        const Board &board, const FootprintLibrary &footprints,
+        std::span<const ResolvedBoardPart> parts, bool complete,
+        std::optional<detail::NetContinuityView> historical_continuity = std::nullopt);
 
     void require_current() const;
 
@@ -123,6 +132,7 @@ class ResolvedBoardView {
     FootprintLibrary footprints_;
     std::vector<ResolvedBoardPart> parts_;
     bool complete_;
+    std::optional<detail::NetContinuityView> historical_continuity_;
 };
 
 /**

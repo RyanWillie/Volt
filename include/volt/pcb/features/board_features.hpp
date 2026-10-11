@@ -445,6 +445,12 @@ class RatsnestEdge {
 
 namespace detail {
 
+class NetContinuityView;
+
+[[nodiscard]] std::vector<RatsnestEdge>
+derive_ratsnest_edges(const NetContinuityView &continuity,
+                      const std::vector<PadResolution> &resolutions);
+
 [[nodiscard]] bool ratsnest_endpoint_less(const RatsnestEndpoint &lhs,
                                           const RatsnestEndpoint &rhs) noexcept;
 

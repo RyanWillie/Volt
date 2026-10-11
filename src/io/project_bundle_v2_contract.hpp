@@ -27,6 +27,9 @@ struct ProjectBundleV2SchemaInfo {
 [[nodiscard]] bool project_bundle_v2_safe_path(std::string_view path);
 [[nodiscard]] ArtifactRole project_bundle_v2_role_for_kind(ArtifactKind kind);
 [[nodiscard]] ProjectBundleV2SchemaInfo project_bundle_v2_schema_for_kind(ArtifactKind kind);
+
+[[nodiscard]] bool project_bundle_v2_supported_schema_version(ArtifactKind kind,
+                                                              std::uint32_t version);
 [[nodiscard]] std::string project_bundle_v2_producer_for_kind(ArtifactKind kind);
 [[nodiscard]] std::string project_bundle_v2_export_request_json(const ExportRequest &request);
 

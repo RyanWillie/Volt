@@ -774,7 +774,7 @@ void write_pcb_placement_svg(std::ostream &out, const ResolvedBoardView &resolve
     const auto translate_x = detail::pcb_svg_margin_mm - bounds.min_x;
     const auto translate_y = detail::pcb_svg_margin_mm - bounds.min_y;
     const auto resolutions = queries::resolve_pads(resolved);
-    const auto ratsnest_edges = derive_ratsnest_edges(board.circuit(), resolutions);
+    const auto ratsnest_edges = queries::ratsnest_edges(resolved);
     const auto has_copper =
         board.all<volt::BoardTrackId>().size() != 0U || board.all<volt::BoardViaId>().size() != 0U;
     const auto has_zones = board.all<volt::BoardZoneId>().size() != 0U;

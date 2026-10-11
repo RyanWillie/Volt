@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <algorithm>
 #include <array>
@@ -18,10 +19,14 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/io/assembly/cpl_writer.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
+#include <volt/io/pcb/board_resolution.hpp>
 #include <volt/io/pcb/compiled_board.hpp>
 #include <volt/io/pcb/compiled_board_consumers.hpp>
 #include <volt/io/pcb/pcb_fabrication_writer.hpp>
 #include <volt/pcb/queries/board_queries.hpp>
+#include <volt/pcb/routing/board_spatial_index.hpp>
+
+#include "../support/project_bundle_v2_board_test_support.hpp"
 
 namespace {
 
@@ -91,8 +96,11 @@ struct Fixture {
 };
 
 [[nodiscard]] Fixture fixture(bool bad_footprint_mapping = false, bool implicit_contract = false,
-                              std::string model_format = "glb") {
+                              std::string model_format = "glb", bool reference_symbol = true) {
     auto spec = resistor_spec();
+    if (!reference_symbol) {
+        spec.schematic_symbols.clear();
+    }
     if (implicit_contract) {
         spec.contract.reset();
     }
@@ -214,6 +222,87 @@ struct Design {
 
 [[nodiscard]] volt::CompiledBoardCapabilities baseline_capabilities() {
     return volt::CompiledBoardCapabilities{profile()};
+}
+
+struct HierarchicalDesign {
+    Design authored;
+    volt::ModuleInstanceId bridge_instance;
+    volt::PortDefId bridge_port;
+    volt::NetId parent;
+    volt::NetId alternate;
+    volt::NetId isolated;
+};
+
+[[nodiscard]] HierarchicalDesign hierarchical_design(const volt::ComponentSpec &spec,
+                                                     const volt::io::PartLibraryBundle &bundle,
+                                                     const volt::PartKey &key, bool bridge = true) {
+    auto circuit = std::make_unique<volt::Circuit>();
+    const auto definition = circuit->define_component(spec);
+    const auto &pins = circuit->get(definition).pins();
+    const auto module = circuit->define_module(volt::ModuleSpec{
+        .name = volt::ModuleName{"Child"},
+        .template_nets = {volt::TemplateNetDefinition{volt::NetName{"N"}, volt::NetKind::Signal}},
+        .components = {volt::ModuleComponentTemplate{definition, volt::ReferenceDesignator{"R"}}},
+        .connections = {volt::ModulePinConnectionSpec{volt::NetName{"N"},
+                                                      volt::ReferenceDesignator{"R"}, pins[0]},
+                        volt::ModulePinConnectionSpec{volt::NetName{"N"},
+                                                      volt::ReferenceDesignator{"R"}, pins[1]}},
+        .ports = {volt::ModulePortSpec{volt::PortName{"A"}, volt::NetName{"N"},
+                                       volt::PortRole::Passive},
+                  volt::ModulePortSpec{volt::PortName{"B"}, volt::NetName{"N"},
+                                       volt::PortRole::Passive}},
+    });
+    const auto first_instance = circuit->instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"M1"}});
+    const auto second_instance = circuit->instantiate_module(
+        module, volt::ModuleInstanceSpec{.name = volt::ModuleInstanceName{"M2"}});
+    const auto template_component = circuit->get(module).components()[0];
+    const auto first_child =
+        volt::queries::concrete_component_for(*circuit, first_instance, template_component).value();
+    const auto second_child =
+        volt::queries::concrete_component_for(*circuit, second_instance, template_component)
+            .value();
+    const auto component = circuit->instantiate_component(
+        definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R1"}});
+    const auto parent = circuit->add_net(volt::NetSpec{.name = volt::NetName{"PARENT"}});
+    const auto alternate = circuit->add_net(volt::NetSpec{.name = volt::NetName{"ALTERNATE"}});
+    const auto isolated = circuit->add_net(volt::NetSpec{.name = volt::NetName{"ISOLATED"}});
+    static_cast<void>(circuit->add_net(volt::NetSpec{.name = volt::NetName{"SINGLETON"}}));
+    for (const auto pin : {"A", "B"}) {
+        static_cast<void>(
+            circuit->connect(parent, volt::queries::pin_by_name(*circuit, component, pin).value()));
+    }
+    const auto ports = circuit->get(module).ports();
+    static_cast<void>(circuit->bind_port(first_instance, ports[0], parent));
+    static_cast<void>(circuit->bind_port(second_instance, ports[0], alternate));
+    if (bridge) {
+        static_cast<void>(circuit->bind_port(first_instance, ports[1], alternate));
+    }
+    for (const auto selected : {component, first_child, second_child}) {
+        circuit->update(selected, volt::SelectLibraryPart{bundle, bundle.require(key)});
+    }
+    circuit->update(second_child, volt::SetAssemblyIntent{.dnp = true});
+    auto board = volt::Board{*circuit, volt::BoardName{"Hierarchical"}};
+    board.set_capability_profile(profile());
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
+    auto x = 2.0;
+    for (const auto placed : {component, first_child, second_child}) {
+        static_cast<void>(board.place_component(volt::ComponentPlacement{
+            placed, volt::BoardPoint{x, 3.0}, volt::BoardRotation::degrees(0.0)}));
+        x += 10.0;
+    }
+    return HierarchicalDesign{Design{std::move(circuit), component, second_child, std::move(board)},
+                              first_instance,
+                              ports[1],
+                              parent,
+                              alternate,
+                              isolated};
 }
 
 [[nodiscard]] volt::CompiledBoardCapabilities models3d_capabilities() {
@@ -358,6 +447,266 @@ ratsnest_signature(std::span<const volt::RatsnestEdge> edges) {
 }
 
 } // namespace
+
+TEST_CASE("CompiledBoard V2 preserves chained hierarchical continuity for every physical query") {
+    auto archived = std::string{};
+    auto expected_partition = std::vector<std::vector<volt::NetId>>{};
+    auto expected_edges = std::vector<std::string>{};
+    auto expected_diagnostics = std::vector<std::string>{};
+    auto expected_svg = std::string{};
+    auto source_query_legal = false;
+    const auto routed = GENERATE(false, true);
+    const auto foreign_short = GENERATE(false, true);
+    {
+        auto source = fixture();
+        const auto bundle = volt::io::PartLibraryBundle::build(
+            source.builder, std::array{source.selected_key}, source.resolver);
+        auto hierarchy = hierarchical_design(source.spec, bundle, source.selected_key);
+        auto &authored = hierarchy.authored;
+        const auto front = volt::BoardLayerId{0};
+        if (routed) {
+            static_cast<void>(authored.board.add_track(
+                volt::BoardTrack{hierarchy.parent,
+                                 front,
+                                 {volt::BoardPoint{1.0, 3.0}, volt::BoardPoint{23.0, 3.0}},
+                                 0.25}));
+        }
+        if (foreign_short) {
+            static_cast<void>(authored.board.add_track(
+                volt::BoardTrack{hierarchy.isolated,
+                                 front,
+                                 {volt::BoardPoint{11.175, 2.0}, volt::BoardPoint{11.175, 4.0}},
+                                 0.25}));
+        }
+        const auto resolution = volt::io::resolve_board(
+            authored.board, bundle, volt::BoardResolutionCapabilities{profile()});
+        const auto live = resolution.view();
+        expected_partition = live.logical_continuity().partition();
+        REQUIRE(expected_partition ==
+                std::vector<std::vector<volt::NetId>>{
+                    {volt::NetId{0}, volt::NetId{1}, volt::NetId{2}, volt::NetId{3}},
+                    {volt::NetId{4}},
+                    {volt::NetId{5}}});
+        const auto source_edges = volt::queries::ratsnest_edges(live);
+        REQUIRE(source_edges.size() == 5U);
+        for (const auto &edge : source_edges) {
+            CHECK(edge.net() == hierarchy.parent);
+        }
+        expected_edges = ratsnest_signature(source_edges);
+        const auto source_report = volt::validate_board(live);
+        CHECK(has_diagnostic(source_report, "PCB_NET_UNROUTED") == !routed);
+        CHECK(has_diagnostic(source_report, "PCB_COPPER_CLEARANCE_VIOLATION") == foreign_short);
+        expected_diagnostics = diagnostic_signature(source_report);
+        const auto candidate = volt::BoardSpatialQueryShape{
+            .kind = volt::BoardSpatialQueryShapeKind::Segment,
+            .net = hierarchy.alternate,
+            .layers = {front},
+            .points = {volt::BoardPoint{1.0, 3.0}, volt::BoardPoint{23.0, 3.0}},
+            .radius_mm = 0.125,
+        };
+        source_query_legal = volt::BoardSpatialIndex{live}.query_legality(candidate).legal;
+        CHECK(source_query_legal == !foreign_short);
+        const auto compiled = take_success(volt::io::compile_board(
+            *authored.circuit, authored.board, bundle, baseline_capabilities()));
+        CHECK(compiled.provenance().schema_version() == volt::CompiledBoardSchemaVersion::V2);
+        CHECK(compiled.provenance().compiler_version() == volt::CompiledBoardCompilerVersion::V2);
+        CHECK(compiled.logical_continuity_partition() == expected_partition);
+        CHECK(compiled.board().circuit().all<volt::PortBindingId>().size() == 0U);
+        CHECK(compiled.board().circuit().all<volt::ModuleInstanceId>().size() == 0U);
+        CHECK(ratsnest_signature(volt::compute_ratsnest(compiled).edges()) == expected_edges);
+        CHECK(diagnostic_signature(volt::validate_board(compiled).diagnostics()) ==
+              expected_diagnostics);
+        CHECK(volt::BoardSpatialIndex{compiled.view()}.query_legality(candidate).legal ==
+              source_query_legal);
+        expected_svg = std::string{volt::io::render_pcb_svg(compiled).bytes()};
+        archived = std::string{compiled.bytes()};
+    }
+    // Every original Circuit, resolver, selected bundle and fresh artifact is now unavailable.
+    const auto reopened = volt::io::open_compiled_board(archived);
+    CHECK(reopened.logical_continuity_partition() == expected_partition);
+    CHECK(ratsnest_signature(volt::compute_ratsnest(reopened).edges()) == expected_edges);
+    CHECK(diagnostic_signature(volt::validate_board(reopened).diagnostics()) ==
+          expected_diagnostics);
+    CHECK(volt::io::render_pcb_svg(reopened).bytes() == expected_svg);
+    const auto candidate = volt::BoardSpatialQueryShape{
+        .kind = volt::BoardSpatialQueryShapeKind::Segment,
+        .net = volt::NetId{3},
+        .layers = {volt::BoardLayerId{0}},
+        .points = {volt::BoardPoint{1.0, 3.0}, volt::BoardPoint{23.0, 3.0}},
+        .radius_mm = 0.125,
+    };
+    CHECK(volt::BoardSpatialIndex{reopened.view()}.query_legality(candidate).legal ==
+          source_query_legal);
+}
+
+TEST_CASE("CompiledBoard V2 freezes bindings while existing authoring views remain live") {
+    auto source = fixture();
+    const auto bundle = volt::io::PartLibraryBundle::build(
+        source.builder, std::array{source.selected_key}, source.resolver);
+    auto hierarchy = hierarchical_design(source.spec, bundle, source.selected_key, false);
+    auto &authored = hierarchy.authored;
+    const auto resolution = volt::io::resolve_board(authored.board, bundle,
+                                                    volt::BoardResolutionCapabilities{profile()});
+    const auto live = resolution.view();
+    const auto authoring_index = volt::BoardSpatialIndex{live};
+    const auto before = take_success(volt::io::compile_board(*authored.circuit, authored.board,
+                                                             bundle, baseline_capabilities()));
+    const auto historical_index = volt::BoardSpatialIndex{before.view()};
+    const auto partition_before = *before.logical_continuity_partition();
+    const auto candidate = volt::BoardSpatialQueryShape{
+        .kind = volt::BoardSpatialQueryShapeKind::Segment,
+        .net = hierarchy.alternate,
+        .layers = {volt::BoardLayerId{0}},
+        .points = {volt::BoardPoint{1.0, 3.0}, volt::BoardPoint{23.0, 3.0}},
+        .radius_mm = 0.125,
+    };
+    CHECK_FALSE(authoring_index.query_legality(candidate).legal);
+    CHECK_FALSE(historical_index.query_legality(candidate).legal);
+    static_cast<void>(authored.circuit->bind_port(hierarchy.bridge_instance, hierarchy.bridge_port,
+                                                  hierarchy.alternate));
+    CHECK(authoring_index.query_legality(candidate).legal);
+    CHECK_FALSE(historical_index.query_legality(candidate).legal);
+    CHECK(live.logical_continuity().partition() != partition_before);
+    CHECK(*before.logical_continuity_partition() == partition_before);
+    const auto after = take_success(volt::io::compile_board(*authored.circuit, authored.board,
+                                                            bundle, baseline_capabilities()));
+    CHECK(after.provenance().logical_dependency_digest() !=
+          before.provenance().logical_dependency_digest());
+    CHECK_FALSE(after.identity() == before.identity());
+    CHECK(std::string{after.physical_snapshot()} == std::string{before.physical_snapshot()});
+    CHECK(ratsnest_signature(volt::compute_ratsnest(after).edges()) !=
+          ratsnest_signature(volt::compute_ratsnest(before).edges()));
+    auto equivalent = hierarchical_design(source.spec, bundle, source.selected_key);
+    const auto identical = take_success(volt::io::compile_board(
+        *equivalent.authored.circuit, equivalent.authored.board, bundle, baseline_capabilities()));
+    CHECK(std::string{identical.bytes()} == std::string{after.bytes()});
+}
+
+TEST_CASE("CompiledBoard V2 structurally rejects malformed partitions and version combinations") {
+    auto source = fixture();
+    const auto bundle = volt::io::PartLibraryBundle::build(
+        source.builder, std::array{source.selected_key}, source.resolver);
+    auto hierarchy = hierarchical_design(source.spec, bundle, source.selected_key);
+    const auto compiled = take_success(volt::io::compile_board(
+        *hierarchy.authored.circuit, hierarchy.authored.board, bundle, baseline_capabilities()));
+    const auto canonical = std::string{compiled.bytes()};
+    const auto malformed = std::vector<Json>{
+        Json::array(),
+        Json::array({Json::array(), Json::array({"net:0", "net:1", "net:2", "net:3"}),
+                     Json::array({"net:4"}), Json::array({"net:5"})}),
+        Json::array({Json::array({"net:0", "net:1", "net:2", "net:3"}), Json::array({"net:4"})}),
+        Json::array({Json::array({"net:0", "net:1", "net:2", "net:3"}),
+                     Json::array({"net:3", "net:4"}), Json::array({"net:5"})}),
+        Json::array({Json::array({"net:0", "net:0", "net:1", "net:2", "net:3"}),
+                     Json::array({"net:4"}), Json::array({"net:5"})}),
+        Json::array({Json::array({"net:0", "net:2", "net:1", "net:3"}), Json::array({"net:4"}),
+                     Json::array({"net:5"})}),
+        Json::array({Json::array({"net:4"}), Json::array({"net:0", "net:1", "net:2", "net:3"}),
+                     Json::array({"net:5"})}),
+        Json::array({Json::array({"net:0", "net:1", "net:2", "net:3"}), Json::array({"net:4"}),
+                     Json::array({"net:99"})}),
+        Json::array({Json::array({0, 1, 2, 3}), Json::array({"net:4"}), Json::array({"net:5"})}),
+        Json::array({Json::object()}),
+        Json::object(),
+    };
+    for (const auto &partition : malformed) {
+        INFO(partition.dump());
+        auto archive = decode_archive(canonical);
+        auto logical =
+            std::ranges::find(archive.entries, "snapshots/logical.json", &ArchiveEntry::path);
+        REQUIRE(logical != archive.entries.end());
+        auto wrapper = Json::parse(logical->payload);
+        wrapper["realized_net_partition"] = partition;
+        logical->payload = wrapper.dump();
+        // Refresh every content hash: structural verification, not hashing, must reject these.
+        refresh_logical_provenance(archive, *logical);
+        CHECK_THROWS_AS(volt::io::open_compiled_board(encode_archive(archive)), volt::KernelError);
+    }
+    auto tampered = decode_archive(canonical);
+    auto logical =
+        std::ranges::find(tampered.entries, "snapshots/logical.json", &ArchiveEntry::path);
+    REQUIRE(logical != tampered.entries.end());
+    auto wrapper = Json::parse(logical->payload);
+    wrapper["realized_net_partition"] =
+        Json::array({Json::array({"net:0"}), Json::array({"net:1"}), Json::array({"net:2"}),
+                     Json::array({"net:3"}), Json::array({"net:4"}), Json::array({"net:5"})});
+    logical->payload = wrapper.dump();
+    refresh_entry_digest(tampered, *logical);
+    CHECK_THROWS_AS(volt::io::open_compiled_board(encode_archive(tampered)),
+                    volt::KernelLogicError);
+    for (const auto version : {0U, 1U, 3U}) {
+        auto mismatched = decode_archive(canonical);
+        mismatched.manifest["compiler_version"] = version;
+        refresh_provenance(mismatched);
+        CHECK_THROWS_AS(volt::io::open_compiled_board(encode_archive(mismatched)),
+                        volt::KernelLogicError);
+    }
+    auto missing = decode_archive(canonical);
+    auto missing_logical =
+        std::ranges::find(missing.entries, "snapshots/logical.json", &ArchiveEntry::path);
+    REQUIRE(missing_logical != missing.entries.end());
+    auto missing_wrapper = Json::parse(missing_logical->payload);
+    missing_wrapper.erase("realized_net_partition");
+    missing_logical->payload = missing_wrapper.dump();
+    refresh_logical_provenance(missing, *missing_logical);
+    CHECK_THROWS_AS(volt::io::open_compiled_board(encode_archive(missing)), volt::KernelLogicError);
+}
+
+TEST_CASE("CompiledBoard V1 remains byte-preserving and exportable without inferred continuity") {
+    // This Board-only publication has no schematic symbol closure to publish.
+    auto source = fixture(false, false, "glb", false);
+    const auto bundle = volt::io::PartLibraryBundle::build(
+        source.builder, std::array{source.selected_key}, source.resolver);
+    auto hierarchy = hierarchical_design(source.spec, bundle, source.selected_key);
+    const auto compiled = take_success(volt::io::compile_board(
+        *hierarchy.authored.circuit, hierarchy.authored.board, bundle, baseline_capabilities()));
+    auto legacy = decode_archive(compiled.bytes());
+    legacy.manifest["schema_version"] = 1U;
+    legacy.manifest["compiler_version"] = 1U;
+    auto logical = std::ranges::find(legacy.entries, "snapshots/logical.json", &ArchiveEntry::path);
+    REQUIRE(logical != legacy.entries.end());
+    auto wrapper = Json::parse(logical->payload);
+    wrapper["schema_version"] = 1U;
+    wrapper.erase("realized_net_partition");
+    logical->payload = wrapper.dump();
+    refresh_logical_provenance(legacy, *logical);
+    const auto legacy_bytes = encode_archive(legacy);
+    const auto reopened = volt::io::open_compiled_board(legacy_bytes);
+    CHECK(reopened.provenance().schema_version() == volt::CompiledBoardSchemaVersion::V1);
+    CHECK_FALSE(reopened.logical_continuity_partition().has_value());
+    CHECK(volt::io::write_compiled_board(reopened) == legacy_bytes);
+    CHECK_FALSE(reopened.identity() == compiled.identity());
+    CHECK(volt::compute_ratsnest(reopened).edges().size() == 3U);
+    CHECK_FALSE(volt::io::render_pcb_svg(reopened).bytes().empty());
+    CHECK_FALSE(volt::io::write_pcb_fabrication_files(reopened).files.empty());
+    CHECK_FALSE(volt::adapters::kicad::write_board(reopened).text.empty());
+
+    CHECK(volt::io::compiled_board_logical_dependency_digest(
+              *hierarchy.authored.circuit, volt::CompiledBoardSchemaVersion::V1) ==
+          reopened.provenance().logical_dependency_digest());
+    CHECK(volt::io::compiled_board_logical_dependency_digest(*hierarchy.authored.circuit) ==
+          compiled.provenance().logical_dependency_digest());
+    auto builder = volt::test::project_bundle_v2::project_builder();
+    const auto scene = volt::prepare_board_scene(reopened);
+    builder.add_logical(volt::io::DesignKey{"main"}, *hierarchy.authored.circuit, bundle);
+    builder.add_board(volt::io::DesignKey{"main"}, hierarchy.authored.board, reopened, scene,
+                      bundle);
+    const auto publication = builder.build();
+    const auto &compiled_descriptor = volt::test::project_bundle_v2::descriptor(
+        publication, volt::io::ArtifactKind::CompiledBoard);
+    CHECK(compiled_descriptor.schema_version() == 1U);
+    const auto temporary = volt::test::project_bundle_v2::TempDirectory{};
+    const auto path = temporary.path() / "legacy.volt";
+    publication.write(path);
+    const auto legacy_bundle = volt::io::ProjectBundle::open(path);
+    const auto loaded = legacy_bundle.graph().loaded_project().compiled_boards();
+    REQUIRE(loaded.size() == 1U);
+    CHECK(loaded.front().model().provenance().schema_version() ==
+          volt::CompiledBoardSchemaVersion::V1);
+    CHECK_FALSE(loaded.front().model().logical_continuity_partition().has_value());
+    CHECK(std::string{loaded.front().model().bytes()} == legacy_bytes);
+    CHECK_FALSE(volt::io::render_pcb_svg(loaded.front().model()).bytes().empty());
+}
 
 TEST_CASE("CompiledBoard is deterministic and freezes one historical revision") {
     auto source = fixture();
@@ -795,7 +1144,7 @@ TEST_CASE("CompiledBoard capabilities freeze exact consumed assets and retain de
     CHECK(models.parts().size() == 1U);
     CHECK(models.bytes().find("UNUSED-0603") == std::string_view::npos);
     CHECK(models.provenance().compiler_name() == "volt.native.compile-board");
-    CHECK(models.provenance().schema_version() == volt::CompiledBoardSchemaVersion::V1);
+    CHECK(models.provenance().schema_version() == volt::CompiledBoardSchemaVersion::V2);
     CHECK_FALSE(models.identity() == baseline.identity());
 
     auto dnp_circuit = volt::Circuit{};

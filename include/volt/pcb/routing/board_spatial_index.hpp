@@ -144,10 +144,9 @@ class BoardSpatialIndex {
     query_legality(const BoardSpatialQueryShape &candidate) const;
 
   private:
-    friend void
-    detail::validate_copper_clearance(const Board &board,
-                                      const std::vector<detail::BoardCopperShape> &shapes,
-                                      DiagnosticReport &report);
+    friend void detail::validate_copper_clearance(
+        const Board &board, const detail::NetContinuityView &continuity,
+        const std::vector<detail::BoardCopperShape> &shapes, DiagnosticReport &report);
     BoardSpatialIndex(const Board &board, std::vector<detail::BoardCopperShape> shapes);
     BoardSpatialIndex(const Board &&board, std::vector<detail::BoardCopperShape> shapes) = delete;
 

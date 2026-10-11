@@ -28,6 +28,8 @@ class ResolvedBoardView;
 /// @cond
 namespace detail {
 
+class NetContinuityView;
+
 enum class BoardEntityRangeState {
     Current,
     AdvancedOnce,
@@ -549,6 +551,11 @@ struct BoardMechanicalClearanceCheck {
 check_copper_clearance(const Board &board, const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
                        const BoardCopperShape &rhs, BoardClearanceKind rhs_kind);
 
+[[nodiscard]] BoardCopperClearanceCheck
+check_copper_clearance(const Board &board, const NetContinuityView &continuity,
+                       const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
+                       const BoardCopperShape &rhs, BoardClearanceKind rhs_kind);
+
 [[nodiscard]] std::vector<BoardMechanicalOpening> collect_mechanical_openings(const Board &board);
 
 [[nodiscard]] BoardMechanicalClearanceCheck
@@ -596,7 +603,8 @@ void validate_outline_clearance(const Board &board, const std::vector<BoardCoppe
 
 void validate_netless_zone_outline_clearance(const Board &board, DiagnosticReport &report);
 
-void validate_copper_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,
+void validate_copper_clearance(const Board &board, const NetContinuityView &continuity,
+                               const std::vector<BoardCopperShape> &shapes,
                                DiagnosticReport &report);
 
 [[nodiscard]] bool keepout_restricts(const BoardKeepout &keepout,
@@ -630,7 +638,8 @@ void validate_board_visual(const ResolvedBoardView &resolved, DiagnosticReport &
 shape_index_for_pad(const std::vector<BoardCopperShape> &shapes, ComponentPlacementId placement,
                     FootprintPadId pad);
 
-void validate_unrouted_nets(const Board &board, const std::vector<PadResolution> &resolutions,
+void validate_unrouted_nets(const NetContinuityView &continuity,
+                            const std::vector<PadResolution> &resolutions,
                             const std::vector<BoardCopperShape> &shapes, DiagnosticReport &report);
 
 void validate_board_drc(const ResolvedBoardView &resolved,

@@ -697,8 +697,15 @@ required_copper_clearance(const Board &board, const BoardRoomRuleResolver &rooms
 [[nodiscard]] BoardCopperClearanceCheck
 check_copper_clearance(const Board &board, const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
                        const BoardCopperShape &rhs, BoardClearanceKind rhs_kind) {
+    return check_copper_clearance(board, NetContinuityView{board.circuit()}, lhs, lhs_kind, rhs,
+                                  rhs_kind);
+}
+
+[[nodiscard]] BoardCopperClearanceCheck
+check_copper_clearance(const Board &board, const NetContinuityView &continuity,
+                       const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
+                       const BoardCopperShape &rhs, BoardClearanceKind rhs_kind) {
     auto result = BoardCopperClearanceCheck{};
-    const auto continuity = NetContinuityView{board.circuit()};
     if (continuity.same_group(lhs.net, rhs.net)) {
         return result;
     }

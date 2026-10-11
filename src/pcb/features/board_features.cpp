@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/validation/validation.hpp>
 
 namespace volt {
@@ -24,8 +23,8 @@ struct RatsnestEndpointWithNet {
 };
 
 [[nodiscard]] NetId
-canonical_ratsnest_group_net(const Circuit &circuit, const detail::NetContinuityView &continuity,
-                             NetId net, const std::vector<RatsnestEndpointWithNet> &endpoints) {
+canonical_ratsnest_group_net(const detail::NetContinuityView &continuity, NetId net,
+                             const std::vector<RatsnestEndpointWithNet> &endpoints) {
     auto first_group_net = std::optional<NetId>{};
     auto first_parent_net = std::optional<NetId>{};
     for (const auto &endpoint : endpoints) {
@@ -35,7 +34,7 @@ canonical_ratsnest_group_net(const Circuit &circuit, const detail::NetContinuity
         if (!first_group_net.has_value() || endpoint.net.index() < first_group_net->index()) {
             first_group_net = endpoint.net;
         }
-        if (!queries::is_module_origin_net(circuit, endpoint.net) &&
+        if (!continuity.is_module_origin_net(endpoint.net) &&
             (!first_parent_net.has_value() || endpoint.net.index() < first_parent_net->index())) {
             first_parent_net = endpoint.net;
         }
@@ -304,11 +303,15 @@ derive_ratsnest_edges(const std::vector<PadResolution> &resolutions) {
 
 [[nodiscard]] std::vector<RatsnestEdge>
 derive_ratsnest_edges(const Circuit &circuit, const std::vector<PadResolution> &resolutions) {
+    return detail::derive_ratsnest_edges(detail::NetContinuityView{circuit}, resolutions);
+}
+
+[[nodiscard]] std::vector<RatsnestEdge>
+detail::derive_ratsnest_edges(const NetContinuityView &continuity,
+                              const std::vector<PadResolution> &resolutions) {
     auto endpoints = collect_connected_ratsnest_endpoints(resolutions);
-    const auto continuity = detail::NetContinuityView{circuit};
     for (auto &endpoint : endpoints) {
-        endpoint.group_net =
-            canonical_ratsnest_group_net(circuit, continuity, endpoint.net, endpoints);
+        endpoint.group_net = canonical_ratsnest_group_net(continuity, endpoint.net, endpoints);
     }
     return derive_grouped_ratsnest_edges(std::move(endpoints));
 }

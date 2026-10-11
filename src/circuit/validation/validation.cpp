@@ -1,5 +1,7 @@
 #include <volt/circuit/validation/validation.hpp>
 
+#include <algorithm>
+#include <map>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -87,14 +89,76 @@ namespace volt::detail {
 
 NetContinuityView::NetContinuityView(const Circuit &circuit) {
     parent_.reserve(circuit.all<volt::NetId>().size());
+    module_origin_nets_.resize(circuit.all<NetId>().size(), false);
     for (std::size_t index = 0; index < circuit.all<volt::NetId>().size(); ++index) {
         parent_.push_back(index);
+    }
+    for (const auto &instance : circuit.all<ModuleInstanceId>()) {
+        for (const auto &[origin, net] : instance.net_origins()) {
+            static_cast<void>(origin);
+            module_origin_nets_[net.index()] = true;
+        }
     }
 
     for (std::size_t index = 0; index < circuit.all<volt::PortBindingId>().size(); ++index) {
         const auto &binding = circuit.get(PortBindingId{index});
         join(binding.internal_net(), binding.parent_net());
     }
+}
+
+NetContinuityView::NetContinuityView(const Circuit &circuit,
+                                     const std::vector<std::vector<NetId>> &partition,
+                                     const std::vector<NetId> &module_origin_nets)
+    : parent_(circuit.all<NetId>().size(), circuit.all<NetId>().size()),
+      module_origin_nets_(circuit.all<NetId>().size(), false) {
+    auto previous_minimum = std::optional<NetId>{};
+    for (const auto &group : partition) {
+        if (group.empty() ||
+            (previous_minimum.has_value() && group.front().index() <= previous_minimum->index())) {
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "CompiledBoard continuity groups are not canonical"};
+        }
+        previous_minimum = group.front();
+        auto previous_member = std::optional<NetId>{};
+        for (const auto net : group) {
+            if (net.index() >= parent_.size() ||
+                (previous_member.has_value() && net.index() <= previous_member->index()) ||
+                parent_[net.index()] != parent_.size()) {
+                throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
+                                          "CompiledBoard continuity has invalid or repeated nets"};
+            }
+            previous_member = net;
+            parent_[net.index()] = group.front().index();
+        }
+    }
+    for (const auto parent : parent_) {
+        if (parent == parent_.size()) {
+            throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
+                                      "CompiledBoard continuity does not cover every logical net"};
+        }
+    }
+    for (const auto net : module_origin_nets) {
+        static_cast<void>(circuit.get(net));
+        module_origin_nets_[net.index()] = true;
+    }
+}
+
+bool NetContinuityView::is_module_origin_net(NetId net) const {
+    return module_origin_nets_.at(net.index());
+}
+
+std::vector<std::vector<NetId>> NetContinuityView::partition() const {
+    auto groups = std::map<std::size_t, std::vector<NetId>>{};
+    for (std::size_t index = 0; index < parent_.size(); ++index) {
+        groups[find(index)].push_back(NetId{index});
+    }
+    auto result = std::vector<std::vector<NetId>>{};
+    for (auto &[root, group] : groups) {
+        static_cast<void>(root);
+        result.push_back(std::move(group));
+    }
+    std::ranges::sort(result, {}, [](const auto &group) { return group.front().index(); });
+    return result;
 }
 
 [[nodiscard]] std::vector<PinId> NetContinuityView::pins_for_group(const Circuit &circuit,

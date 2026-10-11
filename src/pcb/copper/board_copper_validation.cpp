@@ -307,13 +307,15 @@ void validate_netless_zone_mechanical_opening_clearance(const Board &board,
     }
 }
 
-void validate_copper_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,
+void validate_copper_clearance(const Board &board, const NetContinuityView &continuity,
+                               const std::vector<BoardCopperShape> &shapes,
                                DiagnosticReport &report) {
     const auto index = BoardSpatialIndex{board, shapes};
     for (const auto pair : index.copper_clearance_candidates()) {
         const auto &lhs = shapes[pair.lhs_index];
         const auto &rhs = shapes[pair.rhs_index];
-        const auto check = check_copper_clearance(board, lhs, rhs);
+        const auto check = check_copper_clearance(board, continuity, lhs, shape_clearance_kind(lhs),
+                                                  rhs, shape_clearance_kind(rhs));
         if (!check.violates) {
             continue;
         }
@@ -467,13 +469,13 @@ void validate_keepout_placements(const Board &board, DiagnosticReport &report) {
     return index;
 }
 
-void validate_unrouted_nets(const Board &board, const std::vector<PadResolution> &resolutions,
+void validate_unrouted_nets(const NetContinuityView &continuity,
+                            const std::vector<PadResolution> &resolutions,
                             const std::vector<BoardCopperShape> &shapes, DiagnosticReport &report) {
     if (shapes.empty()) {
         return;
     }
 
-    const auto continuity = NetContinuityView{board.circuit()};
     auto parents = std::vector<std::size_t>(shapes.size());
     std::iota(parents.begin(), parents.end(), 0U);
     for (std::size_t lhs_index = 0; lhs_index < shapes.size(); ++lhs_index) {
@@ -494,7 +496,7 @@ void validate_unrouted_nets(const Board &board, const std::vector<PadResolution>
         }
     }
 
-    for (const auto &edge : derive_ratsnest_edges(board.circuit(), resolutions)) {
+    for (const auto &edge : derive_ratsnest_edges(continuity, resolutions)) {
         const auto from_index =
             shape_index_for_pad(shapes, edge.from().placement(), edge.from().pad());
         const auto to_index = shape_index_for_pad(shapes, edge.to().placement(), edge.to().pad());
@@ -521,6 +523,7 @@ void validate_board_drc(const ResolvedBoardView &resolved,
                         DiagnosticReport &report) {
     const auto &board = resolved.board();
     const auto shapes = collect_copper_shapes(resolved, pad_resolutions);
+    const auto continuity = resolved.logical_continuity();
     auto rules = RuleSet<Board>{};
     rules
         .add([](const Board &rule_board, DiagnosticReport &rule_report) {
@@ -547,8 +550,8 @@ void validate_board_drc(const ResolvedBoardView &resolved,
         .add([](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_netless_zone_outline_clearance(rule_board, rule_report);
         })
-        .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
-            validate_copper_clearance(rule_board, shapes, rule_report);
+        .add([&shapes, &continuity](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_copper_clearance(rule_board, continuity, shapes, rule_report);
         })
         .add([&resolved](const Board &, DiagnosticReport &rule_report) {
             validate_footprint_geometry_drc(resolved, rule_report);
@@ -565,9 +568,10 @@ void validate_board_drc(const ResolvedBoardView &resolved,
         .add([](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_keepout_placements(rule_board, rule_report);
         })
-        .add([&pad_resolutions, &shapes](const Board &rule_board, DiagnosticReport &rule_report) {
-            validate_unrouted_nets(rule_board, pad_resolutions, shapes, rule_report);
-        });
+        .add(
+            [&pad_resolutions, &shapes, &continuity](const Board &, DiagnosticReport &rule_report) {
+                validate_unrouted_nets(continuity, pad_resolutions, shapes, rule_report);
+            });
     rules.run(board, report);
 }
 

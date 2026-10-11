@@ -422,8 +422,18 @@ void filter_net_classes(Json &logical) {
     classes = std::move(filtered);
 }
 
-[[nodiscard]] LogicalSnapshot build_logical_snapshot(const Circuit &circuit) {
+[[nodiscard]] LogicalSnapshot
+build_logical_snapshot(const Circuit &circuit,
+                       CompiledBoardSchemaVersion schema_version = CompiledBoardSchemaVersion::V2) {
     const auto complete = parse_json(write_logical_circuit(circuit), "logical circuit");
+    auto realized_partition = Json::array();
+    for (const auto &group : volt::detail::NetContinuityView{circuit}.partition()) {
+        auto members = Json::array();
+        for (const auto net : group) {
+            members.push_back(complete.at("nets").at(net.index()).at("id"));
+        }
+        realized_partition.push_back(std::move(members));
+    }
     auto logical = complete;
     const auto component_origins = module_component_origins(complete);
     const auto net_origins = module_net_origins(complete);
@@ -506,8 +516,11 @@ void filter_net_classes(Json &logical) {
         {"component_origins", component_origins},
         {"format", logical_snapshot_format},
         {"net_origins", net_origins},
-        {"schema_version", static_cast<std::uint32_t>(CompiledBoardSchemaVersion::V1)},
+        {"schema_version", static_cast<std::uint32_t>(schema_version)},
     };
+    if (schema_version == CompiledBoardSchemaVersion::V2) {
+        wrapper["realized_net_partition"] = std::move(realized_partition);
+    }
     return LogicalSnapshot{wrapper.dump(), std::move(component_documents)};
 }
 
@@ -576,17 +589,18 @@ void filter_net_classes(Json &logical) {
 [[nodiscard]] ContentHash
 provenance_digest(std::string_view board_name, std::string_view compiler_build,
                   const ContentHash &logical_digest, const ContentHash &physical_digest,
-                  const ContentHash &closure_digest, const ContentHash &capability_digest) {
+                  const ContentHash &closure_digest, const ContentHash &capability_digest,
+                  std::uint32_t version) {
     return sha256_content_hash(Json{
         {"board_name", board_name},
         {"capability_digest", capability_digest.value()},
         {"compiler_build", compiler_build},
         {"compiler_name", compiler_name},
-        {"compiler_version", static_cast<std::uint32_t>(CompiledBoardCompilerVersion::V1)},
+        {"compiler_version", version},
         {"format", provenance_format},
         {"logical_dependency_digest", logical_digest.value()},
         {"physical_snapshot_digest", physical_digest.value()},
-        {"schema_version", static_cast<std::uint32_t>(CompiledBoardSchemaVersion::V1)},
+        {"schema_version", version},
         {"selected_closure_digest",
          closure_digest.value()}}.dump());
 }
@@ -877,16 +891,23 @@ void validate_net_class_closure(const Json &circuit) {
             ErrorCode::CrossReferenceViolation);
 }
 
-[[nodiscard]] std::map<std::string, ContentHash> validate_logical_snapshot(const Json &wrapper) {
-    require_exact_keys(wrapper,
-                       {"circuit", "component_definition_identities", "component_origins", "format",
-                        "net_origins", "schema_version"},
-                       "CompiledBoard logical snapshot");
+[[nodiscard]] std::map<std::string, ContentHash> validate_logical_snapshot(const Json &wrapper,
+                                                                           std::uint32_t version) {
+    if (version == 1U) {
+        require_exact_keys(wrapper,
+                           {"circuit", "component_definition_identities", "component_origins",
+                            "format", "net_origins", "schema_version"},
+                           "CompiledBoard logical snapshot");
+    } else {
+        require_exact_keys(wrapper,
+                           {"circuit", "component_definition_identities", "component_origins",
+                            "format", "net_origins", "realized_net_partition", "schema_version"},
+                           "CompiledBoard logical snapshot");
+    }
     require(string_field(wrapper, "format", "CompiledBoard logical snapshot") ==
                 logical_snapshot_format,
             "CompiledBoard logical snapshot format is unsupported");
-    require(uint32_field(wrapper, "schema_version", "CompiledBoard logical snapshot") ==
-                static_cast<std::uint32_t>(CompiledBoardSchemaVersion::V1),
+    require(uint32_field(wrapper, "schema_version", "CompiledBoard logical snapshot") == version,
             "CompiledBoard logical snapshot schema is unsupported");
     const auto &circuit = field(wrapper, "circuit", "CompiledBoard logical snapshot");
     require(circuit.find("module_definitions") == circuit.end() &&
@@ -1106,8 +1127,9 @@ decode_parts(const Json &selected_parts, const std::map<std::string, DecodedComp
     const auto capability_digest = sha256_content_hash(capability);
     const auto closure_digest = selected_closure_digest(selected_parts);
     const auto build = std::string{version_string()};
-    const auto provenance = provenance_digest(board.name().value(), build, logical_digest,
-                                              physical_digest, closure_digest, capability_digest);
+    const auto provenance =
+        provenance_digest(board.name().value(), build, logical_digest, physical_digest,
+                          closure_digest, capability_digest, 2U);
 
     auto entries = Json::array();
     for (const auto &[unused, payload] : payloads) {
@@ -1119,13 +1141,13 @@ decode_parts(const Json &selected_parts, const std::map<std::string, DecodedComp
         {"capability_digest", capability_digest.value()},
         {"compiler_build", build},
         {"compiler_name", compiler_name},
-        {"compiler_version", static_cast<std::uint32_t>(CompiledBoardCompilerVersion::V1)},
+        {"compiler_version", static_cast<std::uint32_t>(CompiledBoardCompilerVersion::V2)},
         {"entries", std::move(entries)},
         {"format", compiled_board_format_name()},
         {"logical_dependency_digest", logical_digest.value()},
         {"physical_snapshot_digest", physical_digest.value()},
         {"provenance_digest", provenance.value()},
-        {"schema_version", static_cast<std::uint32_t>(CompiledBoardSchemaVersion::V1)},
+        {"schema_version", static_cast<std::uint32_t>(CompiledBoardSchemaVersion::V2)},
         {"selected_closure_digest", closure_digest.value()},
         {"selected_parts", selected_parts},
     };
@@ -1172,6 +1194,10 @@ CompiledBoardCompileResult compile_board(const Circuit &circuit, const Board &bo
     }
 
     auto artifact = open_compiled_board(archive_bytes);
+    require(artifact.logical_continuity_partition() ==
+                volt::detail::NetContinuityView{circuit}.partition(),
+            "CompiledBoard continuity differs from the native source Circuit",
+            ErrorCode::CrossReferenceViolation);
     diagnostics = design_diagnostics(circuit, selected_closure, artifact.view());
     return CompiledBoardCompileResult::success(std::move(artifact), std::move(diagnostics));
 }
@@ -1180,8 +1206,12 @@ std::string write_compiled_board(const CompiledBoard &compiled) {
     return std::string{compiled.bytes()};
 }
 
-ContentHash compiled_board_logical_dependency_digest(const Circuit &circuit) {
-    return sha256_content_hash(build_logical_snapshot(circuit).bytes);
+ContentHash compiled_board_logical_dependency_digest(const Circuit &circuit,
+                                                     CompiledBoardSchemaVersion schema_version) {
+    require(schema_version == CompiledBoardSchemaVersion::V1 ||
+                schema_version == CompiledBoardSchemaVersion::V2,
+            "CompiledBoard logical dependency schema is unsupported");
+    return sha256_content_hash(build_logical_snapshot(circuit, schema_version).bytes);
 }
 
 namespace {
@@ -1199,13 +1229,11 @@ template <typename Publisher>
     require(string_field(manifest, "format", "CompiledBoard manifest") ==
                 compiled_board_format_name(),
             "CompiledBoard format is unsupported");
-    require(uint32_field(manifest, "schema_version", "CompiledBoard manifest") ==
-                static_cast<std::uint32_t>(CompiledBoardSchemaVersion::V1),
-            "CompiledBoard schema is unsupported");
+    const auto version = uint32_field(manifest, "schema_version", "CompiledBoard manifest");
+    require(version == 1U || version == 2U, "CompiledBoard schema is unsupported");
     require(string_field(manifest, "compiler_name", "CompiledBoard manifest") == compiler_name,
             "CompiledBoard compiler owner is unsupported");
-    require(uint32_field(manifest, "compiler_version", "CompiledBoard manifest") ==
-                static_cast<std::uint32_t>(CompiledBoardCompilerVersion::V1),
+    require(uint32_field(manifest, "compiler_version", "CompiledBoard manifest") == version,
             "CompiledBoard compiler contract is unsupported");
 
     const auto roles = validate_entries(manifest, archive.payloads);
@@ -1234,10 +1262,41 @@ template <typename Publisher>
             ErrorCode::CrossReferenceViolation);
 
     const auto logical_json = parse_canonical_json(logical_bytes, "CompiledBoard logical snapshot");
-    const auto component_identities = validate_logical_snapshot(logical_json);
+    const auto component_identities = validate_logical_snapshot(logical_json, version);
     const auto &logical_circuit_json =
         field(logical_json, "circuit", "CompiledBoard logical snapshot");
     auto logical_circuit = read_logical_circuit_text(logical_circuit_json.dump());
+    auto logical_continuity_partition = std::optional<std::vector<std::vector<NetId>>>{};
+    auto module_origin_nets = std::vector<NetId>{};
+    if (version == 2U) {
+        const auto &partition =
+            field(logical_json, "realized_net_partition", "CompiledBoard logical snapshot");
+        require(partition.is_array(), "CompiledBoard continuity partition must be an array");
+        auto net_ids = std::map<std::string, NetId>{};
+        const auto &nets = field(logical_circuit_json, "nets", "CompiledBoard logical circuit");
+        for (std::size_t index = 0; index < nets.size(); ++index) {
+            net_ids.emplace(string_field(nets[index], "id", "CompiledBoard logical net"),
+                            NetId{index});
+        }
+        for (const auto &origin :
+             field(logical_json, "net_origins", "CompiledBoard logical snapshot")) {
+            module_origin_nets.push_back(
+                net_ids.at(string_field(origin, "net", "CompiledBoard net origin")));
+        }
+        logical_continuity_partition.emplace();
+        for (const auto &group : partition) {
+            require(group.is_array(), "CompiledBoard continuity group must be an array");
+            auto members = std::vector<NetId>{};
+            for (const auto &member : group) {
+                require(member.is_string(), "CompiledBoard continuity member must be a net ID");
+                const auto found = net_ids.find(member.get<std::string>());
+                require(found != net_ids.end(), "CompiledBoard continuity contains a foreign net",
+                        ErrorCode::CrossReferenceViolation);
+                members.push_back(found->second);
+            }
+            logical_continuity_partition->push_back(std::move(members));
+        }
+    }
     require(parse_json(write_logical_circuit(logical_circuit), "materialized logical circuit") ==
                 logical_circuit_json,
             "CompiledBoard logical snapshot is not owner-canonical",
@@ -1315,15 +1374,15 @@ template <typename Publisher>
     const auto build = string_field(manifest, "compiler_build", "CompiledBoard manifest");
     const auto expected_provenance =
         provenance_digest(physical_board.name().value(), build, logical_digest, physical_digest,
-                          closure_digest, capability_digest);
+                          closure_digest, capability_digest, version);
     const auto stored_provenance =
         ContentHash{string_field(manifest, "provenance_digest", "CompiledBoard manifest")};
     require(expected_provenance == stored_provenance, "CompiledBoard provenance digest is stale",
             ErrorCode::CrossReferenceViolation);
 
     auto provenance = CompiledBoardProvenance{
-        CompiledBoardSchemaVersion::V1,
-        CompiledBoardCompilerVersion::V1,
+        static_cast<CompiledBoardSchemaVersion>(version),
+        static_cast<CompiledBoardCompilerVersion>(version),
         std::string{compiler_name},
         build,
         logical_digest,
@@ -1335,7 +1394,8 @@ template <typename Publisher>
     auto compiled =
         publisher(std::move(logical_circuit), std::move(physical_board), closure_digest,
                   std::move(footprint_library), std::move(resolved_parts), std::move(capabilities),
-                  std::move(provenance), logical_bytes, physical_bytes, std::string{bytes});
+                  std::move(provenance), logical_bytes, physical_bytes, std::string{bytes},
+                  std::move(logical_continuity_partition), std::move(module_origin_nets));
     require(build_physical_snapshot(compiled.view()) == physical_bytes,
             "CompiledBoard materialized Board differs from its canonical physical snapshot",
             ErrorCode::InvalidState);
@@ -1358,12 +1418,15 @@ CompiledBoard CompiledBoard::Codec::open(std::string_view bytes) {
                   FootprintLibrary footprints, std::vector<ResolvedBoardPart> parts,
                   CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
                   std::string logical_dependency_snapshot, std::string physical_snapshot,
-                  std::string archive_bytes) {
+                  std::string archive_bytes,
+                  std::optional<std::vector<std::vector<NetId>>> logical_continuity_partition,
+                  std::vector<NetId> module_origin_nets) {
             return CompiledBoard::materialize_verified(
                 std::move(logical_dependencies), board, std::move(selected_closure_digest),
                 std::move(footprints), std::move(parts), std::move(capabilities),
                 std::move(provenance), std::move(logical_dependency_snapshot),
-                std::move(physical_snapshot), std::move(archive_bytes));
+                std::move(physical_snapshot), std::move(archive_bytes),
+                std::move(logical_continuity_partition), std::move(module_origin_nets));
         });
 }
 
