@@ -610,7 +610,8 @@ TEST_CASE("R1a local copper clearance room replaces global base with legal-check
     CHECK(check.clearance.sources[0].room == first);
     auto report = DiagnosticReport{};
     const auto shapes = detail::collect_copper_shapes(f.view(), queries::resolve_pads(f.view()));
-    detail::validate_copper_clearance(f.board, shapes, report);
+    detail::validate_copper_clearance(f.board, detail::NetContinuityView{f.circuit}, shapes,
+                                      report);
     CHECK(!report.has_errors());
 }
 
