@@ -207,9 +207,9 @@ std::string failure_name(RouteFailureKind kind) {
 
 void fail(RouteResult &result, RouteFailureKind kind, std::optional<std::size_t> step,
           std::string message) {
-    const auto key = std::tuple{step.value_or(0), static_cast<int>(kind)};
-    if (!result.failure.has_value() || key < std::tuple{result.failure->step_index.value_or(0),
-                                                        static_cast<int>(result.failure->kind)}) {
+    const auto key = std::tuple{step, static_cast<int>(kind)};
+    if (!result.failure.has_value() ||
+        key < std::tuple{result.failure->step_index, static_cast<int>(result.failure->kind)}) {
         result.failure = RouteFailure{kind, step, std::move(message)};
     }
 }
@@ -397,6 +397,9 @@ RouteResult BoardRouter::route(const RouteSpec &spec, RoutePolicy policy) {
     for (std::size_t i = 0; i < endpoints.size(); ++i)
         if (endpoints[i])
             net_evidence(*endpoints[i], i);
+    if (result.failure.has_value() && start.identity && !contains(start.layers, spec.layer.layer))
+        fail(result, RouteFailureKind::EndpointUnreachable, std::nullopt,
+             "endpoint has no copper on active layer");
     if (!result.net.has_value()) {
         if (result.failure.has_value())
             return reject(*board_, std::move(result), policy);
@@ -548,7 +551,7 @@ RouteResult BoardRouter::route(const RouteSpec &spec, RoutePolicy policy) {
         result.resolved_steps.push_back(std::move(resolved_step));
     }
     result.candidate_complete = true;
-    if (result.candidates.empty())
+    if (result.candidates.empty() && !result.failure.has_value())
         fail(result, RouteFailureKind::NoCandidate, std::nullopt, "route contains no track or via");
 
     // Fresh private index for each call: candidate insertion never changes canonical Board state.

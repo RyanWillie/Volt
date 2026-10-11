@@ -216,7 +216,10 @@ BoardSpatialIndex::BoardSpatialIndex(const Board &board)
 std::size_t BoardSpatialIndex::shape_count() const noexcept { return state().shapes.size(); }
 
 BoardSpatialObstacle BoardSpatialIndex::obstacle(std::size_t index) const {
-    const auto &shape = state().shapes.at(index);
+    if (index >= state().shapes.size())
+        throw KernelRangeError{ErrorCode::UnknownEntity,
+                               "Board spatial obstacle index is out of range"};
+    const auto &shape = state().shapes[index];
     return {shape.net, detail::shape_clearance_kind(shape), shape.primary_entities, shape.pad};
 }
 

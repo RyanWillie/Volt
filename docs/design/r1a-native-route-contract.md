@@ -337,7 +337,9 @@ message: native UTF-8 summary
 Proposed `RouteFailureKind`: `Blocked`, `EndpointUnreachable`, `LayerNotAllowed`,
 `RuleViolation`, `RuleUnresolvable`, `GeometryUnresolvable`, `NoCandidate`.
 Structural failures do not return an invalid result. The earliest failing step
-and then the listed failure-kind order select the primary failure. Complete
+and then the listed failure-kind order select the primary failure. Start-endpoint
+and initial-layer failures (absent step index) precede step zero. `NoCandidate`
+is a whole-request fallback only when no earlier failure was recorded. Complete
 representable candidates retain all queried blockers, not only the first one.
 An incomplete candidate cannot be resubmitted as an authorized commit object.
 

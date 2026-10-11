@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "support/resolved_board_test_parts.hpp"
+#include "support/route_report_snapshot.hpp"
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/updates.hpp>
 #include <volt/core/errors.hpp>
@@ -103,6 +104,7 @@ void unchanged_failure(Fixture &f, const RouteSpec &spec, RouteFailureKind kind,
         CHECK(error.result().message == report.message);
         CHECK(error.result().failure->kind == kind);
         CHECK(error.result().blockers.size() == report.blockers.size());
+        CHECK(volt::test::route_snapshot(error.result()) == volt::test::route_snapshot(report));
     }
     CHECK(f.bytes() == bytes);
     CHECK(range.is_current());
@@ -297,6 +299,39 @@ TEST_CASE("R1a infers all endpoint kinds and exact logical nets must agree", "[p
         spec.layer.layer = f.back;
         unchanged_failure(f, spec, RouteFailureKind::EndpointUnreachable, true);
     }
+    SECTION("unreachable start precedes a step zero blocker") {
+        spec.layer.layer = f.back;
+        spec.steps = {RouteTo{RoutePoint{{20, 10}}}};
+        static_cast<void>(f.board.add_track(BoardTrack{f.other, f.back, {{15, 9}, {15, 11}}, 0.2}));
+        const auto result = f.report(spec);
+        REQUIRE(result.failure.has_value());
+        CHECK(result.failure->kind == RouteFailureKind::EndpointUnreachable);
+        CHECK(!result.failure->step_index.has_value());
+        REQUIRE(!result.blockers.empty());
+        CHECK(result.blockers.front().step_index == 0);
+        unchanged_failure(f, spec, RouteFailureKind::EndpointUnreachable, true);
+    }
+    SECTION("zero motion preserves the terminal endpoint failure before NoCandidate") {
+        spec.start = RoutePoint{{10, 10}};
+        spec.layer.layer = f.back;
+        spec.steps = {RouteTo{RouteTrackRef{&f.board, track, RouteTrackEnd::Last}}};
+        const auto result = f.report(spec);
+        REQUIRE(result.failure.has_value());
+        CHECK(result.failure->kind == RouteFailureKind::EndpointUnreachable);
+        CHECK(result.failure->step_index == 0);
+        CHECK(result.candidates.empty());
+        unchanged_failure(f, spec, RouteFailureKind::EndpointUnreachable, true);
+    }
+    SECTION("unreachable start precedes a later unconnected pad") {
+        const auto placement = f.pad_component(false);
+        spec.layer.layer = f.back;
+        spec.steps = {RouteTo{f.pad(placement)}};
+        const auto result = f.report(spec);
+        REQUIRE(result.failure.has_value());
+        CHECK(!result.failure->step_index.has_value());
+        CHECK(result.failure->message == "endpoint has no copper on active layer");
+        unchanged_failure(f, spec, RouteFailureKind::EndpointUnreachable, false);
+    }
 }
 
 TEST_CASE("R1a explicit sizes reject floors without clamping and preserve independent sources",
@@ -490,6 +525,7 @@ TEST_CASE("Transient via obstacles retain category and actual logical net", "[pc
     CHECK(blocked.blockers[0].required_clearance_mm == 0.8);
     CHECK(index.obstacle(0).net == f.other);
     CHECK(index.obstacle(0).clearance_kind == BoardClearanceKind::Via);
+    CHECK_THROWS_AS(index.obstacle(index.shape_count()), KernelRangeError);
     auto same = query;
     same.net = f.other;
     CHECK(index.query_legality(same).legal);
