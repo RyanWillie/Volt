@@ -136,6 +136,18 @@ void *operator new(std::size_t size) { return allocate(size); }
 
 void *operator new[](std::size_t size) { return allocate(size); }
 
+void *operator new(std::size_t size, const std::nothrow_t &) noexcept {
+    try {
+        return allocate(size);
+    } catch (const std::bad_alloc &) {
+        return nullptr;
+    }
+}
+
+void *operator new[](std::size_t size, const std::nothrow_t &) noexcept {
+    return ::operator new(size, std::nothrow);
+}
+
 void operator delete(void *pointer) noexcept { std::free(pointer); }
 
 void operator delete[](void *pointer) noexcept { std::free(pointer); }
@@ -143,6 +155,10 @@ void operator delete[](void *pointer) noexcept { std::free(pointer); }
 void operator delete(void *pointer, std::size_t) noexcept { std::free(pointer); }
 
 void operator delete[](void *pointer, std::size_t) noexcept { std::free(pointer); }
+
+void operator delete(void *pointer, const std::nothrow_t &) noexcept { std::free(pointer); }
+
+void operator delete[](void *pointer, const std::nothrow_t &) noexcept { std::free(pointer); }
 
 int main() {
     if (const auto result = exercise(true))

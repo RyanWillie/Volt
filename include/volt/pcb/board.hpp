@@ -29,11 +29,13 @@ class ResolvedBoardView;
 
 /** Ordered, structurally validated copper batch; publication is all-or-nothing. */
 struct CopperAppendSpec {
+    /** Candidate tracks and vias in the requested publication order. */
     std::vector<std::variant<BoardTrack, BoardVia>> primitives;
 };
 
 /** IDs allocated in the same order as a published copper batch. */
 struct CopperAppendResult {
+    /** Published typed identities in the original primitive order. */
     std::vector<std::variant<BoardTrackId, BoardViaId>> order;
 };
 

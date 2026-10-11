@@ -96,7 +96,8 @@ inline RouteJson route_snapshot(const RouteResult &result) {
             c["kind"] = "via";
             c["net"] = via.net().index();
             c["layers"] = {via.start_layer().index(), via.end_layer().index()};
-            c["points"] = {route_point(via.position())};
+            c["points"] = RouteJson::array();
+            c["points"].push_back(route_point(via.position()));
             c["drill_mm"] = via.drill_diameter_mm();
             c["diameter_mm"] = via.annular_diameter_mm();
         }
