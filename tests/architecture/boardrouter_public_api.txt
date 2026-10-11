@@ -9,10 +9,12 @@ include <volt/pcb/footprints/footprints.hpp>
 include <volt/pcb/geometry/board_geometry.hpp>
 include <volt/pcb/resolution/board_resolution.hpp>
 include <volt/pcb/routing/board_spatial_index.hpp>
+include <volt/pcb/routing/route.hpp>
 
 BoardRouter(Board &board, ResolvedBoardView resolved)
 BoardRouter(Board &board, const BoardResolution &resolution)
 [[nodiscard]] BoardRouteParameters resolve_parameters(NetId net) const
+[[nodiscard]] RouteResult route(const RouteSpec &spec, RoutePolicy policy = RoutePolicy::Strict)
 [[nodiscard]] BoardTrackRouteResult add_track(BoardTrackRouteRequest request)
 [[nodiscard]] BoardRouteResult connect(const BoardRouteRequest &request)
 [[nodiscard]] BoardEscapeResult escape(ComponentId component)

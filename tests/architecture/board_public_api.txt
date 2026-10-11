@@ -4,8 +4,10 @@ include <cstddef>
 include <iterator>
 include <optional>
 include <string>
+include <string_view>
 include <type_traits>
 include <utility>
+include <variant>
 include <vector>
 include <volt/circuit/circuit.hpp>
 include <volt/core/diagnostics.hpp>
@@ -33,6 +35,7 @@ void set_capability_profile(BoardCapabilityProfile profile)
 [[nodiscard]] ComponentPlacementId place_component(ComponentPlacement placement)
 [[nodiscard]] BoardTrackId add_track(BoardTrack track)
 [[nodiscard]] BoardViaId add_via(BoardVia via)
+[[nodiscard]] CopperAppendResult append_copper(const CopperAppendSpec &spec)
 [[nodiscard]] BoardZoneId add_zone(BoardZone zone)
 [[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout)
 [[nodiscard]] BoardRoomId add_room(BoardRoom room)

@@ -965,6 +965,121 @@
           "python_type": "ProjectBundle"
         },
         {
+          "cpp_type": "RoutePoint",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RoutePoint"
+        },
+        {
+          "cpp_type": "RouteNetRef",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteNetRef"
+        },
+        {
+          "cpp_type": "RouteLayerRef",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteLayerRef"
+        },
+        {
+          "cpp_type": "RoutePad",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RoutePad"
+        },
+        {
+          "cpp_type": "RouteViaRef",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteViaRef"
+        },
+        {
+          "cpp_type": "RouteTrackRef",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteTrackRef"
+        },
+        {
+          "cpp_type": "RouteThrough",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteThrough"
+        },
+        {
+          "cpp_type": "RouteTo",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteTo"
+        },
+        {
+          "cpp_type": "RouteToX",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteToX"
+        },
+        {
+          "cpp_type": "RouteToY",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteToY"
+        },
+        {
+          "cpp_type": "RouteVia",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteVia"
+        },
+        {
+          "cpp_type": "RouteViaOverride",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteViaOverride"
+        },
+        {
+          "cpp_type": "RouteSpec",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteSpec"
+        },
+        {
+          "cpp_type": "RouteRuleSource",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteRuleSource"
+        },
+        {
+          "cpp_type": "RouteRuleValue",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteRuleValue"
+        },
+        {
+          "cpp_type": "RoutePrimitiveRules",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RoutePrimitiveRules"
+        },
+        {
+          "cpp_type": "RouteLayerRules",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteLayerRules"
+        },
+        {
+          "cpp_type": "RouteCandidate",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteCandidate"
+        },
+        {
+          "cpp_type": "RouteResolvedStep",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteResolvedStep"
+        },
+        {
+          "cpp_type": "RouteFailure",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteFailure"
+        },
+        {
+          "cpp_type": "RouteBlocker",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteBlocker"
+        },
+        {
+          "cpp_type": "RouteClearanceCheck",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteClearanceCheck"
+        },
+        {
+          "cpp_type": "RouteResult",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteResult"
+        },
+        {
           "cpp_type": "PySchematicDocument",
           "path": "src/python/schematic_bindings.cpp",
           "python_type": "SchematicDocument"
@@ -1103,15 +1218,15 @@
       "cpp_api_snapshots": {
         "Board": {
           "path": "tests/architecture/board_public_api.txt",
-          "sha256": "9714b17af646a0459edd1a4cb5104565d47e626962374878da57d8ad7357b603"
+          "sha256": "79e3f3aa1879befab37e1e5cd670b5d8df2530f00c00df69cececb02d762fa2a"
         },
         "BoardRouter": {
           "path": "tests/architecture/boardrouter_public_api.txt",
-          "sha256": "df6b1e4cfe49f96b74cb12a828179b2c356699415467d404efb82f9ad7075173"
+          "sha256": "22d2282dd9cc557335ccbc34d294d423e6963b19e1603a13bc918b38b11d2b24"
         },
         "BoardSpatialIndex": {
           "path": "tests/architecture/boardspatialindex_public_api.txt",
-          "sha256": "2941b4364600797097c432772279c6dd2cec812f500a200ab1219facb4f0dd40"
+          "sha256": "8a42ecb1b2fc801158f91dfb1fa69331f840fe99d3edd566bc3413cbb0b41517"
         },
         "Circuit": {
           "path": "tests/architecture/circuit_public_api.txt",
@@ -1180,6 +1295,7 @@
         "ContractDirectedRelation",
         "ContractFramedPin",
         "ContractSupplyDomain",
+        "CornerStyle",
         "CrossReferenceError",
         "Cutout",
         "DIAGNOSTIC_CATEGORIES",
@@ -1310,6 +1426,21 @@
         "Quantity",
         "QuantityRange",
         "ResistanceElement",
+        "RouteError",
+        "RouteFailureKind",
+        "RoutePoint",
+        "RoutePolicy",
+        "RouteResult",
+        "RouteRuleField",
+        "RouteRuleSourceKind",
+        "RouteSpec",
+        "RouteThrough",
+        "RouteTo",
+        "RouteToX",
+        "RouteToY",
+        "RouteTrackEnd",
+        "RouteVia",
+        "RouteViaOverride",
         "Schematic",
         "SchematicAnchor",
         "SchematicBlockPinSpec",

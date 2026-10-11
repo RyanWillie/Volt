@@ -937,9 +937,11 @@ class Board:
         return self._native.route_pad(placement, pad)
 
     def route_via(self, via: int):
+        """Reference an existing via with its native Board ownership intact."""
         return _volt.RouteViaRef(self._native, via)
 
     def route_track_end(self, track: int, end=RouteTrackEnd.LAST):
+        """Reference the first or last vertex of an existing native track."""
         return _volt.RouteTrackRef(self._native, track, end)
 
     def route_spec(self, *, start, layer, steps, net=None, width=None, via_size=None):
