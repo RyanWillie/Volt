@@ -16,6 +16,12 @@ domain-separates compilation provenance from V1. Existing physical, capability
 and selected-part payload grammars are unchanged and remain independently
 versioned.
 
+The post-materialization compiler check also compares every net's reporting-only
+module-origin status with the native source query, protecting parent-net labels.
+The private friend-gated continuity constructor restores only an immutable derived
+query. It does not restore module hierarchy or expose restoration/mutation on
+`Circuit`; it is intentionally unavailable to ordinary callers.
+
 Use a `CompiledBoard` consumer or `compiled.view()` for exact-revision physical
 queries. The closed resolved view supplies the preserved historical continuity
 to ratsnest, copper validation, SVG and spatial legality queries. Reconstructing
@@ -35,6 +41,13 @@ returns no value for V1, even for apparently flat artifacts; no partition is
 inferred and no silent upgrade occurs. Consumers requiring preserved continuity
 must request explicit recompilation from complete source inputs. Unsupported or
 mixed schema/compiler contracts reject.
+
+DRC on a V1 artifact (including `compiled.view()`) emits one
+`PCB_LOGICAL_CONTINUITY_UNAVAILABLE` warning. Its ratsnest and copper-clearance
+queries retain legacy flattened-net behavior, not authoritative source continuity.
+Recompile from complete source inputs for those checks; ordinary exports remain
+available. The logical-dependency digest API requires an explicit schema version
+so historical callers cannot silently select the current grammar.
 
 ProjectBundle's independently versioned outer schema is unchanged. Its compiled-board
 descriptor records the actual V1 or V2 payload contract and must match the verified

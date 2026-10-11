@@ -326,6 +326,7 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
               "PCB_KEEPOUT_VIA_VIOLATION",
               "PCB_KEEPOUT_PLACEMENT_VIOLATION",
               "PCB_NET_UNROUTED",
+              "PCB_LOGICAL_CONTINUITY_UNAVAILABLE",
               "PCB_TRACK_WIDTH_BELOW_NET_CLASS",
               "PCB_VIA_DRILL_BELOW_NET_CLASS",
               "PCB_VIA_DIAMETER_BELOW_NET_CLASS",

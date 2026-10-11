@@ -33,9 +33,9 @@ namespace volt::io {
 [[nodiscard]] std::string write_compiled_board(const CompiledBoard &compiled);
 
 /** Derive the exact versioned logical closure digest without upgrading a historical artifact. */
-[[nodiscard]] ContentHash compiled_board_logical_dependency_digest(
-    const Circuit &circuit,
-    CompiledBoardSchemaVersion schema_version = CompiledBoardSchemaVersion::V2);
+[[nodiscard]] ContentHash
+compiled_board_logical_dependency_digest(const Circuit &circuit,
+                                         CompiledBoardSchemaVersion schema_version);
 
 /** Fail-closed reopen of one standalone immutable CompiledBoard archive. */
 [[nodiscard]] CompiledBoard open_compiled_board(std::string_view bytes);

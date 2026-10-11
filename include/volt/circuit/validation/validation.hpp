@@ -52,6 +52,8 @@ class NetContinuityView {
     [[nodiscard]] bool is_module_origin_net(NetId net) const;
 
   private:
+    // Only the immutable artifact may construct this derived query from verified data.
+    // This does not restore hierarchy or add mutation/restoration APIs to Circuit.
     friend CompiledBoard;
 
     NetContinuityView(const Circuit &circuit, const std::vector<std::vector<NetId>> &partition,

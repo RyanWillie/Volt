@@ -543,14 +543,6 @@ struct BoardMechanicalClearanceCheck {
 
 [[nodiscard]] double maximum_required_copper_clearance(const Board &board);
 
-[[nodiscard]] BoardCopperClearanceCheck check_copper_clearance(const Board &board,
-                                                               const BoardCopperShape &lhs,
-                                                               const BoardCopperShape &rhs);
-
-[[nodiscard]] BoardCopperClearanceCheck
-check_copper_clearance(const Board &board, const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
-                       const BoardCopperShape &rhs, BoardClearanceKind rhs_kind);
-
 [[nodiscard]] BoardCopperClearanceCheck
 check_copper_clearance(const Board &board, const NetContinuityView &continuity,
                        const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,

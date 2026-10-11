@@ -1,6 +1,7 @@
 #include <volt/circuit/validation/validation.hpp>
 
 #include <algorithm>
+#include <limits>
 #include <map>
 #include <string>
 #include <string_view>
@@ -109,8 +110,9 @@ NetContinuityView::NetContinuityView(const Circuit &circuit) {
 NetContinuityView::NetContinuityView(const Circuit &circuit,
                                      const std::vector<std::vector<NetId>> &partition,
                                      const std::vector<NetId> &module_origin_nets)
-    : parent_(circuit.all<NetId>().size(), circuit.all<NetId>().size()),
+    : parent_(circuit.all<NetId>().size(), std::numeric_limits<std::size_t>::max()),
       module_origin_nets_(circuit.all<NetId>().size(), false) {
+    constexpr auto unmapped = std::numeric_limits<std::size_t>::max();
     auto previous_minimum = std::optional<NetId>{};
     for (const auto &group : partition) {
         if (group.empty() ||
@@ -123,7 +125,7 @@ NetContinuityView::NetContinuityView(const Circuit &circuit,
         for (const auto net : group) {
             if (net.index() >= parent_.size() ||
                 (previous_member.has_value() && net.index() <= previous_member->index()) ||
-                parent_[net.index()] != parent_.size()) {
+                parent_[net.index()] != unmapped) {
                 throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
                                           "CompiledBoard continuity has invalid or repeated nets"};
             }
@@ -132,7 +134,7 @@ NetContinuityView::NetContinuityView(const Circuit &circuit,
         }
     }
     for (const auto parent : parent_) {
-        if (parent == parent_.size()) {
+        if (parent == unmapped) {
             throw KernelArgumentError{ErrorCode::CrossReferenceViolation,
                                       "CompiledBoard continuity does not cover every logical net"};
         }

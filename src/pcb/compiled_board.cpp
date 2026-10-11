@@ -297,8 +297,13 @@ const ResolvedBoardPart *CompiledBoard::part(ComponentId component) const noexce
 ResolvedBoardView CompiledBoard::view() const & { return ResolvedBoardView::from(*this); }
 
 ResolvedBoardView ResolvedBoardView::from(const CompiledBoard &compiled) {
-    return ResolvedBoardView{compiled.board(), compiled.footprints(), compiled.parts(), true,
-                             compiled.storage_->continuity_};
+    return ResolvedBoardView{compiled.board(),
+                             compiled.footprints(),
+                             compiled.parts(),
+                             true,
+                             compiled.storage_->continuity_,
+                             compiled.provenance().schema_version() ==
+                                 CompiledBoardSchemaVersion::V2};
 }
 
 std::span<const PadResolution> CompiledBoard::pad_resolutions() const noexcept {

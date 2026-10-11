@@ -481,6 +481,9 @@ TEST_CASE("CompiledBoard V2 preserves chained hierarchical continuity for every 
         const auto resolution = volt::io::resolve_board(
             authored.board, bundle, volt::BoardResolutionCapabilities{profile()});
         const auto live = resolution.view();
+        CHECK(live.has_complete_logical_continuity());
+        CHECK(live.logical_continuity().is_module_origin_net(volt::NetId{0}));
+        CHECK_FALSE(live.logical_continuity().is_module_origin_net(hierarchy.parent));
         expected_partition = live.logical_continuity().partition();
         REQUIRE(expected_partition ==
                 std::vector<std::vector<volt::NetId>>{
@@ -511,6 +514,7 @@ TEST_CASE("CompiledBoard V2 preserves chained hierarchical continuity for every 
         CHECK(compiled.provenance().schema_version() == volt::CompiledBoardSchemaVersion::V2);
         CHECK(compiled.provenance().compiler_version() == volt::CompiledBoardCompilerVersion::V2);
         CHECK(compiled.logical_continuity_partition() == expected_partition);
+        CHECK(compiled.view().has_complete_logical_continuity());
         CHECK(compiled.board().circuit().all<volt::PortBindingId>().size() == 0U);
         CHECK(compiled.board().circuit().all<volt::ModuleInstanceId>().size() == 0U);
         CHECK(ratsnest_signature(volt::compute_ratsnest(compiled).edges()) == expected_edges);
@@ -524,6 +528,7 @@ TEST_CASE("CompiledBoard V2 preserves chained hierarchical continuity for every 
     // Every original Circuit, resolver, selected bundle and fresh artifact is now unavailable.
     const auto reopened = volt::io::open_compiled_board(archived);
     CHECK(reopened.logical_continuity_partition() == expected_partition);
+    CHECK(reopened.view().has_complete_logical_continuity());
     CHECK(ratsnest_signature(volt::compute_ratsnest(reopened).edges()) == expected_edges);
     CHECK(diagnostic_signature(volt::validate_board(reopened).diagnostics()) ==
           expected_diagnostics);
@@ -650,6 +655,35 @@ TEST_CASE("CompiledBoard V2 structurally rejects malformed partitions and versio
     missing_logical->payload = missing_wrapper.dump();
     refresh_logical_provenance(missing, *missing_logical);
     CHECK_THROWS_AS(volt::io::open_compiled_board(encode_archive(missing)), volt::KernelLogicError);
+
+    auto foreign_origin = decode_archive(canonical);
+    auto origin_logical =
+        std::ranges::find(foreign_origin.entries, "snapshots/logical.json", &ArchiveEntry::path);
+    REQUIRE(origin_logical != foreign_origin.entries.end());
+    auto origin_wrapper = Json::parse(origin_logical->payload);
+    REQUIRE_FALSE(origin_wrapper["net_origins"].empty());
+    origin_wrapper["net_origins"][0]["net"] = "net:99";
+    origin_logical->payload = origin_wrapper.dump();
+    refresh_logical_provenance(foreign_origin, *origin_logical);
+    try {
+        static_cast<void>(volt::io::open_compiled_board(encode_archive(foreign_origin)));
+        FAIL("foreign net origin was accepted");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::CrossReferenceViolation);
+    }
+
+    auto legacy_with_partition = decode_archive(canonical);
+    legacy_with_partition.manifest["schema_version"] = 1U;
+    legacy_with_partition.manifest["compiler_version"] = 1U;
+    auto legacy_logical = std::ranges::find(legacy_with_partition.entries, "snapshots/logical.json",
+                                            &ArchiveEntry::path);
+    REQUIRE(legacy_logical != legacy_with_partition.entries.end());
+    auto legacy_wrapper = Json::parse(legacy_logical->payload);
+    legacy_wrapper["schema_version"] = 1U;
+    legacy_logical->payload = legacy_wrapper.dump();
+    refresh_logical_provenance(legacy_with_partition, *legacy_logical);
+    CHECK_THROWS_AS(volt::io::open_compiled_board(encode_archive(legacy_with_partition)),
+                    volt::KernelError);
 }
 
 TEST_CASE("CompiledBoard V1 remains byte-preserving and exportable without inferred continuity") {
@@ -674,6 +708,17 @@ TEST_CASE("CompiledBoard V1 remains byte-preserving and exportable without infer
     const auto reopened = volt::io::open_compiled_board(legacy_bytes);
     CHECK(reopened.provenance().schema_version() == volt::CompiledBoardSchemaVersion::V1);
     CHECK_FALSE(reopened.logical_continuity_partition().has_value());
+    CHECK_FALSE(reopened.view().has_complete_logical_continuity());
+    const auto validation = volt::validate_board(reopened);
+    const auto &report = validation.diagnostics();
+    CHECK(std::ranges::count_if(report.diagnostics(), [](const auto &diagnostic) {
+              return diagnostic.code().value() == "PCB_LOGICAL_CONTINUITY_UNAVAILABLE" &&
+                     diagnostic.severity() == volt::Severity::Warning;
+          }) == 1);
+    CHECK_FALSE(has_diagnostic(volt::validate_board(compiled).diagnostics(),
+                               "PCB_LOGICAL_CONTINUITY_UNAVAILABLE"));
+    CHECK(diagnostic_signature(volt::validate_board(reopened.view())) ==
+          diagnostic_signature(report));
     CHECK(volt::io::write_compiled_board(reopened) == legacy_bytes);
     CHECK_FALSE(reopened.identity() == compiled.identity());
     CHECK(volt::compute_ratsnest(reopened).edges().size() == 3U);
@@ -684,7 +729,8 @@ TEST_CASE("CompiledBoard V1 remains byte-preserving and exportable without infer
     CHECK(volt::io::compiled_board_logical_dependency_digest(
               *hierarchy.authored.circuit, volt::CompiledBoardSchemaVersion::V1) ==
           reopened.provenance().logical_dependency_digest());
-    CHECK(volt::io::compiled_board_logical_dependency_digest(*hierarchy.authored.circuit) ==
+    CHECK(volt::io::compiled_board_logical_dependency_digest(
+              *hierarchy.authored.circuit, volt::CompiledBoardSchemaVersion::V2) ==
           compiled.provenance().logical_dependency_digest());
     auto builder = volt::test::project_bundle_v2::project_builder();
     const auto scene = volt::prepare_board_scene(reopened);
