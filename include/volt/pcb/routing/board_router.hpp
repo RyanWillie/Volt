@@ -11,6 +11,7 @@
 #include <volt/pcb/geometry/board_geometry.hpp>
 #include <volt/pcb/resolution/board_resolution.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
+#include <volt/pcb/routing/route.hpp>
 
 namespace volt {
 
@@ -147,6 +148,11 @@ class BoardRouter {
 
     /** Resolve the copper sizing and allowed layers a net would route with. */
     [[nodiscard]] BoardRouteParameters resolve_parameters(NetId net) const;
+
+    /** Resolve, check and atomically publish one explicit route; Strict throws on design failure.
+     */
+    [[nodiscard]] RouteResult route(const RouteSpec &spec,
+                                    RoutePolicy policy = RoutePolicy::Strict);
 
     /** Commit one endpoint-aware routed track after resolving its existing logical net. */
     [[nodiscard]] BoardTrackRouteResult add_track(BoardTrackRouteRequest request);

@@ -206,11 +206,19 @@ BoardSpatialIndex::to_copper_shape(BoardSpatialQueryShape candidate) {
         std::move(candidate.points),
         candidate.radius_mm,
         std::nullopt,
+        candidate.clearance_kind,
     };
 }
 
 BoardSpatialIndex::BoardSpatialIndex(const Board &board)
     : BoardSpatialIndex{board, std::vector<detail::BoardCopperShape>{}} {}
+
+std::size_t BoardSpatialIndex::shape_count() const noexcept { return state().shapes.size(); }
+
+BoardSpatialObstacle BoardSpatialIndex::obstacle(std::size_t index) const {
+    const auto &shape = state().shapes.at(index);
+    return {shape.net, detail::shape_clearance_kind(shape), shape.primary_entities, shape.pad};
+}
 
 BoardSpatialIndex::BoardSpatialIndex(const ResolvedBoardView &resolved)
     : BoardSpatialIndex{resolved.board(),
@@ -510,6 +518,11 @@ BoardSpatialIndex::query_legality(const detail::BoardCopperShape &candidate,
         const auto check =
             detail::check_copper_clearance(*state().board, continuity, candidate, candidate_kind,
                                            obstacle, detail::shape_clearance_kind(obstacle));
+        if (check.participates) {
+            result.clearance_checks.push_back({obstacle_index, *check.layer,
+                                               check.required_clearance_mm,
+                                               check.actual_clearance_mm, check.room});
+        }
         if (!check.violates) {
             continue;
         }

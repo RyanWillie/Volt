@@ -5,8 +5,10 @@
 #include <iterator>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
@@ -24,6 +26,16 @@ namespace volt {
 
 class Board;
 class ResolvedBoardView;
+
+/** Ordered, structurally validated copper batch; publication is all-or-nothing. */
+struct CopperAppendSpec {
+    std::vector<std::variant<BoardTrack, BoardVia>> primitives;
+};
+
+/** IDs allocated in the same order as a published copper batch. */
+struct CopperAppendResult {
+    std::vector<std::variant<BoardTrackId, BoardViaId>> order;
+};
 
 /// @cond
 namespace detail {
@@ -160,6 +172,9 @@ class Board {
 
     /** Add a routed copper via over an existing logical net and board copper layer span. */
     [[nodiscard]] BoardViaId add_via(BoardVia via);
+
+    /** Append a complete copper batch atomically without imposing design-rule policy. */
+    [[nodiscard]] CopperAppendResult append_copper(const CopperAppendSpec &spec);
 
     /** Add a copper zone over existing board copper layers and optional existing net. */
     [[nodiscard]] BoardZoneId add_zone(BoardZone zone);
@@ -490,6 +505,8 @@ struct BoardCopperShape {
     double radius_mm;
     /** Source pad, when this shape came from a placed footprint pad. */
     std::optional<BoardPadShapeKey> pad;
+    /** Explicit category retained by transient spatial obstacles without canonical IDs. */
+    std::optional<BoardClearanceKind> clearance_kind = std::nullopt;
 };
 
 /** Exact shared copper-clearance predicate result. */
@@ -538,6 +555,7 @@ struct BoardMechanicalClearanceCheck {
 [[nodiscard]] bool layers_overlap(const BoardCopperShape &lhs, const BoardCopperShape &rhs);
 
 [[nodiscard]] BoardClearanceKind shape_clearance_kind(const BoardCopperShape &shape);
+[[nodiscard]] std::string_view clearance_kind_name(BoardClearanceKind kind);
 
 [[nodiscard]] std::string clearance_pair_message(BoardClearanceKind lhs, BoardClearanceKind rhs);
 

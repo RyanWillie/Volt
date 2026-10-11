@@ -624,6 +624,9 @@ collect_copper_shapes(const ResolvedBoardView &resolved,
 }
 
 [[nodiscard]] BoardClearanceKind shape_clearance_kind(const BoardCopperShape &shape) {
+    if (shape.clearance_kind.has_value()) {
+        return *shape.clearance_kind;
+    }
     if (shape.pad.has_value() || shape_has_entity_kind(shape, EntityKind::FootprintPad)) {
         return BoardClearanceKind::Pad;
     }

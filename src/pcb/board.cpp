@@ -109,6 +109,47 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
     return id;
 }
 
+CopperAppendResult Board::append_copper(const CopperAppendSpec &spec) {
+    static_assert(std::is_nothrow_move_assignable_v<decltype(copper_.tracks)>);
+    static_assert(std::is_nothrow_move_assignable_v<decltype(copper_.vias)>);
+    static_assert(std::is_nothrow_move_constructible_v<CopperAppendResult>);
+    for (const auto &primitive : spec.primitives) {
+        std::visit(
+            [this](const auto &value) {
+                require_net(value.net());
+                if constexpr (std::same_as<std::decay_t<decltype(value)>, BoardTrack>) {
+                    require_copper_layer(value.layer());
+                } else {
+                    require_copper_layer(value.start_layer());
+                    require_copper_layer(value.end_layer());
+                }
+            },
+            primitive);
+    }
+    auto tracks = copper_.tracks;
+    auto vias = copper_.vias;
+    auto result = CopperAppendResult{};
+    result.order.reserve(spec.primitives.size());
+    for (const auto &primitive : spec.primitives) {
+        std::visit(
+            [&](const auto &value) {
+                if constexpr (std::same_as<std::decay_t<decltype(value)>, BoardTrack>) {
+                    result.order.emplace_back(tracks.insert(value));
+                } else {
+                    result.order.emplace_back(vias.insert(value));
+                }
+            },
+            primitive);
+    }
+    if (!spec.primitives.empty()) {
+        // Everything that can fail has completed. Publication and return are noexcept.
+        copper_.tracks = std::move(tracks);
+        copper_.vias = std::move(vias);
+        ++geometry_generation_;
+    }
+    return result;
+}
+
 [[nodiscard]] BoardZoneId Board::add_zone(BoardZone zone) {
     if (zone.net().has_value()) {
         require_net(zone.net().value());

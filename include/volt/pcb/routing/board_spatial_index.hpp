@@ -84,16 +84,36 @@ struct BoardSpatialBlocker {
                                          const BoardSpatialBlocker &rhs) = default;
 };
 
+/** One participating native copper pair, including legal checks for provenance. */
+struct BoardSpatialClearanceCheck {
+    std::size_t shape_index;
+    BoardLayerId layer;
+    double required_mm;
+    double actual_mm;
+    std::optional<BoardRoomId> room;
+    friend bool operator==(const BoardSpatialClearanceCheck &,
+                           const BoardSpatialClearanceCheck &) = default;
+};
+
 /** Complete routing-facing answer for a transient copper candidate. */
 struct BoardSpatialQueryResult {
     /** Whether the candidate satisfies copper, outline, mechanical, and keepout rules. */
     bool legal = true;
     /** Deterministically ordered blockers that made the candidate illegal. */
     std::vector<BoardSpatialBlocker> blockers;
+    std::vector<BoardSpatialClearanceCheck> clearance_checks;
 
     /** Return whether two query results are identical. */
     [[nodiscard]] friend bool operator==(const BoardSpatialQueryResult &lhs,
                                          const BoardSpatialQueryResult &rhs) = default;
+};
+
+/** Owned reporting identity for indexed copper; transient shapes have no fake entity IDs. */
+struct BoardSpatialObstacle {
+    NetId net;
+    BoardClearanceKind clearance_kind;
+    std::vector<EntityRef> entities;
+    std::optional<detail::BoardPadShapeKey> pad;
 };
 
 /**
@@ -128,6 +148,12 @@ class BoardSpatialIndex {
 
     /** Return the conservative board-wide copper-clearance bound used for pruning. */
     [[nodiscard]] double conservative_clearance_mm() const noexcept;
+
+    /** Number of normalized shapes, including staged transient insertions. */
+    [[nodiscard]] std::size_t shape_count() const noexcept;
+
+    /** Copy an indexed obstacle's identity while the index is alive. */
+    [[nodiscard]] BoardSpatialObstacle obstacle(std::size_t index) const;
 
     /** Insert one accepted transient shape so later queries see it. */
     void insert(BoardSpatialQueryShape shape);

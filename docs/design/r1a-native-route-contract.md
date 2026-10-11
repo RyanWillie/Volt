@@ -1,6 +1,6 @@
 # R1a: Native explicit-route contract
 
-Status: **proposed for maintainer review; not approved for implementation**.
+Status: **bounded implementation approved by the maintainer on 2026-10-11**.
 
 Date: 2026-10-09. Source baseline: `c43c9f0d` (main after #394/#395).
 Tracking: [#382](https://github.com/RyanWillie/Volt/issues/382), under
@@ -8,8 +8,8 @@ Tracking: [#382](https://github.com/RyanWillie/Volt/issues/382), under
 
 This is the bounded repository proposal extracted from the amended, local-only
 2026-10-04 R1 draft. It does not adopt that draft's full R1–R5 program or declare
-any issue ready. All decisions below, including Report behavior and atomic storage
-publication, require maintainer approval before implementation dispatch.
+any issue ready. The maintainer explicitly dispatched #382 after #396/#397 merged,
+approving the bounded no-violation Report policy and staged atomic publication.
 
 ## 1. Scope and ownership
 
@@ -41,7 +41,9 @@ logical API conflict; it consumes the existing read-only Circuit boundary.
 
 ## 2. Request grammar
 
-The following is a proposed typed value schema, not existing API documentation.
+The following is the reviewed typed value schema. Native declarations live in
+[`route.hpp`](../../include/volt/pcb/routing/route.hpp); `std::optional` sizing values
+represent Inherit (absent) or Override (present).
 `BoardRouter::route(const RouteSpec&, RoutePolicy = Strict) -> RouteResult` is the
 single synchronous entry point. The router does not retain the request or publish
 an externally committable plan. Authoring inputs must not mutate concurrently.
@@ -73,7 +75,8 @@ RoutePolicy = Strict | Report
 ```
 
 Exactly one `To` terminates the request and must be its last step. `Through`
-continues; axis steps use literal board coordinates in R1a. `Via` is at the
+continues; axis steps use literal board coordinates in R1a. Consecutive ToX/ToY
+legs stay separate with a sharp axis-axis corner; no Chamfer45 is inherited. `Via` is at the
 current point, changes the active layer, and adds no lateral motion. No per-step
 width or via-size override is accepted in this slice. A corner policy describes
 each Through/To leg independently. Values are copied/const-consumed, with no
@@ -95,8 +98,11 @@ references also carry the actual immutable resolved footprint identity, checked
 against that placement's selected footprint before the local pad index is used.
 Numeric FootprintPadId alone cannot reveal a foreign pad's origin when both
 footprints have pad 0; the owner-bearing value must reject that case. The precise
-identity representation must reuse the native resolved footprint/part closure
-(not a new global ID registry), live through the call, and have a parity fixture.
+identity representation reuses a copied full native `FootprintDefinition` from
+`resolve_footprint`, checked by native full equality against the current selected
+closure before local pad lookup. Library/name alone is not identity: same-name,
+pad-0 definitions with different payloads are rejected, while identical definitions
+from independent resolution/view copies are accepted. No global ID registry is used.
 Pad IDs must belong to that footprint. A Pad endpoint resolves position/net from native
 physical truth; the caller cannot supply a competing position. A Via resolves its
 centre/net/span; TrackEnd resolves the first/last stored vertex, net and layer.
@@ -109,8 +115,12 @@ the existing routed-track net-resolution contract, not name comparison, continui
 group inference or net merging. Shared native DRC may exempt same-continuity-group
 copper from clearance; that exemption does not make conflicting endpoint IDs a
 valid request or change which single net the route implements.
-At least one connected endpoint or an explicit net is required. Unconnected pads,
-ambiguous inference and conflicting endpoint groups are structural request errors.
+At least one connected endpoint or an explicit net is required. Missing net evidence
+from point-only requests and conflicting endpoint NetIds are structural request
+errors. An otherwise valid unconnected pad is an `EndpointUnreachable` design
+rejection, including when no net can be inferred: Strict throws `RouteRejected`;
+Report returns the uncommitted result. This incorporates the P1 amendment from
+the #396 inline review and preserves the structural-versus-design boundary.
 A Point contributes no net evidence; it is not proof of contact with a pad.
 
 Missing physical closure for an otherwise valid placement is `EndpointUnreachable`
@@ -244,7 +254,7 @@ Non-numeric keepout conditions use a typed constraint source, not fake distances
 | Design failure/blocker, complete candidate | throw RouteRejected with result | return uncommitted result | none |
 | Absent/partial/unresolvable candidate | throw RouteRejected with result | return uncommitted result | none |
 
-**Proposed first-slice policy:** no violating commit, acknowledgement string,
+**First-slice policy:** no violating commit, acknowledgement string,
 eligible-violation list or suppression API. Report differs only in returning
 design rejections instead of throwing them; it is not a dry-run mode for legal
 routes. This deliberately narrows the broad draft's acknowledgement option and
@@ -393,12 +403,49 @@ and consumer rewrites belong in #384.
   No Python routing/rule/rejection arithmetic is added. Existing helpers stay
   unchanged until the separately approved #384 cutover.
 
-This spec PR is documentation-only. Tests above are obligations for the future
-implementation, not tests claimed to have run. Approval should explicitly settle
-Report's no-violation policy, native corner convention, owner-bearing request
-values, preserved room-clearance semantics and the staged atomic append tradeoff.
+The implementation adds native corner/identity/rule/legality tests, an allocation
+fault sweep for direct mixed batches and full routes, and direct C++ Strict / thin
+Python exception-and-report parity. Test execution evidence belongs in the
+implementation PR; this contract alone is not a claim that verification passed.
+Report's no-violation policy, native corner convention, owner-bearing requests,
+preserved room rules and the staged atomic append tradeoff remain the bounded scope.
 
 ## 9. Inspected baseline references
+
+### Minimal bound invocation
+
+The existing fluent layout helpers are unchanged. The bounded native surface can
+be called directly without a persistent routing session:
+
+```python
+request = board.route_spec(
+    net=board.route_net(signal),
+    start=volt.RoutePoint(10.0, 10.0),
+    layer=board.route_layer(front),
+    steps=(volt.RouteToX(15.0),
+           volt.RouteVia(board.route_layer(back)),
+           volt.RouteTo(volt.RoutePoint(25.0, 15.0))),
+)
+try:
+    result = board.route(request)  # Strict by default
+except volt.RouteError as error:
+    assert str(error) == error.result.message
+    assert not error.result.committed
+```
+
+`board.route_pad(placement_id, pad_id)` captures the native exact footprint
+definition. `board.route_via(via_id)` and `board.route_track_end(track_id,
+volt.RouteTrackEnd.FIRST)` capture owner-bearing existing copper identities.
+`board.route(request, volt.RoutePolicy.REPORT)` returns the same rejection payload
+without throwing; a complete legal result still commits. Requests and reports are
+read-only bound values; Python does not resolve corners, sizing, blockers or text.
+
+The staged append is O(existing tracks + vias + candidate) in work and memory.
+`pcb.route.atomic_allocations` records allocation bytes and timing at representative
+existing-copper counts in addition to sweeping preparation faults. These are local
+cost observations, not a persistent-session or throughput guarantee. A native
+success remains committed if Python later fails while materializing its result;
+unrelated resource exceptions are never translated into `RouteError`.
 
 - [BoardRouter declarations](../../include/volt/pcb/routing/board_router.hpp) and
   [implementation](../../src/pcb/routing/board_router.cpp): sizing, endpoint-aware

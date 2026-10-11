@@ -24,12 +24,16 @@ BoardRoomRuleResolver::track_width_override(const BoardTrack &track) const {
 }
 
 [[nodiscard]] double BoardRoomRuleResolver::effective_track_width_mm(
-    BoardLayerId layer, const std::vector<BoardPoint> &points, double base_width_mm) const {
+    BoardLayerId layer, const std::vector<BoardPoint> &points, double base_width_mm,
+    std::vector<RoomRuleValue> *applied) const {
     auto width_mm = base_width_mm;
     while (true) {
         const auto room_override = track_width_override(layer, points, width_mm);
         if (!room_override.has_value()) {
             return width_mm;
+        }
+        if (applied != nullptr) {
+            applied->push_back(*room_override);
         }
         if (room_override->value_mm <= width_mm + board_drc_epsilon) {
             return width_mm;

@@ -22,6 +22,22 @@ BoardEscapeResult = _volt.BoardEscapeResult
 BoardRouteResult = _volt.BoardRouteResult
 BoardSpatialBlocker = _volt.BoardSpatialBlocker
 BoardSpatialBlockerKind = _volt.BoardSpatialBlockerKind
+CornerStyle = _volt.CornerStyle
+RoutePolicy = _volt.RoutePolicy
+RouteError = _volt.RouteError
+RouteFailureKind = _volt.RouteFailureKind
+RouteRuleSourceKind = _volt.RouteRuleSourceKind
+RouteRuleField = _volt.RouteRuleField
+RoutePoint = _volt.RoutePoint
+RouteThrough = _volt.RouteThrough
+RouteTo = _volt.RouteTo
+RouteToX = _volt.RouteToX
+RouteToY = _volt.RouteToY
+RouteVia = _volt.RouteVia
+RouteViaOverride = _volt.RouteViaOverride
+RouteTrackEnd = _volt.RouteTrackEnd
+RouteSpec = _volt.RouteSpec
+RouteResult = _volt.RouteResult
 
 
 def _point(value, context: str) -> Point:
@@ -905,6 +921,34 @@ class Board:
             None if drill is None else float(drill),
             None if annular is None else float(annular),
         )
+
+    def route_layer(self, layer: int):
+        """Create an owner-bearing native route layer reference."""
+        return _volt.RouteLayerRef(self._native, _layer_index(layer))
+
+    def route_net(self, net: Net | int):
+        """Preserve the logical owner's identity for native route preflight."""
+        if isinstance(net, Net):
+            return _volt.RouteNetRef(net._design._circuit, net.index)
+        return _volt.RouteNetRef(self._design._circuit, _net_index(net))
+
+    def route_pad(self, placement: int, pad: int):
+        """Capture exact native footprint identity, not a caller-supplied position."""
+        return self._native.route_pad(placement, pad)
+
+    def route_via(self, via: int):
+        return _volt.RouteViaRef(self._native, via)
+
+    def route_track_end(self, track: int, end=RouteTrackEnd.LAST):
+        return _volt.RouteTrackRef(self._native, track, end)
+
+    def route_spec(self, *, start, layer, steps, net=None, width=None, via_size=None):
+        """Construct the bounded immutable native request; no geometry/rules run here."""
+        return RouteSpec(self._native, start, layer, list(steps), net, width, via_size)
+
+    def route(self, spec: RouteSpec, policy=RoutePolicy.STRICT) -> RouteResult:
+        """Natively plan, check and atomically append one explicit route."""
+        return self._native.route(spec, policy)
 
     def assisted_connect(
         self,
