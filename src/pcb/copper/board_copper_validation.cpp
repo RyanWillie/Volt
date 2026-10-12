@@ -521,6 +521,12 @@ void validate_unrouted_nets(const NetContinuityView &continuity,
 void validate_board_drc(const ResolvedBoardView &resolved,
                         const std::vector<PadResolution> &pad_resolutions,
                         DiagnosticReport &report) {
+    if (!resolved.has_complete_logical_continuity()) {
+        report.add(drc_warning(
+            drc_diagnostic_codes::LogicalContinuityUnavailable,
+            "CompiledBoard V1 lacks preserved source continuity; ratsnest and copper clearance "
+            "use flattened nets. Recompile from complete source inputs for authoritative checks."));
+    }
     const auto &board = resolved.board();
     const auto shapes = collect_copper_shapes(resolved, pad_resolutions);
     const auto continuity = resolved.logical_continuity();

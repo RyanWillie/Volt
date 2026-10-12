@@ -470,6 +470,12 @@
               <td><code>net</code>, then the two <code>component_placement</code>/<code>footprint_pad</code> endpoints.</td>
             </tr>
             <tr>
+              <td><code>PCB_LOGICAL_CONTINUITY_UNAVAILABLE</code></td>
+              <td class="severity-warning">Warning</td>
+              <td>A V1 compiled board lacks preserved source continuity. Ratsnest and copper-clearance checks use legacy flattened nets; recompile from complete source inputs for authoritative checks.</td>
+              <td>None; applies to the complete compiled board.</td>
+            </tr>
+            <tr>
               <td><code>PCB_KICAD_FAB_EXPORT_LOSS</code></td>
               <td class="severity-error">Error</td>
               <td>The KiCad PCB writer omitted a fab-critical Volt construct, so the generated <code>.kicad_pcb</code> is not complete enough for fabrication handoff.</td>

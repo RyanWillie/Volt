@@ -100,6 +100,8 @@ inline constexpr auto KeepoutViaViolation = std::string_view{"PCB_KEEPOUT_VIA_VI
 inline constexpr auto KeepoutPlacementViolation =
     std::string_view{"PCB_KEEPOUT_PLACEMENT_VIOLATION"};
 inline constexpr auto NetUnrouted = std::string_view{"PCB_NET_UNROUTED"};
+inline constexpr auto LogicalContinuityUnavailable =
+    std::string_view{"PCB_LOGICAL_CONTINUITY_UNAVAILABLE"};
 inline constexpr auto NetClassTrackWidthViolation =
     std::string_view{"PCB_TRACK_WIDTH_BELOW_NET_CLASS"};
 inline constexpr auto NetClassViaDrillViolation = std::string_view{"PCB_VIA_DRILL_BELOW_NET_CLASS"};
@@ -306,6 +308,7 @@ inline constexpr auto Drc = std::array{drc_diagnostic_codes::TrackWidthBelowMini
                                        drc_diagnostic_codes::KeepoutViaViolation,
                                        drc_diagnostic_codes::KeepoutPlacementViolation,
                                        drc_diagnostic_codes::NetUnrouted,
+                                       drc_diagnostic_codes::LogicalContinuityUnavailable,
                                        drc_diagnostic_codes::NetClassTrackWidthViolation,
                                        drc_diagnostic_codes::NetClassViaDrillViolation,
                                        drc_diagnostic_codes::NetClassViaDiameterViolation,

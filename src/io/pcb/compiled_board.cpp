@@ -1194,10 +1194,18 @@ CompiledBoardCompileResult compile_board(const Circuit &circuit, const Board &bo
     }
 
     auto artifact = open_compiled_board(archive_bytes);
-    require(artifact.logical_continuity_partition() ==
-                volt::detail::NetContinuityView{circuit}.partition(),
+    const auto source_continuity = volt::detail::NetContinuityView{circuit};
+    require(artifact.logical_continuity_partition() == source_continuity.partition(),
             "CompiledBoard continuity differs from the native source Circuit",
             ErrorCode::CrossReferenceViolation);
+    const auto compiled_continuity = artifact.view().logical_continuity();
+    for (std::size_t index = 0; index < circuit.all<NetId>().size(); ++index) {
+        const auto net = NetId{index};
+        require(source_continuity.is_module_origin_net(net) ==
+                    compiled_continuity.is_module_origin_net(net),
+                "CompiledBoard net origins differ from the native source Circuit",
+                ErrorCode::CrossReferenceViolation);
+    }
     diagnostics = design_diagnostics(circuit, selected_closure, artifact.view());
     return CompiledBoardCompileResult::success(std::move(artifact), std::move(diagnostics));
 }
@@ -1280,8 +1288,11 @@ template <typename Publisher>
         }
         for (const auto &origin :
              field(logical_json, "net_origins", "CompiledBoard logical snapshot")) {
-            module_origin_nets.push_back(
-                net_ids.at(string_field(origin, "net", "CompiledBoard net origin")));
+            const auto found =
+                net_ids.find(string_field(origin, "net", "CompiledBoard net origin"));
+            require(found != net_ids.end(), "CompiledBoard net origin contains a foreign net",
+                    ErrorCode::CrossReferenceViolation);
+            module_origin_nets.push_back(found->second);
         }
         logical_continuity_partition.emplace();
         for (const auto &group : partition) {

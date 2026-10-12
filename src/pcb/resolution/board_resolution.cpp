@@ -219,9 +219,11 @@ ResolvedBoardPart::ResolvedBoardPart(ComponentId component, LibraryPartRef refer
 
 ResolvedBoardView::ResolvedBoardView(const Board &board, const FootprintLibrary &footprints,
                                      std::span<const ResolvedBoardPart> parts, bool complete,
-                                     std::optional<detail::NetContinuityView> historical_continuity)
+                                     std::optional<detail::NetContinuityView> historical_continuity,
+                                     bool logical_continuity_complete)
     : board_{&board}, footprints_{footprints}, parts_{parts.begin(), parts.end()},
-      complete_{complete}, historical_continuity_{std::move(historical_continuity)} {
+      complete_{complete}, historical_continuity_{std::move(historical_continuity)},
+      logical_continuity_complete_{logical_continuity_complete} {
     require_current();
 }
 
@@ -229,6 +231,11 @@ detail::NetContinuityView ResolvedBoardView::logical_continuity() const {
     require_current();
     return historical_continuity_.has_value() ? *historical_continuity_
                                               : detail::NetContinuityView{board_->circuit()};
+}
+
+bool ResolvedBoardView::has_complete_logical_continuity() const {
+    require_current();
+    return logical_continuity_complete_;
 }
 
 ResolvedBoardView ResolvedBoardView::from(const BoardResolution &resolution) {

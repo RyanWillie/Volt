@@ -119,11 +119,14 @@ clearance_signature(const volt::detail::BoardCopperShape &lhs,
 [[nodiscard]] std::vector<ClearanceDiagnosticSignature>
 brute_force_clearance_signatures(const volt::Board &board) {
     const auto shapes = collect_board_shapes(board);
+    const auto continuity = resolved(board).logical_continuity();
     auto signatures = std::vector<ClearanceDiagnosticSignature>{};
     for (std::size_t lhs_index = 0; lhs_index < shapes.size(); ++lhs_index) {
         for (std::size_t rhs_index = lhs_index + 1U; rhs_index < shapes.size(); ++rhs_index) {
-            const auto check =
-                volt::detail::check_copper_clearance(board, shapes[lhs_index], shapes[rhs_index]);
+            const auto check = volt::detail::check_copper_clearance(
+                board, continuity, shapes[lhs_index],
+                volt::detail::shape_clearance_kind(shapes[lhs_index]), shapes[rhs_index],
+                volt::detail::shape_clearance_kind(shapes[rhs_index]));
             if (!check.violates) {
                 continue;
             }
