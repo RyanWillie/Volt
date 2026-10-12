@@ -477,7 +477,7 @@ struct SchemaInfo {
     case ArtifactKind::BoardModel:
         return {"volt.pcb", 3, "application/vnd.volt.pcb+json"};
     case ArtifactKind::CompiledBoard:
-        return {"volt.compiled-board", 1, "application/vnd.volt.compiled-board"};
+        return {"volt.compiled-board", 2, "application/vnd.volt.compiled-board"};
     case ArtifactKind::ComponentDefinition:
         return {std::string{logical_circuit_format_name()},
                 static_cast<std::uint32_t>(logical_circuit_format_version()),
@@ -542,6 +542,7 @@ struct DraftArtifact {
     std::vector<ArtifactRef> dependencies;
     ContentHash producer_build;
     bool required_default;
+    std::uint32_t schema_version;
 };
 
 struct LogicalInput {
@@ -941,7 +942,8 @@ ArtifactDescriptor::ArtifactDescriptor(ArtifactId id, ArtifactRole role, Artifac
     require(id_.kind() == kind_, "descriptor ID kind does not match descriptor kind");
     require(role_for_kind(kind_) == role_, "descriptor role does not match its closed kind");
     const auto schema = schema_for_kind(kind_);
-    require(schema_format_ == schema.format && schema_version_ == schema.version &&
+    require(schema_format_ == schema.format &&
+                detail::project_bundle_v2_supported_schema_version(kind_, schema_version_) &&
                 media_type_ == schema.media_type,
             "descriptor schema or media type does not match its closed kind",
             ErrorCode::InvalidArgument);
@@ -1227,10 +1229,10 @@ class ProjectArtifactGraph {
     [[nodiscard]] const Json &export_selection() const noexcept { return export_selection_; }
 
   private:
-    [[nodiscard]] const DraftArtifact &add_artifact(ArtifactId id, std::string bytes,
-                                                    std::vector<ArtifactRef> dependencies,
-                                                    ContentHash producer_build_value,
-                                                    bool required_default = true);
+    [[nodiscard]] const DraftArtifact &
+    add_artifact(ArtifactId id, std::string bytes, std::vector<ArtifactRef> dependencies,
+                 ContentHash producer_build_value, bool required_default = true,
+                 std::optional<std::uint32_t> schema_version = std::nullopt);
 
     void admit_library(const PartLibraryBundle &bundle);
 
@@ -1281,13 +1283,16 @@ class ProjectBundleBuilder::Storage {
 
 namespace {
 
-const DraftArtifact &ProjectArtifactGraph::add_artifact(ArtifactId id, std::string bytes,
-                                                        std::vector<ArtifactRef> dependencies,
-                                                        ContentHash producer_build_value,
-                                                        bool required_default) {
+const DraftArtifact &
+ProjectArtifactGraph::add_artifact(ArtifactId id, std::string bytes,
+                                   std::vector<ArtifactRef> dependencies,
+                                   ContentHash producer_build_value, bool required_default,
+                                   std::optional<std::uint32_t> schema_version) {
     normalize_dependencies(dependencies);
-    auto artifact = DraftArtifact{std::move(id), std::move(bytes), std::move(dependencies),
-                                  std::move(producer_build_value), required_default};
+    const auto actual_schema_version = schema_version.value_or(schema_for_kind(id.kind()).version);
+    auto artifact = DraftArtifact{std::move(id),           std::move(bytes),
+                                  std::move(dependencies), std::move(producer_build_value),
+                                  required_default,        actual_schema_version};
     const auto key = artifact_key(artifact.id);
     const auto [position, inserted] = artifacts_.emplace(key, std::move(artifact));
     require(inserted, "artifact identity is duplicated", ErrorCode::DuplicateName);
@@ -1652,7 +1657,8 @@ void ProjectArtifactGraph::accumulate_authoritative_artifacts(
         require(sha256_content_hash(board.compiled->logical_dependency_snapshot()) ==
                     board.compiled->provenance().logical_dependency_digest(),
                 "CompiledBoard logical dependency snapshot is stale");
-        require(compiled_board_logical_dependency_digest(*logical->second->circuit) ==
+        require(compiled_board_logical_dependency_digest(
+                    *logical->second->circuit, board.compiled->provenance().schema_version()) ==
                     board.compiled->provenance().logical_dependency_digest(),
                 "CompiledBoard does not match the current logical owner revision");
 
@@ -1700,7 +1706,8 @@ void ProjectArtifactGraph::accumulate_authoritative_artifacts(
             ArtifactId{ArtifactKind::CompiledBoard, board.compiled->identity()};
         const auto &compiled_artifact =
             add_artifact(compiled_id, std::string{board.compiled->bytes()},
-                         std::move(compiled_dependencies), sha256_content_hash(""));
+                         std::move(compiled_dependencies), sha256_content_hash(""), true,
+                         static_cast<std::uint32_t>(board.compiled->provenance().schema_version()));
         const auto compiled_ref = ref_for(compiled_artifact);
 
         normalize_dependencies(board_glbs);
@@ -1982,7 +1989,8 @@ void ProjectArtifactGraph::validate() {
         for (const auto &dependency : artifact.dependencies) {
             dependencies.push_back(artifact_ref_json(dependency));
         }
-        const auto schema = schema_for_kind(artifact.id.kind());
+        auto schema = schema_for_kind(artifact.id.kind());
+        schema.version = artifact.schema_version;
         required_identity_artifacts.push_back(
             Json{{"id", artifact_id_json(artifact.id)},
                  {"role", artifact_role_name(role_for_kind(artifact.id.kind()))},
@@ -2013,7 +2021,8 @@ void ProjectArtifactGraph::validate() {
     result->dependency_lock = dependency_lock;
     for (const auto &[unused, artifact] : artifacts) {
         static_cast<void>(unused);
-        const auto schema = schema_for_kind(artifact.id.kind());
+        auto schema = schema_for_kind(artifact.id.kind());
+        schema.version = artifact.schema_version;
         const auto path = artifact_path(artifact.id);
         const auto producer_build_value = library_producer_name(artifact.id.kind()) == producer_name
                                               ? build_id.content_hash()
@@ -2129,6 +2138,13 @@ ArtifactRole project_bundle_v2_role_for_kind(ArtifactKind kind) { return role_fo
 ProjectBundleV2SchemaInfo project_bundle_v2_schema_for_kind(ArtifactKind kind) {
     const auto schema = schema_for_kind(kind);
     return {schema.format, schema.version, schema.media_type};
+}
+
+bool project_bundle_v2_supported_schema_version(ArtifactKind kind, std::uint32_t version) {
+    if (kind == ArtifactKind::CompiledBoard) {
+        return version == 1U || version == 2U;
+    }
+    return version == schema_for_kind(kind).version;
 }
 
 std::string project_bundle_v2_producer_for_kind(ArtifactKind kind) {

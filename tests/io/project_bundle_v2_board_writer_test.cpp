@@ -32,6 +32,9 @@ TEST_CASE("ProjectBundle v2 derives one exact complete Board graph and rejects s
     const auto reopened_scenes = reopened_project.board_scenes();
     const auto reopened_compiled = reopened_scenes.front().compiled_board();
     CHECK(reopened_compiled.identity() == fixture.compiled.identity());
+    CHECK(reopened_compiled.model().provenance().schema_version() ==
+          volt::CompiledBoardSchemaVersion::V2);
+    CHECK(descriptor(bundle, volt::io::ArtifactKind::CompiledBoard).schema_version() == 2U);
     const auto manifest = Json::parse(bundle.manifest_bytes());
     auto kind_values = std::vector<std::string>{};
     for (const auto &artifact : manifest.at("artifacts")) {
@@ -108,4 +111,21 @@ TEST_CASE("ProjectBundle v2 derives one exact complete Board graph and rejects s
     stale_logical.add_board(volt::io::DesignKey{"main"}, fixture.board, fixture.compiled,
                             fixture.scene, fixture.bundle);
     CHECK_THROWS_AS(stale_logical.build(), volt::KernelError);
+}
+
+TEST_CASE(
+    "ProjectBundle rejects a supported CompiledBoard descriptor version that mismatches payload") {
+    const auto fixture = board_fixture();
+    const auto publication = board_builder(fixture).build();
+    const auto temporary = TempDirectory{};
+    const auto path = temporary.path() / "mismatched.volt";
+    publication.write(path);
+    auto manifest = OrderedJson::parse(read_bytes(path / "manifest.volt.json"));
+    for (auto &artifact : manifest.at("artifacts")) {
+        if (artifact.at("kind") == "compiled_board") {
+            artifact["schema"]["version"] = 1U;
+        }
+    }
+    reseal_manifest(path, manifest);
+    CHECK_THROWS_AS(volt::io::ProjectBundle::open(path), volt::io::ProjectBundleOpenError);
 }

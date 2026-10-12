@@ -41,7 +41,8 @@ int main() {
         return 1;
     }
     auto artifact = std::move(result).take_artifact();
-    if (volt::io::compiled_board_logical_dependency_digest(circuit) !=
+    if (volt::io::compiled_board_logical_dependency_digest(circuit,
+                                                           volt::CompiledBoardSchemaVersion::V2) !=
         artifact.provenance().logical_dependency_digest()) {
         return 1;
     }

@@ -695,10 +695,10 @@ required_copper_clearance(const Board &board, const BoardRoomRuleResolver &rooms
 }
 
 [[nodiscard]] BoardCopperClearanceCheck
-check_copper_clearance(const Board &board, const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
+check_copper_clearance(const Board &board, const NetContinuityView &continuity,
+                       const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
                        const BoardCopperShape &rhs, BoardClearanceKind rhs_kind) {
     auto result = BoardCopperClearanceCheck{};
-    const auto continuity = NetContinuityView{board.circuit()};
     if (continuity.same_group(lhs.net, rhs.net)) {
         return result;
     }
@@ -716,13 +716,6 @@ check_copper_clearance(const Board &board, const BoardCopperShape &lhs, BoardCle
     result.room = required.room;
     result.violates = result.actual_clearance_mm + board_drc_epsilon < result.required_clearance_mm;
     return result;
-}
-
-[[nodiscard]] BoardCopperClearanceCheck check_copper_clearance(const Board &board,
-                                                               const BoardCopperShape &lhs,
-                                                               const BoardCopperShape &rhs) {
-    return check_copper_clearance(board, lhs, shape_clearance_kind(lhs), rhs,
-                                  shape_clearance_kind(rhs));
 }
 
 [[nodiscard]] bool shape_violates_keepout(const BoardCopperShape &shape,

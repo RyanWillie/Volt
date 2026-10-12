@@ -273,6 +273,10 @@ void decode_compiled_and_scenes(ProjectBundleStorage &storage) {
         }
         try {
             auto model = std::make_unique<CompiledBoard>(open_compiled_board(artifact.bytes));
+            require(artifact.descriptor.schema_version() ==
+                        static_cast<std::uint32_t>(model->provenance().schema_version()),
+                    ProjectBundleOpenErrorCode::OwnershipViolation,
+                    "CompiledBoard descriptor schema disagrees with its payload contract");
             require(model->identity() ==
                             std::get<CompiledBoardIdentity>(artifact.descriptor.id().owner()) &&
                         write_compiled_board(*model) == artifact.bytes,
@@ -634,7 +638,8 @@ void verify_owner_graph(ProjectBundleStorage &storage, const LibraryDecoded &dec
                 ProjectBundleOpenErrorCode::OwnershipViolation,
                 "Board payload is not canonical for its exact CompiledBoard resolution");
         const auto &circuit = *storage.v2_circuits[board->circuit].model;
-        require(compiled_board_logical_dependency_digest(circuit) ==
+        require(compiled_board_logical_dependency_digest(
+                    circuit, compiled.model->provenance().schema_version()) ==
                     compiled.model->provenance().logical_dependency_digest(),
                 ProjectBundleOpenErrorCode::OwnershipViolation,
                 "CompiledBoard logical provenance disagrees with its reopened Circuit");

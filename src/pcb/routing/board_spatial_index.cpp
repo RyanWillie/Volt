@@ -216,6 +216,7 @@ BoardSpatialIndex::BoardSpatialIndex(const ResolvedBoardView &resolved)
     : BoardSpatialIndex{resolved.board(),
                         detail::collect_copper_shapes(resolved, queries::resolve_pads(resolved))} {
     mutable_state().selected_part_snapshot = selected_part_snapshot(state().board->circuit());
+    mutable_state().historical_continuity = resolved.historical_continuity_;
 }
 
 BoardSpatialIndex::BoardSpatialIndex(const Board &board,
@@ -501,11 +502,14 @@ BoardSpatialIndex::query_legality(const detail::BoardCopperShape &candidate,
     result.legal = true;
 
     const auto obstacles = candidate_obstacles(candidate);
+    const auto continuity = state().historical_continuity.has_value()
+                                ? *state().historical_continuity
+                                : detail::NetContinuityView{state().board->circuit()};
     for (const auto obstacle_index : obstacles) {
         const auto &obstacle = state().shapes[obstacle_index];
         const auto check =
-            detail::check_copper_clearance(*state().board, candidate, candidate_kind, obstacle,
-                                           detail::shape_clearance_kind(obstacle));
+            detail::check_copper_clearance(*state().board, continuity, candidate, candidate_kind,
+                                           obstacle, detail::shape_clearance_kind(obstacle));
         if (!check.violates) {
             continue;
         }

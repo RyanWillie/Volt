@@ -24,6 +24,7 @@ struct BoardSpatialIndexCell {
 
 struct BoardSpatialIndexState {
     const Board *board = nullptr;
+    std::optional<NetContinuityView> historical_continuity;
     std::optional<std::vector<std::optional<LibraryPartRef>>> selected_part_snapshot;
     std::vector<BoardCopperShape> shapes;
     std::vector<BoardMechanicalOpening> mechanical_openings;

@@ -18,11 +18,13 @@ namespace volt {
 /** Supported standalone CompiledBoard schema. */
 enum class CompiledBoardSchemaVersion : std::uint32_t {
     V1 = 1,
+    V2 = 2,
 };
 
 /** Supported native Board compilation contract. */
 enum class CompiledBoardCompilerVersion : std::uint32_t {
     V1 = 1,
+    V2 = 2,
 };
 
 /** Required closed capability input for one CompiledBoard revision. */
@@ -228,6 +230,10 @@ class CompiledBoard final {
     /** Return the explicit required capability snapshot. */
     [[nodiscard]] const CompiledBoardCapabilities &capabilities() const noexcept;
 
+    /** Return the preserved canonical logical partition; V1 explicitly lacks this closure fact. */
+    [[nodiscard]] std::optional<std::vector<std::vector<NetId>>>
+    logical_continuity_partition() const;
+
     /** Return the standalone resolved Board over artifact-owned logical storage. */
     [[nodiscard]] const Board &board() const noexcept;
 
@@ -267,6 +273,8 @@ class CompiledBoard final {
     [[nodiscard]] const ContentHash &content_digest() const && = delete;
 
   private:
+    friend class ResolvedBoardView;
+
     class Storage;
 
     explicit CompiledBoard(std::unique_ptr<Storage> storage);
@@ -275,7 +283,9 @@ class CompiledBoard final {
         Circuit logical_dependencies, const Board &board, ContentHash selected_closure_digest,
         FootprintLibrary footprints, std::vector<ResolvedBoardPart> parts,
         CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
-        std::string logical_dependency_snapshot, std::string physical_snapshot, std::string bytes);
+        std::string logical_dependency_snapshot, std::string physical_snapshot, std::string bytes,
+        std::optional<std::vector<std::vector<NetId>>> logical_continuity_partition,
+        std::vector<NetId> module_origin_nets);
 
     std::unique_ptr<Storage> storage_;
 };

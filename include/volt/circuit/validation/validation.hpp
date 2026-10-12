@@ -14,6 +14,8 @@
 
 namespace volt {
 
+class CompiledBoard;
+
 namespace detail {
 
 [[nodiscard]] bool is_no_connect_pin(const PinDefinition &definition);
@@ -43,12 +45,26 @@ class NetContinuityView {
     /** Return whether two nets are electrically continuous through module port bindings. */
     [[nodiscard]] bool same_group(NetId first, NetId second) const;
 
+    /** Return all concrete nets in canonical member and minimum-member group order. */
+    [[nodiscard]] std::vector<std::vector<NetId>> partition() const;
+
+    /** Return reporting-only module origin status for stable parent-net ratsnest labels. */
+    [[nodiscard]] bool is_module_origin_net(NetId net) const;
+
   private:
+    // Only the immutable artifact may construct this derived query from verified data.
+    // This does not restore hierarchy or add mutation/restoration APIs to Circuit.
+    friend CompiledBoard;
+
+    NetContinuityView(const Circuit &circuit, const std::vector<std::vector<NetId>> &partition,
+                      const std::vector<NetId> &module_origin_nets);
+
     [[nodiscard]] std::size_t find(std::size_t index) const;
 
     void join(NetId first, NetId second);
 
     std::vector<std::size_t> parent_;
+    std::vector<bool> module_origin_nets_;
 };
 
 void validate_pin_connection_requirements(const Circuit &circuit, DiagnosticReport &report);

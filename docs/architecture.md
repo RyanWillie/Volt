@@ -537,6 +537,12 @@ Kernel data should be mutated through explicit operations:
 This preserves invariants and gives future undo/redo, serialization, and Python bindings
 a narrow API surface.
 
+## CompiledBoard logical closure
+
+Standalone physical queries consume the immutable artifact through `CompiledBoard`
+or its closed resolved view. See [CompiledBoard format and continuity](compiled-board-format.md)
+for the V2 historical logical partition and explicit V1 compatibility boundary.
+
 ## Structural Error Taxonomy
 
 Structural rejections at migrated mutation boundaries throw typed kernel errors declared

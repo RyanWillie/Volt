@@ -211,7 +211,7 @@ project_footprint_geometries(const ResolvedBoardView &resolved) {
 }
 
 [[nodiscard]] std::vector<RatsnestEdge> ratsnest_edges(const ResolvedBoardView &resolved) {
-    return derive_ratsnest_edges(resolved.board().circuit(), resolve_pads(resolved));
+    return detail::derive_ratsnest_edges(resolved.logical_continuity(), resolve_pads(resolved));
 }
 
 [[nodiscard]] NetId resolve_board_route_net(const ResolvedBoardView &resolved,

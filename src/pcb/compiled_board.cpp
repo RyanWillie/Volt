@@ -121,14 +121,14 @@ class CompiledBoard::Storage {
     Storage(Circuit logical_dependencies, const Board &board, FootprintLibrary footprints,
             std::vector<ResolvedBoardPart> parts, CompiledBoardCapabilities capabilities,
             CompiledBoardProvenance provenance, std::string logical_dependency_snapshot,
-            std::string physical_snapshot, std::string bytes)
+            std::string physical_snapshot, std::string bytes, detail::NetContinuityView continuity)
         : parts_{std::move(parts)}, circuit_{std::move(logical_dependencies)},
           board_{copy_board_snapshot(board, circuit_)}, footprints_{std::move(footprints)},
           capabilities_{std::move(capabilities)}, provenance_{std::move(provenance)},
           identity_{board_.name(), provenance_.provenance_digest()},
           logical_dependency_snapshot_{std::move(logical_dependency_snapshot)},
           physical_snapshot_{std::move(physical_snapshot)}, bytes_{std::move(bytes)},
-          content_digest_{sha256_content_hash(bytes_)} {}
+          content_digest_{sha256_content_hash(bytes_)}, continuity_{std::move(continuity)} {}
 
     void finalize(const ResolvedBoardView &resolved) {
         pad_resolutions_ = queries::resolve_pads(resolved);
@@ -148,6 +148,7 @@ class CompiledBoard::Storage {
     std::string physical_snapshot_;
     std::string bytes_;
     ContentHash content_digest_;
+    detail::NetContinuityView continuity_;
 };
 
 CompiledBoardCapabilities::CompiledBoardCapabilities(BoardCapabilityProfile profile,
@@ -182,8 +183,10 @@ CompiledBoardProvenance::CompiledBoardProvenance(
       selected_closure_digest_{std::move(selected_closure_digest)},
       capability_digest_{std::move(capability_digest)},
       provenance_digest_{std::move(provenance_digest)} {
-    if (schema_version_ != CompiledBoardSchemaVersion::V1 ||
-        compiler_version_ != CompiledBoardCompilerVersion::V1) {
+    if (!((schema_version_ == CompiledBoardSchemaVersion::V1 &&
+           compiler_version_ == CompiledBoardCompilerVersion::V1) ||
+          (schema_version_ == CompiledBoardSchemaVersion::V2 &&
+           compiler_version_ == CompiledBoardCompilerVersion::V2))) {
         throw KernelArgumentError{ErrorCode::InvalidArgument,
                                   "CompiledBoard provenance version is unsupported"};
     }
@@ -221,7 +224,19 @@ CompiledBoard CompiledBoard::materialize_verified(
     Circuit logical_dependencies, const Board &board, ContentHash selected_closure_digest,
     FootprintLibrary footprints, std::vector<ResolvedBoardPart> parts,
     CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
-    std::string logical_dependency_snapshot, std::string physical_snapshot, std::string bytes) {
+    std::string logical_dependency_snapshot, std::string physical_snapshot, std::string bytes,
+    std::optional<std::vector<std::vector<NetId>>> logical_continuity_partition,
+    std::vector<NetId> module_origin_nets) {
+    if (logical_continuity_partition.has_value() !=
+        (provenance.schema_version() == CompiledBoardSchemaVersion::V2)) {
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "CompiledBoard continuity must match its schema contract"};
+    }
+    auto continuity =
+        logical_continuity_partition.has_value()
+            ? detail::NetContinuityView{logical_dependencies, *logical_continuity_partition,
+                                        module_origin_nets}
+            : detail::NetContinuityView{logical_dependencies};
     if (selected_closure_digest != provenance.selected_closure_digest()) {
         throw KernelLogicError{ErrorCode::CrossReferenceViolation,
                                "CompiledBoard resolution closure digest is inconsistent"};
@@ -239,7 +254,7 @@ CompiledBoard CompiledBoard::materialize_verified(
     auto result = CompiledBoard{std::make_unique<Storage>(
         std::move(logical_dependencies), board, std::move(footprints), std::move(parts),
         std::move(capabilities), std::move(provenance), std::move(logical_dependency_snapshot),
-        std::move(physical_snapshot), std::move(bytes))};
+        std::move(physical_snapshot), std::move(bytes), std::move(continuity))};
     result.storage_->finalize(result.view());
     return result;
 }
@@ -256,6 +271,13 @@ const CompiledBoardProvenance &CompiledBoard::provenance() const noexcept {
 
 const CompiledBoardCapabilities &CompiledBoard::capabilities() const noexcept {
     return storage_->capabilities_;
+}
+
+std::optional<std::vector<std::vector<NetId>>> CompiledBoard::logical_continuity_partition() const {
+    if (provenance().schema_version() == CompiledBoardSchemaVersion::V1) {
+        return std::nullopt;
+    }
+    return storage_->continuity_.partition();
 }
 
 const Board &CompiledBoard::board() const noexcept { return storage_->board_; }
@@ -275,7 +297,13 @@ const ResolvedBoardPart *CompiledBoard::part(ComponentId component) const noexce
 ResolvedBoardView CompiledBoard::view() const & { return ResolvedBoardView::from(*this); }
 
 ResolvedBoardView ResolvedBoardView::from(const CompiledBoard &compiled) {
-    return ResolvedBoardView{compiled.board(), compiled.footprints(), compiled.parts(), true};
+    return ResolvedBoardView{compiled.board(),
+                             compiled.footprints(),
+                             compiled.parts(),
+                             true,
+                             compiled.storage_->continuity_,
+                             compiled.provenance().schema_version() ==
+                                 CompiledBoardSchemaVersion::V2};
 }
 
 std::span<const PadResolution> CompiledBoard::pad_resolutions() const noexcept {
