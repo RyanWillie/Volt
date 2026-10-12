@@ -18,6 +18,8 @@ BoardSpatialIndex &operator=(BoardSpatialIndex &&other) noexcept
 explicit BoardSpatialIndex(const Board &&board) = delete
 explicit BoardSpatialIndex(const ResolvedBoardView &resolved)
 [[nodiscard]] double conservative_clearance_mm() const noexcept
+[[nodiscard]] std::size_t shape_count() const noexcept
+[[nodiscard]] BoardSpatialObstacle obstacle(std::size_t index) const
 void insert(BoardSpatialQueryShape shape)
 [[nodiscard]] std::vector<BoardSpatialCandidatePair> copper_clearance_candidates() const
 [[nodiscard]] std::vector<std::size_t> candidate_obstacles(const BoardSpatialQueryShape &candidate) const

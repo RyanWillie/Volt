@@ -84,16 +84,47 @@ struct BoardSpatialBlocker {
                                          const BoardSpatialBlocker &rhs) = default;
 };
 
+/** One participating native copper pair, including legal checks for provenance. */
+struct BoardSpatialClearanceCheck {
+    /** Normalized existing or staged obstacle ordinal. */
+    std::size_t shape_index;
+    /** Shared copper layer where the predicate participated. */
+    BoardLayerId layer;
+    /** Required native copper separation in millimeters. */
+    double required_mm;
+    /** Measured copper separation in millimeters. */
+    double actual_mm;
+    /** Room that supplied the native clearance override, if any. */
+    std::optional<BoardRoomId> room;
+    /** Return whether two participating checks are identical. */
+    friend bool operator==(const BoardSpatialClearanceCheck &,
+                           const BoardSpatialClearanceCheck &) = default;
+};
+
 /** Complete routing-facing answer for a transient copper candidate. */
 struct BoardSpatialQueryResult {
     /** Whether the candidate satisfies copper, outline, mechanical, and keepout rules. */
     bool legal = true;
     /** Deterministically ordered blockers that made the candidate illegal. */
     std::vector<BoardSpatialBlocker> blockers;
+    /** All participating native copper-clearance checks, including legal pairs. */
+    std::vector<BoardSpatialClearanceCheck> clearance_checks;
 
     /** Return whether two query results are identical. */
     [[nodiscard]] friend bool operator==(const BoardSpatialQueryResult &lhs,
                                          const BoardSpatialQueryResult &rhs) = default;
+};
+
+/** Owned reporting identity for indexed copper; transient shapes have no fake entity IDs. */
+struct BoardSpatialObstacle {
+    /** Actual existing logical net, including staged transient copper. */
+    NetId net;
+    /** Actual native primitive category used for pair-specific clearance. */
+    BoardClearanceKind clearance_kind;
+    /** Reporting-only board entity references; empty for staged copper. */
+    std::vector<EntityRef> entities;
+    /** Exact placed-pad reporting identity, when the obstacle is a pad. */
+    std::optional<detail::BoardPadShapeKey> pad;
 };
 
 /**
@@ -128,6 +159,12 @@ class BoardSpatialIndex {
 
     /** Return the conservative board-wide copper-clearance bound used for pruning. */
     [[nodiscard]] double conservative_clearance_mm() const noexcept;
+
+    /** Number of normalized shapes, including staged transient insertions. */
+    [[nodiscard]] std::size_t shape_count() const noexcept;
+
+    /** Copy an indexed obstacle's identity while the index is alive. */
+    [[nodiscard]] BoardSpatialObstacle obstacle(std::size_t index) const;
 
     /** Insert one accepted transient shape so later queries see it. */
     void insert(BoardSpatialQueryShape shape);

@@ -298,6 +298,22 @@ the compiled graph.
 | `volt.BoardRouteResult` | Read-only native result for one bounded assisted connection. |
 | `volt.BoardSpatialBlocker` | Read-only native obstacle record for a rejected route candidate. |
 | `volt.BoardSpatialBlockerKind` | Native enum identifying a route candidate blocker family. |
+| `volt.RouteSpec` | Copied native description of one explicit route for an existing logical net. |
+| `volt.RoutePoint` | Explicit finite board-coordinate endpoint. |
+| `volt.RouteThrough` | Continue through an endpoint using one native corner policy. |
+| `volt.RouteTo` | Required terminal endpoint and corner policy. |
+| `volt.RouteToX` | Literal board-X step, without inherited chamfering. |
+| `volt.RouteToY` | Literal board-Y step, without inherited chamfering. |
+| `volt.RouteVia` | Native via at the current point to an owner-bearing destination layer. |
+| `volt.RouteViaOverride` | Explicit native drill/outer-copper sizing pair. |
+| `volt.RouteTrackEnd` | First/last vertex selector for an existing track endpoint. |
+| `volt.CornerStyle` | Native `CHAMFER45`, horizontal-first `ORTHOGONAL`, or `DIRECT` corner policy. |
+| `volt.RoutePolicy` | `STRICT` throws design rejections; `REPORT` returns them. Both commit only complete legal routes. |
+| `volt.RouteResult` | Owned readonly candidate geometry, rule evidence, blockers, native message, and committed IDs. |
+| `volt.RouteFailureKind` | Typed native reason for an uncommitted design rejection. |
+| `volt.RouteRuleSourceKind` | Typed board, net-class, room, explicit-override, or keepout provenance. |
+| `volt.RouteRuleField` | Numeric sizing/clearance or allowed-layer field described by native provenance. |
+| `volt.RouteError` | Native `RouteRejected` translated to `RuntimeError` with identical `result` and message. |
 | `volt.BoardTwoPadComponent` | Fluent handle for placing a two-pad PCB footprint by local pad orientation. |
 | `volt.PlacedBoardComponent` | Rich handle returned by layout placement helpers. |
 | `volt.CapabilityProfile` | Ingested manufacturer capability snapshot with source and as-of provenance. |

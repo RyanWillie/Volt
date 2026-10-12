@@ -24,9 +24,10 @@ class BoardRoomRuleResolver {
     track_width_override(BoardLayerId layer, const std::vector<BoardPoint> &points,
                          double width_mm) const;
 
-    [[nodiscard]] double effective_track_width_mm(BoardLayerId layer,
-                                                  const std::vector<BoardPoint> &points,
-                                                  double base_width_mm) const;
+    [[nodiscard]] double
+    effective_track_width_mm(BoardLayerId layer, const std::vector<BoardPoint> &points,
+                             double base_width_mm,
+                             std::vector<RoomRuleValue> *applied = nullptr) const;
 
     [[nodiscard]] std::optional<RoomRuleValue>
     copper_clearance_override(const BoardCopperShape &lhs, const BoardCopperShape &rhs) const;

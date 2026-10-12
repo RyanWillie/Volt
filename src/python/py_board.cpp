@@ -422,6 +422,31 @@ volt::BoardEscapeResult PyBoard::escape(std::size_t component) {
     return router.escape(component_id(component));
 }
 
+volt::RouteResult PyBoard::route(const volt::RouteSpec &spec, volt::RoutePolicy policy) {
+    const auto resolution = resolve();
+    auto router = volt::BoardRouter{board_, resolution};
+    return router.route(spec, policy);
+}
+
+volt::RoutePad PyBoard::route_pad(std::size_t placement, std::size_t pad) const {
+    const auto id = volt::ComponentPlacementId{placement};
+    const auto &placed = board_.get(id);
+    const auto resolution = resolve();
+    const auto *part = resolution.part(placed.component());
+    if (part == nullptr) {
+        throw volt::KernelArgumentError{volt::ErrorCode::InvalidArgument,
+                                        "Cannot construct pad reference without physical identity"};
+    }
+    const auto footprint = volt::resolve_footprint(part->physical_part(), resolution.footprints());
+    if (footprint.definition() == nullptr) {
+        throw volt::KernelArgumentError{
+            volt::ErrorCode::InvalidArgument,
+            "Cannot construct pad reference without resolved footprint identity"};
+    }
+    // Full native definition identity; route() resolves position, connectivity and reachability.
+    return {&board_, id, *footprint.definition(), volt::FootprintPadId{pad}};
+}
+
 std::size_t PyBoard::add_zone(std::optional<std::size_t> net,
                               const std::vector<std::size_t> &layers,
                               const std::vector<std::pair<double, double>> &outline,

@@ -94,6 +94,8 @@ if(VOLT_ENABLE_COVERAGE)
     foreach(
         target
         volt_core_tests
+        volt_route_atomic_fixture
+        volt_route_parity_fixture
         volt_electrical_part_models_example
         volt_pcb_resolution_link_contract
         volt_io_resolution_link_contract

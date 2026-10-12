@@ -2,6 +2,7 @@
 
 #include "py_board.hpp"
 #include "py_circuit.hpp"
+#include "route_bindings.hpp"
 
 #include <optional>
 #include <utility>
@@ -156,6 +157,7 @@ void bind_assisted_routing_results(py::module_ &module) {
 
 void bind_board(pybind11::module_ &module) {
     bind_assisted_routing_results(module);
+    bind_route_values(module);
 
     py::class_<PyBoardRegistry>(module, "BoardRegistry")
         .def(py::init<const PyCircuit &>(), py::keep_alive<1, 2>())
@@ -165,8 +167,8 @@ void bind_board(pybind11::module_ &module) {
              py::return_value_policy::reference_internal)
         .def("names", &PyBoardRegistry::names);
 
-    py::class_<PyBoard>(module, "Board")
-        .def_property_readonly("name", &PyBoard::name)
+    auto board_class = py::class_<PyBoard>(module, "Board");
+    board_class.def_property_readonly("name", &PyBoard::name)
         .def_property_readonly("units", &PyBoard::units)
         .def("design_rules", &PyBoard::design_rules)
         .def("set_design_rules", &PyBoard::set_design_rules, py::arg("copper_clearance_mm"),
@@ -235,6 +237,7 @@ void bind_board(pybind11::module_ &module) {
              py::arg("layer_filter") = std::nullopt)
         .def("to_kicad_pcb", &PyBoard::to_kicad_pcb)
         .def("to_fabrication_files", &PyBoard::to_fabrication_files);
+    bind_route_board(board_class);
 }
 
 } // namespace volt::python

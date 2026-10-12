@@ -107,6 +107,7 @@ add_executable(
     pcb/assembly/cpl_test.cpp
     pcb/routing/board_escape_router_test.cpp
     pcb/routing/board_router_test.cpp
+    pcb/routing/route_test.cpp
     pcb/routing/board_spatial_index_test.cpp
     pcb/board_queries_test.cpp
     io/pcb/board_resolution_test.cpp
@@ -161,6 +162,25 @@ volt_apply_coverage(volt_core_tests)
 
 include(Catch)
 catch_discover_tests(volt_core_tests PROPERTIES LABELS cpp)
+
+add_executable(volt_route_atomic_fixture pcb/routing/route_atomic_fixture.cpp)
+target_link_libraries(volt_route_atomic_fixture PRIVATE Volt::IO Volt::PCB)
+target_compile_definitions(volt_route_atomic_fixture PRIVATE VOLT_TEST_SUPPORT)
+target_compile_features(volt_route_atomic_fixture PRIVATE cxx_std_23)
+volt_apply_project_warnings(volt_route_atomic_fixture PRIVATE)
+volt_apply_sanitizers(volt_route_atomic_fixture)
+volt_apply_coverage(volt_route_atomic_fixture)
+add_test(NAME pcb.route.atomic_allocations COMMAND volt_route_atomic_fixture)
+
+add_executable(volt_route_parity_fixture pcb/routing/route_parity_fixture.cpp)
+target_link_libraries(volt_route_parity_fixture PRIVATE Volt::IO Volt::PCB Volt::NlohmannJson)
+target_include_directories(volt_route_parity_fixture PRIVATE ${PROJECT_SOURCE_DIR}/tests)
+target_compile_definitions(volt_route_parity_fixture PRIVATE VOLT_TEST_SUPPORT)
+target_compile_features(volt_route_parity_fixture PRIVATE cxx_std_23)
+volt_apply_project_warnings(volt_route_parity_fixture PRIVATE)
+volt_apply_sanitizers(volt_route_parity_fixture)
+volt_apply_coverage(volt_route_parity_fixture)
+add_test(NAME pcb.route.native_rejection COMMAND volt_route_parity_fixture blocked)
 
 add_executable(
     volt_electrical_part_models_example

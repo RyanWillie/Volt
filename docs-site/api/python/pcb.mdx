@@ -35,6 +35,13 @@ Source: `python/volt/pcb.py`
 | `place(self, component: Component \| int, *, at: Point, rotation: float = 0.0, side: str = 'top', locked: bool = False) -> int` | Place a component footprint on the board and return the placement index. |
 | `add_track(self, net: Net \| int, *, layer: int, points: Iterable[Point], width: float) -> int` | Add a routed track segment sequence for a logical net. |
 | `add_via(self, net: Net \| int, *, at: Point, start_layer: int, end_layer: int, drill: float \| None = None, annular: float \| None = None) -> int` | Add a via connecting a net between two board layers. |
+| `route_layer(self, layer: int)` | Create an owner-bearing native route layer reference. |
+| `route_net(self, net: Net \| int)` | Preserve the logical owner's identity for native route preflight. |
+| `route_pad(self, placement: int, pad: int)` | Capture exact native footprint identity, not a caller-supplied position. |
+| `route_via(self, via: int)` | Reference an existing via with its native Board ownership intact. |
+| `route_track_end(self, track: int, end = RouteTrackEnd.LAST)` | Reference the first or last vertex of an existing native track. |
+| `route_spec(self, *, start, layer, steps, net = None, width = None, via_size = None)` | Construct the bounded immutable native request; no geometry/rules run here. |
+| `route(self, spec: RouteSpec, policy = RoutePolicy.STRICT) -> RouteResult` | Natively plan, check and atomically append one explicit route. |
 | `assisted_connect(self, net: Net \| int, *, start: Point, start_layer: int, end: Point, end_layer: int) -> BoardRouteResult` | Attempt one bounded point-to-point route using the native assisted router. |
 | `escape(self, component: Component \| int) -> BoardEscapeResult` | Attempt bounded native pad fanout for one placed component. |
 | `add_zone(self, *, outline: Iterable[Point], layers: Iterable[int], net: Net \| int \| None = None, fill: str = 'solid', priority: int = 0) -> int` | Add a copper zone, optionally bound to a logical net. |
@@ -208,6 +215,166 @@ Source: `python/volt/pcb.py`
 
 ```python
 BoardRouteResult = _volt.BoardRouteResult
+```
+
+## `volt.CornerStyle`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+CornerStyle = _volt.CornerStyle
+```
+
+## `volt.RoutePolicy`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RoutePolicy = _volt.RoutePolicy
+```
+
+## `volt.RouteError`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteError = _volt.RouteError
+```
+
+## `volt.RouteFailureKind`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteFailureKind = _volt.RouteFailureKind
+```
+
+## `volt.RouteRuleSourceKind`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteRuleSourceKind = _volt.RouteRuleSourceKind
+```
+
+## `volt.RouteRuleField`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteRuleField = _volt.RouteRuleField
+```
+
+## `volt.RoutePoint`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RoutePoint = _volt.RoutePoint
+```
+
+## `volt.RouteThrough`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteThrough = _volt.RouteThrough
+```
+
+## `volt.RouteTo`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteTo = _volt.RouteTo
+```
+
+## `volt.RouteToX`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteToX = _volt.RouteToX
+```
+
+## `volt.RouteToY`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteToY = _volt.RouteToY
+```
+
+## `volt.RouteVia`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteVia = _volt.RouteVia
+```
+
+## `volt.RouteViaOverride`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteViaOverride = _volt.RouteViaOverride
+```
+
+## `volt.RouteTrackEnd`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteTrackEnd = _volt.RouteTrackEnd
+```
+
+## `volt.RouteSpec`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteSpec = _volt.RouteSpec
+```
+
+## `volt.RouteResult`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteResult = _volt.RouteResult
 ```
 
 ## `volt.BoardSpatialBlocker`
