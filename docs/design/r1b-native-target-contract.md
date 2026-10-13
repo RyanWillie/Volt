@@ -86,7 +86,8 @@ its selected segment coordinate and must have the appropriate interior side.
 The unconstrained projected interval must be strictly positive; overlapping,
 reversed or equal projections are GeometryUnresolvable. Each side applies its own
 clearance and width reserve. The centre is the midpoint of the remaining interval;
-exact fit is accepted with native `board_drc_epsilon`, one micron short fails.
+an exact-fit interval resolves a target with native `board_drc_epsilon`;
+incoming prefix legality can still reject it. One micron short fails resolution.
 A negative remaining interval beyond epsilon is RuleUnresolvable. Full finite
 arithmetic is checked before BoardPoint construction; overflow is GeometryUnresolvable.
 The transverse coordinate is preserved; no overlap/sweep axis is guessed. Whole

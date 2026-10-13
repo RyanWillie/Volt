@@ -128,6 +128,55 @@ void bind_route_values(py::module_ &module) {
              py::arg("end") = RouteTrackEnd::Last)
         .def_property_readonly("track", [](const RouteTrackRef &v) { return v.track.index(); })
         .def_readonly("end", &RouteTrackRef::end);
+    py::enum_<RouteAxis>(module, "RouteAxis").value("X", RouteAxis::X).value("Y", RouteAxis::Y);
+    py::enum_<RouteDirection>(module, "RouteDirection")
+        .value("POSITIVE_X", RouteDirection::PositiveX)
+        .value("NEGATIVE_X", RouteDirection::NegativeX)
+        .value("POSITIVE_Y", RouteDirection::PositiveY)
+        .value("NEGATIVE_Y", RouteDirection::NegativeY);
+    py::class_<RouteTrackCopper>(module, "RouteTrackCopper")
+        .def(py::init([](const PyBoard &b, std::size_t track) {
+                 return RouteTrackCopper{&b.authoring_board(), BoardTrackId{track}};
+             }),
+             py::keep_alive<1, 2>())
+        .def_property_readonly("track", [](const RouteTrackCopper &v) { return v.track.index(); });
+    py::class_<RoutePlacedCopper>(module, "RoutePlacedCopper")
+        .def(py::init([](const RoutePad &identity) {
+                 return RoutePlacedCopper{identity.owner, identity.placement, identity.footprint};
+             }),
+             py::keep_alive<1, 2>())
+        .def_property_readonly("placement",
+                               [](const RoutePlacedCopper &v) { return v.placement.index(); });
+    py::class_<RouteKeepout>(module, "RouteKeepout")
+        .def(py::init([](const PyBoard &b, std::size_t keepout) {
+                 return RouteKeepout{&b.authoring_board(), BoardKeepoutId{keepout}};
+             }),
+             py::keep_alive<1, 2>())
+        .def_property_readonly("keepout", [](const RouteKeepout &v) { return v.keepout.index(); });
+    py::class_<RouteBoardEdge>(module, "RouteBoardEdge")
+        .def(py::init([](const PyBoard &b, std::size_t index) {
+                 return RouteBoardEdge{&b.authoring_board(), index};
+             }),
+             py::keep_alive<1, 2>())
+        .def_readonly("edge_index", &RouteBoardEdge::edge_index);
+    py::class_<RouteExit>(module, "RouteExit")
+        .def(py::init<RouteOperand, RouteDirection, double>(), py::arg("operand"),
+             py::arg("direction"), py::arg("distance_mm") = 0.0, py::keep_alive<1, 2>())
+        .def_readonly("operand", &RouteExit::operand)
+        .def_readonly("direction", &RouteExit::direction)
+        .def_readonly("distance_mm", &RouteExit::distance_mm);
+    py::class_<RouteBeside>(module, "RouteBeside")
+        .def(py::init<RouteOperand, RouteDirection, double>(), py::arg("operand"),
+             py::arg("direction"), py::arg("distance_mm") = 0.0, py::keep_alive<1, 2>())
+        .def_readonly("operand", &RouteBeside::operand)
+        .def_readonly("direction", &RouteBeside::direction)
+        .def_readonly("distance_mm", &RouteBeside::distance_mm);
+    py::class_<RouteGap>(module, "RouteGap")
+        .def(py::init<RouteOperand, RouteOperand, RouteAxis>(), py::arg("lower"), py::arg("upper"),
+             py::arg("axis"), py::keep_alive<1, 2>(), py::keep_alive<1, 3>())
+        .def_readonly("lower", &RouteGap::lower)
+        .def_readonly("upper", &RouteGap::upper)
+        .def_readonly("axis", &RouteGap::axis);
     py::class_<RouteThrough>(module, "RouteThrough")
         .def(py::init<RouteEndpoint, CornerStyle>(), py::arg("endpoint"),
              py::arg("corner") = CornerStyle::Chamfer45, py::keep_alive<1, 2>())
@@ -274,6 +323,23 @@ void bind_route_values(py::module_ &module) {
                 return py::cast(via->annular_diameter_mm());
             return py::none();
         });
+    py::class_<RouteTargetConstraint>(module, "RouteTargetConstraint")
+        .def_readonly("upper_side", &RouteTargetConstraint::upper_side)
+        .def_property_readonly("entities",
+                               [](const RouteTargetConstraint &v) { return entities(v.entities); })
+        .def_readonly("clearance", &RouteTargetConstraint::clearance)
+        .def_readonly("exempt", &RouteTargetConstraint::exempt);
+    py::class_<RouteTargetResolution>(module, "RouteTargetResolution")
+        .def_readonly("step_index", &RouteTargetResolution::step_index)
+        .def_property_readonly("position",
+                               [](const RouteTargetResolution &v) { return point(v.position); })
+        .def_readonly("axis", &RouteTargetResolution::axis)
+        .def_readonly("raw_lower_mm", &RouteTargetResolution::raw_lower_mm)
+        .def_readonly("raw_upper_mm", &RouteTargetResolution::raw_upper_mm)
+        .def_readonly("lower_mm", &RouteTargetResolution::lower_mm)
+        .def_readonly("upper_mm", &RouteTargetResolution::upper_mm)
+        .def_readonly("width", &RouteTargetResolution::width)
+        .def_readonly("constraints", &RouteTargetResolution::constraints);
     py::class_<RouteResolvedStep>(module, "RouteResolvedStep")
         .def_readonly("step_index", &RouteResolvedStep::step_index)
         .def_property_readonly("start", [](const RouteResolvedStep &v) { return point(v.start); })
@@ -321,6 +387,7 @@ void bind_route_values(py::module_ &module) {
         .def_property_readonly("net", [](const RouteResult &v) { return id(v.net); })
         .def_readonly("candidates", &RouteResult::candidates)
         .def_readonly("resolved_steps", &RouteResult::resolved_steps)
+        .def_readonly("target_resolutions", &RouteResult::target_resolutions)
         .def_readonly("resolved_rules", &RouteResult::resolved_rules)
         .def_readonly("layer_rules", &RouteResult::layer_rules)
         .def_readonly("clearance_checks", &RouteResult::clearance_checks)
@@ -345,7 +412,8 @@ void bind_route_values(py::module_ &module) {
 }
 
 void bind_route_board(py::class_<PyBoard> &board) {
-    board.def("route", &PyBoard::route, py::arg("spec"), py::arg("policy") = RoutePolicy::Strict)
+    board.def("query_gap", &PyBoard::query_gap, py::arg("prefix"))
+        .def("route", &PyBoard::route, py::arg("spec"), py::arg("policy") = RoutePolicy::Strict)
         .def("route_pad", &PyBoard::route_pad, py::keep_alive<0, 1>(), py::arg("placement"),
              py::arg("pad"));
 }

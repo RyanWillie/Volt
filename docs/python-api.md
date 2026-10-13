@@ -1049,3 +1049,39 @@ mild-reverse voltage domain. It is idealized and is uncalibrated without evidenc
 See [the complete bounded contract and CLI example](nonlinear-dc.md) and the
 [executable example](../samples/nonlinear_dc/run_dc.py). AC/transient and public ngspice
 requests reject diode models; sweeps and physical manufacturer fidelity remain outside scope.
+
+
+### Native symbolic route targets and gap prefixes
+
+`RouteExit`, `RouteBeside` and `RouteGap` are explicit board-axis steps in the native
+`RouteSpec` grammar. They resolve actual active-layer copper (Circle/Rectangle pads,
+placed pad unions, tracks and vias) or separately typed keepout/rectangular-edge
+boundaries. Target obstacles do not infer the route net. No search, snapping, bus
+packing or body/courtyard fallback occurs. Geometry and final native room rules
+have a finite unique-solution contract; unsupported and ambiguous cases reject.
+
+```python
+lower = board.route_track_copper(lower_track)
+upper = board.route_track_copper(upper_track)
+prefix = board.route_spec(
+    net=board.route_net(signal), start=volt.RoutePoint(15, 14),
+    layer=board.route_layer(front),
+    steps=(volt.RouteGap(lower, upper, volt.RouteAxis.Y),),
+)
+answer = board.query_gap(prefix)
+assert not answer.committed  # queries are read-only
+if answer.failure is None:
+    target = answer.target_resolutions[-1]
+    print(target.position, target.lower_mm, target.upper_mm)
+```
+
+The explicit-net prefix includes earlier steps, vias and candidate copper and ends
+with Gap. `query_gap` and route-time resolution use the same native planner and
+Report payload; query success says that this single prefix is legal, not that a
+complete subsequent route is legal. A geometric exact fit can still have a blocked
+incoming leg. Symbolic zero-motion steps are explicitly unsupported; R1a literal
+zero-motion behavior is unchanged. To publish, append the required terminal
+`RouteTo` and call `board.route`; legal Report routes commit, all rejected routes
+retain Board bytes/generation/references. See the
+[R1b finite contract](design/r1b-native-target-contract.md) for operand, tolerance,
+rule-state and evidence details. Existing fluent helpers remain unchanged.

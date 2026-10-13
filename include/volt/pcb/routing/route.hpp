@@ -108,8 +108,82 @@ struct RouteTo {
     CornerStyle corner = CornerStyle::Chamfer45;
 };
 
+/** Board-coordinate axis; targets retain the transverse current coordinate. */
+enum class RouteAxis { X, Y };
+/** Explicit board-coordinate direction; never inferred from geometry. */
+enum class RouteDirection { PositiveX, NegativeX, PositiveY, NegativeY };
+
+/** Entire existing track copper, distinct from an endpoint. */
+struct RouteTrackCopper {
+    /** Borrowed Board identity. */
+    const Board *owner;
+    /** Existing polyline track. */
+    BoardTrackId track{0};
+};
+
+/** Active-layer pad copper of a placement; retains each pad's logical net. */
+struct RoutePlacedCopper {
+    /** Borrowed Board identity. */
+    const Board *owner;
+    /** Placed component identity. */
+    ComponentPlacementId placement;
+    /** Full selected footprint identity, as for RoutePad. */
+    FootprintDefinition footprint;
+};
+
+/** Mechanical keepout exterior; never carries an invented net. */
+struct RouteKeepout {
+    /** Borrowed Board identity. */
+    const Board *owner;
+    /** Existing keepout identity. */
+    BoardKeepoutId keepout;
+};
+
+/** One actual outline segment, in stored vertex order. */
+struct RouteBoardEdge {
+    /** Borrowed Board identity. */
+    const Board *owner;
+    /** Segment starts at this vertex and ends at the next cyclic vertex. */
+    std::size_t edge_index;
+};
+
+/** Closed symbolic geometry operand family. */
+using RouteOperand = std::variant<RouteTrackCopper, RoutePad, RoutePlacedCopper, RouteViaRef,
+                                  RouteKeepout, RouteBoardEdge>;
+
+/** Move out of an explicitly occupied projected envelope. */
+struct RouteExit {
+    /** Active geometry from which to exit. */
+    RouteOperand operand;
+    /** Explicit axis and side. */
+    RouteDirection direction;
+    /** Additional edge separation in millimeters. */
+    double distance_mm = 0.0;
+};
+
+/** Move beside an operand, without Exit's current-point containment requirement. */
+struct RouteBeside {
+    /** Geometry whose selected side controls the target. */
+    RouteOperand operand;
+    /** Explicit axis and side. */
+    RouteDirection direction;
+    /** Additional edge separation in millimeters. */
+    double distance_mm = 0.0;
+};
+
+/** Resolve the centre of a constrained interval for one route only. */
+struct RouteGap {
+    /** Occupied lower side, or an edge with positive interior half-plane. */
+    RouteOperand lower;
+    /** Occupied upper side, or an edge with negative interior half-plane. */
+    RouteOperand upper;
+    /** Axis of separation. */
+    RouteAxis axis;
+};
+
 /** Ordered native route grammar variants. */
-using RouteStep = std::variant<RouteThrough, RouteToX, RouteToY, RouteVia, RouteTo>;
+using RouteStep = std::variant<RouteThrough, RouteToX, RouteToY, RouteVia, RouteTo, RouteExit,
+                               RouteBeside, RouteGap>;
 
 /** Explicit route-wide via sizing, checked against native minimum rules. */
 struct RouteViaOverride {
@@ -220,6 +294,40 @@ struct RouteCandidate {
     std::variant<BoardTrack, BoardVia> copper;
 };
 
+/** One independently enforced target-side constraint with owned provenance. */
+struct RouteTargetConstraint {
+    /** True for the upper/negative occupied side. */
+    bool upper_side;
+    /** Reporting-only existing object identities. */
+    std::vector<EntityRef> entities;
+    /** Final native pair clearance or mechanical reserve, with sources. */
+    RouteRuleValue clearance;
+    /** Historical continuity-group copper exemption; never true for mechanical geometry. */
+    bool exempt;
+};
+
+/** Owned final analytic target and constrained interval; no evidence is fabricated on failure. */
+struct RouteTargetResolution {
+    /** Request step that generated this target. */
+    std::size_t step_index;
+    /** Final board-coordinate target. */
+    BoardPoint position;
+    /** Board axis whose coordinate changed. */
+    RouteAxis axis;
+    /** Raw occupied lower boundary. */
+    double raw_lower_mm;
+    /** Raw occupied upper boundary. */
+    double raw_upper_mm;
+    /** Lower permitted route centre coordinate. */
+    double lower_mm;
+    /** Upper permitted route centre coordinate. */
+    double upper_mm;
+    /** Final native width evidence. */
+    RouteRuleValue width;
+    /** Ordered lower-then-upper per-shape constraints. */
+    std::vector<RouteTargetConstraint> constraints;
+};
+
 /** Native endpoint and layer resolution for one request step. */
 struct RouteResolvedStep {
     /** Ordinal in the request's ordered steps. */
@@ -304,6 +412,8 @@ struct RouteResult {
     std::vector<RouteCandidate> candidates;
     /** Owned endpoint/layer resolution in request-step order. */
     std::vector<RouteResolvedStep> resolved_steps;
+    /** Owned symbolic target evidence in step order. */
+    std::vector<RouteTargetResolution> target_resolutions;
     /** Native width/via sizing evidence in candidate order. */
     std::vector<RoutePrimitiveRules> resolved_rules;
     /** Native participating copper-clearance checks. */

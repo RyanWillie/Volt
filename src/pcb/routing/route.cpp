@@ -14,9 +14,10 @@
 #include <volt/pcb/queries/board_queries.hpp>
 
 #include "../copper/board_room_rules.hpp"
+#include "route_detail.hpp"
 
 namespace volt {
-namespace {
+namespace route_detail {
 
 void invalid(const std::string &message) {
     throw KernelArgumentError{ErrorCode::InvalidArgument, message};
@@ -329,9 +330,69 @@ std::string obstacle_label(const Board &board, const BoardSpatialObstacle &obsta
     return "staged copper";
 }
 
-} // namespace
+RouteRuleValue resolve_width(const Board &board, NetId net, BoardLayerId layer,
+                             const std::vector<BoardPoint> &vertices,
+                             std::optional<double> requested, bool &below_minimum) {
+    const auto rules = resolve_net_class_rules(board.circuit(), net);
+    const auto &design = board.design_rules();
+    const auto rooms = detail::BoardRoomRuleResolver{board};
+    const auto base = floor_value(design.minimum_track_width_mm(), rules.track_width_mm, rules,
+                                  RouteRuleField::Width);
+    auto width = base;
+    if (requested.has_value()) {
+        auto requirement = base;
+        if (const auto room = rooms.track_width_override(layer, vertices, *requested)) {
+            requirement.value_mm = std::max(design.minimum_track_width_mm(), room->value_mm);
+            requirement.sources.clear();
+            if (design.minimum_track_width_mm() == requirement.value_mm)
+                requirement.sources.push_back(board_source(RouteRuleField::Width));
+            if (room->value_mm == requirement.value_mm)
+                requirement.sources.push_back(room_source(room->room, RouteRuleField::Width));
+        }
+        width.enforced_sources = requirement.sources;
+        override_value(width, *requested, RouteRuleField::Width);
+        if (width.value_mm + detail::board_drc_epsilon < requirement.value_mm) {
+            below_minimum = true;
+        }
+    } else {
+        auto applied = std::vector<detail::RoomRuleValue>{};
+        width.value_mm = rooms.effective_track_width_mm(layer, vertices, width.value_mm, &applied);
+        if (width.value_mm > base.value_mm)
+            width.sources.clear();
+        for (const auto &room : applied) {
+            if (room.value_mm != width.value_mm)
+                continue;
+            if (std::none_of(width.sources.begin(), width.sources.end(),
+                             [&](const auto &source) { return source.room == room.room; })) {
+                width.sources.push_back(room_source(room.room, RouteRuleField::Width));
+            }
+        }
+        std::stable_sort(width.sources.begin(), width.sources.end(),
+                         [](const auto &a, const auto &b) {
+                             if (a.kind != b.kind)
+                                 return a.kind < b.kind;
+                             if (a.room && b.room)
+                                 return a.room->index() < b.room->index();
+                             return false;
+                         });
+    }
+    return width;
+}
+
+} // namespace route_detail
+
+using namespace route_detail;
 
 RouteResult BoardRouter::route(const RouteSpec &spec, RoutePolicy policy) {
+    return plan_route(spec, policy, false);
+}
+
+RouteResult BoardRouter::query_gap(const RouteSpec &prefix) const {
+    return plan_route(prefix, RoutePolicy::Report, true);
+}
+
+RouteResult BoardRouter::plan_route(const RouteSpec &spec, RoutePolicy policy,
+                                    bool gap_query) const {
     static_assert(std::is_nothrow_move_constructible_v<RouteResult>);
     static_assert(std::is_nothrow_destructible_v<BoardSpatialIndex>);
     owner(spec.board == board_);
@@ -350,7 +411,10 @@ RouteResult BoardRouter::route(const RouteSpec &spec, RoutePolicy policy) {
         if (spec.via_size->diameter_mm <= spec.via_size->drill_mm)
             invalid("Route via diameter must exceed drill");
     }
-    if (spec.steps.empty() || !std::holds_alternative<RouteTo>(spec.steps.back()))
+    if (gap_query) {
+        if (!spec.net || spec.steps.empty() || !std::holds_alternative<RouteGap>(spec.steps.back()))
+            invalid("Gap query needs an explicit logical net and must terminate with Gap");
+    } else if (spec.steps.empty() || !std::holds_alternative<RouteTo>(spec.steps.back()))
         invalid("Route must terminate with To");
     const auto pads = queries::resolve_pads(resolved_);
     auto endpoints = std::vector<std::optional<EndpointTruth>>(spec.steps.size());
@@ -372,9 +436,11 @@ RouteResult BoardRouter::route(const RouteSpec &spec, RoutePolicy policy) {
                     if (step.destination.layer == active_layer)
                         invalid("Route via must change layers");
                     active_layer = step.destination.layer;
-                } else {
+                } else if constexpr (std::same_as<T, RouteToX> || std::same_as<T, RouteToY>) {
                     if (!std::isfinite(step.coordinate_mm))
                         invalid("Route axis coordinate must be finite");
+                } else {
+                    preflight_target(*board_, resolved_, step);
                 }
             },
             spec.steps[i]);
@@ -426,9 +492,6 @@ RouteResult BoardRouter::route(const RouteSpec &spec, RoutePolicy policy) {
             result.layer_rules.excluded.push_back(id);
     }
     const auto &design = board_->design_rules();
-    const auto rooms = detail::BoardRoomRuleResolver{*board_};
-    const auto width_base = floor_value(design.minimum_track_width_mm(), rules.track_width_mm,
-                                        rules, RouteRuleField::Width);
     auto drill = floor_value(design.minimum_via_drill_diameter_mm(), rules.via_drill_mm, rules,
                              RouteRuleField::ViaDrill);
     auto diameter = floor_value(design.minimum_via_annular_diameter_mm(), rules.via_diameter_mm,
@@ -485,8 +548,19 @@ RouteResult BoardRouter::route(const RouteSpec &spec, RoutePolicy policy) {
                         target = BoardPoint{step.coordinate_mm, current.y_mm()};
                     else if constexpr (std::same_as<T, RouteToY>)
                         target = BoardPoint{current.x_mm(), step.coordinate_mm};
+                    else if constexpr (std::same_as<T, RouteExit> || std::same_as<T, RouteBeside> ||
+                                       std::same_as<T, RouteGap>) {
+                        resolve_target(*board_, resolved_, spec, step, current, active_layer, i,
+                                       result);
+                        if (!result.target_resolutions.empty() &&
+                            result.target_resolutions.back().step_index == i)
+                            target = result.target_resolutions.back().position;
+                    }
                 },
                 spec.steps[i]);
+            if (is_symbolic(spec.steps[i]) && (result.target_resolutions.empty() ||
+                                               result.target_resolutions.back().step_index != i))
+                return reject(*board_, std::move(result), policy);
             const auto points = lower(current, target, style);
             if (!points.has_value()) {
                 fail(result, RouteFailureKind::GeometryUnresolvable, i,
@@ -495,50 +569,12 @@ RouteResult BoardRouter::route(const RouteSpec &spec, RoutePolicy policy) {
             }
             for (std::size_t p = 1; p < points->size(); ++p) {
                 const auto vertices = std::vector{(*points)[p - 1U], (*points)[p]};
-                auto width = width_base;
-                if (spec.width_mm.has_value()) {
-                    auto requirement = width_base;
-                    if (const auto room =
-                            rooms.track_width_override(active_layer, vertices, *spec.width_mm)) {
-                        requirement.value_mm =
-                            std::max(design.minimum_track_width_mm(), room->value_mm);
-                        requirement.sources.clear();
-                        if (design.minimum_track_width_mm() == requirement.value_mm)
-                            requirement.sources.push_back(board_source(RouteRuleField::Width));
-                        if (room->value_mm == requirement.value_mm)
-                            requirement.sources.push_back(
-                                room_source(room->room, RouteRuleField::Width));
-                    }
-                    width.enforced_sources = requirement.sources;
-                    override_value(width, *spec.width_mm, RouteRuleField::Width);
-                    if (width.value_mm + detail::board_drc_epsilon < requirement.value_mm) {
-                        fail(result, RouteFailureKind::RuleViolation, i,
-                             "explicit track width is below native minimum");
-                    }
-                } else {
-                    auto applied = std::vector<detail::RoomRuleValue>{};
-                    width.value_mm = rooms.effective_track_width_mm(active_layer, vertices,
-                                                                    width.value_mm, &applied);
-                    if (width.value_mm > width_base.value_mm)
-                        width.sources.clear();
-                    for (const auto &room : applied) {
-                        if (room.value_mm != width.value_mm)
-                            continue;
-                        if (std::none_of(
-                                width.sources.begin(), width.sources.end(),
-                                [&](const auto &source) { return source.room == room.room; })) {
-                            width.sources.push_back(room_source(room.room, RouteRuleField::Width));
-                        }
-                    }
-                    std::stable_sort(width.sources.begin(), width.sources.end(),
-                                     [](const auto &a, const auto &b) {
-                                         if (a.kind != b.kind)
-                                             return a.kind < b.kind;
-                                         if (a.room && b.room)
-                                             return a.room->index() < b.room->index();
-                                         return false;
-                                     });
-                }
+                auto below_minimum = false;
+                auto width = resolve_width(*board_, net, active_layer, vertices, spec.width_mm,
+                                           below_minimum);
+                if (below_minimum)
+                    fail(result, RouteFailureKind::RuleViolation, i,
+                         "explicit track width is below native minimum");
                 const auto ordinal = result.candidates.size();
                 result.candidates.push_back(
                     {i, BoardTrack{net, active_layer, vertices, width.value_mm}});
@@ -551,7 +587,7 @@ RouteResult BoardRouter::route(const RouteSpec &spec, RoutePolicy policy) {
         result.resolved_steps.push_back(std::move(resolved_step));
     }
     result.candidate_complete = true;
-    if (result.candidates.empty() && !result.failure.has_value())
+    if (!gap_query && result.candidates.empty() && !result.failure.has_value())
         fail(result, RouteFailureKind::NoCandidate, std::nullopt, "route contains no track or via");
 
     // Fresh private index for each call: candidate insertion never changes canonical Board state.
@@ -665,6 +701,12 @@ RouteResult BoardRouter::route(const RouteSpec &spec, RoutePolicy policy) {
         fail(result, RouteFailureKind::Blocked, block.step_index, block.message);
     if (result.failure.has_value())
         return reject(*board_, std::move(result), policy);
+
+    if (gap_query) {
+        result.message = "route " + board_->circuit().get(net).name().value() +
+                         " gap prefix feasible; board unchanged";
+        return result;
+    }
 
     // Prepare every result field before Board's no-throw publication boundary.
     auto append = CopperAppendSpec{};

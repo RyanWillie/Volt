@@ -298,6 +298,17 @@ the compiled graph.
 | `volt.BoardRouteResult` | Read-only native result for one bounded assisted connection. |
 | `volt.BoardSpatialBlocker` | Read-only native obstacle record for a rejected route candidate. |
 | `volt.BoardSpatialBlockerKind` | Native enum identifying a route candidate blocker family. |
+| `volt.RouteAxis` | Explicit board X/Y axis for gap separation. |
+| `volt.RouteDirection` | Explicit positive/negative board X/Y direction. |
+| `volt.RouteExit` | Axis step exiting an occupied projected copper/keepout envelope. |
+| `volt.RouteBeside` | Axis step beside a selected native geometry side. |
+| `volt.RouteGap` | Axis step to a constrained single-route interval centre. |
+| `volt.RouteTrackCopper` | Owner-bearing existing track copper operand. |
+| `volt.RoutePlacedCopper` | Exact-footprint active-layer pad union, retaining each pad net. |
+| `volt.RouteKeepout` | Mechanical keepout exterior operand. |
+| `volt.RouteBoardEdge` | Actual rectangular outline segment with interior semantics. |
+| `volt.RouteTargetConstraint` | Owned per-shape clearance and exemption evidence. |
+| `volt.RouteTargetResolution` | Owned target coordinate, width and raw/constrained bounds. |
 | `volt.RouteSpec` | Copied native description of one explicit route for an existing logical net. |
 | `volt.RoutePoint` | Explicit finite board-coordinate endpoint. |
 | `volt.RouteThrough` | Continue through an endpoint using one native corner policy. |

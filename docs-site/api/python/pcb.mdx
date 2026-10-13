@@ -41,6 +41,11 @@ Source: `python/volt/pcb.py`
 | `route_via(self, via: int)` | Reference an existing via with its native Board ownership intact. |
 | `route_track_end(self, track: int, end = RouteTrackEnd.LAST)` | Reference the first or last vertex of an existing native track. |
 | `route_spec(self, *, start, layer, steps, net = None, width = None, via_size = None)` | Construct the bounded immutable native request; no geometry/rules run here. |
+| `route_track_copper(self, track: int)` | Capture the Board owner of an existing track copper operand. |
+| `route_placed_copper(self, placement: int)` | Capture exact footprint identity for active-layer placed copper. |
+| `route_keepout(self, keepout: int)` | Capture a native mechanical keepout operand. |
+| `route_board_edge(self, edge_index: int)` | Capture an outline segment by its stored starting vertex index. |
+| `query_gap(self, prefix: RouteSpec) -> RouteResult` | Read-only single-route prefix feasibility; the prefix ends with RouteGap. |
 | `route(self, spec: RouteSpec, policy = RoutePolicy.STRICT) -> RouteResult` | Natively plan, check and atomically append one explicit route. |
 | `assisted_connect(self, net: Net \| int, *, start: Point, start_layer: int, end: Point, end_layer: int) -> BoardRouteResult` | Attempt one bounded point-to-point route using the native assisted router. |
 | `escape(self, component: Component \| int) -> BoardEscapeResult` | Attempt bounded native pad fanout for one placed component. |
@@ -355,6 +360,116 @@ Source: `python/volt/pcb.py`
 
 ```python
 RouteTrackEnd = _volt.RouteTrackEnd
+```
+
+## `volt.RouteAxis`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteAxis = _volt.RouteAxis
+```
+
+## `volt.RouteDirection`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteDirection = _volt.RouteDirection
+```
+
+## `volt.RouteTrackCopper`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteTrackCopper = _volt.RouteTrackCopper
+```
+
+## `volt.RoutePlacedCopper`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RoutePlacedCopper = _volt.RoutePlacedCopper
+```
+
+## `volt.RouteKeepout`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteKeepout = _volt.RouteKeepout
+```
+
+## `volt.RouteBoardEdge`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteBoardEdge = _volt.RouteBoardEdge
+```
+
+## `volt.RouteExit`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteExit = _volt.RouteExit
+```
+
+## `volt.RouteBeside`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteBeside = _volt.RouteBeside
+```
+
+## `volt.RouteGap`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteGap = _volt.RouteGap
+```
+
+## `volt.RouteTargetConstraint`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteTargetConstraint = _volt.RouteTargetConstraint
+```
+
+## `volt.RouteTargetResolution`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+RouteTargetResolution = _volt.RouteTargetResolution
 ```
 
 ## `volt.RouteSpec`

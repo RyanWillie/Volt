@@ -20,6 +20,7 @@ add_library(
     resolution/board_resolution.cpp
     routing/board_router.cpp
     routing/route.cpp
+    routing/route_target.cpp
     routing/board_spatial_index.cpp
     validation/board_capability_validation.cpp
     validation/board_footprint_drc.cpp

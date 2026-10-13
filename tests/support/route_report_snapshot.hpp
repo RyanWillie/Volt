@@ -167,6 +167,24 @@ inline RouteJson route_snapshot(const RouteResult &result) {
                         id.index()};
             },
             committed));
+    out["target_resolutions"] = RouteJson::array();
+    for (const auto &t : result.target_resolutions) {
+        auto constraints = RouteJson::array();
+        for (const auto &c : t.constraints)
+            constraints.push_back({{"upper_side", c.upper_side},
+                                   {"entities", route_entities(c.entities)},
+                                   {"clearance", route_rule(c.clearance)},
+                                   {"exempt", c.exempt}});
+        out["target_resolutions"].push_back({{"step_index", t.step_index},
+                                             {"position", route_point(t.position)},
+                                             {"axis", static_cast<int>(t.axis)},
+                                             {"raw_lower_mm", t.raw_lower_mm},
+                                             {"raw_upper_mm", t.raw_upper_mm},
+                                             {"lower_mm", t.lower_mm},
+                                             {"upper_mm", t.upper_mm},
+                                             {"width", route_rule(t.width)},
+                                             {"constraints", constraints}});
+    }
     return out;
 }
 } // namespace volt::test
