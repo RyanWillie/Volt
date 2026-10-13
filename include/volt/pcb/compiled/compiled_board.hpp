@@ -6,11 +6,13 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <volt/core/content_hash.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/errors.hpp>
+#include <volt/library/part_library.hpp>
 #include <volt/pcb/resolution/board_resolution.hpp>
 
 namespace volt {
@@ -246,6 +248,22 @@ class CompiledBoard final {
     /** Return the exact resolved implementation for a component, or null when none is selected. */
     [[nodiscard]] const ResolvedBoardPart *part(ComponentId component) const noexcept;
 
+    /** Borrow full verified exact definitions; moves preserve borrows until storage destruction.
+     *  Resolves every LibraryPartRef field, rejecting absent/foreign references as UnknownEntity.
+     *  Retained asset references do not imply that their bytes are embedded.
+     */
+    [[nodiscard]] const PartDefinitionResolver &part_definitions() const & noexcept;
+    [[nodiscard]] const PartDefinitionResolver &part_definitions() const && = delete;
+
+    /** Borrow the original selected component contract/identity, or null for no selection.
+     *  Invalid component IDs reject. pins() IDs are closure-payload-local, not Circuit handles;
+     *  use board().circuit() for pin traversal. Moves preserve this borrow.
+     */
+    [[nodiscard]] const ComponentDefinition *
+    selected_component_definition(ComponentId component) const &;
+    [[nodiscard]] const ComponentDefinition *
+    selected_component_definition(ComponentId component) const && = delete;
+
     /** Return an owning resolved physical consumer snapshot for this artifact Board. */
     [[nodiscard]] ResolvedBoardView view() const &;
     [[nodiscard]] ResolvedBoardView view() const && = delete;
@@ -282,6 +300,8 @@ class CompiledBoard final {
     [[nodiscard]] static CompiledBoard materialize_verified(
         Circuit logical_dependencies, const Board &board, ContentHash selected_closure_digest,
         FootprintLibrary footprints, std::vector<ResolvedBoardPart> parts,
+        std::vector<std::pair<LibraryPartRef, PartDefinition>> part_definitions,
+        std::vector<ComponentDefinition> component_definitions,
         CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
         std::string logical_dependency_snapshot, std::string physical_snapshot, std::string bytes,
         std::optional<std::vector<std::vector<NetId>>> logical_continuity_partition,

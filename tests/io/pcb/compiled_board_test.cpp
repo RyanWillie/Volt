@@ -16,9 +16,13 @@
 #include <nlohmann/json.hpp>
 
 #include <volt/adapters/kicad/pcb_writer.hpp>
+#include <volt/circuit/bom/bom.hpp>
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/io/assembly/cpl_writer.hpp>
+#include <volt/io/bom/bom_writer.hpp>
+#include <volt/io/electrical/electrical_input_io.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
+#include <volt/io/parts/part_definition_writer.hpp>
 #include <volt/io/pcb/board_resolution.hpp>
 #include <volt/io/pcb/compiled_board.hpp>
 #include <volt/io/pcb/compiled_board_consumers.hpp>
@@ -96,13 +100,18 @@ struct Fixture {
 };
 
 [[nodiscard]] Fixture fixture(bool bad_footprint_mapping = false, bool implicit_contract = false,
-                              std::string model_format = "glb", bool reference_symbol = true) {
+                              std::string model_format = "glb", bool reference_symbol = true,
+                              bool rich = false, bool duplicate_alternate = false) {
     auto spec = resistor_spec();
     if (!reference_symbol) {
         spec.schematic_symbols.clear();
     }
     if (implicit_contract) {
         spec.contract.reset();
+    }
+    if (rich) {
+        spec.contract->relations = {volt::ContractDirectedRelation{
+            volt::RelationKey{"rating"}, volt::PinKey{"A"}, volt::PinKey{"B"}}};
     }
     auto owner = volt::Circuit{};
     const auto definition_id = owner.define_component(spec);
@@ -127,15 +136,43 @@ struct Fixture {
 
     const auto make_part = [&](std::string key, std::string mpn) {
         const auto &pin_keys = definition.contract().pin_keys();
+        auto records = volt::ElectricalRecordSet{2};
+        auto electrical_model = std::optional<volt::PartElectricalModel>{};
+        if (rich) {
+            const auto subject = volt::ElectricalSubject::directed_relation(
+                volt::ElectricalPinIndex{0}, volt::ElectricalPinIndex{1});
+            records = volt::ElectricalRecordSet{
+                2,
+                {volt::voltage_record(subject, volt::ElectricalMeaning::AbsoluteLimit,
+                                      volt::ElectricalValue{volt::QuantityRange::maximum(
+                                          volt::Quantity{volt::UnitDimension::Voltage, 12.0})}),
+                 volt::current_record(subject, volt::ElectricalMeaning::AbsoluteLimit,
+                                      volt::ElectricalValue{volt::UnknownElectricalValue{}})}};
+        }
+        if (rich) {
+            auto model = volt::PartElectricalModelBuilder{definition};
+            const auto a = model.terminal(volt::ModelTerminalKey{"a"}, volt::PinKey{"A"});
+            const auto b = model.terminal(volt::ModelTerminalKey{"b"}, volt::PinKey{"B"});
+            model.add<volt::ResistanceElement>(
+                volt::ModelElementKey{"body"}, a, b,
+                volt::ModelParameter{volt::Quantity{volt::UnitDimension::Resistance, 1000.0},
+                                     volt::Tolerance::percent(1.0)});
+            electrical_model = model.build();
+        }
+        const auto alternates = duplicate_alternate ? std::vector<std::string>{mpn, "ALT-0603"}
+                                                    : std::vector<std::string>{"ALT-0603"};
         return volt::PartDefinition{
             definition,
             volt::PartIdentity{"test.compiled", key, "1"},
-            volt::ElectricalRecordSet{2},
+            std::move(records),
             {volt::PinPackageTerminalMapping{pin_keys[0], {volt::PackageTerminalKey{"1"}}},
              volt::PinPackageTerminalMapping{pin_keys[1], {volt::PackageTerminalKey{"2"}}}},
             {},
-            volt::PartProvenance{},
-            {},
+            rich ? volt::PartProvenance{"datasheet revision 2", "native fixture", "test"}
+                 : volt::PartProvenance{},
+            rich ? std::vector{volt::PartSchematicAssetReference{
+                       "retained-symbol", "default", volt::sha256_content_hash("symbol bytes")}}
+                 : std::vector<volt::PartSchematicAssetReference>{},
             volt::OrderablePart{
                 volt::ManufacturerPart{"Volt", std::move(mpn)},
                 volt::PackageRef{"0603"},
@@ -145,8 +182,9 @@ struct Fixture {
                                                  {volt::FootprintPadKey{"1"}}},
                  volt::PackageTerminalPadMapping{volt::PackageTerminalKey{"2"},
                                                  {volt::FootprintPadKey{"2"}}}},
-                {},
-                model_reference}};
+                rich ? alternates : std::vector<std::string>{},
+                model_reference},
+            std::move(electrical_model)};
     };
 
     auto builder = volt::PartLibraryBuilder{
@@ -157,6 +195,12 @@ struct Fixture {
         .add_part(make_part(selected_key.value(), "USED-0603"))
         .add_part(make_part(unused_key.value(), "UNUSED-0603"));
     auto resolver = MemoryResolver{};
+    if (rich) {
+        resolver.add(volt::PartAssetReference{volt::PartAssetKind::Schematic,
+                                              "symbol:retained-symbol@default",
+                                              volt::sha256_content_hash("symbol bytes")},
+                     "symbol bytes");
+    }
     resolver.add(footprint_reference, footprint_bytes);
     resolver.add(volt::PartAssetReference{volt::PartAssetKind::Model3D,
                                           "model:" + model_reference.format() + "/" +
@@ -720,6 +764,11 @@ TEST_CASE("CompiledBoard V1 remains byte-preserving and exportable without infer
     CHECK(diagnostic_signature(volt::validate_board(reopened.view())) ==
           diagnostic_signature(report));
     CHECK(volt::io::write_compiled_board(reopened) == legacy_bytes);
+    for (const auto &part : reopened.parts()) {
+        CHECK(volt::io::write_part_definition(
+                  reopened.part_definitions().resolve(part.reference())) ==
+              volt::io::write_part_definition(bundle.resolve(part.reference())));
+    }
     CHECK_FALSE(reopened.identity() == compiled.identity());
     CHECK(volt::compute_ratsnest(reopened).edges().size() == 3U);
     CHECK_FALSE(volt::io::render_pcb_svg(reopened).bytes().empty());
@@ -1398,4 +1447,303 @@ TEST_CASE("BoardScene accepts only the exact compiled revision GLB closure") {
                                                      step_bundle, models3d_capabilities()));
     REQUIRE(step.parts().front().model_3d_bytes().has_value());
     CHECK(volt::prepare_board_scene(step).models().empty());
+}
+
+namespace {
+
+template <typename T>
+concept TemporaryPartResolver = requires(T value) { std::move(value).part_definitions(); };
+template <typename T>
+concept TemporarySelectedComponent =
+    requires(T value) { std::move(value).selected_component_definition(volt::ComponentId{0}); };
+static_assert(!TemporaryPartResolver<volt::CompiledBoard>);
+static_assert(!TemporarySelectedComponent<volt::CompiledBoard>);
+
+void check_same_diagnostics(const volt::DiagnosticReport &actual,
+                            const volt::DiagnosticReport &expected) {
+    REQUIRE(actual.diagnostics().size() == expected.diagnostics().size());
+    for (std::size_t index = 0; index < actual.diagnostics().size(); ++index) {
+        CHECK(actual.diagnostics()[index].code() == expected.diagnostics()[index].code());
+        CHECK(actual.diagnostics()[index].entities() == expected.diagnostics()[index].entities());
+    }
+}
+
+} // namespace
+
+TEST_CASE(
+    "CompiledBoard retains full exact parts and native BOM diagnostics without source owners") {
+    const auto bad_design = GENERATE(false, true);
+
+    struct Witness {
+        std::string archive;
+        volt::LibraryPartRef reference;
+        std::string part_bytes;
+        volt::ContentHash component_identity;
+        std::string bom;
+        volt::DiagnosticReport diagnostics;
+    };
+
+    const auto witness = [&] {
+        auto source = fixture(false, false, "glb", true, true, bad_design);
+        const auto bundle = volt::io::PartLibraryBundle::build(
+            source.builder, std::array{source.selected_key}, source.resolver);
+        auto authored = design(source.spec, bundle, source.selected_key, "Main", false, true);
+        if (!bad_design) {
+            authored.circuit->update(authored.component, volt::SetAssemblyIntent{.dnp = false});
+        }
+        authored.circuit->update(*authored.second_component, volt::SetAssemblyIntent{.dnp = true});
+        const auto definition = authored.circuit->get(authored.component).definition();
+        const auto reference = bundle.require(source.selected_key);
+        const auto bytes = volt::io::write_part_definition(bundle.resolve(reference));
+        auto fresh = take_success(volt::io::compile_board(*authored.circuit, authored.board, bundle,
+                                                          baseline_capabilities()));
+        CHECK(volt::io::write_part_definition(fresh.part_definitions().resolve(reference)) ==
+              bytes);
+        const auto *component = fresh.selected_component_definition(authored.component);
+        REQUIRE(component != nullptr);
+        CHECK(component->content_identity() ==
+              authored.circuit->get(definition).content_identity());
+        CHECK(component->contract().relations().size() == 1U);
+        CHECK(component->schematic_symbols().size() == 1U);
+        CHECK(fresh.board().circuit().get(definition).schematic_symbols().empty());
+        CHECK(fresh.part_definitions().resolve(reference).implemented_component() !=
+              fresh.board().circuit().get(definition).content_identity());
+        CHECK(fresh.selected_component_definition(*authored.second_component) == component);
+        CHECK_FALSE(fresh.capabilities().has(volt::BoardAssetCapability::Models3D));
+        CHECK_FALSE(fresh.part(authored.component)->model_3d_bytes().has_value());
+        CHECK(fresh.part_definitions().resolve(reference).orderable_part().model_3d().has_value());
+        const auto expected = volt::validate_bom_readiness(*authored.circuit, bundle);
+        check_same_diagnostics(
+            volt::validate_bom_readiness(fresh.board().circuit(), fresh.part_definitions()),
+            expected);
+        CHECK(expected.diagnostics().empty() == !bad_design);
+        const auto bom = volt::io::write_bom_json(volt::project_bom(*authored.circuit, bundle));
+        CHECK(volt::io::write_bom_json(
+                  volt::project_bom(fresh.board().circuit(), fresh.part_definitions())) == bom);
+        return Witness{std::string{fresh.bytes()},    reference, bytes,
+                       component->content_identity(), bom,       expected};
+    }();
+    auto reopened = volt::io::open_compiled_board(witness.archive);
+    const auto &resolver = reopened.part_definitions();
+    const auto &part = resolver.resolve(witness.reference);
+    CHECK(volt::io::write_part_definition(part) == witness.part_bytes);
+    REQUIRE(part.electrical_records().records().size() == 2U);
+    CHECK(part.schematic_assets().size() == 1U);
+    CHECK(part.electrical_model().has_value());
+    CHECK(part.electrical_records().records()[1].value().kind() ==
+          volt::ElectricalValueKind::Unknown);
+    CHECK(reopened.selected_component_definition(volt::ComponentId{0})->content_identity() ==
+          witness.component_identity);
+    check_same_diagnostics(volt::validate_bom_readiness(reopened.board().circuit(), resolver),
+                           witness.diagnostics);
+    const auto bom = volt::project_bom(reopened.board().circuit(), resolver);
+    CHECK(volt::io::write_bom_json(bom) == witness.bom);
+    REQUIRE(bom.lines().size() == 2U);
+    CHECK(bom.lines()[0].quantity() == 1U);
+    CHECK(bom.lines()[1].quantity() == 0U);
+    CHECK(volt::io::write_compiled_board(reopened) == witness.archive);
+    // Strict electrical input identity must still reject the symbol-stripped projection.
+    CHECK_THROWS_AS(volt::io::prepare_electrical_input(reopened.board().circuit(), resolver),
+                    volt::KernelLogicError);
+    const auto *component_borrow = reopened.selected_component_definition(volt::ComponentId{0});
+    auto moved = std::move(reopened);
+    CHECK(moved.selected_component_definition(volt::ComponentId{0}) == component_borrow);
+    CHECK(&moved.part_definitions() == &resolver);
+    CHECK(&resolver.resolve(witness.reference) == &part);
+    auto destination = volt::io::open_compiled_board(witness.archive);
+    CHECK(&destination.part_definitions().resolve(witness.reference) != &part);
+    destination = std::move(moved);
+    CHECK(destination.selected_component_definition(volt::ComponentId{0}) == component_borrow);
+    CHECK(&destination.part_definitions().resolve(witness.reference) == &part);
+    CHECK(volt::io::write_part_definition(part) == witness.part_bytes);
+}
+
+TEST_CASE("CompiledBoard exact lookup rejects every foreign identity field and invalid component") {
+    auto source = fixture();
+    const auto bundle = volt::io::PartLibraryBundle::build(
+        source.builder, std::array{source.selected_key, source.unused_key}, source.resolver);
+    auto authored = design(source.spec, bundle, source.selected_key);
+    const auto unselected = authored.circuit->instantiate_component(
+        authored.circuit->get(authored.component).definition(),
+        volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"R3"}});
+    const auto artifact = take_success(volt::io::compile_board(*authored.circuit, authored.board,
+                                                               bundle, baseline_capabilities()));
+    CHECK(artifact.selected_component_definition(unselected) == nullptr);
+    try {
+        static_cast<void>(artifact.selected_component_definition(volt::ComponentId{999}));
+        FAIL("invalid component accepted");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+    }
+    const auto ref = bundle.require(source.selected_key);
+    const auto foreign_hash = volt::sha256_content_hash("foreign");
+    const auto foreign =
+        std::array{volt::LibraryPartRef{"foreign", ref.library_version(), ref.part_key(),
+                                        ref.library_digest(), ref.part_digest()},
+                   volt::LibraryPartRef{ref.library_namespace(), "foreign", ref.part_key(),
+                                        ref.library_digest(), ref.part_digest()},
+                   volt::LibraryPartRef{ref.library_namespace(), ref.library_version(),
+                                        source.unused_key, ref.library_digest(), ref.part_digest()},
+                   volt::LibraryPartRef{ref.library_namespace(), ref.library_version(),
+                                        ref.part_key(), foreign_hash, ref.part_digest()},
+                   volt::LibraryPartRef{ref.library_namespace(), ref.library_version(),
+                                        ref.part_key(), ref.library_digest(), foreign_hash},
+                   bundle.require(source.unused_key)};
+    for (const auto &reference : foreign) {
+        try {
+            static_cast<void>(artifact.part_definitions().resolve(reference));
+            FAIL("foreign reference accepted");
+        } catch (const volt::KernelError &error) {
+            CHECK(error.code() == volt::ErrorCode::UnknownEntity);
+        }
+    }
+}
+
+TEST_CASE("CompiledBoard retained component pin IDs stay payload-local across definitions") {
+    const auto artifact = [] {
+        auto source = volt::test::project_bundle_v2::mixed_footprint_board_fixture();
+        return volt::io::open_compiled_board(source.compiled.bytes());
+    }();
+    const auto &circuit = artifact.board().circuit();
+    const auto *retained = artifact.selected_component_definition(volt::ComponentId{1});
+    REQUIRE(retained != nullptr);
+    const auto &projected = circuit.get(circuit.get(volt::ComponentId{1}).definition());
+    CHECK(retained->content_identity() == projected.content_identity());
+    CHECK(retained->pins().front() == volt::PinDefId{0});
+    CHECK(projected.pins().front() != retained->pins().front());
+    CHECK(retained->contract().pin_keys() == projected.contract().pin_keys());
+}
+
+TEST_CASE(
+    "CompiledBoard resolves same-key digest-distinct closures without a single library identity") {
+    const auto make_archive = [](bool alternate) {
+        auto source = fixture(false, false, "glb", true, true, alternate);
+        const auto bundle = volt::io::PartLibraryBundle::build(
+            source.builder, std::array{source.selected_key}, source.resolver);
+        auto authored = design(source.spec, bundle, source.selected_key, "Main", false, true);
+        const auto compiled = take_success(volt::io::compile_board(
+            *authored.circuit, authored.board, bundle, baseline_capabilities()));
+        return decode_archive(compiled.bytes());
+    };
+    auto archive = make_archive(false);
+    const auto other = make_archive(true);
+    const auto first_row = archive.manifest["selected_parts"][0];
+    const auto second_row = other.manifest["selected_parts"][0];
+    REQUIRE(first_row["reference"]["part_key"] == second_row["reference"]["part_key"]);
+    REQUIRE(first_row["reference"]["library_digest"] != second_row["reference"]["library_digest"]);
+    REQUIRE(first_row["reference"]["part_digest"] != second_row["reference"]["part_digest"]);
+    // Reauthor a structurally valid two-revision archive using native canonical payloads.
+    // Refreshed hashes prove integrity only, not historical authoring authenticity.
+    archive.manifest["selected_parts"].push_back(second_row);
+    std::sort(archive.manifest["selected_parts"].begin(), archive.manifest["selected_parts"].end(),
+              [](const auto &lhs, const auto &rhs) {
+                  return lhs["reference"].dump() < rhs["reference"].dump();
+              });
+    for (const auto &entry : other.entries) {
+        if (!entry.path.starts_with("closure/")) {
+            continue;
+        }
+        if (std::ranges::find(archive.entries, entry.path, &ArchiveEntry::path) ==
+            archive.entries.end()) {
+            archive.entries.push_back(entry);
+            const auto descriptor =
+                std::ranges::find_if(other.manifest["entries"],
+                                     [&](const auto &row) { return row["path"] == entry.path; });
+            REQUIRE(descriptor != other.manifest["entries"].end());
+            archive.manifest["entries"].push_back(*descriptor);
+        }
+    }
+    std::ranges::sort(archive.entries, {}, &ArchiveEntry::path);
+    std::sort(archive.manifest["entries"].begin(), archive.manifest["entries"].end(),
+              [](const auto &lhs, const auto &rhs) { return lhs["path"] < rhs["path"]; });
+    const auto logical =
+        std::ranges::find(archive.entries, "snapshots/logical.json", &ArchiveEntry::path);
+    REQUIRE(logical != archive.entries.end());
+    auto wrapper = Json::parse(logical->payload);
+    wrapper["circuit"]["components"][1]["selected_library_part"] = second_row["reference"];
+    logical->payload = wrapper.dump();
+    archive.manifest["selected_closure_digest"] =
+        volt::sha256_content_hash(Json{{"format", "volt.compiled-board.selected-closure"},
+                                       {"schema_version", 1U},
+                                       {"selected_parts", archive.manifest["selected_parts"]}}
+                                      .dump())
+            .value();
+    refresh_logical_provenance(archive, *logical);
+    const auto bytes = encode_archive(archive);
+    const auto compiled = volt::io::open_compiled_board(bytes);
+    const auto &circuit = compiled.board().circuit();
+    const auto &first = *circuit.get(volt::ComponentId{0}).selected_library_part_ref();
+    const auto &second = *circuit.get(volt::ComponentId{1}).selected_library_part_ref();
+    const auto &parts = compiled.part_definitions();
+    CHECK(&parts.resolve(first) != &parts.resolve(second));
+    CHECK(parts.resolve(first).content_identity() == first.part_digest());
+    CHECK(parts.resolve(second).content_identity() == second.part_digest());
+    CHECK(compiled.selected_component_definition(volt::ComponentId{0}) ==
+          compiled.selected_component_definition(volt::ComponentId{1}));
+    CHECK(parts.resolve(first).orderable_part().approved_alternate_mpns().size() == 1U);
+    CHECK(parts.resolve(second).orderable_part().approved_alternate_mpns().size() == 2U);
+    CHECK(volt::io::write_compiled_board(compiled) == bytes);
+}
+
+TEST_CASE("CompiledBoard rejects rehashed malformed full-part and mismatched component payloads") {
+    auto source = fixture(false, false, "glb", true, true);
+    const auto bundle = volt::io::PartLibraryBundle::build(
+        source.builder, std::array{source.selected_key}, source.resolver);
+    auto authored = design(source.spec, bundle, source.selected_key);
+    const auto compiled = take_success(volt::io::compile_board(*authored.circuit, authored.board,
+                                                               bundle, baseline_capabilities()));
+    const auto fault = GENERATE(0, 1, 2);
+    auto archive = decode_archive(compiled.bytes());
+    const auto payload = std::ranges::find_if(archive.entries, [](const auto &entry) {
+        return entry.path.starts_with("closure/parts/");
+    });
+    REQUIRE(payload != archive.entries.end());
+    auto document = Json::parse(payload->payload);
+    if (fault == 0) {
+        document.erase("electrical_records");
+    }
+    if (fault == 1) {
+        document["implements"] = volt::sha256_content_hash("foreign contract").value();
+    }
+    if (fault == 2) {
+        document["pin_terminal_mappings"][0]["pin_key"] = "foreign-pin";
+    }
+    payload->payload = document.dump();
+    refresh_entry_digest(archive, *payload);
+    // This reaches native payload validation despite the refreshed envelope hash.
+    try {
+        static_cast<void>(volt::io::open_compiled_board(encode_archive(archive)));
+        FAIL("malformed retained payload accepted");
+    } catch (const volt::KernelError &error) {
+        CHECK(error.code() == (fault == 2 ? volt::ErrorCode::CrossReferenceViolation
+                                          : volt::ErrorCode::InvalidArgument));
+    }
+}
+
+TEST_CASE("ProjectBundle owns reopened exact definitions and BOM inputs without source owners") {
+    const auto temporary = volt::test::project_bundle_v2::TempDirectory{};
+    const auto path = temporary.path() / "exact-parts.volt";
+    const auto witness = [&] {
+        auto source = volt::test::project_bundle_v2::mixed_footprint_board_fixture();
+        auto builder = volt::test::project_bundle_v2::project_builder();
+        builder.add_logical(volt::io::DesignKey{"main"}, *source.circuit, source.bundle);
+        builder.add_board(volt::io::DesignKey{"main"}, source.board, source.compiled, source.scene,
+                          source.bundle);
+        builder.build().write(path);
+        return volt::io::write_bom_json(volt::project_bom(*source.circuit, source.bundle));
+    }();
+    const auto reopened = volt::io::ProjectBundle::open(path);
+    const auto compiled = reopened.graph().loaded_project().compiled_boards();
+    REQUIRE(compiled.size() == 1U);
+    const auto &artifact = compiled.front().model();
+    const auto &circuit = artifact.board().circuit();
+    for (std::size_t index = 0; index < circuit.all<volt::ComponentId>().size(); ++index) {
+        const auto component = volt::ComponentId{index};
+        const auto &reference = *circuit.get(component).selected_library_part_ref();
+        CHECK(artifact.part_definitions().resolve(reference).content_identity() ==
+              reference.part_digest());
+        CHECK(artifact.selected_component_definition(component) != nullptr);
+    }
+    CHECK(volt::io::write_bom_json(volt::project_bom(circuit, artifact.part_definitions())) ==
+          witness);
 }

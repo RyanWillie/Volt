@@ -99,7 +99,8 @@ void validate_required_module_ports(const Circuit &circuit, DiagnosticReport &re
 
 void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &report);
 
-void validate_bom_component_readiness(const Circuit &circuit, const ExactPartResolver &resolver,
+void validate_bom_component_readiness(const Circuit &circuit,
+                                      const PartDefinitionResolver &resolver,
                                       DiagnosticReport &report);
 
 } // namespace detail
@@ -115,6 +116,6 @@ void validate_bom_component_readiness(const Circuit &circuit, const ExactPartRes
 
 /** Validate whether a circuit is ready for deterministic BOM projection and handoff. */
 [[nodiscard]] DiagnosticReport validate_bom_readiness(const Circuit &circuit,
-                                                      const ExactPartResolver &resolver);
+                                                      const PartDefinitionResolver &resolver);
 
 } // namespace volt
