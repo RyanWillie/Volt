@@ -47,6 +47,10 @@ enum/index/distance is a typed KernelError under either policy.
 | RouteKeepout{Board, keepout} | Polygon exterior on a layer restricting Copper or All | All native valid polygons; axis projection conservative |
 | RouteBoardEdge{Board, edge_index} | One actual stored outline segment, interior side determined from rectangular outline | Axis-aligned rectangular BoardOutline only; segment must be normal to requested movement axis |
 
+Inactive pads within a placement are ignored; every active unsupported or
+unconnected pad rejects the operand. A missing board outline is a design failure;
+an out-of-range edge index in a present outline is structural. The preserved
+transverse coordinate must lie within the selected edge segment extent, inclusive.
 No body/courtyard fallback, invented net, zone/fill operand or placement envelope
 is provided. Body/courtyard are separate placement concepts outside this routing
 slice. Oval/native conservative pad models, absent physical closure, unconnected
@@ -88,8 +92,9 @@ arithmetic is checked before BoardPoint construction; overflow is GeometryUnreso
 The transverse coordinate is preserved; no overlap/sweep axis is guessed. Whole
 leg legality checks include both named obstacles, all other copper, all mechanical
 openings, all keepouts and the actual outline. Same group never exempts mechanical
-constraints. Zero motion uses a local Track-kind disc of the actual width for
-rule/legality evaluation; no zero-length BoardTrack is published.
+constraints. Zero-motion symbolic legs are explicitly unsupported and return
+GeometryUnresolvable; no zero-length track or inferred disc rule is introduced.
+Literal zero-motion R1a steps retain their existing behavior.
 
 ## Finite final-geometry rule strategy
 
@@ -101,7 +106,7 @@ group; mechanical edge and keepout reserves are fixed. This is a bounded rule
 state calculation, not coordinate sampling or spatial routing search.
 
 For each tuple, compute the analytic target, construct the actual axis segment
-(or zero-motion disc), then resolve its width through R1a's native room width
+(nonzero segment only), then resolve its width through R1a's native room width
 iteration / explicit replacement and evaluate each shape's clearance through the
 shared native check_copper_clearance using resolved historical continuity. Retain
 only tuples matching those final native values exactly. Duplicate identical
@@ -109,6 +114,24 @@ coordinates/width/side values collapse. Exactly one self-consistent target resol
 none is RuleUnresolvable and multiple different solutions GeometryUnresolvable.
 No iterative target nudging, scalar clearance floor or fallback is allowed.
 
+Explicit below-floor width retains its representable target/leg and RuleViolation,
+with candidate_complete=true if all steps lower; width legality does not filter
+rule-state tuples. A query needs a nonzero final gap leg. Its candidate_complete
+is true after all prefix steps lower, even when legality fails; target resolution
+failure preserves the diagnostic prefix and sets it false. NoCandidate remains
+a route-only fallback. Successful query text is exactly
+`route NAME gap prefix feasible; board unchanged`; rejection uses R1a text.
+
+Owned evidence is `RouteTargetResolution{step_index, position, axis, raw_lower_mm,
+raw_upper_mm, lower_mm, upper_mm, width, constraints}` in result.target_resolutions.
+For Beside/Exit, raw/constrained lower=upper=the selected side/target coordinate;
+for Gap they are the ordered raw and constrained interval endpoints. Width is
+RouteRuleValue. `RouteTargetConstraint{upper_side, entities, clearance, exempt}`
+uses owned reporting EntityRefs, RouteRuleValue and bool historical-group copper
+exemption. Lower-side records precede upper-side records; native shapes retain
+collect order. Mechanical boundaries have exempt=false. Keepout's clearance
+records the open-boundary margin with Keepout provenance, not a copper rule.
+No tuple/ambiguous/unsupported target appends target evidence or a guessed point.
 Width provenance and pair provenance reuse R1a controlling/enforced source rules,
 including room replacement of global/class clearance and explicit width minima.
 The owned result additionally records target bounds and ordered side constraints
@@ -128,7 +151,7 @@ Resource exceptions retain the same strong guarantee and are never design failur
 | Recalculation | width/class/rooms, priority/ties/replacement, placement/rotation/side, unchanged literals |
 | Gap math | exact fit, one micron short, unequal sides, mm/full coordinates/epsilon, negative and overflow |
 | Copper | pad/placement/track/via, same/different/historical group/mixed nets, absent layer/unconnected/closure |
-| Geometry | rotated rectangle/circle, angled polyline, conservative projection, unsupported oval/zone/outline, reversed/overlap/wrong edge/Exit outside |
+| Geometry | rotated rectangle/circle, angled polyline, conservative projection, unsupported oval/outline; zone rejected by typed grammar, reversed/overlap/wrong edge/Exit outside |
 | Mechanical | both edge sides/interior/outside, keepout layer/restriction/contact margin, openings, same group mechanical rejection |
 | Rule states | final containment affecting width/clearance, zero/one/multiple fixed points, explicit below-floor, deterministic sources |
 | Parity | direct prefix query vs route prefix, complete native/Python owned payload and message parity, Strict vs Report |
