@@ -19,6 +19,11 @@ prerequisite does not deliver #389 manufacturing readiness.
   or null for a valid component with no selection. Invalid component IDs raise
   the existing native Circuit lookup error. The rvalue overload is deleted.
   Complete component definitions are retained once per content identity.
+  Their PinDefIds remain component-payload-local (the decoder-local owner is
+  gone); they are not handles into the artifact Circuit. Inspect the portable
+  ComponentContract/PinKeys and content identity through this seam. Pin meaning
+  and traversal use the artifact Circuit's own definition and IDs. No original
+  pin-owner reconstruction is promised.
 - The decoder's existing component-payload/logical-projection equality and
   part-to-original-component checks remain mandatory before publication.
   Full component identity differs from the symbol-stripped logical projection:
