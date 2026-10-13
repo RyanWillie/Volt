@@ -51,7 +51,8 @@ prerequisite does not deliver #389 manufacturing readiness.
 ## Finite verification plan
 
 1. Source/fresh/reopened canonical full PartDefinition equality, full original
-   component contract equality (including stripped symbols), rich electrical
+   component contract equality (including stripped symbols and multi-definition
+   payload-local versus Circuit pin-ID scope), rich electrical
    records, ratings, approved alternates, mappings, assembly and asset references.
 2. Destroy all source owners; run existing native BOM projection and BOM-readiness
    validation with artifact Circuit and resolver. Compare passing and bad-design
