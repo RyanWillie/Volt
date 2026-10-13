@@ -594,7 +594,8 @@ TEST_CASE("gap continuity group exemptions keep mechanical constraints independe
     REQUIRE(mechanical.failure);
     CHECK(mechanical.failure->kind == RouteFailureKind::Blocked);
     CHECK(mechanical.target_resolutions[0].constraints[0].exempt);
-    CHECK(std::any_of(mechanical.blockers.begin(), mechanical.blockers.end(), [](const auto &b) {
-        return b.kind == BoardSpatialBlockerKind::MechanicalOpening;
-    }));
+    CHECK(std::any_of(mechanical.blockers.begin(), mechanical.blockers.end(),
+                      [](const auto &blocker) {
+                          return blocker.kind == BoardSpatialBlockerKind::MechanicalOpening;
+                      }));
 }
