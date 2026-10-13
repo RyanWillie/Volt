@@ -1,6 +1,6 @@
 # R1b: Native symbolic targets and single-route gap feasibility
 
-Status: proposed for independent contract review. Tracking: #383.
+Status: independently reviewed, no unresolved blocking findings (2026-10-13). Tracking: #383.
 Baseline: main `6e7f3de06c92b7c3800a2dd4fd9c90d8513eed0e`, 2026-10-13.
 R1a's native request, ownership, rules, results, chronology and publication contract
 remain normative. This slice adds no sessions, cache, fluent migration or search.
@@ -127,7 +127,9 @@ raw_upper_mm, lower_mm, upper_mm, width, constraints}` in result.target_resoluti
 For Beside/Exit, raw/constrained lower=upper=the selected side/target coordinate;
 for Gap they are the ordered raw and constrained interval endpoints. Width is
 RouteRuleValue. `RouteTargetConstraint{upper_side, entities, clearance, exempt}`
-uses owned reporting EntityRefs, RouteRuleValue and bool historical-group copper
+has upper_side=true for the upper/negative occupied side and false for the
+lower/positive occupied side (edges use the corresponding interior half-plane);
+it uses owned reporting EntityRefs, RouteRuleValue and bool historical-group copper
 exemption. Lower-side records precede upper-side records; native shapes retain
 collect order. Mechanical boundaries have exempt=false. Keepout's clearance
 records the open-boundary margin with Keepout provenance, not a copper rule.
