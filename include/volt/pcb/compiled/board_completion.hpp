@@ -35,37 +35,61 @@ enum class BoardCompletionCopperKind { Disc, Segment, Polygon };
 
 /** Exact logical component inventory, including unplaced components. */
 struct BoardCompletionComponent {
+    /** Exact logical component identity. */
     ComponentId component;
+    /** Native assembly intent; absent DNP is represented as false. */
     bool dnp;
+    /** Exact selected implementation, when present. */
     std::optional<LibraryPartRef> selection;
+    /** Physical placement on this board, when present. */
     std::optional<ComponentPlacementId> placement;
+    /** Whether the selected footprint is resolved in the frozen artifact. */
     bool footprint_resolved;
 };
 
 /** Exact logical pin intent and concrete required copper contacts. */
 struct BoardCompletionPin {
+    /** Exact logical pin identity. */
     PinId pin;
+    /** Logical component owning this pin. */
     ComponentId component;
+    /** Native pin connection requirement. */
     ConnectionRequirement requirement;
+    /** Effective explicit or intrinsic no-connect intent. */
     bool no_connect;
+    /** Existing logical net membership, without inference from copper. */
     std::optional<NetId> net;
+    /** Whether this pin requires concrete mapped copper contacts. */
     bool physical_required;
+    /** All native mapped pad identities in stable order. */
     std::vector<FootprintPadId> mapped_pads;
+    /** Required conductor indices into the completion copper inventory. */
     std::vector<std::size_t> copper;
 };
 
 /** One conductor, including unlabelled copper; zone layers are separate conductors. */
 struct BoardCompletionCopper {
+    /** Normalized emitted conductor primitive. */
     BoardCompletionCopperKind kind;
+    /** Existing logical label; unlabelled conductors remain unlabelled. */
     std::optional<NetId> net;
+    /** Occupied copper layers, including native plated interlayer span. */
     std::vector<BoardLayerId> layers;
+    /** Exact reporting identities of the source geometry. */
     std::vector<EntityRef> entities;
+    /** Board-space centre, segment endpoints or polygon vertices. */
     std::vector<BoardPoint> points;
+    /** Disc radius or segment half-width in millimetres; zero for polygons. */
     double radius_mm;
+    /** Source footprint placement for pad copper, when applicable. */
     std::optional<ComponentPlacementId> placement;
+    /** Source footprint pad identity, when applicable. */
     std::optional<FootprintPadId> pad;
+    /** Native mapped logical pin, when applicable. */
     std::optional<PinId> pin;
+    /** Whether unintended contact to this conductor violates pin isolation. */
     bool isolated;
+    /** Whether full supported geometry coverage is established. */
     bool supported;
     /** Whether exact emitted contact can be analyzed despite a fidelity limitation. */
     bool contact_evaluated = true;
@@ -73,22 +97,31 @@ struct BoardCompletionCopper {
 
 /** Proven connected-component membership, never inferred from matching net labels. */
 struct BoardCompletionIsland {
+    /** Conductor indices belonging to this proven physical island. */
     std::vector<std::size_t> copper;
+    /** Preserved logical group representatives reached by this island. */
     std::vector<NetId> logical_groups;
 };
 
 /** One fixed coverage row with exact reporting scope. */
 struct BoardCompletionCoverage {
+    /** Closed mandatory requirement key. */
     BoardCompletionCheck check;
+    /** Proven pass, proven failure or explicit coverage gap. */
     BoardCompletionState state;
+    /** Exact ordered reporting scope of this row. */
     std::vector<EntityRef> entities;
+    /** Explanation of the evaluated result or missing coverage. */
     std::string reason;
 };
 
 /** Identity of actual native export bytes, produced only by IO evaluation. */
 struct BoardCompletionFile {
+    /** Native export filename, independent of any checkout path. */
     std::string filename;
+    /** Native fabrication file function. */
     std::string function;
+    /** Content identity of the actual emitted file bytes. */
     ContentHash digest;
 };
 
