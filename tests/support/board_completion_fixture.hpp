@@ -18,6 +18,9 @@ struct CompletionFixtureOptions {
     bool tracks = false;
     bool pth_terminal = false;
     bool npth_hole = false;
+    bool giant_body = false;
+    bool giant_mask_pad = false;
+    bool edge_text = false;
     bool omit_mapping = false;
     bool wrong_mapping = false;
     bool fab_critical_slot = false;
@@ -62,12 +65,13 @@ struct CompletionFixtureOptions {
         pads[0] = FootprintPad::through_hole("1", FootprintPadShape::Circle, {0, 0}, {1, 1},
                                              FootprintLayerSet::through_hole(),
                                              FootprintDrill{0.3, FootprintPadPlating::Plated});
-    if (options.npth_hole)
-        pads.push_back(
-            FootprintPad::through_hole("H", FootprintPadShape::Circle, {5, 0}, {0.5, 0.5},
-                                       FootprintLayerSet::mechanical_hole(),
-                                       FootprintDrill{0.3, FootprintPadPlating::NonPlated},
-                                       FootprintPadMechanicalRole::Mounting));
+    if (options.npth_hole || options.giant_mask_pad)
+        pads.push_back(FootprintPad::through_hole(
+            "H", options.giant_mask_pad ? FootprintPadShape::Rectangle : FootprintPadShape::Circle,
+            {5, 0}, {options.giant_mask_pad ? 1.0e14 : 0.5, 0.5},
+            FootprintLayerSet::mechanical_hole(),
+            FootprintDrill{0.3, FootprintPadPlating::NonPlated},
+            FootprintPadMechanicalRole::Mounting));
     if (options.multi_pad)
         pads.push_back(FootprintPad::surface_mount("2", options.shape, {0, 2}, {1, 1},
                                                    FootprintLayerSet::front_smd()));
@@ -75,7 +79,12 @@ struct CompletionFixtureOptions {
         pads.push_back(FootprintPad::surface_mount("T", FootprintPadShape::Rectangle, {5, 0},
                                                    {11, 1}, FootprintLayerSet::front_smd(),
                                                    FootprintPadMechanicalRole::MechanicalSupport));
-    const auto footprint = FootprintDefinition{FootprintRef{"test.completion", "contact"}, pads};
+    const auto body = options.giant_body
+                          ? std::optional{FootprintPolygon{
+                                {{1.0e14, 0}, {1.0e14 + 1, 0}, {1.0e14 + 1, 1}, {1.0e14, 1}}}}
+                          : std::nullopt;
+    const auto footprint =
+        FootprintDefinition{FootprintRef{"test.completion", "contact"}, pads, std::nullopt, body};
     const auto bytes = io::write_footprint_asset(footprint);
     const auto asset = PartAssetReference{
         PartAssetKind::Footprint, "footprint:test.completion/contact", sha256_content_hash(bytes)};
@@ -198,6 +207,12 @@ struct CompletionFixtureOptions {
     }
     if (options.severing_hole)
         static_cast<void>(board.add_feature(BoardFeature::hole("CUT", {15, 5}, 1.0)));
+    if (options.edge_text) {
+        const auto silk =
+            board.add_layer(BoardLayer{"F.SilkS", BoardLayerRole::Silkscreen, BoardLayerSide::Top});
+        static_cast<void>(board.add_text(
+            BoardText{"A", {9999, 10}, BoardRotation::degrees(0), silk, 4.0, false}));
+    }
     // The native compiler, not the fixture, owns closure consistency and mapping validation.
     return compile_export_fixture(circuit, std::move(board), bundle);
 }

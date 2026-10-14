@@ -135,45 +135,6 @@ BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled) {
     if (row.state != BoardCompletionState::Pass)
         row.reason = "Native emitted geometry/loss/quantization coverage is incomplete; inspect "
                      "exact diagnostics";
-    // Validate the actual coordinate tokens too, including derived legend/marking output.
-    for (const auto &file : export_result.files) {
-        auto cursor = std::size_t{0};
-        while (cursor < file.text.size()) {
-            const auto end = file.text.find('\n', cursor);
-            const auto line = std::string_view{file.text}.substr(
-                cursor, end == std::string::npos ? std::string::npos : end - cursor);
-            if (line.starts_with('X')) {
-                for (const auto axis : {'X', 'Y'}) {
-                    auto start = line.find(axis);
-                    if (start == std::string_view::npos)
-                        continue;
-                    ++start;
-                    if (start < line.size() && line[start] == '-')
-                        ++start;
-                    auto stop = start;
-                    while (stop < line.size() && line[stop] >= '0' && line[stop] <= '9')
-                        ++stop;
-                    if (stop - start > 10U) {
-                        row.state = BoardCompletionState::NotEvaluated;
-                        report.add(
-                            Diagnostic{Severity::Warning,
-                                       DiagnosticCode{std::string{
-                                           pcb_completion_diagnostic_codes::ExportNotEvaluated}},
-                                       DiagnosticCategory{diagnostic_categories::PcbFabrication},
-                                       "Actual native export coordinate exceeds its declared 4.6 "
-                                       "format; fidelity is not evaluated",
-                                       {EntityRef::board()},
-                                       {},
-                                       {},
-                                       "volt.native_fabrication/1:grid-4.6"});
-                    }
-                }
-            }
-            if (end == std::string::npos)
-                break;
-            cursor = end + 1U;
-        }
-    }
     if (row.state != BoardCompletionState::Pass)
         row.reason = "Native emitted geometry/loss/quantization/format coverage is incomplete; "
                      "inspect exact diagnostics";

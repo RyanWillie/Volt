@@ -110,7 +110,14 @@ void add_fab_critical_warning(
     return out.str();
 }
 
+/** Private export-format rejection, translated to native fabrication loss at the IO boundary. */
+struct UnsupportedCoordinateRange {
+    double actual_mm;
+};
+
 [[nodiscard]] std::string coordinate(double value) {
+    if (!std::isfinite(value) || std::abs(value) > 9999.999999)
+        throw UnsupportedCoordinateRange{value};
     const auto scaled = static_cast<long long>(std::llround(normalized_number(value) * 1000000.0));
     auto out = std::ostringstream{};
     if (scaled < 0) {
@@ -1100,8 +1107,10 @@ PcbFabricationLossReport::fab_critical_warnings() const {
     return diagnostics;
 }
 
+namespace {
 [[nodiscard]] PcbFabricationExportResult
-write_pcb_fabrication_files(const CompiledBoard &compiled, PcbFabricationExportOptions options) {
+write_supported_fabrication_files(const CompiledBoard &compiled,
+                                  PcbFabricationExportOptions options) {
     const auto &board = compiled.board();
     auto result = PcbFabricationExportResult{compiled.identity(), {}, {}, {}};
     const auto basename = output_basename(board, options);
@@ -1171,6 +1180,24 @@ write_pcb_fabrication_files(const CompiledBoard &compiled, PcbFabricationExportO
                 write_excellon(drills, false, transform));
 
     return result;
+}
+
+} // namespace
+
+PcbFabricationExportResult write_pcb_fabrication_files(const CompiledBoard &compiled,
+                                                       PcbFabricationExportOptions options) {
+    try {
+        return write_supported_fabrication_files(compiled, std::move(options));
+    } catch (const UnsupportedCoordinateRange &failure) {
+        auto result = PcbFabricationExportResult{compiled.identity(), {}, {}, {}};
+        add_fab_critical_warning(
+            result.loss_report, PcbFabricationLossKind::UnsupportedGeometry,
+            "native.coordinate.range",
+            "Native 4.6 coordinate " + decimal_mm(failure.actual_mm) +
+                " mm is unsupported; the entire fabrication export was not evaluated",
+            {EntityRef::board()});
+        return result;
+    }
 }
 
 namespace detail {

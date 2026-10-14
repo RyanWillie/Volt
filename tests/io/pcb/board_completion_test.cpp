@@ -368,3 +368,24 @@ TEST_CASE("Completion bounds native 4.6 coordinates before unsafe integer conver
     CHECK(has(result, codes::ExportNotEvaluated));
     CHECK(result.files().empty());
 }
+
+TEST_CASE("Completion conversion guard covers emitted body mask and combined glyph coordinates",
+          "[completion]") {
+    auto options = test::CompletionFixtureOptions{};
+    options.components = 1;
+    options.zone = false;
+    SECTION("body polygon") { options.giant_body = true; }
+    SECTION("mask-only mechanical pad") { options.giant_mask_pad = true; }
+    SECTION("glyph origin plus extent") { options.edge_text = true; }
+    const auto artifact = test::completion_fixture(options);
+    const auto exported = io::write_pcb_fabrication_files(artifact);
+    CHECK(exported.files.empty());
+    CHECK(exported.loss_report.has_fab_critical_warnings());
+    const auto result = io::evaluate_fabrication_completion(artifact);
+    CHECK(result.status() != BoardCompletionStatus::Complete);
+    CHECK(row(result, BoardCompletionCheck::ExportFidelity) == BoardCompletionState::NotEvaluated);
+    CHECK(result.files().empty());
+    const auto reopened = io::open_compiled_board(artifact.bytes());
+    CHECK(io::write_board_completion(io::evaluate_fabrication_completion(reopened)) ==
+          io::write_board_completion(result));
+}
