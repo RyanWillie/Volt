@@ -146,7 +146,8 @@ TransientRequest read_transient_request(std::string_view bytes, const Electrical
         });
         fields(document, {"format", "version", "key", "input", "reference", "sources", "probes",
                           "exclusions", "times", "initial_state", "dc_provenance"});
-        require(document.at("format") == transient_request_format_name() &&
+        require(document.at("format").is_string() &&
+                    document.at("format").get<std::string>() == transient_request_format_name() &&
                     document.at("version").is_number_integer() &&
                     document.at("version") == transient_request_format_version(),
                 "Unsupported transient request format or version");
