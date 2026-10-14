@@ -145,11 +145,11 @@ argument-shape error before native publication. No inferred Python floor arithme
 | stitch(net,at,start_layer,end_layer) | tuple[RouteResult,...]; same sizing/policy |
 | fanout(anchors,layer,direction,distance,net=None,via_layers=None) | tuple[BoardFanout,...]; width=None, paired sizing, policy=STRICT |
 
-BoardFanout is a frozen Python presentation value with exactly source: BoardAnchor,
+BoardFanout is a frozen Python presentation value with exactly source: BoardAnchor | None (from the first native resolved step),
 end: BoardAnchor | None (from native final resolved step), and result: RouteResult. Remove
 old singular track/via fields; callers inspect result.tracks/result.vias. Rejected
-Report fanout carries its native result; end is None when no final native step was
-resolved, otherwise the reported native step end (never guessed by Python).
+Report fanout carries its native result; source and end are None when no final native step was
+resolved, otherwise the reported native step source/end (never guessed by Python).
 
 `layout.connect` returns RouteResult; `bundle` returns tuple[RouteResult,...] with
 per-item atomicity (no whole-batch claim). `layout.via/stitch` use native Via+Finish,

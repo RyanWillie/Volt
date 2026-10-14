@@ -291,7 +291,7 @@ the compiled graph.
 | `volt.BoardEscapeFailureReason` | Native failure enum for one pad escape outcome. |
 | `volt.BoardEscapePadResult` | Read-only native result for one attempted pad escape. |
 | `volt.BoardEscapeResult` | Read-only native result for bounded component pad fanout. |
-| `volt.BoardFanout` | Result record for a layout-authored fanout track and optional via. |
+| `volt.BoardFanout` | Source/native end and owned RouteResult for one authored fanout. |
 | `volt.BoardPadAnchor` | Resolved footprint pad anchor on a placed board component. |
 | `volt.BoardLayout` | Cursor-based PCB placement authoring session. |
 | `volt.BoardRoute` | Fluent handle for hand-placed routes authored from board anchors and jogs. |
@@ -302,6 +302,9 @@ the compiled graph.
 | `volt.RouteDirection` | Explicit positive/negative board X/Y direction. |
 | `volt.RouteExit` | Axis step exiting an occupied projected copper/keepout envelope. |
 | `volt.RouteBeside` | Axis step beside a selected native geometry side. |
+| `volt.RouteAlign` | Native geometry-only endpoint-axis projection, without contact/net inference. |
+| `volt.RouteOffset` | Signed native axial displacement without route grid snapping. |
+| `volt.RouteFinish` | Terminal end-current intent, including via-only routes. |
 | `volt.RouteGap` | Axis step to a constrained single-route interval centre. |
 | `volt.RouteTrackCopper` | Owner-bearing existing track copper operand. |
 | `volt.RoutePlacedCopper` | Exact-footprint active-layer pad union, retaining each pad net. |

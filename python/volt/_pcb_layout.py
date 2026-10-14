@@ -25,6 +25,7 @@ from ._pcb_composition import (
     text as _compose_text,
     zone as _compose_zone,
 )
+from . import _volt
 from ._utils import _coordinate, _positive_coordinate
 from .logical import Component, Net, Pin, _pin_refs_by_name
 
@@ -121,6 +122,7 @@ class BoardPadAnchor(BoardAnchor):
         self.pad_label = pad_label
         self.pin = pin
         self.status = status
+        self._route_identity = board.route_pad(placement, pad)
 
     def __repr__(self) -> str:
         return (
@@ -509,136 +511,43 @@ class BoardLayout:
         """Start fluent placement for a two-pad component footprint."""
         return BoardTwoPadComponent(self, component, side=side, locked=locked)
 
-    def route(
-        self,
-        net: Net | int,
-        *,
-        layer: int,
-        width: float = 0.20,
-        mode: str = "octilinear",
-    ) -> BoardRoute:
-        """Start a schematic-style routed track sequence from the cursor."""
-        return BoardRoute(
-            self,
-            net,
-            layer=layer,
-            width=width,
-            mode=mode,
-            endpoint_intent=True,
-        )
+    def route(self, net=None, *, layer, width=None, mode="octilinear",
+              policy=_volt.RoutePolicy.STRICT, via_size=None):
+        """Describe one native Strict route with inherited sizing by default."""
+        return BoardRoute(self, net, layer=layer, width=width, mode=mode,
+                          policy=policy, via_size=via_size)
 
-    def connect(
-        self,
-        start: tuple[float, float] | BoardAnchor,
-        end: tuple[float, float] | BoardAnchor,
-        *,
-        layer: int,
-        net: Net | int | None = None,
-        width: float = 0.20,
-        through=(),
-        mode: str = "octilinear",
-    ) -> int:
-        """Route between two anchors, delegating pad endpoint nets to the kernel."""
-        return _compose_connect(
-            self._composition(),
-            start,
-            end,
-            layer=layer,
-            net=net,
-            width=width,
-            through=through,
-            mode=mode,
-        )
+    def connect(self, start, end, *, layer, net=None, width=None, through=(),
+                mode="octilinear", policy=_volt.RoutePolicy.STRICT):
+        """Connect anchors through the native route planner, returning RouteResult."""
+        return _compose_connect(self._composition(), start, end, layer=layer, net=net,
+                                width=width, through=through, mode=mode, policy=policy)
 
-    def bundle(
-        self,
-        pairs,
-        *,
-        layer: int,
-        net: Net | int | None = None,
-        width: float = 0.20,
-        mode: str = "octilinear",
-    ) -> tuple[int, ...]:
-        """Route multiple independent anchor pairs as one deterministic bundle."""
-        return _compose_bundle(
-            self._composition(),
-            pairs,
-            layer=layer,
-            net=net,
-            width=width,
-            mode=mode,
-        )
+    def bundle(self, pairs, *, layer, net=None, width=None, mode="octilinear",
+               policy=_volt.RoutePolicy.STRICT):
+        """Publish independently atomic routes in deterministic pair order."""
+        return _compose_bundle(self._composition(), pairs, layer=layer, net=net,
+                               width=width, mode=mode, policy=policy)
 
-    def via(
-        self,
-        net: Net | int,
-        *,
-        at: tuple[float, float] | BoardAnchor | None = None,
-        start_layer: int,
-        end_layer: int,
-        drill: float | None = None,
-        annular: float | None = None,
-    ) -> int:
-        """Add a via at a board anchor and move the cursor to that anchor."""
-        anchor = self._here if at is None else self._anchor_at(at)
-        via = self._board.add_via(
-            net,
-            at=anchor.point,
-            start_layer=start_layer,
-            end_layer=end_layer,
-            drill=drill,
-            annular=annular,
-        )
-        self._here = anchor
-        return via
+    def via(self, net, *, at=None, start_layer, end_layer, drill=None, annular=None,
+            policy=_volt.RoutePolicy.STRICT):
+        """Publish a native via-only route; return its owned RouteResult."""
+        endpoint = self._here if at is None else at
+        return self.route(net, layer=start_layer, policy=policy,
+                          via_size=_route_via_size(drill, annular)).at(endpoint).via(end_layer).finish()
 
-    def stitch(
-        self,
-        net: Net | int,
-        *,
-        at,
-        start_layer: int,
-        end_layer: int,
-        drill: float | None = None,
-        annular: float | None = None,
-    ) -> tuple[int, ...]:
-        """Add a deterministic set of vias for one net."""
-        return _compose_stitch(
-            self._composition(),
-            net,
-            at=at,
-            start_layer=start_layer,
-            end_layer=end_layer,
-            drill=drill,
-            annular=annular,
-        )
+    def stitch(self, net, *, at, start_layer, end_layer, drill=None, annular=None,
+               policy=_volt.RoutePolicy.STRICT):
+        """Publish native via-only routes, each independently atomic."""
+        return _compose_stitch(self._composition(), net, at=at, start_layer=start_layer,
+                               end_layer=end_layer, drill=drill, annular=annular, policy=policy)
 
-    def fanout(
-        self,
-        anchors,
-        *,
-        layer: int,
-        direction: str,
-        distance: float,
-        net: Net | int | None = None,
-        width: float = 0.20,
-        via_layers: tuple[int, int] | None = None,
-        drill: float | None = None,
-        annular: float | None = None,
-    ) -> tuple[BoardFanout, ...]:
-        """Route one or more anchors outward and optionally drop vias at the endpoints."""
-        return _compose_fanout(
-            self._composition(),
-            anchors,
-            layer=layer,
-            direction=direction,
-            distance=distance,
-            net=net,
-            width=width,
-            via_layers=via_layers,
-            drill=drill,
-            annular=annular,
-        )
+    def fanout(self, anchors, *, layer, direction, distance, net=None, width=None,
+               via_layers=None, drill=None, annular=None, policy=_volt.RoutePolicy.STRICT):
+        """Author explicit native axial stubs, each with its optional inline via."""
+        return _compose_fanout(self._composition(), anchors, layer=layer, direction=direction,
+                               distance=distance, net=net, width=width, via_layers=via_layers,
+                               drill=drill, annular=annular, policy=policy)
 
     def node(
         self,
@@ -824,12 +733,6 @@ class BoardLayout:
         rounded = floor(scaled + 0.5) if scaled >= 0 else ceil(scaled - 0.5)
         return _clean_coordinate(rounded * self._grid)
 
-    def _route_axis_target(self, target, axis: str) -> float:
-        coordinate = _board_anchor_axis_target(target, self._board, axis)
-        if isinstance(target, BoardAnchor):
-            return coordinate
-        return self._snap_coordinate(coordinate)
-
     def _composition(self) -> BoardLayoutComposition:
         return BoardLayoutComposition(
             board=self._board,
@@ -838,29 +741,15 @@ class BoardLayout:
             snap_anchor=self._snap_anchor,
             axis_target=self._composition_axis_target,
             is_anchor=lambda value: isinstance(value, BoardAnchor),
-            track_net=self._board._track_net,
             hold=self.hold,
             route_for_connect=self._route_for_connect,
             via=self.via,
             connect=self.connect,
         )
 
-    def _route_for_connect(
-        self,
-        net: Net | int | None,
-        *,
-        layer: int,
-        width: float,
-        mode: str,
-    ) -> BoardRoute:
-        return BoardRoute(
-            self,
-            net,
-            layer=layer,
-            width=width,
-            mode=mode,
-            endpoint_intent=True,
-        )
+    def _route_for_connect(self, net, *, layer, width=None, mode="octilinear",
+                           policy=_volt.RoutePolicy.STRICT):
+        return self.route(net, layer=layer, width=width, mode=mode, policy=policy)
 
     def _composition_axis_target(self, target, axis: str) -> float:
         coordinate = _board_anchor_axis_target(target, self._board, axis)
@@ -877,141 +766,156 @@ class BoardLayout:
 
 
 class BoardRoute:
-    """Fluent builder for hand-placed PCB route geometry."""
+    """Fluent description of one native, atomically checked route."""
 
-    def __init__(
-        self,
-        layout: BoardLayout,
-        net: Net | int | None,
-        *,
-        layer: int,
-        width: float,
-        mode: str,
-        endpoint_intent: bool,
-    ):
+    def __init__(self, layout, net, *, layer, width=None, mode="octilinear",
+                 policy=_volt.RoutePolicy.STRICT, via_size=None):
         self._layout = layout
         self._board = layout._board
         self._net = net
         self._layer = layer
-        self._width = _positive_coordinate(width, "Board route width")
+        self._width = width
         self._mode = _route_mode(mode)
-        self._endpoint_intent = bool(endpoint_intent)
-        self._points: list[BoardAnchor] = [layout.here]
-        self._track: int | None = None
+        self._policy = policy
+        self._via_size = via_size
+        self._start = _route_endpoint(layout.here, self._board)
+        self._steps = []
+        self._committed = False
 
-    def at(self, point: tuple[float, float] | BoardAnchor) -> BoardRoute:
-        """Start this route at an explicit board anchor."""
+    def at(self, endpoint):
+        """Choose an owner-bearing endpoint or an explicit point as the start."""
         self._require_open("at")
-        self._points = [self._layout._anchor_at(point)]
+        self._start = _route_endpoint(endpoint, self._board)
+        self._steps = []
         return self
 
-    def to(self, point: tuple[float, float] | BoardAnchor, *, mode: str | None = None) -> int:
-        """Terminate this route at an anchor and add the track to the board."""
-        self._require_open("to")
-        target = self._layout._anchor_at(point)
-        route_mode = self._mode if mode is None else _route_mode(mode)
-        for anchor in _route_segment_anchors(self._current("to"), target, route_mode, self._board):
-            self._append(anchor)
-        return self._materialize()
-
-    def through(
-        self,
-        point: tuple[float, float] | BoardAnchor,
-        *,
-        mode: str | None = None,
-    ) -> BoardRoute:
-        """Route through an intermediate anchor without materializing the track."""
+    def through(self, endpoint, *, mode=None):
+        """Append a native endpoint leg without publishing copper."""
         self._require_open("through")
-        target = self._layout._anchor_at(point)
-        route_mode = self._mode if mode is None else _route_mode(mode)
-        for anchor in _route_segment_anchors(
-            self._current("through"), target, route_mode, self._board
-        ):
-            self._append(anchor)
+        self._steps.append(_volt.RouteThrough(_route_endpoint(endpoint, self._board),
+                                              self._corner(mode)))
         return self
 
-    def tox(self, anchor_or_x) -> BoardRoute:
-        """Route horizontally to the target x coordinate."""
-        self._require_open("tox")
-        current = self._current("tox")
-        return self._append(
-            BoardAnchor(
-                (self._layout._route_axis_target(anchor_or_x, "x"), current.y),
-                board=self._board,
-            )
-        )
+    def tox(self, endpoint_or_x):
+        """Project an endpoint's native X coordinate, or author a literal X."""
+        return self._axis(endpoint_or_x, _volt.RouteAxis.X)
 
-    def toy(self, anchor_or_y) -> BoardRoute:
-        """Route vertically to the target y coordinate."""
-        self._require_open("toy")
-        current = self._current("toy")
-        return self._append(
-            BoardAnchor(
-                (current.x, self._layout._route_axis_target(anchor_or_y, "y")),
-                board=self._board,
-            )
-        )
+    def toy(self, endpoint_or_y):
+        """Project an endpoint's native Y coordinate, or author a literal Y."""
+        return self._axis(endpoint_or_y, _volt.RouteAxis.Y)
 
-    def left(self, distance: float) -> BoardRoute:
-        """Route left by a relative distance."""
-        return self._offset("left", dx=-_coordinate(distance))
-
-    def right(self, distance: float) -> BoardRoute:
-        """Route right by a relative distance."""
-        return self._offset("right", dx=_coordinate(distance))
-
-    def up(self, distance: float) -> BoardRoute:
-        """Route up by a relative distance."""
-        return self._offset("up", dy=-_coordinate(distance))
-
-    def down(self, distance: float) -> BoardRoute:
-        """Route down by a relative distance."""
-        return self._offset("down", dy=_coordinate(distance))
-
-    def _offset(self, method: str, *, dx: float = 0, dy: float = 0) -> BoardRoute:
-        self._require_open(method)
-        current = self._current(method)
-        x = current.x + dx
-        y = current.y + dy
-        if dx:
-            x = self._layout._snap_coordinate(x)
-        if dy:
-            y = self._layout._snap_coordinate(y)
-        return self._append(BoardAnchor((x, y), board=self._board))
-
-    def _append(self, anchor: BoardAnchor) -> BoardRoute:
-        self._points.append(anchor)
-        self._points = _distinct_adjacent_points(self._points)
+    def _axis(self, target, axis):
+        self._require_open("axis")
+        if isinstance(target, (int, float)):
+            step = _volt.RouteToX(target) if axis == _volt.RouteAxis.X else _volt.RouteToY(target)
+        else:
+            step = _volt.RouteAlign(_route_endpoint(target, self._board), axis)
+        self._steps.append(step)
         return self
 
-    def _current(self, method: str) -> BoardAnchor:
-        if not self._points:
-            raise ValueError(f"Board route requires a start point before {method}()")
-        return self._points[-1]
+    def left(self, distance):
+        """Append a native negative-X displacement, without grid snapping."""
+        return self._offset(_volt.RouteAxis.X, -distance)
 
-    def _materialize(self) -> int:
-        points = _distinct_adjacent_points(self._points)
-        if len(points) < 2:
-            raise ValueError("Board route requires at least two distinct points")
-        result = self._board._add_track_for_route(
-            self._net,
-            layer=self._layer,
-            endpoints=tuple(
-                _route_endpoint_payload(anchor, include_identity=self._endpoint_intent)
-                for anchor in points
-            ),
-            width=self._width,
-        )
-        self._track = int(result["track"])
-        self._layout._here = points[-1]
-        return self._track
+    def right(self, distance):
+        """Append a native positive-X displacement, without grid snapping."""
+        return self._offset(_volt.RouteAxis.X, distance)
 
-    def _require_open(self, method: str) -> None:
-        if self._track is not None:
+    def up(self, distance):
+        """Append a native negative-Y displacement, without grid snapping."""
+        return self._offset(_volt.RouteAxis.Y, -distance)
+
+    def down(self, distance):
+        """Append a native positive-Y displacement, without grid snapping."""
+        return self._offset(_volt.RouteAxis.Y, distance)
+
+    def _offset(self, axis, distance):
+        self._require_open("offset")
+        self._steps.append(_volt.RouteOffset(axis, distance))
+        return self
+
+    def via(self, layer):
+        """Switch layers with a native via at the current native point."""
+        self._require_open("via")
+        self._steps.append(_volt.RouteVia(self._board.route_layer(layer)))
+        return self
+
+    def exit(self, operand, direction, distance=0.0):
+        """Append a native Exit target."""
+        return self._symbolic(_volt.RouteExit(_route_operand(operand, self._board), direction, distance))
+
+    def beside(self, operand, direction, distance=0.0):
+        """Append a native Beside target."""
+        return self._symbolic(_volt.RouteBeside(_route_operand(operand, self._board), direction, distance))
+
+    def gap(self, lower, upper, axis):
+        """Append a native single-route Gap target."""
+        return self._symbolic(_volt.RouteGap(_route_operand(lower, self._board), _route_operand(upper, self._board), axis))
+
+    def _symbolic(self, step):
+        self._require_open("target")
+        self._steps.append(step)
+        return self
+
+    def query_gap(self):
+        """Read the native gap prefix without closing the builder or moving the cursor."""
+        self._require_open("query_gap")
+        return self._board.query_gap(self._spec(self._steps))
+
+    def to(self, endpoint, *, mode=None):
+        """Check and publish the complete route, returning its owned native result."""
+        return self._publish(_volt.RouteTo(_route_endpoint(endpoint, self._board), self._corner(mode)))
+
+    def finish(self):
+        """Check and publish at the native current point (including a via-only route)."""
+        return self._publish(_volt.RouteFinish())
+
+    def _corner(self, mode):
+        name = self._mode if mode is None else _route_mode(mode)
+        return {"octilinear": _volt.CornerStyle.CHAMFER45,
+                "orthogonal": _volt.CornerStyle.ORTHOGONAL,
+                "direct": _volt.CornerStyle.DIRECT}[name]
+
+    def _spec(self, steps):
+        return self._board.route_spec(start=self._start, layer=self._board.route_layer(self._layer),
+                                     steps=steps,
+                                     net=None if self._net is None else self._board.route_net(self._net),
+                                     width=self._width, via_size=self._via_size)
+
+    def _publish(self, terminal):
+        self._require_open("publish")
+        result = self._board.route(self._spec([*self._steps, terminal]), self._policy)
+        if result.committed:
+            self._committed = True
+            self._layout._here = BoardAnchor(result.resolved_steps[-1].end, board=self._board)
+        return result
+
+    def _require_open(self, method):
+        if self._committed:
             raise ValueError(f"Cannot call {method}() after route is materialized")
 
-    def __repr__(self) -> str:
-        return f"BoardRoute(points={[anchor.point for anchor in self._points]!r})"
+
+def _route_endpoint(value, board):
+    if isinstance(value, BoardPadAnchor):
+        # Captured full footprint identity survives until native preflight, including reselection.
+        return value._route_identity
+    if isinstance(value, BoardAnchor):
+        if value._board is not board:
+            raise ValueError("Board anchor belongs to a different board")
+        return _volt.RoutePoint(*value.point)
+    if isinstance(value, (tuple, list)):
+        return _volt.RoutePoint(*value)
+    return value
+
+
+def _route_operand(value, board):
+    return _route_endpoint(value, board) if isinstance(value, BoardPadAnchor) else value
+
+
+def _route_via_size(drill, annular):
+    if (drill is None) != (annular is None):
+        raise ValueError("Native route via override requires both drill and annular")
+    return None if drill is None else _volt.RouteViaOverride(drill, annular)
 
 
 class BoardTwoPadComponent:
@@ -1271,23 +1175,6 @@ def _board_point_tuple(value) -> tuple[float, float]:
     return (_coordinate(value[0]), _coordinate(value[1]))
 
 
-def _distinct_adjacent_points(points: list[BoardAnchor]) -> list[BoardAnchor]:
-    result: list[BoardAnchor] = []
-    for point in points:
-        if result and result[-1].point == point.point:
-            continue
-        result.append(point)
-    return result
-
-
-def _route_endpoint_payload(
-    anchor: BoardAnchor, *, include_identity: bool
-) -> tuple[float, float, int | None, int | None]:
-    if include_identity and isinstance(anchor, BoardPadAnchor):
-        return (anchor.x, anchor.y, anchor.placement, anchor.pad)
-    return (anchor.x, anchor.y, None, None)
-
-
 def _route_mode(value: str) -> str:
     if not isinstance(value, str):
         raise TypeError("Board route mode must be a string")
@@ -1299,32 +1186,6 @@ def _route_mode(value: str) -> str:
     if normalized == "direct":
         return "direct"
     raise ValueError("Board route mode must be octilinear, orthogonal, or direct")
-
-
-def _route_segment_anchors(
-    start: BoardAnchor,
-    end: BoardAnchor,
-    mode: str,
-    board: Board,
-) -> tuple[BoardAnchor, ...]:
-    if mode == "direct":
-        return (end,)
-    if mode == "octilinear" and _is_axis_or_45(start, end):
-        return (end,)
-    if mode == "orthogonal" and _is_axis(start, end):
-        return (end,)
-    corner = BoardAnchor((end.x, start.y), board=board)
-    return (corner, end)
-
-
-def _is_axis_or_45(start: BoardAnchor, end: BoardAnchor) -> bool:
-    dx = abs(end.x - start.x)
-    dy = abs(end.y - start.y)
-    return dx < 1e-9 or dy < 1e-9 or abs(dx - dy) < 1e-9
-
-
-def _is_axis(start: BoardAnchor, end: BoardAnchor) -> bool:
-    return abs(end.x - start.x) < 1e-9 or abs(end.y - start.y) < 1e-9
 
 
 def _board_point(value, *, board: Board) -> tuple[float, float]:

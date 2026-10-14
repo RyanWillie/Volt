@@ -1,3 +1,4 @@
+#include "board_router_storage.hpp"
 #include <volt/pcb/routing/board_router.hpp>
 
 #include <volt/core/errors.hpp>
@@ -292,8 +293,11 @@ BoardRouter::BoardRouter(Board &board, const BoardResolution &resolution)
     : BoardRouter{board, resolution.view()} {}
 
 [[nodiscard]] BoardSpatialIndex &BoardRouter::index() const {
-    if (!index_.has_value()) {
-        index_.emplace(resolved_);
+    if (!index_ || !legacy_inputs_ || !legacy_inputs_->current(*board_)) {
+        auto inputs = std::make_unique<detail::BoardRoutingInputs>(*board_);
+        auto refreshed = BoardSpatialIndex{resolved_};
+        index_ = std::move(refreshed);
+        legacy_inputs_ = std::move(inputs);
     }
     return index_.value();
 }
@@ -541,8 +545,9 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
             track_width_for_segment(*board_, segment.layer, segment.start, segment.end, params);
         const auto track_id = board_->add_track(BoardTrack{
             request.net, segment.layer, std::vector{segment.start, segment.end}, width_mm});
-        index().insert(
+        index_.value().insert(
             escape_segment_shape(request.net, segment.layer, segment.start, segment.end, width_mm));
+        legacy_inputs_->rebase(*board_);
         result.tracks.push_back(track_id);
     }
 
@@ -550,7 +555,8 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         const auto via_id =
             board_->add_via(BoardVia{request.net, via.position, via.start_layer, via.end_layer,
                                      params.via_drill_mm, params.via_diameter_mm});
-        index().insert(committed_via_shape(*board_, board_->get(via_id)));
+        index_.value().insert(committed_via_shape(*board_, board_->get(via_id)));
+        legacy_inputs_->rebase(*board_);
         result.vias.push_back(via_id);
     }
 }
@@ -743,7 +749,8 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         const auto width_mm = shape.radius_mm * 2.0;
         const auto track_id = board_->add_track(BoardTrack{
             pad.net.value(), candidate.layer, std::vector{pad.pad_position, endpoint}, width_mm});
-        index().insert(shape);
+        index_.value().insert(shape);
+        legacy_inputs_->rebase(*board_);
         pad.endpoint = endpoint;
         pad.escaped = true;
         pad.failure_reason = BoardEscapeFailureReason::None;

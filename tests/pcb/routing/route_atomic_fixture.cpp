@@ -1,4 +1,5 @@
 #include "support/resolved_board_test_parts.hpp"
+#include "support/routing_session_probe.hpp"
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/pcb/routing/board_router.hpp>
@@ -54,11 +55,6 @@ int exercise(bool batch) {
     std::size_t failures = 0;
     for (std::size_t budget = 0; budget < 10000; ++budget) {
         Fixture f;
-        const auto bytes = volt::io::write_pcb_board(f.view());
-        const auto tracks = f.board.all<volt::BoardTrackId>();
-        const auto vias = f.board.all<volt::BoardViaId>();
-        const auto *old_track = &f.board.get(volt::BoardTrackId{0});
-        const auto *old_via = &f.board.get(volt::BoardViaId{0});
         const auto append =
             volt::CopperAppendSpec{{volt::BoardTrack{f.net, f.front, {{10, 10}, {15, 10}}, 0.2},
                                     volt::BoardVia{f.net, {15, 10}, f.front, f.back, 0.3, 0.7},
@@ -71,6 +67,18 @@ int exercise(bool batch) {
                                            volt::RouteVia{{&f.board, f.back}},
                                            volt::RouteTo{volt::RoutePoint{{20, 10}}}}};
         auto router = volt::BoardRouter{f.board, f.view()};
+        if (!batch) {
+            auto warm = spec;
+            warm.start = volt::RoutePoint{{30, 30}};
+            warm.steps = {volt::RouteTo{volt::RoutePoint{{31, 30}}}};
+            static_cast<void>(router.route(warm));
+        }
+        const auto retained = volt::detail::RoutingSessionProbe::state(router);
+        const auto warm_bytes = volt::io::write_pcb_board(f.view());
+        const auto warm_tracks = f.board.all<volt::BoardTrackId>();
+        const auto warm_vias = f.board.all<volt::BoardViaId>();
+        const auto *warm_track = &f.board.get(volt::BoardTrackId{0});
+        const auto *warm_via = &f.board.get(volt::BoardViaId{0});
         try {
             remaining = budget;
             if (batch) {
@@ -84,7 +92,8 @@ int exercise(bool batch) {
                 if (!result.committed || result.committed_order.size() != 3)
                     return 3;
             }
-            if (!tracks.advanced_once() || f.board.all<volt::BoardTrackId>().size() != 3 ||
+            if (!warm_tracks.advanced_once() ||
+                f.board.all<volt::BoardTrackId>().size() != (batch ? 3U : 4U) ||
                 f.board.all<volt::BoardViaId>().size() != 2)
                 return 4;
             if (failures < (batch ? 8U : 30U))
@@ -95,10 +104,13 @@ int exercise(bool batch) {
         } catch (const std::bad_alloc &) {
             disable();
             ++failures;
-            if (volt::io::write_pcb_board(f.view()) != bytes || !tracks.is_current() ||
-                !vias.is_current() || &f.board.get(volt::BoardTrackId{0}) != old_track ||
-                &f.board.get(volt::BoardViaId{0}) != old_via)
+            if (volt::io::write_pcb_board(f.view()) != warm_bytes || !warm_tracks.is_current() ||
+                !warm_vias.is_current() || &f.board.get(volt::BoardTrackId{0}) != warm_track ||
+                &f.board.get(volt::BoardViaId{0}) != warm_via ||
+                volt::detail::RoutingSessionProbe::state(router) != retained)
                 return 6;
+            if (!batch && !router.route(spec).committed)
+                return 21;
         }
     }
     return 7;

@@ -224,8 +224,11 @@ BoardSpatialObstacle BoardSpatialIndex::obstacle(std::size_t index) const {
 }
 
 BoardSpatialIndex::BoardSpatialIndex(const ResolvedBoardView &resolved)
-    : BoardSpatialIndex{resolved.board(),
-                        detail::collect_copper_shapes(resolved, queries::resolve_pads(resolved))} {
+    : BoardSpatialIndex{resolved, queries::resolve_pads(resolved)} {}
+
+BoardSpatialIndex::BoardSpatialIndex(const ResolvedBoardView &resolved,
+                                     const std::vector<PadResolution> &pads)
+    : BoardSpatialIndex{resolved.board(), detail::collect_copper_shapes(resolved, pads)} {
     mutable_state().selected_part_snapshot = selected_part_snapshot(state().board->circuit());
     mutable_state().historical_continuity = resolved.historical_continuity_;
 }
@@ -264,6 +267,7 @@ void BoardSpatialIndex::ensure_conservative_bound_current() const {
 
 void BoardSpatialIndex::ensure_geometry_current() const {
     ensure_selected_parts_current();
+    ensure_conservative_bound_current();
     if (!state().geometry_snapshot.value().is_current()) {
         throw KernelLogicError{
             ErrorCode::InvalidState,

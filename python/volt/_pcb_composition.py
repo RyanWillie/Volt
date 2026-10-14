@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from . import _volt
 from ._utils import _positive_coordinate
 
 if TYPE_CHECKING:
@@ -22,7 +23,6 @@ class BoardLayoutComposition:
     snap_anchor: object
     axis_target: object
     is_anchor: object
-    track_net: object
     hold: object
     route_for_connect: object
     via: object
@@ -33,10 +33,9 @@ class BoardLayoutComposition:
 class BoardFanout:
     """Result of one authored fanout route and optional via."""
 
-    source: BoardAnchor
-    end: BoardAnchor
-    track: int
-    via: int | None = None
+    source: BoardAnchor | None
+    end: BoardAnchor | None
+    result: _volt.RouteResult
 
 
 def rule(context: BoardLayoutComposition, name: str) -> float:
@@ -162,12 +161,13 @@ def connect(
     *,
     layer: int,
     net: Net | int | None = None,
-    width: float = 0.20,
+    width: float | None = None,
     through=(),
     mode: str = "octilinear",
-) -> int:
+    policy=_volt.RoutePolicy.STRICT,
+) -> _volt.RouteResult:
     """Route between two anchors, delegating endpoint net resolution to the kernel."""
-    route = context.route_for_connect(net, layer=layer, width=width, mode=mode).at(start)
+    route = context.route_for_connect(net, layer=layer, width=width, mode=mode, policy=policy).at(start)
     for anchor in _anchor_collection(
         through, "Board layout connect through", context.is_anchor
     ):
@@ -181,9 +181,10 @@ def bundle(
     *,
     layer: int,
     net: Net | int | None = None,
-    width: float = 0.20,
+    width: float | None = None,
     mode: str = "octilinear",
-) -> tuple[int, ...]:
+    policy=_volt.RoutePolicy.STRICT,
+) -> tuple[_volt.RouteResult, ...]:
     """Route multiple independent anchor pairs as one deterministic bundle."""
     with context.hold():
         tracks = []
@@ -198,73 +199,46 @@ def bundle(
                     width=width,
                     through=through,
                     mode=mode,
+                    policy=policy,
                 )
             )
         return tuple(tracks)
 
 
-def stitch(
-    context: BoardLayoutComposition,
-    net: Net | int,
-    *,
-    at,
-    start_layer: int,
-    end_layer: int,
-    drill: float | None = None,
-    annular: float | None = None,
-) -> tuple[int, ...]:
-    """Add a deterministic set of vias for one net."""
+def stitch(context, net, *, at, start_layer, end_layer, drill=None, annular=None,
+           policy=_volt.RoutePolicy.STRICT):
+    """Publish independent native via descriptions without moving the caller cursor."""
     with context.hold():
-        return tuple(
-            context.via(
-                net,
-                at=anchor,
-                start_layer=start_layer,
-                end_layer=end_layer,
-                drill=drill,
-                annular=annular,
-            )
-            for anchor in _anchor_collection(at, "Board layout stitch at", context.is_anchor)
-        )
+        return tuple(context.via(net, at=anchor, start_layer=start_layer, end_layer=end_layer,
+                                 drill=drill, annular=annular, policy=policy)
+                     for anchor in _anchor_collection(at, "Board layout stitch at", context.is_anchor))
 
 
-def fanout(
-    context: BoardLayoutComposition,
-    anchors,
-    *,
-    layer: int,
-    direction: str,
-    distance: float,
-    net: Net | int | None = None,
-    width: float = 0.20,
-    via_layers: tuple[int, int] | None = None,
-    drill: float | None = None,
-    annular: float | None = None,
-) -> tuple[BoardFanout, ...]:
-    """Route one or more anchors outward and optionally drop vias at the endpoints."""
-    fanout_direction = _direction(direction)
-    fanout_distance = _positive_coordinate(distance, "Board fanout distance")
-    dx, dy = _direction_offset(fanout_direction, fanout_distance)
+def fanout(context, anchors, *, layer, direction, distance, net=None, width=None,
+           via_layers=None, drill=None, annular=None, policy=_volt.RoutePolicy.STRICT):
+    """Lower authored stubs and optional inline vias into one native request per source."""
+    from ._pcb_layout import BoardAnchor, _route_via_size
+    method = _direction(direction).lower()
+    displacement = _positive_coordinate(distance, "Board fanout distance")
+    size = _route_via_size(drill, annular)
+    if via_layers is not None:
+        start_layer, end_layer = _via_layer_pair(via_layers)
+        if start_layer != layer:
+            raise ValueError("Fanout via start layer must match its route layer")
     with context.hold():
         results = []
-        for source in _anchor_collection(
-            anchors, "Board layout fanout anchors", context.is_anchor
-        ):
-            source_anchor = context.anchor_at(source)
-            end = source_anchor.offset(dx=dx, dy=dy)
-            track = context.connect(source_anchor, end, layer=layer, net=net, width=width)
-            via = None
+        for source in _anchor_collection(anchors, "Board layout fanout anchors", context.is_anchor):
+            route = context.route_for_connect(net, layer=layer, width=width, mode="direct", policy=policy).at(source)
+            route._via_size = size
+            getattr(route, method)(displacement)
             if via_layers is not None:
-                start_layer, end_layer = _via_layer_pair(via_layers)
-                via = context.via(
-                    context.track_net(track),
-                    at=end,
-                    start_layer=start_layer,
-                    end_layer=end_layer,
-                    drill=drill,
-                    annular=annular,
-                )
-            results.append(BoardFanout(source_anchor, end, track, via))
+                route.via(end_layer)
+            result = route.finish()
+            end = (BoardAnchor(result.resolved_steps[-1].end, board=context.board)
+                   if result.resolved_steps else None)
+            start = (BoardAnchor(result.resolved_steps[0].start, board=context.board)
+                     if result.resolved_steps else None)
+            results.append(BoardFanout(start, end, result))
         return tuple(results)
 
 

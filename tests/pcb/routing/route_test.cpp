@@ -3,6 +3,7 @@
 
 #include "support/resolved_board_test_parts.hpp"
 #include "support/route_report_snapshot.hpp"
+#include "support/routing_session_probe.hpp"
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/circuit/updates.hpp>
 #include <volt/core/errors.hpp>
@@ -731,4 +732,256 @@ TEST_CASE("R1a same continuity group exempts copper but not conflicting endpoint
                                    0.1})
                   .legal);
     }
+}
+
+TEST_CASE(
+    "routing session retains current pads and incrementally publishes canonical index evidence",
+    "[pcb][route][session]") {
+    Fixture f;
+    const auto placement = f.pad_component();
+    static_cast<void>(placement);
+    static_cast<void>(
+        f.board.add_zone(BoardZone{{{30, 30}, {35, 30}, {35, 35}, {30, 35}}, {f.front}, f.other}));
+    auto router = BoardRouter{f.board, f.view()};
+    for (int i = 0; i < 3; ++i)
+        CHECK(router.resolve_pads().size() == 2);
+    CHECK(detail::RoutingSessionProbe::pads(router) == 1);
+    CHECK(detail::RoutingSessionProbe::builds(router) == 0);
+    for (int i = 0; i < 4; ++i) {
+        auto spec = f.spec({15, 15 + i * 2.0}, {25, 15 + i * 2.0});
+        spec.steps = {RouteThrough{RoutePoint{{20, 15 + i * 2.0}}}, RouteVia{{&f.board, f.back}},
+                      RouteTo{RoutePoint{{25, 15 + i * 2.0}}}};
+        REQUIRE(router.route(spec).committed);
+    }
+    CHECK(detail::RoutingSessionProbe::pads(router) == 1);
+    CHECK(detail::RoutingSessionProbe::builds(router) == 1);
+    // Complete ordered native payload must match a fresh caller, including canonical obstacle
+    // IDs and ordinals, after several mixed track/via commits with old zones and placed pads.
+    const auto reject_spec = f.spec({30, 32}, {35, 32});
+    const auto reused = router.route(reject_spec, RoutePolicy::Report);
+    const auto fresh = BoardRouter{f.board, f.view()}.route(reject_spec, RoutePolicy::Report);
+    CHECK(test::route_snapshot(reused) == test::route_snapshot(fresh));
+    CHECK(!reused.committed);
+}
+
+TEST_CASE("routing session lazily refreshes every live mutable input and preserves query caches",
+          "[pcb][route][session]") {
+    Fixture f;
+    const auto placement = f.pad_component();
+    auto router = BoardRouter{f.board, f.view()};
+    REQUIRE(router.route(f.spec({15, 15}, {25, 15})).committed);
+    auto check_refresh = [&] {
+        const auto old_builds = detail::RoutingSessionProbe::builds(router);
+        const auto old_state = detail::RoutingSessionProbe::state(router);
+        const auto bytes = f.bytes();
+        const auto reject_spec = f.spec({40, 40}, {42, 40});
+        auto invalid_width = reject_spec;
+        invalid_width.width_mm = 0.001;
+        const auto rejected = router.route(invalid_width, RoutePolicy::Report);
+        CHECK(!rejected.committed);
+        CHECK(detail::RoutingSessionProbe::state(router) == old_state);
+        CHECK(f.bytes() == bytes);
+        const auto fresh = BoardRouter{f.board, f.view()}.route(invalid_width, RoutePolicy::Report);
+        CHECK(test::route_snapshot(rejected) == test::route_snapshot(fresh));
+        CHECK(detail::RoutingSessionProbe::builds(router) == old_builds + 1);
+        REQUIRE(router.route(reject_spec).committed);
+        CHECK(detail::RoutingSessionProbe::builds(router) == old_builds + 2);
+    };
+    SECTION("Board rules increase and decrease") {
+        f.board.set_design_rules(BoardDesignRules{0.3, 0.3, 0.3, 0.7});
+        check_refresh();
+        f.board.set_design_rules(BoardDesignRules{0.1, 0.2, 0.3, 0.7});
+        check_refresh();
+    }
+    SECTION("unchanged copper Circuit class assignment and new default") {
+        auto klass = NetClass{NetClassName{"Changed"}};
+        klass.set_track_width_mm(0.4);
+        const auto id = f.circuit.define_net_class(NetClassSpec{std::move(klass)});
+        f.circuit.update(f.net, AssignNetClass{id});
+        check_refresh();
+        auto defaults = NetClass{NetClassName{"Default"}};
+        defaults.set_default_for_net_kind(NetKind::Signal);
+        defaults.set_copper_clearance_mm(0.8);
+        static_cast<void>(f.circuit.define_net_class(NetClassSpec{std::move(defaults)}));
+        check_refresh();
+    }
+    SECTION("capability profile") {
+        f.board.set_capability_profile(BoardCapabilityProfile::conservative_default());
+        check_refresh();
+    }
+    SECTION("pin reconnect") {
+        const auto component = f.board.get(placement).component();
+        const auto pin = queries::pin_by_name(f.circuit, component, "A").value();
+        f.circuit.disconnect(pin);
+        f.circuit.connect(f.other, pin);
+        check_refresh();
+    }
+    SECTION("placement") {
+        f.board.move(BoardPlacementMove{placement, {12, 10}, BoardRotation::degrees(45)});
+        check_refresh();
+    }
+    SECTION("external copper") {
+        static_cast<void>(
+            f.board.add_track(BoardTrack{f.other, f.front, {{30, 20}, {35, 20}}, 0.2}));
+        check_refresh();
+    }
+    SECTION("layers and stack") {
+        const auto extra = f.board.add_layer(
+            BoardLayer{"Extra.Cu", BoardLayerRole::Copper, BoardLayerSide::Inner});
+        f.board.set_layer_stack(LayerStack{{f.front, f.inner, extra, f.back}, 1.6});
+        check_refresh();
+    }
+    SECTION("outline and mechanical") {
+        f.board.set_outline(BoardOutline::rectangle({0, 0}, {100, 100}));
+        check_refresh();
+        static_cast<void>(f.board.add_feature(BoardFeature::hole("MH", {50, 50}, 2.0)));
+        check_refresh();
+    }
+    SECTION("rooms and keepouts") {
+        auto room = BoardRoom{"Rule", BoardOutline::rectangle({30, 30}, {30, 30}), {f.front}, 1};
+        room.set_track_width_mm(0.4);
+        static_cast<void>(f.board.add_room(std::move(room)));
+        check_refresh();
+        static_cast<void>(f.board.add_keepout(BoardKeepout{{{60, 60}, {70, 60}, {70, 70}, {60, 70}},
+                                                           {f.front},
+                                                           {BoardKeepoutRestriction::Copper}}));
+        check_refresh();
+    }
+}
+
+TEST_CASE("native alignment offset and finish preserve endpoint intent and atomic policies",
+          "[pcb][route][session]") {
+    Fixture f;
+    const auto placement = f.pad_component(false);
+    auto spec = f.spec({20, 20}, {25, 25});
+    spec.layer = {&f.board, f.back};
+    spec.steps = {RouteAlign{f.pad(placement), RouteAxis::X}, RouteOffset{RouteAxis::Y, 2.0},
+                  RouteFinish{}};
+    const auto result = f.report(spec);
+    REQUIRE(result.committed);
+    CHECK(result.net == f.net);
+    CHECK(result.resolved_steps[0].end.x_mm() == Catch::Approx(10));
+    CHECK(result.resolved_steps[1].end.y_mm() == Catch::Approx(22));
+    auto via = f.spec({45, 45}, {45, 45});
+    via.steps = {RouteVia{{&f.board, f.back}}, RouteFinish{}};
+    const auto via_result = f.report(via);
+    REQUIRE(via_result.committed);
+    CHECK(via_result.tracks.empty());
+    CHECK(via_result.vias.size() == 1);
+    auto empty = f.spec();
+    empty.steps = {RouteFinish{}};
+    unchanged_failure(f, empty, RouteFailureKind::NoCandidate, true);
+    auto overflow = f.spec({std::numeric_limits<double>::max(), 1}, {10, 10});
+    overflow.steps = {RouteOffset{RouteAxis::X, std::numeric_limits<double>::max()}, RouteFinish{}};
+    unchanged_failure(f, overflow, RouteFailureKind::GeometryUnresolvable, false);
+}
+
+TEST_CASE("routing queries preserve warm and stale retained state and complete payloads",
+          "[pcb][route][session]") {
+    Fixture f;
+    const auto lower = f.board.add_track(BoardTrack{f.net, f.front, {{5, 10}, {25, 10}}, 0.2});
+    const auto upper = f.board.add_track(BoardTrack{f.other, f.front, {{5, 20}, {25, 20}}, 0.2});
+    auto router = BoardRouter{f.board, f.view()};
+    REQUIRE(router.route(f.spec({40, 40}, {41, 40})).committed);
+    const auto retained = detail::RoutingSessionProbe::state(router);
+    auto prefix = f.spec({15, 14}, {15, 16});
+    prefix.steps = {RouteGap{RouteTrackCopper{&f.board, lower}, RouteTrackCopper{&f.board, upper},
+                             RouteAxis::Y}};
+    SECTION("warm") {}
+    SECTION("stale board rules") { f.board.set_design_rules(BoardDesignRules{0.3, 0.3, 0.3, 0.7}); }
+    SECTION("stale continuity") {
+        const auto module = f.circuit.define_module(
+            ModuleSpec{.name = ModuleName{"SessionChild"},
+                       .template_nets = {TemplateNetDefinition{NetName{"N"}, NetKind::Signal}},
+                       .ports = {ModulePortSpec{PortName{"N"}, NetName{"N"}, PortRole::Passive}}});
+        const auto instance = f.circuit.instantiate_module(
+            module, ModuleInstanceSpec{.name = ModuleInstanceName{"M"}});
+        static_cast<void>(f.circuit.bind_port(instance, f.circuit.get(module).ports()[0], f.net));
+    }
+    const auto bytes = f.bytes();
+    const auto generation = f.board.all<BoardTrackId>();
+    const auto queried = router.query_gap(prefix);
+    const auto fresh = BoardRouter{f.board, f.view()}.query_gap(prefix);
+    CHECK(test::route_snapshot(queried) == test::route_snapshot(fresh));
+    CHECK(!queried.committed);
+    CHECK(detail::RoutingSessionProbe::state(router) == retained);
+    CHECK(f.bytes() == bytes);
+    CHECK(generation.is_current());
+    REQUIRE(router.route(f.spec({45, 45}, {46, 45})).committed);
+}
+
+TEST_CASE("offset overflow preserves a prior rule failure without fictitious complete geometry",
+          "[pcb][route][session]") {
+    Fixture f;
+    auto spec = f.spec({std::numeric_limits<double>::max(), 0}, {10, 10});
+    spec.width_mm = 0.001;
+    spec.steps = {
+        RouteThrough{RoutePoint{{std::numeric_limits<double>::max(), 1}}, CornerStyle::Direct},
+        RouteOffset{RouteAxis::X, std::numeric_limits<double>::max()}, RouteFinish{}};
+    const auto result = f.report(spec);
+    REQUIRE(result.failure);
+    CHECK(result.failure->kind == RouteFailureKind::RuleViolation);
+    CHECK(!result.candidate_complete);
+    CHECK(result.resolved_steps.size() == 1);
+    CHECK(result.candidates.size() == 1);
+    CHECK(!result.committed);
+}
+
+TEST_CASE("retained fixed physical views reject changed selected closure without publishing state",
+          "[pcb][route][session]") {
+    Fixture f;
+    const auto placement = f.pad_component();
+    const auto captured = f.pad(placement);
+    auto router = BoardRouter{f.board, f.view()};
+    REQUIRE(router.route(f.spec({40, 40}, {41, 40})).committed);
+    const auto retained = detail::RoutingSessionProbe::state(router);
+    const auto component = f.board.get(placement).component();
+    const auto def = f.circuit.get(component).definition();
+    const auto &pins = f.circuit.get(def).pins();
+    const auto changed = FootprintDefinition{
+        FootprintRef{"test", "changed"},
+        {FootprintPad::surface_mount("1", FootprintPadShape::Rectangle, {-1, 0}, {0.8, 0.8},
+                                     FootprintLayerSet::front_smd()),
+         FootprintPad::surface_mount("2", FootprintPadShape::Rectangle, {1, 0}, {0.8, 0.8},
+                                     FootprintLayerSet::front_smd())}};
+    f.footprints.add(changed);
+    f.parts.set(f.circuit, component,
+                PhysicalPart{ManufacturerPart{"Test", "Changed"},
+                             PackageRef{"Changed"},
+                             changed.ref(),
+                             {{pins[0], "1"}, {pins[1], "2"}}});
+    const auto bytes = f.bytes();
+    CHECK_THROWS_AS(router.route(f.spec({45, 45}, {46, 45})), KernelLogicError);
+    CHECK(detail::RoutingSessionProbe::state(router) == retained);
+    CHECK(f.bytes() == bytes);
+    auto stale = f.spec();
+    stale.start = captured;
+    CHECK_THROWS_AS(f.report(stale), KernelArgumentError);
+}
+
+TEST_CASE("rounded pad targets use the conservative transformed rectangular envelope",
+          "[pcb][route][session]") {
+    Fixture f;
+    const auto placement = f.pad_component();
+    const auto component = f.board.get(placement).component();
+    const auto &pins = f.circuit.get(f.circuit.get(component).definition()).pins();
+    const auto footprint = FootprintDefinition{
+        FootprintRef{"test", "rounded"},
+        {FootprintPad::surface_mount("1", FootprintPadShape::RoundedRectangle, {-1, 0}, {0.8, 1.6},
+                                     FootprintLayerSet::front_smd()),
+         FootprintPad::surface_mount("2", FootprintPadShape::RoundedRectangle, {1, 0}, {0.8, 1.6},
+                                     FootprintLayerSet::front_smd())}};
+    f.footprints.add(footprint);
+    f.parts.set(f.circuit, component,
+                PhysicalPart{ManufacturerPart{"Test", "Rounded"},
+                             PackageRef{"Rounded"},
+                             footprint.ref(),
+                             {{pins[0], "1"}, {pins[1], "2"}}});
+    auto spec = f.spec({20, 20}, {25, 25});
+    spec.steps = {RouteBeside{f.pad(placement), RouteDirection::PositiveX}, RouteFinish{}};
+    auto router = BoardRouter{f.board, f.view()};
+    const auto result = router.route(spec);
+    REQUIRE(result.committed);
+    REQUIRE(!result.target_resolutions.empty());
+    CHECK(result.target_resolutions[0].position.x_mm() == Catch::Approx(10.9));
 }

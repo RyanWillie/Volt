@@ -177,6 +177,15 @@ void bind_route_values(py::module_ &module) {
         .def_readonly("lower", &RouteGap::lower)
         .def_readonly("upper", &RouteGap::upper)
         .def_readonly("axis", &RouteGap::axis);
+    py::class_<RouteAlign>(module, "RouteAlign")
+        .def(py::init<RouteEndpoint, RouteAxis>(), py::keep_alive<1, 2>())
+        .def_readonly("endpoint", &RouteAlign::endpoint)
+        .def_readonly("axis", &RouteAlign::axis);
+    py::class_<RouteOffset>(module, "RouteOffset")
+        .def(py::init<RouteAxis, double>())
+        .def_readonly("axis", &RouteOffset::axis)
+        .def_readonly("distance_mm", &RouteOffset::distance_mm);
+    py::class_<RouteFinish>(module, "RouteFinish").def(py::init<>());
     py::class_<RouteThrough>(module, "RouteThrough")
         .def(py::init<RouteEndpoint, CornerStyle>(), py::arg("endpoint"),
              py::arg("corner") = CornerStyle::Chamfer45, py::keep_alive<1, 2>())
@@ -412,7 +421,8 @@ void bind_route_values(py::module_ &module) {
 }
 
 void bind_route_board(py::class_<PyBoard> &board) {
-    board.def("query_gap", &PyBoard::query_gap, py::arg("prefix"))
+    board.def_property_readonly("_routing_resolution_builds", &PyBoard::routing_resolution_builds)
+        .def("query_gap", &PyBoard::query_gap, py::arg("prefix"))
         .def("route", &PyBoard::route, py::arg("spec"), py::arg("policy") = RoutePolicy::Strict)
         .def("route_pad", &PyBoard::route_pad, py::keep_alive<0, 1>(), py::arg("placement"),
              py::arg("pad"));

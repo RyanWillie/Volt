@@ -1,5 +1,6 @@
 # Review evidence only: update intentionally to expose an API delta; this file does not approve it.
 include <cstddef>
+include <memory>
 include <optional>
 include <string>
 include <vector>
@@ -13,6 +14,12 @@ include <volt/pcb/routing/route.hpp>
 
 BoardRouter(Board &board, ResolvedBoardView resolved)
 BoardRouter(Board &board, const BoardResolution &resolution)
+BoardRouter(const BoardRouter &) = delete
+BoardRouter &operator=(const BoardRouter &) = delete
+BoardRouter(BoardRouter &&) = delete
+BoardRouter &operator=(BoardRouter &&) = delete
+~BoardRouter()
+[[nodiscard]] std::vector<PadResolution> resolve_pads() const
 [[nodiscard]] BoardRouteParameters resolve_parameters(NetId net) const
 [[nodiscard]] RouteResult route(const RouteSpec &spec, RoutePolicy policy = RoutePolicy::Strict)
 [[nodiscard]] RouteResult query_gap(const RouteSpec &prefix) const

@@ -181,6 +181,10 @@ class BoardSpatialIndex {
     query_legality(const BoardSpatialQueryShape &candidate) const;
 
   private:
+    friend class BoardRouter;
+    BoardSpatialIndex(const ResolvedBoardView &resolved, const std::vector<PadResolution> &pads);
+    void prepare_route_publication(std::size_t existing_shapes, const CopperAppendSpec &append);
+    void adopt_route_publication() noexcept;
     friend void detail::validate_copper_clearance(
         const Board &board, const detail::NetContinuityView &continuity,
         const std::vector<detail::BoardCopperShape> &shapes, DiagnosticReport &report);

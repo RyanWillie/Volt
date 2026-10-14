@@ -110,6 +110,26 @@ struct RouteTo {
 
 /** Board-coordinate axis; targets retain the transverse current coordinate. */
 enum class RouteAxis { X, Y };
+
+/** Geometry-only axis projection of an endpoint; does not imply connection to the guide. */
+struct RouteAlign {
+    /** Exact endpoint supplying one native board coordinate. */
+    RouteEndpoint endpoint;
+    /** Coordinate to project, retaining the current transverse coordinate. */
+    RouteAxis axis;
+};
+
+/** Explicit signed native displacement along one board axis; no grid snapping. */
+struct RouteOffset {
+    /** Axis of the relative displacement. */
+    RouteAxis axis;
+    /** Signed finite displacement in board millimeters. */
+    double distance_mm;
+};
+
+/** End at the native current point without fabricating another endpoint. */
+struct RouteFinish {};
+
 /** Explicit board-coordinate direction; never inferred from geometry. */
 enum class RouteDirection { PositiveX, NegativeX, PositiveY, NegativeY };
 
@@ -183,7 +203,7 @@ struct RouteGap {
 
 /** Ordered native route grammar variants. */
 using RouteStep = std::variant<RouteThrough, RouteToX, RouteToY, RouteVia, RouteTo, RouteExit,
-                               RouteBeside, RouteGap>;
+                               RouteBeside, RouteGap, RouteAlign, RouteOffset, RouteFinish>;
 
 /** Explicit route-wide via sizing, checked against native minimum rules. */
 struct RouteViaOverride {
@@ -203,7 +223,7 @@ struct RouteSpec {
     RouteEndpoint start;
     /** Initial active copper layer. */
     RouteLayerRef layer;
-    /** Nonempty ordered steps ending in exactly one terminal RouteTo. */
+    /** Nonempty ordered steps ending in exactly one terminal RouteTo or RouteFinish. */
     std::vector<RouteStep> steps;
     /** Explicit track width in millimeters, or native inherited sizing. */
     std::optional<double> width_mm = std::nullopt;

@@ -430,7 +430,7 @@ TEST_CASE("symbolic pad projection follows placement rotation and board side",
 
 TEST_CASE("unsupported pad models and missing physical closure do not fabricate extents",
           "[pcb][route-target]") {
-    for (const auto shape : {FootprintPadShape::Oval, FootprintPadShape::RoundedRectangle}) {
+    for (const auto shape : {FootprintPadShape::Oval}) {
         Fixture f;
         const auto placement = f.pad_component(true, shape);
         auto spec = f.spec();

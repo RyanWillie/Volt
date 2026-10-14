@@ -1,3 +1,4 @@
+#include "board_router_storage.hpp"
 #include <volt/pcb/routing/board_router.hpp>
 
 #include <algorithm>
@@ -414,9 +415,11 @@ RouteResult BoardRouter::plan_route(const RouteSpec &spec, RoutePolicy policy,
     if (gap_query) {
         if (!spec.net || spec.steps.empty() || !std::holds_alternative<RouteGap>(spec.steps.back()))
             invalid("Gap query needs an explicit logical net and must terminate with Gap");
-    } else if (spec.steps.empty() || !std::holds_alternative<RouteTo>(spec.steps.back()))
+    } else if (spec.steps.empty() || (!std::holds_alternative<RouteTo>(spec.steps.back()) &&
+                                      !std::holds_alternative<RouteFinish>(spec.steps.back())))
         invalid("Route must terminate with To");
-    const auto pads = queries::resolve_pads(resolved_);
+    auto prepared = prepare_state();
+    const auto &pads = prepared->pads;
     auto endpoints = std::vector<std::optional<EndpointTruth>>(spec.steps.size());
     const auto start = endpoint_truth(*board_, resolved_, spec.start, pads);
     auto active_layer = spec.layer.layer;
@@ -431,6 +434,18 @@ RouteResult BoardRouter::plan_route(const RouteSpec &spec, RoutePolicy policy,
                             invalid("Route To must be the final step");
                     }
                     endpoints[i] = endpoint_truth(*board_, resolved_, step.endpoint, pads);
+                } else if constexpr (std::same_as<T, RouteAlign>) {
+                    if (step.axis != RouteAxis::X && step.axis != RouteAxis::Y)
+                        invalid("Unknown route alignment axis");
+                    endpoints[i] = endpoint_truth(*board_, resolved_, step.endpoint, pads);
+                } else if constexpr (std::same_as<T, RouteOffset>) {
+                    if (step.axis != RouteAxis::X && step.axis != RouteAxis::Y)
+                        invalid("Unknown route offset axis");
+                    if (!std::isfinite(step.distance_mm))
+                        invalid("Route offset distance must be finite");
+                } else if constexpr (std::same_as<T, RouteFinish>) {
+                    if (gap_query || i + 1U != spec.steps.size())
+                        invalid("Route Finish must be the final route step");
                 } else if constexpr (std::same_as<T, RouteVia>) {
                     layer_ref(*board_, step.destination);
                     if (step.destination.layer == active_layer)
@@ -461,8 +476,13 @@ RouteResult BoardRouter::plan_route(const RouteSpec &spec, RoutePolicy policy,
     };
     net_evidence(start, std::nullopt);
     for (std::size_t i = 0; i < endpoints.size(); ++i)
-        if (endpoints[i])
-            net_evidence(*endpoints[i], i);
+        if (endpoints[i]) {
+            if (std::holds_alternative<RouteAlign>(spec.steps[i])) {
+                if (!endpoints[i]->position)
+                    fail(result, RouteFailureKind::EndpointUnreachable, i, endpoints[i]->failure);
+            } else
+                net_evidence(*endpoints[i], i);
+        }
     if (result.failure.has_value() && start.identity && !contains(start.layers, spec.layer.layer))
         fail(result, RouteFailureKind::EndpointUnreachable, std::nullopt,
              "endpoint has no copper on active layer");
@@ -515,6 +535,7 @@ RouteResult BoardRouter::plan_route(const RouteSpec &spec, RoutePolicy policy,
     for (std::size_t i = 0; i < spec.steps.size(); ++i) {
         auto resolved_step = RouteResolvedStep{i, current, current, active_layer, active_layer, {}};
         auto target = current;
+        auto offset_unresolvable = false;
         auto style = CornerStyle::Direct;
         const auto *via = std::get_if<RouteVia>(&spec.steps[i]);
         if (via != nullptr) {
@@ -548,10 +569,27 @@ RouteResult BoardRouter::plan_route(const RouteSpec &spec, RoutePolicy policy,
                         target = BoardPoint{step.coordinate_mm, current.y_mm()};
                     else if constexpr (std::same_as<T, RouteToY>)
                         target = BoardPoint{current.x_mm(), step.coordinate_mm};
-                    else if constexpr (std::same_as<T, RouteExit> || std::same_as<T, RouteBeside> ||
-                                       std::same_as<T, RouteGap>) {
-                        resolve_target(*board_, resolved_, spec, step, current, active_layer, i,
-                                       result);
+                    else if constexpr (std::same_as<T, RouteAlign>)
+                        target = step.axis == RouteAxis::X
+                                     ? BoardPoint{endpoints[i]->position->x_mm(), current.y_mm()}
+                                     : BoardPoint{current.x_mm(), endpoints[i]->position->y_mm()};
+                    else if constexpr (std::same_as<T, RouteOffset>) {
+                        const auto coordinate =
+                            (step.axis == RouteAxis::X ? current.x_mm() : current.y_mm()) +
+                            step.distance_mm;
+                        if (!std::isfinite(coordinate)) {
+                            offset_unresolvable = true;
+                            fail(result, RouteFailureKind::GeometryUnresolvable, i,
+                                 "offset arithmetic is non-finite");
+                        } else
+                            target = step.axis == RouteAxis::X
+                                         ? BoardPoint{coordinate, current.y_mm()}
+                                         : BoardPoint{current.x_mm(), coordinate};
+                    } else if constexpr (std::same_as<T, RouteExit> ||
+                                         std::same_as<T, RouteBeside> ||
+                                         std::same_as<T, RouteGap>) {
+                        resolve_target(*board_, resolved_, pads, spec, step, current, active_layer,
+                                       i, result);
                         if (!result.target_resolutions.empty() &&
                             result.target_resolutions.back().step_index == i)
                             target = result.target_resolutions.back().position;
@@ -560,6 +598,8 @@ RouteResult BoardRouter::plan_route(const RouteSpec &spec, RoutePolicy policy,
                 spec.steps[i]);
             if (is_symbolic(spec.steps[i]) && (result.target_resolutions.empty() ||
                                                result.target_resolutions.back().step_index != i))
+                return reject(*board_, std::move(result), policy);
+            if (offset_unresolvable)
                 return reject(*board_, std::move(result), policy);
             const auto points = lower(current, target, style);
             if (!points.has_value()) {
@@ -590,8 +630,12 @@ RouteResult BoardRouter::plan_route(const RouteSpec &spec, RoutePolicy policy,
     if (!gap_query && result.candidates.empty() && !result.failure.has_value())
         fail(result, RouteFailureKind::NoCandidate, std::nullopt, "route contains no track or via");
 
-    // Fresh private index for each call: candidate insertion never changes canonical Board state.
-    auto staged = BoardSpatialIndex{resolved_};
+    // Private copied/prepared state: queries/rejections never publish cache or canonical changes.
+    if (!prepared->index) {
+        prepared->index = BoardSpatialIndex{resolved_, pads};
+        ++explicit_index_builds_;
+    }
+    auto &staged = *prepared->index;
     const auto existing_shapes = staged.shape_count();
     for (std::size_t ordinal = 0; ordinal < result.candidates.size(); ++ordinal) {
         const auto &candidate = result.candidates[ordinal];
@@ -730,7 +774,11 @@ RouteResult BoardRouter::plan_route(const RouteSpec &spec, RoutePolicy policy,
     }
     result.message = "route " + board_->circuit().get(net).name().value() + " committed";
     result.committed = true;
+    staged.prepare_route_publication(existing_shapes, append);
     static_cast<void>(board_->append_copper(append));
+    staged.adopt_route_publication();
+    prepared->inputs.rebase(*board_);
+    state_ = std::move(prepared);
     index_.reset();
     return result;
 }

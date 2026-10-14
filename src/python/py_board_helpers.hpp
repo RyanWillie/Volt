@@ -17,44 +17,6 @@ namespace {
 constexpr auto default_authoring_via_drill_mm = 0.30;
 constexpr auto default_authoring_via_annular_mm = 0.70;
 
-[[nodiscard]] inline volt::BoardRouteEndpoint
-board_route_endpoint_from_tuple(const py::tuple &endpoint) {
-    if (py::len(endpoint) != 4U) {
-        throw py::value_error{
-            "Board route endpoint payloads must contain x, y, placement, and pad"};
-    }
-
-    const auto x = py::cast<double>(endpoint[0]);
-    const auto y = py::cast<double>(endpoint[1]);
-    require_finite(x, "Board route endpoint coordinates must be finite");
-    require_finite(y, "Board route endpoint coordinates must be finite");
-
-    const auto placement =
-        optional_index_from_py(endpoint[2], "Board route endpoint placements must be indexes");
-    const auto pad =
-        optional_index_from_py(endpoint[3], "Board route endpoint pads must be indexes");
-    if (placement.has_value() != pad.has_value()) {
-        throw py::value_error{"Board route pad endpoints require placement and pad IDs"};
-    }
-
-    const auto position = volt::BoardPoint{x, y};
-    if (!placement.has_value()) {
-        return volt::BoardRouteEndpoint::board_point(position);
-    }
-    return volt::BoardRouteEndpoint::footprint_pad(
-        position, volt::ComponentPlacementId{placement.value()}, volt::FootprintPadId{pad.value()});
-}
-
-[[nodiscard]] inline std::vector<volt::BoardRouteEndpoint>
-board_route_endpoints_from_list(const py::list &endpoints) {
-    auto result = std::vector<volt::BoardRouteEndpoint>{};
-    result.reserve(static_cast<std::size_t>(py::len(endpoints)));
-    for (const auto item : endpoints) {
-        result.push_back(board_route_endpoint_from_tuple(py::cast<py::tuple>(item)));
-    }
-    return result;
-}
-
 [[nodiscard]] inline std::string board_side_name(volt::BoardSide side) {
     switch (side) {
     case volt::BoardSide::Top:
