@@ -113,7 +113,9 @@ void validate_completion_groups(CompletionWork &work) {
     const auto unknown =
         work.coverage[static_cast<std::size_t>(BoardCompletionCheck::Geometry)].state !=
         BoardCompletionState::Pass;
-    for (const auto &[net_index, items] : groups) {
+    for (const auto &group_entry : groups) {
+        const auto net_index = group_entry.first;
+        const auto &items = group_entry.second;
         auto entities = std::vector{EntityRef::net(NetId{net_index})};
         for (const auto item : items) {
             const auto scope = completion_entities(work.copper[item]);
@@ -122,8 +124,9 @@ void validate_completion_groups(CompletionWork &work) {
         auto &scope =
             work.coverage[static_cast<std::size_t>(BoardCompletionCheck::Connectivity)].entities;
         scope.insert(scope.end(), entities.begin(), entities.end());
-        if (!items.empty() && std::ranges::any_of(items, [&](auto item) {
-                return island_of[item] != island_of[items.front()];
+        const auto first_island = items.empty() ? 0U : island_of[items.front()];
+        if (!items.empty() && std::ranges::any_of(items, [&island_of, first_island](auto item) {
+                return island_of[item] != first_island;
             })) {
             work.note(BoardCompletionCheck::Connectivity,
                       unknown ? BoardCompletionState::NotEvaluated : BoardCompletionState::Failed,

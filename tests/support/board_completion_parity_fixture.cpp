@@ -14,6 +14,11 @@ int main(int argc, char **argv) {
         options.different_nets = true;
         options.zone = false;
         options.mechanical_bridge = true;
+    } else if (mode == "range") {
+        options.components = 1;
+        options.zone = false;
+        options.first_x = 10010;
+        options.outline_x = 10000;
     } else if (mode == "modules")
         options.modules = true;
     else if (mode == "multi")

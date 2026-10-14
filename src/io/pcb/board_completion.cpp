@@ -86,7 +86,7 @@ using Json = nlohmann::json;
 
 BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled) {
     auto result = evaluate_board_completion(compiled);
-    const auto export_result = write_pcb_fabrication_files(compiled);
+    const auto grid = detail::completion_export_grid(compiled, result.copper());
     auto report = DiagnosticReport{};
     for (const auto &diagnostic : result.diagnostics_.diagnostics())
         if (diagnostic.code().value() != pcb_completion_diagnostic_codes::ExportNotEvaluated)
@@ -103,13 +103,24 @@ BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled) {
     row.state = BoardCompletionState::Pass;
     row.reason = "Actual volt.native_fabrication/1 Gerber/Excellon bytes evaluated; this is not "
                  "target readiness";
-    const auto grid = detail::completion_export_grid(compiled, result.copper());
     for (const auto &diagnostic : grid.diagnostics()) {
         report.add(diagnostic);
         row.state = BoardCompletionState::NotEvaluated;
         row.entities.insert(row.entities.end(), diagnostic.entities().begin(),
                             diagnostic.entities().end());
     }
+    if (std::ranges::any_of(grid.diagnostics(), [](const auto &diagnostic) {
+            return diagnostic.code().value() == pcb_completion_diagnostic_codes::ExportNotEvaluated;
+        })) {
+        row.reason = "Native 4.6 coordinate range is unsupported; export was not evaluated";
+        std::ranges::sort(row.entities);
+        row.entities.erase(std::unique(row.entities.begin(), row.entities.end()),
+                           row.entities.end());
+        result.diagnostics_ = std::move(report);
+        result.order_diagnostics();
+        return result;
+    }
+    const auto export_result = write_pcb_fabrication_files(compiled);
     for (const auto &warning : export_result.loss_report.warnings()) {
         if (warning.fabrication_impact == PcbFabricationLossImpact::FabCritical ||
             warning.kind == PcbFabricationLossKind::LossyGeometry) {
@@ -124,6 +135,48 @@ BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled) {
     if (row.state != BoardCompletionState::Pass)
         row.reason = "Native emitted geometry/loss/quantization coverage is incomplete; inspect "
                      "exact diagnostics";
+    // Validate the actual coordinate tokens too, including derived legend/marking output.
+    for (const auto &file : export_result.files) {
+        auto cursor = std::size_t{0};
+        while (cursor < file.text.size()) {
+            const auto end = file.text.find('\n', cursor);
+            const auto line = std::string_view{file.text}.substr(
+                cursor, end == std::string::npos ? std::string::npos : end - cursor);
+            if (line.starts_with('X')) {
+                for (const auto axis : {'X', 'Y'}) {
+                    auto start = line.find(axis);
+                    if (start == std::string_view::npos)
+                        continue;
+                    ++start;
+                    if (start < line.size() && line[start] == '-')
+                        ++start;
+                    auto stop = start;
+                    while (stop < line.size() && line[stop] >= '0' && line[stop] <= '9')
+                        ++stop;
+                    if (stop - start > 10U) {
+                        row.state = BoardCompletionState::NotEvaluated;
+                        report.add(
+                            Diagnostic{Severity::Warning,
+                                       DiagnosticCode{std::string{
+                                           pcb_completion_diagnostic_codes::ExportNotEvaluated}},
+                                       DiagnosticCategory{diagnostic_categories::PcbFabrication},
+                                       "Actual native export coordinate exceeds its declared 4.6 "
+                                       "format; fidelity is not evaluated",
+                                       {EntityRef::board()},
+                                       {},
+                                       {},
+                                       "volt.native_fabrication/1:grid-4.6"});
+                    }
+                }
+            }
+            if (end == std::string::npos)
+                break;
+            cursor = end + 1U;
+        }
+    }
+    if (row.state != BoardCompletionState::Pass)
+        row.reason = "Native emitted geometry/loss/quantization/format coverage is incomplete; "
+                     "inspect exact diagnostics";
     for (const auto &file : export_result.files)
         result.files_.push_back({file.filename, file.function, sha256_content_hash(file.text)});
     std::ranges::sort(row.entities);

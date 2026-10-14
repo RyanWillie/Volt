@@ -353,3 +353,18 @@ TEST_CASE("Completion unplaced DNP missing selection stays outside physical scop
     const auto placed = test::completion_fixture(options);
     CHECK(has(io::evaluate_fabrication_completion(placed), codes::MissingImplementation));
 }
+
+TEST_CASE("Completion bounds native 4.6 coordinates before unsafe integer conversion",
+          "[completion]") {
+    auto options = test::CompletionFixtureOptions{};
+    options.components = 1;
+    options.zone = false;
+    options.first_x = GENERATE(10010.0, 1.0e14);
+    options.outline_x = options.first_x - 10.0;
+    const auto artifact = test::completion_fixture(options);
+    const auto result = io::evaluate_fabrication_completion(artifact);
+    CHECK(result.status() == BoardCompletionStatus::NotEvaluated);
+    CHECK(row(result, BoardCompletionCheck::ExportFidelity) == BoardCompletionState::NotEvaluated);
+    CHECK(has(result, codes::ExportNotEvaluated));
+    CHECK(result.files().empty());
+}

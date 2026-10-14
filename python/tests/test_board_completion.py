@@ -12,7 +12,7 @@ from volt import _volt
 
 @pytest.mark.parametrize("mode", [
     "complete", "missing", "netless-short", "pad-short", "modules", "multi",
-    "rounding", "drill", "nc", "dnp", "lossy-short",
+    "rounding", "drill", "nc", "dnp", "lossy-short", "range",
 ])
 def test_native_completion_payload_parity_and_determinism(mode):
     native = json.loads(subprocess.check_output(
@@ -31,7 +31,7 @@ def test_native_completion_payload_parity_and_determinism(mode):
     expected = {
         "complete": "complete", "missing": "incomplete", "netless-short": "incomplete",
         "pad-short": "incomplete", "modules": "complete", "multi": "complete",
-        "rounding": "not-evaluated", "drill": "not-evaluated", "nc": "incomplete",
+        "range": "not-evaluated", "rounding": "not-evaluated", "drill": "not-evaluated", "nc": "incomplete",
         "dnp": "complete", "lossy-short": "incomplete",
     }
     assert report["status"] == expected[mode]

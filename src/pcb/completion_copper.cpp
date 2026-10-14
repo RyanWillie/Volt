@@ -104,8 +104,8 @@ void append(CompletionWork &work, BoardCompletionCopper item) {
     if (item.kind == BoardCompletionCopperKind::Disc) {
         const auto centre = item.points[0];
         const auto radius = item.radius_mm * 0.95;
-        for (const auto [x, y] : {std::pair{radius, 0.0}, std::pair{-radius, 0.0},
-                                  std::pair{0.0, radius}, std::pair{0.0, -radius}})
+        for (const auto &[x, y] : {std::pair{radius, 0.0}, std::pair{-radius, 0.0},
+                                   std::pair{0.0, radius}, std::pair{0.0, -radius}})
             result.emplace_back(centre.x_mm() + x, centre.y_mm() + y);
     } else {
         auto x = 0.0;

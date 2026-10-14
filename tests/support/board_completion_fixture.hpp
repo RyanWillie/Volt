@@ -34,6 +34,8 @@ struct CompletionFixtureOptions {
     bool drill_only = false;
     bool severing_hole = false;
     bool drill_off_grid = false;
+    double first_x = 10.0;
+    double outline_x = 0.0;
     double second_x = 20.0;
     double zone_right = 25.0;
     double outline_shift = 0.0;
@@ -158,11 +160,12 @@ struct CompletionFixtureOptions {
                                BoardLayer{"In.Cu", BoardLayerRole::Copper, BoardLayerSide::Inner})}
                          : std::nullopt;
     board.set_layer_stack(LayerStack{{front, back}, 1.6});
-    board.set_outline(BoardOutline::rectangle({0, options.outline_shift}, {30, 20}));
+    board.set_outline(
+        BoardOutline::rectangle({options.outline_x, options.outline_shift}, {30, 20}));
     for (std::size_t i = 0; i < std::min(options.placements, components.size()); ++i)
         static_cast<void>(board.place_component(
             ComponentPlacement{components[i],
-                               {i == 0 ? 10.0 : options.second_x, 10},
+                               {i == 0 ? options.first_x : options.second_x, 10},
                                BoardRotation::degrees(0),
                                options.interlayer && i == 0 ? BoardSide::Bottom : BoardSide::Top}));
     if (options.zone) {

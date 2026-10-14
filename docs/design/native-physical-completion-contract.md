@@ -93,7 +93,11 @@ loss block authoritative completion. No unresolved pour/future fill interpretati
 
 Finite export-grid support: each emitted copper coordinate and aperture dimension
 must be representable on native Gerber 4.6 grid (`1e-6 mm`, within `1e-12 mm` floating
-representation error). Check transformed pad corners/centres as actually emitted.
+representation error), and emitted coordinates must fit the four-digit integer
+range (absolute value at most 9999.999999 mm). Preflight this bound before native
+integer conversion; unsupported range returns NotEvaluated without fabricated file
+evidence. Validate actual emitted coordinate-token widths too. Check transformed
+pad corners/centres as actually emitted.
 Off-grid geometry is NotEvaluated, rather than silently certifying authored contact
 that rounding may change. IO checks this against the actual writer quantization;
 synthetic tests inspect Gerber coordinates/apertures/regions, not only a coverage flag.
