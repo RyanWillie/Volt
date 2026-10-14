@@ -211,3 +211,18 @@ Commit contract and matrix, record independent findings/resolutions on #384 befo
 ready/implementation. Deliver linked non-draft public Volt and private Boards PRs,
 attach both, keep #384 open while either required consumer/native acceptance remains.
 No merges or unrelated cleanup. Public PR/issue evidence is sanitized/synthetic.
+
+## Reviewed pad-factory amendment — 2026-10-14
+
+Independent reviewer approved BoardRouter::resolve_pads() const returning an owned
+vector<PadResolution>. Python pad factories consume this same native session rather
+than repeatedly decoding selected closure or resolving all pads. The native retained
+state may contain current inputs/pads with an absent index. Physical snapshot factories
+may lazily warm/refresh runtime pad state and remain canonical read-only; route/query_gap
+preparation and rejected routes keep their stronger retained-cache invariance. Cold
+pad factories do not construct an index. A refreshed owned return is copied before
+noexcept state adoption, so allocation failure preserves the old retained state.
+A route privately constructs a missing index, reuses retained pads, and adopts it only
+on successful publication. Test repeated factories: one physical/pad resolution and
+zero premature index builds; relevant mutation freshness and subsequent route reuse.
+No second binding pad cache, borrowed internal accessor or Circuit API change.
