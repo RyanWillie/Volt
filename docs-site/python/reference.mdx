@@ -339,6 +339,7 @@ the compiled graph.
 | `volt.Text` | Board text primitive. |
 | `volt.MechanicalKeepout` | Mechanical keepout primitive. |
 | `volt.PadResolution` | Resolved component-pad-to-net inspection record. |
+| `volt.evaluate_compiled_board_completion` | Full deterministic native physical completion over immutable source-free bytes; not manufacturing readiness. |
 | `volt.CompiledBoardIdentity` | Exact named Board and immutable compilation provenance used by delivery exports. |
 | `volt.KiCadPcbExport` | KiCad PCB adapter output text plus warnings. |
 | `volt.KiCadLossWarning` | Structured warning for unsupported or lossy KiCad adapter constructs. |
@@ -359,6 +360,7 @@ the compiled graph.
 | `volt.BOM_DIAGNOSTIC_CODES` | Stable BOM-readiness diagnostic code strings exported for assembly/project-facing checks. |
 | `volt.ASSEMBLY_DIAGNOSTIC_CODES` | Stable assembly handoff diagnostic code strings exported for project-facing checks. |
 | `volt.PCB_VISUAL_DIAGNOSTIC_CODES` | Stable PCB visual/review diagnostic code strings exported for project-facing checks. |
+| `volt.PCB_COMPLETION_DIAGNOSTIC_CODES` | Finite native inventory/contact/geometry/export coverage diagnostic codes. |
 | `volt.PCB_FABRICATION_DIAGNOSTIC_CODES` | Stable fabrication handoff diagnostic code strings exported for project-facing checks. |
 
 ## Native linear transient

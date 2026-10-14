@@ -1,3 +1,4 @@
+#include "pcb_fabrication_detail.hpp"
 #include <volt/io/pcb/pcb_fabrication_writer.hpp>
 
 #include <algorithm>
@@ -1171,5 +1172,79 @@ write_pcb_fabrication_files(const CompiledBoard &compiled, PcbFabricationExportO
 
     return result;
 }
+
+namespace detail {
+DiagnosticReport completion_export_grid(const CompiledBoard &compiled,
+                                        std::span<const BoardCompletionCopper> copper) {
+    const auto transform = BoardFabricationTransform::from_board(compiled.board());
+    auto report = DiagnosticReport{};
+    for (const auto &item : copper) {
+        auto exact =
+            std::abs(std::stod(decimal_mm(item.radius_mm * 2.0)) - item.radius_mm * 2.0) <= 1.0e-12;
+        for (const auto point : item.points) {
+            const auto emitted = transform.to_fabrication(point);
+            for (const auto value : {emitted.x_mm(), emitted.y_mm()}) {
+                exact = exact &&
+                        std::abs(static_cast<double>(std::stoll(coordinate(value))) / 1000000.0 -
+                                 value) <= 1.0e-12;
+            }
+        }
+        if (!exact)
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{std::string{pcb_completion_diagnostic_codes::GeometryNotEvaluated}},
+                DiagnosticCategory{diagnostic_categories::PcbFabrication},
+                "Actual native export transform/rounding is not exact; emitted contact is not "
+                "evaluated",
+                item.entities,
+                {},
+                {},
+                "volt.native_fabrication/1:grid-4.6"});
+    }
+    const auto check_drill = [&](BoardPoint point, double diameter,
+                                 std::vector<EntityRef> entities) {
+        const auto emitted = transform.to_fabrication(point);
+        auto exact = std::abs(std::stod(decimal_mm(diameter)) - diameter) <= 1.0e-12;
+        for (const auto value : {emitted.x_mm(), emitted.y_mm()})
+            exact =
+                exact && std::abs(static_cast<double>(std::stoll(coordinate(value))) / 1000000.0 -
+                                  value) <= 1.0e-12;
+        if (!exact)
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{std::string{pcb_completion_diagnostic_codes::GeometryNotEvaluated}},
+                DiagnosticCategory{diagnostic_categories::PcbFabrication},
+                "Actual Excellon drill rounding changes an opening; finished-copper contact is not "
+                "evaluated",
+                std::move(entities),
+                {},
+                {},
+                "volt.native_fabrication/1:grid-4.6"});
+    };
+    const auto &board = compiled.board();
+    for (std::size_t i = 0; i < board.all<BoardViaId>().size(); ++i) {
+        const auto id = BoardViaId{i};
+        const auto &via = board.get(id);
+        check_drill(via.position(), via.drill_diameter_mm(), {EntityRef::board_via(id)});
+    }
+    for (const auto &placement : compiled.placements())
+        if (placement.footprint())
+            for (const auto &pad : placement.pad_resolutions()) {
+                const auto &definition = placement.footprint()->pad(pad.pad());
+                if (definition.drill())
+                    check_drill(pad.position(), definition.drill()->diameter_mm(),
+                                {EntityRef::component_placement(placement.placement()),
+                                 EntityRef::footprint_pad(pad.pad())});
+            }
+    for (std::size_t i = 0; i < board.all<BoardFeatureId>().size(); ++i) {
+        const auto id = BoardFeatureId{i};
+        const auto &feature = board.get(id);
+        if (feature.kind() == BoardFeatureKind::Hole)
+            check_drill(feature.hole().center(), feature.hole().drill_diameter_mm(),
+                        {EntityRef::board_feature(id)});
+    }
+    return report;
+}
+} // namespace detail
 
 } // namespace volt::io

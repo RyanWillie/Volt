@@ -3,6 +3,9 @@ add_library(
     board.cpp
     compiled_board.cpp
     compiled_board_consumers.cpp
+    board_completion.cpp
+    completion_inventory.cpp
+    completion_copper.cpp
     copper/board_capability.cpp
     copper/board_copper.cpp
     copper/board_copper_geometry.cpp

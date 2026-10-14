@@ -130,6 +130,8 @@ namespace {
     return false;
 }
 
+} // namespace
+
 [[nodiscard]] bool polygon_interiors_overlap(const std::vector<BoardPoint> &lhs,
                                              const std::vector<BoardPoint> &rhs) {
     if (std::any_of(
@@ -159,6 +161,8 @@ namespace {
     return polygon_edge_enters_interior(lhs, rhs) || polygon_edge_enters_interior(rhs, lhs);
 }
 
+namespace {
+
 [[nodiscard]] BoardMechanicalClearanceCheck
 mechanical_clearance_check(const Board &board, BoardClearanceKind copper_kind,
                            double actual_clearance_mm, bool polygon_interiors_overlap) {
@@ -173,7 +177,15 @@ mechanical_clearance_check(const Board &board, BoardClearanceKind copper_kind,
 
 } // namespace
 
-[[nodiscard]] double shape_distance(const BoardCopperShape &lhs, const BoardCopperShape &rhs) {
+[[nodiscard]] std::size_t connectivity_root(std::vector<std::size_t> &parents, std::size_t index) {
+    while (parents[index] != index) {
+        parents[index] = parents[parents[index]];
+        index = parents[index];
+    }
+    return index;
+}
+
+[[nodiscard]] double primitive_distance(CopperPrimitiveView lhs, CopperPrimitiveView rhs) {
     if (lhs.kind == BoardCopperShapeKind::Disc && rhs.kind == BoardCopperShapeKind::Disc) {
         return board_distance(lhs.points[0], rhs.points[0]);
     }
@@ -187,18 +199,22 @@ mechanical_clearance_check(const Board &board, BoardClearanceKind copper_kind,
         return point_segment_distance(rhs.points[0], lhs.points[0], lhs.points[1]);
     }
     if (lhs.kind == BoardCopperShapeKind::Disc && rhs.kind == BoardCopperShapeKind::Segment) {
-        return shape_distance(rhs, lhs);
+        return primitive_distance(rhs, lhs);
     }
     if (lhs.kind == BoardCopperShapeKind::Polygon && rhs.kind == BoardCopperShapeKind::Disc) {
         return point_polygon_distance(rhs.points[0], lhs.points);
     }
     if (lhs.kind == BoardCopperShapeKind::Disc && rhs.kind == BoardCopperShapeKind::Polygon) {
-        return shape_distance(rhs, lhs);
+        return primitive_distance(rhs, lhs);
     }
     if (lhs.kind == BoardCopperShapeKind::Polygon && rhs.kind == BoardCopperShapeKind::Segment) {
         return segment_polygon_distance(rhs.points[0], rhs.points[1], lhs.points);
     }
-    return shape_distance(rhs, lhs);
+    return primitive_distance(rhs, lhs);
+}
+
+[[nodiscard]] double shape_distance(const BoardCopperShape &lhs, const BoardCopperShape &rhs) {
+    return primitive_distance({lhs.kind, lhs.points}, {rhs.kind, rhs.points});
 }
 
 [[nodiscard]] std::vector<BoardMechanicalOpening> collect_mechanical_openings(const Board &board) {

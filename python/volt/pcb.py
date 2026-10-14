@@ -1196,6 +1196,14 @@ class Board:
             ),
         )
 
+    def completion(self) -> dict[str, object]:
+        """Return complete native physical evidence, not manufacturing readiness."""
+        return json.loads(self._native.completion_json())
+
+    def compile_bytes(self) -> bytes:
+        """Return the immutable native CompiledBoard for source-free evaluation."""
+        return self._native.compiled_bytes()
+
     def to_fabrication_files(self) -> PcbFabricationExport:
         """Export the PCB projection to native Gerber and Excellon fabrication files."""
         result = self._native.to_fabrication_files()
@@ -1292,3 +1300,8 @@ def _rotation_offsets_payload(
         footprint_ref(footprint): float(rotation)
         for footprint, rotation in rotation_offsets.items()
     }
+
+
+def evaluate_compiled_board_completion(artifact: bytes) -> dict[str, object]:
+    """Reopen and evaluate immutable native bytes without authoring/library state."""
+    return json.loads(_volt.evaluate_compiled_board_completion_json(artifact))

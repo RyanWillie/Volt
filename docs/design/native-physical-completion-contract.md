@@ -1,6 +1,7 @@
 # Native physical completion contract (#403)
 
-Status: finite contract for independent review before implementation. Baseline:
+Status: independently reviewed finite contract (gate recorded on #403 on 2026-10-14);
+native implementation and acceptance tests accompany this contract. Baseline:
 `f8c428584be5c7b5bb03d81bccfc3f4bcd791fa4`, verified 2026-10-14.
 Parent #389 remains open/not ready. This child proves physical completion only;
 it does not implement manufacturing-target readiness or authorize manufacturing.
@@ -40,7 +41,12 @@ one complete physical alternative. Absence of DNP means populated, following nat
 `component_dnp(...).value_or(false)`. Every populated component needs exact selection,
 resolved footprint and placement even with optional/disconnected pins. Unplaced DNP
 components need no terminals; all placed DNP geometry and connected pins participate.
-DNP never removes another populated endpoint or stored copper.
+DNP never removes another populated endpoint or stored copper. Legacy DRC
+`PCB_COMPONENT_NOT_PLACED`, `PCB_COMPONENT_MISSING_SELECTED_PART` and
+`PCB_FOOTPRINT_UNRESOLVED` for an exactly matched unplaced DNP component remain
+in diagnostics but are outside this child's required physical-implementation scope; this applicability
+does not change legacy DRC or waive a populated endpoint. Thermal pads require mapping
+in the exact native model; non-electrical/mechanical conductive pads carry no label.
 
 Intrinsic `MustNotConnect` or terminal kind `NoConnect`, then explicit intentional
 no-connect, take precedence over default Required. A contradictory logical connection
@@ -66,8 +72,8 @@ coverage is NotEvaluated with recompile remediation; ordinary V1 export stays us
 Collect tracks (one capsule per segment), vias (disc on native span), Solid zones
 (polygon on each native layer), and every resolved footprint copper pad, including
 DNP/disconnected/unmapped/non-electrical pads. Preserve optional net labels. Layer
-sets use existing native pad side/all-copper and via stack-span semantics. A single
-multilayer pad/via connects its occupied layers; a multilayer zone consists of
+sets use existing native pad side/all-copper and via stack-span semantics. A plated through-hole pad/via connects its occupied layers; non-plated/surface
+pad layers remain separate conductors. A multilayer zone consists of
 separate planar conductors and does NOT connect layers. This corrects manufacturing
 analysis only; legacy DRC/routing inventories retain their accepted behavior.
 

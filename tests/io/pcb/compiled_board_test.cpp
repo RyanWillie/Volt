@@ -23,6 +23,7 @@
 #include <volt/io/electrical/electrical_input_io.hpp>
 #include <volt/io/parts/footprint_asset.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
+#include <volt/io/pcb/board_completion.hpp>
 #include <volt/io/pcb/board_resolution.hpp>
 #include <volt/io/pcb/compiled_board.hpp>
 #include <volt/io/pcb/compiled_board_consumers.hpp>
@@ -31,6 +32,7 @@
 #include <volt/pcb/routing/board_spatial_index.hpp>
 
 #include "../support/project_bundle_v2_board_test_support.hpp"
+#include "support/board_completion_fixture.hpp"
 
 namespace {
 
@@ -751,6 +753,10 @@ TEST_CASE("CompiledBoard V1 remains byte-preserving and exportable without infer
     const auto legacy_bytes = encode_archive(legacy);
     const auto reopened = volt::io::open_compiled_board(legacy_bytes);
     CHECK(reopened.provenance().schema_version() == volt::CompiledBoardSchemaVersion::V1);
+    const auto completion = volt::io::evaluate_fabrication_completion(reopened);
+    CHECK(completion.coverage()[0].state == volt::BoardCompletionState::NotEvaluated);
+    CHECK(completion.status() != volt::BoardCompletionStatus::Complete);
+    CHECK_FALSE(volt::io::write_pcb_fabrication_files(reopened).files.empty());
     CHECK_FALSE(reopened.logical_continuity_partition().has_value());
     CHECK_FALSE(reopened.view().has_complete_logical_continuity());
     const auto validation = volt::validate_board(reopened);
@@ -1746,4 +1752,32 @@ TEST_CASE("ProjectBundle owns reopened exact definitions and BOM inputs without 
     }
     CHECK(volt::io::write_bom_json(volt::project_bom(circuit, artifact.part_definitions())) ==
           witness);
+}
+
+TEST_CASE("CompiledBoard V1 completion preserves proven isolated contact failure") {
+    auto options = volt::test::CompletionFixtureOptions{};
+    options.components = 1;
+    options.connected = false;
+    options.explicit_nc = true;
+    options.zone = false;
+    options.nc_contact = true;
+    const auto compiled = volt::test::completion_fixture(options);
+    auto legacy = decode_archive(compiled.bytes());
+    legacy.manifest["schema_version"] = 1U;
+    legacy.manifest["compiler_version"] = 1U;
+    auto logical = std::ranges::find(legacy.entries, "snapshots/logical.json", &ArchiveEntry::path);
+    REQUIRE(logical != legacy.entries.end());
+    auto wrapper = Json::parse(logical->payload);
+    wrapper["schema_version"] = 1U;
+    wrapper.erase("realized_net_partition");
+    logical->payload = wrapper.dump();
+    refresh_logical_provenance(legacy, *logical);
+    const auto reopened = volt::io::open_compiled_board(encode_archive(legacy));
+    const auto result = volt::io::evaluate_fabrication_completion(reopened);
+    CHECK(result.status() == volt::BoardCompletionStatus::Incomplete);
+    CHECK(result.coverage()[0].state == volt::BoardCompletionState::NotEvaluated);
+    CHECK(result.coverage()[4].state == volt::BoardCompletionState::Failed);
+    CHECK(has_diagnostic(result.diagnostics(),
+                         volt::pcb_completion_diagnostic_codes::IsolatedContact));
+    CHECK_FALSE(volt::io::write_pcb_fabrication_files(reopened).files.empty());
 }

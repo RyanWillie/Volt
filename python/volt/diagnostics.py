@@ -17,6 +17,7 @@ InvalidStateError = _volt.InvalidStateError
 
 DIAGNOSTIC_CATEGORIES: tuple[str, ...] = tuple(_volt.diagnostic_categories())
 ERC_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.erc_diagnostic_codes())
+PCB_COMPLETION_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.pcb_completion_diagnostic_codes())
 DRC_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.drc_diagnostic_codes())
 PART_LINEUP_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(
     _volt.part_lineup_diagnostic_codes()

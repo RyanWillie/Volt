@@ -9,6 +9,18 @@
 
 namespace volt::detail {
 
+/** Borrowed geometry shared by labelled DRC and complete emitted-copper analysis. */
+struct CopperPrimitiveView {
+    BoardCopperShapeKind kind;
+    const std::vector<BoardPoint> &points;
+};
+
+[[nodiscard]] std::size_t connectivity_root(std::vector<std::size_t> &parents, std::size_t index);
+
+[[nodiscard]] double primitive_distance(CopperPrimitiveView lhs, CopperPrimitiveView rhs);
+[[nodiscard]] bool polygon_interiors_overlap(const std::vector<BoardPoint> &lhs,
+                                             const std::vector<BoardPoint> &rhs);
+
 [[nodiscard]] Diagnostic
 drc_diagnostic(std::string_view code, std::string message, std::vector<EntityRef> entities = {},
                std::vector<DiagnosticOverlay> overlays = {},

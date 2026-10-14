@@ -1085,3 +1085,18 @@ zero-motion behavior is unchanged. To publish, append the required terminal
 retain Board bytes/generation/references. See the
 [R1b finite contract](design/r1b-native-target-contract.md) for operand, tolerance,
 rule-state and evidence details. Existing fluent helpers remain unchanged.
+
+## Native physical completion
+
+`board.completion()` returns the complete deterministic native physical-completion
+report for one immutable compiled revision. `board.compile_bytes()` retains that
+revision; `volt.evaluate_compiled_board_completion(artifact_bytes)` reopens and
+evaluates it without source or ambient libraries. Python only decodes native JSON.
+
+The fixed report has `complete`, `incomplete` or `not-evaluated` status, full logical
+inventory, required mapped contacts, all supported emitted copper (including netless
+bridges), physical islands, exact diagnostics/counts/provenance and native export
+file digests. V1 continuity, unsupported/lossy shapes, unproven 4.6-grid contact,
+openings and boundary tolerance remain explicit coverage gaps. Physical completion
+is not manufacturing-target readiness, manufacturer acceptance or publication permission.
+See [the finite native contract](design/native-physical-completion-contract.md).

@@ -52,7 +52,7 @@ These are reuse seams, not evidence that every manufacturing requirement is chec
   approved-alternate projection. [CPL](../../../src/pcb/assembly/cpl.cpp) already
   diagnoses unplaced populated components and projects side/rotation.
 - [CompiledBoard IO](../../../src/io/pcb/compiled_board.cpp) verifies and decodes full
-  selected `PartDefinition` payloads, but the current public consumer exposes the
+  selected `PartDefinition` payloads, and the delivered public consumer exposes the
   materialized `PhysicalPart` plus the delivered read-only exact-part resolver and
   original selected component definition. Strict rating-consumer identity limitations
   remain; retention alone is not proof those consumers accept projected subjects.
@@ -344,7 +344,10 @@ do not execute dependent work against an open blocker without maintainer overrid
 3. **Exact assembly and supported ratings:** reuse native BOM/CPL and exact part
    closure; bind rotation options to target identity. Review the native rating-subject
    seam or report unsupported checks NotEvaluated. Fabrication-only and assembly
-   goals retain distinct coverage. No part identity relaxation or Python inference.
+   goals retain distinct coverage. Resolve the exact native applicability of legacy
+   unplaced-DNP diagnostics in the later project/delivery contract without a broad
+   waiver; #403 retains their payloads and evaluates its own required-terminal scope.
+   No part identity relaxation or Python inference.
 4. **Export/evidence binding:** IO exports exact bytes and verifies finite eligible
    manual assertions bound to artifact/closure/target/exporter/file digests and exact
    entity scope/count. PCB evaluates closed eligibility/applicability. Tests exercise

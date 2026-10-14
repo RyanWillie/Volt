@@ -1,5 +1,7 @@
 #pragma once
 
+#include <compare>
+
 #include <cstddef>
 
 #include <volt/core/ids.hpp>
@@ -228,6 +230,9 @@ class EntityRef {
 
     /** Return whether two entity references point at the same entity kind and index. */
     [[nodiscard]] friend bool operator==(EntityRef lhs, EntityRef rhs) noexcept = default;
+
+    /** Order reporting references by kind/index, without traversal or mutation. */
+    [[nodiscard]] friend auto operator<=>(EntityRef lhs, EntityRef rhs) noexcept = default;
 
   private:
     constexpr EntityRef(EntityKind kind, std::size_t index) noexcept : kind_{kind}, index_{index} {}
