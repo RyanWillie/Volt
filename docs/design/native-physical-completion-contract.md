@@ -71,7 +71,8 @@ multilayer pad/via connects its occupied layers; a multilayer zone consists of
 separate planar conductors and does NOT connect layers. This corrects manufacturing
 analysis only; legacy DRC/routing inventories retain their accepted behavior.
 
-Factor shared primitive distance/contact and union-find operations in native PCB.
+Factor shared primitive distance/contact operations in native PCB; reuse a finite
+union-find helper without changing legacy DRC island semantics.
 Existing DRC uses the same factored distance with its old labelled-only inventory,
 same-group filter and `1e-9 mm` tolerance. R1a/R1b grammar, clearance/rule resolution,
 spatial obstacle semantics and unlabelled-pad route legality remain unchanged.
@@ -97,6 +98,19 @@ separation. Tangency/near-boundary contact that depends on numerical tolerance i
 NotEvaluated unless exact emitted contact agreement is proven by the implementation.
 Polygon interior overlap is supported; mere shared boundary must not masquerade as
 interior overlap. This finite limitation is explicit coverage, not a false pass.
+
+Finished copper also respects emitted drills and mechanical openings. Reuse native
+opening/primitive distance predicates, not a new polygon-subtraction engine. A circular
+opening strictly contained within a conductor, separated from its outer boundary and
+other openings, is non-severing; plated pad/via barrels keep native interlayer continuity.
+An opening that can cut a conductor (boundary intersection, overlapping holes, slot,
+cutout, unsupported opening treatment) makes affected geometry/connectivity coverage
+NotEvaluated. For contact involving a drilled region, require a concrete shared-copper
+witness outside every opening, using existing primitive point-distance predicates and
+finite boundary/centre samples. Failure to find a witness is uncertainty, never proof
+of contact. Common supported pad/via-to-Solid interior contacts have such witnesses.
+A contact confined inside a drill must not union conductors; add drill-only contact and
+opening-severed conductor negative fixtures. IO attaches actual drill/export loss facts.
 
 Physical union considers every conductor independent of its label. Distinct preserved
 logical groups on one physical island fail as a short; include complete exact island
@@ -134,6 +148,7 @@ Read-only verification compares artifact/source bytes and owner state before/aft
 | Zone removed/shrunk; contact moved across boundary | Disconnected group fails; tangent/uncertain grid explicitly NotEvaluated |
 | Labelled/netless pad/zone bridges | Exact physical island short; logical snapshot unchanged |
 | Oval / rounded rectangle / fab-critical feature / off-grid copper | Unsupported/lossy/not-evaluated coverage, never Complete |
+| Drill-only apparent contact; opening severing copper | No false union; exact affected scope NotEvaluated, plated barrels retained |
 | V1 reopened historical | Export remains available; authoritative continuity NotEvaluated |
 | Native vs thin Python / repeated evaluation | Full ordered payload/message/provenance equality; deterministic bytes |
 | Legacy DRC/routing/CompiledBoard | Full native/Python regressions; explicit contact-factor regression |
