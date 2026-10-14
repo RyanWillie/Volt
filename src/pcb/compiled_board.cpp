@@ -116,15 +116,20 @@ CompiledBoardPlacement::CompiledBoardPlacement(ComponentPlacementId placement,
     }
 }
 
-class CompiledBoard::Storage {
+class CompiledBoard::Storage final : public PartDefinitionResolver {
   public:
     Storage(Circuit logical_dependencies, const Board &board, FootprintLibrary footprints,
-            std::vector<ResolvedBoardPart> parts, CompiledBoardCapabilities capabilities,
-            CompiledBoardProvenance provenance, std::string logical_dependency_snapshot,
-            std::string physical_snapshot, std::string bytes, detail::NetContinuityView continuity)
-        : parts_{std::move(parts)}, circuit_{std::move(logical_dependencies)},
-          board_{copy_board_snapshot(board, circuit_)}, footprints_{std::move(footprints)},
-          capabilities_{std::move(capabilities)}, provenance_{std::move(provenance)},
+            std::vector<ResolvedBoardPart> parts,
+            std::vector<std::pair<LibraryPartRef, PartDefinition>> part_definitions,
+            std::vector<ComponentDefinition> component_definitions,
+            CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
+            std::string logical_dependency_snapshot, std::string physical_snapshot,
+            std::string bytes, detail::NetContinuityView continuity)
+        : part_definitions_{std::move(part_definitions)},
+          component_definitions_{std::move(component_definitions)}, parts_{std::move(parts)},
+          circuit_{std::move(logical_dependencies)}, board_{copy_board_snapshot(board, circuit_)},
+          footprints_{std::move(footprints)}, capabilities_{std::move(capabilities)},
+          provenance_{std::move(provenance)},
           identity_{board_.name(), provenance_.provenance_digest()},
           logical_dependency_snapshot_{std::move(logical_dependency_snapshot)},
           physical_snapshot_{std::move(physical_snapshot)}, bytes_{std::move(bytes)},
@@ -135,6 +140,19 @@ class CompiledBoard::Storage {
         placements_ = freeze_placements(board_, footprints_, parts_, pad_resolutions_);
     }
 
+    [[nodiscard]] const PartDefinition &resolve(const LibraryPartRef &reference) const & override {
+        const auto match = std::ranges::find_if(
+            part_definitions_, [&](const auto &entry) { return entry.first == reference; });
+        if (match == part_definitions_.end()) {
+            throw KernelLogicError{
+                ErrorCode::UnknownEntity,
+                "CompiledBoard has no verified definition for this exact reference"};
+        }
+        return match->second;
+    }
+
+    std::vector<std::pair<LibraryPartRef, PartDefinition>> part_definitions_;
+    std::vector<ComponentDefinition> component_definitions_;
     std::vector<ResolvedBoardPart> parts_;
     Circuit circuit_;
     Board board_;
@@ -223,8 +241,10 @@ CompiledBoard::~CompiledBoard() = default;
 CompiledBoard CompiledBoard::materialize_verified(
     Circuit logical_dependencies, const Board &board, ContentHash selected_closure_digest,
     FootprintLibrary footprints, std::vector<ResolvedBoardPart> parts,
-    CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
-    std::string logical_dependency_snapshot, std::string physical_snapshot, std::string bytes,
+    std::vector<std::pair<LibraryPartRef, PartDefinition>> part_definitions,
+    std::vector<ComponentDefinition> component_definitions, CompiledBoardCapabilities capabilities,
+    CompiledBoardProvenance provenance, std::string logical_dependency_snapshot,
+    std::string physical_snapshot, std::string bytes,
     std::optional<std::vector<std::vector<NetId>>> logical_continuity_partition,
     std::vector<NetId> module_origin_nets) {
     if (logical_continuity_partition.has_value() !=
@@ -253,8 +273,9 @@ CompiledBoard CompiledBoard::materialize_verified(
     }
     auto result = CompiledBoard{std::make_unique<Storage>(
         std::move(logical_dependencies), board, std::move(footprints), std::move(parts),
-        std::move(capabilities), std::move(provenance), std::move(logical_dependency_snapshot),
-        std::move(physical_snapshot), std::move(bytes), std::move(continuity))};
+        std::move(part_definitions), std::move(component_definitions), std::move(capabilities),
+        std::move(provenance), std::move(logical_dependency_snapshot), std::move(physical_snapshot),
+        std::move(bytes), std::move(continuity))};
     result.storage_->finalize(result.view());
     return result;
 }
@@ -292,6 +313,23 @@ const ResolvedBoardPart *CompiledBoard::part(ComponentId component) const noexce
     const auto match =
         std::ranges::find(storage_->parts_, component, &ResolvedBoardPart::component);
     return match != storage_->parts_.end() ? &*match : nullptr;
+}
+
+const PartDefinitionResolver &CompiledBoard::part_definitions() const & noexcept {
+    return *storage_;
+}
+
+const ComponentDefinition *
+CompiledBoard::selected_component_definition(ComponentId component) const & {
+    const auto &reference = storage_->circuit_.get(component).selected_library_part_ref();
+    if (!reference.has_value()) {
+        return nullptr;
+    }
+    const auto &part = storage_->resolve(*reference);
+    const auto match =
+        std::ranges::find(storage_->component_definitions_, part.implemented_component(),
+                          &ComponentDefinition::content_identity);
+    return &*match;
 }
 
 ResolvedBoardView CompiledBoard::view() const & { return ResolvedBoardView::from(*this); }

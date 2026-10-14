@@ -543,7 +543,8 @@ void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &
     }
 }
 
-void validate_bom_component_readiness(const Circuit &circuit, const ExactPartResolver &resolver,
+void validate_bom_component_readiness(const Circuit &circuit,
+                                      const PartDefinitionResolver &resolver,
                                       DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.all<volt::ComponentId>().size(); ++index) {
         const auto component_id = ComponentId{index};
@@ -636,7 +637,7 @@ namespace volt {
 }
 
 [[nodiscard]] DiagnosticReport validate_bom_readiness(const Circuit &circuit,
-                                                      const ExactPartResolver &resolver) {
+                                                      const PartDefinitionResolver &resolver) {
     auto report = DiagnosticReport{};
     auto rules = RuleSet<Circuit>{};
     rules.add([&resolver](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
