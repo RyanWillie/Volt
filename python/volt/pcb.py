@@ -36,6 +36,17 @@ RouteToY = _volt.RouteToY
 RouteVia = _volt.RouteVia
 RouteViaOverride = _volt.RouteViaOverride
 RouteTrackEnd = _volt.RouteTrackEnd
+RouteAxis = _volt.RouteAxis
+RouteDirection = _volt.RouteDirection
+RouteTrackCopper = _volt.RouteTrackCopper
+RoutePlacedCopper = _volt.RoutePlacedCopper
+RouteKeepout = _volt.RouteKeepout
+RouteBoardEdge = _volt.RouteBoardEdge
+RouteExit = _volt.RouteExit
+RouteBeside = _volt.RouteBeside
+RouteGap = _volt.RouteGap
+RouteTargetConstraint = _volt.RouteTargetConstraint
+RouteTargetResolution = _volt.RouteTargetResolution
 RouteSpec = _volt.RouteSpec
 RouteResult = _volt.RouteResult
 
@@ -947,6 +958,26 @@ class Board:
     def route_spec(self, *, start, layer, steps, net=None, width=None, via_size=None):
         """Construct the bounded immutable native request; no geometry/rules run here."""
         return RouteSpec(self._native, start, layer, list(steps), net, width, via_size)
+
+    def route_track_copper(self, track: int):
+        """Capture the Board owner of an existing track copper operand."""
+        return RouteTrackCopper(self._native, track)
+
+    def route_placed_copper(self, placement: int):
+        """Capture exact footprint identity for active-layer placed copper."""
+        return RoutePlacedCopper(self.route_pad(placement, 0))
+
+    def route_keepout(self, keepout: int):
+        """Capture a native mechanical keepout operand."""
+        return RouteKeepout(self._native, keepout)
+
+    def route_board_edge(self, edge_index: int):
+        """Capture an outline segment by its stored starting vertex index."""
+        return RouteBoardEdge(self._native, edge_index)
+
+    def query_gap(self, prefix: RouteSpec) -> RouteResult:
+        """Read-only single-route prefix feasibility; the prefix ends with RouteGap."""
+        return self._native.query_gap(prefix)
 
     def route(self, spec: RouteSpec, policy=RoutePolicy.STRICT) -> RouteResult:
         """Natively plan, check and atomically append one explicit route."""

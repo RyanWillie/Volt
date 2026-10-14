@@ -995,6 +995,41 @@
           "python_type": "RouteTrackRef"
         },
         {
+          "cpp_type": "RouteTrackCopper",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteTrackCopper"
+        },
+        {
+          "cpp_type": "RoutePlacedCopper",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RoutePlacedCopper"
+        },
+        {
+          "cpp_type": "RouteKeepout",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteKeepout"
+        },
+        {
+          "cpp_type": "RouteBoardEdge",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteBoardEdge"
+        },
+        {
+          "cpp_type": "RouteExit",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteExit"
+        },
+        {
+          "cpp_type": "RouteBeside",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteBeside"
+        },
+        {
+          "cpp_type": "RouteGap",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteGap"
+        },
+        {
           "cpp_type": "RouteThrough",
           "path": "src/python/route_bindings.cpp",
           "python_type": "RouteThrough"
@@ -1053,6 +1088,16 @@
           "cpp_type": "RouteCandidate",
           "path": "src/python/route_bindings.cpp",
           "python_type": "RouteCandidate"
+        },
+        {
+          "cpp_type": "RouteTargetConstraint",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteTargetConstraint"
+        },
+        {
+          "cpp_type": "RouteTargetResolution",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteTargetResolution"
         },
         {
           "cpp_type": "RouteResolvedStep",
@@ -1222,7 +1267,7 @@
         },
         "BoardRouter": {
           "path": "tests/architecture/boardrouter_public_api.txt",
-          "sha256": "22d2282dd9cc557335ccbc34d294d423e6963b19e1603a13bc918b38b11d2b24"
+          "sha256": "3c2170178f7b21f254ca8b3618ed7c36a785a60543c9045ecbc5486658fda3a0"
         },
         "BoardSpatialIndex": {
           "path": "tests/architecture/boardspatialindex_public_api.txt",
@@ -1426,18 +1471,29 @@
         "Quantity",
         "QuantityRange",
         "ResistanceElement",
+        "RouteAxis",
+        "RouteBeside",
+        "RouteBoardEdge",
+        "RouteDirection",
         "RouteError",
+        "RouteExit",
         "RouteFailureKind",
+        "RouteGap",
+        "RouteKeepout",
+        "RoutePlacedCopper",
         "RoutePoint",
         "RoutePolicy",
         "RouteResult",
         "RouteRuleField",
         "RouteRuleSourceKind",
         "RouteSpec",
+        "RouteTargetConstraint",
+        "RouteTargetResolution",
         "RouteThrough",
         "RouteTo",
         "RouteToX",
         "RouteToY",
+        "RouteTrackCopper",
         "RouteTrackEnd",
         "RouteVia",
         "RouteViaOverride",

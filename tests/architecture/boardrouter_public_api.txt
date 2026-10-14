@@ -15,6 +15,7 @@ BoardRouter(Board &board, ResolvedBoardView resolved)
 BoardRouter(Board &board, const BoardResolution &resolution)
 [[nodiscard]] BoardRouteParameters resolve_parameters(NetId net) const
 [[nodiscard]] RouteResult route(const RouteSpec &spec, RoutePolicy policy = RoutePolicy::Strict)
+[[nodiscard]] RouteResult query_gap(const RouteSpec &prefix) const
 [[nodiscard]] BoardTrackRouteResult add_track(BoardTrackRouteRequest request)
 [[nodiscard]] BoardRouteResult connect(const BoardRouteRequest &request)
 [[nodiscard]] BoardEscapeResult escape(ComponentId component)

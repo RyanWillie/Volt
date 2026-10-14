@@ -1,3 +1,5 @@
+#include "support/resolved_board_test_parts.hpp"
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/pcb/routing/board_router.hpp>
 
@@ -102,6 +104,125 @@ int exercise(bool batch) {
     return 7;
 }
 
+int exercise_targets(bool query) {
+    std::size_t failures = 0;
+    for (std::size_t budget = 0; budget < 10000; ++budget) {
+        Fixture f;
+        const auto bytes = volt::io::write_pcb_board(f.view());
+        const auto tracks = f.board.all<volt::BoardTrackId>();
+        const auto vias = f.board.all<volt::BoardViaId>();
+        const auto *old_track = &f.board.get(volt::BoardTrackId{0});
+        const auto *old_via = &f.board.get(volt::BoardViaId{0});
+        auto spec = volt::RouteSpec{
+            &f.board,
+            volt::RouteNetRef{&f.circuit, f.net},
+            volt::RoutePoint{{2, 1.5}},
+            {&f.board, f.front},
+            {volt::RouteThrough{volt::RoutePoint{{2, 1.4}}}, volt::RouteVia{{&f.board, f.back}},
+             volt::RouteVia{{&f.board, f.front}},
+             volt::RouteGap{volt::RouteTrackCopper{&f.board, volt::BoardTrackId{0}},
+                            volt::RouteViaRef{&f.board, volt::BoardViaId{0}}, volt::RouteAxis::Y}}};
+        if (!query)
+            spec.steps.push_back(volt::RouteTo{volt::RoutePoint{{2, 2}}});
+        auto router = volt::BoardRouter{f.board, f.view()};
+        try {
+            remaining = budget;
+            const auto result = query ? router.query_gap(spec) : router.route(spec);
+            disable();
+            if (result.failure || result.committed == query ||
+                result.target_resolutions.size() != 1)
+                return 10;
+            if (query && (volt::io::write_pcb_board(f.view()) != bytes || !tracks.is_current() ||
+                          !vias.is_current() || &f.board.get(volt::BoardTrackId{0}) != old_track ||
+                          &f.board.get(volt::BoardViaId{0}) != old_via))
+                return 11;
+            if (!query && !tracks.advanced_once())
+                return 12;
+            if (failures < 30)
+                return 13;
+            std::cout << (query ? "gap query" : "symbolic route")
+                      << " preparation allocation failures checked: " << failures << '\n';
+            return 0;
+        } catch (const std::bad_alloc &) {
+            disable();
+            ++failures;
+            if (volt::io::write_pcb_board(f.view()) != bytes || !tracks.is_current() ||
+                !vias.is_current() || &f.board.get(volt::BoardTrackId{0}) != old_track ||
+                &f.board.get(volt::BoardViaId{0}) != old_via)
+                return 14;
+        }
+    }
+    return 15;
+}
+
+int exercise_pad_targets(bool query) {
+    std::size_t failures = 0;
+    for (std::size_t budget = 0; budget < 10000; ++budget) {
+        Fixture f;
+        const auto definition = f.circuit.define_component(volt::ComponentSpec{
+            .name = "Target", .pins = {volt::PinSpec{.name = "P", .number = "1"}}});
+        const auto component = f.circuit.instantiate_component(
+            definition, volt::ComponentInstanceSpec{.reference = volt::ReferenceDesignator{"U1"}});
+        f.circuit.connect(f.net, volt::queries::pin_by_name(f.circuit, component, "P").value());
+        const auto exact = volt::FootprintDefinition{
+            volt::FootprintRef{"test", "target"},
+            {volt::FootprintPad::surface_mount("1", volt::FootprintPadShape::Rectangle, {0, 0},
+                                               {0.8, 0.8}, volt::FootprintLayerSet::front_smd())}};
+        f.footprints.add(exact);
+        volt::test::ResolvedBoardTestParts parts;
+        parts.set(f.circuit, component,
+                  volt::PhysicalPart{volt::ManufacturerPart{"Test", "P"},
+                                     volt::PackageRef{"Target"},
+                                     exact.ref(),
+                                     {{f.circuit.get(definition).pins()[0], "1"}}});
+        const auto placement = f.board.place_component(
+            volt::ComponentPlacement{component, {10, 10}, volt::BoardRotation::degrees(0)});
+        const auto upper =
+            f.board.add_via(volt::BoardVia{f.net, {15, 10}, f.front, f.back, 0.3, 0.7});
+        const auto view = parts.view(f.board, f.footprints);
+        const auto bytes = volt::io::write_pcb_board(view);
+        const auto tracks = f.board.all<volt::BoardTrackId>();
+        const auto vias = f.board.all<volt::BoardViaId>();
+        const auto *old_track = &f.board.get(volt::BoardTrackId{0});
+        const auto *old_via = &f.board.get(volt::BoardViaId{0});
+        const auto operand = volt::RoutePlacedCopper{&f.board, placement, exact};
+        auto spec = volt::RouteSpec{
+            &f.board,
+            volt::RouteNetRef{&f.circuit, f.net},
+            volt::RoutePoint{{10, 10}},
+            {&f.board, f.front},
+            {volt::RouteGap{operand, volt::RouteViaRef{&f.board, upper}, volt::RouteAxis::X}}};
+        if (!query)
+            spec.steps.push_back(volt::RouteTo{volt::RoutePoint{{20, 10}}});
+        auto router = volt::BoardRouter{f.board, view};
+        try {
+            remaining = budget;
+            const auto result = query ? router.query_gap(spec) : router.route(spec);
+            disable();
+            if (result.failure || result.committed == query ||
+                result.target_resolutions.size() != 1)
+                return 16;
+            if (query && (volt::io::write_pcb_board(view) != bytes || !tracks.is_current() ||
+                          !vias.is_current() || &f.board.get(volt::BoardTrackId{0}) != old_track ||
+                          &f.board.get(volt::BoardViaId{0}) != old_via))
+                return 17;
+            if (failures < 30)
+                return 18;
+            std::cout << (query ? "placed gap query" : "placed symbolic route")
+                      << " preparation allocation failures checked: " << failures << '\n';
+            return 0;
+        } catch (const std::bad_alloc &) {
+            disable();
+            ++failures;
+            if (volt::io::write_pcb_board(view) != bytes || !tracks.is_current() ||
+                !vias.is_current() || &f.board.get(volt::BoardTrackId{0}) != old_track ||
+                &f.board.get(volt::BoardViaId{0}) != old_via)
+                return 19;
+        }
+    }
+    return 20;
+}
+
 int record_copy_cost() {
     std::size_t previous = 0;
     for (const std::size_t count : {0U, 100U, 1000U}) {
@@ -161,6 +282,14 @@ void operator delete(void *pointer, const std::nothrow_t &) noexcept { std::free
 void operator delete[](void *pointer, const std::nothrow_t &) noexcept { std::free(pointer); }
 
 int main() {
+    if (const auto result = exercise_pad_targets(true))
+        return result;
+    if (const auto result = exercise_pad_targets(false))
+        return result;
+    if (const auto result = exercise_targets(true))
+        return result;
+    if (const auto result = exercise_targets(false))
+        return result;
     if (const auto result = exercise(true))
         return result;
     if (const auto result = exercise(false))

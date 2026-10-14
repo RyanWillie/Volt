@@ -113,6 +113,7 @@ class PyBoard {
     [[nodiscard]] volt::BoardEscapeResult escape(std::size_t component);
 
     [[nodiscard]] volt::RouteResult route(const volt::RouteSpec &spec, volt::RoutePolicy policy);
+    [[nodiscard]] volt::RouteResult query_gap(const volt::RouteSpec &prefix);
     [[nodiscard]] volt::RoutePad route_pad(std::size_t placement, std::size_t pad) const;
 
     [[nodiscard]] std::size_t add_zone(std::optional<std::size_t> net,

@@ -154,6 +154,9 @@ class BoardRouter {
     [[nodiscard]] RouteResult route(const RouteSpec &spec,
                                     RoutePolicy policy = RoutePolicy::Strict);
 
+    /** Read-only explicit-net route prefix ending in Gap; no multi-route capacity certificate. */
+    [[nodiscard]] RouteResult query_gap(const RouteSpec &prefix) const;
+
     /** Commit one endpoint-aware routed track after resolving its existing logical net. */
     [[nodiscard]] BoardTrackRouteResult add_track(BoardTrackRouteRequest request);
 
@@ -169,6 +172,9 @@ class BoardRouter {
     [[nodiscard]] BoardEscapeResult escape(ComponentId component);
 
   private:
+    [[nodiscard]] RouteResult plan_route(const RouteSpec &spec, RoutePolicy policy,
+                                         bool query) const;
+
     /** One copper segment a candidate route would commit on a single layer. */
     struct SegmentStep {
         /** Layer the segment is routed on. */

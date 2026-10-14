@@ -428,6 +428,12 @@ volt::RouteResult PyBoard::route(const volt::RouteSpec &spec, volt::RoutePolicy 
     return router.route(spec, policy);
 }
 
+volt::RouteResult PyBoard::query_gap(const volt::RouteSpec &prefix) {
+    const auto resolution = resolve();
+    const auto router = volt::BoardRouter{board_, resolution};
+    return router.query_gap(prefix);
+}
+
 volt::RoutePad PyBoard::route_pad(std::size_t placement, std::size_t pad) const {
     const auto id = volt::ComponentPlacementId{placement};
     const auto &placed = board_.get(id);

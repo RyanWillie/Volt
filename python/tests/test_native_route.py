@@ -42,6 +42,14 @@ def snapshot(result):
              "drill_mm": c.drill_mm, "diameter_mm": c.diameter_mm}
             for c in result.candidates
         ],
+        "target_resolutions": [
+            {"step_index": t.step_index, "position": t.position, "axis": int(t.axis),
+             "raw_lower_mm": t.raw_lower_mm, "raw_upper_mm": t.raw_upper_mm,
+             "lower_mm": t.lower_mm, "upper_mm": t.upper_mm, "width": rule(t.width),
+             "constraints": [{"upper_side": c.upper_side, "entities": c.entities,
+                              "clearance": rule(c.clearance), "exempt": c.exempt}
+                             for c in t.constraints]} for t in result.target_resolutions
+        ],
         "resolved_steps": [
             {"step_index": s.step_index, "start": s.start, "end": s.end,
              "incoming_layer": s.incoming_layer, "outgoing_layer": s.outgoing_layer,
@@ -108,12 +116,24 @@ def fixture(mode="plain"):
     elif mode == "unconnected":
         placement = board.place(resistor, at=(10, 10))
         start = board.route_pad(placement, 0)
+    elif mode.startswith("gap"):
+        lower = board.add_track(net, layer=front, points=((5, 10), (25, 10)), width=0.2)
+        y = 10.599 if mode == "gap-short" else 20
+        upper = board.add_track(other, layer=front, points=((5, y), (25, y)), width=0.2)
+        start = volt.RoutePoint(15, 10 if mode == "gap-short" else 14)
+        steps = [volt.RouteGap(board.route_track_copper(lower), board.route_track_copper(upper), volt.RouteAxis.Y)]
+        if mode == "gap-room":
+            board.add_room("local", layers=(front,), outline=((0, 0), (30, 0), (30, 30), (0, 30)), track_width=0.4, clearance=0.05)
+        if mode == "gap-mechanical":
+            board.add(volt.Hole(center=(15, 15), diameter=2, label="MH"))
+        if mode != "gap-query":
+            steps.append(volt.RouteTo(volt.RoutePoint(15, 16)))
     spec = board.route_spec(start=start, layer=board.route_layer(front), steps=steps,
                             net=board.route_net(net), width=width)
     return design, board, spec
 
 
-@pytest.mark.parametrize("mode", ["blocked", "width", "geometry", "unconnected"])
+@pytest.mark.parametrize("mode", ["blocked", "width", "geometry", "unconnected", "gap-short", "gap-mechanical"])
 def test_direct_cpp_strict_exception_matches_python_and_report(mode):
     executable = os.environ["VOLT_ROUTE_PARITY_FIXTURE"]
     native = json.loads(subprocess.check_output([executable, mode], text=True))
@@ -201,3 +221,33 @@ def test_request_and_extracted_views_retain_native_owners_after_gc():
     del start, layer, terminal, net
     gc.collect()
     assert board_ref().route(request).committed
+
+
+@pytest.mark.parametrize("mode", ["gap", "gap-room", "gap-query"])
+def test_full_native_target_payload_and_query_parity(mode):
+    native = json.loads(subprocess.check_output([os.environ["VOLT_ROUTE_PARITY_FIXTURE"], mode], text=True))
+    _, board, spec = fixture(mode)
+    before = board.to_json()
+    result = board.query_gap(spec) if mode == "gap-query" else board.route(spec, volt.RoutePolicy.REPORT)
+    assert snapshot(result) == native
+    assert result.committed == (mode != "gap-query")
+    if mode == "gap-query":
+        assert board.to_json() == before
+    with pytest.raises(AttributeError):
+        result.target_resolutions[0].lower_mm = 0
+    with pytest.raises(AttributeError):
+        result.target_resolutions[0].constraints[0].exempt = False
+
+
+def test_target_operand_values_keep_owners_and_reject_unknown_shapes():
+    design, board, spec = fixture("gap-query")
+    native_ref = weakref.ref(board._native)
+    steps = list(spec.steps)
+    gap = steps[0]
+    lower = gap.lower
+    del design, board, spec, steps, gap
+    gc.collect()
+    assert native_ref() is not None
+    with pytest.raises(TypeError):
+        volt.RouteBeside(volt.RoutePoint(1, 2), volt.RouteDirection.POSITIVE_X)
+    assert lower.track == 0
