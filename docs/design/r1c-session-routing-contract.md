@@ -226,3 +226,15 @@ A route privately constructs a missing index, reuses retained pads, and adopts i
 on successful publication. Test repeated factories: one physical/pad resolution and
 zero premature index builds; relevant mutation freshness and subsequent route reuse.
 No second binding pad cache, borrowed internal accessor or Circuit API change.
+
+## Reviewed RoundedRectangle operand amendment — 2026-10-14
+
+Independent review approved exactly RoundedRectangle in pad/placement symbolic
+operands. Use the same transformed rectangular envelope already owned by native
+copper collection/DRC; rounded corners do not open a corridor. Rotation and bottom
+transforms remain native. No Oval, zone/body, other-layer guide or new physical
+completion meaning is introduced. Preserve the original selected private parts.
+The unsupported-shape message names Circle/Rectangle/RoundedRectangle. Tests cover
+complete query/route payload parity, rotation/bottom, conservative narrow-gap rejection
+and retained unsupported Oval behavior. R1b's original bounded scope remains historical;
+this dated R1c amendment is the explicit extension.
