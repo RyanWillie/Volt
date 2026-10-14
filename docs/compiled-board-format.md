@@ -60,3 +60,40 @@ A completely reauthored, structurally valid artifact with all hashes recalculate
 cannot be certified against an unavailable original Circuit. This prerequisite
 does not implement manufacturing readiness, select a manufacturer/process policy,
 or assert that any board is ready for fabrication or assembly.
+
+## Retained exact definitions
+
+Both supported archive versions retain their already-verified full selected
+`PartDefinition` values after materialization. `compiled.part_definitions()`
+borrows a native `PartDefinitionResolver`; resolution requires every field of
+`LibraryPartRef`, including library and part digests. Absent or foreign references
+raise native `UnknownEntity`. Repeated selections share one retained exact
+reference/definition. Selection is retained for unplaced and DNP components too.
+
+`compiled.selected_component_definition(component)` borrows the original verified
+component definition, or returns null for a valid component without a selection.
+Invalid component IDs reject. This definition supplies the complete content
+identity and portable `ComponentContract`, including named subjects and PinKeys.
+Its `pins()` IDs are closure-payload-local, not handles into `compiled.board().circuit()`;
+use the artifact Circuit's own definitions/IDs for pin traversal.
+
+These immutable borrows reject temporary CompiledBoard owners. Moving the owner
+preserves them; destruction or replacement of their owning storage invalidates
+them. A moved-from owner supports destruction and assignment only. The resolver
+has no single-library admission identity and cannot be used to select new parts.
+
+Native `project_bom` and `validate_bom_readiness` accept this resolver with the
+artifact Circuit, preserving native quantities, DNP, alternates and diagnostics.
+Strict electrical consumers that require original complete Circuit component
+identities cannot treat the symbol-stripped logical projection as the original
+component: their integrity checks remain unchanged. Full contract retention does
+not reconstruct a Circuit or implement an electrical/readiness evaluator.
+
+Only footprint assets and explicitly requested models3d assets are embedded.
+Full retained definitions preserve other asset references without promising their
+bytes or reconstructing a complete PartLibraryBundle. No ambient asset reload
+occurs. Optional absent ratings/records remain absent.
+
+This is an in-memory ownership extension. Canonical V1/V2 archive bytes, content
+and provenance identities, selected-closure grammars, and V1 continuity limitations
+are unchanged.

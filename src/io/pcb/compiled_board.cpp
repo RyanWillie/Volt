@@ -75,6 +75,7 @@ struct DecodedComponent {
 
 struct DecodedPart {
     std::string reference_key;
+    LibraryPartRef reference;
     PartDefinition part;
     FootprintDefinition footprint;
     std::optional<std::string> model_bytes;
@@ -1092,8 +1093,8 @@ decode_parts(const Json &selected_parts, const std::map<std::string, DecodedComp
                     "CompiledBoard models3d closure exceeds declared capabilities",
                     ErrorCode::CrossReferenceViolation);
         }
-        result.push_back(
-            DecodedPart{key, std::move(part), std::move(footprint), std::move(model_bytes)});
+        result.push_back(DecodedPart{key, reference, std::move(part), std::move(footprint),
+                                     std::move(model_bytes)});
     }
     return result;
 }
@@ -1323,8 +1324,7 @@ template <typename Publisher>
         ContentHash{string_field(manifest, "selected_closure_digest", "CompiledBoard manifest")};
     require(closure_digest == selected_closure_digest(selected_parts),
             "CompiledBoard selected closure digest is stale", ErrorCode::CrossReferenceViolation);
-    const auto components =
-        decode_components(selected_parts, archive.payloads, roles, expected_paths);
+    auto components = decode_components(selected_parts, archive.payloads, roles, expected_paths);
     auto parts = decode_parts(selected_parts, components, archive.payloads, roles, capabilities,
                               expected_paths);
 
@@ -1402,11 +1402,23 @@ template <typename Publisher>
         capability_digest,
         stored_provenance,
     };
-    auto compiled =
-        publisher(std::move(logical_circuit), std::move(physical_board), closure_digest,
-                  std::move(footprint_library), std::move(resolved_parts), std::move(capabilities),
-                  std::move(provenance), logical_bytes, physical_bytes, std::string{bytes},
-                  std::move(logical_continuity_partition), std::move(module_origin_nets));
+    auto part_definitions = std::vector<std::pair<LibraryPartRef, PartDefinition>>{};
+    part_definitions.reserve(parts.size());
+    for (auto &part : parts) {
+        part_definitions.emplace_back(std::move(part.reference), std::move(part.part));
+    }
+    auto component_definitions = std::vector<ComponentDefinition>{};
+    component_definitions.reserve(components.size());
+    for (auto &[identity, component] : components) {
+        static_cast<void>(identity);
+        component_definitions.push_back(std::move(component.definition));
+    }
+    auto compiled = publisher(
+        std::move(logical_circuit), std::move(physical_board), closure_digest,
+        std::move(footprint_library), std::move(resolved_parts), std::move(part_definitions),
+        std::move(component_definitions), std::move(capabilities), std::move(provenance),
+        logical_bytes, physical_bytes, std::string{bytes}, std::move(logical_continuity_partition),
+        std::move(module_origin_nets));
     require(build_physical_snapshot(compiled.view()) == physical_bytes,
             "CompiledBoard materialized Board differs from its canonical physical snapshot",
             ErrorCode::InvalidState);
@@ -1427,6 +1439,8 @@ CompiledBoard CompiledBoard::Codec::open(std::string_view bytes) {
     return io::open_compiled_board_impl(
         bytes, [](Circuit logical_dependencies, Board board, ContentHash selected_closure_digest,
                   FootprintLibrary footprints, std::vector<ResolvedBoardPart> parts,
+                  std::vector<std::pair<LibraryPartRef, PartDefinition>> part_definitions,
+                  std::vector<ComponentDefinition> component_definitions,
                   CompiledBoardCapabilities capabilities, CompiledBoardProvenance provenance,
                   std::string logical_dependency_snapshot, std::string physical_snapshot,
                   std::string archive_bytes,
@@ -1434,10 +1448,11 @@ CompiledBoard CompiledBoard::Codec::open(std::string_view bytes) {
                   std::vector<NetId> module_origin_nets) {
             return CompiledBoard::materialize_verified(
                 std::move(logical_dependencies), board, std::move(selected_closure_digest),
-                std::move(footprints), std::move(parts), std::move(capabilities),
-                std::move(provenance), std::move(logical_dependency_snapshot),
-                std::move(physical_snapshot), std::move(archive_bytes),
-                std::move(logical_continuity_partition), std::move(module_origin_nets));
+                std::move(footprints), std::move(parts), std::move(part_definitions),
+                std::move(component_definitions), std::move(capabilities), std::move(provenance),
+                std::move(logical_dependency_snapshot), std::move(physical_snapshot),
+                std::move(archive_bytes), std::move(logical_continuity_partition),
+                std::move(module_origin_nets));
         });
 }
 
