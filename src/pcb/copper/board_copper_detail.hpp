@@ -9,6 +9,34 @@
 
 namespace volt::detail {
 
+/** Borrowed geometry shared by labelled DRC and complete emitted-copper analysis. */
+struct CopperPrimitiveView {
+    BoardCopperShapeKind kind;
+    const std::vector<BoardPoint> &points;
+};
+
+/** Optional-label view shared by legacy DRC and complete emitted-copper clearance. */
+struct CopperClearanceView {
+    CopperPrimitiveView primitive;
+    std::optional<NetId> net;
+    const std::vector<BoardLayerId> &layers;
+    double radius_mm;
+};
+
+[[nodiscard]] CopperClearanceView clearance_view(const BoardCopperShape &shape);
+[[nodiscard]] bool primitive_satisfies_outline(CopperPrimitiveView primitive, double radius_mm,
+                                               const BoardOutline &outline, double clearance_mm);
+[[nodiscard]] BoardCopperClearanceCheck
+check_copper_clearance(const Board &board, const NetContinuityView &continuity,
+                       CopperClearanceView lhs, BoardClearanceKind lhs_kind,
+                       CopperClearanceView rhs, BoardClearanceKind rhs_kind);
+
+[[nodiscard]] std::size_t connectivity_root(std::vector<std::size_t> &parents, std::size_t index);
+
+[[nodiscard]] double primitive_distance(CopperPrimitiveView lhs, CopperPrimitiveView rhs);
+[[nodiscard]] bool polygon_interiors_overlap(const std::vector<BoardPoint> &lhs,
+                                             const std::vector<BoardPoint> &rhs);
+
 [[nodiscard]] Diagnostic
 drc_diagnostic(std::string_view code, std::string message, std::vector<EntityRef> entities = {},
                std::vector<DiagnosticOverlay> overlays = {},

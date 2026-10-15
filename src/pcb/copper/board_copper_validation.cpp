@@ -461,14 +461,6 @@ void validate_keepout_placements(const Board &board, DiagnosticReport &report) {
     }
 }
 
-[[nodiscard]] std::size_t connectivity_root(std::vector<std::size_t> &parents, std::size_t index) {
-    while (parents[index] != index) {
-        parents[index] = parents[parents[index]];
-        index = parents[index];
-    }
-    return index;
-}
-
 void validate_unrouted_nets(const NetContinuityView &continuity,
                             const std::vector<PadResolution> &resolutions,
                             const std::vector<BoardCopperShape> &shapes, DiagnosticReport &report) {

@@ -4,8 +4,10 @@ Status: proposed refinement for [#389](https://github.com/RyanWillie/Volt/issues
 This document does not implement readiness, approve a manufacturing process, or mark
 the issue `ready`. Acceptance of the decisions below is the implementation gate.
 
-Baseline: `origin/main` at `c43c9f0d8d53ed32a39e55418de51f5da4170689` (2026-10-09),
-including package-publication #394 and visual-regression #395.
+Baseline refreshed 2026-10-14: `origin/main` at
+`f8c428584be5c7b5bb03d81bccfc3f4bcd791fa4`, including preserved V2
+continuity (#398), full exact-part retention (#401/#400), and R1a/R1b (#399/#402).
+The first implementation is bounded child #403; this parent stays open/not ready.
 
 ## 1. Outcome and boundary
 
@@ -30,9 +32,9 @@ These are reuse seams, not evidence that every manufacturing requirement is chec
 - [CompiledBoard](../../../include/volt/pcb/compiled/compiled_board.hpp) freezes logical,
   physical, selected-closure and capability provenance. Its logical snapshot retains
   component instances, pins, nets and assembly intent, not only placed components.
-  It currently drops module instances and their port bindings: required logical
-  continuity is not fully preserved. Section 4's versioned closure prerequisite
-  must be delivered before claiming completeness on reopened hierarchical boards.
+  V2 now preserves the native realized logical partition independently of discarded
+  authoring hierarchy. Use that delivered closure; V1 still lacks authoritative
+  continuity. Do not restore hierarchy or introduce a new snapshot contract here.
 - [CompiledBoard consumers](../../../include/volt/pcb/compiled/board_consumers.hpp)
   provide exact-revision native validation and CPL projections.
 - [Unrouted validation](../../../src/pcb/copper/board_copper_validation.cpp) starts
@@ -50,8 +52,10 @@ These are reuse seams, not evidence that every manufacturing requirement is chec
   approved-alternate projection. [CPL](../../../src/pcb/assembly/cpl.cpp) already
   diagnoses unplaced populated components and projects side/rotation.
 - [CompiledBoard IO](../../../src/io/pcb/compiled_board.cpp) verifies and decodes full
-  selected `PartDefinition` payloads, but the current public consumer exposes the
-  materialized `PhysicalPart`, not a full exact-part resolver for BOM/P1 validation.
+  selected `PartDefinition` payloads, and the delivered public consumer exposes the
+  materialized `PhysicalPart` plus the delivered read-only exact-part resolver and
+  original selected component definition. Strict rating-consumer identity limitations
+  remain; retention alone is not proof those consumers accept projected subjects.
 - [Manufacturing publication](../../../python/volt/manufacturing.py) now safely
   publishes schema-v2 packages. Its current `result.ok` and export-loss checks do
   not supply the proposed readiness contract.
@@ -156,29 +160,17 @@ declares unfinished components out of scope is introduced.
    Contact to an intentionally isolated/no-connect pad is not an implicit net
    assignment or a valid implementation of another terminal.
 
-### Required logical-continuity closure decision
+### Delivered logical-continuity prerequisite
 
-The current snapshot builder removes `module_instances`/`module_definitions`, while
-the logical writer stores port bindings inside module instances and native
-`NetContinuityView` derives continuity from `PortBindingId` rows. The remaining
-module origin names are reporting provenance, not connectivity. Reusing only
-`compiled.board().circuit()` cannot recover those lost relationships.
+[Logical-continuity ADR](../../design/adr-compiled-board-logical-continuity.md) and
+#398 delivered CompiledBoard V2's preserved realized native net partition. Consume
+that exact closure through native continuity queries; no flattened name inference,
+module restoration, net mutation or further artifact schema extension is needed.
+V1 remains readable/exportable and cannot establish authoritative completion.
 
-Propose the focused [logical-continuity ADR](../../design/adr-compiled-board-logical-continuity.md):
-add the canonical, native-derived realized net partition to the logical dependency
-closure under a new CompiledBoard schema/compiler contract. Derive it from the
-original Circuit's existing native continuity service at compilation; consume it
-through the same native query/validation semantics after reopen. It never merges
-or changes original nets/pin memberships and is not a PCB-authored connectivity
-definition. Do not add hierarchy mutation/restoration APIs to public Circuit.
-
-The accepted [CompiledBoard ADR](../../design/adr-projection-ownership-and-compiled-board.md)
-requires focused review and a new compilation contract when closure contents change.
-This proposal is that explicit review, not an ad-hoc downstream snapshot extension.
-All schema-v1 artifacts remain readable/exportable, but native manufacturing
-completeness is `NotEvaluated` with a recompile remediation because v1 does not
-prove that logical continuity was preserved. No guessing from net names/origins,
-ambient hierarchy reload, or silent version upgrade is permitted.
+[Physical completion contract](../../design/native-physical-completion-contract.md)
+bounds child #403. Its Complete status is one required fact for later readiness,
+not readiness itself. The child adds no target policy or publication refusal gate.
 
 Factor the existing copper-connected-component calculation for reuse rather than
 building a second geometry engine. Solid zones count only on exported supported
@@ -194,14 +186,13 @@ unproven export rounding must block as not evaluated until parity is established
 
 ## 5. Exact parts, BOM, CPL and supported ratings
 
-Reuse the native exact selected-part validation and BOM/CPL projection. The first
-implementation must preserve full verified `PartDefinition` access from the selected
-archive closure for those consumers: retain already decoded definitions under the
-CompiledBoard owner and provide only the narrow read-only/resolver seam they need.
-No ambient bundle reload or host path lookup; a missing selection remains a design
-blocker. This is an owner-storage/consumer extension, not a new Circuit mutation API.
-Existing canonical part payloads must round-trip unchanged; a format extension, if
-actually needed, requires an explicit versioned compatibility test and review.
+Reuse the delivered #401/#400 exact closure: `part_definitions()` and
+`selected_component_definition()` retain verified full definitions without ambient
+library reload. No closure reimplementation or new format is required. The strict
+electrical input boundary still rejects symbol-stripped projected subject identities
+in applicable cases. A subsequent stage must either independently review a narrow
+native exact-subject seam or mark each affected rating leaf NotEvaluated; it must
+never weaken identity checks or reconstruct meaning in Python.
 
 For the assembly goal, prove BOM quantities equal the non-DNP component inventory,
 DNP quantities are zero, and every populated component has exactly the native CPL
@@ -333,21 +324,62 @@ package/source-free verification until #390 is delivered.
   authoring callback or ambient library. Equivalent inputs in different checkout
   roots give identical readiness/evidence bytes. #390 tests the full package graph.
 
-## 10. Delivery sequence and approval
+## 10. Bounded delivery sequence and approval
 
-1. Accept the proposed finite target, evidence trust, DNP/completeness and no-waiver
-   decisions and the focused logical-continuity ADR/schema contract. Pin the first
-   process policy and all leaf limits/applicability with
-   reviewed sources; map existing check coverage without claiming skipped checks.
-2. Implement versioned logical-continuity retention and full exact-part reuse, then
-   native inventory/connectedness, coverage result
-   and deterministic codec; prove the native positive/negative fixtures.
-3. Implement native IO export composition, eligible review binding and thin Python
-   parity; add the gate to the existing publication path and run platform CI.
-4. Independently review the implementation and source references, then deliver a
-   tested non-draft implementation PR. Keep #389 open until its actual acceptance.
+Every subsequent stage below is refinement only until #403 lands, its native blockers
+clear, and that stage's finite contract receives independent review. None becomes
+ready by implication. Record native dependencies in GitHub when stages are admitted;
+do not execute dependent work against an open blocker without maintainer override.
 
-This proposal may be split into bounded implementation PRs after approval, but no
-intermediate partial-check result may be called manufacturing-ready. #382's route
-contract can proceed independently; #390 depends on the accepted readiness shape,
-and #247/#248 remain the consumer and physical-proof gates respectively.
+1. **#403 physical completion:** complete artifact-wide inventory, supported emitted
+   contact truth and unintended shorts, actual IO export composition, deterministic
+   report and thin Python parity. Closes #403 only. No readiness status/gate.
+2. **Target and closed coverage:** one manufacturer-neutral native evaluator with a
+   versioned finite process policy, typed selections and pinned profile data. Fixed
+   required leaf inventory/applicability/non-waiver decisions from sections 3/6;
+   absent data/checks yield NotEvaluated blockers. Two explicitly synthetic profile
+   fixtures use identical native evaluation code and differ in limits/provenance,
+   demonstrating changed target identities/outcomes. They prove no vendor acceptance.
+   No runtime vendor-name branch, removable required rows or live lookup.
+3. **Exact assembly and supported ratings:** reuse native BOM/CPL and exact part
+   closure; bind rotation options to target identity. Review the native rating-subject
+   seam or report unsupported checks NotEvaluated. Fabrication-only and assembly
+   goals retain distinct coverage. Resolve the exact native applicability of legacy
+   unplaced-DNP diagnostics in the later project/delivery contract without a broad
+   waiver; #403 retains their payloads and evaluates its own required-terminal scope.
+   No part identity relaxation or Python inference.
+4. **Export/evidence binding:** IO exports exact bytes and verifies finite eligible
+   manual assertions bound to artifact/closure/target/exporter/file digests and exact
+   entity scope/count. PCB evaluates closed eligibility/applicability. Tests exercise
+   stale/foreign/incomplete evidence and changed emitted bytes; they demonstrate
+   binding, not actual human inspection. Native failed mandatory leaves are ineligible
+   for manual overrides. Mask/legend/polarity reviews remain required where applicable.
+5. **Dedicated delivery refusal gate:** thin native integration into existing safe
+   #391 publication, with complete native coverage plus project diagnostics/tests.
+   Preserve ordinary diagnostic export and owned-output failure guarantees. Only this
+   comprehensive acceptance can close #389; #390 separately verifies persisted
+   package graph, #247 independent consumer inspection, #248 physical fabrication.
+
+### Process/policy choices still requiring approval
+
+The proposed family is two-layer rigid FR-4 with mechanically drilled through holes
+and vias. It is not a vendor order. The next finite contract must pin: material grade;
+layer stack and each finished copper weight; thickness; finish; mask sides/colour and
+via treatment; PTH/NPTH drill/slot treatment; board dimensional envelope; assembly
+process where requested. No implicit defaults fill missing selections. Unsupported
+requested treatments return UnsupportedTarget; unknown required limits/evidence block.
+
+Use synthetic profiles first. This refinement deliberately claims no current real
+manufacturer policy, source limits or private Badge acceptance. A real policy requires
+fresh primary-source verification of every applicable required leaf, captured source
+bytes/content identities, process applicability and as-of identity, and independent
+leaf-by-leaf review. Historical capability examples and dates are not accepted policy.
+Remaining manual eligibility, applicability and exact native rating-subject decisions
+are explicit approval gates, not implementation permission in this child.
+
+For each stage: commit finite contract and acceptance/coverage matrix; resolve independent
+review findings and record evidence before ready; implement through full relevant native
+and Python tests, deterministic source-free reopen parity, independent implementation
+review and fresh exact-head platform/sanitizer/static-analysis/coverage CI. Deliver a
+non-draft PR; no merges are authorized. Do not call intermediate physical completion,
+synthetic policy coverage or digest-valid evidence full manufacturing readiness.

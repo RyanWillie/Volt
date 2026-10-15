@@ -15,6 +15,7 @@
 #include <limits>
 #include <numeric>
 #include <optional>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -130,6 +131,8 @@ namespace {
     return false;
 }
 
+} // namespace
+
 [[nodiscard]] bool polygon_interiors_overlap(const std::vector<BoardPoint> &lhs,
                                              const std::vector<BoardPoint> &rhs) {
     if (std::any_of(
@@ -159,6 +162,8 @@ namespace {
     return polygon_edge_enters_interior(lhs, rhs) || polygon_edge_enters_interior(rhs, lhs);
 }
 
+namespace {
+
 [[nodiscard]] BoardMechanicalClearanceCheck
 mechanical_clearance_check(const Board &board, BoardClearanceKind copper_kind,
                            double actual_clearance_mm, bool polygon_interiors_overlap) {
@@ -173,7 +178,15 @@ mechanical_clearance_check(const Board &board, BoardClearanceKind copper_kind,
 
 } // namespace
 
-[[nodiscard]] double shape_distance(const BoardCopperShape &lhs, const BoardCopperShape &rhs) {
+[[nodiscard]] std::size_t connectivity_root(std::vector<std::size_t> &parents, std::size_t index) {
+    while (parents[index] != index) {
+        parents[index] = parents[parents[index]];
+        index = parents[index];
+    }
+    return index;
+}
+
+[[nodiscard]] double primitive_distance(CopperPrimitiveView lhs, CopperPrimitiveView rhs) {
     if (lhs.kind == BoardCopperShapeKind::Disc && rhs.kind == BoardCopperShapeKind::Disc) {
         return board_distance(lhs.points[0], rhs.points[0]);
     }
@@ -187,18 +200,22 @@ mechanical_clearance_check(const Board &board, BoardClearanceKind copper_kind,
         return point_segment_distance(rhs.points[0], lhs.points[0], lhs.points[1]);
     }
     if (lhs.kind == BoardCopperShapeKind::Disc && rhs.kind == BoardCopperShapeKind::Segment) {
-        return shape_distance(rhs, lhs);
+        return primitive_distance(rhs, lhs);
     }
     if (lhs.kind == BoardCopperShapeKind::Polygon && rhs.kind == BoardCopperShapeKind::Disc) {
         return point_polygon_distance(rhs.points[0], lhs.points);
     }
     if (lhs.kind == BoardCopperShapeKind::Disc && rhs.kind == BoardCopperShapeKind::Polygon) {
-        return shape_distance(rhs, lhs);
+        return primitive_distance(rhs, lhs);
     }
     if (lhs.kind == BoardCopperShapeKind::Polygon && rhs.kind == BoardCopperShapeKind::Segment) {
         return segment_polygon_distance(rhs.points[0], rhs.points[1], lhs.points);
     }
-    return shape_distance(rhs, lhs);
+    return primitive_distance(rhs, lhs);
+}
+
+[[nodiscard]] double shape_distance(const BoardCopperShape &lhs, const BoardCopperShape &rhs) {
+    return primitive_distance({lhs.kind, lhs.points}, {rhs.kind, rhs.points});
 }
 
 [[nodiscard]] std::vector<BoardMechanicalOpening> collect_mechanical_openings(const Board &board) {
@@ -579,15 +596,22 @@ collect_copper_shapes(const ResolvedBoardView &resolved,
 
 [[nodiscard]] bool shape_satisfies_outline(const BoardCopperShape &shape,
                                            const BoardOutline &outline, double clearance_mm) {
-    if (shape.kind == BoardCopperShapeKind::Disc) {
-        return outline_contains_disc(outline, shape.points[0], shape.radius_mm, clearance_mm);
-    }
-    if (shape.kind == BoardCopperShapeKind::Segment) {
-        return outline_contains_segment(outline, shape.points[0], shape.points[1], shape.radius_mm,
-                                        clearance_mm);
-    }
+    return primitive_satisfies_outline({shape.kind, shape.points}, shape.radius_mm, outline,
+                                       clearance_mm);
+}
 
-    return outline_contains_polygon(outline, shape.points, clearance_mm);
+CopperClearanceView clearance_view(const BoardCopperShape &shape) {
+    return {{shape.kind, shape.points}, shape.net, shape.layers, shape.radius_mm};
+}
+
+bool primitive_satisfies_outline(CopperPrimitiveView primitive, double radius_mm,
+                                 const BoardOutline &outline, double clearance_mm) {
+    if (primitive.kind == BoardCopperShapeKind::Disc)
+        return outline_contains_disc(outline, primitive.points[0], radius_mm, clearance_mm);
+    if (primitive.kind == BoardCopperShapeKind::Segment)
+        return outline_contains_segment(outline, primitive.points[0], primitive.points[1],
+                                        radius_mm, clearance_mm);
+    return outline_contains_polygon(outline, primitive.points, clearance_mm);
 }
 
 [[nodiscard]] std::vector<EntityRef> copper_shape_entities(const BoardCopperShape &shape, NetId net,
@@ -675,46 +699,59 @@ struct RequiredCopperClearance {
 
 [[nodiscard]] RequiredCopperClearance
 required_copper_clearance(const Board &board, const BoardRoomRuleResolver &rooms,
-                          const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
-                          const BoardCopperShape &rhs, BoardClearanceKind rhs_kind) {
+                          CopperClearanceView lhs, BoardClearanceKind lhs_kind,
+                          CopperClearanceView rhs, BoardClearanceKind rhs_kind) {
     const auto room_override = rooms.copper_clearance_override(lhs, rhs);
     if (room_override.has_value()) {
         return RequiredCopperClearance{room_override->value_mm, room_override->room};
     }
 
     const auto pair_floor = board.design_rules().clearance_mm(lhs_kind, rhs_kind);
-    return RequiredCopperClearance{
-        resolve_copper_clearance_mm(board.circuit(), lhs.net, rhs.net, pair_floor),
-        std::nullopt,
-    };
+    auto required = pair_floor;
+    for (const auto net : {lhs.net, rhs.net})
+        if (net)
+            required = std::max(
+                required,
+                resolve_net_class_rules(board.circuit(), *net).copper_clearance_mm.value_or(0.0));
+    return RequiredCopperClearance{required, std::nullopt};
 }
 
 [[nodiscard]] RequiredCopperClearance required_copper_clearance(const Board &board,
                                                                 const BoardRoomRuleResolver &rooms,
                                                                 const BoardCopperShape &lhs,
                                                                 const BoardCopperShape &rhs) {
-    return required_copper_clearance(board, rooms, lhs, shape_clearance_kind(lhs), rhs,
-                                     shape_clearance_kind(rhs));
+    return required_copper_clearance(board, rooms, clearance_view(lhs), shape_clearance_kind(lhs),
+                                     clearance_view(rhs), shape_clearance_kind(rhs));
 }
 
 [[nodiscard]] BoardCopperClearanceCheck
 check_copper_clearance(const Board &board, const NetContinuityView &continuity,
                        const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
                        const BoardCopperShape &rhs, BoardClearanceKind rhs_kind) {
+    return check_copper_clearance(board, continuity, clearance_view(lhs), lhs_kind,
+                                  clearance_view(rhs), rhs_kind);
+}
+
+BoardCopperClearanceCheck
+check_copper_clearance(const Board &board, const NetContinuityView &continuity,
+                       CopperClearanceView lhs, BoardClearanceKind lhs_kind,
+                       CopperClearanceView rhs, BoardClearanceKind rhs_kind) {
     auto result = BoardCopperClearanceCheck{};
-    if (continuity.same_group(lhs.net, rhs.net)) {
+    if (lhs.net && rhs.net && continuity.same_group(*lhs.net, *rhs.net)) {
         return result;
     }
-    const auto layer = first_common_layer(lhs, rhs);
-    if (!layer.has_value()) {
+    const auto common = std::ranges::find_if(lhs.layers, [&](auto layer) {
+        return std::ranges::find(rhs.layers, layer) != rhs.layers.end();
+    });
+    if (common == lhs.layers.end())
         return result;
-    }
 
     const auto rooms = BoardRoomRuleResolver{board};
     const auto required = required_copper_clearance(board, rooms, lhs, lhs_kind, rhs, rhs_kind);
     result.participates = true;
-    result.layer = layer;
-    result.actual_clearance_mm = shape_distance(lhs, rhs) - lhs.radius_mm - rhs.radius_mm;
+    result.layer = *common;
+    result.actual_clearance_mm =
+        primitive_distance(lhs.primitive, rhs.primitive) - lhs.radius_mm - rhs.radius_mm;
     result.required_clearance_mm = required.clearance_mm;
     result.room = required.room;
     result.violates = result.actual_clearance_mm + board_drc_epsilon < result.required_clearance_mm;

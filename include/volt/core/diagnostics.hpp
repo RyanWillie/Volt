@@ -23,6 +23,7 @@ inline constexpr auto Erc = std::string_view{"erc"};
 inline constexpr auto Drc = std::string_view{"drc"};
 inline constexpr auto PartLineup = std::string_view{"part.lineup"};
 inline constexpr auto PcbBoard = std::string_view{"pcb.board"};
+
 inline constexpr auto PcbVisual = std::string_view{"pcb.visual"};
 inline constexpr auto PcbFabrication = std::string_view{"pcb.fabrication"};
 inline constexpr auto Bom = std::string_view{"bom"};
@@ -155,6 +156,26 @@ inline constexpr auto NativeFabUnsupportedLayer =
 inline constexpr auto NativeFabLossyGeometry = std::string_view{"PCB_NATIVE_FAB_LOSSY_GEOMETRY"};
 
 } // namespace pcb_fabrication_diagnostic_codes
+
+namespace pcb_completion_diagnostic_codes {
+inline constexpr auto MissingImplementation =
+    std::string_view{"PCB_COMPLETION_MISSING_IMPLEMENTATION"};
+inline constexpr auto MissingPlacement = std::string_view{"PCB_COMPLETION_MISSING_PLACEMENT"};
+inline constexpr auto MissingMapping = std::string_view{"PCB_COMPLETION_MISSING_MAPPING"};
+inline constexpr auto MissingContact = std::string_view{"PCB_COMPLETION_MISSING_CONTACT"};
+inline constexpr auto RequiredLogicalConnection =
+    std::string_view{"PCB_COMPLETION_REQUIRED_LOGICAL_CONNECTION"};
+inline constexpr auto NoConnectContradiction =
+    std::string_view{"PCB_COMPLETION_NO_CONNECT_CONTRADICTION"};
+inline constexpr auto DisconnectedGroup = std::string_view{"PCB_COMPLETION_DISCONNECTED_GROUP"};
+inline constexpr auto CopperShort = std::string_view{"PCB_COMPLETION_COPPER_SHORT"};
+inline constexpr auto IsolatedContact = std::string_view{"PCB_COMPLETION_ISOLATED_CONTACT"};
+inline constexpr auto ContinuityUnavailable =
+    std::string_view{"PCB_COMPLETION_CONTINUITY_UNAVAILABLE"};
+inline constexpr auto GeometryNotEvaluated =
+    std::string_view{"PCB_COMPLETION_GEOMETRY_NOT_EVALUATED"};
+inline constexpr auto ExportNotEvaluated = std::string_view{"PCB_COMPLETION_EXPORT_NOT_EVALUATED"};
+} // namespace pcb_completion_diagnostic_codes
 
 namespace part_lineup_diagnostic_codes {
 
@@ -321,6 +342,20 @@ inline constexpr auto Drc = std::array{drc_diagnostic_codes::TrackWidthBelowMini
                                        drc_diagnostic_codes::CopperWeightOutsideCapability,
                                        drc_diagnostic_codes::DrillDiameterOutsideCapability,
                                        drc_diagnostic_codes::DrillDiameterAtCapabilityLimit};
+
+inline constexpr auto PcbCompletion =
+    std::array{pcb_completion_diagnostic_codes::MissingImplementation,
+               pcb_completion_diagnostic_codes::MissingPlacement,
+               pcb_completion_diagnostic_codes::MissingMapping,
+               pcb_completion_diagnostic_codes::MissingContact,
+               pcb_completion_diagnostic_codes::RequiredLogicalConnection,
+               pcb_completion_diagnostic_codes::NoConnectContradiction,
+               pcb_completion_diagnostic_codes::DisconnectedGroup,
+               pcb_completion_diagnostic_codes::CopperShort,
+               pcb_completion_diagnostic_codes::IsolatedContact,
+               pcb_completion_diagnostic_codes::ContinuityUnavailable,
+               pcb_completion_diagnostic_codes::GeometryNotEvaluated,
+               pcb_completion_diagnostic_codes::ExportNotEvaluated};
 
 inline constexpr auto PcbVisual =
     std::array{pcb_visual_diagnostic_codes::PlacementOverlap,
