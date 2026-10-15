@@ -1,5 +1,7 @@
 import gc
 import json
+from pathlib import Path
+import re
 import weakref
 
 import pytest
@@ -77,9 +79,12 @@ def test_via_stitch_and_fanout_use_native_results_and_paired_overrides():
         stitched = layout.stitch(net, at=((10, 20), (10, 30)), start_layer=front, end_layer=back)
         assert all(r.committed for r in stitched) and layout.here.point == cursor
         fanout = layout.fanout((volt.BoardAnchor((30, 30), board=board),), net=net,
-                              layer=front, direction="right", distance=2, via_layers=(front, back))
+                              layer=front, direction="right", distance=2, via_layers=(front, back),
+                              drill=0.4, annular=0.8)
         assert fanout[0].result.committed and fanout[0].end.point == (32, 30)
         assert len(fanout[0].result.vias) == 1 and layout.here.point == cursor
+        candidate = fanout[0].result.candidates[-1]
+        assert candidate.drill_mm == 0.4 and candidate.diameter_mm == 0.8
 
 
 def test_fanout_reports_native_source_without_snapping_or_postcommit_conversion():
@@ -110,3 +115,58 @@ def test_report_fanout_has_no_guessed_source_when_native_geometry_is_unresolvabl
         assert not item.result.committed and not item.result.candidate_complete
         assert item.source is None and item.end is None
         assert board.to_json() == before
+
+
+@pytest.mark.parametrize("helper", ["bundle", "stitch", "fanout"])
+def test_strict_batch_preserves_prior_commits_and_rejected_item_evidence(helper):
+    design, net, other, board, front, back = fixture()
+    board.add_track(other, layer=front, points=((15, 25), (15, 35)), width=0.2)
+    with board.layout(at=(60, 60)) as layout:
+        cursor = layout.here.point
+        with pytest.raises(volt.RouteError) as error:
+            if helper == "bundle":
+                layout.bundle([((10, y), (20, y)) for y in (10, 30, 50)],
+                              layer=front, net=net)
+            elif helper == "stitch":
+                layout.stitch(net, at=[(15, y) for y in (10, 30, 50)],
+                              start_layer=front, end_layer=back)
+            else:
+                layout.fanout([(10, y) for y in (10, 30, 50)], net=net,
+                              layer=front, direction="right", distance=10)
+        assert layout.here.point == cursor
+        document = json.loads(board.to_json())["board"]
+        if helper == "stitch":
+            assert len(document["tracks"]) == 1  # original obstacle only
+            assert [via["position"] for via in document["vias"]] == [[15, 10]]
+            rejected = layout.via(net, at=(15, 30), start_layer=front, end_layer=back,
+                                  policy=volt.RoutePolicy.REPORT)
+        else:
+            assert len(document["tracks"]) == 2  # obstacle and first item only
+            assert document["tracks"][1]["points"] == [[10, 10], [20, 10]]
+            assert document.get("vias", []) == []
+            if helper == "fanout":
+                rejected = layout.fanout(((10, 30),), net=net, layer=front,
+                                         direction="right", distance=10,
+                                         policy=volt.RoutePolicy.REPORT)[0].result
+            else:
+                rejected = layout.connect((10, 30), (20, 30), net=net, layer=front,
+                                          policy=volt.RoutePolicy.REPORT)
+        assert not rejected.committed and rejected.tracks == () and rejected.vias == ()
+        assert snapshot(error.value.result) == snapshot(rejected)
+        assert str(error.value) == rejected.message
+        assert json.loads(board.to_json())["board"] == document
+
+
+def test_authoring_guide_native_coordinate_example():
+    design, net, other, board, front, back = fixture()
+    guide = Path(__file__).resolve().parents[2] / "docs-site/python/pcb-authoring.mdx"
+    examples = re.findall(r"```python\n(.*?)```", guide.read_text(), re.DOTALL)
+    example, = [code for code in examples if code.startswith("# Native routing coordinates")]
+    namespace = {"board": board, "led_a": net, "front": front}
+    exec(compile(example, str(guide), "exec"), namespace)
+    result = namespace["exact"]
+    assert result.committed
+    assert result.resolved_steps[0].start == (10.1, 10.1)
+    assert result.resolved_steps[0].end == pytest.approx((12.3, 10.1))
+    assert result.resolved_steps[1].end == (15.1, 10.1)
+    assert result.resolved_steps[2].end == (15.1, 20.1)

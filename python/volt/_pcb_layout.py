@@ -748,8 +748,9 @@ class BoardLayout:
         )
 
     def _route_for_connect(self, net, *, layer, width=None, mode="octilinear",
-                           policy=_volt.RoutePolicy.STRICT):
-        return self.route(net, layer=layer, width=width, mode=mode, policy=policy)
+                           policy=_volt.RoutePolicy.STRICT, via_size=None):
+        return self.route(net, layer=layer, width=width, mode=mode, policy=policy,
+                          via_size=via_size)
 
     def _composition_axis_target(self, target, axis: str) -> float:
         coordinate = _board_anchor_axis_target(target, self._board, axis)

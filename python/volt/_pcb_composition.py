@@ -228,8 +228,8 @@ def fanout(context, anchors, *, layer, direction, distance, net=None, width=None
     with context.hold():
         results = []
         for source in _anchor_collection(anchors, "Board layout fanout anchors", context.is_anchor):
-            route = context.route_for_connect(net, layer=layer, width=width, mode="direct", policy=policy).at(source)
-            route._via_size = size
+            route = context.route_for_connect(net, layer=layer, width=width, mode="direct",
+                                              policy=policy, via_size=size).at(source)
             getattr(route, method)(displacement)
             if via_layers is not None:
                 route.via(end_layer)

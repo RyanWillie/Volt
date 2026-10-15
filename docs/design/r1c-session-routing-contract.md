@@ -121,7 +121,8 @@ builds native steps. `.at(endpoint)`, `.through(endpoint, mode=...)`, `.tox(endp
 `.to(endpoint,mode=...)`/`.finish()` lower to the closed native grammar. Point inputs
 are explicit low-level endpoints; Pad anchors preserve actual owner/placement/pad
 and exact footprint identity. Native TrackEnd/Via endpoints and operands pass through.
-Numeric tox/toy become literal native ToX/ToY; pad/endpoint versions become Align.
+Numeric tox/toy become literal native ToX/ToY; pad/endpoint versions, including plain
+point tuples lowered to RoutePoint, become Align.
 Modes map to native Chamfer45/Orthogonal/Direct; old Python octilinear horizontal-first
 fallback is removed. No routing grid snap remains. Placement/grid helpers stay separate.
 
