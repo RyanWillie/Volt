@@ -43,8 +43,8 @@ BoardRoomRuleResolver::track_width_override(const BoardTrack &track) const {
 }
 
 [[nodiscard]] std::optional<RoomRuleValue>
-BoardRoomRuleResolver::copper_clearance_override(const BoardCopperShape &lhs,
-                                                 const BoardCopperShape &rhs) const {
+BoardRoomRuleResolver::copper_clearance_override(CopperClearanceView lhs,
+                                                 CopperClearanceView rhs) const {
     const auto room_id = copper_clearance_room(lhs, rhs);
     if (!room_id.has_value()) {
         return std::nullopt;
@@ -72,8 +72,8 @@ BoardRoomRuleResolver::track_width_room(BoardLayerId layer, const std::vector<Bo
 }
 
 [[nodiscard]] std::optional<BoardRoomId>
-BoardRoomRuleResolver::copper_clearance_room(const BoardCopperShape &lhs,
-                                             const BoardCopperShape &rhs) const {
+BoardRoomRuleResolver::copper_clearance_room(CopperClearanceView lhs,
+                                             CopperClearanceView rhs) const {
     auto result = std::optional<BoardRoomId>{};
     for (std::size_t index = 0; index < board_.all<volt::BoardRoomId>().size(); ++index) {
         const auto room_id = BoardRoomId{index};
@@ -100,10 +100,10 @@ BoardRoomRuleResolver::room_layers_intersect(const BoardRoom &room,
     return false;
 }
 
-[[nodiscard]] bool BoardRoomRuleResolver::shape_satisfies_room(const BoardCopperShape &shape,
+[[nodiscard]] bool BoardRoomRuleResolver::shape_satisfies_room(CopperClearanceView shape,
                                                                const BoardRoom &room) {
     return room_layers_intersect(room, shape.layers) &&
-           shape_satisfies_outline(shape, room.outline(), 0.0);
+           primitive_satisfies_outline(shape.primitive, shape.radius_mm, room.outline(), 0.0);
 }
 
 [[nodiscard]] bool

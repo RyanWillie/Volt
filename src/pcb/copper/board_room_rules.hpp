@@ -3,7 +3,7 @@
 #include <optional>
 #include <vector>
 
-#include <volt/pcb/board.hpp>
+#include "board_copper_detail.hpp"
 
 namespace volt::detail {
 
@@ -30,20 +30,20 @@ class BoardRoomRuleResolver {
                              std::vector<RoomRuleValue> *applied = nullptr) const;
 
     [[nodiscard]] std::optional<RoomRuleValue>
-    copper_clearance_override(const BoardCopperShape &lhs, const BoardCopperShape &rhs) const;
+    copper_clearance_override(CopperClearanceView lhs, CopperClearanceView rhs) const;
 
   private:
     [[nodiscard]] std::optional<BoardRoomId> track_width_room(BoardLayerId layer,
                                                               const std::vector<BoardPoint> &points,
                                                               double width_mm) const;
 
-    [[nodiscard]] std::optional<BoardRoomId>
-    copper_clearance_room(const BoardCopperShape &lhs, const BoardCopperShape &rhs) const;
+    [[nodiscard]] std::optional<BoardRoomId> copper_clearance_room(CopperClearanceView lhs,
+                                                                   CopperClearanceView rhs) const;
 
     [[nodiscard]] static bool room_layers_intersect(const BoardRoom &room,
                                                     const std::vector<BoardLayerId> &layers);
 
-    [[nodiscard]] static bool shape_satisfies_room(const BoardCopperShape &shape,
+    [[nodiscard]] static bool shape_satisfies_room(CopperClearanceView shape,
                                                    const BoardRoom &room);
 
     [[nodiscard]] static bool track_satisfies_room(BoardLayerId layer,

@@ -62,11 +62,23 @@ Source: `python/volt/pcb.py`
 | `to_json(self) -> str` | Serialize the PCB projection to Volt board JSON. |
 | `to_svg(self, *, pad_net_overlays: bool = True, diagnostic_overlays: bool = True, ratsnest_edges: bool = True, layer: int \| None = None) -> str` | Render the PCB projection as SVG. |
 | `to_kicad_pcb(self) -> KiCadPcbExport` | Export the PCB projection to a KiCad `.kicad_pcb` adapter document. |
+| `completion(self) -> dict[str, object]` | Return complete native physical evidence, not manufacturing readiness. |
+| `compile_bytes(self) -> bytes` | Return the immutable native CompiledBoard for source-free evaluation. |
 | `to_fabrication_files(self) -> PcbFabricationExport` | Export the PCB projection to native Gerber and Excellon fabrication files. |
 | `write_json(self, path: str \| Path) -> None` | Write the PCB projection JSON to a file. |
 | `write_svg(self, path: str \| Path) -> None` | Write the PCB projection SVG to a file. |
 | `write_kicad_pcb(self, path: str \| Path) -> KiCadPcbExport` | Write the KiCad PCB adapter document and return its loss report. |
 | `write_fabrication_files(self, path: str \| Path) -> PcbFabricationExport` | Write native Gerber and Excellon files and return their loss report. |
+
+## `volt.evaluate_compiled_board_completion`
+
+Reopen and evaluate immutable native bytes without authoring/library state.
+
+Source: `python/volt/pcb.py`
+
+```python
+evaluate_compiled_board_completion(artifact: bytes) -> dict[str, object]
+```
 
 ## `volt.BoardAnchor`
 

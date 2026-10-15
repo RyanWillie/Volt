@@ -1,3 +1,4 @@
+#include "pcb_fabrication_detail.hpp"
 #include <volt/io/pcb/pcb_fabrication_writer.hpp>
 
 #include <algorithm>
@@ -109,7 +110,14 @@ void add_fab_critical_warning(
     return out.str();
 }
 
+/** Private export-format rejection, translated to native fabrication loss at the IO boundary. */
+struct UnsupportedCoordinateRange {
+    double actual_mm;
+};
+
 [[nodiscard]] std::string coordinate(double value) {
+    if (!std::isfinite(value) || std::abs(value) > 9999.999999)
+        throw UnsupportedCoordinateRange{value};
     const auto scaled = static_cast<long long>(std::llround(normalized_number(value) * 1000000.0));
     auto out = std::ostringstream{};
     if (scaled < 0) {
@@ -1099,8 +1107,10 @@ PcbFabricationLossReport::fab_critical_warnings() const {
     return diagnostics;
 }
 
+namespace {
 [[nodiscard]] PcbFabricationExportResult
-write_pcb_fabrication_files(const CompiledBoard &compiled, PcbFabricationExportOptions options) {
+write_supported_fabrication_files(const CompiledBoard &compiled,
+                                  PcbFabricationExportOptions options) {
     const auto &board = compiled.board();
     auto result = PcbFabricationExportResult{compiled.identity(), {}, {}, {}};
     const auto basename = output_basename(board, options);
@@ -1171,5 +1181,147 @@ write_pcb_fabrication_files(const CompiledBoard &compiled, PcbFabricationExportO
 
     return result;
 }
+
+} // namespace
+
+PcbFabricationExportResult write_pcb_fabrication_files(const CompiledBoard &compiled,
+                                                       PcbFabricationExportOptions options) {
+    try {
+        return write_supported_fabrication_files(compiled, std::move(options));
+    } catch (const UnsupportedCoordinateRange &failure) {
+        auto result = PcbFabricationExportResult{compiled.identity(), {}, {}, {}};
+        add_fab_critical_warning(
+            result.loss_report, PcbFabricationLossKind::UnsupportedGeometry,
+            "native.coordinate.range",
+            "Native 4.6 coordinate " + decimal_mm(failure.actual_mm) +
+                " mm is unsupported; the entire fabrication export was not evaluated",
+            {EntityRef::board()});
+        return result;
+    }
+}
+
+namespace detail {
+DiagnosticReport completion_export_grid(const CompiledBoard &compiled,
+                                        std::span<const BoardCompletionCopper> copper) {
+    auto report = DiagnosticReport{};
+    constexpr auto coordinate_limit = 9999.999999;
+    const auto outside_format = [&](std::vector<EntityRef> entities, double actual_mm) {
+        report.add(Diagnostic{
+            Severity::Warning,
+            DiagnosticCode{std::string{pcb_completion_diagnostic_codes::ExportNotEvaluated}},
+            DiagnosticCategory{diagnostic_categories::PcbFabrication},
+            "Emitted coordinates exceed native 4.6 format range; export/contact fidelity is not "
+            "evaluated",
+            std::move(entities),
+            {},
+            std::isfinite(actual_mm)
+                ? std::optional{DiagnosticMeasurement{actual_mm, coordinate_limit}}
+                : std::nullopt,
+            "volt.native_fabrication/1:grid-4.6"});
+    };
+    const auto in_range = [](BoardPoint point) {
+        return std::abs(point.x_mm()) <= coordinate_limit &&
+               std::abs(point.y_mm()) <= coordinate_limit;
+    };
+    // Bound the outline before its reflection transform can add very large finite values.
+    if (compiled.board().outline())
+        for (const auto point : compiled.board().outline()->vertices())
+            if (!in_range(point)) {
+                outside_format({EntityRef::board()},
+                               std::max(std::abs(point.x_mm()), std::abs(point.y_mm())));
+                return report;
+            }
+    const auto transform = BoardFabricationTransform::from_board(compiled.board());
+    const auto bounded_point = [&](BoardPoint point, const std::vector<EntityRef> &entities) {
+        if (!in_range(transform.to_fabrication(point))) {
+            const auto emitted = transform.to_fabrication(point);
+            outside_format(entities, std::max(std::abs(emitted.x_mm()), std::abs(emitted.y_mm())));
+            return false;
+        }
+        return true;
+    };
+    for (const auto &item : copper) {
+        auto exact =
+            std::abs(std::stod(decimal_mm(item.radius_mm * 2.0)) - item.radius_mm * 2.0) <= 1.0e-12;
+        for (const auto point : item.points) {
+            if (!bounded_point(point, item.entities)) {
+                exact = false;
+                continue;
+            }
+            const auto emitted = transform.to_fabrication(point);
+            for (const auto value : {emitted.x_mm(), emitted.y_mm()}) {
+                exact = exact &&
+                        std::abs(static_cast<double>(std::stoll(coordinate(value))) / 1000000.0 -
+                                 value) <= 1.0e-12;
+            }
+        }
+        if (!exact)
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{std::string{pcb_completion_diagnostic_codes::GeometryNotEvaluated}},
+                DiagnosticCategory{diagnostic_categories::PcbFabrication},
+                "Actual native export transform/rounding is not exact; emitted contact is not "
+                "evaluated",
+                item.entities,
+                {},
+                {},
+                "volt.native_fabrication/1:grid-4.6"});
+    }
+    const auto check_drill = [&](BoardPoint point, double diameter,
+                                 std::vector<EntityRef> entities) {
+        if (!bounded_point(point, entities))
+            return;
+        const auto emitted = transform.to_fabrication(point);
+        auto exact = std::abs(std::stod(decimal_mm(diameter)) - diameter) <= 1.0e-12;
+        for (const auto value : {emitted.x_mm(), emitted.y_mm()})
+            exact =
+                exact && std::abs(static_cast<double>(std::stoll(coordinate(value))) / 1000000.0 -
+                                  value) <= 1.0e-12;
+        if (!exact)
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{std::string{pcb_completion_diagnostic_codes::GeometryNotEvaluated}},
+                DiagnosticCategory{diagnostic_categories::PcbFabrication},
+                "Actual Excellon drill rounding changes an opening; finished-copper contact is not "
+                "evaluated",
+                std::move(entities),
+                {},
+                {},
+                "volt.native_fabrication/1:grid-4.6"});
+    };
+    const auto &board = compiled.board();
+    for (std::size_t i = 0; i < board.all<BoardViaId>().size(); ++i) {
+        const auto id = BoardViaId{i};
+        const auto &via = board.get(id);
+        check_drill(via.position(), via.drill_diameter_mm(), {EntityRef::board_via(id)});
+    }
+    for (const auto &placement : compiled.placements())
+        if (placement.footprint())
+            for (const auto &pad : placement.pad_resolutions()) {
+                const auto &definition = placement.footprint()->pad(pad.pad());
+                if (definition.drill())
+                    check_drill(pad.position(), definition.drill()->diameter_mm(),
+                                {EntityRef::component_placement(placement.placement()),
+                                 EntityRef::footprint_pad(pad.pad())});
+            }
+    for (std::size_t i = 0; i < board.all<BoardFeatureId>().size(); ++i) {
+        const auto id = BoardFeatureId{i};
+        const auto &feature = board.get(id);
+        if (feature.kind() == BoardFeatureKind::Hole)
+            check_drill(feature.hole().center(), feature.hole().drill_diameter_mm(),
+                        {EntityRef::board_feature(id)});
+    }
+    for (std::size_t i = 0; i < board.all<BoardTextId>().size(); ++i) {
+        const auto id = BoardTextId{i};
+        const auto &text = board.get(id);
+        static_cast<void>(bounded_point(text.position(), {EntityRef::board_text(id)}));
+        // A finite conservative envelope prevents unsafe coordinate conversion of huge glyphs.
+        const auto extent = text.size_mm() * static_cast<double>(text.text().size());
+        if (!std::isfinite(extent) || extent > coordinate_limit)
+            outside_format({EntityRef::board_text(id)}, extent);
+    }
+    return report;
+}
+} // namespace detail
 
 } // namespace volt::io

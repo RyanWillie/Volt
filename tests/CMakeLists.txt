@@ -77,6 +77,7 @@ add_executable(
     io/pcb/pcb_projection_io_test.cpp
     io/pcb/pcb_svg_writer_test.cpp
     io/pcb/compiled_board_test.cpp
+    io/pcb/board_completion_test.cpp
     io/project_bundle_source_test.cpp
     io/project_bundle_dc_input_test.cpp
     io/project_bundle_electrical_model_closure_test.cpp
@@ -163,6 +164,14 @@ volt_apply_coverage(volt_core_tests)
 
 include(Catch)
 catch_discover_tests(volt_core_tests PROPERTIES LABELS cpp)
+
+add_executable(volt_completion_parity_fixture support/board_completion_parity_fixture.cpp)
+target_link_libraries(volt_completion_parity_fixture PRIVATE Volt::IO Volt::NlohmannJson)
+target_include_directories(volt_completion_parity_fixture PRIVATE ${PROJECT_SOURCE_DIR}/tests)
+target_compile_features(volt_completion_parity_fixture PRIVATE cxx_std_23)
+volt_apply_project_warnings(volt_completion_parity_fixture PRIVATE)
+volt_apply_sanitizers(volt_completion_parity_fixture)
+volt_apply_coverage(volt_completion_parity_fixture)
 
 add_executable(volt_route_atomic_fixture pcb/routing/route_atomic_fixture.cpp)
 target_link_libraries(volt_route_atomic_fixture PRIVATE Volt::IO Volt::PCB)

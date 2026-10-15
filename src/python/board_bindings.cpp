@@ -1,4 +1,6 @@
 #include "board_bindings.hpp"
+#include <volt/io/pcb/board_completion.hpp>
+#include <volt/io/pcb/compiled_board.hpp>
 
 #include "py_board.hpp"
 #include "py_circuit.hpp"
@@ -156,6 +158,11 @@ void bind_assisted_routing_results(py::module_ &module) {
 } // namespace
 
 void bind_board(pybind11::module_ &module) {
+    module.def("evaluate_compiled_board_completion_json", [](const py::bytes &bytes) {
+        const auto compiled = volt::io::open_compiled_board(bytes.cast<std::string>());
+        return volt::io::write_board_completion(
+            volt::io::evaluate_fabrication_completion(compiled));
+    });
     bind_assisted_routing_results(module);
     bind_route_values(module);
 
@@ -236,7 +243,9 @@ void bind_board(pybind11::module_ &module) {
              py::arg("diagnostic_overlays") = true, py::arg("ratsnest_edges") = true,
              py::arg("layer_filter") = std::nullopt)
         .def("to_kicad_pcb", &PyBoard::to_kicad_pcb)
-        .def("to_fabrication_files", &PyBoard::to_fabrication_files);
+        .def("to_fabrication_files", &PyBoard::to_fabrication_files)
+        .def("completion_json", &PyBoard::completion_json)
+        .def("compiled_bytes", &PyBoard::compiled_bytes);
     bind_route_board(board_class);
 }
 

@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 
+#include <volt/io/pcb/board_completion.hpp>
 #include <volt/io/pcb/pcb_fabrication_writer.hpp>
 
 namespace volt::python {
@@ -112,6 +113,16 @@ py::dict PyBoard::to_fabrication_files() const {
     result["diagnostics"] = diagnostics_to_list(fabrication_diagnostics(export_result.loss_report));
     result["exporter"] = fabrication_exporter_metadata_to_dict(export_result.exporter);
     return result;
+}
+
+std::string PyBoard::completion_json() const {
+    const auto compiled = compile_for_delivery();
+    return volt::io::write_board_completion(volt::io::evaluate_fabrication_completion(compiled));
+}
+
+py::bytes PyBoard::compiled_bytes() const {
+    const auto compiled = compile_for_delivery();
+    return py::bytes{std::string{compiled.bytes()}};
 }
 
 } // namespace volt::python

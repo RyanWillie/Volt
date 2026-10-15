@@ -188,6 +188,10 @@ if(VOLT_BUILD_TESTS)
                 "VOLT_DC_REQUEST_PARITY_FIXTURE=set:$<TARGET_FILE:volt_dc_request_parity_fixture>"
             )
         endif()
+        if(test_name STREQUAL "test_board_completion")
+            list(APPEND test_environment
+                 "VOLT_COMPLETION_PARITY_FIXTURE=set:$<TARGET_FILE:volt_completion_parity_fixture>")
+        endif()
         if(test_name STREQUAL "test_native_route")
             list(APPEND test_environment
                  "VOLT_ROUTE_PARITY_FIXTURE=set:$<TARGET_FILE:volt_route_parity_fixture>")

@@ -155,6 +155,10 @@ class PyBoard {
 
     [[nodiscard]] py::dict to_fabrication_files() const;
 
+    [[nodiscard]] std::string completion_json() const;
+
+    [[nodiscard]] py::bytes compiled_bytes() const;
+
     /** Return the exact native authoring Board for ProjectBundle orchestration. */
     [[nodiscard]] const volt::Board &authoring_board() const noexcept { return board_; }
 

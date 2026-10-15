@@ -45,6 +45,7 @@
 #include <volt/io/parts/part_definition_reader.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
 #include <volt/io/parts/part_library_bundle.hpp>
+#include <volt/io/pcb/board_completion.hpp>
 #include <volt/io/pcb/board_resolution.hpp>
 #include <volt/io/pcb/compiled_board.hpp>
 #include <volt/io/pcb/compiled_board_consumers.hpp>
