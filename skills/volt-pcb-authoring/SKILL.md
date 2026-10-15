@@ -233,3 +233,15 @@ After producing the manufacturing package:
 - `docs/python-api.md` — Project Framework and manufacturing package sections.
 - `docs/design/pcb-json-format.html` — PCB JSON structure, viewer diagnostics, capability lint.
 - `docs/design/kicad-pcb-export-handoff.html` — KiCad adapter review and `PCB_KICAD_FAB_EXPORT_LOSS`.
+
+## Native route publication
+
+`Board.layout()` fluent routes and `connect` lower to typed native descriptions.
+`to`/`finish`/`connect`/`via` return owned `RouteResult`; bundle/stitch return per-item
+results and fanout exposes native source/end plus its result. Strict is the default:
+no partial copper or cursor movement on rejection. Report returns the same native
+failure evidence. Width and paired via sizing inherit kernel rules when omitted.
+Prefer native Exit/Beside/Gap and endpoint Align to Python routing calculations.
+Placement grids and frames do not transform explicit routing tuples.
+Direct `Board.add_track`/`add_via` remain permissive primitives; assisted_connect and
+escape retain their separate bounded native contracts.

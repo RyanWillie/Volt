@@ -119,6 +119,7 @@ void PyBoard::set_design_rules(double copper_clearance_mm, double minimum_track_
 
 void PyBoard::set_capability_profile(const py::dict &profile) {
     board_.set_capability_profile(board_capability_profile_from_dict(profile));
+    routing_.reset();
 }
 
 bool PyBoard::has_capability_profile() const noexcept {
@@ -357,32 +358,6 @@ std::size_t PyBoard::add_track(std::size_t net, std::size_t layer,
         .index();
 }
 
-py::dict PyBoard::add_track_for_route(std::optional<std::size_t> net, std::size_t layer,
-                                      const py::list &endpoints, double width_mm) {
-    auto route_net = std::optional<volt::NetId>{};
-    if (net.has_value()) {
-        route_net = net_id(net.value());
-    }
-
-    const auto resolution = resolve();
-    auto router = volt::BoardRouter{board_, resolution};
-    const auto result = router.add_track(volt::BoardTrackRouteRequest{
-        route_net,
-        volt::BoardLayerId{layer},
-        board_route_endpoints_from_list(endpoints),
-        width_mm,
-    });
-
-    auto lowered = py::dict{};
-    lowered["track"] = result.track.index();
-    lowered["net"] = result.net.index();
-    return lowered;
-}
-
-std::size_t PyBoard::track_net(std::size_t track) const {
-    return board_.get(volt::BoardTrackId{track}).net().index();
-}
-
 std::size_t PyBoard::add_via(std::size_t net, double x, double y, std::size_t start_layer,
                              std::size_t end_layer, std::optional<double> drill_diameter_mm,
                              std::optional<double> annular_diameter_mm) {
@@ -422,28 +397,63 @@ volt::BoardEscapeResult PyBoard::escape(std::size_t component) {
     return router.escape(component_id(component));
 }
 
-volt::RouteResult PyBoard::route(const volt::RouteSpec &spec, volt::RoutePolicy policy) {
+bool PyBoard::routing_resolution_current() const {
+    if (!routing_ || routing_->closure != circuit_->selected_part_bundle().digest() ||
+        routing_->selected.size() != board_.circuit().all<volt::ComponentId>().size())
+        return false;
+    for (std::size_t i = 0; i < routing_->selected.size(); ++i)
+        if (routing_->selected[i] !=
+            board_.circuit().get(volt::ComponentId{i}).selected_library_part_ref())
+            return false;
+    return true;
+}
+
+std::unique_ptr<PyBoard::RoutingResolution> PyBoard::make_routing_resolution() const {
+    auto selected = std::vector<std::optional<volt::LibraryPartRef>>{};
+    for (const auto &component : board_.circuit().all<volt::ComponentId>())
+        selected.push_back(component.selected_library_part_ref());
+    auto digest = circuit_->selected_part_bundle().digest();
     const auto resolution = resolve();
-    auto router = volt::BoardRouter{board_, resolution};
-    return router.route(spec, policy);
+    auto view = std::make_unique<volt::ResolvedBoardView>(resolution.view());
+    auto router = std::make_unique<volt::BoardRouter>(board_, *view);
+    auto result = std::make_unique<RoutingResolution>(RoutingResolution{
+        std::move(digest), std::move(selected), std::move(view), std::move(router)});
+    ++routing_resolution_builds_;
+    return result;
+}
+
+void PyBoard::prepare_routing_resolution() const {
+    if (!routing_resolution_current())
+        routing_ = make_routing_resolution();
+}
+
+volt::RouteResult PyBoard::route(const volt::RouteSpec &spec, volt::RoutePolicy policy) {
+    if (routing_resolution_current())
+        return routing_->router->route(spec, policy);
+    auto prepared = make_routing_resolution();
+    auto result = prepared->router->route(spec, policy);
+    if (result.committed)
+        routing_ = std::move(prepared);
+    return result;
 }
 
 volt::RouteResult PyBoard::query_gap(const volt::RouteSpec &prefix) {
-    const auto resolution = resolve();
-    const auto router = volt::BoardRouter{board_, resolution};
-    return router.query_gap(prefix);
+    if (routing_resolution_current())
+        return routing_->router->query_gap(prefix);
+    return make_routing_resolution()->router->query_gap(prefix);
 }
 
 volt::RoutePad PyBoard::route_pad(std::size_t placement, std::size_t pad) const {
     const auto id = volt::ComponentPlacementId{placement};
     const auto &placed = board_.get(id);
-    const auto resolution = resolve();
-    const auto *part = resolution.part(placed.component());
+    prepare_routing_resolution();
+    const auto *part = routing_->view->part(placed.component());
     if (part == nullptr) {
         throw volt::KernelArgumentError{volt::ErrorCode::InvalidArgument,
                                         "Cannot construct pad reference without physical identity"};
     }
-    const auto footprint = volt::resolve_footprint(part->physical_part(), resolution.footprints());
+    const auto footprint =
+        volt::resolve_footprint(part->physical_part(), routing_->view->footprints());
     if (footprint.definition() == nullptr) {
         throw volt::KernelArgumentError{
             volt::ErrorCode::InvalidArgument,
@@ -546,9 +556,9 @@ std::size_t PyBoard::add_text(const std::string &text, double x, double y, std::
 }
 
 py::list PyBoard::resolve_pads() const {
-    const auto board_resolution = resolve();
+    prepare_routing_resolution();
     auto result = py::list{};
-    for (const auto &resolution : volt::queries::resolve_pads(board_resolution.view())) {
+    for (const auto &resolution : routing_->router->resolve_pads()) {
         auto item = py::dict{};
         item["placement"] = resolution.placement().index();
         item["component"] = resolution.component().index();

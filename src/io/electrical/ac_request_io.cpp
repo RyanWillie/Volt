@@ -79,7 +79,8 @@ AcRequest read_ac_request(std::string_view bytes, const ElectricalInput &input) 
         });
         fields(document, {"format", "version", "key", "input", "reference", "sources", "probes",
                           "exclusions", "frequencies", "gains", "impedances"});
-        require(document.at("format") == ac_request_format_name() &&
+        require(document.at("format").is_string() &&
+                    document.at("format").get<std::string>() == ac_request_format_name() &&
                     document.at("version").is_number_integer() &&
                     document.at("version") == ac_request_format_version(),
                 "Unsupported AC request format or version");

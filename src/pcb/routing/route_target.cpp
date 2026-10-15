@@ -107,8 +107,8 @@ struct Geometry {
 };
 
 Geometry geometry(const Board &board, const ResolvedBoardView &resolved,
-                  const RouteOperand &operand, BoardLayerId layer, RouteAxis axis, bool lower_side,
-                  BoardPoint current) {
+                  const std::vector<PadResolution> &pads, const RouteOperand &operand,
+                  BoardLayerId layer, RouteAxis axis, bool lower_side, BoardPoint current) {
     auto out = Geometry{};
     std::visit(
         [&](const auto &v) {
@@ -144,9 +144,6 @@ Geometry geometry(const Board &board, const ResolvedBoardView &resolved,
                     return;
                 }
                 const auto &placement = board.get(v.placement);
-                const auto pads = queries::resolve_pads(resolved);
-                auto shapes = std::vector<detail::BoardCopperShape>{};
-                detail::append_pad_shapes(resolved, pads, shapes);
                 for (std::size_t i = 0; i < definition->pad_count(); ++i) {
                     const auto id = FootprintPadId{i};
                     if constexpr (std::same_as<T, RoutePad>)
@@ -156,20 +153,33 @@ Geometry geometry(const Board &board, const ResolvedBoardView &resolved,
                     if (!has_layer(detail::pad_copper_layers(board, pad, placement.side()), layer))
                         continue;
                     if (pad.shape() != FootprintPadShape::Circle &&
-                        pad.shape() != FootprintPadShape::Rectangle) {
-                        out.failure =
-                            "target active pad shape is unsupported (Circle/Rectangle only)";
+                        pad.shape() != FootprintPadShape::Rectangle &&
+                        pad.shape() != FootprintPadShape::RoundedRectangle) {
+                        out.failure = "target active pad shape is unsupported "
+                                      "(Circle/Rectangle/RoundedRectangle only)";
                         return;
                     }
-                    const auto match =
-                        std::find_if(shapes.begin(), shapes.end(), [&](const auto &s) {
-                            return s.pad && s.pad->placement == v.placement && s.pad->pad == id;
-                        });
-                    if (match == shapes.end()) {
+                    const auto match = std::find_if(pads.begin(), pads.end(), [&](const auto &p) {
+                        return p.placement() == v.placement && p.pad() == id;
+                    });
+                    if (match == pads.end() || !match->net()) {
                         out.failure = "target active pad is not connected to a logical net";
                         return;
                     }
-                    auto shape = *match;
+                    auto shape = detail::BoardCopperShape{
+                        pad.shape() == FootprintPadShape::Circle
+                            ? detail::BoardCopperShapeKind::Disc
+                            : detail::BoardCopperShapeKind::Polygon,
+                        *match->net(),
+                        {layer},
+                        {EntityRef::component_placement(v.placement), EntityRef::footprint_pad(id)},
+                        pad.shape() == FootprintPadShape::Circle
+                            ? std::vector{match->position()}
+                            : detail::transformed_pad_body_corners(placement, pad),
+                        pad.shape() == FootprintPadShape::Circle
+                            ? std::max(pad.size().width_mm(), pad.size().height_mm()) / 2.0
+                            : 0.0,
+                        detail::BoardPadShapeKey{v.placement, id}};
                     shape.layers = {layer};
                     out.copper.push_back(std::move(shape));
                 }
@@ -320,13 +330,15 @@ double final_bound(const Board &board, const detail::NetContinuityView &continui
     return bound;
 }
 
-void resolve(const Board &board, const ResolvedBoardView &resolved, const RouteSpec &spec,
+void resolve(const Board &board, const ResolvedBoardView &resolved,
+             const std::vector<PadResolution> &pads, const RouteSpec &spec,
              const RouteOperand &first, const RouteOperand *second, RouteAxis axis, bool lower_side,
              bool exit, double extra, BoardPoint current, BoardLayerId layer, std::size_t step,
              RouteResult &result) {
-    const auto first_geometry = geometry(board, resolved, first, layer, axis, lower_side, current);
+    const auto first_geometry =
+        geometry(board, resolved, pads, first, layer, axis, lower_side, current);
     const auto second_geometry =
-        second ? geometry(board, resolved, *second, layer, axis, false, current) : Geometry{};
+        second ? geometry(board, resolved, pads, *second, layer, axis, false, current) : Geometry{};
     auto geometry_failure = [&](std::string message) {
         fail(result, RouteFailureKind::GeometryUnresolvable, step, std::move(message));
     };
@@ -472,26 +484,29 @@ void preflight_target(const Board &board, const ResolvedBoardView &resolved, con
     axis_ref(step.axis);
 }
 
-void resolve_target(const Board &board, const ResolvedBoardView &resolved, const RouteSpec &spec,
+void resolve_target(const Board &board, const ResolvedBoardView &resolved,
+                    const std::vector<PadResolution> &pads, const RouteSpec &spec,
                     const RouteBeside &step, BoardPoint current, BoardLayerId layer,
                     std::size_t index, RouteResult &result) {
-    resolve(board, resolved, spec, step.operand, nullptr, direction_axis(step.direction),
+    resolve(board, resolved, pads, spec, step.operand, nullptr, direction_axis(step.direction),
             positive_direction(step.direction), false, step.distance_mm, current, layer, index,
             result);
 }
 
-void resolve_target(const Board &board, const ResolvedBoardView &resolved, const RouteSpec &spec,
+void resolve_target(const Board &board, const ResolvedBoardView &resolved,
+                    const std::vector<PadResolution> &pads, const RouteSpec &spec,
                     const RouteExit &step, BoardPoint current, BoardLayerId layer,
                     std::size_t index, RouteResult &result) {
-    resolve(board, resolved, spec, step.operand, nullptr, direction_axis(step.direction),
+    resolve(board, resolved, pads, spec, step.operand, nullptr, direction_axis(step.direction),
             positive_direction(step.direction), true, step.distance_mm, current, layer, index,
             result);
 }
 
-void resolve_target(const Board &board, const ResolvedBoardView &resolved, const RouteSpec &spec,
+void resolve_target(const Board &board, const ResolvedBoardView &resolved,
+                    const std::vector<PadResolution> &pads, const RouteSpec &spec,
                     const RouteGap &step, BoardPoint current, BoardLayerId layer, std::size_t index,
                     RouteResult &result) {
-    resolve(board, resolved, spec, step.lower, &step.upper, step.axis, true, false, 0, current,
-            layer, index, result);
+    resolve(board, resolved, pads, spec, step.lower, &step.upper, step.axis, true, false, 0,
+            current, layer, index, result);
 }
 } // namespace volt::route_detail

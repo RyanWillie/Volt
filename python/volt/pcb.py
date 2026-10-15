@@ -45,6 +45,9 @@ RouteBoardEdge = _volt.RouteBoardEdge
 RouteExit = _volt.RouteExit
 RouteBeside = _volt.RouteBeside
 RouteGap = _volt.RouteGap
+RouteAlign = _volt.RouteAlign
+RouteOffset = _volt.RouteOffset
+RouteFinish = _volt.RouteFinish
 RouteTargetConstraint = _volt.RouteTargetConstraint
 RouteTargetResolution = _volt.RouteTargetResolution
 RouteSpec = _volt.RouteSpec
@@ -883,27 +886,6 @@ class Board:
             [_point(point, "Board track point") for point in points],
             float(width),
         )
-
-    def _add_track_for_route(
-        self,
-        net: Net | int | None,
-        *,
-        layer: int,
-        endpoints,
-        width: float,
-    ) -> dict:
-        """Add a layout route track from endpoint intent resolved by the kernel."""
-        return self._native.add_track_for_route(
-            _optional_net_index(net, self._design),
-            _layer_index(layer),
-            list(endpoints),
-            float(width),
-        )
-
-    def _track_net(self, track: int) -> int:
-        if isinstance(track, bool) or not isinstance(track, int):
-            raise TypeError("Board track IDs must be integers")
-        return self._native.track_net(track)
 
     def add_via(
         self,

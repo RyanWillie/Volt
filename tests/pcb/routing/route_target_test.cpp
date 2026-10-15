@@ -396,25 +396,27 @@ TEST_CASE("target failure after earlier candidate copper retains chronology and 
 
 TEST_CASE("symbolic pad projection follows placement rotation and board side",
           "[pcb][route-target]") {
-    for (const auto angle : {0.0, 45.0, 90.0, 180.0}) {
-        for (const auto side : {BoardSide::Top, BoardSide::Bottom}) {
-            Fixture f;
-            const auto placement =
-                f.pad_component(true, FootprintPadShape::Rectangle, angle, {12, 13}, side);
-            const auto p = f.pad(placement, 1);
-            auto spec = f.spec({12, 13}, {18, 13});
-            spec.layer = {&f.board, side == BoardSide::Top ? f.front : f.back};
-            spec.steps.insert(spec.steps.begin(), RouteBeside{p, RouteDirection::PositiveX, 0.3});
-            const auto result = f.report(spec);
-            REQUIRE(result.target_resolutions.size() == 1);
-            const auto corners = detail::transformed_pad_body_corners(f.board.get(placement),
-                                                                      p.footprint.pad(p.pad));
-            const auto high =
-                std::max_element(corners.begin(), corners.end(), [](const auto a, const auto b) {
-                    return a.x_mm() < b.x_mm();
-                })->x_mm();
-            CHECK(result.target_resolutions[0].position.x_mm() == Catch::Approx(high + 0.4));
-            CHECK(result.target_resolutions[0].position.y_mm() == 13);
+    for (const auto shape : {FootprintPadShape::Rectangle, FootprintPadShape::RoundedRectangle}) {
+        for (const auto angle : {0.0, 45.0, 90.0, 180.0}) {
+            for (const auto side : {BoardSide::Top, BoardSide::Bottom}) {
+                Fixture f;
+                const auto placement = f.pad_component(true, shape, angle, {12, 13}, side);
+                const auto p = f.pad(placement, 1);
+                auto spec = f.spec({12, 13}, {18, 13});
+                spec.layer = {&f.board, side == BoardSide::Top ? f.front : f.back};
+                spec.steps.insert(spec.steps.begin(),
+                                  RouteBeside{p, RouteDirection::PositiveX, 0.3});
+                const auto result = f.report(spec);
+                REQUIRE(result.target_resolutions.size() == 1);
+                const auto corners = detail::transformed_pad_body_corners(f.board.get(placement),
+                                                                          p.footprint.pad(p.pad));
+                const auto high =
+                    std::max_element(corners.begin(), corners.end(),
+                                     [](const auto a, const auto b) { return a.x_mm() < b.x_mm(); })
+                        ->x_mm();
+                CHECK(result.target_resolutions[0].position.x_mm() == Catch::Approx(high + 0.4));
+                CHECK(result.target_resolutions[0].position.y_mm() == 13);
+            }
         }
     }
     Fixture f;
@@ -430,7 +432,7 @@ TEST_CASE("symbolic pad projection follows placement rotation and board side",
 
 TEST_CASE("unsupported pad models and missing physical closure do not fabricate extents",
           "[pcb][route-target]") {
-    for (const auto shape : {FootprintPadShape::Oval, FootprintPadShape::RoundedRectangle}) {
+    for (const auto shape : {FootprintPadShape::Oval}) {
         Fixture f;
         const auto placement = f.pad_component(true, shape);
         auto spec = f.spec();
@@ -598,4 +600,40 @@ TEST_CASE("gap continuity group exemptions keep mechanical constraints independe
                       [](const auto &blocker) {
                           return blocker.kind == BoardSpatialBlockerKind::MechanicalOpening;
                       }));
+}
+
+TEST_CASE("rounded pad gap preserves complete query route evidence and conservative rejection",
+          "[pcb][route-target][session]") {
+    for (const auto narrow : {false, true}) {
+        Fixture f;
+        const auto placement = f.pad_component(true, FootprintPadShape::RoundedRectangle, 0);
+        const auto pad = f.pad(placement, 1);
+        const auto upper = obstacle(f, narrow ? 10.6 : 20.0, f.other);
+        auto spec = gap_spec(f, pad, upper, {14, narrow ? 10.49 : 14.0});
+        const auto queried = query(f, spec);
+        if (narrow) {
+            REQUIRE(queried.failure);
+            CHECK(queried.failure->kind == RouteFailureKind::RuleUnresolvable);
+            CHECK(!queried.candidate_complete);
+            // Rounded corners never create capacity beyond the rectangular DRC envelope.
+            spec.steps.push_back(RouteFinish{});
+            CHECK(test::route_snapshot(f.report(spec)) == test::route_snapshot(queried));
+        } else {
+            REQUIRE(!queried.failure);
+            REQUIRE(queried.target_resolutions.size() == 1);
+            spec.steps.push_back(RouteTo{RoutePoint{queried.target_resolutions[0].position}});
+            const auto routed = f.report(spec);
+            REQUIRE(routed.committed);
+            auto actual = test::route_snapshot(routed);
+            auto expected = test::route_snapshot(queried);
+            // Only terminal publication/status and its zero-length final step differ.
+            actual["committed"] = false;
+            actual["message"] = expected["message"];
+            actual["tracks"] = expected["tracks"];
+            actual["vias"] = expected["vias"];
+            actual["committed_order"] = expected["committed_order"];
+            actual["resolved_steps"].erase(actual["resolved_steps"].end() - 1);
+            CHECK(actual == expected);
+        }
+    }
 }

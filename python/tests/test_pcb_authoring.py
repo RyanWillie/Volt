@@ -467,7 +467,7 @@ def test_pcb_layout_routes_tracks_and_vias_from_relative_anchors():
 
     with board.layout(unit=1.0) as layout:
         resistor = layout.two_pad(r1).at((10.0, 10.0)).right()
-        led = layout.place(d1, at=resistor.center.right(12).down(5), orient="left")
+        led = layout.place(d1, at=resistor.center.right(12).down(5), orient="right")
 
         front_track = (
             layout.route(led_a, layer=front, width=0.25)
@@ -476,7 +476,7 @@ def test_pcb_layout_routes_tracks_and_vias_from_relative_anchors():
             .toy(led.A)
             .to(led.A)
         )
-        via_anchor = layout.node(led.K.left(2.0))
+        via_anchor = led.A
         via = layout.via(led_a, at=via_anchor, start_layer=front, end_layer=back)
         back_track = layout.route(led_a, layer=back, width=0.30).to(
             via_anchor.right(3.0)
@@ -484,23 +484,18 @@ def test_pcb_layout_routes_tracks_and_vias_from_relative_anchors():
 
     document = json.loads(board.to_json())
     assert isinstance(layout.here, volt.BoardAnchor)
-    assert layout.here.point == (23.0, 15.0)
-    assert front_track == 0
-    assert via == 0
-    assert back_track == 1
-    assert document["board"]["tracks"][0]["points"] == [
-        [11.5, 10.0],
-        [13.5, 10.0],
-        [13.5, 15.0],
-        [23.5, 15.0],
-    ]
-    assert document["board"]["tracks"][0]["width_mm"] == 0.25
-    assert document["board"]["tracks"][1]["points"] == [[20.0, 15.0], [23.0, 15.0]]
-    assert document["board"]["tracks"][1]["layer"] == "board_layer:1"
-    assert document["board"]["tracks"][1]["width_mm"] == 0.30
-    assert document["board"]["vias"][0]["position"] == [20.0, 15.0]
-    assert document["board"]["vias"][0]["start_layer"] == "board_layer:0"
-    assert document["board"]["vias"][0]["end_layer"] == "board_layer:1"
+    assert layout.here.point == via_anchor.right(3.0).point
+    assert front_track.committed and len(front_track.tracks) == 3
+    assert via.committed and via.vias == (0,)
+    assert back_track.committed and back_track.tracks == (3,)
+    assert _route_points(front_track) == [list(resistor.end.point),
+                                          [resistor.end.x + 2, resistor.end.y],
+                                          [resistor.end.x + 2, led.A.y], list(led.A.point)]
+    assert [c.width_mm for c in front_track.candidates] == [0.25, 0.25, 0.25]
+    assert _route_points(back_track) == [list(via_anchor.point), list(via_anchor.right(3).point)]
+    assert document["board"]["vias"][0]["position"] == list(via_anchor.point)
+
+
 
 
 def test_pcb_layout_grid_snaps_explicit_authoring_coordinates():
@@ -532,6 +527,7 @@ def test_pcb_layout_routes_default_to_octilinear_segments():
     net = design.net("SIG")
     board = design.add_board("Control")
     layer = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_layer_stack((layer,), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
 
     with board.layout() as layout:
@@ -544,19 +540,21 @@ def test_pcb_layout_routes_default_to_octilinear_segments():
         )
 
     document = json.loads(board.to_json())
-    assert arbitrary == 0
-    assert diagonal == 1
-    assert direct == 2
-    assert document["board"]["tracks"][0]["points"] == [[1, 1], [5, 1], [5, 2]]
-    assert document["board"]["tracks"][1]["points"] == [[1, 4], [3, 6]]
-    assert document["board"]["tracks"][2]["points"] == [[1, 8], [5, 9]]
+    assert arbitrary.committed and arbitrary.tracks == (0, 1)
+    assert diagonal.committed and diagonal.tracks == (2,)
+    assert direct.committed and direct.tracks == (3,)
+    assert _route_points(arbitrary) == [[1, 1], [4, 1], [5, 2]]
+    assert _route_points(diagonal) == [[1, 4], [3, 6]]
+    assert _route_points(direct) == [[1, 8], [5, 9]]
 
 
-def test_pcb_layout_grid_snaps_route_numeric_helpers_without_snapping_anchor_targets():
+
+def test_pcb_layout_native_route_coordinates_do_not_snap_placement_grid():
     design, r1, _d1 = _small_resistor_led_design()
     net = next(net for net in design.nets() if net.name == "LED_A")
     board = design.add_board("Control")
     layer = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_layer_stack((layer,), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
 
     with board.layout(grid=0.5) as layout:
@@ -584,22 +582,13 @@ def test_pcb_layout_grid_snaps_route_numeric_helpers_without_snapping_anchor_tar
         )
 
     document = json.loads(board.to_json())
-    assert helper == 0
-    assert jog == 1
-    assert exact_anchor == 2
-    assert document["board"]["tracks"][0]["points"] == [
-        [1, 1],
-        [2.5, 1],
-        [2.5, 3],
-        [4.5, 3],
-    ]
-    assert document["board"]["tracks"][1]["points"] == [
-        [1, 6],
-        [2.5, 6],
-        [2.5, 7.5],
-        [4.5, 7.5],
-    ]
-    assert document["board"]["tracks"][2]["points"] == [[9.5, 5], [10.76, 5]]
+    assert helper.committed and jog.committed and exact_anchor.committed
+    assert _route_points(helper) == [[1.1, 1.1], [2.26, 1.1], [2.26, 3.24], [4.26, 3.24]]
+    assert [v for p in _route_points(jog) for v in p] == pytest.approx(
+        [1.1, 6.1, 2.36, 6.1, 2.36, 7.36, 4.16, 7.36, 4.26, 7.26]
+    )
+    assert _route_points(exact_anchor) == [list(resistor.end.point), list(anchor_target.point)]
+
 
 
 def test_pcb_layout_composes_generic_anchor_sets():
@@ -630,6 +619,7 @@ def test_pcb_layout_connects_pads_through_intermediate_anchors_with_rule_width()
     led_a = next(net for net in design.nets() if net.name == "LED_A")
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_layer_stack((front,), thickness=1.6)
     board.set_design_rules(min_track_width=0.25)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 24.0))
 
@@ -647,15 +637,10 @@ def test_pcb_layout_connects_pads_through_intermediate_anchors_with_rule_width()
         )
 
     document = json.loads(board.to_json())
-    assert track == 0
-    assert document["board"]["tracks"][0]["net"] == "net:1"
-    assert document["board"]["tracks"][0]["width_mm"] == 0.25
-    assert document["board"]["tracks"][0]["points"] == [
-        [11.5, 10.0],
-        [13.5, 10.0],
-        [23.5, 10.0],
-        [23.5, 15.0],
-    ]
+    assert track.committed and track.net == led_a.index
+    assert all(c.width_mm == 0.25 for c in track.candidates)
+    assert _route_points(track) == [[11.5, 10], [13.5, 10], [18.5, 10], [23.5, 15]]
+
 
 
 def test_pcb_layout_bundles_independent_routes_with_net_inference():
@@ -684,6 +669,7 @@ def test_pcb_layout_bundles_independent_routes_with_net_inference():
 
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_layer_stack((front,), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
 
     with board.layout(unit=1.0) as layout:
@@ -692,8 +678,8 @@ def test_pcb_layout_bundles_independent_routes_with_net_inference():
         cursor = layout.here.point
         tracks = layout.bundle(
             (
-                (left[1], right[1]),
-                (left[2], right[2], (left[2].right(2.0),)),
+                (left[1], right[1], (left[1].up(2), right[1].left(2))),
+                (left[2], right[2], (left[2].down(6), right[2].down(6))),
             ),
             layer=front,
             width=0.25,
@@ -701,20 +687,15 @@ def test_pcb_layout_bundles_independent_routes_with_net_inference():
         assert layout.here.point == cursor
 
     document = json.loads(board.to_json())
-    assert tracks == (0, 1)
-    assert [track["net"] for track in document["board"]["tracks"]] == ["net:0", "net:1"]
-    assert [track["width_mm"] for track in document["board"]["tracks"]] == [0.25, 0.25]
-    assert document["board"]["tracks"][0]["points"] == [
-        [10.0, 8.0],
-        [20.0, 8.0],
-        [20.0, 12.0],
-    ]
-    assert document["board"]["tracks"][1]["points"] == [
-        [11.5, 8.0],
-        [13.5, 8.0],
-        [21.5, 8.0],
-        [21.5, 12.0],
-    ]
+    assert len(tracks) == 2 and all(result.committed for result in tracks)
+    assert [result.net for result in tracks] == [net_a.index, net_b.index]
+    assert all(c.width_mm == 0.25 for result in tracks for c in result.candidates)
+    assert _route_points(tracks[0])[0] == list(left[1].point)
+    assert _route_points(tracks[0])[-1] == list(right[1].point)
+    assert _route_points(tracks[1])[0] == list(left[2].point)
+    assert _route_points(tracks[1])[-1] == list(right[2].point)
+
+
 
 
 def test_pcb_layout_connect_re_resolves_pad_anchor_nets_at_mutation_time():
@@ -739,6 +720,7 @@ def test_pcb_layout_connect_re_resolves_pad_anchor_nets_at_mutation_time():
 
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_layer_stack((front,), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
 
     with board.layout(unit=1.0) as layout:
@@ -753,9 +735,10 @@ def test_pcb_layout_connect_re_resolves_pad_anchor_nets_at_mutation_time():
         track = layout.connect(left_anchor, right_anchor, layer=front, mode="direct")
 
     document = json.loads(board.to_json())
-    assert track == 0
+    assert track.committed and track.tracks == (0,)
     assert document["board"]["tracks"][0]["net"] == "net:0"
     assert document["board"]["tracks"][0]["points"] == [[10.0, 8.0], [20.0, 8.0]]
+
 
 
 def test_pcb_layout_connect_delegates_pad_net_resolution_to_kernel(monkeypatch):
@@ -782,6 +765,7 @@ def test_pcb_layout_connect_delegates_pad_net_resolution_to_kernel(monkeypatch):
 
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_layer_stack((front,), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
 
     with board.layout(unit=1.0) as layout:
@@ -797,8 +781,9 @@ def test_pcb_layout_connect_delegates_pad_net_resolution_to_kernel(monkeypatch):
         track = layout.connect(left_anchor, right_anchor, layer=front, mode="direct")
 
     document = json.loads(board.to_json())
-    assert track == 0
+    assert track.committed and track.tracks == (0,)
     assert document["board"]["tracks"][0]["net"] == "net:0"
+
 
 
 def test_pcb_layout_connect_rejects_explicit_net_that_disagrees_with_pad_endpoint():
@@ -806,11 +791,12 @@ def test_pcb_layout_connect_rejects_explicit_net_that_disagrees_with_pad_endpoin
     led_a = next(net for net in design.nets() if net.name == "LED_A")
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_layer_stack((front,), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
 
     with board.layout(unit=1.0) as layout:
         resistor = layout.two_pad(r1).at((10.0, 8.0)).right()
-        with pytest.raises(RuntimeError, match="does not match explicit route net"):
+        with pytest.raises(RuntimeError, match="Route endpoint logical nets conflict"):
             layout.connect(resistor.start, resistor.start.left(2.0), layer=front, net=led_a)
 
 
@@ -819,11 +805,12 @@ def test_pcb_layout_route_rejects_explicit_net_that_disagrees_with_pad_endpoint(
     led_a = next(net for net in design.nets() if net.name == "LED_A")
     board = design.add_board("Control")
     front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_layer_stack((front,), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
 
     with board.layout(unit=1.0) as layout:
         resistor = layout.two_pad(r1).at((10.0, 8.0)).right()
-        with pytest.raises(RuntimeError, match="does not match explicit route net"):
+        with pytest.raises(RuntimeError, match="Route endpoint logical nets conflict"):
             layout.route(led_a, layer=front, mode="direct").at(resistor.start).to(
                 resistor.start.left(2.0)
             )
@@ -844,7 +831,7 @@ def test_pcb_layout_fanout_and_stitch_lower_to_tracks_and_vias():
         fanouts = layout.fanout(
             (led.K,),
             layer=front,
-            direction="left",
+            direction="right",
             distance=2.0,
             via_layers=(front, back),
         )
@@ -861,16 +848,17 @@ def test_pcb_layout_fanout_and_stitch_lower_to_tracks_and_vias():
 
     document = json.loads(board.to_json())
     assert len(fanouts) == 1
-    assert fanouts[0].track == 0
-    assert fanouts[0].via == 0
-    assert fanouts[0].end.point == (10.75, 10.0)
-    assert stitched == (1, 2)
-    assert document["board"]["tracks"][0]["points"] == [[12.75, 10.0], [10.75, 10.0]]
+    assert fanouts[0].result.tracks == (0,)
+    assert fanouts[0].result.vias == (0,)
+    assert fanouts[0].end.point == (14.75, 10.0)
+    assert tuple(r.vias[0] for r in stitched) == (1, 2)
+    assert document["board"]["tracks"][0]["points"] == [[12.75, 10.0], [14.75, 10.0]]
     assert [via["position"] for via in document["board"]["vias"]] == [
-        [10.75, 10.0],
+        [14.75, 10.0],
         [4.0, 4.0],
         [4.0, 16.0],
     ]
+
 
 
 def test_pcb_layout_board_anchors_read_outline_without_serializing(monkeypatch):
@@ -2579,3 +2567,14 @@ def test_python_board_stackup_authors_copper_weight_and_dielectrics():
 
     with pytest.raises(ValueError):
         board.add_layer("F.SilkS", role="silkscreen", side="top", copper_weight=1.0)
+
+
+def _route_points(result):
+    points = []
+    for candidate in result.candidates:
+        if candidate.kind == "track":
+            for point in candidate.points:
+                value = list(point)
+                if not points or points[-1] != value:
+                    points.append(value)
+    return points

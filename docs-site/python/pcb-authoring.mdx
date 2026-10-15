@@ -80,25 +80,27 @@ with board.layout(unit=1.0, grid=0.5) as layout:
 ```
 
 Layout routes are hand-placed physical copper: `.at(...)`, `.tox(...)`, `.toy(...)`,
-directional jogs, and `.to(...)` lower to kernel-owned tracks. `layout.via(...)` lowers
-to the same via model as `board.add_via(...)`. Tracks and vias reference existing logical
+directional jogs, and `.to(...)` lower to native route steps. The kernel resolves
+geometry, rules, and legality before atomically publishing each route's tracks and vias.
+`layout.via(...)` uses the same native routing validation. Tracks and vias reference existing logical
 nets. Board data implements connectivity; it does not define the netlist.
 
 Choose the routing surface by intent:
 
 | Surface | Capability |
 | --- | --- |
-| `layout.route(...)` / `layout.connect(...)` | Explicit author-directed routing grammar. Anchors, waypoints, corners, bundles, fanout helpers, and stitching may do Python arithmetic because they immediately publish canonical Board tracks and vias. |
+| `layout.route(...)` / `layout.connect(...)` | Explicit author-directed native routing grammar. Python lowers endpoints and steps; C++ owns geometry, rule resolution, legality, and atomic publication. Bundle, fanout, and stitching helpers submit independent native requests. |
 | `board.assisted_connect(...)` | Bounded native point-to-point obstacle avoidance. It returns a read-only `BoardRouteResult` and either commits one legal route or leaves the Board unchanged. |
 | `board.escape(...)` | Bounded native pad fanout for one placed component. It returns a read-only `BoardEscapeResult` with typed `BoardEscapePadResult` values and failure enums. |
 
-C++ owns assisted-routing algorithms, legality, rule resolution, result semantics, and
+C++ owns explicit and assisted routing, legality, rule resolution, result semantics, and
 Board mutation. Volt has no whole-board or global autorouter.
 
 The typed result fields mirror the native domain directly:
 
 | Result | Read-only fields |
 | --- | --- |
+| `RouteResult` | `committed`, `tracks`, `vias`, `resolved_steps`, `candidates`, `blockers`, `resolved_rules`, `message` |
 | `BoardRouteResult` | `routed`, `tracks`, `vias`, `blockers` |
 | `BoardSpatialBlocker` | `kind`, `shape_index`, `keepout`, `feature`, `layer`, `required_clearance_mm`, `actual_clearance_mm`, `room` |
 | `BoardEscapeResult` | `complete`, `component`, `placement`, `room`, `pads` |
@@ -108,18 +110,37 @@ The typed result fields mirror the native domain directly:
 `BoardEscapeFailureReason`. Blocker kinds are `COPPER_CLEARANCE`, `BOARD_OUTLINE`,
 `MECHANICAL_OPENING`, and `KEEPOUT`; escape reasons are `NONE`, `PAD_UNCONNECTED`,
 `NO_COPPER_LAYER`, `DISALLOWED_LAYER`, `NO_LEGAL_CANDIDATE`, and `ATOMIC_DECLINE`.
-Track, via, blocker, and pad sequences are immutable tuples.
+Assisted-route and escape track, via, blocker, and pad sequences are immutable tuples.
+`RouteResult` owns its native snapshot; collection access does not expose mutable Board state.
 
-When a via omits `drill` or `annular`, Volt resolves that default from the net class when
-one is assigned, then floors it at the board's own minimum via rules. Structurally valid
-explicit values are left as authored so deliberate rule violations remain diagnosable through
-`board.validate()`; impossible diameter pairs such as an annular diameter not greater than the
-drill are rejected at the authoring boundary.
+Omitted route widths and via sizes resolve through native board, net-class, and local
+rules. `layout.via(...)`, `layout.stitch(...)`, and `layout.fanout(...)` accept either both
+`drill` and `annular` or neither. Explicit sizes still undergo native routing legality
+checks. Low-level `board.add_track(...)` and `board.add_via(...)` allow structurally valid
+rule violations to be authored and diagnosed through `board.validate()`.
 
-When `grid` is set, explicit authoring coordinates snap to that board grid while
-footprint pad anchors stay exact. `.to(...)` routes default to octilinear geometry, so
-arbitrary endpoints become 0/45/90 degree segments. Use `mode="direct"` only when a
-non-octilinear track is deliberate.
+`grid` controls placement and explicit layout snapping helpers. Routing point tuples
+are literal board coordinates; they are not snapped or transformed by the layout cursor.
+Numeric `.tox(x)` / `.toy(y)` lower to native `ToX` / `ToY`. Endpoint forms, including
+plain `(x, y)` tuples, lower to native `Align` on the selected axis. Directional calls
+such as `.right(distance)` lower to native `Offset`, also without grid snapping.
+Footprint pad endpoints retain their exact native identity and geometry.
+
+For example, on a board with an existing `led_a` net and `front` copper layer:
+
+```python
+# Native routing coordinates stay exact even with a placement grid.
+with board.layout(at=(25.0, 15.0), grid=0.5) as layout:
+    exact = (layout.route(led_a, layer=front)
+             .at((10.1, 10.1)).right(2.2).tox(15.1)
+             .toy((28.0, 16.1)).finish())
+```
+
+The native result ends at `(15.1, 16.1)`. `.to(...)` routes default to native `Chamfer45`
+(`mode="octilinear"`), producing 0/45/90 degree segments. Use `mode="direct"` only when
+a non-octilinear track is deliberate. Terminal calls return an owned `RouteResult`;
+default `STRICT` raises `RouteError` on rejection, with the native result in `.result`.
+`REPORT` returns that result and still commits legal requests.
 
 `board.add_track(...)` remains available when an importer or advanced authoring workflow
 needs to provide exact point lists deliberately.
@@ -150,8 +171,15 @@ with board.layout(grid=0.5) as layout:
 
 Use `layout.bundle(...)` when several explicit anchor pairs should be authored together.
 Each bundle item is a `(start, end)` or `(start, end, through)` tuple and lowers through
-the same `layout.connect(...)` path. Batch helpers preserve the layout cursor; they are
-authoring conveniences, not obstacle-aware assisted routing.
+the same `layout.connect(...)` path. Bundle, stitching, and fanout helpers preserve the
+layout cursor. Each item publishes atomically, but the batch is not a transaction:
+under default `STRICT`, a rejected item raises `RouteError`, earlier successful items
+remain on the Board, and later items are not attempted. The exception's `.result`
+describes only the rejected item. Inspect Board tracks/vias to audit prior commits,
+or submit items individually and retain each result. Use `policy=volt.RoutePolicy.REPORT`
+to receive every item's outcome while legal items commit. Bundle/stitch return tuples
+of `RouteResult`; fanout returns values whose `.result` is the native `RouteResult`.
+These helpers author explicit routes rather than searching around obstacles.
 
 ## Zones, keepouts, and text
 

@@ -213,9 +213,6 @@ void bind_board(pybind11::module_ &module) {
         .def("component_footprint_pads", &PyBoard::component_footprint_pads, py::arg("component"))
         .def("add_track", &PyBoard::add_track, py::arg("net"), py::arg("layer"), py::arg("points"),
              py::arg("width_mm"))
-        .def("add_track_for_route", &PyBoard::add_track_for_route, py::arg("net"), py::arg("layer"),
-             py::arg("endpoints"), py::arg("width_mm"))
-        .def("track_net", &PyBoard::track_net, py::arg("track"))
         .def("add_via", &PyBoard::add_via, py::arg("net"), py::arg("x"), py::arg("y"),
              py::arg("start_layer"), py::arg("end_layer"), py::arg("drill_diameter_mm"),
              py::arg("annular_diameter_mm"))

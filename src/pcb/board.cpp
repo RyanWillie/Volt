@@ -49,10 +49,14 @@ void Board::set_outline(BoardOutline outline) {
     ++geometry_generation_;
 }
 
-void Board::set_design_rules(BoardDesignRules rules) { structure_.design_rules = std::move(rules); }
+void Board::set_design_rules(BoardDesignRules rules) {
+    structure_.design_rules = std::move(rules);
+    ++geometry_generation_;
+}
 
 void Board::set_capability_profile(BoardCapabilityProfile profile) {
     structure_.capability_profile = std::move(profile);
+    ++geometry_generation_;
 }
 
 [[nodiscard]] BoardFeatureId Board::add_feature(BoardFeature feature) {

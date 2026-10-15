@@ -19,7 +19,7 @@ separately by DRC (`board.validate()`); this skill is about the quality layered 
 
 The structured `layout.route(...)` / `layout.connect(...)` grammar is **author-directed**:
 your judgment supplies the route while anchors, waypoints, corners, bundles, and stitching
-lower immediately to canonical Board tracks and vias. Separate bounded native helpers exist
+lower to typed native RouteSpec steps. Terminal calls publish canonical Board tracks and vias atomically under Strict policy. Separate bounded native helpers exist
 for point-to-point obstacle avoidance (`board.assisted_connect(...)`) and component pad fanout
 (`board.escape(...)`). Neither helper is a whole-board or global autorouter.
 
@@ -69,7 +69,7 @@ Follow this discipline:
    in more than one route or placement.
 4. **Absolute `(x, y)` tuples are the escape hatch**, used only when a coordinate truly has
    no meaningful anchor-relative expression (e.g. the board center, or a fixed mechanical
-   constraint). When you use one, snap it immediately.
+   constraint). When you use one, use placement snapping only when that mechanical intent calls for it.
 
 ```python
 # Skeleton — locked, explicit
@@ -127,7 +127,7 @@ and layers exist.
 
 ### 2. Placement — *rubric 1, 2, 3, 7*
 
-Open the layout with an **explicit grid** so placement and routing snap. Use `unit` for the
+Open the layout with an **explicit grid** for placement snapping. Native routes retain exact board-space coordinates and do not snap to this grid. Use `unit` for the
 default stack pitch.
 
 ```python
@@ -199,22 +199,32 @@ Route to **pad anchors**, never to invented coordinates. Let octilinear mode dra
 corners.
 
 ```python
-# power/ground wider than signal (rubric 5)
-layout.route(nets["+5V"], layer=front, width=0.30).at(header[1]).to(u1.VCC)
-layout.route(nets["OUT"], layer=front, width=0.20).at(u1.OUT).to(rled.start)
+# Configure widths through kernel-owned net classes (rubric 5)
+layout.route(nets["+5V"], layer=front).at(header[1]).to(u1.VCC)
+layout.route(nets["OUT"], layer=front).at(u1.OUT).to(rled.start)
 ```
 
 Choose the smallest truthful surface:
 
 - `layout.route(...)` and `layout.connect(...)` express the route you intend. Their anchor,
-  waypoint, corner, bundle, `layout.fanout(...)`, and stitching arithmetic is Python ergonomic
-  lowering because it immediately publishes canonical Board geometry.
+  waypoint, corner, bundle, `layout.fanout(...)`, and stitching syntax lowers to native
+  endpoint/Align/Offset/Via/Finish steps. The kernel owns rule resolution, geometry,
+  legality and publication.
 - `board.assisted_connect(...)` asks the native kernel for one bounded, obstacle-aware
   point-to-point connection and returns a read-only `BoardRouteResult`.
 - `board.escape(...)` asks the native kernel for bounded pad fanout on one placed component
   and returns a read-only `BoardEscapeResult` with typed per-pad outcomes.
 - Volt has no whole-board routing, route ordering, rip-up/reroute, or global autorouter.
 
+- **Native owned results**: `to()`/`finish()`/`connect()`/`via()` return `RouteResult`.
+  Inspect `committed`, `tracks`, `vias`, `resolved_steps`, and rule/blocker evidence.
+  `bundle()`/`stitch()` return tuples with per-item atomicity; `fanout()` returns frozen
+  source/end/result values. Strict raises `RouteError` with the same complete native
+  result carried by Report. Rejection preserves copper and the caller cursor.
+- **Symbolic clearance**: use native `.exit(pad, direction)`, `.beside(operand, direction)`,
+  `.gap(lower, upper, axis)` and endpoint `.tox()`/`.toy()` instead of calculating pad
+  edges, corridor coordinates, or clearance offsets in Python. Raw tuples are absolute
+  board-space literals. Directional numeric offsets remain explicit native steps.
 - **Width by net class** (rubric 5): power and ground wide, signal narrow; keep a class
   consistent.
 - **Octilinear by default** (rubric 4): a single `.to(pad)` auto-inserts a clean corner.
@@ -277,7 +287,7 @@ This is where "looks professional" gets verified, not assumed.
 
 ## Rubric checklist (manual self-review until the validator lands)
 
-- [ ] Every placement, pad, track vertex, and via on grid; rotations multiples of 90°.
+- [ ] Placements on their authored grid; native copper follows exact geometry; rotations multiples of 90°.
 - [ ] Like parts aligned on a shared axis, consistent orientation.
 - [ ] No courtyard overlaps; parts clear the board edge; even intra-group spacing.
 - [ ] Decoupling caps within ~2 mm of their IC power pin; connectors/holes at edges.

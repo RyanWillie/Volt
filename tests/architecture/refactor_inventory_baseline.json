@@ -1030,6 +1030,21 @@
           "python_type": "RouteGap"
         },
         {
+          "cpp_type": "RouteAlign",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteAlign"
+        },
+        {
+          "cpp_type": "RouteOffset",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteOffset"
+        },
+        {
+          "cpp_type": "RouteFinish",
+          "path": "src/python/route_bindings.cpp",
+          "python_type": "RouteFinish"
+        },
+        {
           "cpp_type": "RouteThrough",
           "path": "src/python/route_bindings.cpp",
           "python_type": "RouteThrough"
@@ -1239,7 +1254,9 @@
         "board",
         "boards",
         "circuit",
-        "circuit"
+        "circuit",
+        "routing",
+        "routing_resolution_builds"
       ],
       "py_circuit_private_members": [
         "circuit",
@@ -1267,7 +1284,7 @@
         },
         "BoardRouter": {
           "path": "tests/architecture/boardrouter_public_api.txt",
-          "sha256": "3c2170178f7b21f254ca8b3618ed7c36a785a60543c9045ecbc5486658fda3a0"
+          "sha256": "52eecd78c1313998982f525b8a104961eab4a294d9e3a65c5e3f4acd18a179b8"
         },
         "BoardSpatialIndex": {
           "path": "tests/architecture/boardspatialindex_public_api.txt",
@@ -1472,6 +1489,7 @@
         "Quantity",
         "QuantityRange",
         "ResistanceElement",
+        "RouteAlign",
         "RouteAxis",
         "RouteBeside",
         "RouteBoardEdge",
@@ -1479,8 +1497,10 @@
         "RouteError",
         "RouteExit",
         "RouteFailureKind",
+        "RouteFinish",
         "RouteGap",
         "RouteKeepout",
+        "RouteOffset",
         "RoutePlacedCopper",
         "RoutePoint",
         "RoutePolicy",

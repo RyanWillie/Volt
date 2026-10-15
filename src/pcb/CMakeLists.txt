@@ -23,9 +23,11 @@ add_library(
     queries/board_queries.cpp
     resolution/board_resolution.cpp
     routing/board_router.cpp
+    routing/board_router_session.cpp
     routing/route.cpp
     routing/route_target.cpp
     routing/board_spatial_index.cpp
+    routing/board_spatial_index_publication.cpp
     validation/board_capability_validation.cpp
     validation/board_footprint_drc.cpp
     validation/board_visual_validation.cpp

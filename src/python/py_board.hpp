@@ -95,11 +95,6 @@ class PyBoard {
                                         const std::vector<std::pair<double, double>> &points,
                                         double width_mm);
 
-    [[nodiscard]] py::dict add_track_for_route(std::optional<std::size_t> net, std::size_t layer,
-                                               const py::list &endpoints, double width_mm);
-
-    [[nodiscard]] std::size_t track_net(std::size_t track) const;
-
     [[nodiscard]] std::size_t add_via(std::size_t net, double x, double y, std::size_t start_layer,
                                       std::size_t end_layer,
                                       std::optional<double> drill_diameter_mm,
@@ -114,6 +109,11 @@ class PyBoard {
 
     [[nodiscard]] volt::RouteResult route(const volt::RouteSpec &spec, volt::RoutePolicy policy);
     [[nodiscard]] volt::RouteResult query_gap(const volt::RouteSpec &prefix);
+
+    [[nodiscard]] std::size_t routing_resolution_builds() const noexcept {
+        return routing_resolution_builds_;
+    }
+
     [[nodiscard]] volt::RoutePad route_pad(std::size_t placement, std::size_t pad) const;
 
     [[nodiscard]] std::size_t add_zone(std::optional<std::size_t> net,
@@ -172,8 +172,21 @@ class PyBoard {
     [[nodiscard]] volt::BoardResolution
     resolve(std::vector<volt::BoardAssetCapability> additional = {}) const;
 
+    [[nodiscard]] bool routing_resolution_current() const;
+
+    struct RoutingResolution {
+        volt::ContentHash closure;
+        std::vector<std::optional<volt::LibraryPartRef>> selected;
+        std::unique_ptr<volt::ResolvedBoardView> view;
+        std::unique_ptr<volt::BoardRouter> router;
+    };
+
+    [[nodiscard]] std::unique_ptr<RoutingResolution> make_routing_resolution() const;
+    void prepare_routing_resolution() const;
     const PyCircuit *circuit_;
-    volt::Board board_;
+    mutable volt::Board board_;
+    mutable std::unique_ptr<RoutingResolution> routing_;
+    mutable std::size_t routing_resolution_builds_ = 0;
 };
 
 /** Design-scoped exact-name owner registry for separately bound Boards. */

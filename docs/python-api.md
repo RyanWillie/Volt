@@ -1020,15 +1020,52 @@ data. Python PCB layout helpers place footprints and route copper for existing c
 and nets. Neither surface should create, merge, split, or reconnect logical nets, and
 future projection APIs should follow the same kernel-first boundary.
 
-PCB routing has three deliberately distinct public surfaces. `layout.route(...)` and
-`layout.connect(...)` are explicit author-directed grammar: anchors, waypoints, corners,
-bundles, fanout helpers, and stitching may perform Python arithmetic when they immediately
-publish ordinary canonical Board tracks and vias. `Board.assisted_connect(...)` is bounded
-native point-to-point obstacle avoidance and returns a read-only `BoardRouteResult`.
-`Board.escape(...)` is bounded native pad fanout for one component and returns a read-only
-`BoardEscapeResult` with typed per-pad outcomes. C++ owns assisted algorithms, legality,
-rule resolution, result semantics, and Board mutation. Volt does not provide a whole-board
-or global autorouter.
+PCB routes are native author-directed descriptions. `layout.route(...)` and
+`layout.connect(...)`, bundles, axial fanout and stitching lower into the same native
+route planner. C++ owns endpoint/corner/target geometry, inherited net-class and room
+rules, legality, ordered results, and atomic copper publication. Python constructs typed
+steps and updates its cursor from native results. `Board.assisted_connect(...)` and
+`Board.escape(...)` retain their separate bounded native search/package-fanout contracts.
+Volt does not provide whole-board routing or rip-up/reroute.
+
+Each bound Board retains a native runtime routing session. Pad factories reuse native
+physical/pad resolution without prematurely building an index; successive successful
+routes reuse and incrementally update the index. Relevant external Board/Circuit/selected
+closure changes refresh lazily. Runtime cache identities never enter canonical bytes.
+Gap queries and rejected routes publish neither copper nor a replacement route cache.
+Native `BoardRouter` borrows stable Board/Circuit owners, which must outlive it and must
+not move or be assigned while borrowed. It owns its resolved physical snapshot.
+
+```python
+with board.layout() as layout:
+    result = (layout.route(signal, layer=front).at(source_pad)
+              .gap(lower_copper, upper_copper, volt.RouteAxis.Y)
+              .via(back).to(destination_via))
+    assert result.committed
+    print(result.tracks, result.vias)
+```
+
+Widths default to `None` (native inheritance). Strict is default; Report returns the same
+native `RouteResult`/message on rejection, while legal Report routes still commit. Terminal
+`to()`/`finish()`, `connect()` and `via()` return owned `RouteResult`; `bundle()`/`stitch()`
+return tuples of independently atomic results. `BoardFanout` holds `source`, native `end`
+(or None on unresolved rejection) and `result`; use `result.tracks`/`result.vias`, not a
+singular ID. Via overrides supply both drill and annular, or neither.
+
+`tox(endpoint)`/`toy(endpoint)` lower to geometry-only `RouteAlign`: another-net,
+unconnected physical, or front-only guide may supply a coordinate for a back-layer leg;
+alignment is no claim of electrical contact. Missing physical position rejects.
+Numeric versions are literal native `RouteToX`/`RouteToY`. Directional route methods and
+fanout lower to signed native `RouteOffset`. Route coordinates are absolute board-space
+and never grid-snapped or transformed by a placement frame. Placement/grid helpers retain
+their own grammar. `RouteFinish` ends at the native current point, including via-only
+routes; an empty route rejects. Captured Pad anchors keep exact footprint identity,
+resolve current placement/net natively, and reject incompatible reselection.
+
+Low-level `Board.add_track`/`add_via` remain structurally checked, DRC-permissive primitive
+APIs. They are explicit escape hatches; the fluent route/helper cutover adds no blanket
+structural DRC guard to Board mutation. See the complete R1c lifetime/invalidation and
+publication contract in `docs/design/r1c-session-routing-contract.md`.
 
 ### Bounded idealized diode DC
 
@@ -1054,7 +1091,7 @@ requests reject diode models; sweeps and physical manufacturer fidelity remain o
 ### Native symbolic route targets and gap prefixes
 
 `RouteExit`, `RouteBeside` and `RouteGap` are explicit board-axis steps in the native
-`RouteSpec` grammar. They resolve actual active-layer copper (Circle/Rectangle pads,
+`RouteSpec` grammar. They resolve actual active-layer copper (Circle/Rectangle/RoundedRectangle pads,
 placed pad unions, tracks and vias) or separately typed keepout/rectangular-edge
 boundaries. Target obstacles do not infer the route net. No search, snapping, bus
 packing or body/courtyard fallback occurs. Geometry and final native room rules
@@ -1085,6 +1122,10 @@ zero-motion behavior is unchanged. To publish, append the required terminal
 retain Board bytes/generation/references. See the
 [R1b finite contract](design/r1b-native-target-contract.md) for operand, tolerance,
 rule-state and evidence details. Existing fluent helpers remain unchanged.
+
+RoundedRectangle target operands use the existing native conservative transformed rectangular
+envelope; rounded corners do not make an otherwise closed corridor feasible. Oval operands
+remain unsupported. The dated R1c amendment preserves this same copper truth in native DRC.
 
 ## Native physical completion
 

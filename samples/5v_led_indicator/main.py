@@ -146,27 +146,18 @@ def main() -> volt.Project:
                 resistor.start,
                 layer=front,
                 net=nets["+5V"],
-                width=0.35,
             )
             layout.connect(
                 resistor.end,
                 led.start,
                 layer=front,
                 net=nets["LED_A"],
-                width=0.25,
             )
-            ground_lane = layout.snap(led.end.down(3.0))
-            layout.connect(
-                led.end,
-                connector["GND"],
-                layer=front,
-                net=nets["GND"],
-                width=0.35,
-                through=(
-                    ground_lane,
-                    ground_lane.tox(connector["GND"]),
-                ),
-            )
+            (layout.route(nets["GND"], layer=front)
+             .at(led.end)
+             .beside(connector["+5V"], volt.RouteDirection.POSITIVE_Y)
+             .tox(connector["GND"])
+             .to(connector["GND"]))
 
             layout.text(
                 "5V LED REV A",

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -14,6 +15,12 @@
 #include <volt/pcb/routing/route.hpp>
 
 namespace volt {
+
+namespace detail {
+struct BoardRoutingState;
+struct BoardRoutingInputs;
+struct RoutingSessionProbe;
+} // namespace detail
 
 /** Authoring request to connect two board points on one existing logical net. */
 struct BoardRouteRequest {
@@ -146,6 +153,17 @@ class BoardRouter {
     /** Build a router over one immutable BoardResolution while mutating its authoring Board. */
     BoardRouter(Board &board, const BoardResolution &resolution);
 
+    /** Session borrows stable Board/Circuit owners; neither may move or be replaced while borrowed.
+     */
+    BoardRouter(const BoardRouter &) = delete;
+    BoardRouter &operator=(const BoardRouter &) = delete;
+    BoardRouter(BoardRouter &&) = delete;
+    BoardRouter &operator=(BoardRouter &&) = delete;
+    ~BoardRouter();
+
+    /** Return an owned current pad snapshot; may warm runtime pads without creating an index. */
+    [[nodiscard]] std::vector<PadResolution> resolve_pads() const;
+
     /** Resolve the copper sizing and allowed layers a net would route with. */
     [[nodiscard]] BoardRouteParameters resolve_parameters(NetId net) const;
 
@@ -172,6 +190,8 @@ class BoardRouter {
     [[nodiscard]] BoardEscapeResult escape(ComponentId component);
 
   private:
+    friend struct detail::RoutingSessionProbe;
+    [[nodiscard]] std::unique_ptr<detail::BoardRoutingState> prepare_state() const;
     [[nodiscard]] RouteResult plan_route(const RouteSpec &spec, RoutePolicy policy,
                                          bool query) const;
 
@@ -226,6 +246,10 @@ class BoardRouter {
     Board *board_;
     ResolvedBoardView resolved_;
     mutable std::optional<BoardSpatialIndex> index_;
+    mutable std::unique_ptr<detail::BoardRoutingInputs> legacy_inputs_;
+    mutable std::unique_ptr<detail::BoardRoutingState> state_;
+    mutable std::size_t explicit_index_builds_ = 0;
+    mutable std::size_t explicit_pad_resolutions_ = 0;
 };
 
 } // namespace volt
