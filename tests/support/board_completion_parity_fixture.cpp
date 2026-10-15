@@ -5,7 +5,36 @@
 int main(int argc, char **argv) {
     auto options = volt::test::CompletionFixtureOptions{};
     const auto mode = argc > 1 ? std::string{argv[1]} : "complete";
-    if (mode == "missing")
+    if (mode == "clearance-zone" || mode == "clearance-class") {
+        options.components = 1;
+        options.zone = false;
+        options.extra_zone_left = mode == "clearance-class" ? 10.7 : 10.6;
+        if (mode == "clearance-class")
+            options.net_class_clearance = 0.4;
+    } else if (mode == "clearance-pad") {
+        options.zone = false;
+        options.second_connected = false;
+        options.requirement = volt::ConnectionRequirement::Optional;
+        options.second_x = 11.1;
+    } else if (mode == "clearance-mechanical") {
+        options.components = 1;
+        options.zone = false;
+        options.nearby_mechanical_pad = true;
+    } else if (mode == "plated-via") {
+        options.zone = false;
+        options.interlayer = true;
+        options.via = true;
+        options.routed_via = true;
+        options.via_y = 15;
+    } else if (mode == "plated-pad") {
+        options.zone = false;
+        options.pth_terminal = true;
+        options.tracks = true;
+    } else if (mode == "legacy-width") {
+        options.zone = false;
+        options.tracks = true;
+        options.rules = volt::BoardDesignRules{0.15, 0.3};
+    } else if (mode == "missing")
         options.placements = 0;
     else if (mode == "netless-short") {
         options.different_nets = true;

@@ -16,6 +16,16 @@ struct CompletionFixtureOptions {
     bool different_nets = false;
     bool zone = true;
     bool tracks = false;
+    bool routed_via = false;
+    bool nearby_mechanical_pad = false;
+    std::optional<double> extra_zone_left;
+    double extra_zone_y = 9.5;
+    double extra_zone_height = 1.0;
+    std::optional<double> net_class_clearance;
+    std::optional<double> room_clearance;
+    bool partial_room = false;
+    BoardDesignRules rules;
+    double via_y = 10.0;
     bool pth_terminal = false;
     bool npth_hole = false;
     bool giant_body = false;
@@ -72,6 +82,10 @@ struct CompletionFixtureOptions {
             FootprintLayerSet::mechanical_hole(),
             FootprintDrill{0.3, FootprintPadPlating::NonPlated},
             FootprintPadMechanicalRole::Mounting));
+    if (options.nearby_mechanical_pad)
+        pads.push_back(FootprintPad::surface_mount("T", FootprintPadShape::Circle, {0.8, 0},
+                                                   {0.4, 0.4}, FootprintLayerSet::front_smd(),
+                                                   FootprintPadMechanicalRole::MechanicalSupport));
     if (options.multi_pad)
         pads.push_back(FootprintPad::surface_mount("2", options.shape, {0, 2}, {1, 1},
                                                    FootprintLayerSet::front_smd()));
@@ -123,6 +137,12 @@ struct CompletionFixtureOptions {
     const auto bundle = io::PartLibraryBundle::build(builder, std::vector{key}, resolver);
     const auto net = circuit.add_net(NetSpec{.name = NetName{"GND"}, .kind = NetKind::Ground});
     const auto other = circuit.add_net(NetSpec{.name = NetName{"OTHER"}});
+    if (options.net_class_clearance) {
+        auto rules = NetClass{NetClassName{"Synthetic clearance"}};
+        rules.set_copper_clearance_mm(*options.net_class_clearance);
+        circuit.update(net,
+                       AssignNetClass{circuit.define_net_class(NetClassSpec{.net_class = rules})});
+    }
     auto components = std::vector<ComponentId>{};
     if (options.modules) {
         const auto module = circuit.define_module(
@@ -169,6 +189,22 @@ struct CompletionFixtureOptions {
                                BoardLayer{"In.Cu", BoardLayerRole::Copper, BoardLayerSide::Inner})}
                          : std::nullopt;
     board.set_layer_stack(LayerStack{{front, back}, 1.6});
+    board.set_design_rules(options.rules);
+    if (options.room_clearance) {
+        auto room =
+            BoardRoom{"Synthetic clearance room",
+                      BoardOutline::rectangle({9, 9}, {options.partial_room ? 1.5 : 4.0, 2}),
+                      {front}};
+        room.set_copper_clearance_mm(*options.room_clearance);
+        static_cast<void>(board.add_room(std::move(room)));
+    }
+    if (options.extra_zone_left) {
+        const auto left = *options.extra_zone_left;
+        const auto bottom = options.extra_zone_y;
+        const auto top = bottom + options.extra_zone_height;
+        static_cast<void>(board.add_zone(BoardZone{
+            {{left, bottom}, {left + 1, bottom}, {left + 1, top}, {left, top}}, {front}, {}}));
+    }
     board.set_outline(
         BoardOutline::rectangle({options.outline_x, options.outline_shift}, {30, 20}));
     for (std::size_t i = 0; i < std::min(options.placements, components.size()); ++i)
@@ -189,13 +225,19 @@ struct CompletionFixtureOptions {
     }
     if (options.via)
         static_cast<void>(board.add_via(BoardVia{net,
-                                                 {15, 10},
+                                                 {15, options.via_y},
                                                  front,
                                                  inner.value_or(back),
                                                  options.drill_off_grid ? 0.3000004 : 0.3,
                                                  0.8}));
     if (options.tracks)
         static_cast<void>(board.add_track(BoardTrack{net, front, {{10, 10}, {20, 10}}, 0.2}));
+    if (options.routed_via) {
+        static_cast<void>(
+            board.add_track(BoardTrack{net, back, {{10, 10}, {15, options.via_y}}, 0.2}));
+        static_cast<void>(
+            board.add_track(BoardTrack{net, front, {{15, options.via_y}, {20, 10}}, 0.2}));
+    }
     if (options.fab_critical_slot)
         static_cast<void>(board.add_feature(BoardFeature::slot("SLOT", {2, 2}, {3, 2}, 0.5)));
     if (options.nc_contact)

@@ -63,12 +63,11 @@ void validate_completion_groups(CompletionWork &work) {
             "CompiledBoard V1 lacks preserved logical continuity; recompile complete source to V2");
         for (const auto check :
              {BoardCompletionCheck::Connectivity, BoardCompletionCheck::UnintendedContacts}) {
-            if (work.coverage[static_cast<std::size_t>(check)].state !=
-                BoardCompletionState::Failed)
-                work.coverage[static_cast<std::size_t>(check)].state =
-                    BoardCompletionState::NotEvaluated;
-            work.coverage[static_cast<std::size_t>(check)].reason =
-                "V1 lacks authoritative logical groups; recompile to V2";
+            auto &row = work.coverage[static_cast<std::size_t>(check)];
+            if (row.state != BoardCompletionState::Failed) {
+                row.state = BoardCompletionState::NotEvaluated;
+                row.reason = "V1 lacks authoritative logical groups; recompile to V2";
+            }
         }
         return;
     }
@@ -202,6 +201,10 @@ BoardCompletion evaluate_board_completion(const CompiledBoard &compiled) {
     detail::bind_completion_contacts(work);
     detail::connect_completion_copper(work);
     detail::validate_completion_groups(work);
+    // Absorb spacing and legacy rule failures after contact classification.
+    // These later failures block completion without changing established contact
+    // rows; earlier geometry uncertainty stays conservative. Preserve legacy payloads.
+    detail::validate_completion_clearance(work);
     const auto validation = validate_board(compiled);
     for (const auto &diagnostic : validation.diagnostics().diagnostics()) {
         work.diagnostics.add(diagnostic);

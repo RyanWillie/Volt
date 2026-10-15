@@ -389,3 +389,201 @@ TEST_CASE("Completion conversion guard covers emitted body mask and combined gly
     CHECK(io::write_board_completion(io::evaluate_fabrication_completion(reopened)) ==
           io::write_board_completion(result));
 }
+
+TEST_CASE("Completion rejects separated unlabelled copper below native clearance", "[completion]") {
+    auto options = test::CompletionFixtureOptions{};
+    options.zone = false;
+    options.components = 1;
+    SECTION("netless zone") { options.extra_zone_left = 10.6; }
+    SECTION("unmapped mechanical copper pad") { options.nearby_mechanical_pad = true; }
+    SECTION("disconnected optional pad") {
+        options.components = 2;
+        options.second_connected = false;
+        options.requirement = ConnectionRequirement::Optional;
+        options.second_x = 11.1;
+    }
+    const auto artifact = test::completion_fixture(options);
+    const auto result = io::evaluate_fabrication_completion(artifact);
+    INFO(io::write_board_completion(result));
+    CHECK(result.status() == BoardCompletionStatus::Incomplete);
+    CHECK(has(result, drc_diagnostic_codes::CopperClearanceViolation));
+    CHECK(row(result, BoardCompletionCheck::Geometry) == BoardCompletionState::Failed);
+    const auto reopened = io::open_compiled_board(artifact.bytes());
+    CHECK(io::write_board_completion(io::evaluate_fabrication_completion(reopened)) ==
+          io::write_board_completion(result));
+}
+
+TEST_CASE("Completion supports finished annulus contacts at routed plated endpoints",
+          "[completion]") {
+    auto options = test::CompletionFixtureOptions{};
+    options.zone = false;
+    SECTION("via with tracks on opposite layers") {
+        options.interlayer = true;
+        options.via = true;
+        options.routed_via = true;
+        options.via_y = GENERATE(10.0, 15.0);
+    }
+    SECTION("plated through-hole pads") {
+        options.pth_terminal = true;
+        options.tracks = true;
+    }
+    const auto artifact = test::completion_fixture(options);
+    const auto result = io::evaluate_fabrication_completion(artifact);
+    INFO(io::write_board_completion(result));
+    CHECK(result.status() == BoardCompletionStatus::Complete);
+    CHECK(row(result, BoardCompletionCheck::Geometry) == BoardCompletionState::Pass);
+    CHECK(result.islands().size() == 1);
+    const auto files = io::write_pcb_fabrication_files(artifact).files;
+    const auto drill = std::ranges::find(files, "drill-plated", &io::PcbFabricationFile::function);
+    REQUIRE(drill != files.end());
+    CHECK(drill->text.find("C0.300000") != std::string::npos);
+    const auto front = std::ranges::find(files, "copper-top", &io::PcbFabricationFile::function);
+    REQUIRE(front != files.end());
+    CHECK(front->text.find("C,0.200000") != std::string::npos);
+    const auto reopened = io::open_compiled_board(artifact.bytes());
+    CHECK(io::write_board_completion(io::evaluate_fabrication_completion(reopened)) ==
+          io::write_board_completion(result));
+}
+
+TEST_CASE("Completion keeps legacy rule failures separate from proven contact geometry",
+          "[completion]") {
+    auto options = test::CompletionFixtureOptions{};
+    options.zone = false;
+    options.tracks = true;
+    options.rules = BoardDesignRules{0.15, 0.3};
+    const auto artifact = test::completion_fixture(options);
+    const auto result = io::evaluate_fabrication_completion(artifact);
+    CHECK(has(result, drc_diagnostic_codes::TrackWidthBelowMinimum));
+    CHECK(row(result, BoardCompletionCheck::Geometry) == BoardCompletionState::Failed);
+    CHECK(row(result, BoardCompletionCheck::Connectivity) == BoardCompletionState::Pass);
+    CHECK(row(result, BoardCompletionCheck::UnintendedContacts) == BoardCompletionState::Pass);
+    CHECK(result.status() == BoardCompletionStatus::Incomplete);
+}
+
+TEST_CASE("Completion clearance uses native matrix class and same-room precedence",
+          "[completion]") {
+    auto options = test::CompletionFixtureOptions{};
+    options.components = 1;
+    options.zone = false;
+    options.extra_zone_left = 10.7;
+    options.rules.set_clearance_mm(BoardClearanceKind::Pad, BoardClearanceKind::Zone, 0.3);
+    auto required = 0.3;
+    auto room_applied = false;
+    SECTION("kind matrix floor") {}
+    SECTION("labelled side net class") {
+        options.net_class_clearance = 0.4;
+        required = 0.4;
+    }
+    SECTION("room overrides class and matrix") {
+        options.net_class_clearance = 0.4;
+        options.room_clearance = 0.25;
+        required = 0.25;
+        room_applied = true;
+    }
+    SECTION("lower room override permits supported spacing") {
+        options.net_class_clearance = 0.4;
+        options.room_clearance = 0.1;
+        room_applied = true;
+        required = 0.1;
+    }
+    SECTION("room must fully contain both shapes") {
+        options.net_class_clearance = 0.4;
+        options.room_clearance = 0.1;
+        options.partial_room = true;
+        required = 0.4;
+    }
+    const auto artifact = test::completion_fixture(options);
+    const auto before = std::string{artifact.bytes()};
+    const auto result = io::evaluate_fabrication_completion(artifact);
+    const auto diagnostics = result.diagnostics().diagnostics();
+    const auto found = std::ranges::find_if(diagnostics, [](const auto &d) {
+        return d.code().value() == drc_diagnostic_codes::CopperClearanceViolation;
+    });
+    if (required < 0.2) {
+        CHECK(result.status() == BoardCompletionStatus::Complete);
+        CHECK(found == diagnostics.end());
+    } else {
+        REQUIRE(found != diagnostics.end());
+        CHECK(result.status() == BoardCompletionStatus::Incomplete);
+        REQUIRE(found->measurement().has_value());
+        CHECK(found->measurement()->required_mm == required);
+        CHECK(found->rule() == std::optional<std::string>{"volt.board-completion/1"});
+        CHECK((std::ranges::find(found->entities(), EntityRef::net_class(NetClassId{0})) !=
+               found->entities().end()) ==
+              (options.net_class_clearance.has_value() && !room_applied));
+        CHECK(std::abs(found->measurement()->actual_mm - 0.2) < 1.0e-12);
+        CHECK((std::ranges::find(found->entities(), EntityRef::board_room(BoardRoomId{0})) !=
+               found->entities().end()) == room_applied);
+        CHECK(std::ranges::find(found->entities(), EntityRef::net(NetId{0})) !=
+              found->entities().end());
+    }
+    CHECK(std::string{artifact.bytes()} == before);
+    const auto reopened = io::open_compiled_board(artifact.bytes());
+    CHECK(io::write_board_completion(io::evaluate_fabrication_completion(reopened)) ==
+          io::write_board_completion(result));
+}
+
+TEST_CASE("Completion separated copper uses native clearance epsilon at the exact limit",
+          "[completion]") {
+    auto options = test::CompletionFixtureOptions{};
+    options.components = 1;
+    options.zone = false;
+    options.extra_zone_left = 10.65;
+    const auto excess = GENERATE(0.0, 0.5e-9, 2.0e-9);
+    options.rules.set_clearance_mm(BoardClearanceKind::Pad, BoardClearanceKind::Zone,
+                                   0.15 + excess);
+    const auto result = io::evaluate_fabrication_completion(test::completion_fixture(options));
+    CHECK(has(result, drc_diagnostic_codes::CopperClearanceViolation) == (excess > 1.0e-9));
+    CHECK(result.status() ==
+          (excess > 1.0e-9 ? BoardCompletionStatus::Incomplete : BoardCompletionStatus::Complete));
+}
+
+TEST_CASE("Completion clearance preserves same realized logical-group exemptions", "[completion]") {
+    auto options = test::CompletionFixtureOptions{};
+    options.zone = false;
+    options.tracks = true;
+    options.second_x = 11.1;
+    options.modules = GENERATE(false, true);
+    const auto result = io::evaluate_fabrication_completion(test::completion_fixture(options));
+    CHECK(result.status() == BoardCompletionStatus::Complete);
+    CHECK_FALSE(has(result, drc_diagnostic_codes::CopperClearanceViolation));
+}
+
+TEST_CASE("Completion keeps interior NPTH plated and tangent track openings conservative",
+          "[completion]") {
+    auto options = test::CompletionFixtureOptions{};
+    options.zone = false;
+    options.tracks = true;
+    SECTION("non-plated middle cut") { options.npth_hole = true; }
+    SECTION("plated interior cut") { options.via = true; }
+    SECTION("plated hole tangent to track") {
+        options.via = true;
+        options.via_y = 10.25;
+    }
+    const auto result = io::evaluate_fabrication_completion(test::completion_fixture(options));
+    CHECK(result.status() != BoardCompletionStatus::Complete);
+    CHECK(row(result, BoardCompletionCheck::Geometry) == BoardCompletionState::NotEvaluated);
+    CHECK(has(result, codes::GeometryNotEvaluated));
+}
+
+TEST_CASE("Completion does not certify a spacing violation from a drill-trimmed track boundary",
+          "[completion]") {
+    auto options = test::CompletionFixtureOptions{};
+    options.zone = false;
+    options.interlayer = true;
+    options.via = true;
+    options.routed_via = true;
+    options.extra_zone_left = 15.5;
+    options.extra_zone_y = 10.25;
+    options.extra_zone_height = 0.2;
+    const auto required = GENERATE(0.15, 0.2);
+    options.rules.set_clearance_mm(BoardClearanceKind::Track, BoardClearanceKind::Zone, required);
+    const auto result = io::evaluate_fabrication_completion(test::completion_fixture(options));
+    INFO(io::write_board_completion(result));
+    CHECK_FALSE(has(result, drc_diagnostic_codes::CopperClearanceViolation));
+    CHECK(row(result, BoardCompletionCheck::Connectivity) == BoardCompletionState::Pass);
+    CHECK(row(result, BoardCompletionCheck::Geometry) ==
+          (required == 0.15 ? BoardCompletionState::Pass : BoardCompletionState::NotEvaluated));
+    CHECK(result.status() == (required == 0.15 ? BoardCompletionStatus::Complete
+                                               : BoardCompletionStatus::NotEvaluated));
+}

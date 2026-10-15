@@ -1777,6 +1777,7 @@ TEST_CASE("CompiledBoard V1 completion preserves proven isolated contact failure
     CHECK(result.status() == volt::BoardCompletionStatus::Incomplete);
     CHECK(result.coverage()[0].state == volt::BoardCompletionState::NotEvaluated);
     CHECK(result.coverage()[4].state == volt::BoardCompletionState::Failed);
+    CHECK(result.coverage()[4].reason == "Inspect exact diagnostics for this mandatory check");
     CHECK(has_diagnostic(result.diagnostics(),
                          volt::pcb_completion_diagnostic_codes::IsolatedContact));
     CHECK_FALSE(volt::io::write_pcb_fabrication_files(reopened).files.empty());

@@ -83,7 +83,21 @@ Existing DRC uses the same factored distance with its old labelled-only inventor
 same-group filter and `1e-9 mm` tolerance. R1a/R1b grammar, clearance/rule resolution,
 spatial obstacle semantics and unlabelled-pad route legality remain unchanged.
 No second geometry engine. New all-copper inventory carries optional labels without
-changing legacy `BoardCopperShape`'s mandatory net contract.
+changing legacy `BoardCopperShape`'s mandatory net contract. A private optional-label
+clearance view feeds the same native primitive, room, class/matrix and epsilon predicate
+as legacy DRC. Every pair of separate supported physical conductors participates, including
+netless zones and disconnected/unmapped pads. Preserved same-logical-group exemptions
+remain valid. Proven same-island contacts form one physical conductor and are covered by
+short/isolation checks, without assigning a label to netless copper. Missing labels supply
+no invented class; the typed pair floor and any known side's resolved class apply, unless
+the existing same-room containment/priority override replaces them. Diagnostics retain
+exact source entities, layer, board/rule-class or room identity and actual/required spacing.
+An ideal spacing violation at a track boundary trimmed by a drill remains NotEvaluated
+without a finished-copper witness; an ideal separation meeting the limit is conservative.
+The new spacing failures and legacy DRC diagnostics are absorbed after contact
+classification: they block completion without changing established contact rows.
+Earlier completion geometry gaps/failures remain conservative. Legacy diagnostic
+payloads remain unchanged.
 
 Analyze Circle (equal dimensions, exporter width diameter), Rectangle, track capsule,
 via disc and Solid polygon. RoundedRectangle is reported lossy/NotEvaluated, even
@@ -115,7 +129,11 @@ Finished copper also respects emitted drills and mechanical openings. Reuse nati
 opening/primitive distance predicates, not a new polygon-subtraction engine. A circular
 opening strictly contained within a conductor, separated from its outer boundary and
 other openings, is non-severing; plated pad/via barrels keep native interlayer continuity.
-An opening that can cut a conductor (boundary intersection, overlapping holes, slot,
+A plated circular drill exactly centred at a track capsule endpoint also preserves its
+connected remainder when the other endpoint's full cap lies beyond the opening. Require
+a concrete annulus/contact witness outside every opening, including diagonal approaches;
+this exception does not cover interior track cuts, NPTH, tangency or overlapping holes.
+An opening that can cut a conductor (other boundary intersections, overlapping holes, slot,
 cutout, unsupported opening treatment) makes affected geometry/connectivity coverage
 NotEvaluated. For contact involving a drilled region, require a concrete shared-copper
 witness outside every opening, using existing primitive point-distance predicates and
@@ -159,6 +177,8 @@ Read-only verification compares artifact/source bytes and owner state before/aft
 | Different layers; incorrect via span; multilayer zone | No invented interlayer contact; unsupported emitted span NotEvaluated |
 | Zone removed/shrunk; contact moved across boundary | Disconnected group fails; tangent/uncertain grid explicitly NotEvaluated |
 | Labelled/netless pad/zone bridges | Exact physical island short; logical snapshot unchanged |
+| Separated netless zone/disconnected/unmapped pad | Native kind/class/room spacing fails below limit; exact limit/epsilon and same-group exemptions pinned |
+| Track ends at plated via/PTH drill | Finished-annulus witness succeeds on horizontal/diagonal and interlayer routes; interior/NPTH/tangent/drill-only cuts conservative |
 | Oval / rounded rectangle / fab-critical feature / off-grid copper | Unsupported/lossy/not-evaluated coverage, never Complete |
 | Drill-only apparent contact; opening severing copper | No false union; exact affected scope NotEvaluated, plated barrels retained |
 | V1 reopened historical | Export remains available; authoritative continuity NotEvaluated |

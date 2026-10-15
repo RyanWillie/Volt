@@ -140,11 +140,30 @@ void append(CompletionWork &work, BoardCompletionCopper item) {
             if (strictly_inside(point, lhs) && strictly_inside(point, rhs) &&
                 outside_openings(point, openings))
                 return true;
+    // Radial samples toward the other primitive also cover diagonal track approaches.
+    for (const auto *disc : {&lhs, &rhs}) {
+        if (disc->kind != BoardCompletionCopperKind::Disc)
+            continue;
+        const auto &other = disc == &lhs ? rhs : lhs;
+        const auto centre = disc->points[0];
+        for (const auto target : other.points) {
+            const auto length = board_distance(centre, target);
+            if (length <= epsilon)
+                continue;
+            const auto fraction = disc->radius_mm * 0.95 / length;
+            const auto point =
+                BoardPoint{centre.x_mm() + (target.x_mm() - centre.x_mm()) * fraction,
+                           centre.y_mm() + (target.y_mm() - centre.y_mm()) * fraction};
+            if (strictly_inside(point, lhs) && strictly_inside(point, rhs) &&
+                outside_openings(point, openings))
+                return true;
+        }
+    }
     return false;
 }
 
-[[nodiscard]] bool opening_contained(const CompletionOpening &opening,
-                                     const BoardCompletionCopper &item) {
+[[nodiscard]] bool opening_preserves_conductor(const CompletionOpening &opening,
+                                               const BoardCompletionCopper &item) {
     if (opening.kind != BoardCopperShapeKind::Disc)
         return false;
     const auto point = opening.points[0];
@@ -154,6 +173,13 @@ void append(CompletionWork &work, BoardCompletionCopper item) {
         return polygon_contains_point(item.points, point) &&
                outline_boundary_distance(BoardOutline{item.points}, point) >
                    opening.radius_mm + epsilon;
+    // A plated circular drill centred at a capsule endpoint trims its end without
+    // splitting the remaining track. Interior/NPTH/tangent cuts stay unsupported.
+    if (opening.plated && item.kind == BoardCompletionCopperKind::Segment)
+        for (std::size_t endpoint = 0; endpoint < 2; ++endpoint)
+            if (point == item.points[endpoint] && board_distance(point, item.points[1 - endpoint]) >
+                                                      opening.radius_mm + item.radius_mm + epsilon)
+                return true;
     return false;
 }
 
@@ -203,7 +229,8 @@ void inventory_completion_copper(CompletionWork &work) {
         work.openings.push_back({BoardCopperShapeKind::Disc,
                                  {via.position()},
                                  via.drill_diameter_mm() / 2.0,
-                                 {EntityRef::board_via(id)}});
+                                 {EntityRef::board_via(id)},
+                                 true});
     }
     for (std::size_t i = 0; i < board.all<BoardZoneId>().size(); ++i) {
         const auto id = BoardZoneId{i};
@@ -237,7 +264,8 @@ void inventory_completion_copper(CompletionWork &work) {
                 work.openings.push_back({BoardCopperShapeKind::Disc,
                                          {resolution.position()},
                                          pad.drill()->diameter_mm() / 2.0,
-                                         entities});
+                                         entities,
+                                         pad.drill()->plating() == FootprintPadPlating::Plated});
             if (layers.empty())
                 continue;
             if (pad.shape() == FootprintPadShape::Oval) {
@@ -298,7 +326,7 @@ void connect_completion_copper(CompletionWork &work) {
             if (distance > epsilon)
                 continue;
             hits.push_back(o);
-            if (!opening_contained(opening, item)) {
+            if (!opening_preserves_conductor(opening, item)) {
                 item.supported = false;
                 item.contact_evaluated = false;
                 auto entities = completion_entities(item);

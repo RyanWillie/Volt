@@ -8,6 +8,7 @@ struct CompletionOpening {
     std::vector<BoardPoint> points;
     double radius_mm;
     std::vector<EntityRef> entities;
+    bool plated = false;
 };
 
 struct CompletionWork {
@@ -31,5 +32,6 @@ void inventory_completion(CompletionWork &work);
 void bind_completion_contacts(CompletionWork &work);
 void inventory_completion_copper(CompletionWork &work);
 void connect_completion_copper(CompletionWork &work);
+void validate_completion_clearance(CompletionWork &work);
 void validate_completion_groups(CompletionWork &work);
 } // namespace volt::detail
