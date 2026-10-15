@@ -159,6 +159,7 @@ def test_strict_batch_preserves_prior_commits_and_rejected_item_evidence(helper)
 
 def test_authoring_guide_native_coordinate_example():
     design, net, other, board, front, back = fixture()
+    board.set_rectangular_outline(origin=(0, 0), size=(32, 18))
     guide = Path(__file__).resolve().parents[2] / "docs-site/python/pcb-authoring.mdx"
     examples = re.findall(r"```python\n(.*?)```", guide.read_text(), re.DOTALL)
     example, = [code for code in examples if code.startswith("# Native routing coordinates")]
@@ -169,4 +170,4 @@ def test_authoring_guide_native_coordinate_example():
     assert result.resolved_steps[0].start == (10.1, 10.1)
     assert result.resolved_steps[0].end == pytest.approx((12.3, 10.1))
     assert result.resolved_steps[1].end == (15.1, 10.1)
-    assert result.resolved_steps[2].end == (15.1, 20.1)
+    assert result.resolved_steps[2].end == (15.1, 16.1)

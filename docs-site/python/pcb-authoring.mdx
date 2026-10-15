@@ -130,13 +130,13 @@ For example, on a board with an existing `led_a` net and `front` copper layer:
 
 ```python
 # Native routing coordinates stay exact even with a placement grid.
-with board.layout(at=(50.0, 50.0), grid=0.5) as layout:
+with board.layout(at=(25.0, 15.0), grid=0.5) as layout:
     exact = (layout.route(led_a, layer=front)
              .at((10.1, 10.1)).right(2.2).tox(15.1)
-             .toy((80.0, 20.1)).finish())
+             .toy((28.0, 16.1)).finish())
 ```
 
-The native result ends at `(15.1, 20.1)`. `.to(...)` routes default to native `Chamfer45`
+The native result ends at `(15.1, 16.1)`. `.to(...)` routes default to native `Chamfer45`
 (`mode="octilinear"`), producing 0/45/90 degree segments. Use `mode="direct"` only when
 a non-octilinear track is deliberate. Terminal calls return an owned `RouteResult`;
 default `STRICT` raises `RouteError` on rejection, with the native result in `.result`.
