@@ -471,14 +471,13 @@ ElectricalRecord ElectricalRecord::from(ElectricalRecordSpec spec) {
     spec.conditions = normalize_conditions(std::move(spec.conditions));
     spec.evidence = normalize_evidence(std::move(spec.evidence));
     spec.value = normalize_value(spec.observable, spec.meaning, spec.subject, spec.value);
-    return ElectricalRecord{ElectricalSemanticKey{sha256_content_hash(semantic_key_input(
-                                spec.subject, spec.observable, spec.meaning, spec.conditions))},
-                            std::move(spec.subject),
-                            spec.observable,
-                            spec.meaning,
-                            spec.value,
-                            std::move(spec.conditions),
-                            std::move(spec.evidence)};
+    // Finish hashing before transferring the subject/conditions to by-value parameters.
+    // MSVC may reorder their construction within a braced initializer (C4868).
+    auto key = ElectricalSemanticKey{sha256_content_hash(
+        semantic_key_input(spec.subject, spec.observable, spec.meaning, spec.conditions))};
+    return ElectricalRecord{
+        std::move(key), std::move(spec.subject),    spec.observable,         spec.meaning,
+        spec.value,     std::move(spec.conditions), std::move(spec.evidence)};
 }
 
 SupplyDomainSubject::SupplyDomainSubject(std::vector<ElectricalPinIndex> positive_pins,

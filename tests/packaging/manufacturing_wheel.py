@@ -20,6 +20,7 @@ assert volt.write_manufacturing_target(target) == target_bytes
 assert artifact == Path('board').read_bytes()
 """
 for mode in ("assembly", "assembly-unselected", "assembly-missing-options", "rating-accepted", "rating-current", "rating-budget", "rating-failure", "rating-unknown", "rating-conditional"):
+    print(f"Checking installed-wheel report: {mode}", flush=True)
     data = json.loads(subprocess.check_output([str(fixture), mode], text=True))
     with tempfile.TemporaryDirectory(prefix="volt-manufacturing-wheel-") as directory:
         root = Path(directory)
