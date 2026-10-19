@@ -146,7 +146,9 @@ An approved alternate MPN never becomes the selected exact Part implicitly.
 `ratings` owns one outcome per occurrence gap or canonical non-characteristic
 semantic-key group, including all original group records/evidence, complete exact
 selection, native rule, ordered comparisons and sorted component/pin/net scope.
-Counts derive from those records. Four finite unconditional, known, conflict-free
+Group `records` are an array of original owner-validated records with `pin_count` and
+`record_count`; they are not a standalone record-set document. Conditions may reference
+other groups in the same exact selected Part. Counts derive from those records. Four finite unconditional, known, conflict-free
 families reuse the existing ERC owner:
 
 - Voltage AbsoluteLimit against authored oriented potentials or compatible provided ranges.

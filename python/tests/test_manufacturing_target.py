@@ -198,7 +198,7 @@ else:
 """], check=True)
 
 
-@pytest.mark.parametrize("mode", ["assembly", "rating-accepted", "rating-current", "rating-budget", "rating-failure", "rating-unknown"])
+@pytest.mark.parametrize("mode", ["assembly", "rating-accepted", "rating-current", "rating-budget", "rating-failure", "rating-unknown", "rating-conditional"])
 def test_exact_assembly_and_rating_native_evidence_has_full_source_free_parity(mode, tmp_path):
     native = fixture(mode)
     artifact = bytes.fromhex(native["artifact_hex"])
@@ -215,13 +215,14 @@ def test_exact_assembly_and_rating_native_evidence_has_full_source_free_parity(m
     assert not report["ready"]
     for key in ("PopulatedQuantities", "DnpQuantities", "SelectedAlternates", "CplIdentity", "CplSide", "CplRotation"):
         assert row(report, key)["state"] == "native-pass"
-    expected = "failed" if mode == "rating-failure" else "not-evaluated" if mode == "rating-unknown" else "native-pass"
+    expected = "failed" if mode == "rating-failure" else "not-evaluated" if mode in ("rating-unknown", "rating-conditional") else "native-pass"
     assert row(report, "SelectedPartRatings")["state"] == expected
     assert report["ratings"]["subject_count"] == len(report["ratings"]["subjects"])
     assert sum(report["ratings"]["counts"].values()) == report["ratings"]["subject_count"]
     for subject in report["ratings"]["subjects"]:
         assert subject["entity_count"] == len(subject["entities"])
         assert subject["observation_count"] == len(subject["observations"])
+        assert subject["record_count"] == len(subject["records"])
         assert subject["selection"]["part_digest"].startswith("sha256:")
         assert subject["rule"].startswith("volt.part_erc.")
     for key in ("AssemblyOrientation", "PartPackageReview", "LandPatternReview", "PinMapReview", "AssemblyProcess", "ExportFidelity"):

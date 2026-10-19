@@ -22,6 +22,21 @@ int main(int argc, char **argv) {
                 volt::test::RatingOccurrence{},
                 volt::test::RatingOccurrence{.side = volt::BoardSide::Bottom, .rotation = -450},
                 volt::test::RatingOccurrence{.dnp = true, .placed = false}};
+        if (mode == "rating-conditional") {
+            auto conditional = volt::test::voltage_rating();
+            conditional.conditions = {volt::ElectricalCondition::equal(
+                volt::test::rating_subject(), volt::ElectricalObservable::Voltage,
+                volt::ElectricalValueExpression::scaled_reference(
+                    volt::ElectricalRecordSelector{volt::test::rating_subject(),
+                                                   volt::ElectricalObservable::Voltage,
+                                                   volt::ElectricalMeaning::Characteristic},
+                    1))};
+            inputs.occurrences[0].records = {
+                volt::voltage_record(volt::test::rating_subject(),
+                                     volt::ElectricalMeaning::Characteristic,
+                                     volt::ElectricalValue{volt::test::rating_volts(3.3)}),
+                conditional};
+        }
         if (mode == "rating-failure")
             inputs.voltage = 9;
         if (mode == "rating-unknown")
@@ -65,7 +80,7 @@ int main(int argc, char **argv) {
     const auto target = exact ? volt::test::assembly_rating_target(
                                     compiled, true,
                                     volt::CplProjectionOptions{
-                                        {volt::CplRotationOffset{{"test.rating", "two-pin"}, 90}}})
+                                        {volt::CplRotationOffset{{"test.rating", "subject"}, 90}}})
                               : volt::test::manufacturing_target(compiled, strict);
     const auto result = volt::evaluate_manufacturing_coverage(compiled, target);
     auto hex = std::string{};

@@ -1,10 +1,10 @@
 #include "../detail/diagnostic_json.hpp"
 #include "../detail/entity_ref_format.hpp"
+#include "../parts/electrical_records_detail.hpp"
 #include <nlohmann/json.hpp>
 #include <volt/core/errors.hpp>
 #include <volt/io/assembly/cpl_writer.hpp>
 #include <volt/io/bom/bom_writer.hpp>
-#include <volt/io/parts/electrical_records_io.hpp>
 #include <volt/io/pcb/board_completion.hpp>
 #include <volt/io/pcb/manufacturing_target.hpp>
 
@@ -53,6 +53,9 @@ Json rating_report(const SelectedPartRatings &ratings) {
                          {"library_digest", ref.library_digest().value()},
                          {"part_digest", ref.part_digest().value()}};
         }
+        auto records = Json::array();
+        for (const auto &record : subject.records)
+            records.push_back(detail::electrical_record_json(record));
         auto observations = Json::array();
         for (const auto &item : subject.observations)
             observations.push_back(
@@ -69,8 +72,9 @@ Json rating_report(const SelectedPartRatings &ratings) {
             {{"component", subject.component.index()},
              {"selection", selection},
              {"semantic_key", subject.key ? Json(subject.key->hash().value()) : Json{}},
-             {"records",
-              subject.records ? Json::parse(write_electrical_records(*subject.records)) : Json{}},
+             {"pin_count", subject.pin_count},
+             {"records", records},
+             {"record_count", records.size()},
              {"rule", subject.rule},
              {"state", states.at(static_cast<std::size_t>(subject.state))},
              {"reason", subject.reason},

@@ -38,8 +38,10 @@ struct SelectedPartRatingSubject {
     std::optional<LibraryPartRef> selection;
     /** Canonical group identity; absent for a component-level gap. */
     std::optional<ElectricalSemanticKey> key;
-    /** All original records in this group, including values, conditions and evidence. */
-    std::optional<ElectricalRecordSet> records;
+    /** Original ordered pin-contract size, zero for a component-level gap. */
+    std::size_t pin_count;
+    /** Original owner-validated records in this group, including cross-group selectors. */
+    std::vector<ElectricalRecord> records;
     /** Closed native obligation rule, including explicit input/unsupported rules. */
     std::string rule;
     /** Native coverage state. */

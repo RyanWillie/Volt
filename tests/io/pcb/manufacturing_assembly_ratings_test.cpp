@@ -129,7 +129,7 @@ TEST_CASE("Pinned native CPL rotation options change target evidence without mut
     const auto compiled = assembly_rating_fixture(options);
     const auto empty = evaluate(compiled);
     const auto corrected = evaluate(
-        compiled, true, CplProjectionOptions{{CplRotationOffset{{"test.rating", "two-pin"}, 90}}});
+        compiled, true, CplProjectionOptions{{CplRotationOffset{{"test.rating", "subject"}, 90}}});
     CHECK(empty.target_digest() != corrected.target_digest());
     CHECK(empty.cpl()->rows()[0].rotation_offset_deg() == 0);
     CHECK(corrected.cpl()->rows()[0].rotation_offset_deg() == 90);
@@ -139,8 +139,8 @@ TEST_CASE("Pinned native CPL rotation options change target evidence without mut
     CHECK(io::write_manufacturing_coverage(empty) != io::write_manufacturing_coverage(corrected));
     CHECK_THROWS_AS(assembly_rating_target(
                         compiled, true,
-                        CplProjectionOptions{{CplRotationOffset{{"test.rating", "two-pin"}, 90},
-                                              CplRotationOffset{{"test.rating", "two-pin"}, 180}}}),
+                        CplProjectionOptions{{CplRotationOffset{{"test.rating", "subject"}, 90},
+                                              CplRotationOffset{{"test.rating", "subject"}, 180}}}),
                     KernelArgumentError);
 }
 
@@ -175,8 +175,7 @@ TEST_CASE("All four supported native rating families execute inclusive compariso
               (delta > 0 ? SelectedPartRatingState::Failed : SelectedPartRatingState::Pass));
         CHECK(subject.selection);
         CHECK(subject.key);
-        REQUIRE(subject.records);
-        CHECK_FALSE(subject.records->records().empty());
+        CHECK_FALSE(subject.records.empty());
     }
     if (delta > 0) {
         CHECK_FALSE(result.ratings()->diagnostics.diagnostics().empty());
@@ -241,7 +240,7 @@ TEST_CASE("Incomplete supported ratings remain explicit instead of passing empty
         CHECK(result.ratings()->subjects[0].state == SelectedPartRatingState::NotApplicable);
 }
 
-TEST_CASE("Native rating current aliases aggregate once per occurrence and preserve source groups",
+TEST_CASE("Native rating repeated current claims use the maximum per occurrence",
           "[manufacturing][ratings]") {
     auto first = current(ElectricalMeaning::Requirement, 0.2);
     auto alias = current(ElectricalMeaning::Requirement, 0.3);
@@ -265,7 +264,7 @@ TEST_CASE("Rating semantic key groups retain all source records and failure domi
     const auto result = evaluate(compiled);
     REQUIRE(result.ratings());
     REQUIRE(result.ratings()->subjects.size() == 1);
-    CHECK(result.ratings()->subjects[0].records->records().size() == 2);
+    CHECK(result.ratings()->subjects[0].records.size() == 2);
     CHECK(leaf(result, ManufacturingCheck::SelectedPartRatings).state ==
           ManufacturingState::NativePass);
     options.voltage = 6;
@@ -362,7 +361,7 @@ TEST_CASE("Rating arithmetic and maximum finite CPL correction retain truthful o
     const auto compiled = assembly_rating_fixture(options);
     const auto result =
         evaluate(compiled, true,
-                 CplProjectionOptions{{CplRotationOffset{{"test.rating", "two-pin"},
+                 CplProjectionOptions{{CplRotationOffset{{"test.rating", "subject"},
                                                          std::numeric_limits<double>::max()}}});
     CHECK(leaf(result, ManufacturingCheck::SelectedPartRatings).state ==
           ManufacturingState::NotEvaluated);
@@ -394,4 +393,90 @@ TEST_CASE("Changed selection requires a different immutable artifact despite app
     CHECK_FALSE(foreign.ratings());
     CHECK_FALSE(foreign.bom());
     CHECK_FALSE(foreign.cpl());
+}
+
+TEST_CASE("Conditional rating selectors retain original cross-group context without revalidation",
+          "[manufacturing][ratings]") {
+    const auto characteristic = voltage_record(rating_subject(), ElectricalMeaning::Characteristic,
+                                               ElectricalValue{rating_volts(3.3)});
+    auto conditional = voltage_rating();
+    conditional.conditions = {ElectricalCondition::equal(
+        rating_subject(), ElectricalObservable::Voltage,
+        ElectricalValueExpression::scaled_reference(
+            ElectricalRecordSelector{rating_subject(), ElectricalObservable::Voltage,
+                                     ElectricalMeaning::Characteristic},
+            1))};
+    auto options = RatingFixtureOptions{};
+    options.occurrences[0].records = {characteristic, conditional};
+    const auto compiled = assembly_rating_fixture(options);
+    const auto result = evaluate(compiled);
+    CHECK(leaf(result, ManufacturingCheck::SelectedPartRatings).state ==
+          ManufacturingState::NotEvaluated);
+    REQUIRE(result.ratings());
+    REQUIRE(result.ratings()->subjects.size() == 1);
+    CHECK(result.ratings()->subjects[0].records.size() == 1);
+    CHECK(result.ratings()->subjects[0].records[0].conditions() == conditional.conditions);
+    const auto text = io::write_manufacturing_coverage(result);
+    const auto document = nlohmann::json::parse(text);
+    CHECK(document["ratings"]["subjects"][0]["record_count"] == 1);
+    CHECK_FALSE(document["ratings"]["subjects"][0]["records"][0]["conditions"].empty());
+}
+
+TEST_CASE("Distinct rating supply aliases aggregate max demand and min capability per occurrence",
+          "[manufacturing][ratings]") {
+    const auto variant = GENERATE("boundary", "violation", "dnp");
+    const auto which = std::string_view{variant};
+    auto capability_alias = current(ElectricalMeaning::Capability, 0.5);
+    auto requirement_alias = current(ElectricalMeaning::Requirement, 0.3);
+    const auto alias = ElectricalSubject::supply_domain(
+        {ElectricalPinIndex{0}, ElectricalPinIndex{2}}, {ElectricalPinIndex{1}});
+    capability_alias.subject = alias;
+    requirement_alias.subject = alias;
+    auto options = pair({current(ElectricalMeaning::Capability, 1), capability_alias},
+                        {current(ElectricalMeaning::Requirement, 0.2), requirement_alias});
+    options.occurrences.push_back(RatingOccurrence{
+        .records = {current(ElectricalMeaning::Requirement, which == "boundary" ? 0.2 : 0.201)},
+        .dnp = which == "dnp",
+        .selected_index = 2});
+    const auto compiled = assembly_rating_fixture(options);
+    const auto result = evaluate(compiled);
+    CHECK(leaf(result, ManufacturingCheck::SelectedPartRatings).state ==
+          (which == "violation" ? ManufacturingState::Failed : ManufacturingState::NativePass));
+    REQUIRE(result.ratings());
+    REQUIRE(result.ratings()->subjects.size() == 5);
+    for (const auto &subject : result.ratings()->subjects)
+        if (subject.state != SelectedPartRatingState::NotApplicable) {
+            REQUIRE(subject.observations.size() == 1);
+            CHECK(subject.observations[0].value == (which == "boundary"    ? 0.5
+                                                    : which == "violation" ? 0.501
+                                                                           : 0.3));
+        }
+}
+
+TEST_CASE(
+    "Voltage rating checks every populated provider and cannot replace accepted range with nominal",
+    "[manufacturing][ratings]") {
+    const auto variant = GENERATE("single", "multiple", "dnp", "accepted-nominal");
+    const auto which = std::string_view{variant};
+    auto options =
+        pair({range(ElectricalObservable::Voltage, ElectricalMeaning::ProvidedRange, 0, 4)},
+             {voltage_rating(0, 5)});
+    options.voltage.reset();
+    if (which == "multiple" || which == "dnp")
+        options.occurrences.push_back(
+            RatingOccurrence{.records = {range(ElectricalObservable::Voltage,
+                                               ElectricalMeaning::ProvidedRange, 0, 6)},
+                             .dnp = which == "dnp",
+                             .selected_index = 2});
+    if (which == "accepted-nominal") {
+        options.occurrences = {
+            RatingOccurrence{.records = {range(ElectricalObservable::Voltage,
+                                               ElectricalMeaning::AcceptedRange, 0, 5)}}};
+        options.voltage = 3.3;
+    }
+    const auto compiled = assembly_rating_fixture(options);
+    CHECK(leaf(evaluate(compiled), ManufacturingCheck::SelectedPartRatings).state ==
+          (which == "multiple"           ? ManufacturingState::Failed
+           : which == "accepted-nominal" ? ManufacturingState::NotEvaluated
+                                         : ManufacturingState::NativePass));
 }

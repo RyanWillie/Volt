@@ -52,20 +52,23 @@ inline CompiledBoard assembly_rating_fixture(RatingFixtureOptions options = {}) 
     auto circuit = Circuit{};
     const auto spec = ComponentSpec{
         .name = "Synthetic exact rating subject",
-        .pins = {PinSpec{.name = "P", .number = "1"}, PinSpec{.name = "N", .number = "2"}},
+        .pins = {PinSpec{.name = "P", .number = "1"}, PinSpec{.name = "N", .number = "2"},
+                 PinSpec{.name = "Q", .number = "3"}},
         .schematic_symbols = {SchematicSymbolReference{"test.rating:symbol"}},
         .contract = ComponentContractSpec{.key = ComponentKey{"test.rating.subject@1"},
-                                          .pin_keys = {PinKey{"P"}, PinKey{"N"}}}};
+                                          .pin_keys = {PinKey{"P"}, PinKey{"N"}, PinKey{"Q"}}}};
     const auto def = circuit.define_component(spec);
     const auto &definition = circuit.get(def);
     const auto footprint = FootprintDefinition{
-        FootprintRef{"test.rating", "two-pin"},
+        FootprintRef{"test.rating", "subject"},
         {FootprintPad::surface_mount("1", FootprintPadShape::Circle, {0, -1}, {0.8, 0.8},
                                      FootprintLayerSet::front_smd()),
          FootprintPad::surface_mount("2", FootprintPadShape::Circle, {0, 1}, {0.8, 0.8},
+                                     FootprintLayerSet::front_smd()),
+         FootprintPad::surface_mount("3", FootprintPadShape::Circle, {1, -1}, {0.8, 0.8},
                                      FootprintLayerSet::front_smd())}};
     const auto bytes = io::write_footprint_asset(footprint);
-    const auto asset = PartAssetReference{PartAssetKind::Footprint, "footprint:test.rating/two-pin",
+    const auto asset = PartAssetReference{PartAssetKind::Footprint, "footprint:test.rating/subject",
                                           sha256_content_hash(bytes)};
     auto builder =
         PartLibraryBuilder{PartLibraryIdentity{"test.rating", "1", PartLibrarySchemaVersion::V1}};
@@ -77,9 +80,10 @@ inline CompiledBoard assembly_rating_fixture(RatingFixtureOptions options = {}) 
         builder.add_part(PartDefinition{
             definition,
             PartIdentity{"test.rating", keys.back().value(), "1"},
-            ElectricalRecordSet{2, input.records},
+            ElectricalRecordSet{3, input.records},
             {PinPackageTerminalMapping{PinKey{"P"}, {PackageTerminalKey{"1"}}},
-             PinPackageTerminalMapping{PinKey{"N"}, {PackageTerminalKey{"2"}}}},
+             PinPackageTerminalMapping{PinKey{"N"}, {PackageTerminalKey{"2"}}},
+             PinPackageTerminalMapping{PinKey{"Q"}, {PackageTerminalKey{"3"}}}},
             {},
             PartProvenance{"synthetic://rating-datasheet", "test", "synthetic only"},
             {},
@@ -89,7 +93,8 @@ inline CompiledBoard assembly_rating_fixture(RatingFixtureOptions options = {}) 
                 HashedFootprintReference{footprint.ref(), asset.digest()},
                 export_fixture_part_pads(footprint),
                 {PackageTerminalPadMapping{PackageTerminalKey{"1"}, {FootprintPadKey{"1"}}},
-                 PackageTerminalPadMapping{PackageTerminalKey{"2"}, {FootprintPadKey{"2"}}}},
+                 PackageTerminalPadMapping{PackageTerminalKey{"2"}, {FootprintPadKey{"2"}}},
+                 PackageTerminalPadMapping{PackageTerminalKey{"3"}, {FootprintPadKey{"3"}}}},
                 input.alternates,
                 {}}});
     }
@@ -162,6 +167,8 @@ inline CompiledBoard assembly_rating_fixture(RatingFixtureOptions options = {}) 
                                                circuit.get(*module).template_nets()[0]),
                     9.0);
         } else if (input.connected) {
+            static_cast<void>(
+                circuit.connect(*positive, *queries::pin_by_name(circuit, component, "Q")));
             static_cast<void>(
                 circuit.connect(*positive, *queries::pin_by_name(circuit, component, "P")));
             static_cast<void>(

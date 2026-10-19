@@ -370,13 +370,14 @@ DiagnosticReport run_selected_part_erc(const Circuit &circuit,
         const auto &instance = circuit.get(component);
         const auto dnp = queries::component_dnp(circuit, component).value_or(false);
         const auto add_group = [&](std::optional<ElectricalSemanticKey> key,
-                                   std::optional<ElectricalRecordSet> records, std::string reason,
+                                   std::vector<ElectricalRecord> records, std::string reason,
                                    std::string rule = "volt.part_erc.input@1") {
             const auto group = audit->result.subjects.size();
             audit->result.subjects.push_back(
                 {component,
                  reference,
                  std::move(key),
+                 input.part ? input.part->electrical_records().pin_count() : 0U,
                  std::move(records),
                  std::move(rule),
                  dnp ? SelectedPartRatingState::NotApplicable
@@ -405,19 +406,15 @@ DiagnosticReport run_selected_part_erc(const Circuit &circuit,
             if (audit) {
                 const auto key = record.semantic_key().hash().value();
                 if (!groups.contains(key)) {
-                    auto originals = std::vector<ElectricalRecordSpec>{};
+                    auto originals = std::vector<ElectricalRecord>{};
                     for (const auto &source : part.electrical_records().records())
                         if (source.semantic_key() == record.semantic_key())
-                            originals.push_back({source.subject(), source.observable(),
-                                                 source.meaning(), source.value(),
-                                                 source.conditions(), source.evidence()});
+                            originals.push_back(source);
                     groups.emplace(
                         key,
-                        add_group(
-                            record.semantic_key(),
-                            ElectricalRecordSet{part.electrical_records().pin_count(), originals},
-                            "No supported rating comparison executed for this semantic group",
-                            rating_rule(record)));
+                        add_group(record.semantic_key(), std::move(originals),
+                                  "No supported rating comparison executed for this semantic group",
+                                  rating_rule(record)));
                 }
                 group = groups.at(key);
                 const auto indices = subject_indices(record.subject());
