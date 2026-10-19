@@ -34,7 +34,11 @@ material and mask choices establish requested applicability only; their actual
 realization/review remains an explicit uncovered requirement.
 
 Selection dimensions X/Y are board-axis bounding-box extents, with no rotational
-normalization. Numeric comparison uses native board DRC epsilon (1e-9 mm); limits
+normalization. Board extents, finished thickness and each top/bottom copper weight
+must equal the explicit selection independently of capability range/availability.
+The stack must contain exactly the two enabled top/bottom copper layers, in that
+order, with no additional copper layers outside the stack. Missing metadata is
+NotEvaluated; contradictory known metadata is Failed. Numeric comparison uses native board DRC epsilon (1e-9 mm); limits
 are inclusive. Native weights are oz/ft² and counts dimensionless. All optional limits
 remain unknown when absent; empty capability counts/weights are unknown, never unlimited.
 Profile process scope includes thickness, weights and dimensions explicitly, so ranges
@@ -105,13 +109,21 @@ One failing observation fails its row; a gap cannot hide a known failure. Unknow
 identity prevents all source-dependent comparisons; physical evidence may still be
 reported as source facts but cannot establish target satisfaction. Unsupported process
 prevents process-dependent NativePass. Rows for deferred leaves retain board scope;
-assembly leaves have full logical component scope. No dynamic leaf injection.
+assembly leaves have full logical component scope. SelectedPartRatings remains
+required under both goals; the other assembly-only leaves are the final block
+PartPackageReview through AssemblyProcess excluding SelectedPartRatings. Each leaf
+records a stable blocker classification (missing coverage/input, failed constraint,
+unsupported selection or identity mismatch) plus actionable remediation. Aggregate
+counts report rows per state and exact observation/entity counts. Row entity scope
+is a sorted unique EntityRef list; observations preserve source ID order and
+compound placement/pad identity where relevant. No dynamic leaf injection.
 
 ## IO and Python
 
 Volt::IO supplies deterministic versioned target JSON read/write and report JSON writer.
 Target JSON embeds the existing capability-profile document unchanged. Strict format,
-schema and policy versions; unknown/missing keys, duplicate keys, invalid enums/types,
+schema and policy versions; a domain-specific ManufacturingTargetReadError carries
+Malformed or UnsupportedVersion (no generic kernel ErrorCode expansion); unknown/missing keys, duplicate keys, invalid enums/types,
 non-finite numeric values, bad hashes and invalid ranges fail with typed kernel/IO errors.
 Unknown supported document versions are UnsupportedVersion. No result decoder is needed:
 reports cannot be trusted as evaluator inputs. A reopened target plus independently
