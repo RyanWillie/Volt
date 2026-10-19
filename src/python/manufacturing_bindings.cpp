@@ -12,8 +12,10 @@ PyObject *read_error_type = nullptr;
 }
 
 void bind_manufacturing(py::module_ &module) {
-    const auto name = module.attr("__name__").cast<std::string>() + ".ManufacturingTargetReadError";
-    read_error_type = PyErr_NewException(name.c_str(), module.attr("VoltError").ptr(), nullptr);
+    const auto error_class_name =
+        module.attr("__name__").cast<std::string>() + ".ManufacturingTargetReadError";
+    read_error_type =
+        PyErr_NewException(error_class_name.c_str(), module.attr("VoltError").ptr(), nullptr);
     module.attr("ManufacturingTargetReadError") =
         py::reinterpret_steal<py::object>(read_error_type);
     py::register_exception_translator([](std::exception_ptr failure) {
