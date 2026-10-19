@@ -168,7 +168,7 @@ ManufacturingProfile::ManufacturingProfile(BoardCapabilityProfile capability,
                                            std::optional<BoardCapabilityRange> dimension_y_mm,
                                            std::optional<double> minimum_via_radial_annulus_mm)
     : capability_{std::move(capability)}, source_content_{std::move(source_content)},
-      applicability_{std::move(applicability)}, dimension_x_mm_{dimension_x_mm},
+      applicability_{applicability}, dimension_x_mm_{dimension_x_mm},
       dimension_y_mm_{dimension_y_mm},
       minimum_via_radial_annulus_mm_{minimum_via_radial_annulus_mm} {
     validate_process(applicability_);
@@ -194,8 +194,7 @@ ManufacturingTarget::ManufacturingTarget(CompiledBoardIdentity source, ContentHa
                                          ManufacturingProfile profile,
                                          std::optional<CplProjectionOptions> cpl_options)
     : source_{std::move(source)}, content_digest_{std::move(content_digest)}, goal_{goal},
-      process_{std::move(process)}, profile_{std::move(profile)},
-      cpl_options_{std::move(cpl_options)} {
+      process_{process}, profile_{std::move(profile)}, cpl_options_{std::move(cpl_options)} {
     valid_enum(std::optional{goal_}, ManufacturingGoal::FabricationAndAssembly);
     validate_process(process_);
     if (cpl_options_) {

@@ -120,7 +120,7 @@ void bind_manufacturing(py::module_ &module) {
                          std::optional<BoardCapabilityRange> y, std::optional<double> radial) {
                  return ManufacturingProfile{io::read_capability_profile_text(capability_json),
                                              ContentHash{source_content},
-                                             std::move(applicability),
+                                             applicability,
                                              x,
                                              y,
                                              radial};
@@ -148,7 +148,7 @@ void bind_manufacturing(py::module_ &module) {
                      CompiledBoardIdentity{BoardName{board}, ContentHash{provenance_digest}},
                      ContentHash{content_digest},
                      goal,
-                     std::move(process),
+                     process,
                      std::move(profile),
                      std::move(cpl)};
              }),
@@ -187,8 +187,8 @@ void bind_manufacturing(py::module_ &module) {
            ManufacturingProfile profile, std::optional<CplProjectionOptions> cpl) {
             const auto compiled = io::open_compiled_board(artifact.cast<std::string>());
             return ManufacturingTarget{
-                compiled.identity(), compiled.content_digest(), goal,
-                std::move(process),  std::move(profile),        std::move(cpl)};
+                compiled.identity(), compiled.content_digest(), goal, process, std::move(profile),
+                std::move(cpl)};
         },
         py::arg("artifact"), py::arg("goal"), py::arg("process"), py::arg("profile"),
         py::arg("cpl_options") = py::none());

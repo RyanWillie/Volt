@@ -43,7 +43,7 @@ manufacturing_profile(bool strict = false,
     return {manufacturing_capability(strict),
             sha256_content_hash(strict ? "Synthetic profile B v1; not vendor acceptance"
                                        : "Synthetic profile A v1; not vendor acceptance"),
-            std::move(applicability),
+            applicability,
             BoardCapabilityRange{10, 40},
             BoardCapabilityRange{10, 30},
             0.15};

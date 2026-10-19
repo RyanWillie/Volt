@@ -13,7 +13,7 @@ class ManufacturingTargetReadError final : public std::runtime_error {
   public:
     /** Preserve exact error family and explanation. */
     ManufacturingTargetReadError(ManufacturingTargetReadErrorCode code, std::string message)
-        : std::runtime_error{std::move(message)}, code_{code} {}
+        : std::runtime_error{message}, code_{code} {}
 
     /** Return the stable malformed/unsupported-version distinction. */
     [[nodiscard]] ManufacturingTargetReadErrorCode code() const noexcept { return code_; }
