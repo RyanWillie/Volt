@@ -422,10 +422,15 @@ DiagnosticReport run_selected_part_erc(const Circuit &circuit,
                 for (const auto &side : {indices.positive, indices.negative})
                     for (const auto index : side)
                         entities.push_back(EntityRef::pin(input.pins[index.value()]));
-                if (dnp)
-                    continue;
             }
             const auto domain = project_subject(circuit, continuity, input.pins, record.subject());
+            if (group && domain) {
+                auto &entities = audit->result.subjects[*group].entities;
+                entities.push_back(EntityRef::net(domain->positive));
+                entities.push_back(EntityRef::net(domain->negative));
+            }
+            if (audit && dnp)
+                continue;
             if (!domain.has_value()) {
                 subject_unresolved = true;
                 current_unresolved =
@@ -436,11 +441,6 @@ DiagnosticReport run_selected_part_erc(const Circuit &circuit,
                         "Electrical subject endpoints do not project to distinct complete domains";
                 }
                 continue;
-            }
-            if (group) {
-                auto &entities = audit->result.subjects[*group].entities;
-                entities.push_back(EntityRef::net(domain->positive));
-                entities.push_back(EntityRef::net(domain->negative));
             }
             const auto key = ClaimKey{component, *domain, record.observable(), record.meaning()};
             auto [claim, inserted] = claims.try_emplace(key, Claim{component,

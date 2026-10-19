@@ -217,6 +217,11 @@ def test_exact_assembly_and_rating_native_evidence_has_full_source_free_parity(m
         assert row(report, key)["state"] == "native-pass"
     expected = "failed" if mode == "rating-failure" else "not-evaluated" if mode in ("rating-unknown", "rating-conditional") else "native-pass"
     assert row(report, "SelectedPartRatings")["state"] == expected
+    if mode == "assembly":
+        dnp = [subject for subject in report["ratings"]["subjects"] if subject["state"] == "not-applicable"]
+        assert len(dnp) == 1
+        assert {entity["index"] for entity in dnp[0]["entities"] if entity["kind"] == "net"} == {0, 1}
+        assert dnp[0]["observations"] == []
     assert report["ratings"]["subject_count"] == len(report["ratings"]["subjects"])
     assert sum(report["ratings"]["counts"].values()) == report["ratings"]["subject_count"]
     for subject in report["ratings"]["subjects"]:

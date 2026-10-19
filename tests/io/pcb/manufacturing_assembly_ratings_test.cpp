@@ -154,6 +154,43 @@ TEST_CASE("Exact assembly inventories preserve selected grouping DNP and alterna
     CHECK(std::string{compiled.bytes()} == before);
 }
 
+TEST_CASE("DNP rating evidence retains available component pin and net scope without claims",
+          "[manufacturing][ratings]") {
+    const auto selected = GENERATE(false, true);
+    const auto connected = GENERATE(false, true);
+    const auto family = GENERATE(0, 1, 2);
+    auto options = RatingFixtureOptions{};
+    if (family == 1)
+        options.occurrences[0].records = {current(ElectricalMeaning::Capability, 1)};
+    if (family == 2)
+        options.occurrences[0].records = {
+            range(ElectricalObservable::Current, ElectricalMeaning::AcceptedRange, 0, 1)};
+    options.occurrences[0].dnp = true;
+    options.occurrences[0].placed = false;
+    options.occurrences[0].selected = selected;
+    options.occurrences[0].connected = connected;
+    const auto result = evaluate(assembly_rating_fixture(options));
+    REQUIRE(result.ratings());
+    REQUIRE(result.ratings()->subjects.size() == 1);
+    const auto &subject = result.ratings()->subjects[0];
+    CHECK(subject.state == SelectedPartRatingState::NotApplicable);
+    CHECK(subject.observations.empty());
+    CHECK(result.ratings()->diagnostics.diagnostics().empty());
+    auto expected = std::vector{EntityRef::component(ComponentId{0})};
+    if (selected) {
+        expected.push_back(EntityRef::pin(PinId{0}));
+        expected.push_back(EntityRef::pin(PinId{1}));
+        if (connected) {
+            expected.push_back(EntityRef::net(NetId{0}));
+            expected.push_back(EntityRef::net(NetId{1}));
+        }
+    }
+    std::ranges::sort(expected);
+    CHECK(subject.entities == expected);
+    CHECK(leaf(result, ManufacturingCheck::SelectedPartRatings).state ==
+          ManufacturingState::NotEvaluated);
+}
+
 TEST_CASE("Assembly missing intent selection and first last all placements cannot disappear",
           "[manufacturing][assembly]") {
     const auto missing = GENERATE("intent", "selection", "first", "last", "all");
