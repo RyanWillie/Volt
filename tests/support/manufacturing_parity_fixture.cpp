@@ -81,11 +81,14 @@ int main(int argc, char **argv) {
         }
         return volt::test::assembly_rating_fixture(inputs);
     }();
-    const auto target = exact ? volt::test::assembly_rating_target(
-                                    compiled, true,
-                                    volt::CplProjectionOptions{
-                                        {volt::CplRotationOffset{{"test.rating", "subject"}, 90}}})
-                              : volt::test::manufacturing_target(compiled, strict);
+    auto target = exact ? volt::test::assembly_rating_target(
+                              compiled, true,
+                              volt::CplProjectionOptions{
+                                  {volt::CplRotationOffset{{"test.rating", "subject"}, 90}}})
+                        : volt::test::manufacturing_target(compiled, strict);
+    if (mode == "assembly-missing-options")
+        target = volt::ManufacturingTarget{target.source(),  target.content_digest(), target.goal(),
+                                           target.process(), target.profile(),        std::nullopt};
     const auto result = volt::evaluate_manufacturing_coverage(compiled, target);
     auto hex = std::string{};
     constexpr auto digits = std::string_view{"0123456789abcdef"};

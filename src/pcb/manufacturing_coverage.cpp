@@ -112,6 +112,11 @@ ManufacturingCoverage::ManufacturingCoverage(const CompiledBoard &compiled,
             owner = ManufacturingOwner::NativeTarget;
         else if (check <= ManufacturingCheck::PhysicalGeometry)
             owner = ManufacturingOwner::NativeCompletion;
+        else if (check >= ManufacturingCheck::PopulatedQuantities &&
+                 check <= ManufacturingCheck::CplRotation)
+            owner = ManufacturingOwner::NativeAssembly;
+        else if (check == ManufacturingCheck::SelectedPartRatings)
+            owner = ManufacturingOwner::NativeRatings;
         else if (check == ManufacturingCheck::ExportFidelity)
             owner = ManufacturingOwner::DeferredIO;
         else if ((check >= ManufacturingCheck::MaterialRealization &&
@@ -231,6 +236,19 @@ ManufacturingCoverage evaluate_manufacturing_coverage(const CompiledBoard &compi
         for (const auto check : numeric)
             gap(row(check), "Matching artifact identity and complete supported process/profile "
                             "selections are required");
+        for (const auto check :
+             {ManufacturingCheck::PopulatedQuantities, ManufacturingCheck::DnpQuantities,
+              ManufacturingCheck::SelectedAlternates, ManufacturingCheck::CplIdentity,
+              ManufacturingCheck::CplSide, ManufacturingCheck::CplRotation,
+              ManufacturingCheck::SelectedPartRatings}) {
+            auto &stopped = row(check);
+            if (stopped.applicable)
+                state(stopped, ManufacturingState::NotEvaluated, ManufacturingBlocker::MissingInput,
+                      "Matching artifact identity and complete supported process/profile "
+                      "selections, including explicit assembly CPL options when applicable, "
+                      "are required",
+                      "Supply the exact artifact target and all supported native prerequisites");
+        }
         return result;
     }
     result.ratings_ = detail::compiled_selected_part_ratings(compiled);

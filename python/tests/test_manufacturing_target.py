@@ -249,3 +249,20 @@ def test_unselected_footprint_cannot_certify_zero_rotation_fallback():
     assert report["assembly"]["cpl"]["rows"][0]["footprint"] is None
     assert report["assembly"]["cpl"]["rows"][0]["rotation_offset_deg"] == 0
     assert report["assembly"]["cpl"]["rows"][0]["rotation_deg"] == 45
+
+
+def test_missing_preflight_inputs_preserve_native_ownership_and_full_parity():
+    native = fixture("assembly-missing-options")
+    result = volt.evaluate_manufacturing_coverage(bytes.fromhex(native["artifact_hex"]),
+        volt.read_manufacturing_target(native["target"]))
+    assert result.to_json() == native["report"]
+    report = json.loads(result.to_json())
+    for key in ("PopulatedQuantities", "DnpQuantities", "SelectedAlternates", "CplIdentity", "CplSide", "CplRotation", "SelectedPartRatings"):
+        checked = row(report, key)
+        assert checked["owner"] == ("native-ratings" if key == "SelectedPartRatings" else "native-assembly")
+        assert checked["state"] == "not-evaluated"
+        assert checked["code"] == "MANUFACTURING_MISSING_INPUT"
+        assert "not implemented" not in checked["reason"]
+        assert checked["observations"] == []
+    assert report["assembly"] == {"bom": None, "cpl": None}
+    assert report["ratings"] is None

@@ -45,6 +45,72 @@ RatingFixtureOptions pair(std::vector<ElectricalRecordSpec> provider,
 }
 } // namespace
 
+TEST_CASE("Delivered assembly and rating checks retain exact preflight ownership and gaps",
+          "[manufacturing][assembly][ratings]") {
+    const auto assembly = GENERATE(false, true);
+    const auto empty = GENERATE(false, true);
+    const auto variant = GENERATE(0, 1, 2, 3, 4, 5, 6);
+    if (!assembly && variant == 2)
+        return;
+    auto options = RatingFixtureOptions{};
+    if (empty)
+        options.occurrences.clear();
+    const auto compiled = assembly_rating_fixture(options);
+    auto process = manufacturing_process();
+    if (assembly)
+        process.assembly = ManufacturingAssembly::SmtAndThroughHole;
+    auto applicability = process;
+    auto cpl =
+        assembly ? std::optional<CplProjectionOptions>{CplProjectionOptions{}} : std::nullopt;
+    if (variant == 0)
+        process.finish.reset();
+    if (variant == 1)
+        applicability.finish.reset();
+    if (variant == 2)
+        cpl.reset();
+    if (variant == 3)
+        process.finish = ManufacturingFinish::Enig;
+    if (variant == 4)
+        applicability.finish = ManufacturingFinish::Enig;
+    if (variant == 5)
+        applicability.dimension_x_mm = 31;
+    auto foreign_options = options;
+    foreign_options.voltage = 9;
+    const auto foreign = assembly_rating_fixture(foreign_options);
+    const auto target = ManufacturingTarget{
+        variant == 6 ? foreign.identity() : compiled.identity(),
+        variant == 6 ? foreign.content_digest() : compiled.content_digest(),
+        assembly ? ManufacturingGoal::FabricationAndAssembly : ManufacturingGoal::Fabrication,
+        process,
+        manufacturing_profile(false, applicability),
+        cpl};
+    const auto result = evaluate_manufacturing_coverage(compiled, target);
+    for (const auto check :
+         {ManufacturingCheck::PopulatedQuantities, ManufacturingCheck::DnpQuantities,
+          ManufacturingCheck::SelectedAlternates, ManufacturingCheck::CplIdentity,
+          ManufacturingCheck::CplSide, ManufacturingCheck::CplRotation,
+          ManufacturingCheck::SelectedPartRatings}) {
+        CAPTURE(assembly, empty, variant, check);
+        const auto &row = leaf(result, check);
+        const auto ratings = check == ManufacturingCheck::SelectedPartRatings;
+        const auto applicable = assembly || ratings;
+        CHECK(row.owner ==
+              (ratings ? ManufacturingOwner::NativeRatings : ManufacturingOwner::NativeAssembly));
+        CHECK(row.applicable == applicable);
+        CHECK(row.state ==
+              (applicable ? ManufacturingState::NotEvaluated : ManufacturingState::NotApplicable));
+        CHECK(row.blocker ==
+              (applicable ? ManufacturingBlocker::MissingInput : ManufacturingBlocker::None));
+        CHECK(row.reason.find("not implemented") == std::string::npos);
+        CHECK(row.entities == (empty ? std::vector<EntityRef>{}
+                                     : std::vector{EntityRef::component(ComponentId{0})}));
+        CHECK(row.observations.empty());
+    }
+    CHECK_FALSE(result.ratings());
+    CHECK_FALSE(result.bom());
+    CHECK_FALSE(result.cpl());
+}
+
 TEST_CASE("Exact assembly inventories preserve selected grouping DNP and alternates",
           "[manufacturing][assembly]") {
     auto options = RatingFixtureOptions{};
