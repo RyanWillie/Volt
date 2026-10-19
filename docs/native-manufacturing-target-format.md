@@ -55,7 +55,7 @@ visible as policy-owned NotApplicable; it does not erase them.
 
 Assembly targets retain native `CplProjectionOptions` as target data. Missing options
 block; explicitly empty offsets are distinct from missing. Corrections sort by
-footprint library/name and use native normalized degrees. Duplicate keys reject,
+footprint library/name and use native finite degree values. Duplicate keys reject,
 including identical repeats. No CPL or assembly evaluation is implemented here.
 
 ## Standalone target codec

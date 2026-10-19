@@ -212,7 +212,7 @@ ManufacturingCoverage evaluate_manufacturing_coverage(const CompiledBoard &compi
     auto &slots = row(ManufacturingCheck::SlotTreatment);
     slots.entities = {EntityRef::board()};
     for (std::size_t i = 0; i < board.all<BoardFeatureId>().size(); ++i)
-        if (board.get(BoardFeatureId{i}).kind() == BoardFeatureKind::Slot)
+        if (identity_ok && board.get(BoardFeatureId{i}).kind() == BoardFeatureKind::Slot)
             slots.entities.push_back(EntityRef::board_feature(BoardFeatureId{i}));
     if (slots.entities.size() > 1) {
         fail(slots, "Actual slot geometry is outside the NoSlots V1 process",

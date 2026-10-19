@@ -257,9 +257,10 @@ Json cpl_json(const std::optional<CplProjectionOptions> &options) {
         return {};
     auto entries = Json::array();
     for (const auto &offset : options->rotation_offsets)
-        entries.push_back({{"library", offset.footprint().library()},
-                           {"name", offset.footprint().name()},
-                           {"rotation_deg", offset.rotation_deg()}});
+        entries.push_back(
+            {{"library", offset.footprint().library()},
+             {"name", offset.footprint().name()},
+             {"rotation_deg", offset.rotation_deg() == 0.0 ? 0.0 : offset.rotation_deg()}});
     return {{"rotation_offsets", entries}};
 }
 

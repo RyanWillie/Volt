@@ -396,6 +396,8 @@ TEST_CASE(
     CHECK(io::read_manufacturing_target(doc.dump()).digest() == offsets.digest());
     doc["cpl_options"]["rotation_offsets"][0]["rotation_deg"] = -0.0;
     CHECK(io::read_manufacturing_target(doc.dump()).digest() == offsets.digest());
+    CHECK(io::write_manufacturing_target(io::read_manufacturing_target(doc.dump())) ==
+          io::write_manufacturing_target(offsets));
     doc["cpl_options"]["rotation_offsets"].push_back(doc["cpl_options"]["rotation_offsets"][0]);
     CHECK_THROWS_AS(io::read_manufacturing_target(doc.dump()), io::ManufacturingTargetReadError);
     doc["cpl_options"]["rotation_offsets"][2]["rotation_deg"] = 180;
@@ -598,4 +600,23 @@ TEST_CASE("Manufacturing uses the native highest applicable copper weight refine
                                       ManufacturingGoal::Fabrication, process, profile});
     CHECK(leaf(result, ManufacturingCheck::CopperWidth).state == ManufacturingState::NativePass);
     CHECK(leaf(result, ManufacturingCheck::CopperWidth).observations[0].minimum == 0.20);
+}
+
+TEST_CASE("Manufacturing foreign artifact slots cannot classify the requested process",
+          "[manufacturing]") {
+    const auto source = test::completion_fixture(test::manufacturing_options());
+    auto options = test::manufacturing_options();
+    options.fab_critical_slot = true;
+    const auto foreign = test::completion_fixture(options);
+    const auto result =
+        evaluate_manufacturing_coverage(foreign, test::manufacturing_target(source));
+    CHECK(leaf(result, ManufacturingCheck::ArtifactIdentity).state == ManufacturingState::Failed);
+    CHECK(result.status() == ManufacturingStatus::Blocked);
+    CHECK(leaf(result, ManufacturingCheck::ProcessSelections).state ==
+          ManufacturingState::NativePass);
+    CHECK(leaf(result, ManufacturingCheck::SlotTreatment).state ==
+          ManufacturingState::NotEvaluated);
+    CHECK(leaf(result, ManufacturingCheck::SlotTreatment).entities ==
+          std::vector{EntityRef::board()});
+    CHECK(leaf(result, ManufacturingCheck::CopperWidth).state == ManufacturingState::NotEvaluated);
 }

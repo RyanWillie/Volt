@@ -199,3 +199,9 @@ Independent review identified and resolved three implementation issues before PR
 
 The architecture inventory baseline adds exactly the seven new native Python-bound
 value/result classes. No logical/root/public storage API or artifact schema changes.
+
+Final review additionally requires matching artifact identity before actual slot
+geometry can classify process support. A foreign slotted artifact retains native
+physical facts but cannot change the requested target's process classification.
+The codec canonicalizes signed-zero CPL values while preserving all other native
+finite degree values; rotation projection remains a later stage.
