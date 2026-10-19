@@ -67,88 +67,88 @@ template <typename T> std::span<const EnumEntry<T>> enum_values();
 
 template <> std::span<const EnumEntry<ManufacturingGoal>> enum_values<ManufacturingGoal>() {
     static constexpr auto values =
-        std::array{EnumEntry{ManufacturingGoal::Fabrication, std::string_view{"Fabrication"}},
-                   EnumEntry{ManufacturingGoal::FabricationAndAssembly,
+        std::array{std::pair{ManufacturingGoal::Fabrication, std::string_view{"Fabrication"}},
+                   std::pair{ManufacturingGoal::FabricationAndAssembly,
                              std::string_view{"FabricationAndAssembly"}}};
     return values;
 }
 
 template <> std::span<const EnumEntry<ManufacturingFamily>> enum_values<ManufacturingFamily>() {
     static constexpr auto values =
-        std::array{EnumEntry{ManufacturingFamily::RigidFr4, std::string_view{"RigidFr4"}},
-                   EnumEntry{ManufacturingFamily::Flex, std::string_view{"Flex"}}};
+        std::array{std::pair{ManufacturingFamily::RigidFr4, std::string_view{"RigidFr4"}},
+                   std::pair{ManufacturingFamily::Flex, std::string_view{"Flex"}}};
     return values;
 }
 
 template <> std::span<const EnumEntry<ManufacturingMaterial>> enum_values<ManufacturingMaterial>() {
     static constexpr auto values =
-        std::array{EnumEntry{ManufacturingMaterial::Fr4Tg135, std::string_view{"Fr4Tg135"}},
-                   EnumEntry{ManufacturingMaterial::OtherFr4, std::string_view{"OtherFr4"}}};
+        std::array{std::pair{ManufacturingMaterial::Fr4Tg135, std::string_view{"Fr4Tg135"}},
+                   std::pair{ManufacturingMaterial::OtherFr4, std::string_view{"OtherFr4"}}};
     return values;
 }
 
 template <> std::span<const EnumEntry<ManufacturingFinish>> enum_values<ManufacturingFinish>() {
     static constexpr auto values =
-        std::array{EnumEntry{ManufacturingFinish::LeadFreeHasl, std::string_view{"LeadFreeHasl"}},
-                   EnumEntry{ManufacturingFinish::Enig, std::string_view{"Enig"}}};
+        std::array{std::pair{ManufacturingFinish::LeadFreeHasl, std::string_view{"LeadFreeHasl"}},
+                   std::pair{ManufacturingFinish::Enig, std::string_view{"Enig"}}};
     return values;
 }
 
 template <>
 std::span<const EnumEntry<ManufacturingMaskSides>> enum_values<ManufacturingMaskSides>() {
     static constexpr auto values =
-        std::array{EnumEntry{ManufacturingMaskSides::Both, std::string_view{"Both"}},
-                   EnumEntry{ManufacturingMaskSides::SingleSide, std::string_view{"SingleSide"}},
-                   EnumEntry{ManufacturingMaskSides::NoMask, std::string_view{"NoMask"}}};
+        std::array{std::pair{ManufacturingMaskSides::Both, std::string_view{"Both"}},
+                   std::pair{ManufacturingMaskSides::SingleSide, std::string_view{"SingleSide"}},
+                   std::pair{ManufacturingMaskSides::NoMask, std::string_view{"NoMask"}}};
     return values;
 }
 
 template <>
 std::span<const EnumEntry<ManufacturingMaskColour>> enum_values<ManufacturingMaskColour>() {
     static constexpr auto values = std::array{
-        EnumEntry{ManufacturingMaskColour::Green, std::string_view{"Green"}},
-        EnumEntry{ManufacturingMaskColour::OtherColour, std::string_view{"OtherColour"}}};
+        std::pair{ManufacturingMaskColour::Green, std::string_view{"Green"}},
+        std::pair{ManufacturingMaskColour::OtherColour, std::string_view{"OtherColour"}}};
     return values;
 }
 
 template <>
 std::span<const EnumEntry<ManufacturingViaTreatment>> enum_values<ManufacturingViaTreatment>() {
     static constexpr auto values =
-        std::array{EnumEntry{ManufacturingViaTreatment::Exposed, std::string_view{"Exposed"}},
-                   EnumEntry{ManufacturingViaTreatment::Tented, std::string_view{"Tented"}},
-                   EnumEntry{ManufacturingViaTreatment::Filled, std::string_view{"Filled"}}};
+        std::array{std::pair{ManufacturingViaTreatment::Exposed, std::string_view{"Exposed"}},
+                   std::pair{ManufacturingViaTreatment::Tented, std::string_view{"Tented"}},
+                   std::pair{ManufacturingViaTreatment::Filled, std::string_view{"Filled"}}};
     return values;
 }
 
 template <> std::span<const EnumEntry<ManufacturingDrilling>> enum_values<ManufacturingDrilling>() {
     static constexpr auto values = std::array{
-        EnumEntry{ManufacturingDrilling::MechanicalThrough, std::string_view{"MechanicalThrough"}},
-        EnumEntry{ManufacturingDrilling::Laser, std::string_view{"Laser"}}};
+        std::pair{ManufacturingDrilling::MechanicalThrough, std::string_view{"MechanicalThrough"}},
+        std::pair{ManufacturingDrilling::Laser, std::string_view{"Laser"}}};
     return values;
 }
 
 template <>
 std::span<const EnumEntry<ManufacturingHoleTreatment>> enum_values<ManufacturingHoleTreatment>() {
     static constexpr auto values = std::array{
-        EnumEntry{ManufacturingHoleTreatment::RoundOnly, std::string_view{"RoundOnly"}},
-        EnumEntry{ManufacturingHoleTreatment::BlindBuried, std::string_view{"BlindBuried"}}};
+        std::pair{ManufacturingHoleTreatment::RoundOnly, std::string_view{"RoundOnly"}},
+        std::pair{ManufacturingHoleTreatment::BlindBuried, std::string_view{"BlindBuried"}}};
     return values;
 }
 
 template <>
 std::span<const EnumEntry<ManufacturingSlotTreatment>> enum_values<ManufacturingSlotTreatment>() {
     static constexpr auto values =
-        std::array{EnumEntry{ManufacturingSlotTreatment::NoSlots, std::string_view{"NoSlots"}},
-                   EnumEntry{ManufacturingSlotTreatment::Routed, std::string_view{"Routed"}},
-                   EnumEntry{ManufacturingSlotTreatment::Plated, std::string_view{"Plated"}}};
+        std::array{std::pair{ManufacturingSlotTreatment::NoSlots, std::string_view{"NoSlots"}},
+                   std::pair{ManufacturingSlotTreatment::Routed, std::string_view{"Routed"}},
+                   std::pair{ManufacturingSlotTreatment::Plated, std::string_view{"Plated"}}};
     return values;
 }
 
 template <> std::span<const EnumEntry<ManufacturingAssembly>> enum_values<ManufacturingAssembly>() {
     static constexpr auto values = std::array{
-        EnumEntry{ManufacturingAssembly::NoAssembly, std::string_view{"NoAssembly"}},
-        EnumEntry{ManufacturingAssembly::SmtAndThroughHole, std::string_view{"SmtAndThroughHole"}},
-        EnumEntry{ManufacturingAssembly::OtherAssembly, std::string_view{"OtherAssembly"}}};
+        std::pair{ManufacturingAssembly::NoAssembly, std::string_view{"NoAssembly"}},
+        std::pair{ManufacturingAssembly::SmtAndThroughHole, std::string_view{"SmtAndThroughHole"}},
+        std::pair{ManufacturingAssembly::OtherAssembly, std::string_view{"OtherAssembly"}}};
     return values;
 }
 
