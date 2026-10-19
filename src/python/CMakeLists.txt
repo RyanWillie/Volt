@@ -74,6 +74,7 @@ endforeach()
 pybind11_add_module(
     _volt MODULE
     bindings.cpp
+    manufacturing_bindings.cpp
     board_bindings.cpp
     route_bindings.cpp
     circuit_bindings.cpp
@@ -187,6 +188,10 @@ if(VOLT_BUILD_TESTS)
                 APPEND test_environment
                 "VOLT_DC_REQUEST_PARITY_FIXTURE=set:$<TARGET_FILE:volt_dc_request_parity_fixture>"
             )
+        endif()
+        if(test_name STREQUAL "test_manufacturing_target")
+            list(APPEND test_environment
+                 "VOLT_MANUFACTURING_PARITY_FIXTURE=set:$<TARGET_FILE:volt_manufacturing_parity_fixture>")
         endif()
         if(test_name STREQUAL "test_board_completion")
             list(APPEND test_environment

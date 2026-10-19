@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <string>
+#include <utility>
 
 #include <volt/adapters/kicad/loss_report.hpp>
 #include <volt/authoring/component_library.hpp>
@@ -16,9 +17,19 @@
 #include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/version.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
+#include <volt/io/pcb/compiled_board.hpp>
+#include <volt/io/pcb/manufacturing_target.hpp>
 #include <volt/library/part_library.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/schematic/schematic.hpp>
+
+namespace {
+class EmptyAssetResolver final : public volt::PartAssetResolver {
+    std::optional<std::string> resolve(const volt::PartAssetReference &) const override {
+        return std::nullopt;
+    }
+};
+} // namespace
 
 int main() {
     // Volt::Core
@@ -50,6 +61,36 @@ int main() {
 
     // Volt::IO
     const auto serialized = volt::io::write_logical_circuit(circuit);
+    const auto hash = volt::sha256_content_hash("synthetic installed consumer");
+    const auto process = volt::ManufacturingProcess{};
+    const auto target = volt::ManufacturingTarget{
+        volt::CompiledBoardIdentity{board.name(), hash}, hash, volt::ManufacturingGoal::Fabrication,
+        process,
+        volt::ManufacturingProfile{volt::BoardCapabilityProfile::conservative_default(), hash,
+                                   process}};
+    if (volt::io::read_manufacturing_target(volt::io::write_manufacturing_target(target))
+            .digest() != target.digest())
+        return 1;
+
+    const auto empty_circuit = volt::Circuit{};
+    auto empty_board = volt::Board{empty_circuit};
+    const auto capability = volt::BoardCapabilityProfile::conservative_default();
+    empty_board.set_capability_profile(capability);
+    const auto closure = volt::io::PartLibraryBundle::build(
+        volt::PartLibraryBuilder{volt::PartLibraryIdentity{"packaging-empty", "0.1.0",
+                                                           volt::PartLibrarySchemaVersion::V1}},
+        {}, EmptyAssetResolver{});
+    auto compilation = volt::io::compile_board(empty_circuit, empty_board, closure,
+                                               volt::CompiledBoardCapabilities{capability});
+    if (!compilation.has_artifact())
+        return 1;
+    const auto compiled = std::move(compilation).take_artifact();
+    const auto compiled_target = volt::ManufacturingTarget{
+        compiled.identity(), compiled.content_digest(), volt::ManufacturingGoal::Fabrication,
+        process, volt::ManufacturingProfile{capability, hash, process}};
+    const auto coverage = volt::evaluate_manufacturing_coverage(compiled, compiled_target);
+    if (coverage.ready() || volt::io::write_manufacturing_coverage(coverage).empty())
+        return 1;
 
     // Volt::KiCadAdapter
     auto loss_report = volt::adapters::kicad::LossReport{};

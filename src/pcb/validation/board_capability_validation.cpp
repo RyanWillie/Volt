@@ -320,12 +320,7 @@ struct RoomCapabilityMinimums {
 
     for (const auto layer_id : room.layers()) {
         const auto weight = board.get(layer_id).copper_weight_oz().value();
-        auto applicable = std::optional<BoardCapabilityCopperWeightRefinement>{};
-        for (const auto &refinement : profile.copper_weight_refinements()) {
-            if (refinement.copper_weight_oz <= weight + board_drc_epsilon) {
-                applicable = refinement;
-            }
-        }
+        const auto applicable = capability_refinement_for_weight(profile, weight);
         if (!applicable.has_value()) {
             continue;
         }
@@ -357,6 +352,15 @@ void validate_room_capability(const Board &board, const BoardCapabilityProfile &
 }
 
 } // namespace
+
+std::optional<BoardCapabilityCopperWeightRefinement>
+capability_refinement_for_weight(const BoardCapabilityProfile &profile, double weight_oz) {
+    auto applicable = std::optional<BoardCapabilityCopperWeightRefinement>{};
+    for (const auto &refinement : profile.copper_weight_refinements())
+        if (refinement.copper_weight_oz <= weight_oz + board_drc_epsilon)
+            applicable = refinement;
+    return applicable;
+}
 
 void validate_capability_profile_rules(const ResolvedBoardView &resolved,
                                        DiagnosticReport &report) {

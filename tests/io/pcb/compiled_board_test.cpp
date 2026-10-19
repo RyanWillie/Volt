@@ -1,3 +1,4 @@
+#include "support/manufacturing_fixture.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
@@ -756,6 +757,18 @@ TEST_CASE("CompiledBoard V1 remains byte-preserving and exportable without infer
     const auto completion = volt::io::evaluate_fabrication_completion(reopened);
     CHECK(completion.coverage()[0].state == volt::BoardCompletionState::NotEvaluated);
     CHECK(completion.status() != volt::BoardCompletionStatus::Complete);
+    const auto target_process = volt::test::manufacturing_process();
+    const auto target_profile = volt::ManufacturingProfile{
+        reopened.capabilities().profile(), volt::sha256_content_hash("Synthetic V1 target"),
+        target_process};
+    const auto target = volt::ManufacturingTarget{reopened.identity(), reopened.content_digest(),
+                                                  volt::ManufacturingGoal::Fabrication,
+                                                  target_process, target_profile};
+    const auto coverage = volt::evaluate_manufacturing_coverage(reopened, target);
+    CHECK_FALSE(coverage.ready());
+    CHECK(coverage.coverage()[static_cast<std::size_t>(volt::ManufacturingCheck::LogicalContinuity)]
+              .state == volt::ManufacturingState::NotEvaluated);
+
     CHECK_FALSE(volt::io::write_pcb_fabrication_files(reopened).files.empty());
     CHECK_FALSE(reopened.logical_continuity_partition().has_value());
     CHECK_FALSE(reopened.view().has_complete_logical_continuity());

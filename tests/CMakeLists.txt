@@ -77,6 +77,7 @@ add_executable(
     io/pcb/pcb_projection_io_test.cpp
     io/pcb/pcb_svg_writer_test.cpp
     io/pcb/compiled_board_test.cpp
+    io/pcb/manufacturing_target_test.cpp
     io/pcb/board_completion_test.cpp
     io/project_bundle_source_test.cpp
     io/project_bundle_dc_input_test.cpp
@@ -282,6 +283,14 @@ add_test(NAME io_project_bundle_link_contract COMMAND volt_io_project_bundle_lin
 set_tests_properties(io_project_bundle_link_contract PROPERTIES LABELS cpp)
 
 if(VOLT_BUILD_PYTHON)
+    add_executable(volt_manufacturing_parity_fixture support/manufacturing_parity_fixture.cpp)
+    target_link_libraries(volt_manufacturing_parity_fixture PRIVATE Volt::IO Volt::NlohmannJson)
+    target_include_directories(volt_manufacturing_parity_fixture PRIVATE ${PROJECT_SOURCE_DIR}/tests)
+    target_compile_features(volt_manufacturing_parity_fixture PRIVATE cxx_std_23)
+    volt_apply_project_warnings(volt_manufacturing_parity_fixture PRIVATE)
+    volt_apply_sanitizers(volt_manufacturing_parity_fixture)
+    volt_apply_coverage(volt_manufacturing_parity_fixture)
+
     add_executable(volt_dc_request_parity_fixture support/dc_request_parity_fixture.cpp)
     target_link_libraries(volt_dc_request_parity_fixture PRIVATE Volt::IO)
     target_compile_features(volt_dc_request_parity_fixture PRIVATE cxx_std_23)
