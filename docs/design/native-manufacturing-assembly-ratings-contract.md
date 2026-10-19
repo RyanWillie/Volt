@@ -89,8 +89,8 @@ selected-part ERC owner. The bridge supplies each occurrence's exact full retain
 PartDefinition, original ComponentDefinition, the artifact Circuit pin instances and
 its preserved native NetContinuityView. Full component identity must equal the exact
 Part implemented_component; exact LibraryPartRef integrity remains resolver-owned.
-Map record-local pin positions through the original ordered PinKeys to the already
-verified projected pin order; closure-local PinDefIds are never used as Circuit handles.
+Supply an explicit original ElectricalPinIndex-to-artifact PinId table, mapping
+through original ordered PinKeys to the already verified projected pin order; closure-local PinDefIds are never used as Circuit handles.
 The CompiledBoard codec already verifies complete projected logical contract equality
 against full original payloads. The bridge is internal/friend-gated, not a public
 caller-supplied identity override, resolver callback, or parallel semantic engine.
@@ -123,7 +123,8 @@ metadata for this check, not ratings. Unsupported non-characteristic record comb
 | Current AbsoluteLimit | At least one other populated known unconditional Current ProvidedRange on the same oriented domain with each required bound present. No simulation or generic net-current inference. |
 | Continuous Current budget | At least one known unconditional requirement, exactly one compatible unconditional populated capability, all relevant requirements known; sum native requirements and compare inclusively. Missing/conditional/unknown requirements or capability, multiple sources and non-finite sum are NotEvaluated. |
 
-Each original non-characteristic record contributes an identifiable obligation, including
+Each canonical non-characteristic semantic-key group contributes one obligation, retaining
+all ordered source records/values/conditions/evidence within that group, including
 providers/capabilities: a provider is checked only when it actually participates in a
 supported comparison or budget. An unpaired provider/capability is NotEvaluated. Repeated
 effective constraints use the existing range intersection/max-demand/min-capability
@@ -132,13 +133,23 @@ certify a pass. No empty range-side comparison counts as execution. Missing sele
 part, missing required record shape, missing subject endpoint, absent provider/demand,
 unsupported meaning or unavailable continuity records an exact gap with reason.
 
-One typed outcome records component/record semantic key, closed family/rule, state,
+The authored-voltage route retains the live checker's canonical minimum-ID net
+representative. If only a noncanonical continuity-group member has a known authored
+potential, or any member contradicts the canonical value, that route is NotEvaluated.
+Do not redefine live ERC or silently discard these assertions. Test both cases.
+Native current aggregation remains once per (component, projected domain): max demand
+and min capability before summing distinct occurrences; semantic-key aliases never
+double-count demand. Non-finite arithmetic (including potential subtraction and demand
+summation) is NotEvaluated, never a passed numeric observation.
+
+One typed outcome records component/semantic-key group, closed family/rule, state,
 exact ordered component/pin/net scope, comparison measurements/units and bounds where
 known, and exact Part reference/evidence provenance. Output is component ID then record
 semantic key then comparison source/domain order; deterministic explicit component gaps
 precede records. Source-local keys identify records; EntityRefs remain reporting only.
-Native diagnostics are retained, with existing messages/entities/rule provenance for
-supported failures. Do not fabricate diagnostics by parsing messages.
+The compiled assessment emits failures only for actually supported unconditional
+comparisons; copied legacy conditional/collapsed diagnostics cannot establish Failed.
+Native diagnostics retain existing messages/entities/rule provenance for supported failures. Do not fabricate diagnostics by parsing messages.
 
 SelectedPartRatings row is Failed if any supported native rating comparison fails;
 otherwise NotEvaluated if any populated occurrence/obligation is unknown or unsupported;
@@ -155,7 +166,7 @@ per DNP subject, without changing the existing leaf-level applicability policy.
 | --- | --- |
 | Inventory/BOM | Grouped populated refs/quantities, DNP zero including unselected DNP, mixed intent, exact selected override vs approved alternate, same-MPN distinct exact parts; missing selected part, missing explicit intent, complete empty inventory; full exact expected native rows catch omitted/duplicate/wrong quantity projections without exposing corruptible evaluator inputs. |
 | CPL | Multiple top/bottom placements, negative/360/>360 degrees, explicit empty/nonempty offsets, offset-only target digest/report change; missing first/last/all required placements, unselected populated part, DNP omitted; exact position/identity/side/rotation payload assertions, target duplicate/conflicting keys and finite-overflow boundary; native occurrence cardinality remains structurally enforced. |
-| Ratings | Each four supported family has genuine checked positive, exact-boundary and violation cases; framed/relation/supply subjects, shared domains and preserved hierarchical continuity; different selected part vs approved alternate, symbol-bearing original identity; missing/foreign/stale selection, unresolved endpoints, absent ratings/required data, Unknown/conflict/conditional/partial-bound inputs, unsupported Current AcceptedRange, unpaired source, multiple current sources, DNP source/consumer, all-DNP/empty subjects; failure takes precedence over another gap. |
+| Ratings | Each four supported family has genuine checked positive, exact-boundary and violation cases; framed/relation/supply subjects, shared domains and preserved hierarchical continuity; different selected part vs approved alternate, symbol-bearing original identity; missing/foreign/stale selection, unresolved endpoints, absent ratings/required data, Unknown/conflict/conditional/partial-bound inputs, canonical/noncanonical voltage assertions and arithmetic overflow, unsupported Current AcceptedRange, unpaired source, multiple current sources, DNP source/consumer, all-DNP/empty subjects; failure takes precedence over another gap. |
 | Closed coverage | All 65 ordered leaves/owners/reasons/entities/counts/observations/provenance retained; goal distinction, ratings under both, native DNP copper/short/required endpoint failures remain visible; deferred review/DFM/export/delivery still block. |
 | Integrity/lifetime | Re-evaluate fresh and reopened native artifact/target after original owners are destroyed; complete report equality, no ambient resolver or callback, byte-identical immutable inputs, foreign artifact/profile/target and legacy V1 continuity gaps. |
 | Codec/API | Unchanged target V1 golden identities/read-write bytes; explicit report schema/evaluator V2 and policy V1, no V1 report reinterpretation; strict current target negatives/unsupported versions remain; installed native SDK and downstream link consumers; direct C++/thin Python and final source-free wheel full report parity. |
