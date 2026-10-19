@@ -8,7 +8,11 @@ This bounded child implements stage 2 of the M1 spec, not readiness delivery.
 
 `ManufacturingTarget` is a validated, owned typed value in Volt::PCB. It binds exact
 CompiledBoardIdentity **and artifact byte digest**, goal, policy V1, process selections,
-and a ManufacturingProfile. The profile owns the existing complete BoardCapabilityProfile,
+and a ManufacturingProfile. Assembly also carries optional native
+CplProjectionOptions: absent is missing required input, explicitly empty is a pinned
+empty offset set. Canonicalize offsets by footprint library/name, reject duplicate
+footprint keys (including conflicting corrections), and include every correction
+in target identity. This is data retention only; CPL evaluation stays deferred. The profile owns the existing complete BoardCapabilityProfile,
 its source-content SHA256, exact process applicability, and optional additional typed
 limits (dimension X/Y ranges and minimum via radial annulus). Existing source/as-of are
 retained; synthetic sources are explicitly labelled. No ambient reads or vendor branches.
@@ -45,8 +49,19 @@ Profile process scope includes thickness, weights and dimensions explicitly, so 
 are not silently applied to another process selection.
 
 Native semantic canonical encoding V1 uses domain tags, length-prefixed UTF-8 strings,
-ordered fields/vectors, explicit optional markers, canonical integers and IEEE double
-round-trip decimal representations (zero normalized). SHA256 covers every target field,
+ordered fields/vectors and explicit optional markers. Every token is decimal UTF-8
+byte length, colon, then bytes (no trailing delimiter). Integers/enums use unsigned
+base-10 without leading zeroes. Doubles use the 16 lowercase hex digits of their
+IEEE754 binary64 bit pattern, most-significant nibble first; both zeroes normalize
+to positive zero. Optional values encode token absent or present then value; vectors
+encode unsigned count then elements. Domains are volt.manufacturing-profile/1 and
+volt.manufacturing-target/1. Profile field order is capability getter declaration
+order (name, provenance source/as-of, width, via drill, via copper diameter, clearance
+entries, weight refinements, layer counts, thickness range, weights, drill range),
+source-content hash, process record, X range, Y range, radial-annulus limit. Target
+field order is board name, provenance digest, artifact digest, goal, process, profile
+digest, optional canonical CPL offsets. Process fields use the order in the supported
+choices paragraph, with dimensions X/Y appended. Golden digest tests pin both encodings. SHA256 covers every target field,
 including source content, profile provenance and assembly goal. It is separate from
 existing artifact capability/provenance digests; no CompiledBoard schema change.
 
@@ -117,6 +132,23 @@ unsupported selection or identity mismatch) plus actionable remediation. Aggrega
 counts report rows per state and exact observation/entity counts. Row entity scope
 is a sorted unique EntityRef list; observations preserve source ID order and
 compound placement/pad identity where relevant. No dynamic leaf injection.
+
+| Implemented leaf | Scope and observations |
+| --- | --- |
+| Identity/process/profile | One board EntityRef; no numeric observations |
+| Six completion leaves | Exact sorted unique native completion scope; no new observations; original diagnostics retain original entity arrays |
+| CopperWidth | One observation per track in track ID order, tuple `(board-track, board-layer)` |
+| ViaDrill/ViaCopperDiameter/ViaRadialAnnulus | One observation per via in via ID order, tuple `(board-via)` |
+| DimensionX/DimensionY/BoardThickness/CopperLayerCount | One observation with tuple `(board)` when measured |
+| TopCopperWeight/BottomCopperWeight | One observation with tuple `(board-layer)` for the actual corresponding side |
+| SlotTreatment | Board plus all slot board-feature refs, in feature ID order; no numeric observations |
+
+`observation_count` is number of measurement records. `entity_count` is the number of
+distinct EntityRefs in the row's sorted unique scope (the CopperWidth tuple has two
+entities but one observation). Each observation separately exposes its own exact tuple
+and tuple entity count. Deferred fabrication leaves use `(board)`; deferred assembly
+and rating leaves use all logical component refs in component ID order (including DNP).
+An empty circuit yields an empty component scope but never passes a deferred checker.
 
 ## IO and Python
 
