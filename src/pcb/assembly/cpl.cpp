@@ -1,3 +1,4 @@
+#include "cpl_rotation_detail.hpp"
 #include <volt/pcb/assembly/cpl.hpp>
 
 #include <volt/circuit/connectivity/queries.hpp>
@@ -20,17 +21,6 @@ struct ResolvedRotationOffset {
 
 [[nodiscard]] bool same_rotation(double lhs, double rhs) noexcept {
     return std::abs(lhs - rhs) < 1.0e-9;
-}
-
-[[nodiscard]] double normalize_rotation(double degrees) {
-    auto normalized = std::fmod(degrees, 360.0);
-    if (normalized < 0.0) {
-        normalized += 360.0;
-    }
-    if (same_rotation(normalized, 360.0) || same_rotation(normalized, 0.0)) {
-        return 0.0;
-    }
-    return normalized;
 }
 
 [[nodiscard]] std::vector<ResolvedRotationOffset>
@@ -197,13 +187,14 @@ Cpl::Cpl(std::vector<CplRow> rows, DiagnosticReport diagnostics)
             }
         }
 
-        const auto authored_rotation_deg = normalize_rotation(placement.rotation().degrees());
-        rows.emplace_back(placement_id, placement.component(),
-                          board.circuit().get(placement.component()).reference().value(),
-                          std::move(footprint), placement.side(), placement.position(),
-                          authored_rotation_deg, rotation_offset_deg,
-                          normalize_rotation(authored_rotation_deg + rotation_offset_deg),
-                          std::move(part_identity));
+        const auto authored_rotation_deg =
+            detail::normalize_cpl_rotation(placement.rotation().degrees());
+        rows.emplace_back(
+            placement_id, placement.component(),
+            board.circuit().get(placement.component()).reference().value(), std::move(footprint),
+            placement.side(), placement.position(), authored_rotation_deg, rotation_offset_deg,
+            detail::normalize_cpl_rotation(authored_rotation_deg + rotation_offset_deg),
+            std::move(part_identity));
     }
 
     std::sort(rows.begin(), rows.end(), [](const CplRow &lhs, const CplRow &rhs) {

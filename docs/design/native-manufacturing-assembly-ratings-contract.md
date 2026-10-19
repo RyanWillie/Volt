@@ -1,6 +1,8 @@
 # Exact assembly consistency and selected-part ratings (#408)
 
-Status: proposed independent contract gate, 2026-10-19. Baseline main
+Status: independent contract gate approved at `65d5f5d0` on 2026-10-19;
+[decision and resolved findings](https://github.com/RyanWillie/Volt/issues/408#issuecomment-6278445683).
+Implementation accompanies this contract. Baseline main
 `09380d315abb02622620cb5863e591d68ca481e4`; closed prerequisites #400/#403/#406.
 This is stage 3 of the M1 design. #389 stays open without ready. No merge authority.
 

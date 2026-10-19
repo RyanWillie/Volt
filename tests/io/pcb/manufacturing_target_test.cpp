@@ -86,7 +86,7 @@ TEST_CASE("Manufacturing fixed inventory retains every required deferred leaf", 
     const auto &export_row = leaf(result, ManufacturingCheck::ExportFidelity);
     CHECK(export_row.owner == ManufacturingOwner::DeferredIO);
     CHECK(export_row.blocker == ManufacturingBlocker::MissingCoverage);
-    CHECK(export_row.reason == "Required checker or exact evidence is not implemented in V1");
+    CHECK(export_row.reason == "Required checker or exact evidence is not implemented");
     CHECK(export_row.remediation ==
           "Complete the required native checker or independently reviewed evidence stage");
     CHECK(export_row.entities == std::vector{EntityRef::board()});
@@ -407,9 +407,17 @@ TEST_CASE(
     CHECK(leaf(result, ManufacturingCheck::SlotTreatment).state ==
           ManufacturingState::NotApplicable);
     CHECK_FALSE(leaf(result, ManufacturingCheck::SlotTreatment).applicable);
-    for (std::size_t i = static_cast<std::size_t>(ManufacturingCheck::PartPackageReview);
-         i < result.coverage().size(); ++i)
-        CHECK(result.coverage()[i].state == ManufacturingState::NotEvaluated);
+    for (const auto key :
+         {ManufacturingCheck::PartPackageReview, ManufacturingCheck::LandPatternReview,
+          ManufacturingCheck::PinMapReview, ManufacturingCheck::AssemblyOrientation,
+          ManufacturingCheck::SelectedPartRatings, ManufacturingCheck::AssemblyProcess})
+        CHECK(leaf(result, key).state == ManufacturingState::NotEvaluated);
+    CHECK(leaf(result, ManufacturingCheck::PopulatedQuantities).state ==
+          ManufacturingState::Failed);
+    for (const auto key : {ManufacturingCheck::DnpQuantities,
+                           ManufacturingCheck::SelectedAlternates, ManufacturingCheck::CplIdentity,
+                           ManufacturingCheck::CplSide, ManufacturingCheck::CplRotation})
+        CHECK(leaf(result, key).state == ManufacturingState::NativePass);
     doc["cpl_options"]["rotation_offsets"] =
         Json::array({{{"library", "z"}, {"name", "b"}, {"rotation_deg", 90}},
                      {{"library", "a"}, {"name", "a"}, {"rotation_deg", 0}}});

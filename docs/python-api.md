@@ -1151,3 +1151,13 @@ and `Manufacturing*` enum bindings define an exact immutable-artifact target.
 with deterministic `to_json()` and full source-free C++/Python payload parity.
 V1 is always Blocked or UnsupportedTarget: required later coverage remains explicit.
 See [target format, scope and example](native-manufacturing-target-format.md).
+
+Coverage evaluator V2 adds native exact BOM/CPL consistency and per-subject selected-part
+rating evidence to `to_json()`, retaining all 65 required leaves and target policy V1.
+Missing explicit assembly intent, selected parts or required placements cannot disappear
+through empty projections. Supported unconditional voltage/current checks record actual
+comparisons; unknown, conditional, conflicting, unpaired and unsupported subjects remain
+explicitly not evaluated. DNP cannot supply a populated load's guarantee. These native
+checks do not satisfy independent package/orientation review or the remaining DFM/export/
+delivery gates. The [native format](native-manufacturing-target-format.md) defines exact
+coverage, compatibility and source-free behavior.

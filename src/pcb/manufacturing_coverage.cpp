@@ -1,3 +1,4 @@
+#include "manufacturing_assembly_detail.hpp"
 #include "manufacturing_target_detail.hpp"
 #include "validation/board_capability_validation.hpp"
 #include <algorithm>
@@ -123,7 +124,7 @@ ManufacturingCoverage::ManufacturingCoverage(const CompiledBoard &compiled,
             owner,
             true,
             ManufacturingBlocker::MissingCoverage,
-            "Required checker or exact evidence is not implemented in V1",
+            "Required checker or exact evidence is not implemented",
             "Complete the required native checker or independently reviewed evidence stage",
             std::move(entities),
             {}};
@@ -231,6 +232,15 @@ ManufacturingCoverage evaluate_manufacturing_coverage(const CompiledBoard &compi
             gap(row(check), "Matching artifact identity and complete supported process/profile "
                             "selections are required");
         return result;
+    }
+    result.ratings_ = detail::compiled_selected_part_ratings(compiled);
+    detail::apply_manufacturing_ratings(row(ManufacturingCheck::SelectedPartRatings),
+                                        *result.ratings_);
+    if (target.goal() == ManufacturingGoal::FabricationAndAssembly) {
+        result.bom_ = project_bom(board.circuit(), compiled.part_definitions());
+        result.cpl_ = project_cpl(compiled.view(), *target.cpl_options());
+        detail::check_manufacturing_assembly(compiled, target, *result.bom_, *result.cpl_,
+                                             result.coverage_);
     }
     for (const auto check : numeric) {
         row(check).entities.clear();

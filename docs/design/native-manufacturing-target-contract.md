@@ -5,6 +5,9 @@ recorded on [#406](https://github.com/RyanWillie/Volt/issues/406#issuecomment-62
 The child alone is ready. Parent #389 remains open/not ready. Baseline main
 `77a7743aa081a86e07555cf43291aa901fbfb66e`. #400/#403 are closed.
 This bounded child implements stage 2 of the M1 spec, not readiness delivery.
+Stage 3 [exact assembly and rating coverage](native-manufacturing-assembly-ratings-contract.md)
+extends the report to schema/evaluator V2 while preserving this target/profile/policy V1
+and all 65 required leaves. The first-slice dispositions below describe the stage-2 baseline.
 
 ## Native boundary and identities
 

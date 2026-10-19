@@ -3,6 +3,8 @@
 #include <optional>
 #include <span>
 #include <string_view>
+#include <volt/circuit/bom/bom.hpp>
+#include <volt/library/selected_part_ratings.hpp>
 #include <volt/pcb/assembly/cpl.hpp>
 #include <volt/pcb/compiled/board_completion.hpp>
 
@@ -114,7 +116,7 @@ class ManufacturingProfile final {
     std::optional<double> minimum_via_radial_annulus_mm_;
 };
 
-/** Immutable exact-artifact target; canonical native CPL options are retained as data only. */
+/** Immutable exact-artifact target; canonical native CPL options bind assembly projections. */
 class ManufacturingTarget final {
   public:
     /** Validate typed inputs, canonicalize CPL options and reject duplicate footprint keys. */
@@ -226,7 +228,7 @@ enum class ManufacturingCheck {
 };
 /** State of one required leaf; no caller-supplied waiver or reviewed pass. */
 enum class ManufacturingState { NativePass, Failed, NotEvaluated, NotApplicable };
-/** V1 deliberately cannot establish aggregate manufacturing readiness. */
+/** Policy V1 deliberately cannot establish aggregate manufacturing readiness. */
 enum class ManufacturingStatus { Blocked, UnsupportedTarget };
 /** Native enforcement or explicitly deferred owner of a required check. */
 enum class ManufacturingOwner {
@@ -234,7 +236,9 @@ enum class ManufacturingOwner {
     NativeCompletion,
     DeferredNative,
     DeferredReview,
-    DeferredIO
+    DeferredIO,
+    NativeAssembly,
+    NativeRatings
 };
 /** Stable blocker family, qualified by the closed leaf key and exact scope. */
 enum class ManufacturingBlocker {
@@ -246,7 +250,7 @@ enum class ManufacturingBlocker {
     IdentityMismatch
 };
 /** Measurement units, never inferred from numeric values. */
-enum class ManufacturingUnit { Millimetres, OuncesPerSquareFoot, Count };
+enum class ManufacturingUnit { Millimetres, OuncesPerSquareFoot, Count, Degrees };
 
 /** One ordered actual measurement with its exact compound reporting scope. */
 struct ManufacturingObservation {
@@ -297,6 +301,17 @@ class ManufacturingCoverage final {
     /** Return exact underlying native physical facts and untouched diagnostics/provenance. */
     [[nodiscard]] const BoardCompletion &completion() const noexcept { return completion_; }
 
+    /** Return native BOM evidence when exact supported assembly evaluation ran. */
+    [[nodiscard]] const std::optional<Bom> &bom() const noexcept { return bom_; }
+
+    /** Return native CPL evidence using the exact target options. */
+    [[nodiscard]] const std::optional<Cpl> &cpl() const noexcept { return cpl_; }
+
+    /** Return explicit native selected-part rating obligations under either goal. */
+    [[nodiscard]] const std::optional<SelectedPartRatings> &ratings() const noexcept {
+        return ratings_;
+    }
+
     /** Return exact target digest. */
     [[nodiscard]] const ContentHash &target_digest() const noexcept { return target_digest_; }
 
@@ -309,7 +324,7 @@ class ManufacturingCoverage final {
     /** Return Blocked or UnsupportedTarget; V1 has no Ready value. */
     [[nodiscard]] ManufacturingStatus status() const noexcept { return status_; }
 
-    /** V1 has required unevaluated checks under every goal. */
+    /** Policy V1 has required unevaluated checks under every goal. */
     [[nodiscard]] bool ready() const noexcept { return false; }
 
     /** Return every required leaf in closed policy order. */
@@ -322,6 +337,9 @@ class ManufacturingCoverage final {
                                                                  const ManufacturingTarget &);
     ManufacturingCoverage(const CompiledBoard &compiled, const ManufacturingTarget &target);
     BoardCompletion completion_;
+    std::optional<Bom> bom_;
+    std::optional<Cpl> cpl_;
+    std::optional<SelectedPartRatings> ratings_;
     ManufacturingTarget target_;
     ContentHash target_digest_;
     ContentHash profile_digest_;

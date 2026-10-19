@@ -174,7 +174,7 @@ def test_target_profile_provenance_and_explicit_cpl_change_identity():
     assert changed_target.digest != empty.digest
     report = json.loads(volt.evaluate_manufacturing_coverage(bytes.fromhex(native["artifact_hex"]), changed_target).to_json())
     assert row(report, "AssemblyOrientation")["state"] == "not-evaluated"
-    assert row(report, "CplRotation")["state"] == "not-evaluated"
+    assert row(report, "CplRotation")["state"] == "native-pass"
     assert row(report, "SelectedPartRatings")["state"] == "not-evaluated"
 
 
@@ -196,3 +196,40 @@ except Exception as error:
 else:
     raise AssertionError("Malformed target accepted")
 """], check=True)
+
+
+@pytest.mark.parametrize("mode", ["assembly", "rating-accepted", "rating-current", "rating-budget", "rating-failure", "rating-unknown"])
+def test_exact_assembly_and_rating_native_evidence_has_full_source_free_parity(mode, tmp_path):
+    native = fixture(mode)
+    artifact = bytes.fromhex(native["artifact_hex"])
+    target = volt.read_manufacturing_target(native["target"])
+    before = artifact[:]
+    result = volt.evaluate_manufacturing_coverage(artifact, target)
+    assert result.to_json() == native["report"]
+    report = json.loads(result.to_json())
+    assert report["schema_version"] == 2
+    assert report["policy_version"] == 1
+    assert report["evaluator"] == "volt.manufacturing-coverage/2"
+    assert len(report["coverage"]) == 65
+    assert report["counts"]["required"] == 65
+    assert not report["ready"]
+    for key in ("PopulatedQuantities", "DnpQuantities", "SelectedAlternates", "CplIdentity", "CplSide", "CplRotation"):
+        assert row(report, key)["state"] == "native-pass"
+    expected = "failed" if mode == "rating-failure" else "not-evaluated" if mode == "rating-unknown" else "native-pass"
+    assert row(report, "SelectedPartRatings")["state"] == expected
+    assert report["ratings"]["subject_count"] == len(report["ratings"]["subjects"])
+    assert sum(report["ratings"]["counts"].values()) == report["ratings"]["subject_count"]
+    for subject in report["ratings"]["subjects"]:
+        assert subject["entity_count"] == len(subject["entities"])
+        assert subject["observation_count"] == len(subject["observations"])
+        assert subject["selection"]["part_digest"].startswith("sha256:")
+        assert subject["rule"].startswith("volt.part_erc.")
+    for key in ("AssemblyOrientation", "PartPackageReview", "LandPatternReview", "PinMapReview", "AssemblyProcess", "ExportFidelity"):
+        assert row(report, key)["state"] == "not-evaluated"
+    (tmp_path / "board").write_bytes(artifact)
+    (tmp_path / "target").write_text(native["target"])
+    del result, artifact, target
+    reopened = volt.evaluate_manufacturing_coverage((tmp_path / "board").read_bytes(),
+        volt.read_manufacturing_target((tmp_path / "target").read_text()))
+    assert reopened.to_json() == native["report"]
+    assert (tmp_path / "board").read_bytes() == before

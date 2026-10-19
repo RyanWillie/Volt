@@ -1,4 +1,4 @@
-# Native manufacturing targets and coverage V1
+# Native manufacturing targets V1 and coverage V2
 
 `Volt::PCB` owns `ManufacturingTarget`, `ManufacturingProfile`, the finite typed
 process selections and `evaluate_manufacturing_coverage`. `Volt::IO` owns strict
@@ -6,11 +6,11 @@ standalone target JSON and complete deterministic report JSON. The Python export
 are direct native bindings. Evaluation reads only immutable `CompiledBoard` facts;
 it performs no filesystem, library, website or manufacturer lookup.
 
-V1 always reports **Blocked** or **UnsupportedTarget**. There is no Ready value.
+Coverage evaluator V2 always reports **Blocked** or **UnsupportedTarget**. There is no Ready value.
 Passing physical completion or an implemented limit does not satisfy the complete
 manufacturing inventory. Synthetic profiles demonstrate evaluator behavior and do
-not establish manufacturer acceptance. The later assembly/rating, export/review
-binding and delivery gate remain separate work under #389.
+not establish manufacturer acceptance. Exact native assembly consistency and four supported rating families are checked below.
+Export/review binding and the delivery gate remain separate work under #389.
 
 ## Target identity and process
 
@@ -49,15 +49,14 @@ capability validation, bounded below by the profile base width.
 
 Material/finish selections describe requested applicability; their realization is
 still a required unevaluated leaf. Mask/legend/required pin-one and polarity checks
-also remain explicit, even when output files could be generated. Rating coverage
-remains required under both goals. Fabrication-only keeps assembly-only leaves
+also remain explicit, even when output files could be generated. Rating coverage remains required under both goals and includes explicit per-subject gaps. Fabrication-only keeps assembly-only leaves
 visible as policy-owned NotApplicable; it does not erase them. `SlotTreatment` is
 NotApplicable under either goal when `NoSlots` is selected and no native slots exist.
 
 Assembly targets retain native `CplProjectionOptions` as target data. Missing options
 block; explicitly empty offsets are distinct from missing. Corrections sort by
 footprint library/name and use native finite degree values. Duplicate keys reject,
-including identical repeats. No CPL or assembly evaluation is implemented here.
+including identical repeats. Native CPL evaluation uses these exact retained options.
 
 ## Standalone target codec
 
@@ -102,16 +101,16 @@ and rule provenance. The nested `completion` is the existing PCB physical report
 its ExportFidelity stays NotEvaluated here. Existing IO fabrication-completion
 remains available independently. The report embeds `volt.board-completion/1`;
 the writer checks that version and its required source/provenance fields before
-copying them to the report envelope. Diagnostics appear only at
-`completion.diagnostics`, and the single top-level `profile_digest` applies to every
-coverage row.
+copying them to the report envelope. Completion diagnostics stay at `completion.diagnostics`; assembly diagnostics stay
+in the native CPL evidence, and rating diagnostics are at `ratings.diagnostics`.
+The single top-level `profile_digest` applies to every coverage row.
 
 Coverage blocker codes are row classifications qualified by the closed check key:
 
 | Code | Meaning |
 | --- | --- |
 | MANUFACTURING_MISSING_INPUT | Required selection, limit or native prerequisite is unknown |
-| MANUFACTURING_NOT_EVALUATED | Checker or required exact evidence is not delivered in V1 |
+| MANUFACTURING_NOT_EVALUATED | Checker or required exact evidence is not delivered |
 | MANUFACTURING_CONSTRAINT_FAILED | A mandatory native constraint fails |
 | MANUFACTURING_UNSUPPORTED_SELECTION | Requested or actual process is outside V1 |
 | MANUFACTURING_IDENTITY_MISMATCH | Exact artifact or immutable capability snapshot differs |
@@ -125,6 +124,62 @@ via ref; board dimension/count/thickness have the board ref; copper weights have
 actual side layer ref. Deferred assembly/rating scope includes every logical component,
 including DNP. No external reporting reference becomes a mutation/traversal handle.
 
+## Native assembly and selected ratings
+
+Coverage reports explicitly use `schema_version: 2`, `evaluator:
+volt.manufacturing-coverage/2`, and row rules under that evaluator. Target JSON,
+profile/target semantic digests and `policy_version: 1` remain unchanged. Existing
+V1 target bytes reopen and are evaluated by V2; historical V1 coverage reports are
+not evaluator inputs or silently upgraded. No CompiledBoard archive change occurs.
+
+For assembly, the evaluator inventories every logical occurrence before projecting
+native BOM/CPL. Missing explicit fitted/DNP intent fails PopulatedQuantities;
+missing selection or required placement cannot disappear through empty projections.
+It checks grouped fitted quantities/references, zero DNP purchase quantities, full
+exact selection/override/approved-alternate metadata, and one populated CPL row per
+required occurrence with exact part, resolved footprint, position, side and normalized
+rotation plus the pinned correction. DNP rows are omitted. `assembly.bom` and
+`assembly.cpl` embed the existing native projection documents. Numeric rotation
+consistency never proves correct package orientation or independent footprint review.
+An approved alternate MPN never becomes the selected exact Part implicitly.
+
+`ratings` owns one outcome per occurrence gap or canonical non-characteristic
+semantic-key group, including all original group records/evidence, complete exact
+selection, native rule, ordered comparisons and sorted component/pin/net scope.
+Counts derive from those records. Four finite unconditional, known, conflict-free
+families reuse the existing ERC owner:
+
+- Voltage AbsoluteLimit against authored oriented potentials or compatible provided ranges.
+- Voltage AcceptedRange against other populated Voltage ProvidedRange claims.
+- Current AbsoluteLimit against other populated Current ProvidedRange claims.
+- Continuous Current requirements, max per occurrence/domain then summed, against
+  exactly one populated compatible capability (min per occurrence/domain).
+
+Each constrained range side needs a known provider side. Unknown/conflicting/conditional
+claims, unpaired providers/capabilities, unsupported Current AcceptedRange, unresolved
+endpoints, missing selected parts/ratings and non-finite arithmetic remain NotEvaluated.
+Live ERC keeps its strict full identity checks and diagnostics. The compiled bridge
+verifies retained full original definitions and maps original ordered PinKeys to
+artifact PinIds; it consumes preserved V2 continuity without restoring hierarchy.
+Authored-voltage comparisons retain the canonical minimum-ID representative limitation:
+only noncanonical or contradictory group-member voltage assertions produce a gap.
+Compiled V1 has no authoritative continuity and cannot establish rating coverage.
+
+Explicit DNP occurrences stay in the audit as NotApplicable subjects, supply no
+installed voltage/current guarantees, and never hide emitted copper or another
+populated endpoint. The rating leaf itself remains required under both goals. It
+fails on a proven supported violation, stays NotEvaluated on any uncovered populated
+subject, and passes only when at least one supported obligation was actually checked
+and every applicable subject is covered. Empty, all-DNP and characteristic-only
+inventories cannot acquire a ratings pass from an empty diagnostic list.
+
+C++ exposes read-only optional `bom()`, `cpl()` and `ratings()` evidence on the owned
+result. These are absent when exact supported target preconditions prevent evaluation;
+BOM/CPL are also absent for fabrication-only. No caller-supplied projections, overrides,
+manual evidence or report decoder exist. The 65 leaves remain: package/land-pattern/
+pin-map/orientation reviews, assembly-process acceptance, deferred DFM, export fidelity
+and delivery still block. See the [reviewed contract](design/native-manufacturing-assembly-ratings-contract.md).
+
 ## Source-free Python
 
 ```python
@@ -135,14 +190,14 @@ import volt
 artifact = Path("board.compiled").read_bytes()
 target = volt.read_manufacturing_target(Path("target.json").read_text())
 result = volt.evaluate_manufacturing_coverage(artifact, target)
-assert not result.ready  # V1 preserves required unevaluated leaves.
+assert not result.ready  # Required unevaluated leaves still block.
 report = json.loads(result.to_json())
 assert report["target_digest"] == target.digest
 ```
 
 Python exposes result status, readiness and digests as read-only typed properties.
 Rows, observations and retained diagnostics are available through `to_json()`;
-V1 does not expose typed Python row or EntityRef objects. C++ retains typed row access.
+Python does not expose typed row or EntityRef objects. C++ retains typed row access.
 
 To author inputs, populate native `ManufacturingProcess` fields with the exported
 `Manufacturing*` enums. `ManufacturingProfile(capability_json, source_content,
