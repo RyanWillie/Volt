@@ -1,6 +1,8 @@
 # Native manufacturing target and closed coverage v1 (#406)
 
-Status: contract for independent review before implementation. Baseline main
+Status: independent contract gate passed at `e10ae76b` on 2026-10-19; decision
+recorded on [#406](https://github.com/RyanWillie/Volt/issues/406#issuecomment-6270081375).
+The child alone is ready. Parent #389 remains open/not ready. Baseline main
 `77a7743aa081a86e07555cf43291aa901fbfb66e`. #400/#403 are closed.
 This bounded child implements stage 2 of the M1 spec, not readiness delivery.
 
@@ -180,3 +182,20 @@ applicability, numeric comparisons or EDA policy. No project writer/gate changes
 
 No later assembly/rating seam, human evidence trust/binding, export refusal, package graph,
 private assets or real manufacturer claim. Parent #389 stays open and not ready.
+
+## Implementation review decisions
+
+Independent review identified and resolved three implementation issues before PR:
+
+- Embedded native capability layer counts now reject integers outside the native int
+  range before delegating to the existing codec. Regressions cover signed/unsigned
+  overflow and prohibit silent 4294967298-to-2 narrowing.
+- Actual slots are rejected in process preflight before target-dependent numeric
+  leaves can pass. Their exact feature scope is retained; all implemented numeric
+  target leaves remain NotEvaluated under that unsupported process.
+- Track-width refinement shares the existing native highest-applicable-weight
+  selection rule with capability validation. A decreasing-limit fixture proves
+  allowed profile data does not acquire a second interpretation.
+
+The architecture inventory baseline adds exactly the seven new native Python-bound
+value/result classes. No logical/root/public storage API or artifact schema changes.

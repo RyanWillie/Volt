@@ -3,6 +3,7 @@
 
 #include <volt/pcb/compiled/board_consumers.hpp>
 #include <volt/pcb/compiled/compiled_board.hpp>
+#include <volt/pcb/compiled/manufacturing_target.hpp>
 
 namespace {
 
@@ -35,6 +36,15 @@ namespace {
 
 [[nodiscard]] int inspect_consumers(const volt::CompiledBoard &artifact,
                                     const volt::BoardSceneModelRef &reference) {
+    const auto process = volt::ManufacturingProcess{};
+    const auto target = volt::ManufacturingTarget{
+        artifact.identity(), artifact.content_digest(), volt::ManufacturingGoal::Fabrication,
+        process,
+        volt::ManufacturingProfile{artifact.capabilities().profile(),
+                                   volt::sha256_content_hash("link-only synthetic"), process}};
+    const auto coverage = volt::evaluate_manufacturing_coverage(artifact, target);
+    if (coverage.ready())
+        return 1;
     const auto validation = volt::validate_board(artifact);
     const auto ratsnest = volt::compute_ratsnest(artifact);
     const auto cpl = volt::project_cpl(artifact);

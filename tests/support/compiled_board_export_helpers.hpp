@@ -170,11 +170,13 @@ make_export_fixture_library(std::vector<ExportFixturePart> parts) {
 
 [[nodiscard]] inline CompiledBoard
 compile_export_fixture(const Circuit &circuit, Board board, const io::PartLibraryBundle &bundle,
-                       std::vector<BoardAssetCapability> additional_capabilities = {}) {
-    board.set_capability_profile(export_fixture_profile());
+                       std::vector<BoardAssetCapability> additional_capabilities = {},
+                       std::optional<BoardCapabilityProfile> profile = std::nullopt) {
+    const auto selected_profile = profile.value_or(export_fixture_profile());
+    board.set_capability_profile(selected_profile);
     auto result = io::compile_board(
         circuit, board, bundle,
-        CompiledBoardCapabilities{export_fixture_profile(), std::move(additional_capabilities)});
+        CompiledBoardCapabilities{selected_profile, std::move(additional_capabilities)});
     if (!result.has_artifact()) {
         throw KernelLogicError{ErrorCode::InvalidState,
                                result.failure().has_value()

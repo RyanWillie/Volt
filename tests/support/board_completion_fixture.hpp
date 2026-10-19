@@ -6,6 +6,19 @@
 namespace volt::test {
 /** Explicitly synthetic fixture variants; no vendor capability claims. */
 struct CompletionFixtureOptions {
+    std::optional<BoardCapabilityProfile> capability;
+    std::optional<double> top_weight;
+    std::optional<double> bottom_weight;
+    double thickness = 1.6;
+    double width = 30.0;
+    double height = 20.0;
+    double track_width = 0.2;
+    double via_drill = 0.3;
+    double via_diameter = 0.8;
+    bool no_stack = false;
+    bool no_outline = false;
+    bool disabled_top = false;
+    bool extra_copper = false;
     std::size_t components = 2;
     std::size_t placements = 2;
     bool selected = true;
@@ -180,15 +193,28 @@ struct CompletionFixtureOptions {
     if (options.second_dnp && components.size() > 1)
         circuit.update(components[1], SetAssemblyIntent{.dnp = true});
     auto board = Board{circuit, BoardName{"Synthetic completion"}};
-    const auto front =
-        board.add_layer(BoardLayer{"F.Cu", BoardLayerRole::Copper, BoardLayerSide::Top});
-    const auto back =
-        board.add_layer(BoardLayer{"B.Cu", BoardLayerRole::Copper, BoardLayerSide::Bottom});
+    const auto front = [&] {
+        auto layer = BoardLayer{"F.Cu", BoardLayerRole::Copper, BoardLayerSide::Top, 0.0,
+                                !options.disabled_top};
+        if (options.top_weight)
+            layer.set_copper_weight_oz(*options.top_weight);
+        return board.add_layer(std::move(layer));
+    }();
+    const auto back = [&] {
+        auto layer = BoardLayer{"B.Cu", BoardLayerRole::Copper, BoardLayerSide::Bottom};
+        if (options.bottom_weight)
+            layer.set_copper_weight_oz(*options.bottom_weight);
+        return board.add_layer(std::move(layer));
+    }();
     const auto inner =
         options.bad_span ? std::optional{board.add_layer(
                                BoardLayer{"In.Cu", BoardLayerRole::Copper, BoardLayerSide::Inner})}
                          : std::nullopt;
-    board.set_layer_stack(LayerStack{{front, back}, 1.6});
+    if (!options.no_stack)
+        board.set_layer_stack(LayerStack{{front, back}, options.thickness});
+    if (options.extra_copper)
+        static_cast<void>(
+            board.add_layer(BoardLayer{"Extra.Cu", BoardLayerRole::Copper, BoardLayerSide::Inner}));
     board.set_design_rules(options.rules);
     if (options.room_clearance) {
         auto room =
@@ -205,8 +231,9 @@ struct CompletionFixtureOptions {
         static_cast<void>(board.add_zone(BoardZone{
             {{left, bottom}, {left + 1, bottom}, {left + 1, top}, {left, top}}, {front}, {}}));
     }
-    board.set_outline(
-        BoardOutline::rectangle({options.outline_x, options.outline_shift}, {30, 20}));
+    if (!options.no_outline)
+        board.set_outline(BoardOutline::rectangle({options.outline_x, options.outline_shift},
+                                                  {options.width, options.height}));
     for (std::size_t i = 0; i < std::min(options.placements, components.size()); ++i)
         static_cast<void>(board.place_component(
             ComponentPlacement{components[i],
@@ -224,14 +251,16 @@ struct CompletionFixtureOptions {
             static_cast<void>(board.add_zone(BoardZone{outline, {back}, net}));
     }
     if (options.via)
-        static_cast<void>(board.add_via(BoardVia{net,
-                                                 {15, options.via_y},
-                                                 front,
-                                                 inner.value_or(back),
-                                                 options.drill_off_grid ? 0.3000004 : 0.3,
-                                                 0.8}));
+        static_cast<void>(
+            board.add_via(BoardVia{net,
+                                   {15, options.via_y},
+                                   front,
+                                   inner.value_or(back),
+                                   options.drill_off_grid ? 0.3000004 : options.via_drill,
+                                   options.via_diameter}));
     if (options.tracks)
-        static_cast<void>(board.add_track(BoardTrack{net, front, {{10, 10}, {20, 10}}, 0.2}));
+        static_cast<void>(
+            board.add_track(BoardTrack{net, front, {{10, 10}, {20, 10}}, options.track_width}));
     if (options.routed_via) {
         static_cast<void>(
             board.add_track(BoardTrack{net, back, {{10, 10}, {15, options.via_y}}, 0.2}));
@@ -256,6 +285,6 @@ struct CompletionFixtureOptions {
             BoardText{"A", {9999, 10}, BoardRotation::degrees(0), silk, 4.0, false}));
     }
     // The native compiler, not the fixture, owns closure consistency and mapping validation.
-    return compile_export_fixture(circuit, std::move(board), bundle);
+    return compile_export_fixture(circuit, std::move(board), bundle, {}, options.capability);
 }
 } // namespace volt::test

@@ -1141,3 +1141,13 @@ file digests. V1 continuity, unsupported/lossy shapes, unproven 4.6-grid contact
 openings and boundary tolerance remain explicit coverage gaps. Physical completion
 is not manufacturing-target readiness, manufacturer acceptance or publication permission.
 See [the finite native contract](design/native-physical-completion-contract.md).
+
+## Native manufacturing target coverage
+
+The direct native `ManufacturingTarget`, `ManufacturingProfile`, `ManufacturingProcess`
+and `Manufacturing*` enum bindings define an exact immutable-artifact target.
+`read_manufacturing_target` / `write_manufacturing_target` are strict native V1 codecs;
+`evaluate_manufacturing_coverage(artifact_bytes, target)` returns a native owned result
+with deterministic `to_json()` and full source-free C++/Python payload parity.
+V1 is always Blocked or UnsupportedTarget: required later coverage remains explicit.
+See [target format, scope and example](native-manufacturing-target-format.md).

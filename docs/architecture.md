@@ -579,3 +579,12 @@ text stable when migrating a throw site.
 
 This taxonomy classifies structural errors only. Design-quality findings still flow
 through diagnostics and validation, never through exceptions.
+
+## Native manufacturing target coverage
+
+`Volt::PCB` owns the finite manufacturing target/process/profile values, their canonical
+semantic identities, closed required inventory and immutable-artifact evaluator.
+`Volt::IO` owns strict versioned target JSON and complete deterministic coverage JSON.
+Python exports direct native bindings and performs no policy or numeric evaluation.
+V1 preserves explicit missing coverage and cannot declare manufacturing readiness; see
+[native target format](native-manufacturing-target-format.md).

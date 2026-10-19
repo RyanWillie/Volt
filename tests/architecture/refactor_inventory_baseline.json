@@ -915,6 +915,41 @@
           "python_type": "PartElectricalModelBuilder"
         },
         {
+          "cpp_type": "BoardCapabilityRange",
+          "path": "src/python/manufacturing_bindings.cpp",
+          "python_type": "ManufacturingRange"
+        },
+        {
+          "cpp_type": "ManufacturingProcess",
+          "path": "src/python/manufacturing_bindings.cpp",
+          "python_type": "ManufacturingProcess"
+        },
+        {
+          "cpp_type": "CplRotationOffset",
+          "path": "src/python/manufacturing_bindings.cpp",
+          "python_type": "ManufacturingCplOffset"
+        },
+        {
+          "cpp_type": "CplProjectionOptions",
+          "path": "src/python/manufacturing_bindings.cpp",
+          "python_type": "ManufacturingCplOptions"
+        },
+        {
+          "cpp_type": "ManufacturingProfile",
+          "path": "src/python/manufacturing_bindings.cpp",
+          "python_type": "ManufacturingProfile"
+        },
+        {
+          "cpp_type": "ManufacturingTarget",
+          "path": "src/python/manufacturing_bindings.cpp",
+          "python_type": "ManufacturingTarget"
+        },
+        {
+          "cpp_type": "ManufacturingCoverage",
+          "path": "src/python/manufacturing_bindings.cpp",
+          "python_type": "ManufacturingCoverage"
+        },
+        {
           "cpp_type": "volt::io::ArtifactId",
           "path": "src/python/project_bundle_bindings.cpp",
           "python_type": "ArtifactId"

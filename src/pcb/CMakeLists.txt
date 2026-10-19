@@ -3,6 +3,8 @@ add_library(
     board.cpp
     compiled_board.cpp
     compiled_board_consumers.cpp
+    manufacturing_target.cpp
+    manufacturing_coverage.cpp
     board_completion.cpp
     completion_inventory.cpp
     completion_copper.cpp
