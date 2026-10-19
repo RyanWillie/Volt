@@ -51,7 +51,8 @@ Material/finish selections describe requested applicability; their realization i
 still a required unevaluated leaf. Mask/legend/required pin-one and polarity checks
 also remain explicit, even when output files could be generated. Rating coverage
 remains required under both goals. Fabrication-only keeps assembly-only leaves
-visible as policy-owned NotApplicable; it does not erase them.
+visible as policy-owned NotApplicable; it does not erase them. `SlotTreatment` is
+NotApplicable under either goal when `NoSlots` is selected and no native slots exist.
 
 Assembly targets retain native `CplProjectionOptions` as target data. Missing options
 block; explicitly empty offsets are distinct from missing. Corrections sort by
@@ -99,7 +100,11 @@ full source/compilation provenance, all rows/counts, and complete retained nativ
 completion diagnostics including original messages, entities, measurements, overlays
 and rule provenance. The nested `completion` is the existing PCB physical report;
 its ExportFidelity stays NotEvaluated here. Existing IO fabrication-completion
-remains available independently.
+remains available independently. The report embeds `volt.board-completion/1`;
+the writer checks that version and its required source/provenance fields before
+copying them to the report envelope. Diagnostics appear only at
+`completion.diagnostics`, and the single top-level `profile_digest` applies to every
+coverage row.
 
 Coverage blocker codes are row classifications qualified by the closed check key:
 
@@ -134,6 +139,10 @@ assert not result.ready  # V1 preserves required unevaluated leaves.
 report = json.loads(result.to_json())
 assert report["target_digest"] == target.digest
 ```
+
+Python exposes result status, readiness and digests as read-only typed properties.
+Rows, observations and retained diagnostics are available through `to_json()`;
+V1 does not expose typed Python row or EntityRef objects. C++ retains typed row access.
 
 To author inputs, populate native `ManufacturingProcess` fields with the exported
 `Manufacturing*` enums. `ManufacturingProfile(capability_json, source_content,

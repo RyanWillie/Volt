@@ -1,5 +1,6 @@
 #include "../detail/entity_ref_format.hpp"
 #include <nlohmann/json.hpp>
+#include <volt/core/errors.hpp>
 #include <volt/io/pcb/board_completion.hpp>
 #include <volt/io/pcb/manufacturing_target.hpp>
 
@@ -14,6 +15,17 @@ Json entities(std::span<const EntityRef> refs) {
         result.push_back({{"kind", id.substr(0, id.find(':'))}, {"index", ref.index()}});
     }
     return result;
+}
+
+Json completion_report(const BoardCompletion &completion) {
+    auto report = Json::parse(write_board_completion(completion));
+    if (report.value("format", "") != "volt.board-completion" ||
+        report.value("schema_version", 0) != 1 || !report.contains("source") ||
+        !report.contains("provenance"))
+        throw KernelLogicError{
+            ErrorCode::InvalidState,
+            "Manufacturing coverage requires volt.board-completion/1 source and provenance"};
+    return report;
 }
 
 Json number(std::optional<double> value) { return value ? Json(*value) : Json{}; }
@@ -61,10 +73,9 @@ std::string write_manufacturing_coverage(const ManufacturingCoverage &result) {
                         {"observations", observations},
                         {"observation_count", observations.size()},
                         {"rule", "volt.manufacturing-coverage/1/" +
-                                     std::string{manufacturing_check_name(row.check)}},
-                        {"profile_digest", result.profile_digest().value()}});
+                                     std::string{manufacturing_check_name(row.check)}}});
     }
-    const auto completion = Json::parse(write_board_completion(result.completion()));
+    const auto completion = completion_report(result.completion());
     return Json{{"format", "volt.manufacturing-coverage"},
                 {"schema_version", 1},
                 {"policy_version", 1},
@@ -79,7 +90,6 @@ std::string write_manufacturing_coverage(const ManufacturingCoverage &result) {
                                : "blocked"},
                 {"ready", false},
                 {"coverage", rows},
-                {"diagnostics", completion.at("diagnostics")},
                 {"completion", completion},
                 {"counts",
                  {{"required", rows.size()},

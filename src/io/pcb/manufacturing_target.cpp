@@ -3,6 +3,7 @@
 #include <limits>
 #include <nlohmann/json.hpp>
 #include <set>
+#include <utility>
 #include <volt/io/capabilities/board_capability_profile.hpp>
 #include <volt/io/pcb/manufacturing_target.hpp>
 
@@ -36,17 +37,20 @@ std::string string(const Json &value) {
     return value.get<std::string>();
 }
 
-double number(const Json &value) {
-    require(value.is_number(), "Expected finite manufacturing number");
+double number(const Json &object, std::string_view key) {
+    const auto &value = object.at(key);
+    const auto message = "Expected finite manufacturing number: " + std::string{key};
+    require(value.is_number(), message);
     const auto result = value.get<double>();
-    require(std::isfinite(result), "Expected finite manufacturing number");
+    require(std::isfinite(result), message);
     return result;
 }
 
-unsigned int integer(const Json &value) {
+unsigned int integer(const Json &object, std::string_view key) {
+    const auto &value = object.at(key);
     require(value.is_number_integer() && value >= 0 &&
                 value <= std::numeric_limits<unsigned int>::max(),
-            "Expected unsigned manufacturing integer");
+            "Expected unsigned manufacturing integer: " + std::string{key});
     return value.get<unsigned int>();
 }
 
@@ -57,85 +61,110 @@ void version(const Json &value) {
                                            "Unsupported manufacturing document or policy version"};
 }
 
-template <typename T> std::span<const std::string_view> enum_names();
+template <typename T> using EnumEntry = std::pair<T, std::string_view>;
 
-template <> std::span<const std::string_view> enum_names<ManufacturingGoal>() {
+template <typename T> std::span<const EnumEntry<T>> enum_values();
+
+template <> std::span<const EnumEntry<ManufacturingGoal>> enum_values<ManufacturingGoal>() {
     static constexpr auto values =
-        std::array{std::string_view{"Fabrication"}, std::string_view{"FabricationAndAssembly"}};
+        std::array{EnumEntry{ManufacturingGoal::Fabrication, std::string_view{"Fabrication"}},
+                   EnumEntry{ManufacturingGoal::FabricationAndAssembly,
+                             std::string_view{"FabricationAndAssembly"}}};
     return values;
 }
 
-template <> std::span<const std::string_view> enum_names<ManufacturingFamily>() {
+template <> std::span<const EnumEntry<ManufacturingFamily>> enum_values<ManufacturingFamily>() {
     static constexpr auto values =
-        std::array{std::string_view{"RigidFr4"}, std::string_view{"Flex"}};
+        std::array{EnumEntry{ManufacturingFamily::RigidFr4, std::string_view{"RigidFr4"}},
+                   EnumEntry{ManufacturingFamily::Flex, std::string_view{"Flex"}}};
     return values;
 }
 
-template <> std::span<const std::string_view> enum_names<ManufacturingMaterial>() {
+template <> std::span<const EnumEntry<ManufacturingMaterial>> enum_values<ManufacturingMaterial>() {
     static constexpr auto values =
-        std::array{std::string_view{"Fr4Tg135"}, std::string_view{"OtherFr4"}};
+        std::array{EnumEntry{ManufacturingMaterial::Fr4Tg135, std::string_view{"Fr4Tg135"}},
+                   EnumEntry{ManufacturingMaterial::OtherFr4, std::string_view{"OtherFr4"}}};
     return values;
 }
 
-template <> std::span<const std::string_view> enum_names<ManufacturingFinish>() {
+template <> std::span<const EnumEntry<ManufacturingFinish>> enum_values<ManufacturingFinish>() {
     static constexpr auto values =
-        std::array{std::string_view{"LeadFreeHasl"}, std::string_view{"Enig"}};
+        std::array{EnumEntry{ManufacturingFinish::LeadFreeHasl, std::string_view{"LeadFreeHasl"}},
+                   EnumEntry{ManufacturingFinish::Enig, std::string_view{"Enig"}}};
     return values;
 }
 
-template <> std::span<const std::string_view> enum_names<ManufacturingMaskSides>() {
+template <>
+std::span<const EnumEntry<ManufacturingMaskSides>> enum_values<ManufacturingMaskSides>() {
+    static constexpr auto values =
+        std::array{EnumEntry{ManufacturingMaskSides::Both, std::string_view{"Both"}},
+                   EnumEntry{ManufacturingMaskSides::SingleSide, std::string_view{"SingleSide"}},
+                   EnumEntry{ManufacturingMaskSides::NoMask, std::string_view{"NoMask"}}};
+    return values;
+}
+
+template <>
+std::span<const EnumEntry<ManufacturingMaskColour>> enum_values<ManufacturingMaskColour>() {
     static constexpr auto values = std::array{
-        std::string_view{"Both"}, std::string_view{"SingleSide"}, std::string_view{"NoMask"}};
+        EnumEntry{ManufacturingMaskColour::Green, std::string_view{"Green"}},
+        EnumEntry{ManufacturingMaskColour::OtherColour, std::string_view{"OtherColour"}}};
     return values;
 }
 
-template <> std::span<const std::string_view> enum_names<ManufacturingMaskColour>() {
+template <>
+std::span<const EnumEntry<ManufacturingViaTreatment>> enum_values<ManufacturingViaTreatment>() {
     static constexpr auto values =
-        std::array{std::string_view{"Green"}, std::string_view{"OtherColour"}};
+        std::array{EnumEntry{ManufacturingViaTreatment::Exposed, std::string_view{"Exposed"}},
+                   EnumEntry{ManufacturingViaTreatment::Tented, std::string_view{"Tented"}},
+                   EnumEntry{ManufacturingViaTreatment::Filled, std::string_view{"Filled"}}};
     return values;
 }
 
-template <> std::span<const std::string_view> enum_names<ManufacturingViaTreatment>() {
+template <> std::span<const EnumEntry<ManufacturingDrilling>> enum_values<ManufacturingDrilling>() {
     static constexpr auto values = std::array{
-        std::string_view{"Exposed"}, std::string_view{"Tented"}, std::string_view{"Filled"}};
+        EnumEntry{ManufacturingDrilling::MechanicalThrough, std::string_view{"MechanicalThrough"}},
+        EnumEntry{ManufacturingDrilling::Laser, std::string_view{"Laser"}}};
     return values;
 }
 
-template <> std::span<const std::string_view> enum_names<ManufacturingDrilling>() {
-    static constexpr auto values =
-        std::array{std::string_view{"MechanicalThrough"}, std::string_view{"Laser"}};
-    return values;
-}
-
-template <> std::span<const std::string_view> enum_names<ManufacturingHoleTreatment>() {
-    static constexpr auto values =
-        std::array{std::string_view{"RoundOnly"}, std::string_view{"BlindBuried"}};
-    return values;
-}
-
-template <> std::span<const std::string_view> enum_names<ManufacturingSlotTreatment>() {
+template <>
+std::span<const EnumEntry<ManufacturingHoleTreatment>> enum_values<ManufacturingHoleTreatment>() {
     static constexpr auto values = std::array{
-        std::string_view{"NoSlots"}, std::string_view{"Routed"}, std::string_view{"Plated"}};
+        EnumEntry{ManufacturingHoleTreatment::RoundOnly, std::string_view{"RoundOnly"}},
+        EnumEntry{ManufacturingHoleTreatment::BlindBuried, std::string_view{"BlindBuried"}}};
     return values;
 }
 
-template <> std::span<const std::string_view> enum_names<ManufacturingAssembly>() {
+template <>
+std::span<const EnumEntry<ManufacturingSlotTreatment>> enum_values<ManufacturingSlotTreatment>() {
     static constexpr auto values =
-        std::array{std::string_view{"NoAssembly"}, std::string_view{"SmtAndThroughHole"},
-                   std::string_view{"OtherAssembly"}};
+        std::array{EnumEntry{ManufacturingSlotTreatment::NoSlots, std::string_view{"NoSlots"}},
+                   EnumEntry{ManufacturingSlotTreatment::Routed, std::string_view{"Routed"}},
+                   EnumEntry{ManufacturingSlotTreatment::Plated, std::string_view{"Plated"}}};
+    return values;
+}
+
+template <> std::span<const EnumEntry<ManufacturingAssembly>> enum_values<ManufacturingAssembly>() {
+    static constexpr auto values = std::array{
+        EnumEntry{ManufacturingAssembly::NoAssembly, std::string_view{"NoAssembly"}},
+        EnumEntry{ManufacturingAssembly::SmtAndThroughHole, std::string_view{"SmtAndThroughHole"}},
+        EnumEntry{ManufacturingAssembly::OtherAssembly, std::string_view{"OtherAssembly"}}};
     return values;
 }
 
 template <typename T> T enumeration(const Json &value) {
     const auto name = string(value);
-    const auto names = enum_names<T>();
-    const auto found = std::ranges::find(names, name);
-    require(found != names.end(), "Unknown manufacturing enum value");
-    return static_cast<T>(std::ranges::distance(names.begin(), found));
+    const auto values = enum_values<T>();
+    const auto found = std::ranges::find(values, name, &EnumEntry<T>::second);
+    require(found != values.end(), "Unknown manufacturing enum value");
+    return found->first;
 }
 
 template <typename T> Json enum_json(T value) {
-    return enum_names<T>()[static_cast<std::size_t>(value)];
+    for (const auto &[key, name] : enum_values<T>())
+        if (key == value)
+            return name;
+    std::unreachable();
 }
 
 template <typename T> Json optional_enum(const std::optional<T> &value) {
@@ -153,7 +182,7 @@ std::optional<BoardCapabilityRange> range(const Json &value) {
     if (value.is_null())
         return std::nullopt;
     keys(value, {"minimum_mm", "maximum_mm"});
-    return BoardCapabilityRange{number(value.at("minimum_mm")), number(value.at("maximum_mm"))};
+    return BoardCapabilityRange{number(value, "minimum_mm"), number(value, "maximum_mm")};
 }
 
 Json process_json(const ManufacturingProcess &p) {
@@ -188,13 +217,13 @@ ManufacturingProcess process(const Json &value) {
     if (!value.at("material").is_null())
         p.material = enumeration<ManufacturingMaterial>(value.at("material"));
     if (!value.at("copper_layers").is_null())
-        p.copper_layers = integer(value.at("copper_layers"));
+        p.copper_layers = integer(value, "copper_layers");
     if (!value.at("top_copper_weight_oz").is_null())
-        p.top_copper_weight_oz = number(value.at("top_copper_weight_oz"));
+        p.top_copper_weight_oz = number(value, "top_copper_weight_oz");
     if (!value.at("bottom_copper_weight_oz").is_null())
-        p.bottom_copper_weight_oz = number(value.at("bottom_copper_weight_oz"));
+        p.bottom_copper_weight_oz = number(value, "bottom_copper_weight_oz");
     if (!value.at("thickness_mm").is_null())
-        p.thickness_mm = number(value.at("thickness_mm"));
+        p.thickness_mm = number(value, "thickness_mm");
     if (!value.at("finish").is_null())
         p.finish = enumeration<ManufacturingFinish>(value.at("finish"));
     if (!value.at("mask_sides").is_null())
@@ -212,9 +241,9 @@ ManufacturingProcess process(const Json &value) {
     if (!value.at("assembly").is_null())
         p.assembly = enumeration<ManufacturingAssembly>(value.at("assembly"));
     if (!value.at("dimension_x_mm").is_null())
-        p.dimension_x_mm = number(value.at("dimension_x_mm"));
+        p.dimension_x_mm = number(value, "dimension_x_mm");
     if (!value.at("dimension_y_mm").is_null())
-        p.dimension_y_mm = number(value.at("dimension_y_mm"));
+        p.dimension_y_mm = number(value, "dimension_y_mm");
     return p;
 }
 
@@ -274,7 +303,7 @@ std::optional<CplProjectionOptions> cpl(const Json &value) {
         keys(entry, {"library", "name", "rotation_deg"});
         result.rotation_offsets.emplace_back(
             FootprintRef{string(entry.at("library")), string(entry.at("name"))},
-            number(entry.at("rotation_deg")));
+            number(entry, "rotation_deg"));
     }
     return result;
 }
@@ -335,13 +364,13 @@ ManufacturingTarget read_manufacturing_target(std::string_view text) {
             ContentHash{string(source.at("content_digest"))},
             enumeration<ManufacturingGoal>(doc.at("goal")),
             process(doc.at("process")),
-            ManufacturingProfile{
-                capability(p.at("capability")), ContentHash{string(p.at("source_content"))},
-                process(p.at("applicability")), range(p.at("dimension_x_mm")),
-                range(p.at("dimension_y_mm")),
-                p.at("minimum_via_radial_annulus_mm").is_null()
-                    ? std::nullopt
-                    : std::optional{number(p.at("minimum_via_radial_annulus_mm"))}},
+            ManufacturingProfile{capability(p.at("capability")),
+                                 ContentHash{string(p.at("source_content"))},
+                                 process(p.at("applicability")), range(p.at("dimension_x_mm")),
+                                 range(p.at("dimension_y_mm")),
+                                 p.at("minimum_via_radial_annulus_mm").is_null()
+                                     ? std::nullopt
+                                     : std::optional{number(p, "minimum_via_radial_annulus_mm")}},
             cpl(doc.at("cpl_options"))};
     } catch (const ManufacturingTargetReadError &) {
         throw;

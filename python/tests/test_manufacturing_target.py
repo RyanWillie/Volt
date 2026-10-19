@@ -2,6 +2,7 @@
 import json
 import os
 import subprocess
+import sys
 
 import pytest
 import volt
@@ -35,14 +36,16 @@ def test_entire_native_payload_and_bytes_match_without_source(mode, tmp_path):
     for item in report["coverage"]:
         assert item["entity_count"] == len(item["entities"])
         assert item["observation_count"] == len(item["observations"])
-        assert item["profile_digest"] == result.profile_digest
+        assert "profile_digest" not in item
         for observation in item["observations"]:
             assert observation["entity_count"] == len(observation["entities"])
     assert row(report, "SelectedPartRatings")["state"] == "not-evaluated"
     assert row(report, "ExportFidelity")["state"] == "not-evaluated"
     assert row(report, "MaskWeb")["state"] == "not-evaluated"
     assert row(report, "RequiredPolarity")["state"] == "not-evaluated"
-    assert report["diagnostics"] == report["completion"]["diagnostics"]
+    assert "diagnostics" not in report
+    assert report["profile_digest"] == result.profile_digest
+    assert isinstance(report["completion"]["diagnostics"], list)
     assert target.digest == result.target_digest
     assert volt.write_manufacturing_target(target) == native["target"]
     artifact_path = tmp_path / "isolated.board"
@@ -173,3 +176,23 @@ def test_target_profile_provenance_and_explicit_cpl_change_identity():
     assert row(report, "AssemblyOrientation")["state"] == "not-evaluated"
     assert row(report, "CplRotation")["state"] == "not-evaluated"
     assert row(report, "SelectedPartRatings")["state"] == "not-evaluated"
+
+
+def test_exception_translator_owns_type_after_module_attribute_deletion():
+    subprocess.run([sys.executable, "-c", """
+import gc
+import weakref
+import volt
+error_type = weakref.ref(volt.ManufacturingTargetReadError)
+del volt.ManufacturingTargetReadError
+del volt._volt.ManufacturingTargetReadError
+gc.collect()
+assert error_type() is not None
+try:
+    volt.read_manufacturing_target("{}")
+except Exception as error:
+    assert type(error) is error_type()
+    assert error.code == "Malformed"
+else:
+    raise AssertionError("Malformed target accepted")
+"""], check=True)

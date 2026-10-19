@@ -159,7 +159,9 @@ ManufacturingCoverage evaluate_manufacturing_coverage(const CompiledBoard &compi
              "Target board, artifact bytes or complete capability snapshot does not match",
              ManufacturingBlocker::IdentityMismatch);
 
-    for (std::size_t i = 0; i < result.completion_.coverage().size(); ++i) {
+    // Export evidence belongs to a later stage, regardless of native completion state.
+    for (std::size_t i = 0; i < static_cast<std::size_t>(BoardCompletionCheck::ExportFidelity);
+         ++i) {
         auto &physical = row(static_cast<ManufacturingCheck>(
             static_cast<std::size_t>(ManufacturingCheck::LogicalContinuity) + i));
         const auto &native = result.completion_.coverage()[i];
@@ -257,9 +259,10 @@ ManufacturingCoverage evaluate_manufacturing_coverage(const CompiledBoard &compi
                  "Actual copper layers must be exactly the enabled top/bottom pair in stack order");
         if (capability.supported_copper_layer_counts().empty())
             gap(layers, "Pinned supported copper layer counts are missing");
-        else if (std::ranges::find(capability.supported_copper_layer_counts(),
+        else if (layers.state != ManufacturingState::Failed &&
+                 std::ranges::find(capability.supported_copper_layer_counts(),
                                    static_cast<int>(copper.size())) ==
-                 capability.supported_copper_layer_counts().end())
+                     capability.supported_copper_layer_counts().end())
             fail(layers, "Actual copper layer count is absent from the pinned supported counts");
     }
     auto &thickness = row(ManufacturingCheck::BoardThickness);

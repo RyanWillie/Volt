@@ -7,30 +7,32 @@
 namespace volt::python {
 namespace py = pybind11;
 
-namespace {
-PyObject *read_error_type = nullptr;
-}
-
 void bind_manufacturing(py::module_ &module) {
-    const auto error_class_name =
-        module.attr("__name__").cast<std::string>() + ".ManufacturingTargetReadError";
-    read_error_type =
-        PyErr_NewException(error_class_name.c_str(), module.attr("VoltError").ptr(), nullptr);
-    module.attr("ManufacturingTargetReadError") =
-        py::reinterpret_steal<py::object>(read_error_type);
+    // Match pybind11's exception storage: retain a strong reference safely across teardown.
+    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> read_error_type;
+    read_error_type.call_once_and_store_result([&] {
+        const auto error_class_name =
+            module.attr("__name__").cast<std::string>() + ".ManufacturingTargetReadError";
+        auto type = py::reinterpret_steal<py::object>(
+            PyErr_NewException(error_class_name.c_str(), module.attr("VoltError").ptr(), nullptr));
+        if (!type)
+            throw py::error_already_set{};
+        return type;
+    });
+    module.attr("ManufacturingTargetReadError") = read_error_type.get_stored();
     py::register_exception_translator([](std::exception_ptr failure) {
         if (!failure)
             return;
         try {
             std::rethrow_exception(failure);
         } catch (const io::ManufacturingTargetReadError &error) {
-            auto type = py::reinterpret_borrow<py::object>(read_error_type);
+            const auto &type = read_error_type.get_stored();
             auto instance = type(error.what());
             instance.attr("code") =
                 error.code() == io::ManufacturingTargetReadErrorCode::UnsupportedVersion
                     ? "UnsupportedVersion"
                     : "Malformed";
-            PyErr_SetObject(read_error_type, instance.ptr());
+            PyErr_SetObject(type.ptr(), instance.ptr());
         }
     });
     py::enum_<ManufacturingGoal>(module, "ManufacturingGoal")

@@ -76,7 +76,20 @@ TEST_CASE("Manufacturing fixed inventory retains every required deferred leaf", 
     CHECK(leaf(result, ManufacturingCheck::CopperWidth).entities.size() == 2);
     const auto physical = io::write_board_completion(evaluate_board_completion(compiled));
     CHECK(io::write_board_completion(result.completion()) == physical);
-    CHECK(json["diagnostics"] == Json::parse(physical)["diagnostics"]);
+    CHECK_FALSE(json.contains("diagnostics"));
+    CHECK(json["completion"] == Json::parse(physical));
+    CHECK(json["source"] == json["completion"]["source"]);
+    CHECK(json["provenance"] == json["completion"]["provenance"]);
+    CHECK(json["profile_digest"] == result.profile_digest().value());
+    for (const auto &item : json["coverage"])
+        CHECK_FALSE(item.contains("profile_digest"));
+    const auto &export_row = leaf(result, ManufacturingCheck::ExportFidelity);
+    CHECK(export_row.owner == ManufacturingOwner::DeferredIO);
+    CHECK(export_row.blocker == ManufacturingBlocker::MissingCoverage);
+    CHECK(export_row.reason == "Required checker or exact evidence is not implemented in V1");
+    CHECK(export_row.remediation ==
+          "Complete the required native checker or independently reviewed evidence stage");
+    CHECK(export_row.entities == std::vector{EntityRef::board()});
 }
 
 TEST_CASE(
@@ -317,6 +330,14 @@ TEST_CASE(
             CHECK(error.code() == io::ManufacturingTargetReadErrorCode::UnsupportedVersion);
         }
     }
+    auto embedded = original;
+    embedded["profile"]["capability"]["version"] = 2;
+    try {
+        static_cast<void>(io::read_manufacturing_target(embedded.dump()));
+        FAIL("Embedded capability version accepted");
+    } catch (const io::ManufacturingTargetReadError &error) {
+        CHECK(error.code() == io::ManufacturingTargetReadErrorCode::UnsupportedVersion);
+    }
     for (const auto &bad : std::vector<Json>{true, "1", -1, 1.5}) {
         auto doc = original;
         doc["process"]["copper_layers"] = bad;
@@ -383,6 +404,9 @@ TEST_CASE(
     const auto result = evaluate_manufacturing_coverage(compiled, empty);
     CHECK(leaf(result, ManufacturingCheck::ProcessSelections).state ==
           ManufacturingState::NativePass);
+    CHECK(leaf(result, ManufacturingCheck::SlotTreatment).state ==
+          ManufacturingState::NotApplicable);
+    CHECK_FALSE(leaf(result, ManufacturingCheck::SlotTreatment).applicable);
     for (std::size_t i = static_cast<std::size_t>(ManufacturingCheck::PartPackageReview);
          i < result.coverage().size(); ++i)
         CHECK(result.coverage()[i].state == ManufacturingState::NotEvaluated);
@@ -414,6 +438,11 @@ TEST_CASE("Manufacturing fresh reopened reports and deterministic codecs preserv
     const auto reopened = io::open_compiled_board(compiled.bytes());
     CHECK(io::write_manufacturing_target(reopened_target) == text);
     CHECK(target.digest() == reopened_target.digest());
+    auto reordered = nlohmann::ordered_json::object();
+    const auto doc = Json::parse(text);
+    for (auto it = doc.rbegin(); it != doc.rend(); ++it)
+        reordered[it.key()] = it.value();
+    CHECK(io::read_manufacturing_target(reordered.dump()).digest() == target.digest());
     CHECK(io::write_manufacturing_coverage(evaluate_manufacturing_coverage(compiled, target)) ==
           io::write_manufacturing_coverage(
               evaluate_manufacturing_coverage(reopened, reopened_target)));
@@ -619,4 +648,45 @@ TEST_CASE("Manufacturing foreign artifact slots cannot classify the requested pr
     CHECK(leaf(result, ManufacturingCheck::SlotTreatment).entities ==
           std::vector{EntityRef::board()});
     CHECK(leaf(result, ManufacturingCheck::CopperWidth).state == ManufacturingState::NotEvaluated);
+}
+
+TEST_CASE("Manufacturing number errors identify their field", "[manufacturing]") {
+    const auto compiled = test::completion_fixture(test::manufacturing_options());
+    const auto field = GENERATE("copper_layers", "thickness_mm", "dimension_x_mm");
+    auto doc = document(compiled);
+    doc["process"][field] = true;
+    try {
+        static_cast<void>(io::read_manufacturing_target(doc.dump()));
+        FAIL("Boolean manufacturing number accepted");
+    } catch (const io::ManufacturingTargetReadError &error) {
+        CHECK(error.code() == io::ManufacturingTargetReadErrorCode::Malformed);
+        CHECK(std::string{error.what()}.find(field) != std::string::npos);
+    }
+}
+
+TEST_CASE("Manufacturing layer topology failures retain their specific reason", "[manufacturing]") {
+    auto options = test::manufacturing_options();
+    options.disabled_top = true;
+    const auto capability = BoardCapabilityProfile{"Synthetic unsupported layer count",
+                                                   {"synthetic://layers", "2026-10-19"},
+                                                   0.15,
+                                                   0.2,
+                                                   0.6,
+                                                   {},
+                                                   {},
+                                                   {4},
+                                                   BoardCapabilityRange{1.0, 2.0},
+                                                   {1.0}};
+    options.capability = capability;
+    const auto compiled = test::completion_fixture(options);
+    const auto profile = ManufacturingProfile{capability, sha256_content_hash("layers"),
+                                              test::manufacturing_process()};
+    const auto result = evaluate_manufacturing_coverage(
+        compiled, ManufacturingTarget{compiled.identity(), compiled.content_digest(),
+                                      ManufacturingGoal::Fabrication, test::manufacturing_process(),
+                                      profile});
+    const auto &row = leaf(result, ManufacturingCheck::CopperLayerCount);
+    CHECK(row.state == ManufacturingState::Failed);
+    CHECK(row.reason ==
+          "Actual copper layers must be exactly the enabled top/bottom pair in stack order");
 }
