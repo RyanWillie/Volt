@@ -69,7 +69,11 @@ leaves retain the existing explicit N/A, except SelectedPartRatings remains requ
   native rotation calculation so exporter and coverage cannot drift. Target duplicate
   footprint corrections (identical or conflicting) reject structurally as delivered;
   standalone CPL retains its existing duplicate/conflict diagnostics. No last-writer wins.
-  Finite large-degree inputs must not create non-finite sums or a passed NaN observation.
+  A populated occurrence without an exact resolved selected footprint fails the
+  rotation prerequisite. Its native zero fallback is retained as projection evidence,
+  never as checked authored/correction/final rotation observations. The independently
+  known side may still pass. Finite large-degree inputs must not create non-finite
+  sums or a passed NaN observation.
 
 Keep existing CPL diagnostics verbatim in owned assembly evidence. Numeric consistency
 does not satisfy AssemblyOrientation, PartPackageReview, LandPatternReview, PinMapReview

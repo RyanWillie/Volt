@@ -480,3 +480,23 @@ TEST_CASE(
            : which == "accepted-nominal" ? ManufacturingState::NotEvaluated
                                          : ManufacturingState::NativePass));
 }
+
+TEST_CASE("Unselected footprint cannot certify the native zero CPL correction fallback",
+          "[manufacturing][assembly]") {
+    auto options = RatingFixtureOptions{};
+    options.occurrences[0].selected = false;
+    options.occurrences[0].rotation = 45;
+    const auto compiled = assembly_rating_fixture(options);
+    const auto result = evaluate(
+        compiled, true, CplProjectionOptions{{CplRotationOffset{{"test.rating", "subject"}, 90}}});
+    CHECK(leaf(result, ManufacturingCheck::CplIdentity).state == ManufacturingState::Failed);
+    CHECK(leaf(result, ManufacturingCheck::CplSide).state == ManufacturingState::NativePass);
+    CHECK(leaf(result, ManufacturingCheck::CplRotation).state == ManufacturingState::Failed);
+    CHECK(leaf(result, ManufacturingCheck::CplRotation).observations.empty());
+    REQUIRE(result.cpl());
+    REQUIRE(result.cpl()->rows().size() == 1);
+    CHECK_FALSE(result.cpl()->rows()[0].footprint());
+    CHECK(result.cpl()->rows()[0].rotation_offset_deg() == 0);
+    CHECK(result.cpl()->rows()[0].rotation_deg() == 45);
+    CHECK_FALSE(result.cpl()->diagnostics().diagnostics().empty());
+}

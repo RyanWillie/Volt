@@ -234,3 +234,18 @@ def test_exact_assembly_and_rating_native_evidence_has_full_source_free_parity(m
         volt.read_manufacturing_target((tmp_path / "target").read_text()))
     assert reopened.to_json() == native["report"]
     assert (tmp_path / "board").read_bytes() == before
+
+
+def test_unselected_footprint_cannot_certify_zero_rotation_fallback():
+    native = fixture("assembly-unselected")
+    result = volt.evaluate_manufacturing_coverage(bytes.fromhex(native["artifact_hex"]),
+        volt.read_manufacturing_target(native["target"]))
+    assert result.to_json() == native["report"]
+    report = json.loads(result.to_json())
+    assert row(report, "CplIdentity")["state"] == "failed"
+    assert row(report, "CplSide")["state"] == "native-pass"
+    assert row(report, "CplRotation")["state"] == "failed"
+    assert row(report, "CplRotation")["observations"] == []
+    assert report["assembly"]["cpl"]["rows"][0]["footprint"] is None
+    assert report["assembly"]["cpl"]["rows"][0]["rotation_offset_deg"] == 0
+    assert report["assembly"]["cpl"]["rows"][0]["rotation_deg"] == 45

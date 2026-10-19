@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
         options.different_nets = true;
         options.netless_zone = true;
     }
-    const auto exact = mode == "assembly" || mode.starts_with("rating-");
+    const auto exact = mode.starts_with("assembly") || mode.starts_with("rating-");
     const auto compiled = [&] {
         if (!exact)
             return volt::test::completion_fixture(options);
@@ -22,6 +22,10 @@ int main(int argc, char **argv) {
                 volt::test::RatingOccurrence{},
                 volt::test::RatingOccurrence{.side = volt::BoardSide::Bottom, .rotation = -450},
                 volt::test::RatingOccurrence{.dnp = true, .placed = false}};
+        if (mode == "assembly-unselected") {
+            inputs.occurrences[0].selected = false;
+            inputs.occurrences[0].rotation = 45;
+        }
         if (mode == "rating-conditional") {
             auto conditional = volt::test::voltage_rating();
             conditional.conditions = {volt::ElectricalCondition::equal(

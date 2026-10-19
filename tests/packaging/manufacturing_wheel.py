@@ -19,7 +19,7 @@ assert report == Path('expected').read_text()
 assert volt.write_manufacturing_target(target) == target_bytes
 assert artifact == Path('board').read_bytes()
 """
-for mode in ("assembly", "rating-accepted", "rating-current", "rating-budget", "rating-failure", "rating-unknown", "rating-conditional"):
+for mode in ("assembly", "assembly-unselected", "rating-accepted", "rating-current", "rating-budget", "rating-failure", "rating-unknown", "rating-conditional"):
     data = json.loads(subprocess.check_output([str(fixture), mode], text=True))
     with tempfile.TemporaryDirectory(prefix="volt-manufacturing-wheel-") as directory:
         root = Path(directory)
@@ -29,4 +29,4 @@ for mode in ("assembly", "rating-accepted", "rating-current", "rating-budget", "
         environment = os.environ.copy()
         environment.pop("PYTHONPATH", None)
         subprocess.run([sys.executable, "-c", runner], cwd=root, env=environment, check=True)
-print("Installed wheel: seven source-free assembly/rating reports match native bytes")
+print("Installed wheel: eight source-free assembly/rating reports match native bytes")

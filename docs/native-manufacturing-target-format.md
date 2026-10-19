@@ -138,7 +138,10 @@ missing selection or required placement cannot disappear through empty projectio
 It checks grouped fitted quantities/references, zero DNP purchase quantities, full
 exact selection/override/approved-alternate metadata, and one populated CPL row per
 required occurrence with exact part, resolved footprint, position, side and normalized
-rotation plus the pinned correction. DNP rows are omitted. `assembly.bom` and
+rotation plus the pinned correction. A missing exact resolved selected footprint
+fails the CPL rotation prerequisite; matching its unresolved zero fallback never
+produces passing rotation observations. Known side coverage remains independent.
+DNP rows are omitted. `assembly.bom` and
 `assembly.cpl` embed the existing native projection documents. Numeric rotation
 consistency never proves correct package orientation or independent footprint review.
 An approved alternate MPN never becomes the selected exact Part implicitly.

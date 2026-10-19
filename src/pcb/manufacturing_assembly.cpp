@@ -159,11 +159,17 @@ void check_manufacturing_assembly(const CompiledBoard &compiled, const Manufactu
                 ManufacturingUnit::Millimetres);
         observe(side, entities, static_cast<double>(projected.side()),
                 static_cast<double>(authored.side()), ManufacturingUnit::Count);
+        if (!part || !projected.footprint() ||
+            *projected.footprint() != part->physical_part().footprint() ||
+            compiled.footprints().find(*projected.footprint()) == nullptr) {
+            fail(rotation,
+                 "Exact selected footprint is required to evaluate the pinned CPL correction");
+            continue;
+        }
         auto offset = 0.0;
-        if (part)
-            for (const auto &candidate : target.cpl_options()->rotation_offsets)
-                if (candidate.footprint() == part->physical_part().footprint())
-                    offset = candidate.rotation_deg();
+        for (const auto &candidate : target.cpl_options()->rotation_offsets)
+            if (candidate.footprint() == part->physical_part().footprint())
+                offset = candidate.rotation_deg();
         const auto normalized = normalize_cpl_rotation(authored.rotation().degrees());
         observe(rotation, entities, projected.authored_rotation_deg(), normalized,
                 ManufacturingUnit::Degrees);
