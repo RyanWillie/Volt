@@ -78,6 +78,7 @@ add_executable(
     io/pcb/pcb_svg_writer_test.cpp
     io/pcb/compiled_board_test.cpp
     io/pcb/manufacturing_target_test.cpp
+    io/pcb/manufacturing_assembly_ratings_test.cpp
     io/pcb/board_completion_test.cpp
     io/project_bundle_source_test.cpp
     io/project_bundle_dc_input_test.cpp

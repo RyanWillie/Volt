@@ -586,5 +586,6 @@ through diagnostics and validation, never through exceptions.
 semantic identities, closed required inventory and immutable-artifact evaluator.
 `Volt::IO` owns strict versioned target JSON and complete deterministic coverage JSON.
 Python exports direct native bindings and performs no policy or numeric evaluation.
-V1 preserves explicit missing coverage and cannot declare manufacturing readiness; see
+Target policy V1 and coverage evaluator V2 preserve explicit missing coverage and
+cannot declare manufacturing readiness; see
 [native target format](native-manufacturing-target-format.md).

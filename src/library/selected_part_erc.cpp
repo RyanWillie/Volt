@@ -1,3 +1,5 @@
+#include "selected_part_erc_detail.hpp"
+#include <cmath>
 #include <volt/library/part_library.hpp>
 
 #include <algorithm>
@@ -61,6 +63,8 @@ struct Claim {
     bool has_unknown = false;
     bool has_unconditional = false;
     std::string provenance;
+    bool has_conditions = false;
+    std::vector<std::size_t> groups;
 };
 
 [[nodiscard]] bool operator<(const ClaimKey &lhs, const ClaimKey &rhs) noexcept {
@@ -92,13 +96,15 @@ struct Claim {
     return canonical_net(circuit, continuity, *net);
 }
 
-[[nodiscard]] std::optional<Domain> project_subject(const Circuit &circuit,
-                                                    const detail::NetContinuityView &continuity,
-                                                    ComponentId component,
-                                                    const ElectricalSubject &subject) {
-    const auto pins = queries::pins_for(circuit, component);
-    auto positive = std::vector<ElectricalPinIndex>{};
-    auto negative = std::vector<ElectricalPinIndex>{};
+struct OrientedPins {
+    std::vector<ElectricalPinIndex> positive;
+    std::vector<ElectricalPinIndex> negative;
+};
+
+OrientedPins subject_indices(const ElectricalSubject &subject) {
+    auto result = OrientedPins{};
+    auto &positive = result.positive;
+    auto &negative = result.negative;
     switch (subject.kind()) {
     case ElectricalSubjectKind::FramedPin: {
         const auto &framed = subject.as_framed_pin();
@@ -120,6 +126,14 @@ struct Claim {
     }
     }
 
+    return result;
+}
+
+[[nodiscard]] std::optional<Domain> project_subject(const Circuit &circuit,
+                                                    const detail::NetContinuityView &continuity,
+                                                    const std::vector<PinId> &pins,
+                                                    const ElectricalSubject &subject) {
+    const auto [positive, negative] = subject_indices(subject);
     const auto projected_positive = project_pin(circuit, continuity, pins, positive.front());
     const auto projected_negative = project_pin(circuit, continuity, pins, negative.front());
     if (!projected_positive.has_value() || !projected_negative.has_value() ||
@@ -202,6 +216,7 @@ void add_range_claim(Claim &claim, const Bounds &candidate) {
 
 void add_record(Claim &claim, const ElectricalRecord &record) {
     claim.has_unconditional = claim.has_unconditional || record.conditions().empty();
+    claim.has_conditions = claim.has_conditions || !record.conditions().empty();
     if (record.value().kind() == ElectricalValueKind::Unknown) {
         claim.has_unknown = true;
         return;
@@ -250,47 +265,203 @@ void add_record(Claim &claim, const ElectricalRecord &record) {
 
 } // namespace
 
-DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
-                                            const ExactPartResolver &resolver) {
-    const auto continuity = detail::NetContinuityView{circuit};
+namespace {
+std::string rating_rule(const ElectricalRecord &record) {
+    if (record.meaning() == ElectricalMeaning::ProvidedRange)
+        return "volt.part_erc.provided_range@1";
+    if (record.observable() == ElectricalObservable::Voltage) {
+        if (record.meaning() == ElectricalMeaning::AcceptedRange)
+            return accepted_voltage_rule;
+        if (record.meaning() == ElectricalMeaning::AbsoluteLimit)
+            return absolute_voltage_rule;
+    } else {
+        if (record.meaning() == ElectricalMeaning::AbsoluteLimit)
+            return absolute_current_rule;
+        if (record.meaning() == ElectricalMeaning::Requirement ||
+            record.meaning() == ElectricalMeaning::Capability)
+            return current_budget_rule;
+    }
+    return "volt.part_erc.unsupported@1";
+}
+
+struct RatingAudit {
+    SelectedPartRatings result;
+    std::vector<bool> incomplete;
+
+    void gap(const Claim &claim, const std::string &reason) {
+        for (const auto group : claim.groups) {
+            incomplete[group] = true;
+            auto &subject = result.subjects[group];
+            if (subject.state != SelectedPartRatingState::Failed)
+                subject.reason = reason;
+        }
+    }
+
+    void compare(const Claim &claim, std::vector<EntityRef> entities,
+                 ElectricalObservable observable, double value, const Bounds &limit,
+                 std::string_view rule) {
+        const auto failed =
+            below(Bounds{value, value}, limit) || above(Bounds{value, value}, limit);
+        for (const auto group : claim.groups) {
+            auto &subject = result.subjects[group];
+            subject.observations.push_back(
+                {entities, observable, value, limit.minimum, limit.maximum, std::string{rule},
+                 failed ? SelectedPartRatingState::Failed : SelectedPartRatingState::Pass});
+            subject.entities.insert(subject.entities.end(), entities.begin(), entities.end());
+            if (failed) {
+                subject.state = SelectedPartRatingState::Failed;
+                subject.reason = "Supported unconditional native rating comparison failed";
+            }
+        }
+    }
+
+    void range(const Claim &constraint, const Claim *provider, const Bounds &provided,
+               std::vector<EntityRef> entities, std::string_view rule) {
+        if ((constraint.bounds->minimum && !provided.minimum) ||
+            (constraint.bounds->maximum && !provided.maximum)) {
+            gap(constraint, "Provider is missing a required range bound");
+            if (provider)
+                gap(*provider, "Provider is missing a required range bound");
+        }
+        if (constraint.bounds->minimum && provided.minimum) {
+            const auto limit = Bounds{constraint.bounds->minimum, {}};
+            compare(constraint, entities, constraint.observable, *provided.minimum, limit, rule);
+            if (provider)
+                compare(*provider, entities, constraint.observable, *provided.minimum, limit, rule);
+        }
+        if (constraint.bounds->maximum && provided.maximum) {
+            const auto limit = Bounds{{}, constraint.bounds->maximum};
+            compare(constraint, entities, constraint.observable, *provided.maximum, limit, rule);
+            if (provider)
+                compare(*provider, entities, constraint.observable, *provided.maximum, limit, rule);
+        }
+    }
+};
+
+bool usable(const Claim &claim) { return !claim.has_unknown && !claim.has_conditions; }
+
+// Preserve the live ERC's canonical-representative behavior. A noncanonical assertion
+// cannot silently vanish or supply a value the existing rule never examined.
+bool canonical_voltage_complete(const Circuit &circuit, const detail::NetContinuityView &continuity,
+                                NetId canonical) {
+    const auto expected = authored_net_voltage(circuit, canonical);
+    for (std::size_t i = 0; i < circuit.all<NetId>().size(); ++i) {
+        const auto id = NetId{i};
+        if (!continuity.same_group(id, canonical))
+            continue;
+        const auto actual = authored_net_voltage(circuit, id);
+        if (actual && (!expected || *actual != *expected))
+            return false;
+    }
+    return true;
+}
+
+DiagnosticReport run_selected_part_erc(const Circuit &circuit,
+                                       const detail::NetContinuityView &continuity,
+                                       std::span<const detail::SelectedPartErcSubject> subjects,
+                                       RatingAudit *audit) {
     auto claims = std::map<ClaimKey, Claim>{};
     auto unresolved_current = std::vector<ComponentId>{};
     auto report = DiagnosticReport{};
 
-    for (std::size_t index = 0; index < circuit.all<ComponentId>().size(); ++index) {
-        const auto component = ComponentId{index};
+    for (const auto &input : subjects) {
+        const auto component = input.component;
         const auto &reference = queries::selected_library_part_ref(circuit, component);
-        if (!reference.has_value()) {
+        const auto &instance = circuit.get(component);
+        const auto dnp = queries::component_dnp(circuit, component).value_or(false);
+        const auto add_group = [&](std::optional<ElectricalSemanticKey> key,
+                                   std::vector<ElectricalRecord> records, std::string reason,
+                                   std::string rule = "volt.part_erc.input@1") {
+            const auto group = audit->result.subjects.size();
+            audit->result.subjects.push_back(
+                {component,
+                 reference,
+                 std::move(key),
+                 input.part ? input.part->electrical_records().pin_count() : 0U,
+                 std::move(records),
+                 std::move(rule),
+                 dnp ? SelectedPartRatingState::NotApplicable
+                     : SelectedPartRatingState::NotEvaluated,
+                 dnp ? "Explicit DNP occurrence supplies no installed rating guarantee"
+                     : std::move(reason),
+                 {EntityRef::component(component)},
+                 {}});
+            audit->incomplete.push_back(false);
+            return group;
+        };
+        if (!reference || !input.part) {
+            if (audit)
+                add_group({}, {}, "Populated occurrence has no exact selected part");
             continue;
         }
-        const auto &part = resolver.resolve(*reference);
-        const auto &instance = circuit.get(component);
-        if (part.implemented_component() != circuit.get(instance.definition()).content_identity()) {
-            throw KernelLogicError{ErrorCode::CrossReferenceViolation,
-                                   "Selected exact part implements a different component contract",
-                                   EntityRef::component(component)};
-        }
+        const auto &part = *input.part;
         const auto provenance = part_provenance(part, *reference);
         auto subject_unresolved = false;
         auto current_unresolved = false;
+        auto groups = std::map<std::string, std::size_t>{};
         for (const auto &record : part.electrical_records().records()) {
-            if (record.meaning() == ElectricalMeaning::Characteristic) {
+            if (record.meaning() == ElectricalMeaning::Characteristic)
                 continue;
+            auto group = std::optional<std::size_t>{};
+            if (audit) {
+                const auto key = record.semantic_key().hash().value();
+                if (!groups.contains(key)) {
+                    auto originals = std::vector<ElectricalRecord>{};
+                    for (const auto &source : part.electrical_records().records())
+                        if (source.semantic_key() == record.semantic_key())
+                            originals.push_back(source);
+                    groups.emplace(
+                        key,
+                        add_group(record.semantic_key(), std::move(originals),
+                                  "No supported rating comparison executed for this semantic group",
+                                  rating_rule(record)));
+                }
+                group = groups.at(key);
+                const auto indices = subject_indices(record.subject());
+                auto &entities = audit->result.subjects[*group].entities;
+                for (const auto &side : {indices.positive, indices.negative})
+                    for (const auto index : side)
+                        entities.push_back(EntityRef::pin(input.pins[index.value()]));
             }
-            const auto domain = project_subject(circuit, continuity, component, record.subject());
+            const auto domain = project_subject(circuit, continuity, input.pins, record.subject());
+            if (group && domain) {
+                auto &entities = audit->result.subjects[*group].entities;
+                entities.push_back(EntityRef::net(domain->positive));
+                entities.push_back(EntityRef::net(domain->negative));
+            }
+            if (audit && dnp)
+                continue;
             if (!domain.has_value()) {
                 subject_unresolved = true;
                 current_unresolved =
                     current_unresolved || record.observable() == ElectricalObservable::Current;
+                if (audit) {
+                    audit->incomplete[*group] = true;
+                    audit->result.subjects[*group].reason =
+                        "Electrical subject endpoints do not project to distinct complete domains";
+                }
                 continue;
             }
             const auto key = ClaimKey{component, *domain, record.observable(), record.meaning()};
-            auto [claim, inserted] = claims.try_emplace(
-                key, Claim{component, *domain, record.observable(), record.meaning(), std::nullopt,
-                           std::nullopt, false, false, provenance});
+            auto [claim, inserted] = claims.try_emplace(key, Claim{component,
+                                                                   *domain,
+                                                                   record.observable(),
+                                                                   record.meaning(),
+                                                                   std::nullopt,
+                                                                   std::nullopt,
+                                                                   false,
+                                                                   false,
+                                                                   provenance,
+                                                                   false,
+                                                                   {}});
             static_cast<void>(inserted);
             add_record(claim->second, record);
+            if (group &&
+                std::ranges::find(claim->second.groups, *group) == claim->second.groups.end())
+                claim->second.groups.push_back(*group);
         }
+        if (audit && groups.empty())
+            add_group({}, {}, "Exact part declares no non-characteristic rating obligations");
         if (subject_unresolved) {
             report.add(erc_diagnostic(
                 erc_diagnostic_codes::SelectedPartElectricalSubjectUnresolved,
@@ -298,16 +469,16 @@ DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
                 {EntityRef::component(component), EntityRef::component_def(instance.definition())},
                 subject_projection_rule));
         }
-        if (current_unresolved) {
+        if (current_unresolved)
             unresolved_current.push_back(component);
-        }
     }
-
     auto ordered = std::vector<std::reference_wrapper<const Claim>>{};
     ordered.reserve(claims.size());
     for (const auto &[key, claim] : claims) {
         static_cast<void>(key);
         ordered.push_back(std::cref(claim));
+        if (audit && !usable(claim))
+            audit->gap(claim, "Conditional, Unknown or conflicting effective rating claim");
     }
 
     for (const auto constraint_ref : ordered) {
@@ -317,13 +488,34 @@ DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
             !constraint.bounds.has_value()) {
             continue;
         }
+        if (audit && !usable(constraint)) {
+            audit->gap(constraint, "Conditional, Unknown or conflicting effective rating claim");
+            continue;
+        }
+        if (audit &&
+            (!canonical_voltage_complete(circuit, continuity, constraint.domain.positive) ||
+             !canonical_voltage_complete(circuit, continuity, constraint.domain.negative))) {
+            audit->gap(constraint,
+                       "Noncanonical or contradictory authored domain voltage is unsupported");
+            continue;
+        }
         const auto positive = authored_net_voltage(circuit, constraint.domain.positive);
         const auto negative = authored_net_voltage(circuit, constraint.domain.negative);
         if (!positive.has_value() || !negative.has_value()) {
             continue;
         }
         const auto voltage = *positive - *negative;
+        if (audit && !std::isfinite(voltage)) {
+            audit->gap(constraint, "Authored potential subtraction is non-finite");
+            continue;
+        }
         const auto authored = Bounds{voltage, voltage};
+        if (audit)
+            audit->range(constraint, nullptr, authored,
+                         {EntityRef::component(constraint.component),
+                          EntityRef::net(constraint.domain.positive),
+                          EntityRef::net(constraint.domain.negative)},
+                         absolute_voltage_rule);
         if (!below(authored, *constraint.bounds) && !above(authored, *constraint.bounds)) {
             continue;
         }
@@ -338,7 +530,20 @@ DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
 
     for (const auto provided_ref : ordered) {
         const auto &provided = provided_ref.get();
-        if (provided.meaning != ElectricalMeaning::ProvidedRange || !provided.bounds.has_value()) {
+        if (provided.meaning != ElectricalMeaning::ProvidedRange)
+            continue;
+        if (!provided.bounds) {
+            if (audit)
+                for (const auto constraint_ref : ordered) {
+                    const auto &constraint = constraint_ref.get();
+                    if (constraint.component != provided.component &&
+                        constraint.domain.key() == provided.domain.key() &&
+                        constraint.observable == provided.observable &&
+                        (constraint.meaning == ElectricalMeaning::AbsoluteLimit ||
+                         (constraint.meaning == ElectricalMeaning::AcceptedRange &&
+                          constraint.observable == ElectricalObservable::Voltage)))
+                        audit->gap(constraint, "Applicable provider has no known effective range");
+                }
             continue;
         }
         for (const auto constraint_ref : ordered) {
@@ -348,8 +553,23 @@ DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
                 constraint.observable != provided.observable || !constraint.bounds.has_value()) {
                 continue;
             }
+            const auto supported = constraint.meaning == ElectricalMeaning::AbsoluteLimit ||
+                                   (constraint.meaning == ElectricalMeaning::AcceptedRange &&
+                                    provided.observable == ElectricalObservable::Voltage);
+            if (audit && supported && (!usable(constraint) || !usable(provided))) {
+                audit->gap(constraint,
+                           "Conditional, Unknown or conflicting effective rating claim");
+                audit->gap(provided, "Conditional, Unknown or conflicting effective rating claim");
+                continue;
+            }
             const auto entities =
                 pair_entities(constraint.component, provided.component, provided.domain);
+            if (audit && supported)
+                audit->range(
+                    constraint, &provided, *provided.bounds, entities,
+                    constraint.meaning == ElectricalMeaning::AcceptedRange ? accepted_voltage_rule
+                    : provided.observable == ElectricalObservable::Voltage ? absolute_voltage_rule
+                                                                           : absolute_current_rule);
             if (constraint.meaning == ElectricalMeaning::AcceptedRange &&
                 provided.observable == ElectricalObservable::Voltage) {
                 if (below(*provided.bounds, *constraint.bounds)) {
@@ -438,6 +658,29 @@ DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
         }
         entities.push_back(EntityRef::net(domain.positive));
         entities.push_back(EntityRef::net(domain.negative));
+        if (audit) {
+            unknown = unknown || !std::isfinite(demand);
+            for (const auto claim : requirements)
+                unknown = unknown || !usable(claim.get());
+            for (const auto claim : capabilities)
+                unknown = unknown || !usable(claim.get());
+            for (const auto claim : requirements) {
+                if (unknown)
+                    audit->gap(claim.get(), "Continuous budget needs finite known unconditional "
+                                            "demand and exactly one source");
+                else
+                    audit->compare(claim.get(), entities, ElectricalObservable::Current, demand,
+                                   Bounds{{}, source->continuous_current}, current_budget_rule);
+            }
+            for (const auto claim : capabilities) {
+                if (unknown)
+                    audit->gap(claim.get(), "Continuous budget needs finite known unconditional "
+                                            "demand and exactly one source");
+                else
+                    audit->compare(claim.get(), entities, ElectricalObservable::Current, demand,
+                                   Bounds{{}, source->continuous_current}, current_budget_rule);
+            }
+        }
         if (!unknown && source != nullptr && demand > *source->continuous_current) {
             report.add(
                 erc_diagnostic(erc_diagnostic_codes::SelectedPartCurrentCapabilityInsufficient,
@@ -462,6 +705,55 @@ DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
             std::move(entities), current_budget_rule));
     }
     return report;
+}
+
+} // namespace
+
+DiagnosticReport validate_selected_part_erc(const Circuit &circuit,
+                                            const ExactPartResolver &resolver) {
+    auto subjects = std::vector<detail::SelectedPartErcSubject>{};
+    for (std::size_t i = 0; i < circuit.all<ComponentId>().size(); ++i) {
+        const auto component = ComponentId{i};
+        const auto &reference = queries::selected_library_part_ref(circuit, component);
+        if (!reference)
+            continue;
+        const auto &part = resolver.resolve(*reference);
+        const auto &definition = circuit.get(circuit.get(component).definition());
+        if (part.implemented_component() != definition.content_identity())
+            throw KernelLogicError{ErrorCode::CrossReferenceViolation,
+                                   "Selected exact part implements a different component contract",
+                                   EntityRef::component(component)};
+        subjects.push_back({component, &part, &definition, queries::pins_for(circuit, component)});
+    }
+    return run_selected_part_erc(circuit, detail::NetContinuityView{circuit}, subjects, nullptr);
+}
+
+SelectedPartRatings
+detail::assess_selected_part_ratings(const Circuit &circuit, const NetContinuityView &continuity,
+                                     std::span<const SelectedPartErcSubject> subjects,
+                                     bool continuity_complete) {
+    auto audit = RatingAudit{};
+    audit.result.diagnostics = run_selected_part_erc(circuit, continuity, subjects, &audit);
+    for (std::size_t i = 0; i < audit.result.subjects.size(); ++i) {
+        auto &subject = audit.result.subjects[i];
+        std::ranges::sort(subject.entities);
+        subject.entities.erase(std::unique(subject.entities.begin(), subject.entities.end()),
+                               subject.entities.end());
+        if (subject.state == SelectedPartRatingState::NotApplicable)
+            continue;
+        if (!continuity_complete) {
+            subject.state = SelectedPartRatingState::NotEvaluated;
+            subject.reason = "Historical artifact has no authoritative logical continuity";
+            subject.observations.clear();
+        } else if (subject.state != SelectedPartRatingState::Failed && !audit.incomplete[i] &&
+                   !subject.observations.empty()) {
+            subject.state = SelectedPartRatingState::Pass;
+            subject.reason = "All applicable supported unconditional rating comparisons passed";
+        }
+    }
+    if (!continuity_complete)
+        audit.result.diagnostics = DiagnosticReport{};
+    return std::move(audit.result);
 }
 
 [[nodiscard]] DiagnosticReport validate_design(const Circuit &circuit,

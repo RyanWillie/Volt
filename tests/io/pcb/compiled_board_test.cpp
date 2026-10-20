@@ -769,6 +769,15 @@ TEST_CASE("CompiledBoard V1 remains byte-preserving and exportable without infer
     CHECK(coverage.coverage()[static_cast<std::size_t>(volt::ManufacturingCheck::LogicalContinuity)]
               .state == volt::ManufacturingState::NotEvaluated);
 
+    CHECK(
+        coverage.coverage()[static_cast<std::size_t>(volt::ManufacturingCheck::SelectedPartRatings)]
+            .state == volt::ManufacturingState::NotEvaluated);
+    REQUIRE(coverage.ratings());
+    for (const auto &subject : coverage.ratings()->subjects) {
+        CHECK(subject.state != volt::SelectedPartRatingState::Pass);
+        CHECK(subject.observations.empty());
+    }
+
     CHECK_FALSE(volt::io::write_pcb_fabrication_files(reopened).files.empty());
     CHECK_FALSE(reopened.logical_continuity_partition().has_value());
     CHECK_FALSE(reopened.view().has_complete_logical_continuity());

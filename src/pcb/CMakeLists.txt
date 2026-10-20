@@ -5,6 +5,8 @@ add_library(
     compiled_board_consumers.cpp
     manufacturing_target.cpp
     manufacturing_coverage.cpp
+    manufacturing_assembly.cpp
+    manufacturing_ratings.cpp
     board_completion.cpp
     completion_inventory.cpp
     completion_copper.cpp
@@ -38,7 +40,7 @@ add_library(Volt::PCB ALIAS volt_pcb)
 
 set_target_properties(volt_pcb PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_features(volt_pcb PUBLIC cxx_std_23)
-target_link_libraries(volt_pcb PUBLIC Volt::Circuit)
+target_link_libraries(volt_pcb PUBLIC Volt::Circuit Volt::Library)
 target_include_directories(
     volt_pcb
     PUBLIC

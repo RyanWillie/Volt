@@ -1,3 +1,4 @@
+#include "manufacturing_assembly_detail.hpp"
 #include "manufacturing_target_detail.hpp"
 #include "validation/board_capability_validation.hpp"
 #include <algorithm>
@@ -111,6 +112,11 @@ ManufacturingCoverage::ManufacturingCoverage(const CompiledBoard &compiled,
             owner = ManufacturingOwner::NativeTarget;
         else if (check <= ManufacturingCheck::PhysicalGeometry)
             owner = ManufacturingOwner::NativeCompletion;
+        else if (check >= ManufacturingCheck::PopulatedQuantities &&
+                 check <= ManufacturingCheck::CplRotation)
+            owner = ManufacturingOwner::NativeAssembly;
+        else if (check == ManufacturingCheck::SelectedPartRatings)
+            owner = ManufacturingOwner::NativeRatings;
         else if (check == ManufacturingCheck::ExportFidelity)
             owner = ManufacturingOwner::DeferredIO;
         else if ((check >= ManufacturingCheck::MaterialRealization &&
@@ -123,7 +129,7 @@ ManufacturingCoverage::ManufacturingCoverage(const CompiledBoard &compiled,
             owner,
             true,
             ManufacturingBlocker::MissingCoverage,
-            "Required checker or exact evidence is not implemented in V1",
+            "Required checker or exact evidence is not implemented",
             "Complete the required native checker or independently reviewed evidence stage",
             std::move(entities),
             {}};
@@ -230,7 +236,29 @@ ManufacturingCoverage evaluate_manufacturing_coverage(const CompiledBoard &compi
         for (const auto check : numeric)
             gap(row(check), "Matching artifact identity and complete supported process/profile "
                             "selections are required");
+        for (const auto check :
+             {ManufacturingCheck::PopulatedQuantities, ManufacturingCheck::DnpQuantities,
+              ManufacturingCheck::SelectedAlternates, ManufacturingCheck::CplIdentity,
+              ManufacturingCheck::CplSide, ManufacturingCheck::CplRotation,
+              ManufacturingCheck::SelectedPartRatings}) {
+            auto &stopped = row(check);
+            if (stopped.applicable)
+                state(stopped, ManufacturingState::NotEvaluated, ManufacturingBlocker::MissingInput,
+                      "Matching artifact identity and complete supported process/profile "
+                      "selections, including explicit assembly CPL options when applicable, "
+                      "are required",
+                      "Supply the exact artifact target and all supported native prerequisites");
+        }
         return result;
+    }
+    result.ratings_ = detail::compiled_selected_part_ratings(compiled);
+    detail::apply_manufacturing_ratings(row(ManufacturingCheck::SelectedPartRatings),
+                                        *result.ratings_);
+    if (target.goal() == ManufacturingGoal::FabricationAndAssembly) {
+        result.bom_ = project_bom(board.circuit(), compiled.part_definitions());
+        result.cpl_ = project_cpl(compiled.view(), *target.cpl_options());
+        detail::check_manufacturing_assembly(compiled, target, *result.bom_, *result.cpl_,
+                                             result.coverage_);
     }
     for (const auto check : numeric) {
         row(check).entities.clear();

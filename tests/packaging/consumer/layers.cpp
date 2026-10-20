@@ -85,11 +85,38 @@ int main() {
     if (!compilation.has_artifact())
         return 1;
     const auto compiled = std::move(compilation).take_artifact();
-    const auto compiled_target = volt::ManufacturingTarget{
-        compiled.identity(), compiled.content_digest(), volt::ManufacturingGoal::Fabrication,
-        process, volt::ManufacturingProfile{capability, hash, process}};
+    const auto supported =
+        volt::ManufacturingProcess{.family = volt::ManufacturingFamily::RigidFr4,
+                                   .material = volt::ManufacturingMaterial::Fr4Tg135,
+                                   .copper_layers = 2U,
+                                   .top_copper_weight_oz = 1.0,
+                                   .bottom_copper_weight_oz = 1.0,
+                                   .thickness_mm = 1.6,
+                                   .finish = volt::ManufacturingFinish::LeadFreeHasl,
+                                   .mask_sides = volt::ManufacturingMaskSides::Both,
+                                   .mask_colour = volt::ManufacturingMaskColour::Green,
+                                   .via_treatment = volt::ManufacturingViaTreatment::Exposed,
+                                   .drilling = volt::ManufacturingDrilling::MechanicalThrough,
+                                   .holes = volt::ManufacturingHoleTreatment::RoundOnly,
+                                   .slots = volt::ManufacturingSlotTreatment::NoSlots,
+                                   .assembly = volt::ManufacturingAssembly::SmtAndThroughHole,
+                                   .dimension_x_mm = 30,
+                                   .dimension_y_mm = 20};
+    const auto compiled_target =
+        volt::ManufacturingTarget{compiled.identity(),
+                                  compiled.content_digest(),
+                                  volt::ManufacturingGoal::FabricationAndAssembly,
+                                  supported,
+                                  volt::ManufacturingProfile{capability, hash, supported},
+                                  volt::CplProjectionOptions{}};
     const auto coverage = volt::evaluate_manufacturing_coverage(compiled, compiled_target);
     if (coverage.ready() || volt::io::write_manufacturing_coverage(coverage).empty())
+        return 1;
+
+    if (!coverage.bom() || !coverage.cpl() || !coverage.ratings() ||
+        !coverage.ratings()->subjects.empty() ||
+        coverage.coverage()[static_cast<std::size_t>(volt::ManufacturingCheck::SelectedPartRatings)]
+                .state != volt::ManufacturingState::NotEvaluated)
         return 1;
 
     // Volt::KiCadAdapter

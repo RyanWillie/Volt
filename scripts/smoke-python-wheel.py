@@ -77,6 +77,12 @@ def main() -> int:
         str(BUILD_DIR / "tests" / ("volt_nonlinear_dc_parity_fixture.exe" if os.name == "nt"
                                  else "volt_nonlinear_dc_parity_fixture")),
     ])
+    run([
+        python,
+        str(ROOT / "tests" / "packaging" / "manufacturing_wheel.py"),
+        str(BUILD_DIR / "tests" / ("volt_manufacturing_parity_fixture.exe" if os.name == "nt"
+                                 else "volt_manufacturing_parity_fixture")),
+    ])
     return 0
 
 

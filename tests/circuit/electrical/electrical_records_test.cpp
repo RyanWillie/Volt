@@ -172,6 +172,23 @@ TEST_CASE("Electrical conditions reject invalid bounds dimensions and references
     CHECK(records.records().size() == 1U);
 }
 
+TEST_CASE("Electrical semantic keys hash complete subjects and conditions before ownership moves") {
+    auto spec = volt::voltage_record(supply(), ElectricalMeaning::AbsoluteLimit,
+                                     ElectricalValue{QuantityRange::bounded(volts(0), volts(5))});
+    const auto plain = volt::ElectricalRecord::from(spec);
+    CHECK(plain.semantic_key().hash().value() ==
+          "sha256:fbba344ebf690fc07c81cf0fd5b6f76435e743bea39b8275d13fdce528b1ba8c");
+    CHECK(plain.subject() == supply());
+    spec.conditions = {volt::ElectricalCondition::equal(
+        ElectricalSubject::framed_pin(ElectricalPinIndex{0}, ElectricalPinIndex{1}),
+        ElectricalObservable::Voltage, volt::ElectricalValueExpression::literal(volts(2)))};
+    const auto conditional = volt::ElectricalRecord::from(spec);
+    CHECK(conditional.semantic_key().hash().value() ==
+          "sha256:ea2fc703faf45a8a18816fc511b8e04fb09d2eae661f8ad51d2de60e75aca3f1");
+    CHECK(conditional.subject() == supply());
+    CHECK(conditional.conditions() == spec.conditions);
+}
+
 TEST_CASE("Semantic keys normalize unordered subjects conditions and evidence") {
     const auto domain_a =
         ElectricalSubject::supply_domain({ElectricalPinIndex{1}, ElectricalPinIndex{0}},

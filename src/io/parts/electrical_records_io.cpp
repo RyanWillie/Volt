@@ -1,3 +1,4 @@
+#include "electrical_records_detail.hpp"
 #include <volt/io/parts/electrical_records_io.hpp>
 
 #include <cstdint>
@@ -423,6 +424,10 @@ struct ParsedRecord {
 }
 
 } // namespace
+
+nlohmann::json detail::electrical_record_json(const ElectricalRecord &record) {
+    return nlohmann::json(record_json(record));
+}
 
 void write_electrical_records(std::ostream &out, const ElectricalRecordSet &records) {
     auto record_values = Json::array();
