@@ -28,6 +28,7 @@ struct CompletionFixtureOptions {
     bool second_dnp = false;
     bool explicit_fitted = false;
     bool review_text = false;
+    bool unsupported_range_text = false;
     bool different_nets = false;
     bool zone = true;
     bool tracks = false;
@@ -283,6 +284,9 @@ struct CompletionFixtureOptions {
     }
     if (options.severing_hole)
         static_cast<void>(board.add_feature(BoardFeature::hole("CUT", {15, 5}, 1.0)));
+    if (options.unsupported_range_text)
+        static_cast<void>(board.add_text(
+            BoardText{"A", {10, 10}, BoardRotation::degrees(0), front, 10000.0, false}));
     if (options.review_text) {
         const auto silk =
             board.add_layer(BoardLayer{"F.SilkS", BoardLayerRole::Silkscreen, BoardLayerSide::Top});

@@ -465,3 +465,38 @@ TEST_CASE("Export binding token encoding has a portable semantic golden",
     reversed.basename = "example";
     CHECK(reversed.digest() != binding.digest());
 }
+
+TEST_CASE("Range-error completion retains every actual emitted file and native loss",
+          "[manufacturing][evidence][completion]") {
+    auto options = test::evidence_options();
+    options.unsupported_range_text = true;
+    const auto compiled = test::completion_fixture(options);
+    const auto paired = io::evaluate_pcb_fabrication(compiled);
+    REQUIRE_FALSE(paired.output.files.empty());
+    CHECK(paired.output.loss_report.has_fab_critical_warnings());
+    CHECK(paired.completion.coverage().back().state == BoardCompletionState::NotEvaluated);
+    CHECK(paired.completion.files().size() == paired.output.files.size());
+    for (std::size_t i = 0; i < paired.completion.files().size(); ++i) {
+        CHECK(paired.completion.files()[i].filename == paired.output.files[i].filename);
+        CHECK(paired.completion.files()[i].function == paired.output.files[i].function);
+        CHECK(paired.completion.files()[i].digest ==
+              sha256_content_hash(paired.output.files[i].text));
+    }
+    const auto expected = io::fabrication_diagnostics(paired.output.loss_report);
+    for (const auto &loss : expected.diagnostics()) {
+        CHECK(
+            std::ranges::any_of(paired.completion.diagnostics().diagnostics(), [&](const auto &d) {
+                return d.code() == loss.code() && d.message() == loss.message() &&
+                       d.entities() == loss.entities();
+            }));
+    }
+    const auto target = test::evidence_target(compiled);
+    const auto plain = io::evaluate_manufacturing_export(compiled, target);
+    const auto input = test::synthetic_evidence(compiled, plain);
+    const auto reviewed = io::evaluate_manufacturing_export(compiled, target, input);
+    not_reviewed(reviewed);
+    CHECK(leaf(reviewed, ManufacturingCheck::ExportFidelity).state ==
+          ManufacturingState::NotEvaluated);
+    CHECK(io::write_board_completion(paired.completion) ==
+          io::write_board_completion(reviewed.coverage().completion()));
+}

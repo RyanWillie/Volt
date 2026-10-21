@@ -7,6 +7,8 @@ int main(int argc, char **argv) {
     const auto mode = argc > 1 ? std::string{argv[1]} : "a";
     if (mode.starts_with("evidence")) {
         auto opts = volt::test::evidence_options();
+        if (mode == "evidence-range")
+            opts.unsupported_range_text = true;
         if (mode == "evidence-blocked")
             opts.placements = 0;
         if (mode == "evidence-bottom") {

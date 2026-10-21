@@ -48,7 +48,7 @@ r=volt.evaluate_manufacturing_export(a,volt.read_manufacturing_target(x['target'
 assert r.to_json()==x['report'] and a==before
 assert volt.write_manufacturing_evidence(i.assertions)==x['evidence']
 """
-for mode in ('evidence-fab','evidence-assembly','evidence-blocked','evidence-bottom'):
+for mode in ('evidence-fab','evidence-assembly','evidence-blocked','evidence-bottom','evidence-range'):
     print(f"Checking installed-wheel exact evidence: {mode}", flush=True)
     data = subprocess.check_output([str(fixture), mode], text=True)
     with tempfile.TemporaryDirectory(prefix='volt-evidence-wheel-') as directory:
@@ -57,4 +57,4 @@ for mode in ('evidence-fab','evidence-assembly','evidence-blocked','evidence-bot
         environment = os.environ.copy()
         environment.pop('PYTHONPATH', None)
         subprocess.run([sys.executable,'-c',evidence_runner],cwd=root,env=environment,check=True)
-print('Installed wheel: four synthetic native export/evidence reports match exact native bytes')
+print('Installed wheel: five synthetic native export/evidence reports match exact native bytes')

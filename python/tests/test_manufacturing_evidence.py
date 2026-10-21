@@ -28,7 +28,7 @@ def inputs(data):
     return artifact, target, evidence
 
 
-@pytest.mark.parametrize("mode", ["evidence-fab", "evidence-assembly", "evidence-blocked", "evidence-bottom"])
+@pytest.mark.parametrize("mode", ["evidence-fab", "evidence-assembly", "evidence-blocked", "evidence-bottom", "evidence-range"])
 def test_full_native_report_and_file_bytes_source_free(mode, tmp_path):
     data = fixture(mode)
     artifact, target, evidence = inputs(data)
@@ -40,12 +40,16 @@ def test_full_native_report_and_file_bytes_source_free(mode, tmp_path):
     assert report["schema_version"] == 3 and report["policy_version"] == 1
     assert not result.ready
     assert len(result.files) == len(report["native_export"]["files"])
+    assert len(report["completion"]["files"]) == len(result.files)
+    if mode == "evidence-range":
+        assert report["native_export"]["losses"]
+        assert report["completion"]["diagnostics"]
     for native, emitted in zip(result.files, report["native_export"]["files"]):
         assert native.bytes == emitted["text"].encode()
         assert native.filename == emitted["filename"] and native.function == emitted["function"]
         assert "sha256:" + hashlib.sha256(native.bytes).hexdigest() == emitted["digest"]
     assert volt.write_manufacturing_evidence(evidence.assertions) == data["evidence"]
-    if mode == "evidence-blocked":
+    if mode in ("evidence-blocked", "evidence-range"):
         assert all(r["state"] != "reviewed-pass" for r in report["coverage"])
     else:
         assert report["counts"]["reviewed_pass"] == (12 if mode == "evidence-fab" else 16)
