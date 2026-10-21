@@ -32,7 +32,8 @@ geometry/export engine. Native physical/rating/BOM/CPL checks retain their paylo
 ## Identity and canonical encoding
 
 A binding records board name and provenance digest, exact artifact-byte digest,
-explicit selected-closure digest, profile and target semantic digests, target policy
+the delivered compiled.provenance().selected_closure_digest() (not a new closure
+hash; exact retained definition bytes are also pinned by artifact digest), profile and target semantic digests, target policy
 V1, evaluator volt.manufacturing-coverage/3, evidence schema V1 and native exporter
 semantic revision volt.native_fabrication/1. The existing exporter metadata schema
 is separately retained in full (name, schema, Gerber and drill metadata). Future
@@ -66,9 +67,24 @@ filesystem ordering enters this digest. Golden cross-compiler tests pin it.
 
 A typed assertion owns one ManufacturingCheck, one closed method, exact ordered
 native scope tuples and derived counts, Pass/Fail, reviewer, observation/source and
-rationale (nonempty meaningful strings), exact binding and evidence attachment key
+rationale (nonempty meaningful strings), a finite criterion below, exact binding and evidence attachment key
 plus SHA256. Evidence attachments are supplied in memory as key/exact bytes. The
 assertion is a separate document, so its attachment digest is not self-referential.
+Each assertion also requires a criterion description, exact source citation and
+source attachment key. IO verifies that attachment against
+`target.profile().source_content()`; the existing target already pins those captured
+source bytes and exact process applicability. MaskCopperClearance, MaskWeb, MaskSliver,
+LegendHeight, LegendStroke, LegendPadClearance and LegendMaskClearance additionally
+require an explicit finite nonnegative minimum in millimetres. Other eligible leaves
+require the qualitative obligation in the eligibility table and prohibit a numeric
+minimum. Missing/empty criteria, absent required minima or inappropriate minima
+reject structurally. The assertion records the human-declared complete applicable
+threshold/criterion and its source; native code does not parse source documents or
+certify that a declared threshold faithfully transcribes them. That transcription
+and completeness are part of the documented human trust boundary, not new native
+profile limits or an automatic manufacturer policy. Both the source attachment and
+review attachment are required exact in-memory bytes; a single attachment can serve
+both when explicitly referenced. Synthetic source bytes/criteria say synthetic.
 Keys are opaque nonempty labels, never paths or read instructions. Every supplied
 attachment must be referenced, every reference must have exactly one byte payload;
 empty attachment bytes are missing evidence. Multiple leaves may share one attachment.
@@ -145,7 +161,7 @@ assertions synthetic and demonstrate binding/policy only. #247/#248 are later ga
 | Actual output | Supported synthetic fabrication/assembly, inspect complete returned bytes/losses/completion, every mandatory/conditional function; empty/range/missing outline output and lossy oval/unsupported layer; solid-zone/plated-contact regressions. |
 | File bytes | One byte changed, missing/extra/duplicate function or filename, foreign same-format export, explicit empty inventory; arbitrary order canonicalizes; basename/options change invalidates old binding; path independence. |
 | Identity | Artifact/board/part/closure/profile/target/source-content/policy/evaluator/exporter/options changes, CPL correction only, immutable input bytes; V1 authoritative-continuity gaps remain nonpassing. |
-| Reviews | Each eligible leaf/method exact Pass and Fail; missing review/attachment, one evidence byte changed, empty bytes, reduced/reordered/duplicate scope, added same-code entity; unknown/ineligible leaf, wrong method, duplicate/conflicting assertions and attachments, unused attachments, malformed/unsupported documents. No broad family passes. |
+| Reviews | Each eligible leaf/method exact Pass and Fail; missing review/attachment/source, one evidence/source byte changed, absent/malformed required criteria or numeric minima, empty bytes, reduced/reordered/duplicate scope, added same-code entity; unknown/ineligible leaf, wrong method, duplicate/conflicting assertions and attachments, unused attachments, malformed/unsupported documents. No broad family passes. |
 | Non-waiver | Apparently valid reviews beside missing selection/placement/physical terminal, foreign-net short, target-limit failure, unsupported process/geometry/layer, fab-critical/lossy/quantization output and V1 gaps; native rows and diagnostics unchanged. |
 | Closed payload | All 65 ordered states/reasons/entities/counts/observations/provenance, BOM/CPL/rating parity; explicit fabrication vs assembly N/A; remaining deferred rows block and ready remains false. |
 | Lifetime/codec | Strict deterministic write/read/write, evidence order canonicalization, direct native/thin Python complete report+actual byte equality; fresh/source-free reopen after owners destroyed; checkout independence/no mutation; target V1 and native V2 report golden compatibility. |
