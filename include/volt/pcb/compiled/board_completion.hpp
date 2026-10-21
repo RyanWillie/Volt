@@ -12,6 +12,10 @@ namespace volt {
 class BoardCompletion;
 
 namespace io {
+struct PcbFabricationEvaluation;
+struct PcbFabricationExportOptions;
+[[nodiscard]] PcbFabricationEvaluation
+evaluate_pcb_fabrication(const CompiledBoard &, const PcbFabricationExportOptions &);
 /** Export and evaluate one immutable revision using actual native fabrication bytes. */
 [[nodiscard]] BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled);
 } // namespace io
@@ -175,7 +179,8 @@ class BoardCompletion final {
 
   private:
     friend BoardCompletion evaluate_board_completion(const CompiledBoard &);
-    friend BoardCompletion io::evaluate_fabrication_completion(const CompiledBoard &);
+    friend io::PcbFabricationEvaluation
+    io::evaluate_pcb_fabrication(const CompiledBoard &, const io::PcbFabricationExportOptions &);
     explicit BoardCompletion(const CompiledBoard &compiled);
     void order_diagnostics();
     CompiledBoardIdentity source_;

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <volt/core/diagnostics.hpp>
+#include <volt/pcb/compiled/board_completion.hpp>
 #include <volt/pcb/compiled/compiled_board.hpp>
 
 namespace volt::io {
@@ -157,6 +158,21 @@ struct PcbFabricationExportResult {
     /** Structured warnings for constructs intentionally omitted or approximated. */
     PcbFabricationLossReport loss_report;
 };
+
+/** Actual output and immutable completion composed by one native IO invocation.
+ * The mutable output is returned for ordinary export; it is never accepted as evidence input.
+ */
+struct PcbFabricationEvaluation {
+    /** Actual native bytes and loss metadata. */
+    PcbFabricationExportResult output;
+    /** Checked native geometry/loss/quantization facts. */
+    BoardCompletion completion;
+};
+
+/** Compose actual bytes and completion once, without trusting caller export claims. */
+[[nodiscard]] PcbFabricationEvaluation
+evaluate_pcb_fabrication(const CompiledBoard &compiled,
+                         const PcbFabricationExportOptions &options = {});
 
 /** Convert native fabrication losses to stable manufacturability diagnostics. */
 [[nodiscard]] DiagnosticReport fabrication_diagnostics(const PcbFabricationLossReport &report);

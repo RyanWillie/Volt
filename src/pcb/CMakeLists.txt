@@ -5,6 +5,7 @@ add_library(
     compiled_board_consumers.cpp
     manufacturing_target.cpp
     manufacturing_coverage.cpp
+    manufacturing_review.cpp
     manufacturing_assembly.cpp
     manufacturing_ratings.cpp
     board_completion.cpp

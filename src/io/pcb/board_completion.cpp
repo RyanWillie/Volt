@@ -53,8 +53,10 @@ using Json = nlohmann::json;
 }
 } // namespace
 
-BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled) {
+PcbFabricationEvaluation evaluate_pcb_fabrication(const CompiledBoard &compiled,
+                                                  const PcbFabricationExportOptions &options) {
     auto result = evaluate_board_completion(compiled);
+    auto export_result = write_pcb_fabrication_files(compiled, options);
     const auto grid = detail::completion_export_grid(compiled, result.copper());
     auto report = DiagnosticReport{};
     for (const auto &diagnostic : result.diagnostics_.diagnostics())
@@ -87,9 +89,8 @@ BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled) {
                            row.entities.end());
         result.diagnostics_ = std::move(report);
         result.order_diagnostics();
-        return result;
+        return {std::move(export_result), std::move(result)};
     }
-    const auto export_result = write_pcb_fabrication_files(compiled);
     for (const auto &warning : export_result.loss_report.warnings()) {
         if (warning.fabrication_impact == PcbFabricationLossImpact::FabCritical ||
             warning.kind == PcbFabricationLossKind::LossyGeometry) {
@@ -113,7 +114,11 @@ BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled) {
     row.entities.erase(std::unique(row.entities.begin(), row.entities.end()), row.entities.end());
     result.diagnostics_ = std::move(report);
     result.order_diagnostics();
-    return result;
+    return {std::move(export_result), std::move(result)};
+}
+
+BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled) {
+    return evaluate_pcb_fabrication(compiled).completion;
 }
 
 std::string write_board_completion(const BoardCompletion &completion) {

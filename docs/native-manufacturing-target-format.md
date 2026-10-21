@@ -10,7 +10,8 @@ Coverage evaluator V2 always reports **Blocked** or **UnsupportedTarget**. There
 Passing physical completion or an implemented limit does not satisfy the complete
 manufacturing inventory. Synthetic profiles demonstrate evaluator behavior and do
 not establish manufacturer acceptance. Exact native assembly consistency and four supported rating families are checked below.
-Export/review binding and the delivery gate remain separate work under #389.
+[Exact native export/review binding](native-manufacturing-evidence-format.md) is available through
+a separate explicitly V3 IO composition; the delivery gate remains later work under #389.
 
 ## Target identity and process
 

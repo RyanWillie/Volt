@@ -1,3 +1,4 @@
+#include "support/manufacturing_evidence_fixture.hpp"
 #include "support/manufacturing_fixture.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
@@ -778,6 +779,17 @@ TEST_CASE("CompiledBoard V1 remains byte-preserving and exportable without infer
         CHECK(subject.observations.empty());
     }
 
+    const auto native_export = volt::io::evaluate_manufacturing_export(reopened, target);
+    auto review_input = volt::test::synthetic_evidence(reopened, native_export,
+                                                       volt::ManufacturingCheck::RequiredPolarity);
+    review_input.attachments[0].bytes = "Synthetic V1 target";
+    const auto reviewed = volt::io::evaluate_manufacturing_export(reopened, target, review_input);
+    REQUIRE(reviewed.reviews().size() == 1);
+    CHECK(reviewed.reviews()[0].disposition ==
+          volt::io::ManufacturingReviewDisposition::NativePrerequisite);
+    for (const auto &row : reviewed.coverage().coverage())
+        CHECK(row.state != volt::ManufacturingState::ReviewedPass);
+    CHECK(std::string{reopened.bytes()} == legacy_bytes);
     CHECK_FALSE(volt::io::write_pcb_fabrication_files(reopened).files.empty());
     CHECK_FALSE(reopened.logical_continuity_partition().has_value());
     CHECK_FALSE(reopened.view().has_complete_logical_continuity());

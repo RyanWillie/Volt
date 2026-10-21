@@ -1,6 +1,7 @@
 # Exact native export and review evidence (#410)
 
-Status: contract proposed for independent review, 2026-10-21. Baseline main
+Status: independent GPT-6.1 Sol contract approval at `bebb9143`, 2026-10-21;
+[decision and resolved findings](https://github.com/RyanWillie/Volt/issues/410#issuecomment-6311535120). Baseline main
 `1069b4706fc8e6c7c2fa926d32072b26791c064a`. Stage 4 only of M1 #389;
 #403/#406/#408 are closed. No aggregate Ready, delivery gate, persisted package
 graph, vendor acceptance, actual consumer review or fabrication claim.

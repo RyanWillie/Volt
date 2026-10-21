@@ -76,7 +76,8 @@ void bind_manufacturing(py::module_ &module) {
         .value("NativePass", ManufacturingState::NativePass)
         .value("Failed", ManufacturingState::Failed)
         .value("NotEvaluated", ManufacturingState::NotEvaluated)
-        .value("NotApplicable", ManufacturingState::NotApplicable);
+        .value("NotApplicable", ManufacturingState::NotApplicable)
+        .value("ReviewedPass", ManufacturingState::ReviewedPass);
     py::enum_<ManufacturingStatus>(module, "ManufacturingStatus")
         .value("Blocked", ManufacturingStatus::Blocked)
         .value("UnsupportedTarget", ManufacturingStatus::UnsupportedTarget);
@@ -174,6 +175,7 @@ void bind_manufacturing(py::module_ &module) {
             "profile_digest",
             [](const ManufacturingCoverage &r) { return r.profile_digest().value(); })
         .def("to_json", &io::write_manufacturing_coverage);
+    bind_manufacturing_evidence(module);
     module.def("read_manufacturing_target", &io::read_manufacturing_target, py::arg("text"));
     module.def("write_manufacturing_target", &io::write_manufacturing_target, py::arg("target"));
     module.def(

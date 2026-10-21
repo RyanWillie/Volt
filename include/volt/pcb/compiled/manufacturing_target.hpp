@@ -226,8 +226,8 @@ enum class ManufacturingCheck {
     AssemblyProcess,
     Count
 };
-/** State of one required leaf; no caller-supplied waiver or reviewed pass. */
-enum class ManufacturingState { NativePass, Failed, NotEvaluated, NotApplicable };
+/** State of one required leaf; reviewed passes require checked native IO composition. */
+enum class ManufacturingState { NativePass, Failed, NotEvaluated, NotApplicable, ReviewedPass };
 /** Policy V1 deliberately cannot establish aggregate manufacturing readiness. */
 enum class ManufacturingStatus { Blocked, UnsupportedTarget };
 /** Native enforcement or explicitly deferred owner of a required check. */
@@ -238,7 +238,9 @@ enum class ManufacturingOwner {
     DeferredReview,
     DeferredIO,
     NativeAssembly,
-    NativeRatings
+    NativeRatings,
+    NativeIO,
+    HumanReview
 };
 /** Stable blocker family, qualified by the closed leaf key and exact scope. */
 enum class ManufacturingBlocker {
@@ -247,7 +249,8 @@ enum class ManufacturingBlocker {
     MissingCoverage,
     ConstraintFailed,
     UnsupportedSelection,
-    IdentityMismatch
+    IdentityMismatch,
+    InvalidEvidence
 };
 /** Measurement units, never inferred from numeric values. */
 enum class ManufacturingUnit { Millimetres, OuncesPerSquareFoot, Count, Degrees };
@@ -295,6 +298,16 @@ struct ManufacturingCoverageRow {
 /** Return stable closed key spelling. */
 [[nodiscard]] std::string_view manufacturing_check_name(ManufacturingCheck check);
 
+class ManufacturingCoverage;
+
+namespace io {
+struct ManufacturingEvidenceInput;
+class ManufacturingEvaluation;
+[[nodiscard]] ManufacturingEvaluation
+evaluate_manufacturing_export(const CompiledBoard &, const ManufacturingTarget &,
+                              const ManufacturingEvidenceInput &);
+} // namespace io
+
 /** Owned read-only report; required leaves cannot be removed or overwritten. */
 class ManufacturingCoverage final {
   public:
@@ -332,10 +345,17 @@ class ManufacturingCoverage final {
         return coverage_;
     }
 
+    /** Report contract: native-only V2, explicitly composed evidence V3. */
+    [[nodiscard]] unsigned int evaluator_version() const noexcept { return evaluator_version_; }
+
   private:
+    friend io::ManufacturingEvaluation
+    io::evaluate_manufacturing_export(const CompiledBoard &, const ManufacturingTarget &,
+                                      const io::ManufacturingEvidenceInput &);
     friend ManufacturingCoverage evaluate_manufacturing_coverage(const CompiledBoard &,
                                                                  const ManufacturingTarget &);
     ManufacturingCoverage(const CompiledBoard &compiled, const ManufacturingTarget &target);
+    unsigned int evaluator_version_ = 2;
     BoardCompletion completion_;
     std::optional<Bom> bom_;
     std::optional<Cpl> cpl_;

@@ -950,6 +950,31 @@
           "python_type": "ManufacturingCoverage"
         },
         {
+          "cpp_type": "io::ManufacturingReviewAssertion",
+          "path": "src/python/manufacturing_evidence_bindings.cpp",
+          "python_type": "ManufacturingReviewAssertion"
+        },
+        {
+          "cpp_type": "io::ManufacturingEvidenceAttachment",
+          "path": "src/python/manufacturing_evidence_bindings.cpp",
+          "python_type": "ManufacturingEvidenceAttachment"
+        },
+        {
+          "cpp_type": "io::PcbFabricationFile",
+          "path": "src/python/manufacturing_evidence_bindings.cpp",
+          "python_type": "ManufacturingFabricationFile"
+        },
+        {
+          "cpp_type": "io::ManufacturingEvidenceInput",
+          "path": "src/python/manufacturing_evidence_bindings.cpp",
+          "python_type": "ManufacturingEvidenceInput"
+        },
+        {
+          "cpp_type": "io::ManufacturingEvaluation",
+          "path": "src/python/manufacturing_evidence_bindings.cpp",
+          "python_type": "ManufacturingEvaluation"
+        },
+        {
           "cpp_type": "volt::io::ArtifactId",
           "path": "src/python/project_bundle_bindings.cpp",
           "python_type": "ArtifactId"

@@ -1,9 +1,42 @@
 #include "assembly_ratings_fixture.hpp"
+#include "manufacturing_evidence_fixture.hpp"
 #include <iostream>
 #include <nlohmann/json.hpp>
 
 int main(int argc, char **argv) {
     const auto mode = argc > 1 ? std::string{argv[1]} : "a";
+    if (mode.starts_with("evidence")) {
+        auto opts = volt::test::evidence_options();
+        if (mode == "evidence-blocked")
+            opts.placements = 0;
+        if (mode == "evidence-bottom") {
+            opts.interlayer = true;
+            opts.via = true;
+        }
+        const auto artifact = volt::test::completion_fixture(opts);
+        const auto requested = volt::test::evidence_target(artifact, mode != "evidence-fab");
+        const auto plain = volt::io::evaluate_manufacturing_export(artifact, requested);
+        auto evidence = volt::test::synthetic_evidence(artifact, plain);
+        const auto evaluated =
+            volt::io::evaluate_manufacturing_export(artifact, requested, evidence);
+        auto encoded = std::string{};
+        constexpr auto digits = std::string_view{"0123456789abcdef"};
+        for (const char value : artifact.bytes()) {
+            const auto byte = static_cast<unsigned char>(value);
+            encoded.push_back(digits[byte >> 4U]);
+            encoded.push_back(digits[byte & 15U]);
+        }
+        std::cout << nlohmann::json{{"artifact_hex", encoded},
+                                    {"target", volt::io::write_manufacturing_target(requested)},
+                                    {"evidence",
+                                     volt::io::write_manufacturing_evidence(evidence.assertions)},
+                                    {"source_bytes", volt::test::synthetic_profile_source()},
+                                    {"review_bytes", volt::test::synthetic_review_bytes()},
+                                    {"report", volt::io::write_manufacturing_evaluation(evaluated)}}
+                         .dump()
+                  << '\n';
+        return 0;
+    }
     const auto strict = mode == "b";
     auto options = volt::test::manufacturing_options(strict);
     if (mode == "missing")
