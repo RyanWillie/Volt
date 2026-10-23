@@ -339,11 +339,10 @@ class ManufacturingCoverage final {
     [[nodiscard]] unsigned int evaluator_version() const noexcept { return evaluator_version_; }
 
     /** Return a new value with checked external composition applied to the complete row set. */
-    [[nodiscard]] ManufacturingCoverage
-    with_composed_evidence(BoardCompletion completion,
-                           std::array<ManufacturingCoverageRow,
-                                      static_cast<std::size_t>(ManufacturingCheck::Count)>
-                               coverage) &&;
+    [[nodiscard]] ManufacturingCoverage with_composed_evidence(
+        BoardCompletion completion,
+        std::array<ManufacturingCoverageRow, static_cast<std::size_t>(ManufacturingCheck::Count)>
+            coverage) &&;
 
   private:
     friend ManufacturingCoverage evaluate_manufacturing_coverage(const CompiledBoard &,

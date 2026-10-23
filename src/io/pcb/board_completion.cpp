@@ -99,7 +99,7 @@ PcbFabricationEvaluation evaluate_pcb_fabrication(const CompiledBoard &compiled,
         row.entities.erase(std::unique(row.entities.begin(), row.entities.end()),
                            row.entities.end());
         result = std::move(result).with_export_evaluation(std::move(row), std::move(report),
-                                                         std::move(files));
+                                                          std::move(files));
         return {std::move(export_result), std::move(result)};
     }
     if (row.state != BoardCompletionState::Pass)
@@ -108,7 +108,7 @@ PcbFabricationEvaluation evaluate_pcb_fabrication(const CompiledBoard &compiled,
     std::ranges::sort(row.entities);
     row.entities.erase(std::unique(row.entities.begin(), row.entities.end()), row.entities.end());
     result = std::move(result).with_export_evaluation(std::move(row), std::move(report),
-                                                     std::move(files));
+                                                      std::move(files));
     return {std::move(export_result), std::move(result)};
 }
 

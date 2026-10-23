@@ -26,13 +26,13 @@ TEST_CASE("Evidence composition rejects replacement of native requirement meanin
     const auto compiled = test::completion_fixture(test::evidence_options());
     const auto target = test::evidence_target(compiled);
     auto native = evaluate_manufacturing_coverage(compiled, target);
-    auto rows = std::array<ManufacturingCoverageRow,
-                           static_cast<std::size_t>(ManufacturingCheck::Count)>{};
+    auto rows =
+        std::array<ManufacturingCoverageRow, static_cast<std::size_t>(ManufacturingCheck::Count)>{};
     std::ranges::copy(native.coverage(), rows.begin());
     rows[static_cast<std::size_t>(ManufacturingCheck::ArtifactIdentity)].state =
         ManufacturingState::ReviewedPass;
-    CHECK_THROWS(std::move(native).with_composed_evidence(
-        evaluate_board_completion(compiled), std::move(rows)));
+    CHECK_THROWS(std::move(native).with_composed_evidence(evaluate_board_completion(compiled),
+                                                          std::move(rows)));
 }
 
 TEST_CASE("Exact evidence composes actual bytes and finite synthetic assertions",

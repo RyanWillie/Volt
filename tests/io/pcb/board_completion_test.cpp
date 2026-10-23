@@ -86,8 +86,8 @@ TEST_CASE("Export composition cannot erase native physical diagnostics", "[compl
     REQUIRE(has(completion, codes::MissingPlacement));
     auto export_row = completion.coverage().back();
     export_row.state = BoardCompletionState::Pass;
-    const auto composed = std::move(completion).with_export_evaluation(
-        std::move(export_row), DiagnosticReport{}, {});
+    const auto composed =
+        std::move(completion).with_export_evaluation(std::move(export_row), DiagnosticReport{}, {});
     CHECK(has(composed, codes::MissingPlacement));
     CHECK_FALSE(has(composed, codes::ExportNotEvaluated));
 }

@@ -127,8 +127,8 @@ ManufacturingEvaluation evaluate_manufacturing_export(const CompiledBoard &compi
                                       "Unreferenced evidence attachment"};
     }
     auto native = evaluate_manufacturing_coverage(compiled, target);
-    auto coverage = std::array<ManufacturingCoverageRow,
-                               static_cast<std::size_t>(ManufacturingCheck::Count)>{};
+    auto coverage =
+        std::array<ManufacturingCoverageRow, static_cast<std::size_t>(ManufacturingCheck::Count)>{};
     std::ranges::copy(native.coverage(), coverage.begin());
     auto fabrication = evaluate_pcb_fabrication(compiled, input.options);
     auto binding = ManufacturingExportBinding{compiled.identity(),
@@ -234,7 +234,7 @@ ManufacturingEvaluation evaluate_manufacturing_export(const CompiledBoard &compi
             requirement && row.applicable)
             row.entities = flattened(*requirement);
     native = std::move(native).with_composed_evidence(std::move(fabrication.completion),
-                                                     std::move(coverage));
+                                                      std::move(coverage));
     return ManufacturingEvaluation{std::move(fabrication.output), std::move(binding),
                                    std::move(native), std::move(receipts)};
 }

@@ -174,9 +174,9 @@ class BoardCompletion final {
     [[nodiscard]] std::span<const BoardCompletionFile> files() const noexcept { return files_; }
 
     /** Return a new value with one IO-produced export evaluation composed into native facts. */
-    [[nodiscard]] BoardCompletion
-    with_export_evaluation(BoardCompletionCoverage coverage, DiagnosticReport export_diagnostics,
-                           std::vector<BoardCompletionFile> files) &&;
+    [[nodiscard]] BoardCompletion with_export_evaluation(BoardCompletionCoverage coverage,
+                                                         DiagnosticReport export_diagnostics,
+                                                         std::vector<BoardCompletionFile> files) &&;
 
   private:
     friend BoardCompletion evaluate_board_completion(const CompiledBoard &);

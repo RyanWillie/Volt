@@ -160,8 +160,7 @@ BoardCompletion BoardCompletion::with_export_evaluation(BoardCompletionCoverage 
     if (coverage.check != BoardCompletionCheck::ExportFidelity)
         throw KernelArgumentError{ErrorCode::InvalidArgument,
                                   "Board completion composition requires export fidelity coverage"};
-    coverage_[static_cast<std::size_t>(BoardCompletionCheck::ExportFidelity)] =
-        std::move(coverage);
+    coverage_[static_cast<std::size_t>(BoardCompletionCheck::ExportFidelity)] = std::move(coverage);
     auto diagnostics = DiagnosticReport{};
     for (const auto &diagnostic : diagnostics_.diagnostics())
         if (diagnostic.code().value() != pcb_completion_diagnostic_codes::ExportNotEvaluated)

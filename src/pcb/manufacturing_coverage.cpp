@@ -205,8 +205,9 @@ ManufacturingCoverage ManufacturingCoverage::with_composed_evidence(
              (coverage[i].state == ManufacturingState::ReviewedPass ||
               coverage[i].state == ManufacturingState::Failed) &&
              !manufacturing_review_allowed(*this, completion)))
-            throw KernelArgumentError{ErrorCode::InvalidArgument,
-                                      "Composed evidence cannot replace native requirement meaning"};
+            throw KernelArgumentError{
+                ErrorCode::InvalidArgument,
+                "Composed evidence cannot replace native requirement meaning"};
     }
     evaluator_version_ = 3;
     completion_ = std::move(completion);
