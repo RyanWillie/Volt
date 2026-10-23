@@ -12,10 +12,6 @@ namespace volt {
 class BoardCompletion;
 
 namespace io {
-struct PcbFabricationEvaluation;
-struct PcbFabricationExportOptions;
-[[nodiscard]] PcbFabricationEvaluation
-evaluate_pcb_fabrication(const CompiledBoard &, const PcbFabricationExportOptions &);
 /** Export and evaluate one immutable revision using actual native fabrication bytes. */
 [[nodiscard]] BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled);
 } // namespace io
@@ -177,10 +173,13 @@ class BoardCompletion final {
     /** Return actual native export byte identities; empty before IO composition. */
     [[nodiscard]] std::span<const BoardCompletionFile> files() const noexcept { return files_; }
 
+    /** Return a new value with one IO-produced export evaluation composed into native facts. */
+    [[nodiscard]] BoardCompletion
+    with_export_evaluation(BoardCompletionCoverage coverage, DiagnosticReport export_diagnostics,
+                           std::vector<BoardCompletionFile> files) &&;
+
   private:
     friend BoardCompletion evaluate_board_completion(const CompiledBoard &);
-    friend io::PcbFabricationEvaluation
-    io::evaluate_pcb_fabrication(const CompiledBoard &, const io::PcbFabricationExportOptions &);
     explicit BoardCompletion(const CompiledBoard &compiled);
     void order_diagnostics();
     CompiledBoardIdentity source_;

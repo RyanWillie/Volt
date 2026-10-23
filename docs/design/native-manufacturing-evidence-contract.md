@@ -18,9 +18,10 @@ BoardCompletion from one invocation of write_pcb_fabrication_files and the exist
 completion_export_grid/loss logic. The ordinary evaluate_fabrication_completion
 wrapper delegates to this seam. No public consumer accepts a mutable export result
 as proof. Preserve all loss/rounding checks (including informational LossyGeometry),
-physical diagnostics and source-free V1 export behavior. A narrow private native
-composition function may assemble immutable results; no public restoration or
-mutable coverage API. PCB has no IO link dependency or filesystem reads.
+physical diagnostics and source-free V1 export behavior. Narrow public rvalue-qualified
+value-composition seams assemble immutable results, validate closed row identities and
+expose no restoration or mutable coverage API. PCB has no IO link dependency or
+filesystem reads.
 
 IO evaluate_manufacturing_export(compiled, target, input) returns an immutable
 ManufacturingEvaluation: actual output, exact binding, immutable native coverage,

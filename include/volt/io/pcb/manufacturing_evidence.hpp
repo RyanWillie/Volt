@@ -98,6 +98,11 @@ struct ManufacturingReviewReceipt {
 /** Immutable actual output, complete native coverage and checked human assertions. */
 class ManufacturingEvaluation final {
   public:
+    /** Construct one immutable result from already checked IO-owned composition values. */
+    ManufacturingEvaluation(PcbFabricationExportResult output, ManufacturingExportBinding binding,
+                            ManufacturingCoverage coverage,
+                            std::vector<ManufacturingReviewReceipt> reviews);
+
     /** Actual output, never accepted back as trusted evaluator input. */
     [[nodiscard]] const PcbFabricationExportResult &output() const noexcept { return output_; }
 
@@ -113,12 +118,6 @@ class ManufacturingEvaluation final {
     }
 
   private:
-    friend ManufacturingEvaluation
-    evaluate_manufacturing_export(const CompiledBoard &, const ManufacturingTarget &,
-                                  const ManufacturingEvidenceInput &);
-    ManufacturingEvaluation(PcbFabricationExportResult output, ManufacturingExportBinding binding,
-                            ManufacturingCoverage coverage,
-                            std::vector<ManufacturingReviewReceipt> reviews);
     PcbFabricationExportResult output_;
     ManufacturingExportBinding binding_;
     ManufacturingCoverage coverage_;

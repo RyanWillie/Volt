@@ -127,6 +127,9 @@ ManufacturingEvaluation evaluate_manufacturing_export(const CompiledBoard &compi
                                       "Unreferenced evidence attachment"};
     }
     auto native = evaluate_manufacturing_coverage(compiled, target);
+    auto coverage = std::array<ManufacturingCoverageRow,
+                               static_cast<std::size_t>(ManufacturingCheck::Count)>{};
+    std::ranges::copy(native.coverage(), coverage.begin());
     auto fabrication = evaluate_pcb_fabrication(compiled, input.options);
     auto binding = ManufacturingExportBinding{compiled.identity(),
                                               compiled.content_digest(),
@@ -142,8 +145,7 @@ ManufacturingEvaluation evaluate_manufacturing_export(const CompiledBoard &compi
     const auto inventory_ok = complete_inventory(fabrication.output.files);
     const auto supplied_ok =
         !input.reviewed_files || same_files(*input.reviewed_files, fabrication.output.files);
-    auto &export_row =
-        native.coverage_[static_cast<std::size_t>(ManufacturingCheck::ExportFidelity)];
+    auto &export_row = coverage[static_cast<std::size_t>(ManufacturingCheck::ExportFidelity)];
     const auto &actual = fabrication.completion.coverage().back();
     export_row.owner = ManufacturingOwner::NativeIO;
     export_row.entities = actual.entities;
@@ -168,7 +170,7 @@ ManufacturingEvaluation evaluate_manufacturing_export(const CompiledBoard &compi
     auto receipts = std::vector<ManufacturingReviewReceipt>{};
     for (const auto &assertion : assertions) {
         const auto check = assertion.requirement.check;
-        auto &row = native.coverage_[static_cast<std::size_t>(check)];
+        auto &row = coverage[static_cast<std::size_t>(check)];
         const auto requirement = manufacturing_review_requirement(compiled, check);
         auto disposition = ManufacturingReviewDisposition::Accepted;
         auto reason = std::string{"Exact eligible human assertion and supplied bytes correspond; "
@@ -227,12 +229,12 @@ ManufacturingEvaluation evaluate_manufacturing_export(const CompiledBoard &compi
         receipts.push_back({assertion, disposition, std::move(reason)});
     }
     // Eligible missing assertions still report complete native scope, including absent marks.
-    for (auto &row : native.coverage_)
+    for (auto &row : coverage)
         if (const auto requirement = manufacturing_review_requirement(compiled, row.check);
             requirement && row.applicable)
             row.entities = flattened(*requirement);
-    native.evaluator_version_ = 3;
-    native.completion_ = std::move(fabrication.completion);
+    native = std::move(native).with_composed_evidence(std::move(fabrication.completion),
+                                                     std::move(coverage));
     return ManufacturingEvaluation{std::move(fabrication.output), std::move(binding),
                                    std::move(native), std::move(receipts)};
 }

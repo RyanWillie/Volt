@@ -298,16 +298,6 @@ struct ManufacturingCoverageRow {
 /** Return stable closed key spelling. */
 [[nodiscard]] std::string_view manufacturing_check_name(ManufacturingCheck check);
 
-class ManufacturingCoverage;
-
-namespace io {
-struct ManufacturingEvidenceInput;
-class ManufacturingEvaluation;
-[[nodiscard]] ManufacturingEvaluation
-evaluate_manufacturing_export(const CompiledBoard &, const ManufacturingTarget &,
-                              const ManufacturingEvidenceInput &);
-} // namespace io
-
 /** Owned read-only report; required leaves cannot be removed or overwritten. */
 class ManufacturingCoverage final {
   public:
@@ -348,10 +338,14 @@ class ManufacturingCoverage final {
     /** Report contract: native-only V2, explicitly composed evidence V3. */
     [[nodiscard]] unsigned int evaluator_version() const noexcept { return evaluator_version_; }
 
+    /** Return a new value with checked external composition applied to the complete row set. */
+    [[nodiscard]] ManufacturingCoverage
+    with_composed_evidence(BoardCompletion completion,
+                           std::array<ManufacturingCoverageRow,
+                                      static_cast<std::size_t>(ManufacturingCheck::Count)>
+                               coverage) &&;
+
   private:
-    friend io::ManufacturingEvaluation
-    io::evaluate_manufacturing_export(const CompiledBoard &, const ManufacturingTarget &,
-                                      const io::ManufacturingEvidenceInput &);
     friend ManufacturingCoverage evaluate_manufacturing_coverage(const CompiledBoard &,
                                                                  const ManufacturingTarget &);
     ManufacturingCoverage(const CompiledBoard &compiled, const ManufacturingTarget &target);

@@ -5,6 +5,7 @@
 #include <cmath>
 #include <ranges>
 #include <tuple>
+#include <volt/pcb/compiled/manufacturing_review.hpp>
 
 namespace volt {
 namespace {
@@ -93,6 +94,45 @@ bool assembly_only(ManufacturingCheck check) {
     return check >= ManufacturingCheck::PartPackageReview &&
            check != ManufacturingCheck::SelectedPartRatings;
 }
+
+bool externally_composable(ManufacturingCheck check) {
+    switch (check) {
+    case ManufacturingCheck::ExportFidelity:
+    case ManufacturingCheck::MaskOpenings:
+    case ManufacturingCheck::MaskCopperClearance:
+    case ManufacturingCheck::MaskWeb:
+    case ManufacturingCheck::MaskSliver:
+    case ManufacturingCheck::ViaCovering:
+    case ManufacturingCheck::LegendHeight:
+    case ManufacturingCheck::LegendStroke:
+    case ManufacturingCheck::LegendPadClearance:
+    case ManufacturingCheck::LegendMaskClearance:
+    case ManufacturingCheck::LegendClipping:
+    case ManufacturingCheck::RequiredPinOne:
+    case ManufacturingCheck::RequiredPolarity:
+    case ManufacturingCheck::PartPackageReview:
+    case ManufacturingCheck::LandPatternReview:
+    case ManufacturingCheck::PinMapReview:
+    case ManufacturingCheck::AssemblyOrientation:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool same_observation(const ManufacturingObservation &lhs, const ManufacturingObservation &rhs) {
+    return lhs.entities == rhs.entities && lhs.value == rhs.value && lhs.minimum == rhs.minimum &&
+           lhs.maximum == rhs.maximum && lhs.selected == rhs.selected && lhs.unit == rhs.unit &&
+           lhs.state == rhs.state;
+}
+
+bool same_row(const ManufacturingCoverageRow &lhs, const ManufacturingCoverageRow &rhs) {
+    return lhs.check == rhs.check && lhs.state == rhs.state && lhs.owner == rhs.owner &&
+           lhs.applicable == rhs.applicable && lhs.blocker == rhs.blocker &&
+           lhs.reason == rhs.reason && lhs.remediation == rhs.remediation &&
+           lhs.entities == rhs.entities && lhs.observations.size() == rhs.observations.size() &&
+           std::ranges::equal(lhs.observations, rhs.observations, same_observation);
+}
 } // namespace
 
 ManufacturingCoverage::ManufacturingCoverage(const CompiledBoard &compiled,
@@ -139,6 +179,39 @@ ManufacturingCoverage::ManufacturingCoverage(const CompiledBoard &compiled,
                   "Assembly-only requirement is not applicable to the fabrication-only goal");
         }
     }
+}
+
+ManufacturingCoverage ManufacturingCoverage::with_composed_evidence(
+    BoardCompletion completion,
+    std::array<ManufacturingCoverageRow, static_cast<std::size_t>(ManufacturingCheck::Count)>
+        coverage) && {
+    for (std::size_t i = 0; i < coverage.size(); ++i)
+        if (coverage[i].check != static_cast<ManufacturingCheck>(i))
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Manufacturing coverage rows must remain in closed order"};
+    if (completion.source() != completion_.source() ||
+        completion.content_digest() != completion_.content_digest())
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Composed evidence must retain the exact native artifact"};
+    for (std::size_t i = 0; i < coverage.size(); ++i) {
+        const auto &native = coverage_[i];
+        if (coverage[i].applicable != native.applicable ||
+            coverage[i].observations.size() != native.observations.size() ||
+            !std::ranges::equal(coverage[i].observations, native.observations, same_observation) ||
+            ((!externally_composable(native.check) ||
+              native.state != ManufacturingState::NotEvaluated) &&
+             !same_row(native, coverage[i])) ||
+            (native.state == ManufacturingState::NotEvaluated &&
+             (coverage[i].state == ManufacturingState::ReviewedPass ||
+              coverage[i].state == ManufacturingState::Failed) &&
+             !manufacturing_review_allowed(*this, completion)))
+            throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                      "Composed evidence cannot replace native requirement meaning"};
+    }
+    evaluator_version_ = 3;
+    completion_ = std::move(completion);
+    coverage_ = std::move(coverage);
+    return std::move(*this);
 }
 
 ManufacturingCoverage evaluate_manufacturing_coverage(const CompiledBoard &compiled,
