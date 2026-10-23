@@ -53,14 +53,13 @@ using Json = nlohmann::json;
 }
 } // namespace
 
-BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled) {
+PcbFabricationEvaluation evaluate_pcb_fabrication(const CompiledBoard &compiled,
+                                                  const PcbFabricationExportOptions &options) {
     auto result = evaluate_board_completion(compiled);
+    auto export_result = write_pcb_fabrication_files(compiled, options);
     const auto grid = detail::completion_export_grid(compiled, result.copper());
     auto report = DiagnosticReport{};
-    for (const auto &diagnostic : result.diagnostics_.diagnostics())
-        if (diagnostic.code().value() != pcb_completion_diagnostic_codes::ExportNotEvaluated)
-            report.add(diagnostic);
-    auto &row = result.coverage_[static_cast<std::size_t>(BoardCompletionCheck::ExportFidelity)];
+    auto row = result.coverage()[static_cast<std::size_t>(BoardCompletionCheck::ExportFidelity)];
     row.entities.push_back(EntityRef::board());
     for (const auto &item : result.copper()) {
         row.entities.insert(row.entities.end(), item.entities.begin(), item.entities.end());
@@ -78,18 +77,6 @@ BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled) {
         row.entities.insert(row.entities.end(), diagnostic.entities().begin(),
                             diagnostic.entities().end());
     }
-    if (std::ranges::any_of(grid.diagnostics(), [](const auto &diagnostic) {
-            return diagnostic.code().value() == pcb_completion_diagnostic_codes::ExportNotEvaluated;
-        })) {
-        row.reason = "Native 4.6 coordinate range is unsupported; export was not evaluated";
-        std::ranges::sort(row.entities);
-        row.entities.erase(std::unique(row.entities.begin(), row.entities.end()),
-                           row.entities.end());
-        result.diagnostics_ = std::move(report);
-        result.order_diagnostics();
-        return result;
-    }
-    const auto export_result = write_pcb_fabrication_files(compiled);
     for (const auto &warning : export_result.loss_report.warnings()) {
         if (warning.fabrication_impact == PcbFabricationLossImpact::FabCritical ||
             warning.kind == PcbFabricationLossKind::LossyGeometry) {
@@ -101,19 +88,32 @@ BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled) {
     const auto losses = fabrication_diagnostics(export_result.loss_report);
     for (const auto &diagnostic : losses.diagnostics())
         report.add(diagnostic);
-    if (row.state != BoardCompletionState::Pass)
-        row.reason = "Native emitted geometry/loss/quantization coverage is incomplete; inspect "
-                     "exact diagnostics";
+    auto files = std::vector<BoardCompletionFile>{};
+    for (const auto &file : export_result.files)
+        files.push_back({file.filename, file.function, sha256_content_hash(file.text)});
+    if (std::ranges::any_of(grid.diagnostics(), [](const auto &diagnostic) {
+            return diagnostic.code().value() == pcb_completion_diagnostic_codes::ExportNotEvaluated;
+        })) {
+        row.reason = "Native 4.6 coordinate range is unsupported; export was not evaluated";
+        std::ranges::sort(row.entities);
+        row.entities.erase(std::unique(row.entities.begin(), row.entities.end()),
+                           row.entities.end());
+        result = std::move(result).with_export_evaluation(std::move(row), std::move(report),
+                                                          std::move(files));
+        return {std::move(export_result), std::move(result)};
+    }
     if (row.state != BoardCompletionState::Pass)
         row.reason = "Native emitted geometry/loss/quantization/format coverage is incomplete; "
                      "inspect exact diagnostics";
-    for (const auto &file : export_result.files)
-        result.files_.push_back({file.filename, file.function, sha256_content_hash(file.text)});
     std::ranges::sort(row.entities);
     row.entities.erase(std::unique(row.entities.begin(), row.entities.end()), row.entities.end());
-    result.diagnostics_ = std::move(report);
-    result.order_diagnostics();
-    return result;
+    result = std::move(result).with_export_evaluation(std::move(row), std::move(report),
+                                                      std::move(files));
+    return {std::move(export_result), std::move(result)};
+}
+
+BoardCompletion evaluate_fabrication_completion(const CompiledBoard &compiled) {
+    return evaluate_pcb_fabrication(compiled).completion;
 }
 
 std::string write_board_completion(const BoardCompletion &completion) {

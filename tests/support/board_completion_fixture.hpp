@@ -26,6 +26,9 @@ struct CompletionFixtureOptions {
     bool connected = true;
     bool second_connected = true;
     bool second_dnp = false;
+    bool explicit_fitted = false;
+    bool review_text = false;
+    bool unsupported_range_text = false;
     bool different_nets = false;
     bool zone = true;
     bool tracks = false;
@@ -190,6 +193,9 @@ struct CompletionFixtureOptions {
     for (const auto component : components)
         if (options.selected && (component == components.front() || options.second_selected))
             circuit.update(component, SelectLibraryPart{bundle, bundle.require(key)});
+    if (options.explicit_fitted)
+        for (const auto component : components)
+            circuit.update(component, SetAssemblyIntent{.dnp = false});
     if (options.second_dnp && components.size() > 1)
         circuit.update(components[1], SetAssemblyIntent{.dnp = true});
     auto board = Board{circuit, BoardName{"Synthetic completion"}};
@@ -278,6 +284,15 @@ struct CompletionFixtureOptions {
     }
     if (options.severing_hole)
         static_cast<void>(board.add_feature(BoardFeature::hole("CUT", {15, 5}, 1.0)));
+    if (options.unsupported_range_text)
+        static_cast<void>(board.add_text(
+            BoardText{"A", {10, 10}, BoardRotation::degrees(0), front, 10000.0, false}));
+    if (options.review_text) {
+        const auto silk =
+            board.add_layer(BoardLayer{"F.SilkS", BoardLayerRole::Silkscreen, BoardLayerSide::Top});
+        static_cast<void>(
+            board.add_text(BoardText{"P1", {4, 3}, BoardRotation::degrees(0), silk, 1.0, false}));
+    }
     if (options.edge_text) {
         const auto silk =
             board.add_layer(BoardLayer{"F.SilkS", BoardLayerRole::Silkscreen, BoardLayerSide::Top});

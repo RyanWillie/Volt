@@ -154,6 +154,25 @@ BoardCompletion::BoardCompletion(const CompiledBoard &compiled)
       provenance_{compiled.provenance()}, logical_groups_{compiled.logical_continuity_partition()} {
 }
 
+BoardCompletion BoardCompletion::with_export_evaluation(BoardCompletionCoverage coverage,
+                                                        DiagnosticReport export_diagnostics,
+                                                        std::vector<BoardCompletionFile> files) && {
+    if (coverage.check != BoardCompletionCheck::ExportFidelity)
+        throw KernelArgumentError{ErrorCode::InvalidArgument,
+                                  "Board completion composition requires export fidelity coverage"};
+    coverage_[static_cast<std::size_t>(BoardCompletionCheck::ExportFidelity)] = std::move(coverage);
+    auto diagnostics = DiagnosticReport{};
+    for (const auto &diagnostic : diagnostics_.diagnostics())
+        if (diagnostic.code().value() != pcb_completion_diagnostic_codes::ExportNotEvaluated)
+            diagnostics.add(diagnostic);
+    for (const auto &diagnostic : export_diagnostics.diagnostics())
+        diagnostics.add(diagnostic);
+    diagnostics_ = std::move(diagnostics);
+    files_ = std::move(files);
+    order_diagnostics();
+    return std::move(*this);
+}
+
 void BoardCompletion::order_diagnostics() {
     const auto check = [](const Diagnostic &diagnostic) {
         namespace codes = pcb_completion_diagnostic_codes;

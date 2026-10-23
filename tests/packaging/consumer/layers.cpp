@@ -18,6 +18,7 @@
 #include <volt/core/version.hpp>
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/pcb/compiled_board.hpp>
+#include <volt/io/pcb/manufacturing_evidence.hpp>
 #include <volt/io/pcb/manufacturing_target.hpp>
 #include <volt/library/part_library.hpp>
 #include <volt/pcb/board.hpp>
@@ -109,6 +110,12 @@ int main() {
                                   supported,
                                   volt::ManufacturingProfile{capability, hash, supported},
                                   volt::CplProjectionOptions{}};
+    const auto composed = volt::io::evaluate_manufacturing_export(compiled, compiled_target);
+    if (composed.coverage().ready() || volt::io::write_manufacturing_evaluation(composed).empty() ||
+        volt::io::write_manufacturing_evidence(
+            volt::io::read_manufacturing_evidence(volt::io::write_manufacturing_evidence({})))
+            .empty())
+        return 1;
     const auto coverage = volt::evaluate_manufacturing_coverage(compiled, compiled_target);
     if (coverage.ready() || volt::io::write_manufacturing_coverage(coverage).empty())
         return 1;

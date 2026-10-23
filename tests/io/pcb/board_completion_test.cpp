@@ -79,6 +79,19 @@ TEST_CASE("Completion retains every required component and terminal when last or
     CHECK(row(result, BoardCompletionCheck::Inventory) == BoardCompletionState::Failed);
 }
 
+TEST_CASE("Export composition cannot erase native physical diagnostics", "[completion]") {
+    auto options = test::CompletionFixtureOptions{};
+    options.placements = 0;
+    auto completion = evaluate_board_completion(test::completion_fixture(options));
+    REQUIRE(has(completion, codes::MissingPlacement));
+    auto export_row = completion.coverage().back();
+    export_row.state = BoardCompletionState::Pass;
+    const auto composed =
+        std::move(completion).with_export_evaluation(std::move(export_row), DiagnosticReport{}, {});
+    CHECK(has(composed, codes::MissingPlacement));
+    CHECK_FALSE(has(composed, codes::ExportNotEvaluated));
+}
+
 TEST_CASE("Completion singleton requires its endpoint but no invented route", "[completion]") {
     auto options = test::CompletionFixtureOptions{};
     options.components = 1;

@@ -35,7 +35,8 @@ Json completion_report(const BoardCompletion &completion) {
 Json number(std::optional<double> value) { return value ? Json(*value) : Json{}; }
 
 std::string_view state_name(ManufacturingState state) {
-    constexpr auto names = std::array{"native-pass", "failed", "not-evaluated", "not-applicable"};
+    constexpr auto names =
+        std::array{"native-pass", "failed", "not-evaluated", "not-applicable", "reviewed-pass"};
     return names.at(static_cast<std::size_t>(state));
 }
 
@@ -99,17 +100,19 @@ Json rating_report(const SelectedPartRatings &ratings) {
 
 std::string write_manufacturing_coverage(const ManufacturingCoverage &result) {
     auto rows = Json::array();
-    auto counts = std::array<std::size_t, 4>{};
+    auto counts = std::array<std::size_t, 5>{};
     for (const auto &row : result.coverage()) {
         constexpr auto owners =
-            std::array{"native-target", "native-completion", "deferred-native", "deferred-review",
-                       "deferred-io",   "native-assembly",   "native-ratings"};
+            std::array{"native-target",   "native-completion", "deferred-native",
+                       "deferred-review", "deferred-io",       "native-assembly",
+                       "native-ratings",  "native-io",         "human-review"};
         constexpr auto blockers = std::array{"none",
                                              "MANUFACTURING_MISSING_INPUT",
                                              "MANUFACTURING_NOT_EVALUATED",
                                              "MANUFACTURING_CONSTRAINT_FAILED",
                                              "MANUFACTURING_UNSUPPORTED_SELECTION",
-                                             "MANUFACTURING_IDENTITY_MISMATCH"};
+                                             "MANUFACTURING_IDENTITY_MISMATCH",
+                                             "MANUFACTURING_INVALID_EVIDENCE"};
         constexpr auto units = std::array{"mm", "oz/ft2", "count", "deg"};
         auto observations = Json::array();
         for (const auto &item : row.observations)
@@ -122,48 +125,50 @@ std::string write_manufacturing_coverage(const ManufacturingCoverage &result) {
                                     {"unit", units.at(static_cast<std::size_t>(item.unit))},
                                     {"state", state_name(item.state)}});
         ++counts.at(static_cast<std::size_t>(row.state));
-        rows.push_back({{"check", manufacturing_check_name(row.check)},
-                        {"state", state_name(row.state)},
-                        {"owner", owners.at(static_cast<std::size_t>(row.owner))},
-                        {"required", true},
-                        {"applicable", row.applicable},
-                        {"code", blockers.at(static_cast<std::size_t>(row.blocker))},
-                        {"reason", row.reason},
-                        {"remediation", row.remediation},
-                        {"entities", entities(row.entities)},
-                        {"entity_count", row.entities.size()},
-                        {"observations", observations},
-                        {"observation_count", observations.size()},
-                        {"rule", "volt.manufacturing-coverage/2/" +
-                                     std::string{manufacturing_check_name(row.check)}}});
+        rows.push_back(
+            {{"check", manufacturing_check_name(row.check)},
+             {"state", state_name(row.state)},
+             {"owner", owners.at(static_cast<std::size_t>(row.owner))},
+             {"required", true},
+             {"applicable", row.applicable},
+             {"code", blockers.at(static_cast<std::size_t>(row.blocker))},
+             {"reason", row.reason},
+             {"remediation", row.remediation},
+             {"entities", entities(row.entities)},
+             {"entity_count", row.entities.size()},
+             {"observations", observations},
+             {"observation_count", observations.size()},
+             {"rule", "volt.manufacturing-coverage/" + std::to_string(result.evaluator_version()) +
+                          "/" + std::string{manufacturing_check_name(row.check)}}});
     }
     const auto completion = completion_report(result.completion());
-    return Json{{"format", "volt.manufacturing-coverage"},
-                {"schema_version", 2},
-                {"policy_version", 1},
-                {"evaluator", "volt.manufacturing-coverage/2"},
-                {"source", completion.at("source")},
-                {"provenance", completion.at("provenance")},
-                {"target_digest", result.target_digest().value()},
-                {"profile_digest", result.profile_digest().value()},
-                {"target", Json::parse(write_manufacturing_target(result.target()))},
-                {"status", result.status() == ManufacturingStatus::UnsupportedTarget
-                               ? "unsupported-target"
-                               : "blocked"},
-                {"ready", false},
-                {"coverage", rows},
-                {"completion", completion},
-                {"assembly",
-                 {{"bom", result.bom() ? Json::parse(write_bom_json(*result.bom())) : Json{}},
-                  {"cpl", result.cpl() ? Json::parse(write_cpl_json(*result.cpl())) : Json{}}}},
-                {"ratings", result.ratings() ? rating_report(*result.ratings()) : Json{}},
-                {"counts",
-                 {{"required", rows.size()},
-                  {"native_pass", counts[0]},
-                  {"failed", counts[1]},
-                  {"not_evaluated", counts[2]},
-                  {"not_applicable", counts[3]}}}}
-               .dump(2) +
-           "\n";
+    auto report = Json{
+        {"format", "volt.manufacturing-coverage"},
+        {"schema_version", result.evaluator_version()},
+        {"policy_version", 1},
+        {"evaluator", "volt.manufacturing-coverage/" + std::to_string(result.evaluator_version())},
+        {"source", completion.at("source")},
+        {"provenance", completion.at("provenance")},
+        {"target_digest", result.target_digest().value()},
+        {"profile_digest", result.profile_digest().value()},
+        {"target", Json::parse(write_manufacturing_target(result.target()))},
+        {"status", result.status() == ManufacturingStatus::UnsupportedTarget ? "unsupported-target"
+                                                                             : "blocked"},
+        {"ready", false},
+        {"coverage", rows},
+        {"completion", completion},
+        {"assembly",
+         {{"bom", result.bom() ? Json::parse(write_bom_json(*result.bom())) : Json{}},
+          {"cpl", result.cpl() ? Json::parse(write_cpl_json(*result.cpl())) : Json{}}}},
+        {"ratings", result.ratings() ? rating_report(*result.ratings()) : Json{}},
+        {"counts",
+         {{"required", rows.size()},
+          {"native_pass", counts[0]},
+          {"failed", counts[1]},
+          {"not_evaluated", counts[2]},
+          {"not_applicable", counts[3]}}}};
+    if (result.evaluator_version() == 3)
+        report["counts"]["reviewed_pass"] = counts[4];
+    return report.dump(2) + "\n";
 }
 } // namespace volt::io

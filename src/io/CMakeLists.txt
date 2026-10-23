@@ -74,6 +74,8 @@ add_library(
     pcb/compiled_board_consumers.cpp
     pcb/manufacturing_target.cpp
     pcb/manufacturing_coverage.cpp
+    pcb/manufacturing_evidence.cpp
+    pcb/manufacturing_evidence_codec.cpp
     pcb/board_completion.cpp
     pcb/board_scene.cpp
     pcb/pcb_feature_io.cpp

@@ -173,9 +173,13 @@ class BoardCompletion final {
     /** Return actual native export byte identities; empty before IO composition. */
     [[nodiscard]] std::span<const BoardCompletionFile> files() const noexcept { return files_; }
 
+    /** Return a new value with one IO-produced export evaluation composed into native facts. */
+    [[nodiscard]] BoardCompletion with_export_evaluation(BoardCompletionCoverage coverage,
+                                                         DiagnosticReport export_diagnostics,
+                                                         std::vector<BoardCompletionFile> files) &&;
+
   private:
     friend BoardCompletion evaluate_board_completion(const CompiledBoard &);
-    friend BoardCompletion io::evaluate_fabrication_completion(const CompiledBoard &);
     explicit BoardCompletion(const CompiledBoard &compiled);
     void order_diagnostics();
     CompiledBoardIdentity source_;

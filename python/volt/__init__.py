@@ -660,3 +660,35 @@ __all__ += [
     "make_manufacturing_target",
     "evaluate_manufacturing_coverage",
 ]
+
+# Exact native export and human assertion correspondence; no actual-inspection claim.
+from ._volt import (
+    ManufacturingCheck,
+    ManufacturingReviewMethod,
+    ManufacturingReviewOutcome,
+    ManufacturingReviewAssertion,
+    ManufacturingEvidenceAttachment,
+    ManufacturingFabricationFile,
+    ManufacturingEvidenceInput,
+    ManufacturingEvaluation,
+    ManufacturingEvidenceReadError,
+    read_manufacturing_evidence,
+    write_manufacturing_evidence,
+    evaluate_manufacturing_export,
+    make_manufacturing_review,
+)
+__all__ += [
+    "ManufacturingCheck",
+    "ManufacturingReviewMethod",
+    "ManufacturingReviewOutcome",
+    "ManufacturingReviewAssertion",
+    "ManufacturingEvidenceAttachment",
+    "ManufacturingFabricationFile",
+    "ManufacturingEvidenceInput",
+    "ManufacturingEvaluation",
+    "ManufacturingEvidenceReadError",
+    "read_manufacturing_evidence",
+    "write_manufacturing_evidence",
+    "evaluate_manufacturing_export",
+    "make_manufacturing_review",
+]
